@@ -34,6 +34,28 @@ void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool
     log_callback_function(prefix, str, force);
 }
 void log_to_terminal(const std::string& str, bool force_display) {
+#if defined(WIN32) && !defined(__EMSCRIPTEN__)
+    static std::once_flag tag;
+    std::call_once(tag, []() {
+        auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (handle == INVALID_HANDLE_VALUE) {
+            printf("Cannot get console handle\n");
+            return;
+        }
+
+        DWORD dwMode = 0;
+        if (!GetConsoleMode(handle, &dwMode)) {
+            printf("Get console handle error: %d\n", GetLastError());
+            return;
+        }
+
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(handle, dwMode);
+
+        printf("Set console mode.\n");
+    });
+#endif
+
     if(!runtime_is_quiet || force_display)
         printf("%s\n", str.c_str());
 }
