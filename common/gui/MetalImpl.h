@@ -1,6 +1,6 @@
 #pragma once
 #if __APPLE__ && __has_include(<Metal/Metal.h>)
-#define TREX_METAL_AVAILABLE true
+#define COMMONS_METAL_AVAILABLE true
 
 #include <gui/CrossPlatform.h>
 #include <misc/Timer.h>
@@ -51,5 +51,5 @@ namespace gui {
 }
 
 #else
-#define TREX_METAL_AVAILABLE false
+#define COMMONS_METAL_AVAILABLE false
 #endif

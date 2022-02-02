@@ -1,4 +1,4 @@
-#if TREX_HAS_OPENGL
+#if COMMONS_HAS_OPENGL
 #include <types.h>
 #include <cstdio>
 
