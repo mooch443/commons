@@ -111,12 +111,34 @@ int main(int argc, char**argv) {
     //! initialize data struct for gui and timer (for physics)
     DrawStructure graph(1024,1024);
     Timer timer;
+    Timer action_timer;
+    Vec2 last_mouse_pos;
     
     //! open window and start looping
+    bool terminate = false;
+    IMGUIBase* ptr = nullptr;
     IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
         //! set dt and target position for the constexpr functions to exploit
+        if (last_mouse_pos != graph.mouse_position()) {
+            action_timer.reset();
+            last_mouse_pos = graph.mouse_position();
+            target = last_mouse_pos;
+        }
         dt = timer.elapsed();
-        target = graph.mouse_position();
+
+        if (action_timer.elapsed() > 3) {
+            target = target + Size2(graph.width(), graph.height()).div(graph.scale())
+                .mul(Vec2(rand() / float(RAND_MAX), rand() / float(RAND_MAX)) - 0.5).mul(0.55);
+            if (target.x < radius * 18)
+                target.x = radius * 18;
+            if (target.y < radius * 18)
+                target.y = radius * 18;
+            if (target.x >= graph.width() / graph.scale().x - radius * 18)
+                target.x = graph.width() / graph.scale().x - radius * 18;
+            if (target.y >= graph.height() / graph.scale().y - radius * 18)
+                target.y = graph.height() / graph.scale().y - radius * 18;
+            action_timer.reset();
+        }
 
         //! update positions based on the two gvars
         owl_update(owl_indexes);
@@ -127,10 +149,19 @@ int main(int argc, char**argv) {
         }(owl_indexes);
         
         timer.reset();
-        return true;
+        return !terminate;
         
-    }, [](const Event&) { });
+    }, [&](const Event& e) {
+        if (e.type == EventType::KEY && !e.key.pressed) {
+            if (e.key.code == Codes::F && graph.is_key_pressed(Codes::LControl)) {
+                ptr->toggle_fullscreen(graph);
+            }
+            else if (e.key.code == Codes::Escape)
+                terminate = true;
+        }
+    });
 
+    ptr = &base;
     base.loop();
     return 0;
 }
