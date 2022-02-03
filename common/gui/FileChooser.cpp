@@ -215,7 +215,7 @@ void FileChooser::set_tabs(const std::vector<Settings>& tabs) {
         auto button = new Button(tab.name, Bounds(0, 0, Base::default_text_bounds(tab.name).width + 20, 40));
         button->set_fill_clr(Color(100, 100, 100, 255));
         button->set_toggleable(true);
-        button->on_click([this, button](auto e){
+        button->on_click([this, button](auto){
             if(button->toggled()) {
                 set_tab(button->txt());
             }

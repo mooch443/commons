@@ -13,8 +13,8 @@ namespace cmn {
     { set_index(-1); }
     
     Image::Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp)
-        : _size(rows*cols*dims*sizeof(uchar)), _custom_data(nullptr),
-        cols(cols), rows(rows), dims(dims), _timestamp(timestamp)
+        : _size(rows*cols*dims*sizeof(uchar)), _timestamp(timestamp), _custom_data(nullptr),
+            cols(cols), rows(rows), dims(dims)
     {
         set_index(index);
         

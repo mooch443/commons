@@ -22,7 +22,10 @@ using default_impl_t = gui::GLImpl;
 #endif
 
 namespace gui {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
     ENUM_CLASS(Effects, blur)
+#pragma clang diagnostic pop
 
     class IMGUIBase : public Base {
     protected:

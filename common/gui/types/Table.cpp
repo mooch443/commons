@@ -24,11 +24,11 @@ namespace gui {
         end();
     }
     
-    void Table::add_column(Column col) {
+    void Table::add_column(Column ) {
         
     }
     
-    void Table::add_row(const Row& row) {
+    void Table::add_row(const Row& ) {
         
     }
 }

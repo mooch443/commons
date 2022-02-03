@@ -171,6 +171,9 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
     if(std::this_thread::get_id() != _update_thread)
         U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
+#else
+    UNUSED(line);
+    UNUSED(file);
 #endif
 }
 
@@ -508,7 +511,7 @@ void MetalImpl::message(const std::string &msg) const {
                 
                 [commandBuffer presentDrawable:drawable];
                 
-                [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> commandBuffer) {
+                [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
                     if(_frame_capture_enabled) {
                         //[commandBuffer waitUntilCompleted];
                         
@@ -617,7 +620,7 @@ void MetalImpl::message(const std::string &msg) const {
         }, width, height, ptr->cols, ptr->rows});
     }
 
-    void MetalImpl::clear_texture(TexturePtr&& tex) {
+    void MetalImpl::clear_texture(TexturePtr&&) {
         /*std::lock_guard<std::mutex> guard(_texture_mutex);
         id<MTLTexture> texture = (__bridge id<MTLTexture>)tex->ptr;
         [texture release];*/

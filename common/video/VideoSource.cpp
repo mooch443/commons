@@ -547,9 +547,6 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     // if there are many files, we should use only the first part of each video
     Debug("Generating multi-file average...");
     
-    //const uint64_t channel = SETTING(color_channel);
-    double count = 0;
-    
     gpuMat float_mat, f, ref;
     std::vector<gpuMat> vec;
     
@@ -589,7 +586,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     }
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [&acc, &callback, method, samples, gAverage = &average, gAv = &av, gCount = &count, &mutex, &file_indexes](File* file, const std::set<uint64_t>& indexes)
+        auto fn = [&acc, &callback, samples](File* file, const std::set<uint64_t>& indexes)
         {
             cv::Mat f;
             double count = 0;

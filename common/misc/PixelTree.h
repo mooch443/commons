@@ -1,6 +1,5 @@
 #pragma once
 
-//#include <types.h>
 #include <misc/vec2.h>
 #include <misc/PVBlob.h>
 #include <misc/ranges.h>
@@ -56,10 +55,8 @@ namespace pixel {
     
     class Subnode {
     public:
-        //std::tuple<int, int> idx;
         Vec2 position;
         std::array<Subnode*, 2> edges;
-        //std::vector<std::shared_ptr<Subnode>> edges;
         bool walked;
         uint64_t index;
         
@@ -108,30 +105,21 @@ namespace pixel {
     
     class Tree {
     protected:
-        //GETTER(Subtree, tree)
         GETTER(std::vector<std::shared_ptr<Node>>, nodes)
-        //std::map<int64_t, std::shared_ptr<Node>> _node_positions;
         
     public:
-        //using sides_t = std::map<int64_t, std::shared_ptr<Subnode>>;
         using sides_t = std::vector<Subnode*>;
     protected:
         GETTER(sides_t, sides)
-        //std::map<int64_t, std::shared_ptr<Subnode>> non_full_nodes;
         std::vector<Subnode*> _non_full_nodes;
         
     public:
         void add(float x, float y, const std::array<int, 9>& neighborhood);
-        
-        //std::set<Edge> edges; // all active neighbor border pixels
-        //void add_edge(const Edge& edge);
-        
         std::vector<std::shared_ptr<std::vector<Vec2>>> generate_edges();
         
     private:
         std::shared_ptr<std::vector<Vec2>> walk(Subnode* node);
     };
-    
     
     std::vector<std::shared_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobPtr blob, int threshold);
 

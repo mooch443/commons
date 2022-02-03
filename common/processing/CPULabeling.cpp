@@ -209,7 +209,7 @@ struct Source {
     
     void finalize() {
         if(!_full_lines.empty()) {
-            const Line* start = _full_lines.data();
+            //const Line* start = _full_lines.data();
             auto it = _lines.data();
             for(; it != _lines.data() + _lines.size(); ++it)
                 *it = &_full_lines[(size_t)*it];
@@ -780,12 +780,10 @@ public:
             : Lit(obj.lines().begin()),
               Pit(obj._pixel_starts.begin())
         {}
-        Combined(Brototype& obj, size_t index)
+        Combined(Brototype& obj, size_t)
             : Lit(obj.lines().end()),
               Pit(obj._pixel_starts.end())
-        {
-            
-        }
+        { }
         
         bool operator!=(const Combined& other) const {
             return Lit != other.Lit; // assume all are the same
@@ -1160,8 +1158,6 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
     
     auto start = lines.begin();
     auto end = lines.end();
-    
-    coord_t y = 0;
     
     for (auto it = start; it != end; ++it) {
         list->source().push_back(&(*it), px);

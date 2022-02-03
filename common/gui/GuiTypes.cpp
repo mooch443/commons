@@ -2,7 +2,13 @@
 #include <misc/Base64.h>
 #include "DrawBase.h"
 #include <gui/DrawSFBase.h>
+
+#ifdef __llvm__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wall"
 #include <JSON.h>
+#pragma clang diagnostic pop
+#endif
 #include <misc/CircularGraph.h>
 
 namespace gui {

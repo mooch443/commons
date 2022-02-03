@@ -1,7 +1,10 @@
 #include "ocl.h"
 #include <commons.pc.h>
 
-//#include <opencv/cv.hpp>
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc11-extensions"
+
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/core/ocl.hpp>
 #include <opencv2/opencv_modules.hpp>
@@ -11,6 +14,8 @@
 #if CV_MAJOR_VERSION >= 3
 #include <opencv2/core/cuda.hpp>
 #endif
+
+#pragma clang diagnostic pop
 
 namespace ocl {
     static std::mutex mutex;

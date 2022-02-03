@@ -376,9 +376,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
         
         for (int i=0; i<count; ++i) {
-            auto name = glfwGetMonitorName(monitors[i]);
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifndef NDEBUG
+            auto name = glfwGetMonitorName(monitors[i]);
             Debug("Monitor '%s': %d,%d %dx%d", name, mx, my, mw, mh);
 #endif
             if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, fw-10, fh-10))) {
@@ -412,9 +412,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     Debug("Content scale: %f, %f", xscale, yscale);
 #endif
     
-    int width = base->_graph->width(), height = base->_graph->height();
-    
-    const float base_scale = 32;
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
     im_font_scale = max(1, dpi_scale) * 0.75f;
     base->_dpi_scale = dpi_scale;
@@ -450,7 +447,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         for (int i = 0; i < count; ++i) {
             int width, height;
             glfwGetMonitorPhysicalSize(monitors[i], &width, &height);
-            auto name = glfwGetMonitorName(monitors[i]);
             if (width * height > maximum) {
                 choice = monitors[i];
                 maximum = width * height;
@@ -585,7 +581,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         base_pointers[_platform->window_handle()] = this;
         
-        glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int , int action, int) {
             auto base = base_pointers.at(window);
             
             Event e(EventType::KEY);
@@ -610,7 +606,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             base->_graph->set_dirty(NULL);
             /**/
         });
-        glfwSetMouseButtonCallback(_platform->window_handle(), [](GLFWwindow* window, int button, int action, int mods) {
+        glfwSetMouseButtonCallback(_platform->window_handle(), [](GLFWwindow* window, int button, int action, int) {
             if(button != GLFW_MOUSE_BUTTON_LEFT && button != GLFW_MOUSE_BUTTON_RIGHT)
                 return;
             
@@ -1146,8 +1142,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                            ImVec2(order._clip_rect.w, order._clip_rect.z), false);
         pushed_rect = true;
     }
-
-    auto i_ = list->VtxBuffer.Size;
     
     switch (o->type()) {
         case Type::CIRCLE: {

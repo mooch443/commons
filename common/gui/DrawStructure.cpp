@@ -570,6 +570,7 @@ void DrawStructure::close_dialogs() {
     }
     
     void DrawStructure::finalize_section(const gui::Section *section) {
+        UNUSED(section);
         assert(_active_section == section);
         pop_section();
     }

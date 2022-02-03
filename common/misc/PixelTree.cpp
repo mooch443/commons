@@ -49,6 +49,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
     }
 
     inline void line_without_bg _____FN_TYPE {
+        UNUSED(bg);
         for (auto x=line.x0; x<=line.x1; ++x, ++px) {
             if(*px >= threshold)
                 update_tmp_line(x, *px, tmp_line, count, lines, pixels);
