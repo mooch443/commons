@@ -50,7 +50,6 @@ jobs:
         $python_exe=$( python -c "from shutil import which; print(which('python'))" )
         $pythoninclude=$( python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())" )
         $findlib=$( python ../find_library.py )
-        git submodule update --recursive --init
         echo "::endgroup::"
         echo "::group::BUILD"
         cd "D:/a/commons/commons"
