@@ -85,13 +85,9 @@ target_link_libraries(commons
     PUBLIC cnpy
 )
 
-if(${PYLON_FOUND} AND ${WITH_PYLON})
-	target_link_libraries( commons PRIVATE ${PYLON_LIBRARIES} )
-endif()
-
 if(COMMONS_BUILD_HTTPD)
-	target_link_libraries(commons PRIVATE ${MHD_LIBRARIES})
-    add_dependencies(commons LibMicroHttpd)
+	target_link_libraries(commons PUBLIC Commons::HTTPD)
+    add_dependencies(commons Commons::HTTPD)
 endif()
 
 add_dependencies(commons Commons::OpenCV)

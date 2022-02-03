@@ -26,8 +26,6 @@ option(COMMONS_BUILD_ZIP ON)
 option(COMMONS_BUILD_ZLIB ON)
 option(COMMONS_BUILD_OPENCV ON)
 option(COMMONS_CONDA_PACKAGE_INSTALL OFF)
-option(WITH_PYLON "use pylon support" OFF)
-option(WITH_GITSHA1 "include git hash" ON)
 option(CMN_USE_OPENGL2 OFF)
 option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
@@ -115,8 +113,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
 endif()
+
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
 
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF)
@@ -129,7 +127,7 @@ if(WIN32)
     #if(${MSVC_TOOLSET_MAJOR} LESS 190)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_ENABLE_ATOMIC_ALIGNMENT_FIX")
     #endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES -DNOMINMAX -DWIN32_LEAN_AND_MEAN -DCURL_STATICLIB")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES -DNOMINMAX -DCURL_STATICLIB -DNOCRYPT -DNOSERVICE -DNOMCX -DNOIME")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /bigobj")
@@ -144,7 +142,8 @@ else()
     set(BUILD_SHARED_LIBS OFF)
 endif()
 
-add_library(Commons::X11 INTERFACE IMPORTED)
+message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
+add_library(Commons::X11 INTERFACE IMPORTED GLOBAL)
 if(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
     target_link_libraries(Commons::X11 INTERFACE X11::X11 ${X11_LIBRARIES} dl)
@@ -166,7 +165,7 @@ if(UNIX AND NOT APPLE)
     #message(STATUS "UUID: ${UUID_LIBRARY} ${UUID_INCLUDE_DIR} ${X11_xcb_LIB}")
 endif()
 
-add_library(Commons::OpenGL INTERFACE IMPORTED)
+add_library(Commons::OpenGL INTERFACE IMPORTED GLOBAL)
 if(COMMONS_BUILD_GLFW OR UNIX)
     if(WIN32)
         find_package(OpenGL REQUIRED)
@@ -217,9 +216,9 @@ if(APPLE)
     
     find_library(QUARTZ_LIBRARY QuartzCore)
     if(COMMONS_WITH_OPENGL)
-        set(EXTRA_LIBS glad imgui Commons::OpenGL)
+        set(EXTRA_LIBS Commons::GLAD Commons::IMGUI Commons::OpenGL)
     else()
-        set(EXTRA_LIBS imgui)
+        set(EXTRA_LIBS Commons::IMGUI)
     endif()
     set(EXTRA_LIBS
         ${EXTRA_LIBS}
@@ -244,9 +243,9 @@ if(APPLE)
     message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
 else()
     if(COMMONS_WITH_OPENGL)
-        set(EXTRA_LIBS glad imgui Commons::OpenGL)
+        set(EXTRA_LIBS Commons::GLAD Commons::IMGUI Commons::OpenGL)
     else()
-        set(EXTRA_LIBS imgui)
+        set(EXTRA_LIBS Commons::IMGUI)
     endif()
 endif(APPLE)
 
@@ -392,29 +391,6 @@ ADD_DEFINITIONS(-DCV_STATIC_ANALYSIS=0)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/commons/CMakeModules" )
 
-if(APPLE AND WITH_PYLON)
-    FIND_LIBRARY(PYLON_LIBRARIES Pylon)
-    if(PYLON_LIBRARIES STREQUAL "PYLON_LIBRARIES-NOTFOUND" OR NOT ${WITH_PYLON})
-        set(PYLON_FOUND false)
-        add_definitions(-DWITH_PYLON=false)
-    else()
-        set(PYLON_FOUND true)
-        add_definitions(-DWITH_PYLON=true)
-        message(STATUS "Pylon found. ${PYLON_LIBRARIES} lol")
-        include_directories(/Library/Frameworks/pylon.framework/Headers/GenICam)
-    endif()
-    
-elseif(WITH_PYLON)
-    find_package(BaslerPylon)
-    if(${PYLON_FOUND})
-        include_directories(${PYLON_INCLUDE_DIRS})
-        add_definitions(-DWITH_PYLON=true)
-        message(STATUS "Pylon found.")
-    else()
-        add_definitions(-DWITH_PYLON=false)
-    endif()
-endif()
-
 set(GLFW_add_flags "")
 set(GLFW_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
 set(GLFW_C_FLAGS "${CMAKE_C_FLAGS}")
@@ -428,7 +404,8 @@ if(WIN32)
     set(GLFW_add_flags ${GLFW_add_flags} -DCMAKE_CXX_FLAGS_RELEASE="/MT" -DCMAKE_CXX_FLAGS_DEBUG="/MTd" -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF)
 endif()
 
-add_library (Commons::GLFW INTERFACE IMPORTED)
+add_library (Commons::GLFW INTERFACE IMPORTED GLOBAL)
+
 if(NOT COMMONS_BUILD_GLFW)
     find_package(GLFW)
     if(NOT GLFW_FOUND)
@@ -443,6 +420,11 @@ if(NOT COMMONS_BUILD_GLFW)
         message(STATUS "Linking GLFW: ${GLFW_LIBRARY} includes: ${GLFW_INCLUDE_DIR} dir: ${GLFW_DIR}")
         
         target_link_directories(Commons::GLFW INTERFACE ${GLFW_DIR})
+
+        set_target_properties(Commons::GLFW PROPERTIES
+          IMPORTED_LOCATION "${GLFW_LIBRARY}"
+          INTERFACE_INCLUDE_DIRECTORIES "${GLFW_INCLUDE_DIR}"
+        )
     endif()
 endif()
 
@@ -469,9 +451,28 @@ if(COMMONS_BUILD_GLFW)
     message(STATUS "glfw include: ${GLFW_INCLUDE_DIR}")
 
     include_directories(${GLFW_INCLUDE_DIR})
-    target_link_libraries (Commons::GLFW INTERFACE glfw3)
-    add_dependencies(Commons::GLFW glfw)
+    target_link_libraries (Commons::GLFW INTERFACE "${GLFW_INSTALL_DIR}/lib/glfw3.lib" Commons::OpenGL)
+    target_include_directories(Commons::GLFW INTERFACE
+      "$<BUILD_INTERFACE:${GLFW_INCLUDE_DIR}>"
+      "$<INSTALL_INTERFACE:${GLFW_INSTALL_DIR}/lib>"
+    )
+    set_target_properties(Commons::GLFW PROPERTIES
+      IMPORTED_LOCATION "${GLFW_INSTALL_DIR}/lib/glfw3.lib"
+      INTERFACE_INCLUDE_DIRECTORIES "${GLFW_INSTALL_DIR}/include"
+      INTERFACE_LINK_DIRECTORIES "${GLFW_INSTALL_DIR}/lib"
+    )
+
+    add_dependencies(Commons::GLFW glfw Commons::OpenGL)
 endif()
+
+
+
+#target_include_directories(Commons::GLFW INTERFACE
+#  $<BUILD_INTERFACE:${GLFW_INSTALL_DIR}/include>
+#  $<INSTALL_INTERFACE:include>
+#)
+
+add_library (Commons::GLAD INTERFACE IMPORTED GLOBAL)
 
 if(COMMONS_WITH_OPENGL)
     # glad
@@ -504,7 +505,17 @@ if(COMMONS_WITH_OPENGL)
     set(GLAD_INSTALL_DIR ${INSTALL_DIR})
     message(STATUS "glad: ${INSTALL_DIR}")
 
-    add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD=true)
+    target_link_libraries(Commons::GLAD INTERFACE glad)
+    target_compile_definitions(Commons::GLAD INTERFACE IMGUI_IMPL_OPENGL_LOADER_GLAD=true)
+    target_include_directories(Commons::GLAD INTERFACE
+      "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
+      "$<INSTALL_INTERFACE:${INSTALL_DIR}/lib>"
+    )
+    set_target_properties(Commons::GLAD PROPERTIES
+      IMPORTED_LOCATION "glad"
+      INTERFACE_INCLUDE_DIRECTORIES "${INSTALL_DIR}/include"
+      INTERFACE_LINK_DIRECTORIES "${INSTALL_DIR}/lib"
+    )
 endif()
 
 set (imgui_path ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
@@ -526,25 +537,40 @@ endif()
 
 add_library(imgui STATIC ${imgui_sources})
 include_directories(${imgui_path})
+
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+    set_property (TARGET imgui APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
+endif()
+
+add_library (Commons::IMGUI INTERFACE IMPORTED GLOBAL)
+target_link_libraries(Commons::IMGUI INTERFACE imgui)
+target_include_directories(Commons::IMGUI INTERFACE
+  "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
+  "$<INSTALL_INTERFACE:${INSTALL_DIR}/lib>"
+)
+set_target_properties(Commons::IMGUI PROPERTIES
+  IMPORTED_LOCATION "imgui"
+  INTERFACE_INCLUDE_DIRECTORIES "${imgui_path}"
+  #INTERFACE_LINK_DIRECTORIES "${imgui_path}/lib"
+)
+
 if(COMMONS_BUILD_GLFW)
-    add_dependencies(imgui glfw)
+    add_dependencies(imgui Commons::GLFW)
 endif()
 if(COMMONS_WITH_OPENGL)
-    add_dependencies(imgui gladex)
+    add_dependencies(imgui Commons::GLAD)
 endif()
 
 # this is circumventing some weird CMake shuffeling of dependencies. these libraries always have to go last
 # at least once, but multiple times if necessary.
 if(UNIX AND NOT APPLE)
-    target_link_libraries(Commons::GLFW INTERFACE glad Commons::X11 pthread)
+    target_link_libraries(Commons::GLFW INTERFACE Commons::GLAD Commons::X11 pthread)
 endif()
 
 #include_directories(${imgui_path})
-target_link_libraries(imgui Commons::GLFW)
+target_link_libraries(Commons::IMGUI INTERFACE Commons::GLFW)
 
-if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    set_property (TARGET imgui APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
-endif()
+
 
 if(WITH_FFMPEG)
     find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
@@ -570,25 +596,20 @@ if(WITH_FFMPEG)
         set(FFMPEG_INCLUDE_DIRS ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
         set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${LIBSWSSCALE_LIBRARY})
         message(STATUS "Found ffmpeg: ${FFMPEG_LIBRARIES}")
-        add_library (Commons::FFMPEG INTERFACE IMPORTED)
+        add_library (Commons::FFMPEG INTERFACE IMPORTED GLOBAL)
         target_link_libraries(Commons::FFMPEG INTERFACE ${FFMPEG_LIBRARIES})
         include_directories(${FFMPEG_INCLUDE_DIRS})
+
+        target_include_directories(Commons::FFMPEG INTERFACE
+          "$<BUILD_INTERFACE:${GLFW_INCLUDE_DIR}>"
+          "$<INSTALL_INTERFACE:${GLFW_INSTALL_DIR}/lib>"
+        )
+        set_target_properties(Commons::FFMPEG PROPERTIES
+          IMPORTED_LOCATION "${FFMPEG_LIBRARIES}"
+          INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
+          #INTERFACE_LINK_DIRECTORIES "${GLFW_INSTALL_DIR}/lib"
+        )
     endif()
-endif()
-
-if(COMMONS_BUILD_HTTPD)
-    set(httpd_PREFIX "${CMAKE_BINARY_DIR}/lmhttpd")
-    set(httpd_INSTALL_DIR "${CMAKE_BINARY_DIR}/lmhttpd")
-    set(httpd_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${httpd_INSTALL_DIR})
-
-    set(MHD_LIBRARIES microhttpd)
-
-    message(STATUS "HTTPD: ${httpd_INSTALL_DIR}/lib")
-    link_directories(${httpd_INSTALL_DIR}/lib)
-    include_directories(${httpd_INSTALL_DIR}/include)
-    add_definitions(-DWITH_MHD=true)
-else()
-    add_definitions(-DWITH_MHD=false)
 endif()
 
 set(pybind11_external OFF)
@@ -640,7 +661,7 @@ if(NOT COMMONS_BUILD_PNG AND NOT ${COMMONS_BUILD_PNG})
     else()
         include_directories(${PNG_INCLUDE_DIR})
     
-        add_library (Commons::LibPNG INTERFACE IMPORTED)
+        add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
         target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARIES})
     
         message(STATUS "png: ${PNG_LIBRARIES} ${PNG_INCLUDE_DIR}")
@@ -653,7 +674,7 @@ if((NOT ${COMMONS_BUILD_ZLIB}) AND ZLIB_FOUND AND ZLIB_VERSION_STRING VERSION_GR
     set(libzip_zlib_lib "${ZLIB_LIBRARY}")
     unset(zlib_install_dir)
     
-    add_library (Commons::LibZ INTERFACE IMPORTED)
+    add_library (Commons::LibZ INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
     
     unset(ZLIB_LIBRARY)
@@ -686,7 +707,7 @@ else()
         -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF
     )
     
-    add_library (Commons::LibZ INTERFACE IMPORTED)
+    add_library (Commons::LibZ INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
 
     set(ZLIB_INCLUDE_DIR ${zlib_install_dir}/include)
@@ -697,7 +718,7 @@ else()
     message(STATUS "ZLIB include dir ${ZLIB_INCLUDE_DIR}")
     message(STATUS "ZLIB_LIBRARY = ${ZLIB_LIBRARY} ${ZLIB_VERSION_STRING}")
     
-    unset(ZLIB_LIBRARY)
+    #unset(ZLIB_LIBRARY)
     #unset(ZLIB_INCLUDE_DIR)
 endif()
 
@@ -710,8 +731,8 @@ if(NOT COMMONS_BUILD_ZIP)
         
     else()
         include_directories(${ZIP_INCLUDE_DIR})
-    
-        add_library (Commons::LibZIP INTERFACE IMPORTED)
+        
+        add_library (Commons::LibZIP INTERFACE IMPORTED GLOBAL)
         target_link_libraries (Commons::LibZIP INTERFACE ${ZIP_LIBRARIES} Commons::LibZ)
         message(STATUS "zip: ${ZIP_LIBRARIES} ${ZIP_INCLUDE_DIR}")
     endif()
@@ -746,8 +767,8 @@ if(COMMONS_BUILD_ZLIB)
 endif()
 
 if(COMMONS_BUILD_ZIP)
-    set(LIBZIP_LIBRARY "zip$<IF:$<CONFIG:Debug>,d,>")
     set(libzip_install_dir "${CMAKE_BINARY_DIR}/libzip")
+    set(LIBZIP_LIBRARY "${libzip_install_dir}/lib/zip$<IF:$<CONFIG:Debug>,d,>.lib")
     
     if(NOT WIN32)
         set(LIBZIP_LIBRARY "zip$<IF:$<CONFIG:Debug>,d,>")
@@ -795,10 +816,12 @@ if(COMMONS_BUILD_ZIP)
     message(STATUS "ZIP: ${LIBZIP_LIBRARY}")
     message(STATUS "include libzip ${LIBZIP_INCLUDE_DIR} install: ${libzip_install_dir}")
     
-    add_library (Commons::LibZIP INTERFACE IMPORTED)
+    add_library (Commons::LibZIP INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibZIP INTERFACE ${LIBZIP_LIBRARY})
-    
+
+
     add_dependencies(Commons::LibZIP Commons::LibZ libzip)
+    #install(EXPORT libzipTargets NAMESPACE Commons:: DESTINATION lib/cmake)
     
     unset(LIBZIP_LIBRARY)
 endif()
@@ -808,11 +831,6 @@ if(${COMMONS_BUILD_PNG})
     set(png_install_dir "${CMAKE_BINARY_DIR}/libpng")
     set(PNG_LIBRARY "png")
 
-    if(WIN32)
-        set(PNG_LIBRARY "libpng16_static$<IF:$<CONFIG:Debug>,d,>")
-    else()
-        set(PNG_LIBRARY "${png_install_dir}/lib/libpng16$<IF:$<CONFIG:Debug>,d,>.a")
-    endif()
 
     message(STATUS "PNG_LIBRARY = ${PNG_LIBRARY}")
     message(STATUS "COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}")
@@ -844,8 +862,14 @@ if(${COMMONS_BUILD_PNG})
     link_directories(${png_install_dir}/lib)
     message(STATUS "libpng dir ${png_install_dir}/lib")
     message(STATUS "png library ${PNG_LIBRARY}")
+
+    if(WIN32)
+        set(PNG_LIBRARY "${png_install_dir}/lib/libpng16_static$<IF:$<CONFIG:Debug>,d,>.lib")
+    else()
+        set(PNG_LIBRARY "${png_install_dir}/lib/libpng16$<IF:$<CONFIG:Debug>,d,>.a")
+    endif()
     
-    add_library (Commons::LibPNG INTERFACE IMPORTED)
+    add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARY} Commons::LibZ)
     add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ)
     
@@ -888,7 +912,7 @@ if(NOT ${COMMONS_BUILD_OPENCV})
         message(STATUS "Found OpenCV Version: ${OpenCV_VERSION} include: ${OpenCV_INCLUDE_DIRS} libs: ${OpenCV_LIBRARIES}")
         set(OpenCV_LIBS ${OpenCV_LIBRARIES})
     
-        add_library (Commons::OpenCV INTERFACE IMPORTED)
+        add_library (Commons::OpenCV INTERFACE IMPORTED GLOBAL)
         target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS})
         if(UNIX AND NOT APPLE)
             find_package(TIFF)
@@ -1031,7 +1055,7 @@ if(${COMMONS_BUILD_OPENCV})
             #"-DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}"
             -DWITH_OPENEXR=OFF
             "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}"
-            "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/opencv_install"
+            "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}/opencv_install"
             -DCMAKE_DEBUG_POSTFIX=)
 
     message(STATUS "OPENCV_EXTRA_FLAGS_ = ${OPENCV_EXTRA_FLAGS_}")
@@ -1051,18 +1075,18 @@ if(${COMMONS_BUILD_OPENCV})
     if(UNIX)
         message(STATUS "Using custom configure command")
         ExternalProject_add(CustomOpenCV
-            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/opencv
+            PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
-            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${COMMONS_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_CURRENT_BINARY_DIR}/opencv/src/CustomOpenCV
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${COMMONS_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
             BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE}
             INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE} --target install
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
     else()
         ExternalProject_add(CustomOpenCV
-            PREFIX ${CMAKE_CURRENT_BINARY_DIR}/opencv
+            PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
@@ -1075,31 +1099,31 @@ if(${COMMONS_BUILD_OPENCV})
     #    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
     #    COMMAND ${CMAKE_COMMAND} -E copy_if_different
     #        "${CMAKE_SOURCE_DIR}/opencv_patch.patch"
-     #       "${CMAKE_CURRENT_BINARY_DIR}/opencv/src/CustomOpenCV/CMakeLists.txt"
+     #       "${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV/CMakeLists.txt"
     #)
 
     if(APPLE)
-        set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/lib/cmake/opencv4/ ${CMAKE_PREFIX_PATH})
-        set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/)
+        set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/opencv_install/lib/cmake/opencv4/ ${CMAKE_PREFIX_PATH})
+        set(OpenCV_DIR ${CMAKE_BINARY_DIR}/opencv_install/)
     elseif(UNIX)
-        set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/share/OpenCV/ ${CMAKE_PREFIX_PATH})
-        set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/)
+        set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/opencv_install/share/OpenCV/ ${CMAKE_PREFIX_PATH})
+        set(OpenCV_DIR ${CMAKE_BINARY_DIR}/opencv_install/)
     else()
-        set(CMAKE_PREFIX_PATH ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/ ${CMAKE_PREFIX_PATH})
-        set(OpenCV_DIR ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/)
+        set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/opencv_install/ ${CMAKE_PREFIX_PATH})
+        set(OpenCV_DIR ${CMAKE_BINARY_DIR}/opencv_install/)
     endif()
 	
 	message(STATUS "OPENCV_EXTRA_FLAGS_ = ${OPENCV_EXTRA_FLAGS_}")
+    message(STATUS "OPENCVDIR = ${OpenCV_DIR}")
     
-    add_dependencies(CustomOpenCV Commons::LibPNG)
     if(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
         
         math (EXPR MSVC_TOOLSET_MAJOR "${MSVC_VERSION}/10")
         message(STATUS "CMAKE_GENERATOR_TOOLSET ${MSVC_TOOLSET_MAJOR} ${CMAKE_GENERATOR} ${VSTD_VERSION_MAJOR}")
-        message("Including OpenCV lib path: ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib")
-        set(OpenCV_LIB_PATH ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib)
+        message("Including OpenCV lib path: ${CMAKE_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib")
+        set(OpenCV_LIB_PATH ${CMAKE_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib)
         link_directories(${OpenCV_LIB_PATH})
         set(OpenCV_LIBS opencv_core${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgproc${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgcodecs${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_video${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_videoio${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_highgui${COMMONS_OPENCV_VERSION_NO_DOTS} 
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
@@ -1123,15 +1147,15 @@ if(${COMMONS_BUILD_OPENCV})
 	endif()
     
     if(UNIX)
-        include_directories( ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/include/opencv4 )
+        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
     else()
-        include_directories( ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/include )
+        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include )
     endif()
-    link_directories(${CMAKE_CURRENT_BINARY_DIR}/opencv_install/lib ${CMAKE_CURRENT_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
+    link_directories(${CMAKE_BINARY_DIR}/opencv_install/lib ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
-    add_library (Commons::OpenCV INTERFACE IMPORTED)
+    add_library (Commons::OpenCV INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS})
-    add_dependencies(Commons::OpenCV CustomOpenCV)
+    add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
 endif()
@@ -1143,32 +1167,8 @@ endforeach()
 
 
 message(STATUS "hidden visibility in commons project ${CMAKE_CXX_FLAGS}")
-option(WITH_PYLON "use pylon support" ON)
 
-if(APPLE)
-	FIND_LIBRARY(PYLON_LIBRARIES Pylon)
-	if(PYLON_LIBRARIES STREQUAL "PYLON_LIBRARIES-NOTFOUND" OR NOT ${WITH_PYLON})
-		set(PYLON_FOUND false)
-		add_definitions(-DWITH_PYLON=false)
-	else()
-		set(PYLON_FOUND true)
-		add_definitions(-DWITH_PYLON=true)
-		message(STATUS "Pylon found. ${PYLON_LIBRARIES}")
-		include_directories(/Library/Frameworks/pylon.framework/Headers/GenICam)
-	endif()
-	
-else()
-	find_package(BaslerPylon)
-	if(${PYLON_FOUND} AND ${WITH_PYLON})
-		include_directories(${PYLON_INCLUDE_DIRS})
-		add_definitions(-DWITH_PYLON=true)
-		message(STATUS "Pylon found.")
-	else()
-		add_definitions(-DWITH_PYLON=false)
-		message("pylon disabled")
-	endif()
-endif()
-
+add_library(Commons::HTTPD INTERFACE IMPORTED GLOBAL)
 if(COMMONS_BUILD_HTTPD)
 	set(httpd_PREFIX "${CMAKE_BINARY_DIR}/lmhttpd")
 	set(httpd_INSTALL_DIR "${CMAKE_BINARY_DIR}/lmhttpd")
@@ -1176,29 +1176,38 @@ if(COMMONS_BUILD_HTTPD)
     message(STATUS "Adding microhttpd")
 	ExternalProject_Add(LibMicroHttpd
 	  PREFIX ${httpd_PREFIX}
-	  GIT_REPOSITORY https://gnunet.org/git/libmicrohttpd.git
-	  GIT_TAG v0.9.55
+	  GIT_REPOSITORY https://git.gnunet.org/libmicrohttpd.git
+	  GIT_TAG v0.9.75
 	  #SOURCE_DIR ${httpd_PREFIX}/
 	  BINARY_DIR ${httpd_PREFIX}/src/LibMicroHttpd/
 	  INSTALL_DIR ${httpd_INSTALL_DIR}
 	  CONFIGURE_COMMAND cd ${httpd_PREFIX}/src/LibMicroHttpd/ && autoreconf -fi && ./configure --bindir=${httpd_INSTALL_DIR}/lib --prefix=${httpd_INSTALL_DIR}
 	  UPDATE_COMMAND ""
 	)
+    add_custom_command(TARGET LibMicroHttpd POST_BUILD
+        COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Release")
+    add_custom_command(TARGET LibMicroHttpd POST_BUILD
+        COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Debug")
 
-	set(MHD_LIBRARIES microhttpd)
-
-	add_custom_command(TARGET LibMicroHttpd POST_BUILD
-	    COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Release")
-	add_custom_command(TARGET LibMicroHttpd POST_BUILD
-	    COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Debug")
-
+    target_link_libraries(Commons::HTTPD INTERFACE microhttpd)
 
 	message(STATUS "HTTPD dir ${httpd_INSTALL_DIR}/lib")
-	link_directories(${httpd_INSTALL_DIR}/lib)
-	include_directories(${httpd_INSTALL_DIR}/include)
-    add_definitions(-DWITH_MHD=true)
+    file(MAKE_DIRECTORY "${httpd_INSTALL_DIR}/include")
+    
+    target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=true)
+    target_include_directories(Commons::HTTPD INTERFACE
+      "$<BUILD_INTERFACE:${httpd_INSTALL_DIR}/include>"
+      "$<INSTALL_INTERFACE:${httpd_INSTALL_DIR}/lib>"
+    )
+    set_target_properties(Commons::HTTPD PROPERTIES
+      IMPORTED_LOCATION "microhttpd"
+      TARGET_INCLUDE_DIRECTORIES "${httpd_INSTALL_DIR}/include"
+      TARGET_LINK_DIRECTORIES "${httpd_INSTALL_DIR}/lib"
+    )
+    add_dependencies(Commons::HTTPD LibMicroHttpd)
+
 else()
-    add_definitions(-DWITH_MHD=false)
+    target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=false)
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -1216,3 +1225,25 @@ add_subdirectory(examples)
 if(POLICY CMP0114)
   cmake_policy(POP)
 endif()
+
+message(STATUS "ZLIB: ${COMMONS_BUILD_ZLIB} ${COMMONS_BUILD_ZIP} ${LIBZIP_LIBRARY}")
+
+INSTALL(TARGETS "commons"
+EXPORT "commonsTargets" 
+ARCHIVE DESTINATION lib COMPONENT libs
+RUNTIME DESTINATION bin COMPONENT libs
+LIBRARY DESTINATION lib COMPONENT libs
+PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT devel
+INCLUDES DESTINATION include
+)
+
+
+if(WIN32)
+    if(COMMONS_BUILD_OPENCV)
+        install(
+            FILES
+            "${OpenCV_LIB_PATH}/../bin/opencv_videoio_ffmpeg${TREX_OPENCV_VERSION_NO_DOTS}_64.dll" DESTINATION bin)
+    endif()
+endif()
+
+export(TARGETS commons cnpy cpputils imgui ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
