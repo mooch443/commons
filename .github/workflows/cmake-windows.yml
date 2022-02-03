@@ -39,7 +39,7 @@ jobs:
         auto-update-conda: true
         use-only-tar-bz2: true
     - name: Build
-      shell: bash -l {0}
+      shell: powershell
       working-directory: ${{runner.workspace}}
       run: |
         echo "::group::Info"
@@ -47,17 +47,14 @@ jobs:
         conda list
         echo "::endgroup::"
         echo "::group::BUILD"
-
         cd $GITHUB_WORKSPACE/Application
         mkdir build
         cd build
         cmake .. -G "Visual Studio 16 2019" -DWITH_PYLON=OFF -DCOMMONS_BUILD_OPENCV=ON -DCOMMONS_BUILD_PNG=ON -DCOMMONS_BUILD_ZIP=ON -DCOMMONS_BUILD_GLFW=ON -DCOMMONS_BUILD_ZLIB=ON -DCMAKE_BUILD_TYPE=Release
-
         cmake --build . --target Z_LIB --config Release
         cmake --build . --target libzip --config Release
         cmake --build . --target libpng_custom --config Release
         cmake --build . --target CustomOpenCV --config Release
         cmake ..
         cmake --build . --target INSTALL --config Release
-
         echo "::endgroup::"
