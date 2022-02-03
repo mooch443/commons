@@ -3,6 +3,7 @@
 
 //#include <commons.pc.h>
 #include <misc/metastring.h>
+#include <bytell_hash_map.hpp>
 
 namespace cmn {
 namespace sprite {
@@ -163,9 +164,9 @@ namespace sprite {
     private:
         
     protected:
-        std::unordered_map<PNameRef, Store> _props;
-        std::unordered_map<const char*, callback_func> _callbacks;
-        std::unordered_map<std::string, bool> _print_key;
+        ska::bytell_hash_map<PNameRef, Store> _props;
+        ska::bytell_hash_map<const char*, callback_func> _callbacks;
+        ska::bytell_hash_map<std::string, bool> _print_key;
         
         GETTER_NCONST(std::mutex, mutex)
         GETTER_SETTER(bool, do_print)

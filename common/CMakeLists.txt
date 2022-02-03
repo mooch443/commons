@@ -3,6 +3,10 @@ set(RESOURCES_ADDED "")
 file(GLOB HDRS video/*.h processing/*.h misc/*.h file/*.h gui/*.h gui/types/*.h *.h)
 file(GLOB SRCS video/*.cpp processing/*.cpp misc/*.cpp file/*.cpp gui/*.cpp gui/types/*.cpp *.cpp)
 
+file(GLOB HASH_HDR ${CMAKE_SOURCE_DIR}/flat_hash_map/*.hpp)
+
+message(STATUS "hash_map: ${HASH_HDR} ${CMAKE_SOURCE_DIR}/flat_hash_map")
+
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
     set(SRCS ${SRCS} gui/MetalImpl.mm)
 else()
@@ -31,19 +35,18 @@ if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
     set(HDRS ${HDRS} commons.pc.h)
 endif()
 
-# add actual library
-if(APPLE)
-  add_library(commons STATIC ${SRCS} ${HDRS})
-elseif(WIN32)
-  add_library(commons STATIC ${SRCS} ${HDRS})
-else()
-  add_library(commons STATIC ${SRCS} ${HDRS})
-endif()
-
+add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy)
 if(APPLE OR NOT UNIX)
     add_dependencies(commons Commons::LibPNG)
 endif()
+
+target_include_directories(commons PUBLIC "${CMAKE_SOURCE_DIR}/flat_hash_map")
+
+foreach(FILE ${HASH_HDR})
+    source_group("hash_map" FILES "${FILE}")
+endforeach()
+    
 
 foreach(FILE ${SRCS} ${HDRS}) 
     # Get the directory of the source file
