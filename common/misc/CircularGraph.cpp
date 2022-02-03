@@ -2,6 +2,39 @@
 #include <misc/Timer.h>
 #include <misc/metastring.h>
 
+#define EXPERIMENTAL_FAST_COSINE
+#ifdef EXPERIMENTAL_FAST_COSINE
+
+namespace fast {
+
+constexpr const double F_PI       = 3.14159265358979323846264338327950288;
+constexpr const double F_PI_2     = 1.57079632679489661923132169163975144;
+
+template<typename T>
+    requires std::floating_point<T>
+inline T cos(T x) noexcept
+{
+    constexpr T tp = 1./(2. * F_PI);
+    x *= tp;
+    x -= T(.25) + std::floor(x + T(.25));
+    x *= T(16.) * (std::abs(x) - T(.5));
+#if EXTRA_PRECISION
+    x += T(.225) * x * (std::abs(x) - T(1.));
+#endif
+    return x;
+}
+
+template<typename T>
+    requires std::floating_point<T>
+constexpr T sin(T x) noexcept {
+    return fast::cos<T>(x - T(F_PI_2));
+}
+
+}
+#else
+namespace fast = std;
+#endif
+
 namespace cmn {
     namespace periodic {
         std::string Peak::toStr() const {
@@ -54,8 +87,8 @@ namespace cmn {
                     const auto& p3 = *ptr3;
                     
                     if(p1 != p2 && p1 != p3 && p2 != p3)
-                        *out = 2.f * cmn::abs((p2.x-p1.x)*(p3.y-p2.y) - (p2.y-p1.y)*(p3.x-p2.x))
-                        / sqrt(sqdistance(p1, p2) * sqdistance(p2, p3) * sqdistance(p1, p3));
+                        *out = 2.f * std::abs((p2.x-p1.x)*(p3.y-p2.y) - (p2.y-p1.y)*(p3.x-p2.x))
+                        / std::sqrt(sqdistance(p1, p2) * sqdistance(p2, p3) * sqdistance(p1, p3));
                 }
             } else {
                 for (; ptr2 != end; ++ptr1, ++ptr2, ++ptr3, ++out) {
@@ -70,7 +103,7 @@ namespace cmn {
                     
                     if(p1 != p2 && p1 != p3 && p2 != p3)
                         *out = 2.f * ((p2.x-p1.x)*(p3.y-p2.y) - (p2.y-p1.y)*(p3.x-p2.x))
-                        / sqrt(sqdistance(p1, p2) * sqdistance(p2, p3) * sqdistance(p1, p3));
+                        / std::sqrt(sqdistance(p1, p2) * sqdistance(p2, p3) * sqdistance(p1, p3));
                 }
             }
             
@@ -469,6 +502,8 @@ namespace cmn {
                 return {cache_xy_sum, phi, cumsum, dt};
             }
         }
+    
+    
         
         coeff_t eft(points_t points, size_t order, points_t dxy) {
             if(points->empty())
@@ -493,8 +528,8 @@ namespace cmn {
                 // precalculate all cos/sin values
                 for (size_t i=0; i<cossin_phi.size(); ++i) {
                     auto phi_n = (*phi)[i] * n / T;
-                    cossin_phi[i].x = cos(phi_n);
-                    cossin_phi[i].y = sin(phi_n);
+                    cossin_phi[i].x = fast::cos(phi_n);
+                    cossin_phi[i].y = fast::sin(phi_n);
                 }
                 
                 for (size_t i=0; i<cossin_phi.size() - 1; ++i) {
@@ -539,8 +574,8 @@ namespace cmn {
             
             for (size_t i=0; i<order; ++i) {
                 for (size_t j=0; j<n_points; ++j) {
-                    auto ct = cos(t[j] * (i+1));
-                    auto st = sin(t[j] * (i+1));
+                    auto ct = fast::cos(t[j] * (i+1));
+                    auto st = fast::sin(t[j] * (i+1));
                     
                     pt[j].x += (*coeffs)[i].x * ct + (*coeffs)[i].y * st;
                     pt[j].y += (*coeffs)[i].z * ct + (*coeffs)[i].w * st;
