@@ -6,7 +6,9 @@
 #ifdef __llvm__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wall"
+#endif
 #include <JSON.h>
+#ifdef __llvm__
 #pragma clang diagnostic pop
 #endif
 #include <misc/CircularGraph.h>
