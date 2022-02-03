@@ -879,7 +879,6 @@ endif()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      L I B P N G
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
 
 if(${COMMONS_BUILD_PNG})
     message(STATUS "Commons will build PNG.")
