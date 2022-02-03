@@ -9,7 +9,7 @@ struct Frame_t {
     using number_t = long_t;
     static constexpr number_t invalid = -1;
 
-    long_t _frame = invalid;
+    number_t _frame = invalid;
     
     constexpr Frame_t() = default;
     explicit constexpr Frame_t(number_t frame)
@@ -20,7 +20,7 @@ struct Frame_t {
     
     constexpr void invalidate() { _frame = invalid; }
     
-    constexpr number_t get() const { return (long_t)_frame; }
+    constexpr number_t get() const { return _frame; }
     //constexpr operator long_t() const { return _frame; }
     constexpr bool valid() const { return _frame >= 0; }
     constexpr Frame_t& operator+=(const Frame_t& other) {
