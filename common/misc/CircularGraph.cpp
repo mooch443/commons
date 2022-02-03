@@ -2,7 +2,7 @@
 #include <misc/Timer.h>
 #include <misc/metastring.h>
 
-#define EXPERIMENTAL_FAST_COSINE
+//#define EXPERIMENTAL_FAST_COSINE
 #ifdef EXPERIMENTAL_FAST_COSINE
 
 namespace fast {
@@ -18,9 +18,9 @@ inline T cos(T x) noexcept
     x *= tp;
     x -= T(.25) + std::floor(x + T(.25));
     x *= T(16.) * (std::abs(x) - T(.5));
-#if EXTRA_PRECISION
+//#if EXTRA_PRECISION
     x += T(.225) * x * (std::abs(x) - T(1.));
-#endif
+//#endif
     return x;
 }
 

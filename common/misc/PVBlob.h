@@ -22,6 +22,7 @@ struct bid {
     static constexpr uint32_t invalid = std::numeric_limits<uint32_t>::max();
     uint32_t _id = invalid;
     bid() = default;
+    bid(const bid&) = default;
     constexpr bid(uint32_t v) : _id(v) {}
     
     explicit constexpr operator uint32_t() const {
