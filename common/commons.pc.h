@@ -132,6 +132,7 @@ using long_t = int32_t;
 #include <common/cpputils/utilsexception.h>
 #include <common/cpputils/debug/Printable.h>
 #include <cnpy/cnpy.h>
+#include <bytell_hash_map.hpp>
 
 #ifdef __llvm__
 #pragma clang diagnostic pop

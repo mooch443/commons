@@ -563,7 +563,7 @@ add_library(imgui STATIC ${imgui_sources})
 include_directories(${imgui_path})
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    set_property (TARGET imgui APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
+    #set_property (TARGET imgui APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
 endif()
 
 add_library (Commons::IMGUI INTERFACE IMPORTED GLOBAL)
