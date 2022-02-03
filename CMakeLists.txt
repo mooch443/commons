@@ -678,6 +678,7 @@ endif()
 #    PREPARING for libpng by seeing whether
 #    we can link to a previously existing one
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
 
 if(NOT COMMONS_BUILD_PNG AND NOT ${COMMONS_BUILD_PNG})
     find_package(PNG)
@@ -688,9 +689,16 @@ if(NOT COMMONS_BUILD_PNG AND NOT ${COMMONS_BUILD_PNG})
         
     else()
         include_directories(${PNG_INCLUDE_DIR})
-    
-        add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
         target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARIES})
+        target_include_directories(Commons::LibPNG INTERFACE
+          "$<BUILD_INTERFACE:${PNG_INCLUDE_DIR}>"
+          "$<INSTALL_INTERFACE:${PNG_LIBRARIES}>"
+        )
+        set_target_properties(Commons::LibPNG PROPERTIES
+          IMPORTED_LOCATION "${PNG_LIBRARIES}"
+          INTERFACE_INCLUDE_DIRECTORIES "${PNG_INCLUDE_DIR}"
+          #INTERFACE_LINK_DIRECTORIES "${png_install_dir}/lib"
+        )
     
         message(STATUS "png: ${PNG_LIBRARIES} ${PNG_INCLUDE_DIR}")
     endif()
@@ -1155,7 +1163,7 @@ if(${COMMONS_BUILD_OPENCV})
     endif()
     link_directories(${CMAKE_BINARY_DIR}/opencv_install/lib ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
-    target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS})
+    target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZIP Commons::LibZ)
     add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
