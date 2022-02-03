@@ -920,7 +920,7 @@ if(${COMMONS_BUILD_PNG})
     target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARY} Commons::LibZ Commons::LibZIP)
     add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ Commons::LibZIP)
 
-    file(MAKE_DIRECTORY ${LIBZIP_INCLUDE_DIR})
+    file(MAKE_DIRECTORY "${png_install_dir}/include")
     target_include_directories(Commons::LibPNG INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
       "$<INSTALL_INTERFACE:${png_install_dir}/lib>"

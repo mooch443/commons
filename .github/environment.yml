@@ -1,0 +1,13 @@
+name: tracking
+channels:
+    - main
+dependencies:
+    - cmake
+    - ffmpeg
+    - python
+    - m2-filesystem         # [win]
+    - m2w64-pkg-config      # [win]
+    - pkg-config            # [not win]
+    - jom                   # [win]
+    - make                  # [unix]
+    - git

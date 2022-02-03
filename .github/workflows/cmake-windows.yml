@@ -1,0 +1,63 @@
+name: Windows
+
+on: [push]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  GITHUB_WORKFLOW: Windows
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#configuring-a-build-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows-2019"]
+        python-version: ["3.7.9"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache conda
+      uses: actions/cache@v2
+      env:
+        # Increase this value to reset cache if etc/example-environment.yml has not changed
+        CACHE_NUMBER: 0
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/macos-environment.yml') }}
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        environment-file: .github/macos-environment.yml
+        activate-environment: tracking
+        python-version: ${{ matrix.python-version }}
+        channels: main
+        auto-activate-base: true
+        auto-update-conda: true
+        use-only-tar-bz2: true
+    - name: Build
+      shell: bash -l {0}
+      working-directory: ${{runner.workspace}}
+      run: |
+        echo "::group::Info"
+        conda info
+        conda list
+        echo "::endgroup::"
+        echo "::group::BUILD"
+
+        cd $GITHUB_WORKSPACE/Application
+        mkdir build
+        cd build
+        cmake .. -G "Visual Studio 16 2019" -DWITH_PYLON=OFF -DCOMMONS_BUILD_OPENCV=ON -DCOMMONS_BUILD_PNG=ON -DCOMMONS_BUILD_ZIP=ON -DCOMMONS_BUILD_GLFW=ON -DCOMMONS_BUILD_ZLIB=ON -DCMAKE_BUILD_TYPE=Release
+        
+        cmake --build . --target Z_LIB --config Release
+        cmake --build . --target libzip --config Release
+        cmake --build . --target libpng_custom --config Release
+        cmake --build . --target CustomOpenCV --config Release
+        cmake ..
+        cmake --build . --target INSTALL --config Release
+
+        echo "::endgroup::"
