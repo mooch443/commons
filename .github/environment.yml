@@ -4,8 +4,4 @@ channels:
 dependencies:
     - cmake
     - ffmpeg
-    - python
-    - m2-filesystem         # [win]
-    - m2w64-pkg-config      # [win]
-    - jom                   # [win]
     - git

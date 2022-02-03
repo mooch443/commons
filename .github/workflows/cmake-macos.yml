@@ -49,7 +49,9 @@ jobs:
         conda list
         echo "::endgroup::"
         echo "::group::BUILD"
-
+        echo "WORKSPACE = ${GITHUB_WORKSPACE}"
+        ls -l
+        conda activate tracking
         cd $GITHUB_WORKSPACE/Application
         mkdir build
         cd build
