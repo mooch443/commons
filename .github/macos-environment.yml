@@ -1,0 +1,7 @@
+name: tracking
+channels:
+    - main
+dependencies:
+    - cmake
+    - ffmpeg
+    - git
