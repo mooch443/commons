@@ -72,6 +72,7 @@ jobs:
           -DCOMMONS_BUILD_ZIP=ON \
           -DCOMMONS_DONT_USE_PCH=ON \
           -DCMN_USE_OPENGL2=OFF \
+          -DCMAKE_INSTALL_PREFIX=${GITHUB_WORKSPACE}/install \
           -DTREX_WITH_TESTS=OFF
         if [ "$(uname)" == "Linux" ]; then
             make -j$(( $(nproc) - 1 )) Z_LIB
