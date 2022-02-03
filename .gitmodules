@@ -4,3 +4,6 @@
 [submodule "cnpy"]
 	path = cnpy
 	url = https://github.com/mooch443/cnpy.git
+[submodule "flat_hash_map"]
+	path = flat_hash_map
+	url = https://mooch443@github.com/mooch443/flat_hash_map.git
