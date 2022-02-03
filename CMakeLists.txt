@@ -197,7 +197,7 @@ if(COMMONS_BUILD_GLFW OR UNIX)
             target_link_libraries(Commons::OpenGL INTERFACE ${OPENGL_LIBRARY})
             set(CMN_FOUND_OPENGL true)
         else()
-            set(CMN_FOUND_OPENGL true)
+            set(CMN_FOUND_OPENGL false)
         endif()
     endif()
 else()
@@ -441,7 +441,6 @@ if(COMMONS_WITH_OPENGL)
 
     file(MAKE_DIRECTORY ${INSTALL_DIR}/include)
     target_link_libraries(Commons::GLAD INTERFACE glad)
-    target_compile_definitions(Commons::GLAD INTERFACE IMGUI_IMPL_OPENGL_LOADER_GLAD=true)
     target_include_directories(Commons::GLAD INTERFACE
       "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
       "$<INSTALL_INTERFACE:${INSTALL_DIR}/lib>"
@@ -579,12 +578,13 @@ set_target_properties(Commons::IMGUI PROPERTIES
   #INTERFACE_LINK_DIRECTORIES "${imgui_path}/lib"
 )
 
-if(COMMONS_BUILD_GLFW)
-    add_dependencies(imgui Commons::GLFW)
+add_dependencies(imgui Commons::GLFW)
+
+if(COMMONS_WITH_OPENGL)    
+    message(STATUS "Commons with OpenGL -----> linking GLAD")
+    target_compile_definitions(Commons::IMGUI INTERFACE IMGUI_IMPL_OPENGL_LOADER_GLAD=true)
+    target_link_libraries(Commons::IMGUI INTERFACE Commons::GLAD)
 endif()
-#if(COMMONS_WITH_OPENGL)
-#    add_dependencies(imgui Commons::GLAD)
-#endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    FINDING      F F M P E G
