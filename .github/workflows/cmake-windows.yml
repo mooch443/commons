@@ -28,10 +28,10 @@ jobs:
         CACHE_NUMBER: 0
       with:
         path: ~/conda_pkgs_dir
-        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/macos-environment.yml') }}
+        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/environment.yml') }}
     - uses: conda-incubator/setup-miniconda@v2
       with:
-        environment-file: .github/macos-environment.yml
+        environment-file: .github/environment.yml
         activate-environment: tracking
         python-version: ${{ matrix.python-version }}
         channels: main
@@ -52,7 +52,7 @@ jobs:
         mkdir build
         cd build
         cmake .. -G "Visual Studio 16 2019" -DWITH_PYLON=OFF -DCOMMONS_BUILD_OPENCV=ON -DCOMMONS_BUILD_PNG=ON -DCOMMONS_BUILD_ZIP=ON -DCOMMONS_BUILD_GLFW=ON -DCOMMONS_BUILD_ZLIB=ON -DCMAKE_BUILD_TYPE=Release
-        
+
         cmake --build . --target Z_LIB --config Release
         cmake --build . --target libzip --config Release
         cmake --build . --target libpng_custom --config Release
