@@ -84,7 +84,8 @@ extern "C"{
             
             if(!paths.empty() && gui::metal::current_instance) {
                 if(!gui::metal::current_instance->open_files(paths)) {
-                    gui::metal::current_instance->message("Cannot open "+std::string(cstr)+".");
+                    //! Do not throw message box.
+                    //gui::metal::current_instance->message("Cannot open "+std::string(cstr)+".");
                 }
             }
                 

@@ -172,21 +172,21 @@ if(COMMONS_BUILD_GLFW OR UNIX)
         target_link_libraries(Commons::OpenGL INTERFACE OpenGL::GL)
         message(STATUS "OpenGL library ${OPENGL_LIBRARY}")
         include_directories(${OPENGL_INCLUDE_DIR})
-        add_definitions(-DCOMMONS_HAS_OPENGL=true)
+        target_compile_definitions(Commons::OpenGL INTERFACE COMMONS_HAS_OPENGL=true)
     elseif(UNIX AND NOT APPLE)
         find_package(OpenGL REQUIRED)
         target_link_libraries(Commons::OpenGL INTERFACE OpenGL::GL)
         SET(OPENGL_LIBRARY OpenGL::GL)
         message(STATUS "OpenGL library ${OPENGL_LIBRARY}")
         include_directories(${OPENGL_INCLUDE_DIR})
-        add_definitions(-DCOMMONS_HAS_OPENGL=true)
+        target_compile_definitions(Commons::OpenGL INTERFACE COMMONS_HAS_OPENGL=true)
     else()
         if(COMMONS_WITH_OPENGL)
             find_library(OPENGL_LIBRARY OpenGL)
             target_link_libraries(Commons::OpenGL INTERFACE ${OPENGL_LIBRARY})
-            add_definitions(-DCOMMONS_HAS_OPENGL=true)
+            target_compile_definitions(Commons::OpenGL INTERFACE COMMONS_HAS_OPENGL=true)
         else()
-            add_definitions(-DCOMMONS_HAS_OPENGL=false)
+            target_compile_definitions(Commons::OpenGL INTERFACE COMMONS_HAS_OPENGL=false)
         endif()
     endif()
 else()
@@ -194,8 +194,9 @@ else()
     target_link_libraries(Commons::OpenGL INTERFACE OpenGL::GL)
     message(STATUS "OpenGL library ${OPENGL_LIBRARY}")
     include_directories(${OPENGL_INCLUDE_DIR})
-    add_definitions(-DCOMMONS_HAS_OPENGL=true)
+    target_compile_definitions(Commons::OpenGL INTERFACE COMMONS_HAS_OPENGL=true)
 endif()
+
 
 if(APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-undefined,error -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
@@ -241,6 +242,9 @@ if(APPLE)
     endif()
     
     message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
+    target_compile_definitions(Commons::OpenGL INTERFACE CMN_USE_OPENGL2=true)
+    target_link_libraries(Commons::OpenGL INTERFACE ${EXTRA_LIBS})
+
 else()
     if(COMMONS_WITH_OPENGL)
         set(EXTRA_LIBS Commons::GLAD Commons::IMGUI Commons::OpenGL)
@@ -451,13 +455,13 @@ if(COMMONS_BUILD_GLFW)
     message(STATUS "glfw include: ${GLFW_INCLUDE_DIR}")
 
     include_directories(${GLFW_INCLUDE_DIR})
-    target_link_libraries (Commons::GLFW INTERFACE "${GLFW_INSTALL_DIR}/lib/glfw3.lib" Commons::OpenGL)
+    target_link_libraries (Commons::GLFW INTERFACE glfw3 Commons::OpenGL)
     target_include_directories(Commons::GLFW INTERFACE
       "$<BUILD_INTERFACE:${GLFW_INCLUDE_DIR}>"
       "$<INSTALL_INTERFACE:${GLFW_INSTALL_DIR}/lib>"
     )
     set_target_properties(Commons::GLFW PROPERTIES
-      IMPORTED_LOCATION "${GLFW_INSTALL_DIR}/lib/glfw3.lib"
+      IMPORTED_LOCATION "glfw3"
       INTERFACE_INCLUDE_DIRECTORIES "${GLFW_INSTALL_DIR}/include"
       INTERFACE_LINK_DIRECTORIES "${GLFW_INSTALL_DIR}/lib"
     )
@@ -479,11 +483,11 @@ if(COMMONS_WITH_OPENGL)
     if(CMN_USE_OPENGL2)
         set(GLAD_PROFILE "compatibility")
         set(GLAD_API "gl=2.0")
-        add_definitions(-DCMN_USE_OPENGL2=true)
+        target_compile_definitions(Commons::GLAD INTERFACE CMN_USE_OPENGL2=true)
     else()
         set(GLAD_PROFILE "core")
         set(GLAD_API "gl=4.1")
-        add_definitions(-DCMN_USE_OPENGL2=false)
+        target_compile_definitions(Commons::GLAD INTERFACE CMN_USE_OPENGL2=false)
     endif()
 
     ExternalProject_Add(gladex PREFIX gladex
@@ -505,6 +509,7 @@ if(COMMONS_WITH_OPENGL)
     set(GLAD_INSTALL_DIR ${INSTALL_DIR})
     message(STATUS "glad: ${INSTALL_DIR}")
 
+    file(MAKE_DIRECTORY ${INSTALL_DIR}/include)
     target_link_libraries(Commons::GLAD INTERFACE glad)
     target_compile_definitions(Commons::GLAD INTERFACE IMGUI_IMPL_OPENGL_LOADER_GLAD=true)
     target_include_directories(Commons::GLAD INTERFACE
@@ -553,6 +558,7 @@ set_target_properties(Commons::IMGUI PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${imgui_path}"
   #INTERFACE_LINK_DIRECTORIES "${imgui_path}/lib"
 )
+target_compile_definitions(Commons::IMGUI INTERFACE )
 
 if(COMMONS_BUILD_GLFW)
     add_dependencies(imgui Commons::GLFW)
@@ -600,6 +606,7 @@ if(WITH_FFMPEG)
         target_link_libraries(Commons::FFMPEG INTERFACE ${FFMPEG_LIBRARIES})
         include_directories(${FFMPEG_INCLUDE_DIRS})
 
+        file(MAKE_DIRECTORY ${GLFW_INCLUDE_DIR})
         target_include_directories(Commons::FFMPEG INTERFACE
           "$<BUILD_INTERFACE:${GLFW_INCLUDE_DIR}>"
           "$<INSTALL_INTERFACE:${GLFW_INSTALL_DIR}/lib>"
@@ -717,6 +724,17 @@ else()
     message(STATUS "zlib install dir ${zlib_install_dir}")
     message(STATUS "ZLIB include dir ${ZLIB_INCLUDE_DIR}")
     message(STATUS "ZLIB_LIBRARY = ${ZLIB_LIBRARY} ${ZLIB_VERSION_STRING}")
+
+    file(MAKE_DIRECTORY ${ZLIB_INCLUDE_DIR})
+    target_include_directories(Commons::LibZ INTERFACE
+      "$<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>"
+      "$<INSTALL_INTERFACE:${zlib_install_dir}/lib>"
+    )
+    set_target_properties(Commons::LibZ PROPERTIES
+      IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+      INTERFACE_LINK_DIRECTORIES "${zlib_install_dir}/lib"
+    )
     
     #unset(ZLIB_LIBRARY)
     #unset(ZLIB_INCLUDE_DIR)
@@ -819,10 +837,18 @@ if(COMMONS_BUILD_ZIP)
     add_library (Commons::LibZIP INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibZIP INTERFACE ${LIBZIP_LIBRARY})
 
+    file(MAKE_DIRECTORY ${LIBZIP_INCLUDE_DIR})
+    target_include_directories(Commons::LibZIP INTERFACE
+      "$<BUILD_INTERFACE:${LIBZIP_INCLUDE_DIR}>"
+      "$<INSTALL_INTERFACE:${libzip_install_dir}/lib>"
+    )
+    set_target_properties(Commons::LibZIP PROPERTIES
+      IMPORTED_LOCATION "${LIBZIP_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${LIBZIP_INCLUDE_DIR}"
+      INTERFACE_LINK_DIRECTORIES "${libzip_install_dir}/lib"
+    )
 
     add_dependencies(Commons::LibZIP Commons::LibZ libzip)
-    #install(EXPORT libzipTargets NAMESPACE Commons:: DESTINATION lib/cmake)
-    
     unset(LIBZIP_LIBRARY)
 endif()
 
@@ -872,6 +898,17 @@ if(${COMMONS_BUILD_PNG})
     add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
     target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARY} Commons::LibZ)
     add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ)
+
+    file(MAKE_DIRECTORY ${LIBZIP_INCLUDE_DIR})
+    target_include_directories(Commons::LibPNG INTERFACE
+      "$<BUILD_INTERFACE:${png_install_dir}/include>"
+      "$<INSTALL_INTERFACE:${png_install_dir}/lib>"
+    )
+    set_target_properties(Commons::LibPNG PROPERTIES
+      IMPORTED_LOCATION "${PNG_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${png_install_dir}/include"
+      INTERFACE_LINK_DIRECTORIES "${png_install_dir}/lib"
+    )
     
     unset(PNG_LIBRARY)
 
@@ -1158,6 +1195,17 @@ if(${COMMONS_BUILD_OPENCV})
     add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
+
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
+    target_include_directories(Commons::OpenCV INTERFACE
+      "$<BUILD_INTERFACE:${png_install_dir}/include>"
+      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib>"
+    )
+    set_target_properties(Commons::OpenCV PROPERTIES
+      IMPORTED_LOCATION "${OpenCV_LIBS}"
+      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
+      INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib"
+    )
 endif()
 
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)

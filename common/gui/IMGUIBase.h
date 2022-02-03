@@ -5,15 +5,16 @@
 #include <misc/Timer.h>
 #include <thread>
 
-#if !COMMONS_HAS_OPENGL && !COMMONS_METAL_AVAILABLE
-static_assert(false, "Need one of those");
-#endif
-
 #if COMMONS_HAS_OPENGL
 #include "GLImpl.h"
 #endif
 
 #include "MetalImpl.h"
+
+#if !COMMONS_HAS_OPENGL && !COMMONS_METAL_AVAILABLE
+static_assert(false, "Need one of those");
+#endif
+
 #if COMMONS_METAL_AVAILABLE
 using default_impl_t = gui::MetalImpl;
 #else
