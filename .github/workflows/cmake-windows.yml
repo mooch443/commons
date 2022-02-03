@@ -51,7 +51,10 @@ jobs:
         ls
         $python_exe=$( python -c "from shutil import which; print(which('python'))" )
         $pythoninclude=$( python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())" )
-        $findlib=$( python ../find_library.py )
+        $findlib=$( python find_library.py )
+        echo "python_exe = ${python_exe}"
+        echo "findlib = ${findlib}"
+        echo "pythoninclude = ${pythoninclude}"
         echo "::endgroup::"
         echo "::group::BUILD"
         mkdir build
