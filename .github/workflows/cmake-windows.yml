@@ -45,6 +45,8 @@ jobs:
         echo "::group::Info"
         conda info
         conda list
+        echo Workspace: $GITHUB_WORKSPACE
+        ls $GITHUB_WORKSPACE/*
         echo "::endgroup::"
         echo "::group::BUILD"
         cd $GITHUB_WORKSPACE/Application

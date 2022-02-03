@@ -51,6 +51,7 @@ jobs:
         echo "::group::BUILD"
         echo "WORKSPACE = ${GITHUB_WORKSPACE}"
         ls -l
+        ls -l */*
         conda activate tracking
         cd $GITHUB_WORKSPACE/Application
         mkdir build
@@ -71,25 +72,20 @@ jobs:
           -DCOMMONS_DONT_USE_PCH=ON \
           -DCMN_USE_OPENGL2=OFF \
           -DTREX_WITH_TESTS=OFF
-
         if [ "$(uname)" == "Linux" ]; then
             make -j$(( $(nproc) - 1 )) Z_LIB
         else
             make -j$(( $(sysctl -n hw.ncpu) - 1 )) Z_LIB
         fi
-
         if [ "$(uname)" == "Linux" ]; then
             make -j$(( $(nproc) - 1 )) CustomOpenCV
         else
             make -j$(( $(sysctl -n hw.ncpu) - 1 )) CustomOpenCV
         fi
-
         cmake ..
-
         if [ "$(uname)" == "Linux" ]; then
             make -j$(( $(nproc) - 1 )) && make install
         else
             make -j$(( $(sysctl -n hw.ncpu) - 1 )) && make install
         fi
-
         echo "::endgroup::"
