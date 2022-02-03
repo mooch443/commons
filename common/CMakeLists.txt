@@ -40,22 +40,7 @@ else()
   add_library(commons STATIC ${SRCS} ${HDRS})
 endif()
 
-option(COMMONS_DONT_USE_PCH OFF)
-if(${CMAKE_VERSION} VERSION_LESS "3.16.0" OR COMMONS_DONT_USE_PCH)
-    message("Please consider to switch to CMake 3.16.0")
-else()
-    target_precompile_headers(commons
-      PUBLIC
-        commons.pc.h
-      PRIVATE
-    )
-endif()
-
-if(APPLE)
-  target_compile_options(commons PRIVATE "-DNS_FORMAT_ARGUMENT(A)=" "-D_Nullable_result=_Nullable")
-endif()
-
-add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW cnpy)
+add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy)
 if(APPLE OR NOT UNIX)
     add_dependencies(commons Commons::LibPNG)
 endif()
@@ -83,7 +68,34 @@ endforeach()
 target_link_libraries(commons
     PUBLIC cpputils
     PUBLIC cnpy
+    PUBLIC Commons::IMGUI 
+    PUBLIC Commons::OpenGL 
+    PUBLIC Commons::LibPNG 
+    PUBLIC Commons::LibZIP 
+    PUBLIC Commons::LibZ
 )
+
+option(COMMONS_DONT_USE_PCH OFF)
+if(${CMAKE_VERSION} VERSION_LESS "3.16.0" OR COMMONS_DONT_USE_PCH)
+    message("Please consider to switch to CMake 3.16.0")
+else()
+    target_precompile_headers(commons
+      PUBLIC
+        commons.pc.h
+      PRIVATE
+    )
+endif()
+
+target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL})
+if(CMN_USE_OPENGL2)
+    target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
+else()
+    target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=false)
+endif()
+
+if(APPLE)
+  target_compile_options(commons PRIVATE "-DNS_FORMAT_ARGUMENT(A)=" "-D_Nullable_result=_Nullable")
+endif()
 
 if(COMMONS_BUILD_HTTPD)
 	target_link_libraries(commons PUBLIC Commons::HTTPD)

@@ -6,4 +6,4 @@ add_executable(
 )
 
 target_include_directories(test_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-target_link_libraries(test_gui commons Commons::OpenCV ${EXTRA_LIBS} )
+target_link_libraries(test_gui commons Commons::OpenCV )
