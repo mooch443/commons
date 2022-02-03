@@ -5,3 +5,4 @@ dependencies:
     - cmake
     - ffmpeg
     - git
+    - python

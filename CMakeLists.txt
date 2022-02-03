@@ -1117,6 +1117,7 @@ if(${COMMONS_BUILD_OPENCV})
 	message(STATUS "OPENCV_EXTRA_FLAGS_ = ${OPENCV_EXTRA_FLAGS_}")
     message(STATUS "OPENCVDIR = ${OpenCV_DIR}")
     
+    set(OpenCV_LIB_PATH "")
     if(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
@@ -1162,12 +1163,12 @@ if(${COMMONS_BUILD_OPENCV})
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
     target_include_directories(Commons::OpenCV INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib>"
+      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
     )
     set_target_properties(Commons::OpenCV PROPERTIES
       IMPORTED_LOCATION "${OpenCV_LIBS}"
       INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
-      INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib"
+      INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
     )
 endif()
 
