@@ -1,0 +1,93 @@
+name: CondaBuildMacOS
+
+on: [push]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+  MACOSX_DEPLOYMENT_TARGET: 11.0
+  CONDA_BUILD_SYSROOT: /Applications/Xcode_12.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk
+  GITHUB_WORKFLOW: CondaBuildMacOS
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform agnostic and should work equally
+    # well on Windows or Mac.  You can convert this to a matrix build if you need
+    # cross-platform coverage.
+    # See: https://docs.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#configuring-a-build-matrix
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-11"]
+        python-version: ["3.7.9"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache conda
+      uses: actions/cache@v2
+      env:
+        # Increase this value to reset cache if etc/example-environment.yml has not changed
+        CACHE_NUMBER: 0
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/macos-environment.yml') }}
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        environment-file: .github/macos-environment.yml
+        activate-environment: tracking
+        python-version: ${{ matrix.python-version }}
+        channels: main
+        auto-activate-base: true
+        auto-update-conda: true
+        use-only-tar-bz2: true
+    - name: Build
+      shell: bash -l {0}
+      working-directory: ${{runner.workspace}}
+      run: |
+        echo "::group::Info"
+        conda info
+        conda list
+        echo "::endgroup::"
+        echo "::group::BUILD"
+
+        cd $GITHUB_WORKSPACE/Application
+        mkdir build
+        cd build
+        cmake .. \
+          -DPYTHON_INCLUDE_DIR:FILEPATH=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
+          -DPYTHON_LIBRARY:FILEPATH=$(python3 ../find_library.py) \
+          -DPYTHON_EXECUTABLE:FILEPATH=$(which python3) \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DWITH_GITSHA1=ON \
+          -DCMAKE_INSTALL_PREFIX=$PREFIX \
+          -DWITH_PYLON=OFF \
+          -DCOMMONS_BUILD_OPENCV=ON \
+          -DCOMMONS_BUILD_GLFW=${BUILD_GLFW} \
+          -DCOMMONS_BUILD_ZLIB=ON \
+          -DCOMMONS_BUILD_PNG=ON \
+          -DCOMMONS_BUILD_ZIP=ON \
+          -DCOMMONS_DONT_USE_PCH=ON \
+          -DCMN_USE_OPENGL2=OFF \
+          -DTREX_WITH_TESTS=OFF
+
+        if [ "$(uname)" == "Linux" ]; then
+            make -j$(( $(nproc) - 1 )) Z_LIB
+        else
+            make -j$(( $(sysctl -n hw.ncpu) - 1 )) Z_LIB
+        fi
+
+        if [ "$(uname)" == "Linux" ]; then
+            make -j$(( $(nproc) - 1 )) CustomOpenCV
+        else
+            make -j$(( $(sysctl -n hw.ncpu) - 1 )) CustomOpenCV
+        fi
+
+        cmake ..
+
+        if [ "$(uname)" == "Linux" ]; then
+            make -j$(( $(nproc) - 1 )) && make install
+        else
+            make -j$(( $(sysctl -n hw.ncpu) - 1 )) && make install
+        fi
+
+        echo "::endgroup::"
