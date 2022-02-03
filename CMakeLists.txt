@@ -1254,7 +1254,7 @@ if(WIN32)
     if(COMMONS_BUILD_OPENCV)
         install(
             FILES
-            "${OpenCV_LIB_PATH}/../bin/opencv_videoio_ffmpeg${TREX_OPENCV_VERSION_NO_DOTS}_64.dll" DESTINATION bin)
+            "${OpenCV_LIB_PATH}/../bin/opencv_videoio_ffmpeg${COMMONS_OPENCV_VERSION_NO_DOTS}_64.dll" DESTINATION bin)
     endif()
 endif()
 

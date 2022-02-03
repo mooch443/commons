@@ -53,10 +53,10 @@ jobs:
         git submodule update --recursive --init
         echo "::endgroup::"
         echo "::group::BUILD"
-        cd $GITHUB_WORKSPACE/commons/Application
+        cd "D:/a/commons/commons"
         mkdir build
         cd build
-        cmake .. -G "Visual Studio 16 2019" -DPYTHON_INCLUDE_DIR:FILEPATH=$pythoninclude -DPYTHON_LIBRARY:FILEPATH=$findlib -DPYTHON_EXECUTABLE:FILEPATH=$python_exe -DWITH_PYLON=OFF -DCOMMONS_BUILD_OPENCV=ON -DCOMMONS_BUILD_PNG=ON -DCOMMONS_BUILD_ZIP=ON -DCOMMONS_BUILD_GLFW=ON -DCOMMONS_BUILD_ZLIB=ON -DCMAKE_BUILD_TYPE=Release
+        cmake .. -G "Visual Studio 16 2019" -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE" -DPYTHON_INCLUDE_DIR:FILEPATH=$pythoninclude -DPYTHON_LIBRARY:FILEPATH=$findlib -DPYTHON_EXECUTABLE:FILEPATH=$python_exe -DWITH_PYLON=OFF -DCOMMONS_BUILD_OPENCV=ON -DCOMMONS_BUILD_PNG=ON -DCOMMONS_BUILD_ZIP=ON -DCOMMONS_BUILD_GLFW=ON -DCOMMONS_BUILD_ZLIB=ON -DCMAKE_BUILD_TYPE=Release
         cmake --build . --target Z_LIB --config Release
         cmake --build . --target libzip --config Release
         cmake --build . --target libpng_custom --config Release

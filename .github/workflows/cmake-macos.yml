@@ -53,7 +53,7 @@ jobs:
         ls -l
         ls -l */*
         conda activate tracking
-        cd $GITHUB_WORKSPACE/commons/Application
+        cd $GITHUB_WORKSPACE
         mkdir build
         cd build
         cmake .. \
