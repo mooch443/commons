@@ -56,6 +56,7 @@ jobs:
         cd $GITHUB_WORKSPACE
         mkdir build
         cd build
+        git submodule update --init --recursive
         cmake .. \
           -DPYTHON_INCLUDE_DIR:FILEPATH=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())") \
           -DPYTHON_LIBRARY:FILEPATH=$(python3 ../find_library.py) \
