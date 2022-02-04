@@ -153,6 +153,16 @@ struct Source {
     
     coord_t lw = 0, lh = 0;
     
+    void reserve(size_t N) {
+        _row_y.reserve(N);
+        _row_offsets.reserve(N);
+        
+        _pixels.reserve(N);
+        _lines.reserve(N);
+        _full_lines.reserve(N);
+        _nodes.reserve(N);
+    }
+    
     size_t num_rows() const {
         return _row_offsets.size();
     }
@@ -582,21 +592,22 @@ public:
         return _caches;
     }
     
-    static std::unique_ptr<DLList> from_cache() {
-        std::lock_guard g(cmutex());
+    inline static std::unique_ptr<DLList> from_cache() {
+        /*std::lock_guard g(cmutex());
         if(!caches().empty()) {
             auto ptr = std::move(caches().back());
             caches().pop_back();
             return ptr;
-        }
+        }*/
         return std::make_unique<DLList>();
     }
     
-    static void to_cache(std::unique_ptr<DLList>&& ptr) {
+    inline static void to_cache(std::unique_ptr<DLList>&& ptr) {
         ptr->clear();
         
-        std::lock_guard g(cmutex());
-        caches().emplace_back(std::move(ptr));
+        /*std::lock_guard g(cmutex());
+        caches().emplace_back(std::move(ptr));*/
+        ptr = nullptr;
     }
     
     const typename Node::Ref& insert(const typename Node::Ref& ptr) {
@@ -1154,20 +1165,21 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
         return {};
     
     auto px = pixels.data();
-    auto list = List_t::from_cache();
+    DLList list;//List_t::from_cache();
+    list.source().reserve(lines.size());
     
     auto start = lines.begin();
     auto end = lines.end();
     
     for (auto it = start; it != end; ++it) {
-        list->source().push_back(&(*it), px);
+        list.source().push_back(&(*it), px);
         
         if(px)
             px += ptr_safe_t(it->x1) - ptr_safe_t(it->x0) + ptr_safe_t(1);
     }
     
-    blobs_t results = run_fast(list.get());
-    List_t::to_cache(std::move(list));
+    blobs_t results = run_fast(&list);
+    //List_t::to_cache(std::move(list));
     return results;
 }
 
