@@ -714,17 +714,6 @@ if((NOT ${COMMONS_BUILD_ZLIB}) AND ZLIB_FOUND AND ZLIB_VERSION_STRING VERSION_GR
     set(libzip_zlib_lib "${ZLIB_LIBRARY}")
     
     target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
-    target_include_directories(Commons::LibZ INTERFACE
-      "$<BUILD_INTERFACE:${zlib_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${zlib_install_dir}/lib>"
-    )
-    set_target_properties(Commons::LibZ PROPERTIES
-      IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${zlib_install_dir}/include"
-      INTERFACE_LINK_DIRECTORIES "${zlib_install_dir}/lib"
-    )
-
-    unset(zlib_install_dir)
     unset(ZLIB_LIBRARY)
     
 else()
