@@ -188,7 +188,7 @@ namespace gui {
         } else {
             // the object is a singleton (section is to be wrapped)
             auto current = _children.size() > _index ? _children.at(_index) : NULL;
-            if(_children.size() > _index
+            if(current != nullptr
                && current->type() == Type::SINGLETON
                && static_cast<SingletonObject*>(current)->ptr() == custom)
             {

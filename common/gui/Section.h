@@ -10,7 +10,7 @@ namespace gui {
     class Section : public SectionInterface, public HasName {
     private:
         std::vector<Drawable*> _children;
-        std::unordered_map<Drawable*, SingletonObject*> _wrapped_children;
+        ska::bytell_hash_map<Drawable*, SingletonObject*> _wrapped_children;
         
         GETTER(bool, was_enabled)
         GETTER(bool, enabled)
