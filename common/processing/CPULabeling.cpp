@@ -42,7 +42,7 @@ public:
                 obj->retain();
         }
         
-        Ref(Node* obj = nullptr) : obj(obj) {
+        Ref(Node* obj) : obj(obj) {
             if(obj)
                 obj->retain();
         }
@@ -51,6 +51,8 @@ public:
             obj = other.obj;
             other.obj = nullptr;
         }
+
+        Ref() = default;
         
         ~Ref() {
             release_check();
@@ -462,16 +464,32 @@ struct Source {
     static void extract_lines(const cv::Mat& image, Source* source, const Range<int32_t>& rows) {
         const coord_t rstart = rows.start;
         const coord_t rend = rows.end;
-        Pixel start, end_ptr, ptr;
-        
-        bool prev;
+        Pixel start, end_ptr;
+
+        static size_t samples = 0, lines = 0;
+
+        static std::shared_mutex mutex;
+        bool prev = false;
         Line current;
-        
-        for(coord_t i = rstart; i < rend; ++i) {
-            start = image.ptr(i);
-            end_ptr = start + image.cols;
-            ptr = start;
-            prev = false;
+        size_t RESERVE;
+        {
+            std::shared_lock guard(mutex);
+            if (samples == 0)
+                RESERVE = (rend - rstart + 1);
+            else
+                RESERVE = lines / samples;
+        }
+
+        source->reserve(RESERVE);
+
+        const int64_t step = image.step.p[0];
+        start = image.ptr(rstart);
+        end_ptr = start + image.cols;
+
+        for(coord_t i = rstart; i < rend; ++i, start += step, end_ptr += step) {
+            //start = image.ptr(i);
+            //end_ptr = start + image.cols;
+            auto ptr = start;
             
             // walk columns
             for(; ptr != end_ptr; ++ptr) {
@@ -502,7 +520,18 @@ struct Source {
                 assert(current.x0 <= source->lw - 1);
                 current.x1 = source->lw - 1;
                 source->push_back(current, start + current.x0);
+                prev = false;
             }
+        }
+
+        std::lock_guard guard(mutex);
+        ++samples;
+        lines += source->_lines.size();
+        if (samples % 1000 == 0) {
+            lines = lines / samples;
+            samples = 1;
+
+            //Debug("Reserved: %lu, True: %lu average: %lu", (rend - rstart + 1), source->_lines.size(), lines);
         }
     }
 };
@@ -593,21 +622,21 @@ public:
     }
     
     inline static std::unique_ptr<DLList> from_cache() {
-        /*std::lock_guard g(cmutex());
+        std::lock_guard g(cmutex());
         if(!caches().empty()) {
             auto ptr = std::move(caches().back());
             caches().pop_back();
             return ptr;
-        }*/
+        }
         return std::make_unique<DLList>();
     }
     
     inline static void to_cache(std::unique_ptr<DLList>&& ptr) {
         ptr->clear();
         
-        /*std::lock_guard g(cmutex());
-        caches().emplace_back(std::move(ptr));*/
-        ptr = nullptr;
+        std::lock_guard g(cmutex());
+        caches().emplace_back(std::move(ptr));
+        //ptr = nullptr;
     }
     
     const typename Node::Ref& insert(const typename Node::Ref& ptr) {
@@ -1150,11 +1179,12 @@ blobs_t run_fast(List_t* blobs)
 
 // called by user
 blobs_t run(const cv::Mat &image, bool enable_threads) {
-    auto list = List_t::from_cache();
-    list->source().init(image, enable_threads);
+    //auto list = List_t::from_cache();
+    DLList list;
+    list.source().init(image, enable_threads);
     
-    blobs_t results = run_fast(list.get());
-    List_t::to_cache(std::move(list));
+    blobs_t results = run_fast(&list);
+    //List_t::to_cache(std::move(list));
     return results;
 }
 

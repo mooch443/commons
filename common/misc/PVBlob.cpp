@@ -124,7 +124,7 @@ bool Blob::operator==(const pv::Blob& other) const {
         _tried_to_split = other._tried_to_split;
     }
     
-    Blob::Blob(line_ptr_t lines, decltype(_pixels) pixels)
+    Blob::Blob(line_ptr_t lines, pixel_ptr_t pixels)
         : cmn::Blob(lines), _pixels(pixels)
     {
         init();
@@ -134,7 +134,7 @@ bool Blob::operator==(const pv::Blob& other) const {
         : Blob(std::make_shared<std::vector<HorizontalLine>>(*lines), pixels)
     { }
     
-    Blob::Blob(const cmn::Blob* blob, decltype(_pixels) pixels)
+    Blob::Blob(const cmn::Blob* blob, pixel_ptr_t pixels)
         : cmn::Blob(*blob), _pixels(pixels)
     {
         init();
@@ -422,11 +422,16 @@ static Callback callback;
     }
 
     std::tuple<Vec2, Image::UPtr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const {
+        auto image = Image::Make();
+        auto pos = equalized_luminance_alpha_image(background, threshold, minimum, maximum, *image);
+        return { pos, std::move(image) };
+    }
+    Vec2 Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, Image& image) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
-        auto image = Image::Make(b.height, b.width, 2);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        image.create(b.height, b.width, 2);
+        std::fill(image.data(), image.data() + image.size(), uchar(0));
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
@@ -455,7 +460,7 @@ static Callback callback;
         int32_t value;
         auto ptr = _pixels->data();
         for (auto &line : hor_lines()) {
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
+            auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * ptr_safe_t(image.cols) * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
             for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr+=2) {
                 assert(ptr < _pixels->data() + _pixels->size());
                 value = background.diff(x, line.y, *ptr);
@@ -466,33 +471,39 @@ static Callback callback;
                 }
             }
         }
-        return {b.pos(), std::move(image)};
+
+        return b.pos();
     }
 
-    std::tuple<Vec2, Image::UPtr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
-        Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+    cmn::Vec2 Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold, Image& image) const {
+        Bounds b(bounds().pos() - Vec2(1), bounds().size() + Vec2(2));
         b.restrict_to(background.bounds());
-        
-        auto image = Image::Make(b.height, b.width, 2);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
-        
+
+        image.create(b.height, b.width, 2);
+        std::fill(image.data(), image.data() + image.size(), uchar(0));
+
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
-        
+
         int32_t value;
         auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr+=2) {
+        for (auto& line : hor_lines()) {
+            auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
+            for (auto x = line.x0; x <= line.x1; ++x, ++ptr, image_ptr += 2) {
                 assert(ptr < _pixels->data() + _pixels->size());
                 value = background.diff(x, line.y, *ptr);
-                if(!threshold || background.is_value_different(x, line.y, value, threshold)) {
+                if (!threshold || background.is_value_different(x, line.y, value, threshold)) {
                     *image_ptr = *ptr;
-                    *(image_ptr+1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
+                    *(image_ptr + 1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
                 }
             }
         }
-        return {b.pos(), std::move(image)};
+        return b.pos();
+    }
+    std::tuple<Vec2, Image::UPtr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
+        auto image = Image::Make();
+        Vec2 pos = luminance_alpha_image(background, threshold, *image);
+        return { pos, std::move(image) };
     }
     
     std::tuple<Vec2, Image::UPtr> Blob::difference_image(const cmn::Background& background, int32_t threshold) const {

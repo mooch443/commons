@@ -1,5 +1,6 @@
 // stacktrace.h (c) 2008, Timo Bingmann from http://idlebox.net/
 // published under the WTFPL v2.0
+// and https://stackoverflow.com/questions/590160/how-to-log-stack-frames-with-windows-x64 for Win32
 
 #ifndef _STACKTRACE_H_
 #define _STACKTRACE_H_
@@ -10,6 +11,12 @@
 #ifndef WIN32
 #include <execinfo.h>
 #include <cxxabi.h>
+#else
+
+#include "DbgHelp.h"
+#include <WinBase.h>
+#pragma comment(lib, "Dbghelp.lib")
+
 #endif
 #include <string>
 #include <sstream>
@@ -96,28 +103,61 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
     
     free(funcname);
     free(symbollist);
+
+#else
+    typedef USHORT(WINAPI* CaptureStackBackTraceType)(__in ULONG, __in ULONG, __out PVOID*, __out_opt PULONG);
+    CaptureStackBackTraceType func = (CaptureStackBackTraceType)(GetProcAddress(LoadLibrary("kernel32.dll"), "RtlCaptureStackBackTrace"));
+
+    if (func == NULL)
+        return; // WOE 29.SEP.2010
+
+    // Quote from Microsoft Documentation:
+    // ## Windows Server 2003 and Windows XP:  
+    // ## The sum of the FramesToSkip and FramesToCapture parameters must be less than 63.
+    constexpr int kMaxCallers = 62;
+
+    void* callers_stack[kMaxCallers];
+    unsigned short frames;
+    SYMBOL_INFO* symbol;
+    HANDLE         process;
+    process = GetCurrentProcess();
+    SymInitialize(process, NULL, TRUE);
+    frames = (func)(0, kMaxCallers, callers_stack, NULL);
+    symbol = (SYMBOL_INFO*)calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+    symbol->MaxNameLen = 255;
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+    fprintf(out, "(%X):\n", max_frames);
+    const unsigned short  MAX_CALLERS_SHOWN = max_frames;
+    frames = frames < MAX_CALLERS_SHOWN ? frames : MAX_CALLERS_SHOWN;
+    for (unsigned int i = 0; i < frames; i++)
+    {
+        SymFromAddr(process, (DWORD64)(callers_stack[i]), 0, symbol);
+        fprintf(out, "*** %u: %X %s - 0x%X\n", i, callers_stack[i], symbol->Name, symbol->Address);
+    }
+
+    free(symbol);
 #endif
 }
 
+
 static inline std::tuple<int, std::shared_ptr<void*>> retrieve_stacktrace(unsigned int max_frames = 63)
 {
-#if WIN32
-	return { 0, nullptr };
+#ifdef WIN32
+    return { 0, nullptr };
 #else
     // storage array for stack trace address data
     std::shared_ptr<void*> addrlist((void**)malloc(sizeof(void*) * (max_frames + 1)), free);
     //void* addrlist[max_frames+1];
-    
+
     // retrieve current stack addresses
     int addrlen = backtrace(addrlist.get(), (int)max_frames + 1);//sizeof(addrlist.get()) / sizeof(void*));
-    return {addrlen, addrlist};
+    return { addrlen, addrlist };
 #endif
 }
 
+#ifndef WIN32
 static inline std::string resolve_stacktrace(const std::tuple<int, std::shared_ptr<void*>>& tuple) {
-#if WIN32
-	return "<unsupported operation in windows>";
-#else
     auto && [addrlen, addrlist] = tuple;
     std::stringstream ss;
     
@@ -206,7 +246,7 @@ static inline std::string resolve_stacktrace(const std::tuple<int, std::shared_p
     free(symbollist);
     
     return ss.str();
-#endif
 }
+#endif
 
 #endif // _STACKTRACE_H_

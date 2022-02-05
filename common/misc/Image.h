@@ -29,27 +29,43 @@ namespace cmn {
         };
         
     private:
-        GETTER_PTR(uchar*, data)
-        GETTER(size_t, size)
-        GETTER(size_t, array_size)
-        GETTER_SETTER(uint64_t, timestamp)
-        GETTER_SETTER_PTR(CustomData*, custom_data)
+        GETTER_PTR_I(uchar*, data, nullptr)
+        GETTER_I(size_t, size, 0)
+        GETTER_I(size_t, array_size, 0)
+        GETTER_SETTER_I(uint64_t, timestamp, 0)
+        GETTER_SETTER_PTR_I(CustomData*, custom_data, nullptr)
         
     public:
-        uint cols, rows, dims;
+        uint cols = 0, rows = 0, dims = 0;
         
     public:
         Image(Image&&) = delete;
-        Image(const Image& other);
-        Image(uint rows, uint cols, uint dims, const uchar* datat);
-        Image(uint rows, uint cols, uint dims = 1, int index = -1, uint64_t timestamp = 0);
-        explicit Image(const cv::Mat& image, int index = -1, uint64_t timestamp = 0);
+        Image(const Image& other, long_t index = -1);
+        Image(const Image& other, long_t index, uint64_t timestamp);
+        Image(uint rows, uint cols, uint dims, const uchar* datat, int index, uint64_t timestamp);
+        Image(uint rows, uint cols, uint dims, const uchar* data, int index = -1);
+        Image(uint rows, uint cols, uint dims = 1, int index = -1);
+
+        Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp);
+        explicit Image(const cv::Mat& mat, int index = -1);
+        explicit Image(const cv::Mat& mat, int index, uint64_t timestamp);
+
         Image();
         ~Image();
         
-        void create(const cv::Mat& matrix);
-        void create(uint rows, uint cols, uint dims = 1);
-        void create(uint rows, uint cols, uint dims, const uchar* data);
+    public:
+        void create(uint rows, uint cols, uint dims, long_t index = -1);
+        void create(uint rows, uint cols, uint dims, long_t index, uint64_t stamp);
+
+        void create(uint rows, uint cols, uint dims, const uchar* data, long_t index = -1);
+        void create(uint rows, uint cols, uint dims, const uchar* data, long_t index, uint64_t stamp);
+
+        void create(const cv::Mat& mat, long_t index = -1);
+        void create(const cv::Mat& mat, long_t index, uint64_t stamp);
+
+        void create(const Image& other, long_t index = -1);
+        void create(const Image& other, long_t index, uint64_t stamp);
+
         void clear();
         
         Image& operator=(const Image& other) = delete;
@@ -57,12 +73,6 @@ namespace cmn {
         //Image& operator=(const Image& other);
         //Image& operator=(const cv::Mat& matrix);
         
-        void set(long_t idx, const cv::Mat& matrix, uint64_t stamp = (uint64_t)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count());
-        /*template<typename T>
-        void set(T&& image, std::enable_if_t<std::is_base_of<Image, T>::value> * = nullptr) {
-            static_assert(false, "Use the move constructor!");
-        }*/
-        void set(long_t idx, const uchar* matrix, uint64_t stamp = (uint64_t)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count());
         void set(Image&&);
         
         //! copy one channel from a 1-d matrix of equal size
@@ -101,10 +111,13 @@ namespace cmn {
         static std::string class_name() {
             return "Image";
         }
+        static uint64_t now() {
+            return (uint64_t)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count();
+        }
         
     private:
         void reset_stamp() {
-            _timestamp = (uint64_t)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count();
+            _timestamp = now();
         }
     };
 

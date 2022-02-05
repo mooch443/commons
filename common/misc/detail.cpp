@@ -726,6 +726,13 @@ namespace cmn {
         pthread_setname_np(name.c_str());
 #elif __linux__
         pthread_setname_np(pthread_self(), name.c_str());
+#elif defined(WIN32)
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        auto wide = converter.from_bytes(name);
+        SetThreadDescription(
+            GetCurrentThread(),
+            wide.c_str()
+        );
 #endif
     }
 

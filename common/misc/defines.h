@@ -121,11 +121,13 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 #define GETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: const TYPE& VAR() const { return _##VAR; } protected:
 #define GETTER_NCONST(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE& VAR() const { return _##VAR; } inline TYPE& VAR() { return _##VAR; } protected:
 #define GETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE VAR() const { return _##VAR; } inline TYPE & VAR() { return _##VAR; } protected:
+#define GETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline TYPE VAR() const { return _##VAR; } inline TYPE & VAR() { return _##VAR; } protected:
 #define GETTER_CONST_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE VAR() const { return _##VAR; } protected:
 #define GETTER_NREF(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE VAR() const { return _##VAR; } inline TYPE VAR() { return _##VAR; } protected:
 #define GETTER_SETTER(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
 #define GETTER_SETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
 #define GETTER_SETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
+#define GETTER_SETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
 #define IMPLEMENT(VAR) decltype( VAR ) VAR
 
     template<typename T0, typename T1,

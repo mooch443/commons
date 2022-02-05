@@ -122,8 +122,12 @@ namespace pv {
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const;
+
+        [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold) const;
+        cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
+
+        [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const;
+        cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
         
@@ -154,6 +158,7 @@ namespace pv {
         std::string toStr() const override;
         
     protected:
+
         friend class Output::ResultsFormat;
         friend struct CompressedBlob;
         

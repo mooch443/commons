@@ -541,27 +541,21 @@ ExternalImage::ExternalImage(Ptr&& source, const Vec2& pos, const Vec2& scale, c
 void ExternalImage::update_with(const gpuMat& mat) {
     if(mat.channels() > 0 && mat.channels() != 4 && mat.channels() != 1 && mat.channels() != 2)
         U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
-    
+
+    cv::Mat local;
+    mat.copyTo(local);
+
     if(!_source) {
-        _source = Image::Make(mat.rows, mat.cols, mat.dims);
-        set_size(Vec2(_source->cols, _source->rows));
+        _source = Image::Make(local, _source->index());
+
     } else if(   (int)_source->cols != mat.cols
               || (int)_source->rows != mat.rows
               || (int)_source->dims != mat.channels())
     {
-        _source->create((uint)mat.rows, (uint)mat.cols, (uint)mat.dims);
-        set_size(Vec2(_source->cols, _source->rows));
+        _source->create(local, _source->index(), Image::now());
     }
     
-    cv::Mat local;
-    mat.copyTo(local);
-    _source->set(_source->index(), local);
-    
-    for(auto& c : _cache) {
-        c.second->set_changed(true);
-    }
-    
-    set_dirty();
+    updated_source();
 }
 
 void ExternalImage::update_with(const Image& mat) {
@@ -569,23 +563,28 @@ void ExternalImage::update_with(const Image& mat) {
         U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     if(!_source) {
-        _source = Image::Make(mat.rows, mat.cols, mat.dims);
-        set_size(Vec2(_source->cols, _source->rows));
+        _source = Image::Make(mat.rows, mat.cols, mat.dims, mat.data(), mat.timestamp());
         
     } else if(   _source->cols != mat.cols
               || _source->rows != mat.rows
               || _source->dims != mat.dims)
     {
-        _source->create(mat.rows, mat.cols, mat.dims);
-        set_size(Vec2(_source->cols, _source->rows));
+        _source->create(mat.rows, mat.cols, mat.dims, mat.data(), mat.timestamp());
     }
     
-    _source->set(mat.index(), mat.data());
-    
-    for(auto& c : _cache) {
+    updated_source();
+}
+
+void ExternalImage::updated_source() {
+    if (_source)
+        set_size(Size2(_source->cols, _source->rows));
+    else
+        set_size(Size2());
+
+    for (auto& c : _cache) {
         c.second->set_changed(true);
     }
-    
+
     set_dirty();
 }
 
@@ -604,16 +603,7 @@ void ExternalImage::set_source(Ptr&& source) {
     //} else
     //    _source = std::move(source);
     
-    if(_source)
-        set_size(_source->bounds().size());
-    else
-        set_size(Size2());
-    
-    for(auto& c : _cache) {
-        c.second->set_changed(true);
-    }
-    
-    set_dirty();
+    updated_source();
 }
 
 /*void ExternalImage::set_source(const Image& source) {

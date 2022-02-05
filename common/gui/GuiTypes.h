@@ -331,6 +331,24 @@ protected:
     class ExternalImage : public Drawable {
     public:
         using Ptr = Image::UPtr;
+/*#ifdef NDEBUG
+        struct ReturnRef {
+        private:
+            ExternalImage* source;
+        public:
+            ReturnRef(ExternalImage* source) : source(source) {}
+            ~ReturnRef() {
+                Debug("Destructed");
+                source->clear_cache(); source->set_dirty();
+            }
+            operator Image& () {
+                return *source->_source;
+            }
+        };
+#else*/
+        using ReturnRef = Image::UPtr&;
+//#endif
+
     private:
         GETTER(std::string, url)
         Ptr _source;
@@ -346,6 +364,11 @@ protected:
         CHANGE_SETTER(color)
         
         virtual const Image* source() const { return _source.get(); }
+/*#ifdef NDEBUG
+        ReturnRef unsafe_get_source() { return ReturnRef(this); }
+#else*/
+        Image& unsafe_get_source() { return *_source; }
+//#endif
         //virtual void set_source(const Image& source);
         virtual void set_source(Ptr&& source);
         //void set_source(const cv::Mat& source);
@@ -353,6 +376,7 @@ protected:
         std::ostream &operator <<(std::ostream &os) override;
         void update_with(const gpuMat&);
         void update_with(const Image&);
+        void updated_source();
         
     private:
         bool swap_with(Drawable* d) override {

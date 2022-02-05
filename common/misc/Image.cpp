@@ -2,6 +2,9 @@
 #include <png.h>
 #include <misc/metastring.h>
 #include <gui/colors.h>
+#include <misc/stacktrace.h>
+
+//#define IMAGE_DEBUG_MEMORY_ALLOC
 
 namespace cmn {
     std::string Image::toStr() const {
@@ -9,55 +12,36 @@ namespace cmn {
     }
     
     Image::Image()
-        : _data(NULL), _size(0), _custom_data(nullptr), cols(0), rows(0), dims(0)
-    { set_index(-1); }
-    
-    Image::Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp)
-        : _size(rows*cols*dims*sizeof(uchar)), _timestamp(timestamp), _custom_data(nullptr),
-            cols(cols), rows(rows), dims(dims)
     {
-        set_index(index);
-        
-        if(_size)
-            _data = (uchar*)malloc(_size);
-        else
-            _data = NULL;
-        
-        _array_size = _size;
-        
+        set_index(-1);
         reset_stamp();
     }
-    
-    Image::Image(const Image& other)
-        : Image(other.rows, other.cols, other.dims)
+
+    Image::Image(const cv::Mat& mat, int index) : Image(mat, index, now()) {}
+    Image::Image(const cv::Mat& mat, int index, uint64_t timestamp)
     {
-        assert(_size == other.size());
-        
-        _index = other.index();
-        _timestamp = other.timestamp();
-        if(other._custom_data)
-            U_EXCEPTION("Cannot copy custom data from one image to another.");
-        
-        assert(_data);
-        std::copy(other.data(), other.data() + other.size(), _data);
+        create(mat, index, timestamp);
     }
-    
-    Image::Image(const cv::Mat& image, int index, uint64_t timestamp)
-        : Image(image.rows, image.cols, image.channels(), index, timestamp)
-    {
-        set(index, image, timestamp);
+
+    Image::Image(uint rows, uint cols, uint dims, int index) : Image(rows, cols, dims, index, now()) { }
+    Image::Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp) {
+        create(rows, cols, dims, index, timestamp);
     }
-    
-    Image::Image(uint rows, uint cols, uint dims, const uchar* data)
-        : Image(rows, cols, dims)
+
+    Image::Image(const Image& other, long_t index) : Image(other, index != -1 ? index : other.index(), other.timestamp()) {}
+    Image::Image(const Image& other, long_t index, uint64_t timestamp) : Image(other.rows, other.cols, other.dims, other.data(), index, timestamp) {}
+
+    Image::Image(uint rows, uint cols, uint dims, const uchar* data, int index) : Image(rows, cols, dims, data, index, now()) {}
+    Image::Image(uint rows, uint cols, uint dims, const uchar* data, int index, uint64_t timestamp)
     {
-        set(0, data);
+        create(rows, cols, dims, data, index, timestamp);
     }
 
     void Image::clear() {
         if(_data) {
             free(_data);
             _data = NULL;
+            _array_size = 0;
         }
         
         set_index(-1);
@@ -109,56 +93,94 @@ namespace cmn {
         if(_custom_data)
             delete _custom_data;
     }
-    
-    void Image::create(uint rows, uint cols, uint dims) {
-        size_t N = cols * rows * dims;
-        if(_data
-           && _array_size >= N
-           && _array_size < N * 2)
-        {
-            // keep the array, since its not too big, also big enough
-            
-        } else {
-            // have to reallocate
-            if(_data)
-                free(_data);
-            _data = NULL;
-            _array_size = 0;
+
+    void Image::create(uint rows, uint cols, uint dims, long_t index) {
+        create(rows, cols, dims, index, now());
+    }
+    void Image::create(uint rows, uint cols, uint dims, long_t index, uint64_t stamp) {
+        size_t N = size_t(cols) * size_t(rows) * size_t(dims);
+
+        if (_data) {
+            //! if the contained array is either way too big,
+            //! does not exist, or is too small... allocate new.
+            if (_array_size < N || _array_size > N * 2) {
+                if (cols < 128 && rows < 128)
+                    _array_size = N * 2;
+                else
+                    _array_size = N;
+
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+                Debug("Realloc of image %dx%dx%d to %dx%dx%d (%lu >= %lu)", this->cols, this->rows, this->dims, cols, rows, dims, _array_size, N);
+#endif
+                _data = (uchar*)realloc(_data, _array_size);
+#ifndef NDEBUG
+                //! this does not help us anyway... just crash, i guess.
+                if (!_data) Except("Cannot allocate memory for image of size %dx%dx%d. Leaking.", rows, cols, dims);
+#endif
+            } // otherwise just be memory-inefficient and leave the array as it is :-)
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+            else
+                Debug("Reusing %lu for %lu array", _size, _array_size);
+#endif
         }
-        
+        else {
+            //! no array yet, malloc.
+            if (cols < 128 && rows < 128)
+                _array_size = N * 2;
+            else
+                _array_size = N;
+
+            _data = (uchar*)malloc(_array_size);
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+            Debug("New malloc for %dx%d of size %lu at %X (%lu >= %lu)", cols, rows, _size, _data, _array_size, N);
+            print_stacktrace(stdout);
+#endif
+        }
+
+        //! set data
         this->cols = cols;
         this->rows = rows;
         this->dims = dims;
+        this->_index = index;
+        this->_timestamp = stamp;
         this->_size = N;
-        reset_stamp();
-        
-        if(_size && !_data) {
-            _data = (uchar*)malloc(_size);
-            _array_size = _size;
-        }
     }
 
-    void Image::create(uint rows, uint cols, uint dims, const uchar* data) {
-        create(rows, cols, dims);
-        set(0, data);
+    void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index) {
+        create(rows, cols, dims, data, index, now());
+    }
+    void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index, uint64_t stamp) {
+        create(rows, cols, dims, index, stamp);
+        if(data != nullptr)
+            std::memcpy(_data, data, _size);
+    }
+
+    void Image::create(const cv::Mat& mat, long_t index) {
+        create(mat, index, now());
+    }
+    void Image::create(const cv::Mat& mat, long_t index, uint64_t stamp) {
+        assert(mat.isContinuous());
+        create(mat.rows, mat.cols, mat.channels(), mat.data, index, stamp);
+    }
+
+    void Image::create(const Image& mat, long_t index) {
+        create(mat, index, now());
+    }
+    void Image::create(const Image& mat, long_t index, uint64_t stamp) {
+        create(mat.rows, mat.cols, mat.dims, mat.data(), index, stamp);
     }
     
-    void Image::create(const cv::Mat &matrix) {
-        create(matrix.rows, matrix.cols, matrix.channels());
-        set(_index, matrix);
+    void Image::set(Image&& other) {
+        std::swap(other._index, _index);
+        std::swap(other._timestamp, _timestamp);
+        std::swap(other._custom_data, _custom_data);
+        std::swap(other._data, _data);
+        std::swap(other.cols, cols);
+        std::swap(other.rows, rows);
+        std::swap(other.dims, dims);
+        std::swap(other._size, _size);
+        std::swap(other._array_size, _array_size);
     }
-
-void Image::set(Image&& other) {
-    std::swap(other._index, _index);
-    std::swap(other._timestamp, _timestamp);
-    std::swap(other._custom_data, _custom_data);
-    std::swap(other._data, _data);
-    std::swap(other.cols, cols);
-    std::swap(other.rows, rows);
-    std::swap(other.dims, dims);
-    std::swap(other._size, _size);
-    std::swap(other._array_size, _array_size);
-}
     
     /*Image& Image::operator=(const Image& other) {
         if (&other == this)
@@ -198,7 +220,7 @@ void Image::set(Image&& other) {
 #endif
     }*/
     
-    void Image::set(long_t idx, const cv::Mat& matrix, uint64_t stamp) {
+    /*void Image::set(long_t idx, const cv::Mat& matrix, uint64_t stamp) {
         assert(int(rows) == matrix.rows);
         assert(int(cols) == matrix.cols);
         assert(int(dims) == matrix.channels());
@@ -223,7 +245,7 @@ void Image::set(Image&& other) {
         _index = idx;
         _timestamp = stamp;
         std::memcpy(_data, matrix, _size);
-    }
+    }*/
 
     void Image::set_to(uchar value) {
         std::fill(data(), data()+size(), value);

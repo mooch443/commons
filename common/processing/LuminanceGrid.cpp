@@ -129,6 +129,6 @@ namespace cmn {
     float LuminanceGrid::relative_threshold(int x, int y) const {
         assert(x >= 0 && x < _bounds.width);
         assert(y >= 0 && y < _bounds.height);
-        return _thresholds[x + y * int(_bounds.width)];
+        return _thresholds[ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_bounds.width)];
     }
 }
