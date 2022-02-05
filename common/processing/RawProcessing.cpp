@@ -8,7 +8,7 @@
 using namespace cmn;
 
 gpuMat gpu_dilation_element;
-std::mutex mutex;
+std::shared_mutex mutex;
 
 template<typename Calc = float, typename A = uchar, typename B = uchar>
 class SubtractConvert : public cv::ParallelLoopBody
@@ -106,7 +106,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     //static Timing timing("thresholding", 30);
     //TakeTiming take(timing);
     
-    static gpuMat *INPUT, *OUTPUT;
+    gpuMat *INPUT, *OUTPUT;
     INPUT = &_buffer0;
     OUTPUT = &_buffer1;
     
@@ -212,13 +212,12 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     if(gauss < 3)
         gauss = 3;
     
-    //cv::Mat labels, distance;
-    static gpuMat diff;
-    
     if(dilation_size) {
-        std::lock_guard<std::mutex> guard(mutex);
+        std::shared_lock guard(mutex);
         if(gpu_dilation_element.empty()) {
-            
+            guard.unlock();
+
+            std::unique_lock full_lock(mutex);
             const cv::Mat dilation_element = cv::Mat::ones(abs(dilation_size), abs(dilation_size), CV_8UC1); //cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2*abs(dilation_size) + 1, 2*abs(dilation_size)+1 ), cv::Point( abs(dilation_size), abs(dilation_size) ) );
             
 #ifndef NDEBUG
@@ -226,18 +225,6 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
 #endif
             dilation_element.copyTo(gpu_dilation_element);
         }
-        
-        
-       /*cv::distanceTransform(_buffer1, distance, labels, cv::DIST_L2, 5);
-        
-       double mi, ma;
-       cv::minMaxLoc(distance, &mi, &ma);
-       if(ma == mi)
-           ma = mi + 1;
-        //distance = (ma - mi) - (distance - mi);
-        
-        distance = distance - mi;
-       distance.convertTo(_buffer1, CV_8UC1, 255.0 / (ma - mi));*/
     }
     
 #ifndef NDEBUG

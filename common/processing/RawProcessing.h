@@ -17,7 +17,7 @@ namespace cmn {
  * relevant for this program.
  */
 class cmn::RawProcessing {
-    gpuMat _buffer0, _buffer1;
+    gpuMat _buffer0, _buffer1, diff;
     const gpuMat* _average;
     //const LuminanceGrid *_grid;
     //gpuMat _binary;
