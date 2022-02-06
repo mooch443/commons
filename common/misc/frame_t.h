@@ -11,7 +11,7 @@ struct Frame_t {
 
     number_t _frame = invalid;
     
-    constexpr Frame_t() = default;
+    Frame_t() = default;
     explicit constexpr Frame_t(number_t frame)
         : _frame(frame)
     {

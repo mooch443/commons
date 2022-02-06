@@ -54,7 +54,7 @@ void fail_type(From&&
 }
 
 template<typename To, typename From>
-constexpr To sign_cast(From&& value) {
+inline constexpr To sign_cast(From&& value) {
 #ifndef NDEBUG
     using FromType = typename remove_cvref<From>::type;
     using ToType = typename remove_cvref<To>::type;
