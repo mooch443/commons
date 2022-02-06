@@ -4,12 +4,12 @@
 namespace pv {
     using namespace cmn;
 
-    const bid& CompressedBlob::blob_id() const {
+    /*const bid& CompressedBlob::blob_id() const {
         if(!own_id.valid())
             own_id = pv::bid::from_blob(*this);
         
         return own_id;
-    }
+    }*/
 
 bool Blob::operator!=(const pv::Blob& other) const {
     return blob_id() != other.blob_id();
@@ -19,46 +19,46 @@ bool Blob::operator==(const pv::Blob& other) const {
     return blob_id() == other.blob_id();
 }
 
-    cmn::Bounds CompressedBlob::calculate_bounds() const {
-        Float2_t max_x = 0, height = 0, min_x = lines.empty() ? 0 : infinity<Float2_t>();
-        Float2_t x0, x1;
-        for(auto &line : lines) {
-            x0 = line.x0();
-            x1 = line.x1();
-            if(x1 > max_x) max_x = x1;
-            if(x0 < min_x) min_x = x0;
-            if(line.eol()) ++height;
-        }
-        
+cmn::Bounds CompressedBlob::calculate_bounds() const {
+    Float2_t max_x = 0, height = 0, min_x = _lines.empty() ? 0 : infinity<Float2_t>();
+    Float2_t x0, x1;
+    for(auto &line : _lines) {
+        x0 = line.x0();
+        x1 = line.x1();
+        if(x1 > max_x) max_x = x1;
+        if(x0 < min_x) min_x = x0;
+        if(line.eol()) ++height;
+    }
+    
 /*#ifndef NDEBUG
-        auto bds = cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
-        auto ptr = unpack();
-        if(ptr->bounds() != bds) {
-            auto A = Meta::toStr(ptr->bounds());
-            auto B = Meta::toStr(bds);
-            Except("%S != %S", &A, &B);
-        }
-        return bds;
+    auto bds = cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
+    auto ptr = unpack();
+    if(ptr->bounds() != bds) {
+        auto A = Meta::toStr(ptr->bounds());
+        auto B = Meta::toStr(bds);
+        Except("%S != %S", &A, &B);
+    }
+    return bds;
 #else*/
-        return cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
+    return cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
 //#endif
-    }
+}
 
-    pv::BlobPtr CompressedBlob::unpack() const {
-        auto flines = ShortHorizontalLine::uncompress(start_y, lines);
-        auto ptr = std::make_shared<pv::Blob>(flines, nullptr);
-        ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : -1);
-        
-        bool tried_to_split = (status_byte & 0x4) != 0;
-        ptr->set_tried_to_split(tried_to_split);
-        
-        if((status_byte & 0x1) != 0 && (status_byte & 0x2) == 0) {
-            ptr->set_split(true);
-        } else
-            ptr->set_split(false);
-        
-        return ptr;
-    }
+pv::BlobPtr CompressedBlob::unpack() const {
+    auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
+    auto ptr = std::make_shared<pv::Blob>(flines, nullptr);
+    ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : -1);
+    
+    bool tried_to_split = (status_byte & 0x4) != 0;
+    ptr->set_tried_to_split(tried_to_split);
+    
+    if((status_byte & 0x1) != 0 && (status_byte & 0x2) == 0) {
+        ptr->set_split(true);
+    } else
+        ptr->set_split(false);
+    
+    return ptr;
+}
 
     void Blob::set_split(bool split) {
         _split = split;

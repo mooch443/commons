@@ -208,8 +208,14 @@ struct CompressedBlob {
 
     //! y of first position (everything is relative to this)
     uint16_t start_y{0};
-    std::vector<ShortHorizontalLine> lines;
+    
+protected:
+    GETTER(std::vector<ShortHorizontalLine>, lines)
+    
+    friend struct MemoryStats;
+    friend class Output::ResultsFormat;
 
+public:
     CompressedBlob() = default;
     CompressedBlob(const pv::BlobPtr& val) :
         parent_id(val->parent_id()),
@@ -218,7 +224,7 @@ struct CompressedBlob {
         status_byte = (uint8_t(val->split())             * 0x1)
                     | (uint8_t(val->parent_id().valid()) * 0x2)
                     | (uint8_t(val->tried_to_split())    * 0x4);
-        lines = ShortHorizontalLine::compress(val->hor_lines());
+        _lines = ShortHorizontalLine::compress(val->hor_lines());
         start_y = val->lines()->empty() ? 0 : val->lines()->front().y;
     }
         
@@ -228,16 +234,22 @@ struct CompressedBlob {
     pv::BlobPtr unpack() const;
     uint64_t num_pixels() const {
         // adding +1 to result for each line (in order to include x1 as part of the total count)
-        uint64_t result = lines.size();
+        uint64_t result = _lines.size();
             
         // adding all line lengths
-        for(auto &line : lines)
+        for(auto &line : _lines)
             result += line.x1() - line.x0();
             
         return result;
     }
         
-    const bid& blob_id() const;
+    constexpr const bid& blob_id() const {
+        return own_id;
+    }
+    
+    void reset_id() {
+        own_id = pv::bid::from_blob(*this);
+    }
 };
 
 static_assert(int32_t(-1) == (uint32_t)bid::invalid, "Must be equal to ensure backwards compatibility.");
@@ -253,13 +265,13 @@ inline bid bid::from_blob(const pv::Blob &blob) {
 }
 
 inline bid bid::from_blob(const pv::CompressedBlob &blob) {
-    if(blob.lines.empty())
+    if(blob.lines().empty())
         return bid::invalid;
     
-    return from_data(blob.lines.front().x0(),
-                     blob.lines.front().x1(),
+    return from_data(blob.lines().front().x0(),
+                     blob.lines().front().x1(),
                      blob.start_y,
-                     blob.lines.size());
+                     blob.lines().size());
 }
 
 }
