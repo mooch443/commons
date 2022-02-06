@@ -53,6 +53,11 @@ public:
     void set_pos(const Vec2&) override;
     void set_size(const Size2&) override;
     void set_bounds(const Bounds&) override;
+
+    std::vector<Vertex>& change_points() {
+        return _original_points;
+    }
+    void confirm_points();
     //virtual bool is_same_type(Drawable* d) const { return dynamic_cast<Vertices*>(d) != nullptr; }
     
     bool swap_with(Drawable* d) override;

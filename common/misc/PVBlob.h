@@ -237,7 +237,7 @@ struct CompressedBlob {
         return result;
     }
         
-    bid blob_id() const;
+    const bid& blob_id() const;
 };
 
 static_assert(int32_t(-1) == (uint32_t)bid::invalid, "Must be equal to ensure backwards compatibility.");

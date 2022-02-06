@@ -133,6 +133,8 @@ using long_t = int32_t;
 #include <common/cpputils/debug/Printable.h>
 #include <cnpy/cnpy.h>
 #include <bytell_hash_map.hpp>
+#include <tsl/sparse_map.h>
+#include <robin_hood.h>
 
 #ifdef __llvm__
 #pragma clang diagnostic pop

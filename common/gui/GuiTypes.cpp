@@ -38,6 +38,13 @@ void VertexArray::prepare() {
     update_size();
 }
 
+void VertexArray::confirm_points() {
+    if (_points)
+        _points->clear();
+    _transport = nullptr;
+    update_size();
+}
+
 void VertexArray::update_size() {
     if(_points && !_points->empty())
         return;

@@ -4,7 +4,7 @@
 namespace pv {
     using namespace cmn;
 
-    bid CompressedBlob::blob_id() const {
+    const bid& CompressedBlob::blob_id() const {
         if(!own_id.valid())
             own_id = pv::bid::from_blob(*this);
         

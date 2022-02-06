@@ -37,7 +37,10 @@ endif()
 
 add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG)
-target_include_directories(commons PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map")
+target_include_directories(commons PUBLIC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/../sparse-map/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include")
 
 foreach(FILE ${HASH_HDR})
     source_group("hash_map" FILES "${FILE}")
@@ -63,6 +66,7 @@ foreach(FILE ${SRCS} ${HDRS})
 
     source_group("${GROUP}" FILES "${FILE}")
 endforeach()
+
 
 target_link_libraries(commons
     PUBLIC cpputils
