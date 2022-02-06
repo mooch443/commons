@@ -706,7 +706,7 @@ namespace gui {
             auto old = _parent;
             _parent = parent;
             
-            if(old->stage())
+            if(old->stage() && (!parent || !parent->stage() || parent->stage() != old->stage()))
                 old->stage()->erase(this);
             old->remove_child(this);
         } else
