@@ -87,6 +87,8 @@ namespace gui {
             _textfield->on_enter([this](){
                 if(!_list.items().empty()) {
                     _list.select_highlighted_item();
+                    if (stage())
+                        stage()->select(NULL);
                 } else {
                     if(stage())
                         stage()->select(NULL);
