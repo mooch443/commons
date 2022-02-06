@@ -257,8 +257,6 @@ using remove_cvref_t = typename remove_cvref<T>::type;
     struct is_map<robin_hood::unordered_node_map<T, Compare, Alloc>> : public std::true_type {};
     template<class T, class Compare, class Alloc>
     struct is_map<robin_hood::unordered_flat_map<T, Compare, Alloc>> : public std::true_type {};
-    template<class T, class Compare, class Alloc>
-    struct is_map<robin_hood::unordered_map<T, Compare, Alloc>> : public std::true_type {};
 
     template<class T> struct is_queue : public std::false_type {};
     template<class T, class Container>
