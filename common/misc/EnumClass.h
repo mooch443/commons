@@ -115,7 +115,8 @@ protected:
     ValueType _value;
     
 public:
-    constexpr Enum(const ValueType& value = (ValueType)0) noexcept
+    Enum() = default;
+    constexpr Enum(const ValueType& value) noexcept
         : _value(value)
     {}
     
