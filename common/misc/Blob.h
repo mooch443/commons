@@ -65,24 +65,31 @@ namespace cmn {
         }
         
         float orientation() const {
+#ifndef NDEBUG
             if(!_moments.ready)
                 U_EXCEPTION("Moments aren't ready yet.");
+#endif
             return _properties.angle;
         }
         const decltype(_properties.center)& center() const {
+#ifndef NDEBUG
             if(!_properties.ready)
                 U_EXCEPTION("Properties aren't ready yet.");
+#endif
             return _properties.center;
         }
         const decltype(_bounds)& bounds() const {
+#ifndef NDEBUG
             if(!_properties.ready)
                 U_EXCEPTION("Properties have not been calculated yet.");
+#endif
             return _bounds;
         }
         uint64_t num_pixels() const {
+#ifndef NDEBUG
             if(!_properties.ready)
                 U_EXCEPTION("Properties have not been calculated yet.");
-            
+#endif
             return _properties._num_pixels;
         }
         void sort() {

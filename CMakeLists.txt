@@ -417,7 +417,7 @@ if(COMMONS_WITH_OPENGL)
         set(GLAD_API "gl=2.0")
     else()
         set(GLAD_PROFILE "core")
-        set(GLAD_API "gl=4.1")
+        set(GLAD_API "gl=3.2")
     endif()
 
     ExternalProject_Add(gladex PREFIX gladex
@@ -497,7 +497,7 @@ if(COMMONS_BUILD_GLFW)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.4
+        GIT_TAG 3.3.6
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"

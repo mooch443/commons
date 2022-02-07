@@ -36,7 +36,7 @@ if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
 endif()
 
 add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
-add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG)
+add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
 target_include_directories(commons PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map" 
     "${CMAKE_CURRENT_SOURCE_DIR}/../sparse-map/include"

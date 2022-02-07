@@ -471,11 +471,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         mx = my = 0;
         glfwGetMonitorPhysicalSize(monitor, &mw, &mh);
 #endif
-        //mw -= mx;
-        //mh -= my;
         
 #if WIN32
-        my += mh * 0.04;
+        my += mh * 0.04; mh -= my;
         mh *= 0.95; //! task bar
 #endif
         
@@ -500,14 +498,23 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         }
         
         if(!_platform->window_handle())
+#ifdef WIN32
+            _platform->create_window(title.c_str(), 1, 1);
+#else
             _platform->create_window(title.c_str(), width, height);
+#endif
         else {
+#ifndef WIN32
             glfwSetWindowSize(_platform->window_handle(), width, height);
+#endif
             set_title(title);
         }
         
         glfwSetWindowPos(_platform->window_handle(), mx + (mw - width) / 2, my + (mh - height) / 2);
-        
+#ifdef WIN32
+        glfwSetWindowSize(_platform->window_handle(), width, height);
+#endif
+
         glfwSetDropCallback(_platform->window_handle(), [](GLFWwindow* window, int N, const char** texts){
             std::vector<file::Path> _paths;
             for(int i=0; i<N; ++i)
