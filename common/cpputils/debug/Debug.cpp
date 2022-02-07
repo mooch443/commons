@@ -323,7 +323,12 @@ if(!insert_start(tree, &current_node, e)) delete e; }
         }
 #endif
 	}
-    
+
+    template<typename T, typename Q>
+    bool contains(const T&vector, const Q&value) {
+        return std::find(vector.begin(), vector.end(), value) != vector.end();
+    }
+
 	void ParseStatusMessage(StatusMsg*msg) {
         {
             std::lock_guard<std::mutex> lock(debug_mutex());

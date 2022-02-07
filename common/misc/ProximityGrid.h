@@ -27,7 +27,7 @@ public:
     
     ProximityGrid(const Size2& resolution, int r = -1);
     
-    std::unordered_set<result_t> query(const Vec2& pos, float max_d) const;
+    UnorderedVectorSet<result_t> query(const Vec2& pos, float max_d) const;
     std::string str(fdx_pos dx, Vec2 point, float max_d) const;
     
 private:

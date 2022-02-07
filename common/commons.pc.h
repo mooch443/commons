@@ -134,6 +134,7 @@ using long_t = int32_t;
 #include <cnpy/cnpy.h>
 #include <bytell_hash_map.hpp>
 #include <tsl/sparse_map.h>
+#include <tsl/sparse_set.h>
 #include <robin_hood.h>
 
 #ifdef __llvm__

@@ -47,7 +47,8 @@ namespace std
 namespace cmn {
 namespace grid {
 
-    template<typename T, typename Set_t = std::unordered_set<pixel<T>>>
+
+    template<typename T, typename Set_t = UnorderedVectorSet<pixel<T>>>
     class Grid2D {
     public:
         typedef Set_t set_t;

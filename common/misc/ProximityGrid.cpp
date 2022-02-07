@@ -9,7 +9,7 @@ namespace grid {
         : Grid2D(resolution, r != -1 ? r : proximity_res)
     {}
     
-    std::unordered_set<ProximityGrid::result_t> ProximityGrid::query(const Vec2& point, float max_d) const {
+    UnorderedVectorSet<ProximityGrid::result_t> ProximityGrid::query(const Vec2& point, float max_d) const {
         std::vector<result_t> result;
         std::vector<fdx_pos> found;
         
@@ -77,12 +77,12 @@ namespace grid {
             }
         }
         
-        std::unordered_set<result_t> return_v;
-        for(auto && [d, v] : result) {
-            return_v.insert({sqrtf(d), v});
+        for(auto & [d, v] : result) {
+            d = sqrtf(d);
+            //return_v.insert({sqrtf(d), v});
         }
         
-        return return_v;
+        return UnorderedVectorSet(std::move(result));
     }
     
     std::string ProximityGrid::str(fdx_pos dx, Vec2 point, float max_d) const {

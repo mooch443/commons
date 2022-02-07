@@ -648,7 +648,7 @@ if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
             ${COMMONS_subproject_CMAKE_ARGS}
 
         GIT_REPOSITORY https://github.com/pybind/pybind11
-        GIT_TAG        v2.6.2 #99ef2b846742e2298b97904e5be43f5ea5d71d8c
+        GIT_TAG        v2.9.1 #99ef2b846742e2298b97904e5be43f5ea5d71d8c
         UPDATE_COMMAND ""
     )
     ExternalProject_Get_Property(pybind11 INSTALL_DIR)
@@ -664,7 +664,7 @@ else()
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11
-        GIT_TAG        v2.6.2
+        GIT_TAG        v2.9.1
     )
 
     FetchContent_GetProperties(pybind11)

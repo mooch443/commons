@@ -225,6 +225,52 @@ using remove_cvref_t = typename remove_cvref<T>::type;
         std::for_each(v.begin(), v.end(), callback);
         return foreach(callback, args...);
     }
+
+
+    template<typename T>
+    struct UnorderedVectorSet {
+        using iterator = std::vector<T>::iterator;
+        using const_iterator = std::vector<T>::const_iterator;
+
+        std::vector<T> _data;
+
+        UnorderedVectorSet() = default;
+        UnorderedVectorSet(const std::initializer_list<T>& init) : _data(init) {}
+        UnorderedVectorSet(UnorderedVectorSet&&) = default;
+        UnorderedVectorSet(std::vector<T>&& vic) : _data(std::move(vic)) {}
+
+        UnorderedVectorSet& operator=(const UnorderedVectorSet&) = default;
+
+        template<typename K>
+            requires std::convertible_to<K, T>
+        void insert(const K& value) {
+            if (!this->contains(value))
+                _data.emplace_back(value);
+        }
+
+        template<typename K>
+            requires std::convertible_to<K, T>
+        bool contains(const K& value) {
+            return std::find(_data.begin(), _data.end(), value) != _data.end();
+        }
+
+        template<typename K>
+            requires std::convertible_to<K, T>
+        auto find(const K& value) const {
+            return std::find(_data.begin(), _data.end(), value);
+        }
+
+        void clear() {
+            _data.clear();
+        }
+
+        auto begin() { return _data.begin(); }
+        auto end() { return _data.end(); }
+        auto begin() const { return _data.begin(); }
+        auto end() const { return _data.end(); }
+        size_t size() const { return _data.size(); }
+        bool empty() const { return _data.empty(); }
+    };
     
     template<class T> struct is_container : public std::false_type {};
     
@@ -245,6 +291,10 @@ using remove_cvref_t = typename remove_cvref<T>::type;
     struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
     template<class T, class Alloc>
     struct is_set<robin_hood::unordered_flat_set<T, Alloc>> : public std::true_type {};
+    template<class T, class Alloc>
+    struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
+    template<class T>
+    struct is_set<UnorderedVectorSet<T>> : public std::true_type {};
     
     template<class T> struct is_map : public std::false_type {};
     template<class T, class Compare, class Alloc>
@@ -315,6 +365,55 @@ using remove_cvref_t = typename remove_cvref<T>::type;
             result.push_back(percentile(values, percent));
         
         return result;
+    }
+
+    template<typename T, typename Q>
+        requires is_container<T>::value || is_queue<T>::value || is_deque<T>::value
+    inline bool contains(const T& s, const Q& value) {
+        return std::find(s.begin(), s.end(), value) != s.end();
+    }
+
+    template<typename T, typename K>
+        requires std::convertible_to<K, T>
+    inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
+        return s.count(value) > 0;
+    }
+
+    template<typename T, typename K>
+        requires std::convertible_to<K, T>
+    inline bool contains(const robin_hood::unordered_flat_set<T>& s, const K& value) {
+        return s.contains(value);
+    }
+
+    template<typename T, typename K>
+        requires std::convertible_to<K, T>
+    inline bool contains(const tsl::sparse_set<T>& s, const K& value) {
+        return s.contains(value);
+    }
+
+    /*template<typename T, typename Q>
+    inline bool contains(const Q& v, const T& obj) {
+        return std::find(v.begin(), v.end(), obj) != v.end();
+    }*/
+
+    template<typename T>
+    inline bool contains(const std::set<T>& v, T obj) {
+        //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets
+#if __cplusplus >= 202002L
+        return v.contains(obj);
+#else
+        return v.find(obj) != v.end();
+#endif
+    }
+
+    template<typename T, typename V>
+    inline bool contains(const std::map<T, V>& v, T key) {
+        //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
+#if __cplusplus >= 202002L
+        return v.contains(key);
+#else
+        return v.find(key) != v.end();
+#endif
     }
 }
 

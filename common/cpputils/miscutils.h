@@ -75,35 +75,6 @@ bool operator==(const triplet<T1, T2, T3>& first, const triplet<T1, T2, T3>& sec
     return first.first == second.first && first.second == second.second && first.third == second.third;
 }
 
-/*template<typename T>
-inline bool contains(const std::vector<T>& v, T obj) {
-    return std::find(v.begin(), v.end(), obj) != v.end();
-}*/
-
-template<typename T, typename Q>
-inline bool contains(const Q& v, const T& obj) {
-    return std::find(v.begin(), v.end(), obj) != v.end();
-}
-
-template<typename T>
-inline bool contains(const std::set<T>& v, T obj) {
-    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
-#if __cplusplus >= 202002L
-    return v.contains(obj);
-#else
-    return v.find(obj) != v.end();
-#endif
-}
-
-template<typename T, typename V>
-inline bool contains(const std::map<T, V>& v, T key) {
-    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
-#if __cplusplus >= 202002L
-    return v.contains(key);
-#else
-    return v.find(key) != v.end();
-#endif
-}
 
 // -------------------------------
 //          FILE UTILS
