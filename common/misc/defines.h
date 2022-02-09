@@ -237,6 +237,7 @@ using remove_cvref_t = typename remove_cvref<T>::type;
         UnorderedVectorSet() = default;
         UnorderedVectorSet(const std::initializer_list<T>& init) : _data(init) {}
         UnorderedVectorSet(UnorderedVectorSet&&) = default;
+        UnorderedVectorSet(const UnorderedVectorSet&) = default;
         UnorderedVectorSet(std::vector<T>&& vic) : _data(std::move(vic)) {}
 
         UnorderedVectorSet& operator=(const UnorderedVectorSet&) = default;
@@ -250,7 +251,7 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 
         template<typename K>
             requires std::convertible_to<K, T>
-        bool contains(const K& value) {
+        bool contains(const K& value) const {
             return std::find(_data.begin(), _data.end(), value) != _data.end();
         }
 
@@ -262,6 +263,12 @@ using remove_cvref_t = typename remove_cvref<T>::type;
 
         void clear() {
             _data.clear();
+        }
+
+        template<typename Iterator>
+        void insert(Iterator start, Iterator end) {
+            for (auto it = start; it != end; ++it)
+                insert(*it);
         }
 
         auto begin() { return _data.begin(); }
