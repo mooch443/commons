@@ -176,10 +176,15 @@ Vertices::Vertices(const Vec2& p0, const Vec2& p1, const Color& clr)
     }, LineStrip, MEMORY::COPY)
 { }
 
+Polygon::Polygon()
+    : Drawable(Type::POLYGON)
+{
+    update_size();
+}
+
 Polygon::Polygon(std::shared_ptr<std::vector<Vec2>> vertices)
     : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(Transparent), _border_clr(Transparent), _size_calculated(false)
 {
-    update_size();
 }
 
 Polygon::Polygon(const std::vector<Vertex>& vertices)

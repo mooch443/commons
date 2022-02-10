@@ -137,6 +137,7 @@ protected:
         bool _size_calculated;
         
     public:
+        Polygon();
         Polygon(std::shared_ptr<std::vector<Vec2>> vertices);
         Polygon(const std::vector<Vertex>& vertices);
         void set_fill_clr(const Color& clr);
