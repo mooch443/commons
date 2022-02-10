@@ -270,6 +270,16 @@ using remove_cvref_t = typename remove_cvref<T>::type;
             for (auto it = start; it != end; ++it)
                 insert(*it);
         }
+        
+        template<typename Iterator>
+        inline auto erase(Iterator it) {
+            return _data.erase(it);
+        }
+        
+        template<class... Args>
+        constexpr typename std::vector<T>::reference emplace(Args&&... args) {
+            return _data.emplace_back(std::forward<Args>(args)...);
+        }
 
         auto begin() { return _data.begin(); }
         auto end() { return _data.end(); }

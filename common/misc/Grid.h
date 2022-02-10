@@ -61,6 +61,7 @@ namespace grid {
         GETTER_CONST(const Size2, resolution)
         GETTER(uint, n)
         GETTER(uint, N)
+        ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
         Grid2D(const Size2& resolution, uint n)
@@ -81,7 +82,7 @@ namespace grid {
         
         virtual ~Grid2D() {}
         
-        decltype(grid)& get_grid() { return grid; }
+        //decltype(grid)& get_grid() { return grid; }
         const decltype(grid)& get_grid() const { return grid; }
         
         int64_t idx(float x, float y) const {
@@ -99,14 +100,16 @@ namespace grid {
         void insert(float x, float y, T v, typename std::enable_if<is_set<S>::value, void>::type* = nullptr) {
             const auto i = idx(x, y);
             assert(i < grid.size());
-            grid[i].insert(pixel<T>(x, y, v));
+            grid[i].emplace(x, y, v);
+            _value_where[v].insert(i);
         }
         
         template<typename S = Set_t>
         void insert(float x, float y, T v, typename std::enable_if<is_container<S>::value, void>::type* = nullptr) {
             const auto i = idx(x, y);
             assert(size_t(i) < grid.size());
-            grid[i].push_back(pixel<T>(x, y, v));
+            grid[i].emplace_back(x, y, v);
+            _value_where[v].insert(i);
         }
         
         template<typename S = Set_t>
@@ -185,6 +188,26 @@ namespace grid {
         void clear() {
             for(auto &g : grid)
                 g.clear();
+            _value_where.clear();
+        }
+        
+        void erase(T v) {
+            auto it = _value_where.find(v);
+            if(_value_where.end() == it)
+                return;
+            
+            for(auto i : it->second) {
+                auto &g = grid[i];
+                auto kit = g.begin();
+                for(; kit != g.end(); ) {
+                    if(*kit == v) {
+                        kit = g.erase(kit);
+                    } else
+                        ++kit;
+                }
+            }
+            
+            _value_where.erase(it);
         }
     };
 
