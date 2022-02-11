@@ -96,11 +96,11 @@ namespace pv {
     
     class Blob : public cmn::Blob {
     public:
-        using line_ptr_t = std::shared_ptr<std::vector<cmn::HorizontalLine>>;
-        using pixel_ptr_t = std::shared_ptr<const std::vector<uchar>>;
+        using line_ptr_t = std::unique_ptr<std::vector<cmn::HorizontalLine>>;
+        using pixel_ptr_t = std::unique_ptr<const std::vector<uchar>>;
         
     protected:
-        GETTER_PTR(pixel_ptr_t, pixels)
+        GETTER_NCONST(pixel_ptr_t, pixels)
         GETTER_I(bool, split, false)
         GETTER_I(bid, parent_id, pv::bid::invalid)
         GETTER_I(bid, blob_id, pv::bid::invalid)
@@ -112,9 +112,10 @@ namespace pv {
         
     public:
         Blob();
-        Blob(line_ptr_t lines, pixel_ptr_t pixels);
-        Blob(std::shared_ptr<const std::vector<cmn::HorizontalLine>> lines, decltype(_pixels) pixels);
-        Blob(const cmn::Blob* blob, pixel_ptr_t pixels);
+        Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels);
+        //Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels);
+        Blob(const line_ptr_t::element_type& lines, const pixel_ptr_t::element_type& pixels);
+        Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels);
         Blob(const pv::Blob& other);
         
         BlobPtr threshold(int32_t value, const cmn::Background& background);
@@ -131,7 +132,7 @@ namespace pv {
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
         
-        void set_pixels(decltype(_pixels) pixels);
+        void set_pixels(pixel_ptr_t&& pixels);
         //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
         
         static decltype(_pixels) calculate_pixels(cmn::Image::Ptr image, const decltype(_hor_lines)& lines);

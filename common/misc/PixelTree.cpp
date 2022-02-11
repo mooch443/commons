@@ -163,10 +163,12 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         }
         
         if(found)
-            return std::make_shared<pv::Blob>(std::get<0>(*found), std::get<1>(*found));
+            return std::make_shared<pv::Blob>(
+                    std::move(std::get<0>(*found)),
+                    std::move(std::get<1>(*found)));
         
-        return std::make_shared<pv::Blob>(std::make_shared<std::vector<HorizontalLine>>(),
-                                          std::make_shared<std::vector<uchar>>());
+        return std::make_shared<pv::Blob>(std::make_unique<std::vector<HorizontalLine>>(),
+                                          std::make_unique<std::vector<uchar>>());
         //auto ptr = std::make_shared<pv::Blob>(lines, pixels);
         //return ptr;
     }
@@ -176,7 +178,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         std::vector<pv::BlobPtr> result;
         for(auto && [lines, pixels] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(lines, pixels));
+                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels)));
         }
         return result;
     }
@@ -238,7 +240,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         std::vector<pv::BlobPtr> result;
         for(auto && [lines, pixels] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(lines, pixels));
+                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels)));
         }
         return result;
     }

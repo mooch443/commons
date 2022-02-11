@@ -39,7 +39,7 @@ namespace cmn {
         
         Bounds _bounds;
         
-        std::shared_ptr<std::vector<HorizontalLine>> _hor_lines;
+        std::unique_ptr<std::vector<HorizontalLine>> _hor_lines;
         GETTER(Moments, moments)
         
     public:
@@ -52,13 +52,16 @@ namespace cmn {
         
     public:
         Blob();
-        Blob(const std::shared_ptr<std::vector<HorizontalLine>>& points);
+        Blob(std::unique_ptr<std::vector<HorizontalLine>>&& points);
         virtual ~Blob();
         
         virtual void add_offset(const Vec2& off);
         
-        inline std::shared_ptr<std::vector<HorizontalLine>> lines() const {
+        inline const std::unique_ptr<std::vector<HorizontalLine>>& lines() const {
             return _hor_lines;
+        }
+        inline std::unique_ptr<std::vector<HorizontalLine>>&& steal_lines() {
+            return std::move(_hor_lines);
         }
         inline const std::vector<HorizontalLine>& hor_lines() const {
             return *_hor_lines;
@@ -96,8 +99,8 @@ namespace cmn {
             std::sort(_hor_lines->begin(), _hor_lines->end(), std::less<HorizontalLine>());
         }
         
-        std::shared_ptr<std::vector<uchar>> calculate_pixels(const cv::Mat& background) const {
-            auto res = std::make_shared<std::vector<uchar>>();
+        std::unique_ptr<std::vector<uchar>> calculate_pixels(const cv::Mat& background) const {
+            auto res = std::make_unique<std::vector<uchar>>();
             res->resize(num_pixels());
             auto ptr = res->data();
             

@@ -40,7 +40,7 @@ DWORD __inline __builtin_ctz(uint32_t value)
  */
 
 namespace cmn {
-typedef std::vector<std::tuple<std::shared_ptr<std::vector<HorizontalLine>>, std::shared_ptr<std::vector<uchar>>>> blobs_t;
+typedef std::vector<std::tuple<std::unique_ptr<std::vector<HorizontalLine>>, std::unique_ptr<std::vector<uchar>>>> blobs_t;
 constexpr int CV_MAX_THICKNESS = 32767;
 }
 

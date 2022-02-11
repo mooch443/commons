@@ -46,7 +46,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 
 pv::BlobPtr CompressedBlob::unpack() const {
     auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
-    auto ptr = std::make_shared<pv::Blob>(flines, nullptr);
+    auto ptr = std::make_shared<pv::Blob>(std::move(flines), nullptr);
     ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : -1);
     
     bool tried_to_split = (status_byte & 0x4) != 0;
@@ -89,7 +89,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         uint16_t start_y,
         const std::vector<ShortHorizontalLine>& compressed)
     {
-        auto uncompressed = std::make_shared<std::vector<HorizontalLine>>((NoInitializeAllocator<HorizontalLine>()));
+        auto uncompressed = std::make_unique<std::vector<HorizontalLine>>((NoInitializeAllocator<HorizontalLine>()));
         uncompressed->resize(compressed.size());
         
         auto y = start_y;
@@ -113,32 +113,31 @@ pv::BlobPtr CompressedBlob::unpack() const {
     std::mutex cm_per_pixel_mutex;
     std::atomic_bool callback_registered = false;
     
-    Blob::Blob() : Blob(std::make_shared<std::vector<HorizontalLine>>(), nullptr) {
+    Blob::Blob() : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr) {
         
     }
+
+    Blob::Blob(const line_ptr_t::element_type& lines, const pixel_ptr_t::element_type& pixels)
+        : Blob(std::make_unique<line_ptr_t::element_type>(lines),
+               std::make_unique<pixel_ptr_t::element_type>(pixels))
+    { }
     
     Blob::Blob(const Blob& other)
-        : Blob(other.lines(), other.pixels())
+        : Blob(std::make_unique<line_ptr_t::element_type>(*other.lines()),
+               other.pixels() ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels()) : nullptr)
     //Blob(other.hor_lines(), other.pixels() ? std::make_shared<decltype(_pixels)::element_type>(*other.pixels()) : nullptr)
     {
         _tried_to_split = other._tried_to_split;
     }
     
-    Blob::Blob(line_ptr_t lines, pixel_ptr_t pixels)
-        : cmn::Blob(lines), _pixels(pixels)
+    Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels)
+        : cmn::Blob(std::move(lines)), _pixels(std::move(pixels))
     {
         init();
     }
-    
-    Blob::Blob(std::shared_ptr<const std::vector<HorizontalLine>> lines, decltype(_pixels) pixels)
-        : Blob(std::make_shared<std::vector<HorizontalLine>>(*lines), pixels)
+    Blob::Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels)
+        : Blob(std::make_unique<line_ptr_t::element_type>(*blob->lines()), std::move(pixels))
     { }
-    
-    Blob::Blob(const cmn::Blob* blob, pixel_ptr_t pixels)
-        : cmn::Blob(*blob), _pixels(pixels)
-    {
-        init();
-    }
     
     /*Blob::Blob(const std::vector<HorizontalLine>& lines,
                decltype(_pixels) pixels)
@@ -216,12 +215,12 @@ static Callback callback;
                     std::vector<uchar> pixels(_pixels->begin(), _pixels->end());
                     std::vector<HorizontalLine> lines(_hor_lines->begin(), _hor_lines->end());
                     HorizontalLine::repair_lines_array(lines, pixels);
-                    _hor_lines = std::make_shared<decltype(_hor_lines)::element_type>(lines);
-                    _pixels = std::make_shared<decltype(_pixels)::element_type>(pixels);
+                    _hor_lines = std::make_unique<line_ptr_t::element_type>(lines);
+                    _pixels = std::make_unique<pixel_ptr_t::element_type>(pixels);
                 } else {
                     std::vector<HorizontalLine> lines(_hor_lines->begin(), _hor_lines->end());
                     HorizontalLine::repair_lines_array(lines);
-                    _hor_lines = std::make_shared<decltype(_hor_lines)::element_type>(lines);
+                    _hor_lines = std::make_unique<line_ptr_t::element_type>(lines);
                 }
             }
         }
@@ -315,12 +314,12 @@ static Callback callback;
         if(_pixels == nullptr)
             U_EXCEPTION("Cannot threshold without pixel values.");
         
-        auto lines = std::make_shared<std::vector<HorizontalLine>>();
+        auto lines = std::make_unique<std::vector<HorizontalLine>>();
         lines->reserve(hor_lines().size());
         
         auto ptr = _pixels->data();
         HorizontalLine tmp;
-        auto tmp_pixels = std::make_shared<std::vector<uchar>>();
+        auto tmp_pixels = std::make_unique<std::vector<uchar>>();
         tmp_pixels->reserve(_pixels->size());
         
         for (auto &line : hor_lines()) {
@@ -347,7 +346,7 @@ static Callback callback;
             }
         }
         
-        return std::make_shared<Blob>(lines, tmp_pixels);
+        return std::make_shared<Blob>(std::move(lines), std::move(tmp_pixels));
     }
     
     std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted) const {
@@ -542,7 +541,7 @@ static Callback callback;
     }
     
     decltype(Blob::_pixels) Blob::calculate_pixels(Image::Ptr image, const decltype(_hor_lines) &lines) {
-        auto pixels = std::make_shared<std::vector<uchar>>();
+        auto pixels = std::make_unique<std::vector<uchar>>();
         for(auto &line : *lines) {
             auto start = image->data() + ptr_safe_t(line.y) * image->cols + ptr_safe_t(line.x0);
             auto end = start + ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
@@ -622,8 +621,8 @@ static Callback callback;
         return {b.pos(), std::move(image)};
     }
     
-    void Blob::set_pixels(decltype(_pixels) pixels) {
-        _pixels = pixels;
+    void Blob::set_pixels(pixel_ptr_t&& pixels) {
+        _pixels = std::move(pixels);
         assert(!_pixels || _pixels->size() == num_pixels());
     }
     
@@ -647,7 +646,7 @@ static Callback callback;
         auto id = blob_id();
         //auto x = id >> 16;
         //auto y = id & 0x0000FFFF;
-        return Meta::toStr(id)+" "+Meta::toStr(center);
+        return Meta::toStr(id)+" "+Meta::toStr(center * cm_per_pixel.load());
     }
     
     void Blob::add_offset(const cmn::Vec2 &off) {

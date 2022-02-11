@@ -1138,7 +1138,7 @@ blobs_t run_fast(List_t* blobs)
 
     for(auto it=blobs->begin(); it != blobs->end(); ++it) {
         if(it->obj && !it->obj->empty()) {
-            result.emplace_back(std::make_shared<std::vector<HorizontalLine>>(), std::make_shared<std::vector<uchar>>());
+            result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), std::make_unique<std::vector<uchar>>());
             auto &lines = std::get<0>(result.back());
             auto &pixels = std::get<1>(result.back());
             

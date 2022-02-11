@@ -17,10 +17,10 @@ Blob::Blob() {
 #endif
 }
 
-Blob::Blob(const std::shared_ptr<std::vector<HorizontalLine>>& points)
-    : _hor_lines(points)
+Blob::Blob(std::unique_ptr<std::vector<HorizontalLine>>&& points)
+    : _hor_lines(std::move(points))
 {
-    if(!points)
+    if(!_hor_lines)
         U_EXCEPTION("Blob initialized with NULL lines array");
     _properties.ready = false;
 #ifdef _DEBUG_MEMORY
