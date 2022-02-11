@@ -17,7 +17,7 @@ class Node {
 public:
     DLList *parent = nullptr;
     
-private:
+/*private:
     size_t _retains = 0;
     
 public:
@@ -35,14 +35,14 @@ public:
     }
     
     struct Ref {
-        Node* obj = nullptr;
+        Node::Ptr obj = nullptr;
         
         Ref(const Ref& other) : obj(other.obj) {
             if(obj)
                 obj->retain();
         }
         
-        Ref(Node* obj) : obj(obj) {
+        Ref(Node::Ptr obj) : obj(obj) {
             if(obj)
                 obj->retain();
         }
@@ -81,22 +81,30 @@ public:
             return *this;
         }
         
-        constexpr bool operator==(Node* other) const { return other == obj; }
+        constexpr bool operator==(Node::Ptr other) const { return other == obj; }
         constexpr bool operator==(const Ref& other) const { return other.obj == obj; }
-        constexpr bool operator!=(Node* other) const { return other != obj; }
+        constexpr bool operator!=(Node::Ptr other) const { return other != obj; }
         constexpr bool operator!=(const Ref& other) const { return other.obj != obj; }
         
         constexpr Node& operator*() const { assert(obj != nullptr); return *obj; }
-        constexpr Node* operator->() const { assert(obj != nullptr); return obj; }
-        constexpr Node* get() const { return obj; }
+        constexpr Node::Ptr operator->() const { assert(obj != nullptr); return obj; }
+        constexpr Node::Ptr get() const { return obj; }
         constexpr operator bool() const { return obj != nullptr; }
         
         void release_check();
-    };
+    };*/
     
-    Node::Ref prev = nullptr;
-    Node::Ref next = nullptr;
+public:
+    using Ref = std::unique_ptr<Node>;
+    using Ptr = Node*;
+    Node::Ptr prev = nullptr;
+    Node::Ptr next = nullptr;
     std::unique_ptr<Brototype> obj;
+    
+    template<class... Args>
+    static Ref make(Args... args) {
+        return std::make_unique<Node>(std::forward<Args>(args)...);
+    }
     
     static auto& mutex() {
         static std::mutex _mutex;
@@ -115,7 +123,7 @@ public:
     }
     
     static void move_to_cache(Node::Ref& node);
-    static void move_to_cache(Node* node);
+    static void move_to_cache(Node::Ptr node);
     
     Node(std::unique_ptr<Brototype>&& obj, DLList* parent)
         : parent(parent), obj(std::move(obj))
@@ -148,7 +156,7 @@ struct Source {
     std::vector<Pixel> _pixels;
     std::vector<const Line*> _lines;
     std::vector<Line> _full_lines;
-    std::vector<typename Node::Ref> _nodes;
+    std::vector<typename Node::Ptr> _nodes;
     
     std::vector<coord_t> _row_y;
     std::vector<size_t> _row_offsets;
@@ -192,7 +200,7 @@ struct Source {
         _pixels.emplace_back(px);
         _lines.emplace_back((const Line*)_full_lines.size());
         _full_lines.emplace_back(line);
-        _nodes.emplace_back(typename Node::Ref());
+        _nodes.emplace_back(nullptr);
     }
     
     void push_back(const Line& line) {
@@ -204,7 +212,7 @@ struct Source {
         assert(_pixels.empty()); // needs to be consistent! dont add pixels "sometimes"
         _lines.emplace_back((const Line*)_full_lines.size());
         _full_lines.emplace_back(line);
-        _nodes.emplace_back(typename Node::Ref());
+        _nodes.emplace_back(nullptr);
     }
     
     //! assumes external ownership of Line ptr -- needs to stay alive during the process
@@ -216,7 +224,7 @@ struct Source {
         
         _pixels.emplace_back(px);
         _lines.emplace_back(line);
-        _nodes.emplace_back(typename Node::Ref());
+        _nodes.emplace_back(nullptr);
     }
     
     void finalize() {
@@ -267,8 +275,8 @@ struct Source {
         
         const Pixel* pixel_start = nullptr;
         const Pixel* pixel_end = nullptr;
-        Node::Ref* node_start = nullptr;
-        Node::Ref* node_end = nullptr;
+        Node::Ptr* node_start = nullptr;
+        Node::Ptr* node_end = nullptr;
         const Line**  line_start = nullptr;
         const Line**  line_end = nullptr;
         
@@ -433,7 +441,7 @@ struct Source {
                     o = (const HorizontalLine*)((size_t)o + S);
                 }
                 _lines.insert(_lines.end(), thread_sources[i]._lines.begin(), thread_sources[i]._lines.end());
-                _nodes.insert(_nodes.end(), thread_sources[i]._nodes.begin(), thread_sources[i]._nodes.end());
+                _nodes.insert(_nodes.end(), std::make_move_iterator(thread_sources[i]._nodes.begin()), std::make_move_iterator(thread_sources[i]._nodes.end()));
                 for(auto &o : thread_sources[i]._row_offsets) {
                     o += S;
                 }
@@ -547,11 +555,11 @@ class DLList {
         typedef ValueType* pointer;
         typedef std::forward_iterator_tag iterator_category;
         typedef int difference_type;
-        constexpr _iterator(pointer ptr) : ptr_(ptr), next(ptr_ && ptr_->next ? ptr_->next.get() : nullptr) { }
+        constexpr _iterator(pointer ptr) : ptr_(ptr), next(ptr_ && ptr_->next ? ptr_->next : nullptr) { }
         
         constexpr self_type operator++() {
             ptr_ = next;
-            next = ptr_ && ptr_->next ? ptr_->next.get() : nullptr;
+            next = ptr_ && ptr_->next ? ptr_->next : nullptr;
             return ptr_;
         }
         
@@ -566,11 +574,12 @@ class DLList {
     };
     
 public:
-    typedef _iterator<Node, Node*> iterator;
-    typedef _iterator<const Node, const Node*> const_iterator;
+    typedef _iterator<Node, Node::Ptr> iterator;
+    typedef _iterator<const Node, const Node::Ptr> const_iterator;
     
-    typename Node::Ref _begin = nullptr;
-    typename Node::Ref _end = nullptr;
+    Node::Ptr _begin = nullptr;
+    Node::Ptr _end = nullptr;
+    std::vector<Node::Ref> _owned;
     
     struct Cache {
         //std::mutex _mutex;
@@ -596,9 +605,9 @@ public:
         
         void receive(typename Node::Ref&& ref) {
             //std::lock_guard guard(_mutex);
-            assert(!ref.obj || ref->next == nullptr);
-            assert(!ref.obj || ref->prev == nullptr);
-            if(ref.obj) ref->parent = nullptr;
+            assert(!ref || ref->next == nullptr);
+            assert(!ref || ref->prev == nullptr);
+            if(ref) ref->parent = nullptr;
             _nodes.emplace_back(std::move(ref));
         }
         void receive(std::unique_ptr<Brototype>&& ptr) {
@@ -639,7 +648,7 @@ public:
         //ptr = nullptr;
     }
     
-    const typename Node::Ref& insert(const typename Node::Ref& ptr) {
+    Node::Ptr insert(Node::Ptr ptr) {
         assert(!ptr->prev && !ptr->next);
         
         if(_end) {
@@ -664,23 +673,27 @@ public:
         return ptr;
     }
     
-    void insert(Node::Ref& ptr, std::unique_ptr<Brototype>&& obj) {
-        ptr.release_check();
-        cache().node(ptr);
+public:
+    void insert(Node::Ptr& ptr, std::unique_ptr<Brototype>&& obj) {
+        //ptr.release_check();
+        Node::Ref ref;
+        cache().node(ref);
         
         bool created = false;
-        if(!ptr) {
-            ptr = Node::Ref(new Node(std::move(obj), this));
+        if(!ref) {
+            ref = Node::make(std::move(obj), this);//Node::Ref(new Node(std::move(obj), this));
             created = true;
         } else {
-            assert(!ptr->next);
-            assert(!ptr->prev);
+            assert(!ref->next);
+            assert(!ref->prev);
             
-            ptr->init(this);
-            ptr->obj = std::move(obj);
+            ref->init(this);
+            ref->obj = std::move(obj);
         }
         
+        ptr = ref.get();
         insert(ptr);
+        _owned.emplace_back(std::move(ref));
     }
     
     ~DLList() {
@@ -700,8 +713,8 @@ public:
         _end = nullptr;
     }
     
-    constexpr iterator begin() { return _iterator<Node, Node*>(_begin.get()); }
-    constexpr iterator end() { return _iterator<Node, Node*>(nullptr); }
+    constexpr iterator begin() { return _iterator<Node, Node::Ptr>(_begin); }
+    constexpr iterator end() { return _iterator<Node, Node::Ptr>(nullptr); }
 };
 
 using List_t = DLList;
@@ -873,8 +886,13 @@ void Node::invalidate() {
     auto pre = std::move(prev);
     auto nex = std::move(next);
     
+    prev = nullptr;
+    next = nullptr;
+    parent = nullptr;
+    
     assert(!next);
     assert(!prev);
+    assert(!parent);
     
     if(nex) {
         nex->prev = pre;
@@ -892,11 +910,11 @@ void Node::invalidate() {
 }
 
 void Node::move_to_cache(Node::Ref& node) {
-    move_to_cache(node.obj);
+    move_to_cache(node.get());
     node = nullptr;
 }
 
-void Node::move_to_cache(Node* node) {
+void Node::move_to_cache(Node::Ptr node) {
     if(!node)
         return;
     
@@ -919,7 +937,7 @@ void Brototype::move_to_cache(List_t* list, typename std::unique_ptr<Brototype>&
     node = nullptr;
 }
 
-void Node::Ref::release_check() {
+/*void Node::Ref::release_check() {
     if(!obj)
         return;
     
@@ -931,7 +949,7 @@ void Node::Ref::release_check() {
             delete obj;
     }
     obj = nullptr;
-}
+}*/
 
 /**
  * Merges arrays of HorizontalLines into Blobs.
