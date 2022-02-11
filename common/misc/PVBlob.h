@@ -54,7 +54,7 @@ struct bid {
     }
     
     std::string toStr() const;
-    static std::string class_name() { return "pv::bid"; }
+    static std::string class_name() { return "blob"; }
     static bid fromStr(const std::string& str);
 
     static constexpr uint32_t from_data(ushort x0, ushort x1, ushort y0, uint8_t N) {
