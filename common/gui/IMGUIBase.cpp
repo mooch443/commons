@@ -557,8 +557,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
         if(_fonts.empty()) {
             ImFontConfig config;
-            config.OversampleH = 3;
-            config.OversampleV = 1;
+            config.OversampleH = 5;
+            config.OversampleV = 5;
 
             auto load_font = [&](int no, std::string suffix) {
                 config.FontNo = no;

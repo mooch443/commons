@@ -155,15 +155,24 @@ protected:
         GETTER(Color, fillclr)
         
     public:
-        Rect(const Bounds& size = Bounds(), const Color &fill = Black, const Color &line = Transparent)
+        Rect(const Bounds& size = Bounds(), const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1))
             : gui::Drawable(Type::RECT, size), _lineclr(line), _fillclr(fill)
-        {}
+        {
+            set_scale(scale);
+        }
         virtual ~Rect() {}
         
         CHANGE_SETTER(lineclr)
         CHANGE_SETTER(fillclr)
         
         std::ostream &operator <<(std::ostream &os) override;
+        
+        void set(const Bounds& size, const Color &fill, const Color &line, const Vec2& scale) {
+            set_bounds(size);
+            set_fillclr(fill);
+            set_lineclr(line);
+            set_scale(scale);
+        }
         
     protected:
         bool swap_with(Drawable* d) override {
@@ -188,13 +197,33 @@ protected:
         Circle(const Vec2& pos = Vec2(),
                float radius = 1,
                const Color& line_color = White,
-               const Color& fill_color = Transparent)
+               const Color& fill_color = Transparent,
+               const Vec2& scale = Vec2(1),
+               const Vec2& origin = Vec2(0))
             : gui::Drawable(Type::CIRCLE, Bounds(pos, Size2(radius*2)), Vec2(0.5)),
                 _radius(radius),
                 _line_clr(line_color),
                 _fill_clr(fill_color)
-        { }
+        {
+            set_scale(scale);
+            set_origin(origin);
+        }
         virtual ~Circle() {}
+        
+        void set(const Vec2& pos,
+                 float radius,
+                 const Color& line_color,
+                 const Color& fill_color,
+                 const Vec2& scale,
+                 const Vec2& origin)
+        {
+            set_pos(pos);
+            set_radius(radius);
+            set_scale(scale);
+            set_origin(origin);
+            set_line_clr(line_color);
+            set_fill_clr(fill_color);
+        }
         
         void set_radius(float radius) {
             if(_radius != radius) {
@@ -239,8 +268,25 @@ protected:
         bool _bounds_calculated;
         
     public:
-        Text(const std::string& txt = "", const Vec2& pos = Vec2(), const Color& color = Black, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX));
+        Text(const std::string& txt = "", const Vec2& pos = Vec2(), const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX));
         virtual ~Text() {}
+        
+        void set(const std::string& txt, const Vec2& pos, const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0)) {
+            set_txt(txt);
+            set_pos(pos);
+            set_color(color);
+            if(origin.empty()) {
+                auto o = font.align == Align::Center
+                    ? Vec2(0.5, 0.5)
+                    : (font.align == Align::Right
+                       ? Vec2(1.0, 0.0)
+                       : (font.align == Align::VerticalCenter ? Vec2(0, 0.5) : Vec2()));
+                set_origin(o);
+            } else
+                set_origin(origin);
+            set_font(font);
+            set_scale(scale);
+        }
         
         void set_txt(const std::string& txt) {
             if(txt == _txt)
@@ -365,6 +411,13 @@ protected:
         ExternalImage(Ptr&& source, const Vec2& pos = Vec2(), const Vec2& scale = Vec2(1,1), const Color& color = Transparent);
         ~ExternalImage() { }
         ExternalImage(const ExternalImage& e) = delete;
+        
+        void set(Ptr&& source, const Vec2& pos, const Vec2& scale, const Color& color) {
+            set_source(std::move(source));
+            set_pos(pos);
+            set_scale(scale);
+            set_color(color);
+        }
         
         CHANGE_SETTER(url)
         CHANGE_SETTER(color)

@@ -358,6 +358,61 @@ void DrawStructure::close_dialogs() {
         return d;
     }
 
+template<typename T>
+T* add(T* d) {
+    // special case for custom drawable collections
+    /*DrawableCollection* custom;
+     if(d->type() == Type::SECTION
+     && (custom = dynamic_cast<DrawableCollection*>(d)))
+     {
+     add_collection(custom, false);
+     return custom;
+     }*/
+    //if(dynamic_cast<DrawableCollection*>(d))
+    
+}
+
+template<Type::data::values type, typename T, class ...Args>
+T* DrawStructure::create(Args... args) {
+    if(!_active_section)
+        begin_section("root");
+    
+    //static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
+    //static_assert(!std::is_base_of<DrawableCollection, T>::value, "Cannot add DrawableCollection using add_object. Use wrap_object.");
+    T* d = nullptr;
+    
+    // check if current object is reusable
+    if(type != Type::SECTION
+       && _active_section->_children.size() > _active_section->_index
+       && _active_section->_children.at(_active_section->_index)->type() == type)
+       //&& dynamic_cast<T*>(_children.at(_index)) != nullptr
+       //&& _children.at(_index)->swap_with(d))
+    {
+        // reusing successful!
+        //auto c = Type::Class(type).name();
+        //Debug("Reused object of type '%s'", c);
+        //delete d;
+        
+        static_cast<T*>(_active_section->_children.at(_active_section->_index))->set(std::forward<Args>(args)...);
+        d = (T*)_active_section->_children.at(_active_section->_index);
+    }
+    else {
+        d = new T(std::forward<Args>(args)...);
+        //Debug("Have to insert object of type '%S'", &type);
+        _active_section->_children.insert(_active_section->_children.begin() + (int64_t)_active_section->_index, d);
+        
+        //if(d->type() == Type::VERTICES)
+        //    static_cast<Vertices*>(d)->prepare();
+        if(d->parent() != _active_section)
+            d->set_parent(_active_section);
+    }
+    
+    _active_section->_index++;
+    return d;
+    
+    //return _active_section->add(ptr);
+}
+
     Dialog* DrawStructure::dialog(const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
         std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
@@ -366,16 +421,18 @@ void DrawStructure::close_dialogs() {
     
     Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color)
     {
-        return static_cast<Text*>(add_object(new Text(txt, pos, color, Font(1))));
+        return create<Type::data::values::TEXT, Text>(txt, pos, color, Font(1), Vec2(1));
+        //return static_cast<Text*>(add_object(new Text(txt, pos, color, Font(1))));
     }
 
     Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color, const Font& font, const Vec2& scale)
     {
-        return static_cast<Text*>(add_object(new Text(txt, pos, color, font, scale)));
+        return create<Type::data::values::TEXT, Text>(txt, pos, color, font, scale);
     }
 
-    Circle* DrawStructure::circle(const Vec2 &pos, float radius, const Color& color, const Color& fill_color) {
-        return static_cast<Circle*>(add_object(new Circle(pos, radius, color, fill_color)));
+    Circle* DrawStructure::circle(const Vec2 &pos, float radius, const Color& color, const Color& fill_color, const Vec2& scale, const Vec2& origin) {
+        return create<Type::data::values::CIRCLE, Circle>(pos, radius, color, fill_color, scale, origin);
+        //return static_cast<Circle*>(add_object(new Circle(pos, radius, color, fill_color)));
     }
 
     Line* DrawStructure::line(const Vec2 &pos0, const Vec2 &pos1, float thickness, const Color& color) {
@@ -399,13 +456,15 @@ void DrawStructure::close_dialogs() {
     }
 
     Rect* DrawStructure::rect(const Vec2 &pos, const Vec2 &size, const gui::Color &inside, const Color& outside) {
-        return static_cast<Rect*>(add_object(new Rect(Bounds(pos, size), inside, outside)));
+        return create<Type::data::values::RECT, Rect>(Bounds(pos, size), inside, outside, Vec2(1));
+        //return static_cast<Rect*>(add_object(new Rect(Bounds(pos, size), inside, outside)));
     }
     
     Rect* DrawStructure::rect(const Bounds &rect, const gui::Color &inside, const Color& outside, const Vec2& scale) {
-        auto r = static_cast<Rect*>(add_object(new Rect(rect, inside, outside)));
-        r->set_scale(scale);
-        return r;
+        //auto r = static_cast<Rect*>(add_object(new Rect(rect, inside, outside)));
+        //r->set_scale(scale);
+        //return r;
+        return create<Type::data::values::RECT, Rect>(rect, inside, outside, scale);
     }
     
     Vertices* DrawStructure::vertices(const std::vector<Vec2> &points, const gui::Color &color, PrimitiveType type) {
@@ -434,7 +493,9 @@ void DrawStructure::close_dialogs() {
             Warning("Trying to add image with dimensions %dx%d.", image->cols, image->rows);
             return NULL;
         }
-        return static_cast<ExternalImage*>(add_object(new ExternalImage(std::move(image), pos, scale, color)));
+        
+        return create<Type::data::values::IMAGE, ExternalImage>(std::move(image), pos, scale, color);
+        //return static_cast<ExternalImage*>(add_object(new ExternalImage(std::move(image), pos, scale, color)));
     }
     
     /*Drawable* DrawStructure::_add_object(gui::Drawable *ptr) {

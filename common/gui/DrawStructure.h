@@ -175,6 +175,9 @@ namespace gui {
             
             return _active_section->add(ptr);
         }
+        
+        template<Type::data::values, typename T, class ...Args>
+        T* create(Args... args);
         //Drawable* _add_object(gui::Drawable *ptr);
         
         ExternalImage* image(const Vec2& pos, ExternalImage::Ptr&& image, const Vec2& scale = Vec2(1.0f, 1.0f), const Color& color = Transparent);
@@ -182,7 +185,7 @@ namespace gui {
         Text* text(const std::string& txt, const Vec2& pos, const Color& color = White);
         Text* text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale = Vec2(1));
         
-        Circle* circle(const Vec2& pos, float radius, const Color& color = White, const Color& fill_color = Transparent);
+        Circle* circle(const Vec2& pos, float radius, const Color& color = White, const Color& fill_color = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0));
         
         Line* line(const Vec2& pos0, const Vec2& pos1, float thickness, const Color& color = White);
         Line* line(const std::vector<Vec2>& points, float thickness, const Color& color = White);

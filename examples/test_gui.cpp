@@ -64,7 +64,9 @@ template<size_t i>
 constexpr void action(DrawStructure& graph) {
     if constexpr (!is_pixel<i>())
         return;
+    
     graph.circle(offset[i].pos, radius + 3, White.alpha(200), offset[i].color);
+    graph.text("BBC MicroOwl", Vec2(10, 10), White, Font(1));
 }
 
 

@@ -6,7 +6,7 @@
 namespace cmn {
 
 struct Frame_t {
-    using number_t = long_t;
+    using number_t = int32_t;
     static constexpr number_t invalid = -1;
 
     number_t _frame = invalid;
