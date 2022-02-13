@@ -1,4 +1,4 @@
-name: CondaBuildMacOS
+name: MacOS
 
 on: [push]
 
@@ -7,7 +7,7 @@ env:
   BUILD_TYPE: Release
   MACOSX_DEPLOYMENT_TARGET: 11.0
   CONDA_BUILD_SYSROOT: /Applications/Xcode_12.2.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX11.0.sdk
-  GITHUB_WORKFLOW: CondaBuildMacOS
+  GITHUB_WORKFLOW: MacOS
 
 jobs:
   build:
