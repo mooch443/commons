@@ -40,7 +40,33 @@ DWORD __inline __builtin_ctz(uint32_t value)
  */
 
 namespace cmn {
-typedef std::vector<std::tuple<std::unique_ptr<std::vector<HorizontalLine>>, std::unique_ptr<std::vector<uchar>>>> blobs_t;
+namespace blob {
+using line_ptr_t = std::unique_ptr<std::vector<HorizontalLine>>;
+using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
+
+struct Pair {
+    blob::line_ptr_t lines;
+    blob::pixel_ptr_t pixels;
+    
+    Pair() = default;
+    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels)
+        : lines(std::move(lines)),
+          pixels(std::move(pixels))
+    {}
+    /*Pair& operator=(Pair&& other) {
+        if(!lines) {
+            lines = std::move(other.lines);
+            pixels = std::move(other.pixels);
+        } else {
+            *lines = std::move(*other.lines);
+            *pixels = std::move(*other.pixels);
+        }
+        return *this;
+    }*/
+};
+}
+
+typedef std::vector<blob::Pair> blobs_t;
 constexpr int CV_MAX_THICKNESS = 32767;
 }
 

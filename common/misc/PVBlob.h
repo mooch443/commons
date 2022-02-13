@@ -95,12 +95,8 @@ namespace std
 namespace pv {
     
     class Blob : public cmn::Blob {
-    public:
-        using line_ptr_t = std::unique_ptr<std::vector<cmn::HorizontalLine>>;
-        using pixel_ptr_t = std::unique_ptr<const std::vector<uchar>>;
-        
     protected:
-        GETTER_NCONST(pixel_ptr_t, pixels)
+        GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels)
         GETTER_I(bool, split, false)
         GETTER_I(bid, parent_id, pv::bid::invalid)
         GETTER_I(bid, blob_id, pv::bid::invalid)
@@ -112,10 +108,10 @@ namespace pv {
         
     public:
         Blob();
-        Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels);
-        //Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels);
-        Blob(const line_ptr_t::element_type& lines, const pixel_ptr_t::element_type& pixels);
-        Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels);
+        Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels);
+        //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
+        Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels);
+        Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
         Blob(const pv::Blob& other);
         
         BlobPtr threshold(int32_t value, const cmn::Background& background);
@@ -132,7 +128,7 @@ namespace pv {
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
         
-        void set_pixels(pixel_ptr_t&& pixels);
+        void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
         //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
         
         static decltype(_pixels) calculate_pixels(cmn::Image::Ptr image, const decltype(_hor_lines)& lines);
@@ -180,7 +176,7 @@ namespace pv {
         //! compresses an array of HorizontalLines to an array of ShortHorizontalLines
         static std::vector<ShortHorizontalLine> compress(const std::vector<cmn::HorizontalLine>& lines);
         //! uncompresses an array of ShortHorizontalLines back to HorizontalLines
-        static Blob::line_ptr_t uncompress(uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed);
+        static cmn::blob::line_ptr_t uncompress(uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed);
         
     public:
         constexpr ShortHorizontalLine() : _x0(0), _x1(0) {}

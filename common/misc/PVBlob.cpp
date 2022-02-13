@@ -3,6 +3,7 @@
 #include <misc/Timer.h>
 namespace pv {
     using namespace cmn;
+    using namespace cmn::blob;
 
     /*const bid& CompressedBlob::blob_id() const {
         if(!own_id.valid())
@@ -85,7 +86,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return ret;
     }
     
-    Blob::line_ptr_t ShortHorizontalLine::uncompress(
+    blob::line_ptr_t ShortHorizontalLine::uncompress(
         uint16_t start_y,
         const std::vector<ShortHorizontalLine>& compressed)
     {
