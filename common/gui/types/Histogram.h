@@ -358,7 +358,7 @@ namespace gui {
                 const auto& size = bounds();
                 
                 begin();
-                advance(new Rect(Bounds(Vec2(), this->size()), Black.alpha(125)));
+                add<Rect>(Bounds(Vec2(), this->size()), Black.alpha(125));
                 
                 if(!_title.empty())
                     advance_wrap(_title_obj);
@@ -408,9 +408,12 @@ namespace gui {
                         }
                     }
                     
-                    auto text = advance(new Text("N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median),
-                           legend_pos, clr,
-                           Font(0.5, Align::Right)));
+                    auto text = add<Text>(
+                        "N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median),
+                        legend_pos, 
+                        clr,
+                        Font(0.5, Align::Right));
+
                     legend_pos.y += text->height();
                     
                     const float min_bar = yticks.first,
@@ -425,23 +428,20 @@ namespace gui {
                         const auto bar_height = max(1, min(1, samples / (max_bar - min_bar)) * element.y);
                         
                         // draw bar
-                        Rect *rect = new Rect(Bounds(Vec2(bar_pos.x,
-                                                        bar_pos.y + element.y - bar_height),
-                                                   Vec2(element.x, bar_height)),
-                                              clr);
-                        advance(rect);
+                        add<Rect>(Bounds(
+                            Vec2(bar_pos.x, bar_pos.y + element.y - bar_height), 
+                            Size2(element.x, bar_height)), 
+                            clr);
                         
                         if(i == 0) {
-                            // label for x-axis
-                            text = new Text(Meta::toStr(v),
-                                            Vec2(bar_pos.x + element.x * 0.5f,
-                                               bar_pos.y + element.y + axes_width + text_height * 0.5f),
-                                            White,
-                                            Font(0.5, Align::Center));
-                            
+                            // label for x-axis                            
                             float text_x = text->pos().x;
                             if(text_x - last_text.x > 40) {
-                                text = static_cast<Text*>(advance(text));
+                                auto text = add<Text>(Meta::toStr(v),
+                                    Vec2(bar_pos.x + element.x * 0.5f,
+                                        bar_pos.y + element.y + axes_width + text_height * 0.5f),
+                                    White,
+                                    Font(0.5, Align::Center));
                                 last_text.x = text_x;
                                 
                                 // tick on x-axis
@@ -452,15 +452,14 @@ namespace gui {
                                                           bar_pos.y + element.y + axes_width * 0.5f + 3),
                                                      White });
                                 
-                            } else
-                                delete text;
+                            }
                         }
                         
                         bar_pos.x += padding + element.x;
                     }
                 }
                 
-                advance(new Vertices(vertices, PrimitiveType::Lines, Vertices::TRANSPORT));
+                add<Vertices>(vertices, PrimitiveType::Lines);
                 end();
                 
                 //Debug("Updated in %.2fms.", timer.elapsed() * 1000);
