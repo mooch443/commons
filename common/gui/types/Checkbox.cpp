@@ -48,7 +48,8 @@ namespace gui {
             begin();
             advance_wrap(_box);
             if(_checked)
-                advance(new Rect(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black));
+                add<Rect>(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black);
+                //advance(new Rect(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black));
             if(!_text.empty())
                 advance_wrap(_description);
             end();

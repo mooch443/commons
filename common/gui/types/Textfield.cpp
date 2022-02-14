@@ -547,15 +547,22 @@ void Textfield::set_postfix(const std::string &p) {
             advance_wrap(*_placeholder);
            
         } else if(!_postfix.empty()) {
-            auto tmp = new Text(_postfix, Vec2(width() - 5, height() * 0.5), _text_color.exposure(0.5), Font(max(0.1, _text_display.font().size * 0.9)));
-            tmp->set_origin(Vec2(1, 0.5));
-            advance(tmp);
+            //auto tmp = new Text(_postfix, Vec2(width() - 5, height() * 0.5), _text_color.exposure(0.5), Font(max(0.1, _text_display.font().size * 0.9)));
+            //tmp->set_origin(Vec2(1, 0.5));
+            add<Text>(_postfix,
+                      Vec2(width() - 5, height() * 0.5),
+                      _text_color.exposure(0.5),
+                      Font(max(0.1, _text_display.font().size * 0.9)),
+                      Vec2(1, 0.5));
+            //advance(tmp);
         }
             
         if(read_only()) {
-            auto tmp = new Text("(read-only)", Vec2(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)));
-            tmp->set_origin(Vec2(1, 0.5));
-            advance(tmp);
+            //auto tmp = new Text("(read-only)", Vec2(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)));
+            //tmp->set_origin(Vec2(1, 0.5));
+            //advance(tmp);
+            
+            add<Text>("(read-only)", Vec2(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)), Vec2(1, 0.5));
         }
         
         if(!_selection.empty()) {

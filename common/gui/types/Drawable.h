@@ -29,7 +29,7 @@ namespace gui {
         NONE,    VERTICES,  CIRCLE,
         RECT,    TEXT,      IMAGE,
         SECTION, SINGLETON, ENTANGLED,
-        POLYGON
+        POLYGON, LINE
     )
     
     float interface_scale();

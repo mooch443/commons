@@ -272,7 +272,7 @@ namespace gui {
                     break;
                 }
             }
-            advance(new Text(item_name, _title.pos(), _title.color(), _title.font()));
+            add<Text>(item_name, _title.pos(), _title.color(), _title.font());
         }
     }
     
@@ -369,10 +369,10 @@ namespace gui {
                              Vec2(size.width - local.x*2,
                                   _row_height - local.y*2)));
             advance_wrap(*r);
-            advance(new Text(*item,
-                                  offset+local+Vec2(size.width, _row_height)*0.5f,
-                                  White,
-                                  Font(0.6, Align::Center)));
+            add<Text>(std::string(*item),
+                      offset+local+Vec2(size.width, _row_height)*0.5f,
+                      White,
+                      Font(0.6, Align::Center));
             offset.y += inversion_correct_height;
         }
         

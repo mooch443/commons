@@ -460,7 +460,7 @@ namespace gui {
                     }
                 }
                 
-                advance(new Vertices(vertices, Lines, Vertices::TRANSPORT));
+                advance(new Vertices(vertices, PrimitiveType::Lines, Vertices::TRANSPORT));
                 end();
                 
                 //Debug("Updated in %.2fms.", timer.elapsed() * 1000);

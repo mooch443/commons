@@ -134,13 +134,16 @@ void Graph::update() {
         return !(A == highlighted || (B != highlighted && A < B));
     });
     
-    advance(new Vertices(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,
-                         Vec2(max_width, (1.0f - y_offset_percent) * max_height) + _margin,
-                         fg));
+    add<Vertices>(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,
+                  Vec2(max_width, (1.0f - y_offset_percent) * max_height) + _margin,
+                  fg);
     
-    advance(new Vertices(Vec2(custom_y_axis_offset, 0) + _margin,
-                         Vec2(custom_y_axis_offset, max_height) + _margin,
-                         fg));
+    add<Vertices>(Vec2(custom_y_axis_offset, 0) + _margin,
+                  Vec2(custom_y_axis_offset, max_height) + _margin,
+                  fg);
+    //advance(new Vertices(Vec2(custom_y_axis_offset, 0) + _margin,
+    //                     Vec2(custom_y_axis_offset, max_height) + _margin,
+    //                     fg));
     
     auto label_point_x = [&](float x_visual, float value) {
         float x = max_width * x_visual - y_axis_offset;
@@ -154,8 +157,10 @@ void Graph::update() {
         ss << value;
         std::string str = ss.str();
         
-        advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
-        return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
+        add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
+        //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
+        return add<Text>(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font);
+        //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
     };
     
     auto label_point_y = [&](float y_visual, float value) {
@@ -170,8 +175,10 @@ void Graph::update() {
         ss << std::setprecision(2) << value;
         std::string str = ss.str();
         
-        advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
-        advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
+        add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
+        add<Text>(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font);
+        //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
+        //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
     };
 #define TYPE_IS(X) ( (int)f._type & (int)Type:: X )
     
@@ -239,9 +246,10 @@ void Graph::update() {
             if(work->back().y != null.y)
                 work->push_back(Vec2(work->back().x, null.y));
             
-            auto ptr = new Polygon(work);
-            ptr->set_fill_clr(vertices.front().color().alpha(50));
-            advance(ptr);
+            add<Polygon>(work, vertices.front().color().alpha(50));
+            //auto ptr = new Polygon(work);
+            //ptr->set_fill_clr(vertices.front().color().alpha(50));
+            //advance(ptr);
             
             work = std::make_shared<std::vector<Vec2>>();
         };
@@ -360,7 +368,7 @@ void Graph::update() {
             if(TYPE_IS(POINTS))
             {
                 if(!is_invalid(y0))
-                    advance(new Circle(current, 3, org_clr));
+                    add<Circle>(current, 3, org_clr);
             }
             
             if (f._type != Graph::POINTS && ((current.y >= _margin.y && current.y <= height())
@@ -372,7 +380,7 @@ void Graph::update() {
                     if(i && (prev.y < _margin.y || prev.y > height())) {
                         if(TYPE_IS(AREA) || idx == highlighted)
                             split_polygon(vertices);
-                        advance(new Vertices(vertices, LineStrip, Vertices::TRANSPORT));
+                        add<Vertices>(vertices, PrimitiveType::LineStrip);
                         vertices.clear();
                         
                         prev.y = min(max_height, max(_margin.y, prev.y));
@@ -392,7 +400,7 @@ void Graph::update() {
         if(f._type != Graph::POINTS && !vertices.empty()) {
             if(TYPE_IS(AREA) || idx == highlighted)
                 split_polygon(vertices);
-            advance(new Vertices(vertices, LineStrip, Vertices::TRANSPORT));
+            add<Vertices>(vertices, PrimitiveType::LineStrip);
         }
     }
 #undef TYPE_IS
@@ -402,19 +410,19 @@ void Graph::update() {
         for(auto &p : line.v) {
             positions.push_back(Vertex(transform_point(p), line.color));
         }
-        advance(new Line(positions, line.thickness));
+        add<Line>(positions, line.thickness);
     }
     
     if(!_title.txt().empty()) {
         _title.set_pos(Vec2(20, 15));
         _title.set_color(fg);
-        advance(new Rect(Bounds(_title.pos() - Vec2(1, 1),
+        add<Rect>(Bounds(_title.pos() - Vec2(1, 1),
                                 Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
-                         Black.alpha(150)));
+                         Black.alpha(150));
         
-        advance(new Rect(Bounds(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
+        add<Rect>(Bounds(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
                                 Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
-                                Black.alpha(150)));
+                                Black.alpha(150));
         advance_wrap(_title);
     }
     

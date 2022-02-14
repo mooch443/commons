@@ -29,8 +29,8 @@ void VertexArray::prepare() {
     if(!_transport)
         return;
     
-    _original_points.resize(0);
-    _original_points.insert(_original_points.end(), _transport->begin(), _transport->end());
+    _original_points = *_transport;
+    //_original_points.insert(_original_points.end(), _transport->begin(), _transport->end());
     
     _points = nullptr;
     _transport = NULL;
@@ -50,8 +50,9 @@ void VertexArray::update_size() {
         return;
     
     if(_points) {
-        _points->resize(0);
-        _points->insert(_points->end(), _original_points.begin(), _original_points.end());
+        *_points = _original_points;
+        //_points->resize(0);
+        //_points->insert(_points->end(), _original_points.begin(), _original_points.end());
     } else
         _points = std::make_shared<std::vector<Vertex>>(_original_points);
     
@@ -173,7 +174,7 @@ Vertices::Vertices(const Vec2& p0, const Vec2& p1, const Color& clr)
     : Vertices({
         Vertex(p0, clr),
         Vertex(p1, clr)
-    }, LineStrip, MEMORY::COPY)
+    }, PrimitiveType::LineStrip, MEMORY::COPY)
 { }
 
 Polygon::Polygon()
@@ -182,13 +183,13 @@ Polygon::Polygon()
     update_size();
 }
 
-Polygon::Polygon(std::shared_ptr<std::vector<Vec2>> vertices)
-    : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(Transparent), _border_clr(Transparent), _size_calculated(false)
+Polygon::Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr, const Color& line_clr)
+    : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(fill_clr), _border_clr(line_clr), _size_calculated(false)
 {
 }
 
-Polygon::Polygon(const std::vector<Vertex>& vertices)
-    : Drawable(Type::POLYGON), _fill_clr(Transparent), _border_clr(Transparent), _size_calculated(false)
+Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, const Color& line_clr)
+    : Drawable(Type::POLYGON), _fill_clr(fill_clr), _border_clr(line_clr), _size_calculated(false)
 {
     _vertices = std::make_shared<std::vector<Vec2>>(vertices.begin(), vertices.end());
     if(!vertices.empty()) {
@@ -691,9 +692,9 @@ std::ostream & ExternalImage::operator <<(std::ostream &os) {
 std::ostream & VertexArray::operator <<(std::ostream &os) {
     char primitive_type = 'S';
     switch (primitive()) {
-        case LineStrip: break;
-        case Triangles: primitive_type = 'T'; break;
-        case Lines:     primitive_type = 'L'; break;
+        case PrimitiveType::LineStrip: break;
+        case PrimitiveType::Triangles: primitive_type = 'T'; break;
+        case PrimitiveType::Lines:     primitive_type = 'L'; break;
             
         default:
             Warning("Serialization: Unknown primitive type.");

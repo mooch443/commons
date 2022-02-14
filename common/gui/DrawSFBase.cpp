@@ -685,6 +685,7 @@ namespace gui {
                 break;
             }
                 
+            case Type::LINE:
             case Type::VERTICES: {
                 auto ptr = static_cast<Vertices*>(state.obj());
                 

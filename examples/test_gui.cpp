@@ -60,15 +60,14 @@ constexpr bool is_pixel() {
     return owl[i] == '*';
 }
 
+static Entangled e;
+
 template<size_t i>
 constexpr void action(DrawStructure& graph) {
     if constexpr (!is_pixel<i>())
         return;
-    
     graph.circle(offset[i].pos, radius + 3, White.alpha(200), offset[i].color);
-    graph.text("BBC MicroOwl", Vec2(10, 10), White, Font(1));
 }
-
 
 template<size_t i>
 constexpr Vec2 get_start() {
@@ -149,6 +148,13 @@ int main(int argc, char**argv) {
         [&] <std::size_t... Is> (std::index_sequence<Is...>) {
             ( action<Is>( graph ), ...);
         }(owl_indexes);
+        
+        
+        graph.text("BBC MicroOwl", Vec2(10, 10), White, Font(1));
+        e.update([](Entangled &e) {
+            e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
+        });
+        graph.wrap_object(e);
         
         timer.reset();
         return !terminate;

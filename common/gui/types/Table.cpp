@@ -18,7 +18,7 @@ namespace gui {
         
         std::map<column_t, Bounds> title_bounds;
         for(const auto & [index, title] : _columns) {
-            title_bounds[index] = advance(new Text(title, Vec2(), White, Font(_default_font.size * 1.25, Style::Bold)))->bounds();
+            title_bounds[index] = add<Text>(title, Vec2(), White, Font(_default_font.size * 1.25, Style::Bold))->bounds();
         }
         
         end();

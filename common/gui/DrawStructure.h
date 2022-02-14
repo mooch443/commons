@@ -195,7 +195,7 @@ namespace gui {
         Rect* rect(const Bounds& rect, const Color& inside = White, const Color& outside = Transparent, const Vec2& scale = Vec2(1.f, 1.f));
         
         Vertices* vertices(const std::vector<Vec2>& points, const Color& color, PrimitiveType type);
-        Vertices* vertices(const std::vector<Vertex>& points, PrimitiveType type = LineStrip);
+        Vertices* vertices(const std::vector<Vertex>& points, PrimitiveType type = PrimitiveType::LineStrip);
         Vertices* line(const Vec2& pos0, const Vec2& pos1, const Color& color = White);
         
         void set_scale(float s) { if(_scale == Vec2(s,s)) return; _scale = Vec2(s, s); all_changed(); }

@@ -11,7 +11,7 @@
 if ( _ ## NAME == NAME ) return; _ ## NAME = NAME; set_dirty(); }
 
 namespace gui {
-    enum PrimitiveType
+    enum class PrimitiveType
     {
         Points,
         Lines,
@@ -38,6 +38,16 @@ protected:
 public:
     VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory);
     virtual ~VertexArray();
+    
+    void set(const std::vector<Vertex>& p, PrimitiveType primitive) {
+        if(_original_points != p || primitive != _primitive) {
+            _original_points = p;
+            _points = nullptr;
+            _transport = nullptr;
+            _primitive = primitive;
+            update_size();
+        }
+    }
     
     virtual const std::vector<Vertex>& points() {
         if(_transport)
@@ -84,16 +94,28 @@ protected:
     
     class Vertices final : public VertexArray {
     public:
-        Vertices(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory);
+        static constexpr auto Class = Type::data::values::VERTICES;
+        
+    public:
+        Vertices(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory = MEMORY::COPY);
         Vertices(const Vec2& p0, const Vec2& p1, const Color& clr);
         
         ~Vertices() {}
+        
+        void set(const std::vector<Vertex>& p, PrimitiveType primitive) {
+            VertexArray::set(p, primitive);
+        }
+        void set(const Vec2& p0, const Vec2& p1, const Color& clr) {
+            VertexArray::set(std::vector<Vertex>{Vertex(p0, clr), Vertex(p1, clr)}, PrimitiveType::LineStrip);
+        }
         
     protected:
         std::string vertex_sub_type() const override { return "Vertices"; }
     };
     
     class Line final : public VertexArray {
+    public:
+        static constexpr auto Class = Type::data::values::LINE;
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
         float _process_scale;
@@ -108,9 +130,20 @@ protected:
             : VertexArray(p, PrimitiveType::LineStrip, memory),
               _processed_points(NULL), _process_scale(-1),
               _max_scale(1)
-        { if(_thickness != 1) set_thickness(t); }
+        {
+            _type = Type::LINE;
+            if(_thickness != 1) set_thickness(t);
+        }
         
-        ~Line() {}
+        void set(const std::vector<Vertex>& p, float t) {
+            set_thickness(t);
+            VertexArray::set(p, PrimitiveType::LineStrip);
+        }
+        
+        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t = 1) {
+            set_thickness(t);
+            VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
+        }
         
         const std::vector<Vertex>& points() override final;
         std::ostream &operator <<(std::ostream &os) override;
@@ -135,14 +168,24 @@ protected:
         GETTER(Color, fill_clr)
         GETTER(Color, border_clr)
         bool _size_calculated;
+    public:
+        static constexpr auto Class = Type::data::values::POLYGON;
         
     public:
         Polygon();
-        Polygon(std::shared_ptr<std::vector<Vec2>> vertices);
-        Polygon(const std::vector<Vertex>& vertices);
+        Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
+        Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
         void set_fill_clr(const Color& clr);
         void set_border_clr(const Color& clr);
         void set_vertices(const std::vector<Vec2>& vertices);
+        
+        void set(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
+        {
+            set_fill_clr(fill_clr);
+            set_border_clr(line_clr);
+            set_vertices(*vertices);
+        }
+        
     protected:
         bool swap_with(Drawable* d) override;
         void update_size();
@@ -150,15 +193,18 @@ protected:
     };
     
     class Rect final : public Drawable {
+    public:
+        static constexpr auto Class = Type::data::values::RECT;
     private:
         GETTER(Color, lineclr)
         GETTER(Color, fillclr)
         
     public:
-        Rect(const Bounds& size = Bounds(), const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1))
+        Rect(const Bounds& size = Bounds(), const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0))
             : gui::Drawable(Type::RECT, size), _lineclr(line), _fillclr(fill)
         {
             set_scale(scale);
+            set_origin(origin);
         }
         virtual ~Rect() {}
         
@@ -167,11 +213,12 @@ protected:
         
         std::ostream &operator <<(std::ostream &os) override;
         
-        void set(const Bounds& size, const Color &fill, const Color &line, const Vec2& scale) {
-            set_bounds(size);
+        void set(const Bounds& size, const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0)) {
             set_fillclr(fill);
             set_lineclr(line);
             set_scale(scale);
+            set_origin(origin);
+            set_bounds(size);
         }
         
     protected:
@@ -188,6 +235,8 @@ protected:
     };
     
     class Circle final : public Drawable {
+    public:
+        static constexpr auto Class = Type::data::values::CIRCLE;
     private:
         GETTER(float, radius)
         GETTER(Color, line_clr)
@@ -212,10 +261,10 @@ protected:
         
         void set(const Vec2& pos,
                  float radius,
-                 const Color& line_color,
-                 const Color& fill_color,
-                 const Vec2& scale,
-                 const Vec2& origin)
+                 const Color& line_color = White,
+                 const Color& fill_color = Transparent,
+                 const Vec2& scale = Vec2(1),
+                 const Vec2& origin = Vec2(0.5))
         {
             set_pos(pos);
             set_radius(radius);
@@ -260,6 +309,8 @@ protected:
     };
     
     class Text final : public Drawable {
+    public:
+        static constexpr auto Class = Type::data::values::TEXT;
     private:
         GETTER(std::string, txt)
         GETTER(Color, color)
@@ -382,6 +433,7 @@ protected:
     
     class ExternalImage : public Drawable {
     public:
+        static constexpr auto Class = Type::data::values::IMAGE;
         using Ptr = Image::UPtr;
 /*#ifdef NDEBUG
         struct ReturnRef {
@@ -412,7 +464,7 @@ protected:
         ~ExternalImage() { }
         ExternalImage(const ExternalImage& e) = delete;
         
-        void set(Ptr&& source, const Vec2& pos, const Vec2& scale, const Color& color) {
+        void set(Ptr&& source, const Vec2& pos, const Vec2& scale = Vec2(1), const Color& color = Transparent) {
             set_source(std::move(source));
             set_pos(pos);
             set_scale(scale);

@@ -1312,6 +1312,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             break;
         }
             
+        case Type::LINE:
         case Type::VERTICES: {
             auto ptr = static_cast<Vertices*>(o);
             

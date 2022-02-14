@@ -436,10 +436,14 @@ T* DrawStructure::create(Args... args) {
     }
 
     Line* DrawStructure::line(const Vec2 &pos0, const Vec2 &pos1, float thickness, const Color& color) {
-        return add_object(new Line({
+        return create<Type::data::values::VERTICES, Line>(std::vector<Vertex>{
             Vertex(pos0, color),
             Vertex(pos1, color)
-        }, thickness, Vertices::TRANSPORT));
+        }, thickness);
+        /*return add_object(new Line({
+            Vertex(pos0, color),
+            Vertex(pos1, color)
+        }, thickness, Vertices::TRANSPORT));*/
     }
     
     Line* DrawStructure::line(const std::vector<Vec2>& points, float thickness, const Color& color) {

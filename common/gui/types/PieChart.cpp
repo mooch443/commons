@@ -181,12 +181,16 @@ namespace gui {
         if(!begun())
             U_EXCEPTION("begin() first");
         
-        advance(new Vertices(_vertices, PrimitiveType::Triangles, Vertices::COPY));
-        advance(new Vertices(_lines, PrimitiveType::Lines, Vertices::COPY));
+        add<Vertices>(_vertices, PrimitiveType::Triangles);
+        add<Vertices>(_lines, PrimitiveType::Lines);
         
         for(size_t i=0; i<_slices.size(); ++i) {
             if(!_slices[i].name.empty())
-                advance(new Text(_slices[i].name, _centers[i], White, Font(0.8, Align::Center), Vec2(_slices[i].scale * max(0.1,_radius / 250.f))));
+                add<Text>(_slices[i].name,
+                          _centers[i],
+                          White,
+                          Font(0.8, Align::Center),
+                          Vec2(_slices[i].scale * max(0.1,_radius / 250.f)));
         }
     }
 }

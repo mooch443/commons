@@ -109,17 +109,18 @@ namespace gui {
                 
                 break;
             }
-                
+            
+            case Type::LINE:
             case Type::VERTICES: {
                 auto ptr = static_cast<Vertices*>(o);
                 int t = 1;
                 if(dynamic_cast<Line*>(o))
                     t = max(1, min(static_cast<Line*>(o)->thickness(), CV_MAX_THICKNESS));
                 
-                if(ptr->primitive() != LineStrip && ptr->primitive() != Lines)
+                if(ptr->primitive() != PrimitiveType::LineStrip && ptr->primitive() != PrimitiveType::Lines)
                     U_EXCEPTION("Does not support other primitive types yet.");
                 
-                if(ptr->primitive() == LineStrip) {
+                if(ptr->primitive() == PrimitiveType::LineStrip) {
                     Vec2 prev;
                     for(size_t i=0; i<ptr->points().size(); i++) {
                         auto &p = ptr->points().at(i);

@@ -120,6 +120,7 @@ namespace gui {
         //  Drawable (and trying to match it with current one).
         //Drawable* advance(Drawable *d);
         
+    private:
         template<typename T>
         T* advance(T* d) {
             static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
@@ -138,6 +139,74 @@ namespace gui {
             
             _index++;
             return ret;
+        }
+        
+    public:
+        template<typename T, class... Args, Type::data::values type = T::Class>
+        T* add(Args... args) {
+            static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
+            
+            /*if(_index < _children.size()) {
+                auto& current = _children[_index];
+                auto owned = _owned[current];
+                if(dynamic_cast<T*>(current) == NULL) {
+                    
+                }
+            }*/
+            
+            T* ptr = nullptr;
+            bool used_or_deleted = false;
+            
+            if(_index < _children.size()) {
+                auto& current = _children[_index];
+                auto owned = _owned[current];
+                if(owned
+                   && current->type() == type
+                   /*&& dynamic_cast<T*>(current) != nullptr*/)
+                { //&& current->swap_with(d)) {
+                    //Debug("Swapping %X with %X", current, d);
+                    assert(dynamic_cast<T*>(current) != nullptr);
+                    static_cast<T*>(current)->set(std::forward<Args>(args)...);
+                    //delete d;
+                    used_or_deleted = true;
+                    //d = current;
+                    ptr = static_cast<T*>(current);
+
+                } else {
+                    ptr = new T(std::forward<Args>(args)...);
+                    if(!owned) {
+                        _currently_removed.insert(current);
+                        current = ptr;
+                        used_or_deleted = true;
+
+                    } else {
+                        auto tmp = current;
+                        current = ptr;
+                        used_or_deleted = true;
+                        tmp->set_parent(NULL);
+                        //deinit_child(false, tmp);
+                    }
+
+                    init_child(_index, true);
+                }
+                
+            } else {
+                assert(_index == _children.size());
+                ptr = new T(std::forward<Args>(args)...);
+                _children.push_back(ptr);
+                used_or_deleted = true;
+                init_child(_index, true);
+            }
+            
+            if(!used_or_deleted)
+                U_EXCEPTION("Not used or deleted.");
+            
+            //auto ptr = insert_at_current_index(d);
+            //T *ret = dynamic_cast<T*>(d);
+            //assert(ret != nullptr);
+            
+            _index++;
+            return ptr;
         }
         
         virtual void auto_size(Margin margins);
