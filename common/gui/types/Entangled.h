@@ -21,7 +21,8 @@ namespace gui {
     //  PARENT.
     class Entangled : public SectionInterface {
     protected:
-        std::vector<Drawable*> _children;
+        std::vector<Drawable*> _current_children;
+        std::vector<Drawable*> _new_children;
         robin_hood::unordered_set<Drawable*> _currently_removed;
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false)
@@ -40,7 +41,7 @@ namespace gui {
         GETTER_I(Rangef, scroll_limit_y, Rangef(0, FLT_MAX))
         
         //! For delta updates.
-        GETTER_I(size_t, index, 0)
+        size_t _index = 0;
         
         GETTER_I(bool, content_changed, true)
         bool _content_changed_while_updating = false;
@@ -58,13 +59,13 @@ namespace gui {
         
         //! Adds object to container.
         //  Also, this takes ownership of objects.
-        Drawable* entangle(Drawable* d);
+        //Drawable* entangle(Drawable* d);
         
         bool clickable() final override {
             if(_clickable)
                 return true;
             
-            for(auto o : _children)
+            for(auto o : _current_children)
                 if(o->clickable())
                     return true;
             return false;
@@ -76,21 +77,16 @@ namespace gui {
         void set_scroll_enabled(bool enable);
         void set_scroll_limits(const Rangef& x, const Rangef& y);
         
-        std::vector<Drawable*>& children() override {
-            return _children;
-        }
-        
-        bool empty() const {
-            return _children.empty();
-        }
+        std::vector<Drawable*>& children() override;
+        bool empty() const;
         
         template<typename T, typename = typename std::enable_if<std::is_convertible<T, const Drawable*>::value && std::is_pointer<T>::value>::type>
         T child(size_t index) const {
-            if(index >= _children.size())
+            if(index >= _current_children.size())
                 throw CustomException<std::invalid_argument>("Item %d out of range.", index);
-            auto ptr = dynamic_cast<T>(_children.at(index));
+            auto ptr = dynamic_cast<T>(_current_children.at(index));
             if(!ptr)
-                throw CustomException<std::invalid_argument>("Item %d of type %s cannot be converted to", index, _children.at(index)->type().name());
+                throw CustomException<std::invalid_argument>("Item %d of type %s cannot be converted to", index, _current_children.at(index)->type().name());
             return ptr;
         }
         
@@ -121,17 +117,10 @@ namespace gui {
         //Drawable* advance(Drawable *d);
         
     private:
-        template<typename T>
+        /*template<typename T>
         T* advance(T* d) {
             static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
             
-            /*if(_index < _children.size()) {
-                auto& current = _children[_index];
-                auto owned = _owned[current];
-                if(dynamic_cast<T*>(current) == NULL) {
-                    
-                }
-            }*/
             
             auto ptr = insert_at_current_index(d);
             T *ret = dynamic_cast<T*>(ptr);
@@ -139,7 +128,7 @@ namespace gui {
             
             _index++;
             return ret;
-        }
+        }*/
         
     public:
         template<typename T, class... Args, Type::data::values type = T::Class>
@@ -157,8 +146,8 @@ namespace gui {
             T* ptr = nullptr;
             bool used_or_deleted = false;
             
-            if(_index < _children.size()) {
-                auto& current = _children[_index];
+            if(_index < _current_children.size()) {
+                auto current = _current_children[_index];
                 auto owned = _owned[current];
                 if(owned
                    && current->type() == type
@@ -176,26 +165,25 @@ namespace gui {
                     ptr = new T(std::forward<Args>(args)...);
                     if(!owned) {
                         _currently_removed.insert(current);
-                        current = ptr;
+                        //current = ptr;
                         used_or_deleted = true;
 
                     } else {
-                        auto tmp = current;
-                        current = ptr;
+                        //auto tmp = current;
+                        //current = ptr;
                         used_or_deleted = true;
-                        tmp->set_parent(NULL);
+                        current->set_parent(NULL);
                         //deinit_child(false, tmp);
                     }
 
-                    init_child(_index, true);
+                    init_child(ptr, _index, true);
                 }
                 
             } else {
                 assert(_index == _children.size());
                 ptr = new T(std::forward<Args>(args)...);
-                _children.push_back(ptr);
                 used_or_deleted = true;
-                init_child(_index, true);
+                init_child(ptr, _index, true);
             }
             
             if(!used_or_deleted)
@@ -205,39 +193,40 @@ namespace gui {
             //T *ret = dynamic_cast<T*>(d);
             //assert(ret != nullptr);
             
+            _set_child(ptr, true, _index);
             _index++;
             return ptr;
         }
         
         virtual void auto_size(Margin margins);
         
+        void _set_child(Drawable* ptr, bool , size_t index);
+        
         //! Advance in delta-update without taking ownership of objects. (Instead, copy them/match them to current object).
         template<typename T>
         void advance_wrap(T &d) {
             Drawable *ptr = &d;
             
-            if(_index < _children.size()) {
-                auto &current = _children[_index];
+            if(_index < _current_children.size()) {
+                auto current = _current_children[_index];
                 if(current != ptr) {
-                    auto tmp = current;
-                    current = ptr;
-                    
-                    if(_owned[tmp]) {
-                        tmp->set_parent(NULL);
+                    assert(!contains(_new_children, ptr));
+                    if(_owned[current]) {
+                        current->set_parent(NULL);
                         //deinit_child(false, current);
                     } else {
-                        _currently_removed.insert(tmp);
+                        _currently_removed.insert(current);
                     }
                     
                     //current = ptr;
-                    init_child(_index, false);
+                    init_child(ptr, _index, false);
                     
                     // try to see if this object already exists somewhere
                     // in the list after this
-                    typedef decltype(_children.begin())::difference_type diff_t;
-                    for(size_t i=_index+1; i<_children.size(); i++) {
-                        if(_children[i] == ptr) {
-                            _children.erase(_children.begin() + (diff_t)i);
+                    typedef decltype(_current_children.begin())::difference_type diff_t;
+                    for(size_t i=_index+1; i<_current_children.size(); i++) {
+                        if(_current_children[i] == ptr) {
+                            _current_children.erase(_current_children.begin() + (diff_t)i);
                             break;
                         }
                     }
@@ -246,12 +235,12 @@ namespace gui {
             } else {
                 assert(std::find(_children.begin(), _children.end(), ptr) == _children.end());
                 assert(_index == _children.size());
-                _children.push_back(ptr);
-                init_child(_index, false);
+                //_children.push_back(ptr);
+                init_child(ptr, _index, false);
             }
             
             //assert(std::set<Drawable*>(_children.begin(), _children.end()).size() == _children.size());
-            
+            _set_child(ptr, false, _index);
             _index++;
         }
         
@@ -262,7 +251,7 @@ namespace gui {
         void set_parent(SectionInterface* p) final override;
     protected:
         
-        Drawable* insert_at_current_index(Drawable* );
+        //Drawable* insert_at_current_index(Drawable* );
         
         //! Entangled objects support delta updates by creating a new one and adding it using add_object to the DrawStructure.
         bool swap_with(Drawable* d) override;
@@ -273,6 +262,6 @@ namespace gui {
         void set_content_changed(bool c);
         
     private:
-        void init_child(size_t i, bool own);
+        void init_child(Drawable* d, size_t i, bool own);
     };
 }

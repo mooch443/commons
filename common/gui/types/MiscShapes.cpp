@@ -10,9 +10,10 @@ namespace gui {
         :  _fill(fill),
            _line(line)
     {
+        begin();
         if(fill != Transparent) {
             _points = simple_triangle(fill, size);
-            entangle(new Vertices(_points, PrimitiveType::Triangles, Vertices::TRANSPORT));
+            add<Vertices>(_points, PrimitiveType::Triangles);
         }
         
         if(line != Transparent) {
@@ -20,9 +21,10 @@ namespace gui {
             if(_points.empty())
                 _points = array;
             array.push_back(array.front());
-            
-            entangle(new Vertices(array, PrimitiveType::LineStrip, Vertices::COPY));
+            add<Vertices>(array, PrimitiveType::LineStrip);
         }
+        
+        end();
         
         set_origin(Vec2(0.5, 0.65));
         set_bounds(Bounds(center, size));
@@ -37,7 +39,10 @@ namespace gui {
     {
         assert(vertices.size() % 3 == 0);
         _points = vertices;
-        entangle(new Vertices(_points, PrimitiveType::Triangles, Vertices::TRANSPORT));
+        begin();
+        add<Vertices>(_points, PrimitiveType::Triangles);
+        end();
+        //entangle(new Vertices(_points, PrimitiveType::Triangles, Vertices::TRANSPORT));
     }
 
     std::vector<Vertex> Triangle::simple_triangle(const gui::Color &color, const Size2& size) {

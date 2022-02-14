@@ -469,7 +469,7 @@ namespace gui {
                 Section::reuse_objects();
             }*/
             
-            return _children;
+            return Entangled::children();
         }
         
     protected:

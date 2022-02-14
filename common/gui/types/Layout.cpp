@@ -141,18 +141,18 @@ namespace gui {
         float x = 0;
         float max_height = _margins.y + _margins.height;
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             //c->set_bounds_changed();
             c->update_bounds();
         }
         
         //if(_policy == CENTER || _policy == BOTTOM)
         {
-            for(auto c : _children)
+            for(auto c : children())
                 max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
         }
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             x += _margins.x;
             
             //if(c->type() == Type::TEXT)
@@ -202,16 +202,16 @@ namespace gui {
         float y = 0;
         float max_width = _margins.x + _margins.width;
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             //c->set_bounds_changed();
             c->update_bounds();
         }
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
         }
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             y += _margins.y;
             
             auto local = c->local_bounds();
@@ -233,7 +233,7 @@ namespace gui {
     void Layout::auto_size(Margin margin) {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);

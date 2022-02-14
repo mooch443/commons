@@ -23,10 +23,10 @@ namespace gui {
         
     Entangled::Entangled(const std::vector<Drawable*>& objects)
         : SectionInterface(Type::ENTANGLED, NULL),
-            _children(objects)
+            _current_children(objects)
     {
-        for(size_t i=0; i<_children.size(); i++)
-            init_child(i, true);
+        for(size_t i=0; i<_current_children.size(); i++)
+            init_child(_current_children[i], i, true);
     }
     
     void Entangled::update(const std::function<void(Entangled& base)> create) {
@@ -36,8 +36,8 @@ namespace gui {
     }
     
     Entangled::~Entangled() {
-        auto children = _children;
-        _children.clear();
+        auto children = _current_children;
+        _current_children.clear();
         
         for(size_t i=0; i<children.size(); i++) {
 			if (stage() && stage()->selected_object() == children[i])
@@ -80,12 +80,13 @@ namespace gui {
         children_rect_changed();
     }
     
-    Drawable* Entangled::entangle(Drawable* d) {
-        _children.push_back(d);
-        init_child(_children.size()-1, true);
+    /*Drawable* Entangled::entangle(Drawable* d) {
+        _set_child(d, true, _index);
+        //_children.push_back(d);
+        init_child(d, _new_children.size()-1, true);
         
         return d;
-    }
+    }*/
     
     void Entangled::set_scroll_offset(Vec2 scroll_offset) {
         if(!_scroll_enabled)
@@ -111,7 +112,32 @@ namespace gui {
         _scroll_offset = scroll_offset;
         children_rect_changed();
     }
+
+std::vector<Drawable*>& Entangled::children() {
+    //if(_begun)
+    //    return _new_children;
+    if(_begun)
+        Except("Undefined while updating.");
+    return _current_children;
+}
+
+bool Entangled::empty() const {
+    //if(_begun)
+    //    return _new_children.empty();
+    if(_begun)
+        U_EXCEPTION("Undefined while updating.");
+    return _current_children.empty();
+}
     
+void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
+    if(index < _new_children.size()) {
+        _new_children[index] = ptr;
+    } else {
+        _new_children.resize(index + 1);
+        _new_children[index] = ptr;
+    }
+}
+
     void Entangled::begin() {
         if(_begun) {
             print_stacktrace();
@@ -121,13 +147,18 @@ namespace gui {
         _begun = true;
         _index = 0;
         _currently_removed.clear();
+        //_new_children.resize(_current_children.size());
+        //std::fill(_new_children.begin(), _new_children.end(), nullptr);
+        _new_children.clear();
     }
     void Entangled::end() {
-        while(_index < _children.size()) {
-            auto tmp = _children[_index];
+        _begun = false;
+        
+        while(_index < _current_children.size()) {
+            auto tmp = _current_children[_index];
             tmp->set_parent(NULL);
-            if(_children.size() > _index && _children[_index] == tmp)
-                deinit_child(true, _children.begin() + _index, tmp);
+            if(_current_children.size() > _index && _current_children[_index] == tmp)
+                deinit_child(true, _current_children.begin() + _index, tmp);
         }
         
         while(!_currently_removed.empty()) {
@@ -144,15 +175,17 @@ namespace gui {
                 deinit_child(false, d);
             }
         }
+        
+        _new_children.resize(_index);
+        std::swap(_current_children, _new_children);
             //deinit_child(false, *_currently_removed.begin());
         
-        _begun = false;
     }
     
     void Entangled::auto_size(Margin margin) {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
@@ -168,6 +201,8 @@ namespace gui {
             return;
         
         //before_draw();
+        if(_begun)
+            U_EXCEPTION("Undefined while updating.");
         SectionInterface::update_bounds();
     }
     
@@ -206,7 +241,7 @@ namespace gui {
         _content_changed_while_updating = false;
         update();
         
-        for(auto c : _children) {
+        for(auto c : children()) {
             if(c->type() == Type::ENTANGLED)
                 static_cast<Entangled*>(c)->before_draw();
         }
@@ -285,24 +320,27 @@ namespace gui {
             //return;
         }
 */
+        //if(_begun)
+        //    U_EXCEPTION("Undefined while updating.");
         deinit_child(true, d);
     }
     
     void Entangled::clear_children() {
-        while(!_children.empty())
-            deinit_child(true, _children.begin(), _children.front());
+        if(_begun)
+            U_EXCEPTION("Undefined while updating.");
         
-        _children.clear();
+        while(!_current_children.empty())
+            deinit_child(true, _current_children.begin(), _current_children.front());
+        
+        _current_children.clear();
         _owned.clear();
         assert(_currently_removed.empty());
         
         set_content_changed(true);
     }
     
-    void Entangled::init_child(size_t i, bool own) {
-        assert(i < _children.size());
-        auto d = _children[i];
-        
+    void Entangled::init_child(Drawable* d, size_t, bool own) {
+        //assert(i < _children.size());
         auto it = _currently_removed.find(d);
         if(it != _currently_removed.end())
             _currently_removed.erase(it);
@@ -323,8 +361,8 @@ namespace gui {
     
     void Entangled::deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d) {
         if(erase) {
-            if(it != _children.end())
-                _children.erase(it);
+            if(it != _current_children.end())
+                _current_children.erase(it);
         }
         
         if(_owned.find(d) != _owned.end()) {
@@ -342,47 +380,47 @@ namespace gui {
     
     void Entangled::deinit_child(bool erase, Drawable* d) {
         if(!erase) {
-            deinit_child(false, _children.end(), d);
+            deinit_child(false, _current_children.end(), d);
         } else
-            deinit_child(erase, std::find(_children.begin(), _children.end(), d), d);
+            deinit_child(erase, std::find(_current_children.begin(), _current_children.end(), d), d);
     }
 
-Drawable* Entangled::insert_at_current_index(Drawable* d) {
+/*Drawable* Entangled::insert_at_current_index(Drawable* d) {
     bool used_or_deleted = false;
     
-    if(_index < _children.size()) {
-        auto& current = _children[_index];
+    if(_index < _current_children.size()) {
+        auto current = _current_children[_index];
         auto owned = _owned[current];
         if(owned && current->swap_with(d)) {
             //Debug("Swapping %X with %X", current, d);
             delete d; used_or_deleted = true;
-            return current;
+            d = current;
 
         } else {
             if(!owned) {
                 _currently_removed.insert(current);
-                current = d; used_or_deleted = true;
+                used_or_deleted = true;
 
             } else {
-                auto tmp = current;
-                current = d; used_or_deleted = true;
-                tmp->set_parent(NULL);
-                //deinit_child(false, tmp);
+                used_or_deleted = true;
+                current->set_parent(NULL);
             }
-
-            init_child(_index, true);
+            
+            init_child(d, _index, true);
         }
         
     } else {
         assert(_index == _children.size());
-        _children.push_back(d); used_or_deleted = true;
-        init_child(_index, true);
+        //_children.push_back(d);
+        used_or_deleted = true;
+        init_child(d, _index, true);
     }
     
     if(!used_or_deleted)
         U_EXCEPTION("Not used or deleted.");
     
+    _set_child(d, true, _index);
     return d;
-}
+}*/
 
 }
