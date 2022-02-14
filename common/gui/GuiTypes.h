@@ -199,7 +199,7 @@ protected:
                const Color& line_color = White,
                const Color& fill_color = Transparent,
                const Vec2& scale = Vec2(1),
-               const Vec2& origin = Vec2(0))
+               const Vec2& origin = Vec2(0.5))
             : gui::Drawable(Type::CIRCLE, Bounds(pos, Size2(radius*2)), Vec2(0.5)),
                 _radius(radius),
                 _line_clr(line_color),
