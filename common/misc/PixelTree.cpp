@@ -28,7 +28,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         tmp_line.x1 = x;
 };
 
-#define _____FN_TYPE (const Background* bg, const HorizontalLine& line, const uchar* px, int threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
+#define _____FN_TYPE (const Background* bg, const HorizontalLine& line, uchar*& px, int threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
     
     inline void line_with_grid _____FN_TYPE {
         auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
