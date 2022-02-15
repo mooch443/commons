@@ -24,7 +24,7 @@ void Map::register_callback(const char *obj, const callback_func &func) {
     }
     
     LockGuard guard(this);
-    if(_callbacks.count(obj) > 0)
+    if(_callbacks.find(obj) != _callbacks.end())
         U_EXCEPTION("Object %s (%x) already in map callbacks.", obj, obj);
     
     _callbacks[obj] = func;
