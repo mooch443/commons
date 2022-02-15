@@ -116,16 +116,16 @@ namespace gui {
 std::vector<Drawable*>& Entangled::children() {
     //if(_begun)
     //    return _new_children;
-    if(_begun)
-        Except("Undefined while updating.");
+    //if(_begun)
+    //    Except("Undefined while updating.");
     return _current_children;
 }
 
 bool Entangled::empty() const {
     //if(_begun)
     //    return _new_children.empty();
-    if(_begun)
-        U_EXCEPTION("Undefined while updating.");
+    //if(_begun)
+    //    U_EXCEPTION("Undefined while updating.");
     return _current_children.empty();
 }
     
@@ -201,8 +201,8 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
             return;
         
         //before_draw();
-        if(_begun)
-            U_EXCEPTION("Undefined while updating.");
+        //if(_begun)
+        //    Except("Undefined while updating.");
         SectionInterface::update_bounds();
     }
     
