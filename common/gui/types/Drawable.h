@@ -209,7 +209,7 @@ namespace gui {
                  const Vec2& origin = Vec2());
         
         virtual ~Drawable();
-        virtual Drawable& operator=(const Drawable& other) = default;
+        Drawable& operator=(const Drawable&) = delete;
         
         /**
          * Add event handling lambda functions.

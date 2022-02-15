@@ -381,7 +381,7 @@ protected:
             return Drawable::size();
         }
         
-        Drawable& operator=(const Drawable& other) override {
+        /*Drawable& operator=(const Drawable& other) override {
             Drawable::operator=(other);
             
             auto ptr = static_cast<const Text*>(&other);
@@ -390,7 +390,7 @@ protected:
             set_font(ptr->_font);
             
             return *this;
-        }
+        }*/
         
     private:
         //! Hide set_size method, which doesn't apply to Texts.
