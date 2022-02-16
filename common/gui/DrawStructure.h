@@ -183,7 +183,7 @@ namespace gui {
         ExternalImage* image(const Vec2& pos, ExternalImage::Ptr&& image, const Vec2& scale = Vec2(1.0f, 1.0f), const Color& color = Transparent);
         
         Text* text(const std::string& txt, const Vec2& pos, const Color& color = White);
-        Text* text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale = Vec2(1));
+        Text* text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0);
         
         Circle* circle(const Vec2& pos, float radius, const Color& color = White, const Color& fill_color = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0.5));
         

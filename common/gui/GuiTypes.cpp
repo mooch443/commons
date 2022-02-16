@@ -507,7 +507,7 @@ std::ostream & Text::operator <<(std::ostream &os) {
     return os;
 }
 
-Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin)
+Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
 : gui::Drawable(Type::TEXT, Bounds(pos),
                 font.align == Align::Center
                     ? Vec2(0.5, 0.5)
@@ -518,8 +518,9 @@ Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Fo
       _txt(txt), _color(color), _font(font), _bounds_calculated(false)
 {
     set_scale(scale);
-    if(origin.x != FLT_MAX)
+    if(origin != Vec2(FLT_MAX))
         set_origin(origin);
+    set_rotation(rotation);
     //refresh_dims(); //! will be done when parent is set
 }
 

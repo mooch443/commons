@@ -358,20 +358,6 @@ void DrawStructure::close_dialogs() {
         return d;
     }
 
-template<typename T>
-T* add(T* d) {
-    // special case for custom drawable collections
-    /*DrawableCollection* custom;
-     if(d->type() == Type::SECTION
-     && (custom = dynamic_cast<DrawableCollection*>(d)))
-     {
-     add_collection(custom, false);
-     return custom;
-     }*/
-    //if(dynamic_cast<DrawableCollection*>(d))
-    
-}
-
 template<Type::data::values type, typename T, class ...Args>
 T* DrawStructure::create(Args... args) {
     if(!_active_section)
@@ -425,9 +411,9 @@ T* DrawStructure::create(Args... args) {
         //return static_cast<Text*>(add_object(new Text(txt, pos, color, Font(1))));
     }
 
-    Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color, const Font& font, const Vec2& scale)
+    Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
     {
-        return create<Type::data::values::TEXT, Text>(txt, pos, color, font, scale);
+        return create<Type::data::values::TEXT, Text>(txt, pos, color, font, scale, origin, rotation);
     }
 
     Circle* DrawStructure::circle(const Vec2 &pos, float radius, const Color& color, const Color& fill_color, const Vec2& scale, const Vec2& origin) {

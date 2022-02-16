@@ -319,14 +319,14 @@ protected:
         bool _bounds_calculated;
         
     public:
-        Text(const std::string& txt = "", const Vec2& pos = Vec2(), const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX));
+        Text(const std::string& txt = "", const Vec2& pos = Vec2(), const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0);
         virtual ~Text() {}
         
-        void set(const std::string& txt, const Vec2& pos, const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0)) {
+        void set(const std::string& txt, const Vec2& pos, const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0) {
             set_txt(txt);
             set_pos(pos);
             set_color(color);
-            if(origin.empty()) {
+            if(origin == Vec2(FLT_MAX)) {
                 auto o = font.align == Align::Center
                     ? Vec2(0.5, 0.5)
                     : (font.align == Align::Right
@@ -337,6 +337,7 @@ protected:
                 set_origin(origin);
             set_font(font);
             set_scale(scale);
+            set_rotation(rotation);
         }
         
         void set_txt(const std::string& txt) {

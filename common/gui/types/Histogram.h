@@ -437,7 +437,7 @@ namespace gui {
                             // label for x-axis                            
                             float text_x = text->pos().x;
                             if(text_x - last_text.x > 40) {
-                                auto text = add<Text>(Meta::toStr(v),
+                                add<Text>(Meta::toStr(v),
                                     Vec2(bar_pos.x + element.x * 0.5f,
                                         bar_pos.y + element.y + axes_width + text_height * 0.5f),
                                     White,
