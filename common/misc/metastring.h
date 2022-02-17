@@ -111,11 +111,6 @@ struct FileSize {
 
 // <concepts>
 #pragma region concepts
-template<template<class...>class Template, class T>
-struct is_instantiation : std::false_type {};
-template<template<class...>class Template, class... Ts>
-struct is_instantiation<Template, Template<Ts...>> : std::true_type {};
-
 template<typename T, typename U>
 concept _clean_same =
     std::same_as<T, typename std::remove_cv<U>::type>;

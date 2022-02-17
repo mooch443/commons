@@ -384,10 +384,21 @@ using remove_cvref_t = typename remove_cvref<T>::type;
         return result;
     }
 
+    template<template<class...>class Template, class T>
+    struct is_instantiation : std::false_type {};
+    template<template<class...>class Template, class... Ts>
+    struct is_instantiation<Template, Template<Ts...>> : std::true_type {};
+
     template<typename T, typename Q>
-        requires is_container<T>::value || is_queue<T>::value || is_deque<T>::value
+        requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
     inline bool contains(const T& s, const Q& value) {
         return std::find(s.begin(), s.end(), value) != s.end();
+    }
+
+    template<typename T, typename Q>
+        requires is_instantiation<UnorderedVectorSet, T>::value
+    inline bool contains(const T& s, const Q& value) {
+        return s.contains(value);
     }
 
     template<typename T, typename K>
