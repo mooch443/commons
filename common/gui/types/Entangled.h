@@ -180,7 +180,7 @@ namespace gui {
                 }
                 
             } else {
-                assert(_index == _children.size());
+                assert(_index == _new_children.size());
                 ptr = new T(std::forward<Args>(args)...);
                 used_or_deleted = true;
                 init_child(ptr, _index, true);
@@ -233,8 +233,8 @@ namespace gui {
                 }
                 
             } else {
-                assert(std::find(_children.begin(), _children.end(), ptr) == _children.end());
-                assert(_index == _children.size());
+                assert(std::find(_new_children.begin(), _new_children.end(), ptr) == _new_children.end());
+                assert(_index == _new_children.size());
                 //_children.push_back(ptr);
                 init_child(ptr, _index, false);
             }

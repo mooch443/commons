@@ -3,7 +3,8 @@
 
 namespace cmn {
     GenericThreadPool::GenericThreadPool(size_t nthreads, std::function<void(std::exception_ptr)> handle_exceptions, const std::string& thread_prefix, std::function<void()> init)
-        : _exception_handler(handle_exceptions), nthreads(0), stop(false), _init(init), _working(0), _thread_prefix(thread_prefix)
+            : _exception_handler(handle_exceptions ? handle_exceptions : [](auto e) { std::rethrow_exception(e); }),
+            nthreads(0), stop(false), _init(init), _working(0), _thread_prefix(thread_prefix)
     {
         resize(nthreads);
     }
@@ -28,9 +29,10 @@ namespace cmn {
                 size_t i = thread_pool.size();
                 thread_pool.push_back(new std::thread([this](std::function<void()> init, int idx)
                 {
-                    set_thread_name(this->thread_prefix()+"::thread_"+Meta::toStr(idx));
-                    std::unique_lock<std::mutex> lock(m);
+                    auto name = this->thread_prefix()+"::thread_"+Meta::toStr(idx);
+                    set_thread_name(name+"::init");
                     
+                    std::unique_lock<std::mutex> lock(m);
                     init();
                     
                     for(;;) {

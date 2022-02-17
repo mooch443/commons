@@ -21,7 +21,7 @@ namespace cmn {
         GETTER(std::string, thread_prefix)
         
     public:
-        GenericThreadPool(size_t nthreads, std::function<void(std::exception_ptr)> handle_exceptions = [](auto e) { std::rethrow_exception(e); }, const std::string& thread_prefix = "GenericThreadPool", std::function<void()> init = [](){});
+        GenericThreadPool(size_t nthreads, std::function<void(std::exception_ptr)> handle_exceptions = nullptr, const std::string& thread_prefix = "GenericThreadPool", std::function<void()> init = [](){});
         
         ~GenericThreadPool() {
             force_stop();
@@ -146,13 +146,13 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
         std::function<void(T&)> work_function;
         
     public:
-        QueueThreadPool(size_t nthreads, const std::function<void(T&)>& fn)
+        QueueThreadPool(size_t nthreads, const std::function<void(T&)>& fn, const std::string& prefix = "QueueThreadPool")
             : nthreads(nthreads), stop(false), _working(0), work_function(fn)
         {
             for (size_t i=0; i<nthreads; i++) {
-                thread_pool.push_back(new std::thread([&](int idx){
+                thread_pool.push_back(new std::thread([&, p = prefix](int idx){
                     std::unique_lock<std::mutex> lock(m);
-                    cmn::set_thread_name("QueueThreadPool::thread_"+cmn::Meta::toStr(idx));
+                    cmn::set_thread_name(p+"::thread_"+cmn::Meta::toStr(idx));
                     
                     for(;;) {
                         condition.wait(lock, [&](){ return !q.empty() || stop; });
