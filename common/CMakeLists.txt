@@ -116,67 +116,20 @@ set(RESOURCE_COPY_SINGLE_FILES
 
 set(COMMONS_LIBRARY_NAME commons)
 
-IF("${CMAKE_SYSTEM}" MATCHES "Linux")
-    message(STATUS "Copying files ${RESOURCE_COPY_SINGLE_FILES}")
-    foreach(comp ${RESOURCE_COPY_SINGLE_FILES})
-        get_filename_component(comp_s ${comp} NAME)
+message(STATUS "Copying files ${RESOURCE_COPY_SINGLE_FILES}")
+foreach(comp ${RESOURCE_COPY_SINGLE_FILES})
+    get_filename_component(comp_s ${comp} NAME)
+    add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    "${comp}"
+                    "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
+    install(FILES ${comp} DESTINATION bin)
+endforeach()
 
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink
-                "${comp}"
-                "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
-        message(STATUS ${CMAKE_COMMAND} -E create_symlink
+foreach(comp ${RESOURCE_COPY_FILES})
+    get_filename_component(comp_s ${comp} NAME)
+    add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${comp}"
             "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
-    endforeach()
-
-    foreach(comp ${RESOURCE_COPY_FILES})
-        get_filename_component(comp_s ${comp} NAME)
-
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${comp}"
-                "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
-    endforeach()
-elseif(WIN32)
-    message(STATUS "(windows) Copying files ${RESOURCE_COPY_SINGLE_FILES}")
-    message(STATUS "(install_prefix) :${CMAKE_INSTALL_PREFIX} :${CMAKE_BINARY_DIR}")
-    
-    foreach(comp ${RESOURCE_COPY_SINGLE_FILES})
-        get_filename_component(comp_s ${comp} NAME)
-
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${comp}"
-                "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
-    endforeach()
-
-    message(STATUS "(windows) Copying folders ${RESOURCE_COPY_FILES}")
-    foreach(comp ${RESOURCE_COPY_FILES})
-        get_filename_component(comp_s ${comp} NAME)
-
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${comp}"
-                "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/${comp_s}")
-    endforeach()
-    
-else()
-    message(STATUS "Copying files ${RESOURCE_COPY_SINGLE_FILES}")
-    foreach(comp ${RESOURCE_COPY_SINGLE_FILES})
-        get_filename_component(comp_s ${comp} NAME)
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/../Resources/${comp_s}")
-        install(FILES ${comp} DESTINATION bin)
-    endforeach()
-
-    foreach(comp ${RESOURCE_COPY_FILES})
-        get_filename_component(comp_s ${comp} NAME)
-        add_custom_command(TARGET ${COMMONS_LIBRARY_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${comp}"
-                "$<TARGET_FILE_DIR:${COMMONS_LIBRARY_NAME}>/../Resources/${comp_s}")
-    endforeach()
-endif()
+endforeach()
