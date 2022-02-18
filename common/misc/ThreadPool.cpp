@@ -36,7 +36,9 @@ namespace cmn {
                     init();
                     
                     for(;;) {
+#ifndef NDEBUG
                         set_thread_name(name+"::idle");
+#endif
                         condition.wait(lock, [&](){ return !q.empty() || stop; });
                         if(!q.empty()) {
                             // set busy!
@@ -44,8 +46,9 @@ namespace cmn {
                             
                             auto task = std::move(q.front());
                             q.pop();
-                            
+#ifndef NDEBUG
                             set_thread_name(name);
+#endif
                             
                             // free mutex, perform task, regain mutex
                             lock.unlock();
