@@ -60,6 +60,7 @@
 #include <exception>
 #include <stdarg.h>
 #include <concepts>
+#include <span>
 
 #ifdef WIN32
 #define _USE_MATH_DEFINES

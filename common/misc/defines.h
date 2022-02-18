@@ -296,6 +296,9 @@ using remove_cvref_t = typename remove_cvref<T>::type;
     
     template<class T, size_t Size>
     struct is_container<std::array<T, Size>> : public std::true_type {};
+
+    template<class T, size_t Size>
+    struct is_container<std::span<T, Size>> : public std::true_type {};
     
     template<class T> struct is_set : public std::false_type {};
     template<class T, class Alloc>
@@ -304,6 +307,8 @@ using remove_cvref_t = typename remove_cvref<T>::type;
     struct is_set<std::multiset<T, Alloc>> : public std::true_type {};
     template<class T, class Alloc>
     struct is_set<std::unordered_set<T, Alloc>> : public std::true_type {};
+    template<class T>
+    struct is_set<ska::bytell_hash_set<T>> : public std::true_type {};
     template<class T, class Alloc>
     struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
     template<class T, class Alloc>

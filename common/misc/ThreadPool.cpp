@@ -36,6 +36,7 @@ namespace cmn {
                     init();
                     
                     for(;;) {
+                        set_thread_name(name+"::idle");
                         condition.wait(lock, [&](){ return !q.empty() || stop; });
                         if(!q.empty()) {
                             // set busy!
@@ -43,6 +44,8 @@ namespace cmn {
                             
                             auto task = std::move(q.front());
                             q.pop();
+                            
+                            set_thread_name(name);
                             
                             // free mutex, perform task, regain mutex
                             lock.unlock();
