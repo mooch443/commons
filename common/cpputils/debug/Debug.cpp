@@ -31,7 +31,9 @@
 #include <sstream>
 #include <string>
 
+#if defined(WIN32)
 #include <io.h>
+#endif
 
 namespace DEBUG {
     bool& runtime_quiet() {
