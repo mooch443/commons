@@ -31,6 +31,8 @@
 #include <sstream>
 #include <string>
 
+#include <io.h>
+
 namespace DEBUG {
     bool& runtime_quiet() {
         static bool runtime_quiet = false;
@@ -234,56 +236,25 @@ if(!insert_start(tree, &current_node, e)) delete e; }
             return;
         }
         LAST_COLOR = value;
-        
-#ifdef _WIN32
-        WORD clr = (WORD)value;
-        if (value == CONSOLE_COLORS::BLACK) {
-            clr = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
-        }
 
-        if(ENABLE_COLORS == CONSOLE_COLOR_STATE::ENABLE_WINDOWS) {
-            HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-            SetConsoleTextAttribute(hConsole, clr);
-        }
-#else
-        
-        if (ENABLE_COLORS == CONSOLE_COLOR_STATE::ENABLE_XCODE) {
-#define COLOR(R, G, B) { r = R; g = G; b = B; break; }
-            
-            int r, g, b;
-            
-            switch (value) {
-                case YELLOW: COLOR(150, 150, 0)
-                case DARK_RED: COLOR(150, 0, 0)
-                case GREEN: COLOR(0, 150, 0)
-                case GRAY: COLOR(50, 50, 50)
-                case CYAN: COLOR(0, 100, 150)
-                case DARK_CYAN: COLOR(0, 50, 100)
-                case PINK: COLOR(200, 0, 150)
-                case BLUE: COLOR(0, 0, 200)
-                case BLACK: COLOR(0, 0, 0)
-                case DARK_GRAY: COLOR(50, 50, 50)
-                case WHITE: COLOR(130, 130, 130)
-                case DARK_GREEN: COLOR(0, 50, 0)
-                case PURPLE: COLOR(150, 0, 150)
-                case RED: COLOR(200, 0, 0)
-                case LIGHT_BLUE: COLOR(65, 162, 176)
-                    
-                default:
-                    COLOR(0, 0, 0);
-                    break;
-            }
-            
+        static std::once_flag flag;
+        static bool dont_print = true;
+        std::call_once(flag, []() {
 #if __APPLE__
-            if(out && out != stdout)
-                fprintf(out, "\033[fg%d,%d,%d;", r, g, b);
-            else
+            char* xcode_colors = getenv(XCODE_COLORS);
+            if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
+            {
 #endif
-                printf("\033[fg%d,%d,%d;", r, g, b);
-            
-#undef COLOR
-            
-        } else if(ENABLE_COLORS == CONSOLE_COLOR_STATE::ENABLE_UNIX) {
+                if (isatty(fileno(stdout)))
+                    dont_print = false;
+#if __APPLE__
+    }
+#endif
+    });
+
+        if (dont_print)
+            return;
+
 #define COLOR(PREFIX, FINAL) { prefix = PREFIX; final = FINAL; break; }
             
             int final = 0, prefix = 22;
@@ -320,8 +291,6 @@ if(!insert_start(tree, &current_node, e)) delete e; }
 #endif
                 printf("\033[%02d;%dm", prefix, final);
 #undef COLOR
-        }
-#endif
 	}
 
     template<typename T, typename Q>
@@ -783,7 +752,9 @@ if(!insert_start(tree, &current_node, e)) delete e; }
                 }
             }
         }
-        
+#ifdef WIN32
+        printf("\033[0m");
+#endif
 		//tree.root()->print();
         
 #undef INSERT_END

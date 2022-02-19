@@ -98,60 +98,70 @@ constexpr void init_offset() {
     };
 }
 
-using namespace DEBUG;
-
-#if __APPLE__
-#define XCODE_COLORS "OS_ACTIVITY_DT_MODE"
+#if defined(WIN32)
+#include <io.h>
 #endif
+
+enum class CONSOLE_COLORS{
+    BLACK = 0, DARK_BLUE = 1, DARK_GREEN = 2, DARK_CYAN = 3, DARK_RED = 4, PURPLE = 5, DARK_YELLOW = 6,
+    GRAY = 7, DARK_GRAY = 8, BLUE = 9, GREEN = 10, CYAN = 11, RED = 12, PINK = 13, YELLOW = 14,
+    WHITE = 15, LIGHT_BLUE
+};
 
 template<CONSOLE_COLORS value>
 std::string console_color() {
-#if /*!defined(NDEBUG) &&*/ defined(__APPLE__) || defined(__linux__)
     static std::once_flag flag;
     static bool dont_print = true;
-    std::call_once(flag, [](){
+    std::call_once(flag, []() {
 #if __APPLE__
-        char *xcode_colors = getenv(XCODE_COLORS);
-        if (!xcode_colors || (strcmp(xcode_colors, "YES")!=0))
+        char* xcode_colors = getenv("OS_ACTIVITY_DT_MODE");
+        if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
         {
 #endif
-            if(isatty(fileno(stdout)))
+            if (isatty(fileno(stdout)))
                 dont_print = false;
 #if __APPLE__
         }
 #endif
     });
-    
+
     if(dont_print)
         return "";
-#endif
     
 #define COLOR(PREFIX, FINAL) { prefix = PREFIX; final = FINAL; break; }
     int final = 0, prefix = 22;
     
     switch (value) {
-        case YELLOW: COLOR(1, 33)
-        case DARK_RED: COLOR(22, 31)
-        case GREEN: COLOR(22, 32)
-    #ifdef __APPLE__
-        case GRAY: COLOR(1, 30)
+        case CONSOLE_COLORS::YELLOW: COLOR(1, 33)
+        case CONSOLE_COLORS::DARK_RED: COLOR(22, 31)
+        case CONSOLE_COLORS::GREEN: COLOR(22, 32)
+    #if defined(__APPLE__)
+        case CONSOLE_COLORS::GRAY: COLOR(1, 30)
+    #elif defined(WIN32)
+        case CONSOLE_COLORS::GRAY: COLOR(0, 90)
     #else
-        case GRAY: COLOR(22, 37)
+        case CONSOLE_COLORS::GRAY: COLOR(22, 37)
     #endif
-        case CYAN: COLOR(1,36)
-        case DARK_CYAN: COLOR(22, 36)
-        case PINK: COLOR(22,35)
-        case BLUE: COLOR(22,34)
-        case BLACK: COLOR(22,30)
-        case DARK_GRAY: COLOR(1,30)
-        case WHITE: COLOR(1, 37)
-        case DARK_GREEN: COLOR(1, 32)
-        case PURPLE: COLOR(22, 35)
-        case RED: COLOR(1, 31)
-        case LIGHT_BLUE: COLOR(1, 34)
+        case CONSOLE_COLORS::CYAN: COLOR(1,36)
+        case CONSOLE_COLORS::DARK_CYAN: COLOR(22, 36)
+        case CONSOLE_COLORS::PINK: COLOR(22,35)
+        case CONSOLE_COLORS::BLUE: COLOR(22,34)
+#if defined(WIN32)
+        case CONSOLE_COLORS::BLACK: COLOR(1, 37)
+        case CONSOLE_COLORS::WHITE: COLOR(22, 30)
+        case CONSOLE_COLORS::DARK_GRAY: COLOR(0, 37)
+#else
+        case CONSOLE_COLORS::BLACK: COLOR(22, 30)
+        case CONSOLE_COLORS::WHITE: COLOR(1, 37)
+        case CONSOLE_COLORS::DARK_GRAY: COLOR(1, 30)
+#endif
+        case CONSOLE_COLORS::DARK_GREEN: COLOR(1, 32)
+        case CONSOLE_COLORS::PURPLE: COLOR(22, 35)
+        case CONSOLE_COLORS::RED: COLOR(1, 31)
+        case CONSOLE_COLORS::LIGHT_BLUE: COLOR(1, 34)
             
         default:
-            break;
+            COLOR(0, 0)
     }
     
     char buffer[128];
@@ -252,7 +262,7 @@ void print(Args&& ... args) {
     time(&rawtime);
     timeinfo = localtime(&rawtime);
     strftime(buffer, sizeof(buffer), "%H:%M:%S", timeinfo);
-    str = console_color<CONSOLE_COLORS::CYAN>() + "[" + buffer + "] " +console_color<CONSOLE_COLORS::BLACK>() + str;
+    str = console_color<CONSOLE_COLORS::CYAN>() + "[" + buffer + "] " +console_color<CONSOLE_COLORS::BLACK>() + str + console_color<CONSOLE_COLORS::BLACK>();
     printf("%s\n", str.c_str());
 }
 
