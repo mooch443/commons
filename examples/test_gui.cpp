@@ -1,6 +1,6 @@
 #include <gui/IMGUIBase.h>
 #include <misc/CommandLine.h>
-
+#include <misc/PVBlob.h>
 using namespace gui;
 
 namespace cexpression
@@ -98,9 +98,202 @@ constexpr void init_offset() {
     };
 }
 
+using namespace DEBUG;
+
+#if __APPLE__
+#define XCODE_COLORS "OS_ACTIVITY_DT_MODE"
+#endif
+
+template<CONSOLE_COLORS value>
+std::string console_color() {
+#if /*!defined(NDEBUG) &&*/ defined(__APPLE__) || defined(__linux__)
+    static std::once_flag flag;
+    static bool dont_print = true;
+    std::call_once(flag, [](){
+#if __APPLE__
+        char *xcode_colors = getenv(XCODE_COLORS);
+        if (!xcode_colors || (strcmp(xcode_colors, "YES")!=0))
+        {
+#endif
+            if(isatty(fileno(stdout)))
+                dont_print = false;
+#if __APPLE__
+        }
+#endif
+    });
+    
+    if(dont_print)
+        return "";
+#endif
+    
+#define COLOR(PREFIX, FINAL) { prefix = PREFIX; final = FINAL; break; }
+    int final = 0, prefix = 22;
+    
+    switch (value) {
+        case YELLOW: COLOR(1, 33)
+        case DARK_RED: COLOR(22, 31)
+        case GREEN: COLOR(22, 32)
+    #ifdef __APPLE__
+        case GRAY: COLOR(1, 30)
+    #else
+        case GRAY: COLOR(22, 37)
+    #endif
+        case CYAN: COLOR(1,36)
+        case DARK_CYAN: COLOR(22, 36)
+        case PINK: COLOR(22,35)
+        case BLUE: COLOR(22,34)
+        case BLACK: COLOR(22,30)
+        case DARK_GRAY: COLOR(1,30)
+        case WHITE: COLOR(1, 37)
+        case DARK_GREEN: COLOR(1, 32)
+        case PURPLE: COLOR(22, 35)
+        case RED: COLOR(1, 31)
+        case LIGHT_BLUE: COLOR(1, 34)
+            
+        default:
+            break;
+    }
+    
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "\033[%02d;%dm", prefix, final);
+    return buffer;
+#undef COLOR
+}
+
+template<typename T>
+requires _is_dumb_pointer<T> && (!std::same_as<const char*, T>)
+std::string parse_value(T ptr);
+
+template<typename T>
+    requires _has_tostr_method<T>
+std::string parse_value(const T& value) {
+    return console_color<CONSOLE_COLORS::DARK_GRAY>() + value.toStr();
+}
+
+template<typename T, typename K = remove_cvref_t<T>>
+    requires std::convertible_to<T, std::string> && (!std::same_as<K, std::string>)
+            && (!_is_dumb_pointer<T>)
+std::string parse_value(const T& value) {
+    return console_color<CONSOLE_COLORS::BLACK>() + std::string(value);
+}
+
+
+template<typename T, typename K = remove_cvref_t<T>>
+    requires is_numeric<K> || std::unsigned_integral<K>
+std::string parse_value(T&& value) {
+    return console_color<CONSOLE_COLORS::GREEN>() + Meta::toStr(value);
+}
+
+template<typename T, typename K = remove_cvref_t<T>>
+    requires std::same_as<K, std::string>
+std::string parse_value(const T& value) {
+    return console_color<CONSOLE_COLORS::RED>() + Meta::toStr(value);
+}
+
+template<template <typename, typename> class T, typename A, typename B>
+    requires is_pair<T<A, B>>::value
+std::string parse_value(const T<A, B>& m) {
+    return console_color<CONSOLE_COLORS::DARK_GRAY>()
+        + "["
+        + parse_value(m.first)
+        + console_color<CONSOLE_COLORS::GRAY>()
+        + ","
+        + parse_value(m.second)
+        + console_color<CONSOLE_COLORS::DARK_GRAY>()
+        + "]";
+}
+template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
+    requires is_set<K>::value || is_container<K>::value
+std::string parse_value(const T<Args...>& m) {
+    std::string str = console_color<CONSOLE_COLORS::BLACK>() + "[";
+    auto it = m.begin(), end = m.end();
+    for (;;) {
+        str += parse_value(*it);
+        
+        if(++it != end)
+            str += console_color<CONSOLE_COLORS::BLACK>() + ",";
+        else
+            break;
+    }
+    return str + console_color<CONSOLE_COLORS::BLACK>() + "]";
+}
+
+template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
+    requires is_map<K>::value
+std::string parse_value(const T<Args...>& m) {
+    std::string str = console_color<CONSOLE_COLORS::BLACK>() + "{";
+    for (auto& [k, v] : m) {
+        str += console_color<CONSOLE_COLORS::DARK_GRAY>() + "[" + parse_value(k) + console_color<CONSOLE_COLORS::GRAY>() + ":" + parse_value(v) + console_color<CONSOLE_COLORS::DARK_GRAY>() + "]";
+    }
+    return str+console_color<CONSOLE_COLORS::BLACK>() + "}";
+}
+
+template<typename T>
+    requires _is_dumb_pointer<T> && (!std::same_as<const char*, T>)
+std::string parse_value(T ptr) {
+    std::string str;
+    if constexpr(_has_class_name<std::remove_pointer_t<T>>)
+        str += console_color<CONSOLE_COLORS::BLACK>() + "("+console_color<CONSOLE_COLORS::CYAN>()+(std::remove_pointer_t<T>::class_name())+console_color<CONSOLE_COLORS::BLACK>()+"*)";
+    if(!ptr)
+        return str + console_color<CONSOLE_COLORS::PURPLE>() + "null";
+    if constexpr(_has_tostr_method<std::remove_pointer_t<T>>)
+        return str + parse_value(*ptr);
+    return str + "" + parse_value((uint64_t) ptr);
+}
+
+template<typename... Args>
+void print(Args&& ... args) {
+    std::string str = ((parse_value(std::forward<Args>(args)) + " ") + ...);
+    
+    time_t rawtime;
+    struct tm * timeinfo;
+    char buffer[128];
+    
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(buffer, sizeof(buffer), "%H:%M:%S", timeinfo);
+    str = console_color<CONSOLE_COLORS::CYAN>() + "[" + buffer + "] " +console_color<CONSOLE_COLORS::BLACK>() + str;
+    printf("%s\n", str.c_str());
+}
+
 int main(int argc, char**argv) {
     CommandLine cmd(argc, argv);
     cmd.cd_home();
+    
+    std::map<pv::bid, std::pair<std::string, float>> mappe;
+    mappe[pv::bid::invalid] = {"Test", 0.5f};
+    print("Map:",mappe, FileSize{uint64_t(1000 * 1000 * 2123)});
+    print(std::set<pv::bid>{pv::bid::invalid});
+    
+    pv::bid value;
+    print(std::set<pv::bid*>{nullptr, &value});
+    print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
+    exit(0);
+    
+    constexpr size_t count = 1000;
+    {
+        Timer timer;
+        for (size_t i=0; i<count; ++i) {
+            print("Test",i,"/",count);
+        }
+        
+        auto seconds = timer.elapsed();
+        print("This took", seconds,"seconds");
+    }
+    
+    {
+        Timer timer;
+        for (size_t i=0; i<count; ++i) {
+            Debug("Test %lu/%lu",i,count);
+        }
+        
+        auto seconds = timer.elapsed();
+        print("This took", seconds,"seconds");
+    }
+    
+    print("Test",std::string("test"));
+    //print("Test",5,6,7.0,std::vector<pv::bid>{pv::bid(1234), pv::bid::invalid},"MicroOwl starting...");
+    print("A normal print, hello world.");
 
     constexpr auto owl_indexes = std::make_index_sequence<sizeof(owl)>{};
     constexpr auto owl_update = [] <std::size_t... Is> (std::index_sequence<Is...>) { (inc_offset<Is>(), ...); };
