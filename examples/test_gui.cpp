@@ -156,7 +156,11 @@ std::string console_color() {
         case CONSOLE_COLORS::DARK_GRAY: COLOR(1, 30)
 #endif
         case CONSOLE_COLORS::DARK_GREEN: COLOR(1, 32)
+#if defined(WIN32)
+        case CONSOLE_COLORS::PURPLE: COLOR(22, 95)
+#else
         case CONSOLE_COLORS::PURPLE: COLOR(22, 35)
+#endif
         case CONSOLE_COLORS::RED: COLOR(1, 31)
         case CONSOLE_COLORS::LIGHT_BLUE: COLOR(1, 34)
             
@@ -170,90 +174,231 @@ std::string console_color() {
 #undef COLOR
 }
 
-template<typename T>
-requires _is_dumb_pointer<T> && (!std::same_as<const char*, T>)
-std::string parse_value(T ptr);
 
-template<typename T>
-    requires _has_tostr_method<T>
-std::string parse_value(const T& value) {
-    return console_color<CONSOLE_COLORS::DARK_GRAY>() + value.toStr();
-}
+class ParseValue {
+private:
+    ParseValue() = delete;
 
-template<typename T, typename K = remove_cvref_t<T>>
-    requires std::convertible_to<T, std::string> && (!std::same_as<K, std::string>)
-            && (!_is_dumb_pointer<T>)
-std::string parse_value(const T& value) {
-    return console_color<CONSOLE_COLORS::BLACK>() + std::string(value);
-}
-
-
-template<typename T, typename K = remove_cvref_t<T>>
-    requires is_numeric<K> || std::unsigned_integral<K>
-std::string parse_value(T&& value) {
-    return console_color<CONSOLE_COLORS::GREEN>() + Meta::toStr(value);
-}
-
-template<typename T, typename K = remove_cvref_t<T>>
-    requires std::same_as<K, std::string>
-std::string parse_value(const T& value) {
-    return console_color<CONSOLE_COLORS::RED>() + Meta::toStr(value);
-}
-
-template<template <typename, typename> class T, typename A, typename B>
-    requires is_pair<T<A, B>>::value
-std::string parse_value(const T<A, B>& m) {
-    return console_color<CONSOLE_COLORS::DARK_GRAY>()
-        + "["
-        + parse_value(m.first)
-        + console_color<CONSOLE_COLORS::GRAY>()
-        + ","
-        + parse_value(m.second)
-        + console_color<CONSOLE_COLORS::DARK_GRAY>()
-        + "]";
-}
-template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
-    requires is_set<K>::value || is_container<K>::value
-std::string parse_value(const T<Args...>& m) {
-    std::string str = console_color<CONSOLE_COLORS::BLACK>() + "[";
-    auto it = m.begin(), end = m.end();
-    for (;;) {
-        str += parse_value(*it);
-        
-        if(++it != end)
-            str += console_color<CONSOLE_COLORS::BLACK>() + ",";
-        else
-            break;
+public:
+    template<typename T>
+        requires _has_tostr_method<T>
+    static std::string parse_value(const T& value) {
+        auto str = value.toStr();
+        return parse_value(str.c_str());
     }
-    return str + console_color<CONSOLE_COLORS::BLACK>() + "]";
-}
 
-template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
-    requires is_map<K>::value
-std::string parse_value(const T<Args...>& m) {
-    std::string str = console_color<CONSOLE_COLORS::BLACK>() + "{";
-    for (auto& [k, v] : m) {
-        str += console_color<CONSOLE_COLORS::DARK_GRAY>() + "[" + parse_value(k) + console_color<CONSOLE_COLORS::GRAY>() + ":" + parse_value(v) + console_color<CONSOLE_COLORS::DARK_GRAY>() + "]";
+    /*/template<typename T, typename K = remove_cvref_t<T>>
+        requires std::convertible_to<T, std::string> && (!std::same_as<K, std::string>)
+                && (!_is_dumb_pointer<T>)
+    static std::string parse_value(const T& value) {
+        return console_color<CONSOLE_COLORS::BLACK>() + std::string(value);
+    }*/
+
+    template<typename T, size_t N, typename K = remove_cvref_t<T>>
+        requires std::convertible_to<T[N], std::string>
+    static std::string parse_value(T(&s)[N]) {
+        return parse_value((const char*)s);
     }
-    return str+console_color<CONSOLE_COLORS::BLACK>() + "}";
-}
 
-template<typename T>
-    requires _is_dumb_pointer<T> && (!std::same_as<const char*, T>)
-std::string parse_value(T ptr) {
-    std::string str;
-    if constexpr(_has_class_name<std::remove_pointer_t<T>>)
-        str += console_color<CONSOLE_COLORS::BLACK>() + "("+console_color<CONSOLE_COLORS::CYAN>()+(std::remove_pointer_t<T>::class_name())+console_color<CONSOLE_COLORS::BLACK>()+"*)";
-    if(!ptr)
-        return str + console_color<CONSOLE_COLORS::PURPLE>() + "null";
-    if constexpr(_has_tostr_method<std::remove_pointer_t<T>>)
-        return str + parse_value(*ptr);
-    return str + "" + parse_value((uint64_t) ptr);
-}
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires _is_dumb_pointer<T> && std::same_as<T, const char*>
+    static std::string parse_value(T s) {
+        std::stringstream ss;
+        std::string tmp;
+        enum State {
+            NONE,
+            NUMBER,
+            STRING,
+            CLASS,
+            WHITESPACE,
+            TAG
+        } state = NONE, previous = NONE, pp = NONE;
+
+        auto is_keyword = [](std::string word) {
+            word = utils::trim(utils::lowercase(word));
+            static const std::vector<std::string> keywords{
+                "string", "pv",
+                "path",
+                "array", "map", "set", "pair", 
+                "int", "float", "double", "bool", "byte", "char", "unsigned", "int64_t", "uint64_t", "int32_t", "uint32_t", "int16_t", "uint16_t", "int8_t", "uint8_t", "uint",
+                "true", "false"
+            };
+            return contains(keywords, word);
+        };
+
+        auto set_state = [&](State s) {
+            if (state != s || s == NONE) {
+                if (!tmp.empty()) {
+                    switch (state) {
+                    case STRING: ss << parse_value(tmp); break;
+                    case NUMBER: ss << parse_value(Meta::fromStr<double>(tmp)); break;
+                    case CLASS: ss << tmp;  break;
+                    case TAG: ss << console_color<CONSOLE_COLORS::CYAN>() << tmp; break;
+                    default:
+                        if (tmp == "::") {
+                            ss << console_color<CONSOLE_COLORS::BLACK>();
+                            state = CLASS;
+                        }
+                        else if (is_keyword(tmp)) {
+                            ss << console_color<CONSOLE_COLORS::CYAN>();
+                            //printf("word: %s\n", tmp.c_str());
+                        }
+                        else if (previous == TAG) {
+                           // printf("tag: %s\n", tmp.c_str());
+                            if(tmp == ">")
+                                ss << console_color<CONSOLE_COLORS::CYAN>();
+                        }
+                        else if (previous == CLASS) {
+                           // printf("Class: '%s'\n", tmp.c_str());
+                            ss << console_color<CONSOLE_COLORS::GRAY>();
+                        } else
+                            ss << console_color<CONSOLE_COLORS::BLACK>();
+
+                        ss << tmp;
+                        break;
+                    }
+                    tmp.clear();
+                }
+
+                pp = previous;
+                previous = state;
+                state = s;
+            }
+        };
+
+        static constexpr auto whitespace = " \t\n,^()[]{}<>/&%$§!?\\.:";
+
+        size_t N = std::string(s).size();
+        char str_char = 0;
+
+        for (size_t i = 0; i < N; ++i) {
+            if (!s[i])
+                break;
+
+            if (s[i] == '"' || s[i] == '\'') {
+
+                if (state != STRING) {
+                    str_char = s[i];
+                    set_state(STRING);
+                }
+                else if(s[i] == str_char)
+                    set_state(NONE);
+            }
+            else if (s[i] == '<') {
+                set_state(TAG);
+            }
+            else if ((s[i] == '/' || s[i] == '>') && state == TAG) {
+                if (s[i] == '>') {
+                    //printf("Setting state NONE: %s\n", tmp.c_str());
+                    set_state(WHITESPACE);
+                }
+            }
+            else if (state != NUMBER && s[i] >= '0' && s[i] <= '9')
+                set_state(NUMBER);
+            else if (state == NUMBER) {
+                if (s[i] == '.' || (s[i] >= '0' && s[i] <= '9') || s[i] == 'f') {
+                    set_state(NUMBER);
+                } else
+                    set_state(NONE);
+            }
+            else if (utils::contains(whitespace, s[i])) {
+                if (i > 0 && s[i - 1] != s[i])
+                    set_state(NONE);
+                if(state != WHITESPACE)
+                    set_state(WHITESPACE);
+            }
+            else if (state == WHITESPACE)
+                set_state(NONE);
+
+            switch (state) {
+                case NONE: tmp += s[i]; break;
+                default:  tmp += s[i]; break;
+            }
+        }
+
+        if(!tmp.empty())
+            set_state(NONE);
+
+        return ss.str();
+    }
+
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires (!std::same_as<bool, K>) && (is_numeric<K> || std::unsigned_integral<K>)
+    static std::string parse_value(T && value) {
+        return console_color<CONSOLE_COLORS::GREEN>() + Meta::toStr(value);
+    }
+
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires std::same_as<bool, K>
+    static std::string parse_value(T value) {
+        return console_color<CONSOLE_COLORS::PURPLE>() + Meta::toStr(value);
+    }
+
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires std::same_as<K, std::string>
+    static std::string parse_value(const T& value) {
+        return console_color<CONSOLE_COLORS::RED>() + Meta::toStr(value);
+    }
+
+    template<template <typename, typename> class T, typename A, typename B>
+        requires is_pair<T<A, B>>::value
+    static std::string parse_value(const T<A, B>& m) {
+        return console_color<CONSOLE_COLORS::DARK_GRAY>()
+            + "["
+            + parse_value(m.first)
+            + console_color<CONSOLE_COLORS::GRAY>()
+            + ","
+            + parse_value(m.second)
+            + console_color<CONSOLE_COLORS::DARK_GRAY>()
+            + "]";
+    }
+
+    template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
+        requires is_set<K>::value || is_container<K>::value
+    static std::string parse_value(const T<Args...>&m) {
+        std::string str = console_color<CONSOLE_COLORS::BLACK>() + "[";
+        auto it = m.begin(), end = m.end();
+        for (;;) {
+            str += parse_value(*it);
+
+            if (++it != end)
+                str += console_color<CONSOLE_COLORS::BLACK>() + ",";
+            else
+                break;
+        }
+        return str + console_color<CONSOLE_COLORS::BLACK>() + "]";
+    }
+
+    template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
+        requires is_map<K>::value
+    static std::string parse_value(const T<Args...>& m) {
+        std::string str = console_color<CONSOLE_COLORS::BLACK>() + "{";
+        for (auto& [k, v] : m) {
+            str += console_color<CONSOLE_COLORS::DARK_GRAY>() + "[" + parse_value(k) + console_color<CONSOLE_COLORS::GRAY>() + ":" + parse_value(v) + console_color<CONSOLE_COLORS::DARK_GRAY>() + "]";
+        }
+        return str + console_color<CONSOLE_COLORS::BLACK>() + "}";
+    }
+
+    template<typename T>
+        requires _is_dumb_pointer<T> && (!std::same_as<const char*, T>)
+    static std::string parse_value(T ptr) {
+        std::string str;
+        if constexpr (_has_class_name<std::remove_pointer_t<T>>)
+            str += console_color<CONSOLE_COLORS::BLACK>() + "(" + console_color<CONSOLE_COLORS::CYAN>() + (std::remove_pointer_t<T>::class_name()) + console_color<CONSOLE_COLORS::BLACK>() + "*)";
+        if (!ptr)
+            return str + console_color<CONSOLE_COLORS::PURPLE>() + "null";
+        if constexpr (_has_tostr_method<std::remove_pointer_t<T>>)
+            return str + parse_value(*ptr);
+
+        std::stringstream stream;
+        stream << "0x" << std::hex << (uint64_t)ptr;
+        return str + console_color<CONSOLE_COLORS::GREEN>() + stream.str();
+    }
+};
 
 template<typename... Args>
 void print(Args&& ... args) {
-    std::string str = ((parse_value(std::forward<Args>(args)) + " ") + ...);
+    std::string str = ((ParseValue::parse_value(std::forward<Args>(args)) + " ") + ...);
     
     time_t rawtime;
     struct tm * timeinfo;
@@ -272,12 +417,15 @@ int main(int argc, char**argv) {
     
     std::map<pv::bid, std::pair<std::string, float>> mappe;
     mappe[pv::bid::invalid] = {"Test", 0.5f};
+    print("pv::bid:",pv::bid::invalid);
+    print("<html><head><style>.css-tag { bla; }</style></head><tag>tag</tag></html>");
     print("Map:",mappe, FileSize{uint64_t(1000 * 1000 * 2123)});
     print(std::set<pv::bid>{pv::bid::invalid});
     
     pv::bid value;
     print(std::set<pv::bid*>{nullptr, &value});
     print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
+    print(std::vector<bool>{true, false, true, false});
     exit(0);
     
     constexpr size_t count = 1000;
