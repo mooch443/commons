@@ -1,0 +1,80 @@
+<html>
+
+<head>
+    <style>
+    html,
+    body {
+    }
+
+    #drop_area {
+      width: 100%;
+      min-height: 100%;
+      border: 3px dashed #aaaaaa;
+      border-radius: 10px;
+      text-align: center;
+    }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+</head>
+
+<body>
+    <div id="drop_area" ondrop="drop(event)" ondragover="event.preventDefault()">drop your files here</div>
+
+    <script>
+        var fileEntry;
+        var lastModificationTime = new Date(0)
+
+        async function read_file (file) {
+            console.log("read...")
+            // use the new async read method on blobs.
+            text = await file.text()
+            console.log("read!")
+            console.log(text)
+            //drop_area.innerHTML = text
+            //$(document).scrollTop($("#drop_area").height());
+        }
+
+        function compare () {
+            fileEntry.getFile().then(function(meta) {
+                if (meta.lastModified > lastModificationTime) {
+                  lastModificationTime = meta.lastModified
+                  //fileEntry.file(read_file)
+                  console.log("changed", meta.lastModified)
+                  meta.text().then(text => {
+                    $(drop_area).html(text);
+
+                    $("body").stop().animate({ scrollTop: $("#drop_area").height() }, 500, 'swing');
+                  });
+                }
+            });
+            
+        }
+
+        function drop(event) {
+          event.stopPropagation();
+          event.preventDefault();
+          
+          drop_area.style.textAlign = 'left';
+            
+          // get the file as an fileEntry (aka file handle)
+          console.log(event.dataTransfer)
+          //fileEntry = event.dataTransfer.items[0].getAsFileSystemHandle()
+            // Process all of the items.
+              for (const item of event.dataTransfer.items) {
+                // kind will be 'file' for file/directory entries.
+                if (item.kind === 'file') {
+                  item.getAsFileSystemHandle().then(function(e) {
+                    //console.log("done",e, e.getFile().then(file => fileEntry = file))
+                    fileEntry = e;
+                    setInterval(compare, 100);
+                  });
+                  break
+                }
+              }
+
+          //setInterval(fileEntry.getMetadata.bind(fileEntry, compare), 1000)
+        }
+
+    </script>
+</body>
+</html>
