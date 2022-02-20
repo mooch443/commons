@@ -70,7 +70,7 @@ extern "C"{
     bool forward_load_message(const std::vector<file::Path>& paths){
         auto str = cmn::Meta::toStr(paths);
         NSString* string = [NSString stringWithCString:str.c_str() encoding:NSASCIIStringEncoding];
-        cmn::print("Open file: ", str);
+        cmn::print("Open file: ", str.c_str());
         
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 250 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             auto cstr = [string cStringUsingEncoding:NSASCIIStringEncoding];
