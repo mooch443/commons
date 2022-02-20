@@ -395,7 +395,7 @@ public:
                 push_state(WHITESPACE); tmp += s[i]; pop_state();
                 continue;
             }
-            else if (!is_state(NUMBER) && s[i] >= '0' && s[i] <= '9') {
+            else if ((i == 0 || utils::contains(whitespace, s[i-1])) && !is_state(NUMBER) && s[i] >= '0' && s[i] <= '9') {
                 push_state(NUMBER);
             }
             else if (is_state(NUMBER)) {

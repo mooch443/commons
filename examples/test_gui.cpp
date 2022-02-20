@@ -105,6 +105,9 @@ constexpr void init_offset() {
 
 
 int main(int argc, char**argv) {
+
+    print("Vec2<vec2>");
+
     CommandLine cmd(argc, argv);
     cmd.cd_home();
     sprite::Map map;
@@ -113,8 +116,6 @@ int main(int argc, char**argv) {
     
     
     print("Test \"\\\"string\\\"\".");
-    
-    
     
     print("File: ", file::Path("test"));
 
@@ -140,7 +141,7 @@ int main(int argc, char**argv) {
         print("<html><head><style>.css-tag { bla; }</style></head><tag>tag content</tag><int></int></html>");
 
         std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-        print("Map: ", mappe, FileSize{ uint64_t(1000 * 1000 * 2123) });
+        print("Map: ", mappe, " ", FileSize{uint64_t(1000 * 1000 * 2123)});
         print(std::set<pv::bid>{pv::bid::invalid});
 
         std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
