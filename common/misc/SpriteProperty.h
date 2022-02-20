@@ -18,7 +18,7 @@ namespace cmn {
         class Property;
         class Map;
         
-        class PropertyType : public virtual Printable {
+        class PropertyType {
         protected:
             std::string _name;
             bool _valid;
@@ -52,6 +52,8 @@ namespace cmn {
                 _enum_index([]() -> size_t{ U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
                 _map(map)
             { }
+            
+            virtual ~PropertyType() = default;
             
             void set_value_from_string(const std::string& str) {
                 try {
@@ -107,7 +109,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
                 
-                throw new PropertyException("Cannot cast " + toStdString() + " to const reference type.");
+                throw new PropertyException("Cannot cast " + toStr() + " to const reference type.");
             }
 
             template<typename T>
@@ -116,7 +118,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
 
-                throw new PropertyException("Cannot cast " + toStdString() + " to reference type.");
+                throw new PropertyException("Cannot cast " + toStr() + " to reference type.");
             }
             
             virtual const std::string type_name() const {
@@ -129,10 +131,11 @@ namespace cmn {
                 throw new PropertyException("Cannot use valueString of PropertyType directly.");
             }
             
-            UTILS_TOSTRING((
-                      "Property<"+type_name()+">")
-                     << "('" << _name << "'"
-                     << ")");
+            std::string toStr() const {
+                return "Property<"+type_name()+">"
+                     + "('" + _name + "'"
+                     + ")";
+            }
         };
         
         class Reference;
@@ -196,10 +199,6 @@ namespace cmn {
                 _enum_values = []() -> std::vector<std::string> { U_EXCEPTION("This type is not an Enum, so enum_values() cannot be called."); };
             }
             
-            ~Property() { };
-            
-            //using PropertyType::operator==;
-            
             template<typename K>
             bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
                 return other == _value;
@@ -233,12 +232,12 @@ namespace cmn {
             ValueType& value() { return _value; }
             std::string valueString() const override { return Meta::toStr<ValueType>(value()); }
             
-            _TOSTRING override {
+            std::string toStr() const {
                 if(!valid())
-                    return PropertyType::toStdString();
+                    return PropertyType::toStr();
                     
                 std::stringstream ss;
-                ss << PropertyType::toStdString();
+                ss << PropertyType::toStr();
                 auto str = Meta::toStr<ValueType>(value());
                 if(str.length() > 1000)
                     str = str.substr(0, 1000) + " (shortened)...";
@@ -263,7 +262,7 @@ namespace cmn {
             if (_other)
                 *this = _other;
             else
-                throw new PropertyException("Cannot assign " + other.toStdString() + " to " + this->toStdString());
+                throw new PropertyException("Cannot assign " + other.toStr() + " to " + this->toStr());
         }
         
         template<typename T>
@@ -274,7 +273,7 @@ namespace cmn {
                 *this = _other.value();
                 
             } else {
-                throw new PropertyException("Cannot assign "+other.toStdString()+" to "+this->toStdString());
+                throw new PropertyException("Cannot assign "+other.toStr()+" to "+this->toStr());
             }
         }
     }

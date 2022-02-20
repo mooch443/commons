@@ -130,7 +130,6 @@ namespace gui {
             
             auto str = Meta::toStr(difference);
             DebugHeader("%d drawables in memory, %d new, %d deleted", all_drawables.size(), difference.size(), deleted.size());
-            //Debug("New: %S", &str);
             
             std::set<std::tuple<float, Drawable*>> oldest;
             for (auto && [object, info] : all_drawables) {
@@ -148,7 +147,6 @@ namespace gui {
             }
             
             //str = Meta::toStr(copy);
-            //Debug("%S", &str);
             Debug("%d objects maybe garbage", copy.size());
             
             if(!copy.empty()) {

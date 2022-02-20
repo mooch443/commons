@@ -602,7 +602,6 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         }
     }
     
-    //Debug("Saving to '%S'...", &filename);
     
     CSVExport e(table);
     e.save(filename);
@@ -663,7 +662,6 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
         }
     }
     
-    //Debug("Saving to '%S'...", &filename);
     bool first = true;
     for (auto && [ptr, vec] : results) {
         try {

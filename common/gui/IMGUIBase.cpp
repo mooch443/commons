@@ -45,7 +45,6 @@ void cache_find() {
 }
 
 void clear_cache() {
-    //Debug("Misses: %lu vs. finds: %lu", cache_misses, cache_finds);
     cache_finds = cache_misses = 0;
 }
 
@@ -177,7 +176,6 @@ class PolyCache : public CacheObject {
                       || gpusize.height < _texture->height/4
                       || channels() != image_channels)
             {
-                //Debug("Texture of size %dx%d does not fit %.0fx%.0f", _texture->width, _texture->height, gpusize.width, gpusize.height);
                 auto id = _platform->texture(image->source());
                 set_ptr(std::move(id));
                 _size = image_size;
@@ -191,7 +189,6 @@ class PolyCache : public CacheObject {
             }
             
             //if(replacements%100 == 0)
-            //    Debug("Replace: %lu, Add: %lu, Created: %lu", replacements, adds, created);
         }
         
         void set_object(Drawable* o) {
@@ -419,7 +416,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
     
-    //Debug("dpi_scale:%f gui::interface_scale:%f xscale:%f yscale:%f", dpi_scale, gui::interface_scale(), xscale, yscale);
     
     {
         Event e(EventType::WINDOW_RESIZED);
@@ -768,9 +764,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);
         });
         
-        //Debug("----");
         for(auto & order : _draw_order) {
-            //Debug("Drawing %lu (%d) (%s)", order.index, order.ptr->z_index(), order.ptr->type().name());
             draw_element(order);
         }
         
@@ -940,7 +934,6 @@ void PolyFillScanFlood(ImDrawList *draw, std::vector<ImVec2> *poly, std::vector<
         float x;
         for(auto &edge : AET) {
             if(parity) {
-                //Debug("Line %f,%d - %f,%d", x,y, edge.xHit, y);
                 draw->AddLine(Vec2(x,y), Vec2(edge.xHit, y), color, strokeWidth);
             } else {
                 x = edge.xHit;
@@ -1067,7 +1060,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     auto list = ImGui::GetForegroundDrawList();
     /*if(order.type == DrawOrder::POP) {
         if(list->_ClipRectStack.size() > 1) {
-            //Debug("Popped cliprect %.0f,%.0f", list->_ClipRectStack.back().x, list->_ClipRectStack.back().y);
             //list->PopClipRect();
         } else
             Warning("Cannot pop too many rects.");
@@ -1245,7 +1237,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             //list->AddRect(ImVec2(bds.x, bds.y), ImVec2(bds.x + bds.width, bds.y + bds.height), cvtClr(Red));
             //list->PushClipRect(ImVec2(bds.x, bds.y), ImVec2(bds.x + bds.width, bds.y + bds.height), false);
             
-            //Debug("Pushing cliprect of %.0f,%.0f", list->_ClipRectStack.back().x, list->_ClipRectStack.back().y);
             break;
         }
             
@@ -1399,7 +1390,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     if(!list->CmdBuffer.empty()) {
         if(list->CmdBuffer.back().ElemCount == 0) {
             (void)list->CmdBuffer;
-            ///Debug("Empty cmd buffer.");
         }
     }
     
@@ -1558,14 +1548,12 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         // Round
         //size.x = max(0, (float)(int)(size.x - 0.95f));
         size.y = line_spacing(font);
-        //Debug("font.size = %f, FontSize = %f, im_font_scale = %f, size = (%f, %f) '%S'", font.size, im_font->FontSize, im_font_scale, size.x, size.y, &text);
         //return text_size;
         //auto size = ImGui::CalcTextSize(text.c_str());
         return Bounds(Vec2(), size);
     }
 
     uint32_t IMGUIBase::line_spacing(const Font& font) {
-        //Debug("font.size = %f, FontSize = %f, im_font_scale = %f", font.size, im_font->FontSize, im_font_scale);
         if(_fonts.empty()) {
             Warning("Trying to get line_spacing without a font loaded.");
             return Base::line_spacing(font);

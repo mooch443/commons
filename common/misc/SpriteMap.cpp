@@ -115,13 +115,13 @@ Map::~Map() {
     Reference::Reference(Map& container, PropertyType& type)
     : Reference(container, type, type.name()) {}
 
-    _TOSTRING_RETURNTYPE Reference:: _TOSTRING_HEAD {
-        return _type.toStdString();
+    std::string Reference::toStr() const {
+        return _type.toStr();
     }
     
-    _PRINT_NAME_RETURN_TYPE Reference:: _PRINT_NAME_HEAD {
+    /*_PRINT_NAME_RETURN_TYPE Reference:: _PRINT_NAME_HEAD {
         return _type.print_name();
-    }
+    }*/
     
     bool Reference::operator==(const PropertyType& other) const {
         return get().operator==(other);
@@ -131,13 +131,13 @@ Map::~Map() {
         return get().operator!=(other);
     }
     
-    _TOSTRING_RETURNTYPE ConstReference:: _TOSTRING_HEAD {
-        return _type.toStdString();
+    std::string ConstReference::toStr() const {
+        return _type.toStr();
     }
     
-    _PRINT_NAME_RETURN_TYPE ConstReference:: _PRINT_NAME_HEAD {
+    /*_PRINT_NAME_RETURN_TYPE ConstReference:: _PRINT_NAME_HEAD {
         return _type.print_name();
-    }
+    }*/
     
     bool ConstReference::operator==(const PropertyType& other) const {
         return get().operator==(other);

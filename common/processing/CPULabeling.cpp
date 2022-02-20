@@ -539,7 +539,6 @@ struct Source {
             lines = lines / samples;
             samples = 1;
 
-            //Debug("Reserved: %lu, True: %lu average: %lu", (rend - rstart + 1), source->_lines.size(), lines);
         }
     }
 };

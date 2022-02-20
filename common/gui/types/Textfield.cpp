@@ -535,9 +535,6 @@ void Textfield::set_postfix(const std::string &p) {
                 // set boundaries
                 _selection_rect.set_bounds(Bounds(sx0, _cursor.pos().y, min(width() - sx0 - margin, sx1 - sx0), _cursor.height()));
             }
-            
-            //Debug("Parsing: %.2fms", timer.elapsed()*1000);
-            //set_dirty();
         }
         
         advance_wrap(_text_display);

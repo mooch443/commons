@@ -153,7 +153,6 @@ namespace gui {
                    && current->type() == type
                    /*&& dynamic_cast<T*>(current) != nullptr*/)
                 { //&& current->swap_with(d)) {
-                    //Debug("Swapping %X with %X", current, d);
                     assert(dynamic_cast<T*>(current) != nullptr);
                     static_cast<T*>(current)->set(std::forward<Args>(args)...);
                     //delete d;

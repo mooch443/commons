@@ -131,12 +131,12 @@ using long_t = int32_t;
 #include <common/cpputils/cpputils.h>
 #include <common/cpputils/debug/Debug.h>
 #include <common/cpputils/utilsexception.h>
-#include <common/cpputils/debug/Printable.h>
 #include <cnpy/cnpy.h>
 #include <bytell_hash_map.hpp>
 #include <tsl/sparse_map.h>
 #include <tsl/sparse_set.h>
 #include <robin_hood.h>
+#include <misc/format.h>
 
 #ifdef __llvm__
 #pragma clang diagnostic pop

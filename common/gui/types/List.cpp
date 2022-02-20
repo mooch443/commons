@@ -378,8 +378,5 @@ namespace gui {
         
         draw_title();
         end();
-        
-        //Debug("List %.2fms", timer.elapsed()*1000);
-        //this->_draw_structure->print(NULL);
     }
 }

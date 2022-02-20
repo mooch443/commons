@@ -15,7 +15,6 @@ struct Frame_t {
     explicit constexpr Frame_t(number_t frame)
         : _frame(frame)
     {
-        //Debug("Initializing with %d", frame);
     }
     
     constexpr void invalidate() { _frame = invalid; }

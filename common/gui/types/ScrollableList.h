@@ -352,9 +352,7 @@ namespace gui {
                 
                 size_t first_visible = (size_t)floorf(scroll_offset().y / _line_spacing);
                 size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / _line_spacing);
-                
-                //Debug("DIsplaying %lu-%lu %f %f", first_visible, last_visible, scroll_offset().y, _line_spacing);
-                
+                                
                 rect_to_idx.clear();
                 
                 for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {

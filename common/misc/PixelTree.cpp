@@ -110,7 +110,6 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
                     line.x1 += pos.x;
                 }
             }
-            //Debug("%d: Time to generate diff: %fms", blob->blob_id(), timer.elapsed() * 1000);
             
             return blobs;
         }
@@ -142,7 +141,6 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         }
         
         //if(blob->pixels()->size() > 1000 * 1000)
-        //    Debug("%d Time to generate HLdiff: %fms", blob->blob_id(), timer.elapsed() * 1000);
         
         //static Timing timing("after_threshold", 0.1);
         //TakeTiming take(timing);
@@ -228,7 +226,6 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
     }
     
     //if(blob->pixels()->size() > 1000 * 1000)
-    //    Debug("%d Time to generate HLdiff: %fms", blob->blob_id(), timer.elapsed() * 1000);
     
     //static Timing timing("after_threshold", 0.1);
     //TakeTiming take(timing);
@@ -654,9 +651,6 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         output *= 0.5;
         bounds.pos() = -mi + margin; //+ mi - margin;
         
-        //Debug("bounds: %.2f,%.2f %.2fx%.2f", bounds.x, bounds.y, bounds.width, bounds.height);
-        //Debug("cropping: %.2f,%.2f %.2fx%.2f", cropping.x, cropping.y, cropping.width, cropping.height);
-        
         resize_image(output, output, scale);
         cv::cvtColor(output, output, cv::COLOR_GRAY2BGR);
         
@@ -702,9 +696,6 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         cv::line(output, OFFSET(out), OFFSET(in), Red);
         
         auto str = ss.str();
-        
-        //Debug("adding edge %f,%f -> %f,%f : %d, %d", out.x, out.y, in.x, in.y, non_full_nodes.size(), _sides.size());
-        //Debug("%S", &str);
         
         cv::cvtColor(output, output, cv::COLOR_BGR2RGB);
         cv::imshow("nodes", output);
@@ -814,7 +805,6 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         constexpr std::array<Direction, 4> direction_from_bool {
             TOP, LEFT, RIGHT, BOTTOM
         };
-        //Debug("");
         
         static constexpr auto linear_search = [](uint64_t idx, auto &nodes) -> pixel::Node* {
             for(auto &node : nodes) {
@@ -1040,14 +1030,11 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             }
 #endif
         
-            //Debug("%f,%f:", node->position.x, node->position.y);
-            
             for (auto& edge : node->edges) {
                 //auto idx = std::tuple<int, int>{edge->position.x*10, edge->position.y*10};
                 if(!edge ||edge->walked)
                     continue;
                 
-                //Debug("\t%f,%f", edge->position.x, edge->position.y);
                 edge->walked = true;
                 q.push_front(edge);
             }

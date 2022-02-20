@@ -20,7 +20,7 @@ namespace sprite {
     template<typename T>
     class Property;
     
-    class ConstReference : public Printable {
+    class ConstReference {
     private:
         const PropertyType& _type;
         const Map& _container;
@@ -58,11 +58,10 @@ namespace sprite {
         const PropertyType& get() const { return _type; }
         const Map& container() const { return _container; }
         
-        TOSTRING_RAW;
-        PRINT_NAME_HEADER override;
+        std::string toStr() const;
     };
     
-    class Reference : public Printable {
+    class Reference {
     private:
         PropertyType& _type;
         Map& _container;
@@ -113,8 +112,7 @@ namespace sprite {
         template<typename T>
         void operator=(const T& value);
         
-        TOSTRING_RAW;
-        PRINT_NAME_HEADER override;
+        std::string toStr() const;
     };
 }
 }
@@ -151,7 +149,7 @@ namespace std
 namespace cmn {
 namespace sprite {
 
-    class Map : public Printable {
+    class Map {
     public:
         enum class Signal {
             NONE,
@@ -186,8 +184,10 @@ namespace sprite {
             if(_do_print) {
                 LockGuard guard(this);
                 auto it = _print_key.find(var.name());
-                if(it == _print_key.end() || it->second)
-                    var.print_object();
+                if(it == _print_key.end() || it->second) {
+                    auto str = var.toStr(), val = var.valueString();
+                    print(str.c_str()," = ",val.c_str());
+                }
             }
         }
         
@@ -320,7 +320,7 @@ namespace sprite {
             {
                 LockGuard guard(this);
                 if(has(property)) {
-                    std::string e = "Property already "+((const PropertyType&)property).toStdString()+" already exists.";
+                    std::string e = "Property already "+((const PropertyType&)property).toStr()+" already exists.";
                     Error(e.c_str());
                     throw new PropertyException(e);
                 }
@@ -347,9 +347,9 @@ namespace sprite {
             return result;
         }
         
-        
-        
-        UTILS_TOSTRING("Map<size: " << _props.size() << ">");
+        std::string toStr() const {
+            return "Map<size:" + Meta::toStr(_props.size()) + ">";
+        }
     };
     
     template<typename T>
@@ -365,7 +365,7 @@ namespace sprite {
             return tmp->value();
         }
         
-        std::string e = "Cannot cast " + _type.toStdString() + " to value type "+ Meta::name<T>() +".";
+        std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +".";
         Error(e.c_str());
         throw new PropertyException(e);
     }
@@ -383,7 +383,6 @@ namespace sprite {
         }
         else {
             _container.insert(_name, value);
-            //Debug("Inserting into map %@: %@", &_container, (PropertyType*)&tmp);
         }
     }
     
@@ -399,7 +398,7 @@ namespace sprite {
             return tmp->value();
         }
         
-        std::string e = "Cannot cast " + _type.toStdString() + " to value type "+ Meta::name<T>() +" .";
+        std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +" .";
         Error(e.c_str());
         throw new PropertyException(e);
     }
@@ -417,7 +416,7 @@ namespace sprite {
             
         } else {
             std::stringstream ss;
-            ss << "Reference to "+toStdString()+" cannot be cast to type of ";
+            ss << "Reference to "+toStr()+" cannot be cast to type of ";
             ss << Meta::name<T>();
             Error(ss.str().c_str());
             throw new PropertyException(ss.str());

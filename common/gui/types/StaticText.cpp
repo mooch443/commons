@@ -553,10 +553,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
             text->set_pos(target);
             //advance_wrap(*text);
             
-            offset.x += text->text_bounds().width + text->text_bounds().x;//text->rect().width;
-            //height = //max(height, text->height());
-            
-            //Debug("String '%S' %f,%f %fx%f", &text->txt(), text->pos().x, text->pos().y, text->width(), text->height());
+            offset.x += text->text_bounds().width + text->text_bounds().x;
         }
         
         auto current_height = Base::default_line_spacing(prev_font);

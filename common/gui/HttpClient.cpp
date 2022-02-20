@@ -47,7 +47,6 @@ Httpd::Response HttpClient::page(const std::string &url) {
         auto vec = utils::split(url, '/');
         if(vec.size() > 2 && vec[1] == "keypress") {
             auto key = std::stoi(vec[2]);
-            //Debug("Raw key '%c' / %d", key, key);
             
             if(key != -1) {
                 if(irange('A', 'B').contains(key))
@@ -82,7 +81,6 @@ Httpd::Response HttpClient::page(const std::string &url) {
         auto vec = utils::split(url, '/');
         if(vec.size() > 2 && vec[1] == "keycode") {
             auto key = std::stoi(vec[2]);
-            //Debug("Raw key '%c' / %d", key, key);
             
             if(key != -1) {
                 if(irange('A', 'B').contains(key))

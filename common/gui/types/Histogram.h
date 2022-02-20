@@ -336,7 +336,6 @@ namespace gui {
             _parsed_range = range;
             set_dirty();
             _needs_update = true;
-            //Debug("all:%.2fms sorting:%.2fms, data:%lu", timer.elapsed()*1000, timing, _data.size());
         }
         
         void set_title(const std::string& title) {
@@ -462,7 +461,6 @@ namespace gui {
                 add<Vertices>(vertices, PrimitiveType::Lines);
                 end();
                 
-                //Debug("Updated in %.2fms.", timer.elapsed() * 1000);
                 _needs_update = false;
                 
             } /*else {

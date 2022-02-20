@@ -15,7 +15,6 @@ namespace gui {
         all    |= ((uint64_t(s.height) << 32) & 0xFFFF00000000);
         all    |= ((uint64_t(s.width) << 48) & 0xFFFF000000000000);
         
-        //Debug("Width %lu (%f %f %f %f) %lu, %lu, %lu, %lu", all, x, y, width, height, all & 0xFFFF, (all >> 16) & 0xFFFF, (all >> 32) & 0xFFFF, (all >> 48) & 0xFFFF);
         return os << all;
     }
 

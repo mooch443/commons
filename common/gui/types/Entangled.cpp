@@ -216,7 +216,6 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         if(c) {
 #ifndef NDEBUG
 //            if(!Drawable::name().empty())
-//                Debug("Changed '%S' content (%d children, %f width).", &Drawable::name(), _children.size(), width());
 #endif
             /*SectionInterface* p = this;
             while((p = p->parent()) != nullptr) {
@@ -392,7 +391,6 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         auto current = _current_children[_index];
         auto owned = _owned[current];
         if(owned && current->swap_with(d)) {
-            //Debug("Swapping %X with %X", current, d);
             delete d; used_or_deleted = true;
             d = current;
 

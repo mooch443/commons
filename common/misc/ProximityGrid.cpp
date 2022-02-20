@@ -26,7 +26,6 @@ namespace grid {
         int cdx = floorf(max(0, point.x) / _scale.x);
         int cdy = floorf(max(0, point.y) / _scale.y);
         
-        //Debug("In cell %d,%d / %d,%d", cdx, cdy, proximity_res,proximity_res);
         Rangei cells_x(min(proximity_res - 1, max(0, cdx - max_cells)), min(proximity_res - 1, max(0, cdx + max_cells)));
         Rangei cells_y(min(proximity_res - 1, max(0, cdy - max_cells)), min(proximity_res - 1, max(0, cdy + max_cells)));
         
@@ -91,7 +90,6 @@ namespace grid {
         int cdx = floorf(point.x / _scale.x);
         int cdy = floorf(point.y / _scale.y);
         
-        //Debug("In cell %d,%d / %d,%d", cdx, cdy, proximity_res,proximity_res);
         Rangei cells_x(min(proximity_res - 1, max(0, cdx - max_cells)), min(proximity_res - 1, max(0, cdx + max_cells)));
         Rangei cells_y(min(proximity_res - 1, max(0, cdy - max_cells)), min(proximity_res - 1, max(0, cdy + max_cells)));
         

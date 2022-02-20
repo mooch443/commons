@@ -64,7 +64,6 @@ namespace cmn {
         template<typename T>
         uint64_t write(const T& val, uint64_t pos) {
             uint64_t old = tell();
-            //Debug("Position %ld, new %ld (%ld)", old, pos, _file_offset);
             
             seek(pos);
             uint64_t p = write(val);

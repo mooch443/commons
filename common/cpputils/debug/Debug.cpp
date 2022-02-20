@@ -1,5 +1,4 @@
 #include "Debug.h"
-#include "Printable.h"
 #include "../miscutils.h"
 #include "../stringutils.h"
 
@@ -975,16 +974,6 @@ void ParseFormatString(std::string& buffer, const char *cmd, va_list args) {
 			format_buffer << std::resetiosflags(std::ios_base::basefield);
             
             switch (cmd[i]) {
-                case '@': {
-                    // OBJECT AUTO DETECTION
-                    Printable *obj = va_arg(args, Printable*);
-                    if(obj) {
-                        buffer += obj->toStdString();
-                    }
-                    
-                    break;
-                }
-                    
                 case 'S': {
                     std::string *str = va_arg(args, std::string*);
                     if(str) {

@@ -153,7 +153,6 @@ bool VertexArray::swap_with(gui::Drawable *d) {
         update_size();
         set_dirty();
     } //else
-       // Debug("Swap with itself?");
     
     return true;
 }
@@ -418,7 +417,6 @@ void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& 
         // 90°-180° is < 0, while 0°-90° is >= 0
         // move it to [-2,0], take absolute and multiply by 0.5, so we get 0-180° -> [0,1]
         float a = cmn::abs(previous_vec.dot(line) - 1) * 0.5f;
-        //Debug("%f (%f,%f) -> (%f,%f) : %f | %f, len:%f", previous_vec.dot(line), previous_vec.x, previous_vec.y, line.x, line.y, a, threshold, len);
         if (cumlen < dim * threshold * 0.005 && color_diff < threshold * 0.01 && a < threshold * 0.1)
             continue;
         
@@ -432,7 +430,6 @@ void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& 
     
     array.push_back(points.back());
     
-    //Debug("Reduced from %d -> %d (%f, %f) -> %f real", points.size(), array.size(), threshold, dim, dim * threshold);
 }
 
 void Line::prepare() {

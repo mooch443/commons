@@ -613,7 +613,6 @@ void MetalImpl::message(const std::string &msg) const {
             std::lock_guard<std::mutex> guard(_texture_mutex);
             _delete_textures.emplace_back(*ptr);
             
-            //Debug("Deleting %X", *ptr);
             *ptr = nullptr;
             //id<MTLTexture> texture = (__bridge id<MTLTexture>)ptr;
             //[texture release];

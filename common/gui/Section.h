@@ -130,12 +130,10 @@ namespace gui {
                && _children.at(_index)->swap_with(d))
             {
                 // reusing successful!
-                //Debug("Reused object of type '%S'", &type);
                 delete d;
                 d = (T*)_children.at(_index);
             }
             else {
-                //Debug("Have to insert object of type '%S'", &type);
                 _children.insert(_children.begin() + (int64_t)_index, d);
                 
                 //if(d->type() == Type::VERTICES)

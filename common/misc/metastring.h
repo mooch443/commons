@@ -178,6 +178,8 @@ std::string to_string(const T& t) {
 
 template <typename T>
     requires std::convertible_to<T, std::string>
+        && (!std::convertible_to<T, std::string>)
+        && (!std::is_constructible_v<std::string, T>)
 std::string to_string(const T& t) {
     return "\""+(std::string)t+"\"";
 }
@@ -450,7 +452,7 @@ std::string toStr(const Q& obj) {
 template<class Q>
     requires (std::convertible_to<Q, std::string> || (std::is_constructible_v<std::string, Q>))
         && (!(is_instantiation<std::tuple, Q>::value))
-        && (!_has_tostr_method<Q>)
+        //&& (!_has_tostr_method<Q>)
 std::string toStr(const Q& obj) {
     return "\"" + util::escape(std::string(obj)) + "\"";
 }
@@ -554,6 +556,8 @@ std::string toStr(C obj) {
         
 template<class Q>
     requires _has_tostr_method<Q>
+            && (!std::convertible_to<Q, std::string>)
+            && (!std::is_constructible_v<std::string, Q>)
 std::string toStr(const Q& obj) {
     return obj.toStr();
 }

@@ -127,7 +127,6 @@ namespace cmn {
                 if(type) {
                     //assert(prev.first >= 0 && prev.first <= values.size());
                     float diff = abs(height-interpolate(values, prev.first));
-                    //Debug("Extremum(%d)@%d = %f -> %f", type, idx, height, diff);
                     
                     if(diff < magic_value) {
                         // erase maximum (or erase previous maximum? hmm)
@@ -178,7 +177,6 @@ namespace cmn {
                         }
                     }
                 } else {
-                    //Debug("Jumping over minimum %d", idx);
                 }
                 
                 if(i < -1)
@@ -268,7 +266,6 @@ namespace cmn {
                         v += (values[x]);
                     }
                     
-                    //Debug("Area[%d ..%d] = %d - %d (%f)", minimum, prev_minimum, fidx, lidx, v);
                     
                     float distances = 1;
                     

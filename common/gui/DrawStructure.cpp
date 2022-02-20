@@ -376,7 +376,6 @@ T* DrawStructure::create(Args... args) {
     {
         // reusing successful!
         //auto c = Type::Class(type).name();
-        //Debug("Reused object of type '%s'", c);
         //delete d;
         
         static_cast<T*>(_active_section->_children.at(_active_section->_index))->set(std::forward<Args>(args)...);
@@ -384,7 +383,6 @@ T* DrawStructure::create(Args... args) {
     }
     else {
         d = new T(std::forward<Args>(args)...);
-        //Debug("Have to insert object of type '%S'", &type);
         _active_section->_children.insert(_active_section->_children.begin() + (int64_t)_active_section->_index, d);
         
         //if(d->type() == Type::VERTICES)
@@ -580,11 +578,9 @@ T* DrawStructure::create(Args... args) {
                 
                 auto it = std::find(parent->children().begin(), parent->children().end(), s);
                 if(it != parent->children().end()) {
-                    //Debug("Section '%S' is at %lu, while index is %d/%lu in '%S'", &name, std::distance(parent->children().begin(), it), parent->_index, parent->children().size(), &parent->HasName::name());
                     if(it != parent->children().begin() + (int64_t)parent->_index) {
                         if(parent->_index >= size_t(it - parent->children().begin())) {
                             parent->_index--;
-                            //Debug("Decreasing index to %d, deleting and inserting element '%S'", parent->_index, &name);
                         }
                         parent->children().erase(it);
                         
@@ -595,7 +591,6 @@ T* DrawStructure::create(Args... args) {
                     }
                     
                     parent->_index++;
-                    //Debug("Increasing index to %d after inserting '%S'", parent->_index, &name);
                 }
             }
         }
@@ -679,7 +674,6 @@ T* DrawStructure::create(Args... args) {
             std::string type(_selected_object->type().name());
             if(dynamic_cast<HasName*>(_selected_object))
                 type = dynamic_cast<HasName*>(_selected_object)->name();
-            //Debug("Released object mup '%S'", &type);
             
             float x = _mouse_position.x, y = _mouse_position.y;
             _selected_object->mup(x, y, left_button);

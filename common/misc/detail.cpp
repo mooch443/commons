@@ -56,9 +56,6 @@ namespace cmn {
             if(result.back().y == it->y) {
                 if(result.back().x1 >= it->x0) {
                     // they do overlap in x and y
-                    //Debug("(%d) Merging %d-%d + %d-%d", it->y, result.back().x0, result.back().x1, it->x0, it->x1);
-                    //*prev = prev->merge(*it);
-                    
                     if(result.back().x0 > it->x0) {
                         auto offset = ptr_safe_t(result.back().x0) - ptr_safe_t(it->x0);
                         // need to add [offset] pixels to the front
@@ -433,8 +430,6 @@ namespace cmn {
         array = ret;
         
         assert(USHRT_MAX > offset);
-        //Debug("Took %fms", timer.elapsed()*1000);
-        //return offset;
     }
 #endif
 #endif

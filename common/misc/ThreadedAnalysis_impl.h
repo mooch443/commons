@@ -98,7 +98,6 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
             }
             
             if (offset > 0) {
-                //Debug("Shifting elements to the left by %d (%d).", offset, _array_index);
                 
                 // shift all elements in the container according to offset.
                 // re-use all the items that pop out in the front.
@@ -157,11 +156,9 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
                 else
                     prev = _tmp_object[offset];
                 
-                //Debug("Loading %d@%d", _tmp_object[offset]->index, offset);
                 _loading(prev, *_tmp_object[offset]);
             };
             
-            //Debug("previous_idx %d", previous_idx);
             bool abort = false;
             T* prev_data = previous_idx != -1 ? _cache[previous_idx]->data : NULL;
             for (uint32_t i=0; i<count; i++) {
@@ -185,7 +182,6 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
                 else
                     load_img(i);
             }
-            //Debug("Started %d threads for pos %d (max_threads %d)", count, array_idx, max_threads);
             if(abort) {
                 continue;
             }
@@ -204,7 +200,6 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
                 }
                 
                 for (uint32_t i=0; i<count; i++) {
-                    //Debug("We have %d@%d", _tmp_object[i]->index, i);
                     std::swap(_cache[_array_index+i]->data, _tmp_object[i]);
                     _cache[_array_index+i]->processed = false;
                     _cache[_array_index+i]->initialized = true;
@@ -221,7 +216,6 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
                     }
                 }*/
                 
-                //Debug("Filled cache %d/%d (image %d@%d)", filled, _cache_size, _cache[last_idx]->data->index, last_idx);
             }
             
         } else {
@@ -262,7 +256,6 @@ void ThreadedAnalysis<T, _cache_size>::analysis_function() {
         if (container) {
             //*_processed_object = *container->data;
             ptr = container->data;
-            //Debug("Trying to process %d...", _currently_processed);
         }
         
         lock.unlock();
@@ -282,7 +275,6 @@ void ThreadedAnalysis<T, _cache_size>::analysis_function() {
                 // exist anymore. _currently_processed will be adjusted if shifted. if
                 // it doesnt exist anymore, it will be -1.
                 if (_currently_processed >= 0) {
-                    //Debug("Setting %d to processed.", _currently_processed);
                     _cache[_currently_processed]->processed = true;
                     _currently_processed = -1;
                 }

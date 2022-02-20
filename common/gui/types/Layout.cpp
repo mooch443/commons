@@ -155,9 +155,6 @@ namespace gui {
         for(auto c : children()) {
             x += _margins.x;
             
-            //if(c->type() == Type::TEXT)
-            //    Debug("'%S' width = %f", &static_cast<Text*>(c)->txt(), c->width());
-            
             auto local = c->local_bounds();
             auto offset = local.size().mul(c->origin());
             
@@ -171,10 +168,6 @@ namespace gui {
             x += local.width + _margins.width;
         }
         
-        //if(!Drawable::name().empty())
-        //    Debug("Updating horizontal layout '%S' to width %f", &Drawable::name(), width());
-        
-        //Debug("Updating layout at %f with width %f -> %f", pos().x, width(), x);
         if(Size2(x, max(0, max_height)) != size()) {
             set_size(Size2(x, max(0, max_height)));
             set_content_changed(true);

@@ -498,7 +498,6 @@ namespace gui {
                     }
                     
                     if(tex->texture().getSize() != size) {
-                        //Debug("Resizing texture %dx%d", size.x, size.y);
                         tex->texture().create(size.x, size.y);
                         tex->sprite().setTexture(tex->texture().getTexture(), true);
                         tex->texture().setSmooth(false);
@@ -518,7 +517,6 @@ namespace gui {
                     
                 } else {
                     if(state.cache()) {
-                        //Debug("Deleting old texture");
                         state.set_cache(NULL);
                     }
                     

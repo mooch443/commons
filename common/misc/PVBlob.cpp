@@ -270,7 +270,6 @@ static Callback callback;
         
         if(_recount_threshold != threshold) {
             //if(_recount_threshold != -1)
-            //    Debug("Recalculating threshold...");
             
             if(_pixels == nullptr)
                 U_EXCEPTION("Cannot threshold without pixel values.");

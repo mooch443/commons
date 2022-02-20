@@ -36,7 +36,6 @@ Video::Video() : _maps_calculated(false), _cap(NULL), _please_stop(false), _thre
         U_EXCEPTION("Cannot create OpenCL context for dedicated GPU.");
     cv::ocl::Device(context.device(0));
 
-    //Debug("Using OpenCV 3.0 features");
 #else
     cv::ocl::setUseOpenCL(false);
 #endif

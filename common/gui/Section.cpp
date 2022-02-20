@@ -141,14 +141,11 @@ namespace gui {
         _enabled = true;
         if(!_was_enabled)
             children_rect_changed();
-        //Debug("Beginning section '%S'", &name());
         
         if(reuse) {
-            //Debug("Reusing section '%S' with index %d", &HasName::name(), _index);
             return;
         }
         
-        //Debug("Resetting section '%S'", &HasName::name());
         _index = 0;
         
         // disable all sections until they are "begun"
@@ -262,7 +259,6 @@ namespace gui {
         if(!parent() && stage())
             stage()->update_dialogs();
         
-        //Debug("Ending section '%S'", &name());
         // delete all excess objects
         auto index = _index;
         while(_children.size() > index) {
@@ -393,9 +389,6 @@ namespace gui {
             delete prect;
         if(ptext)
             delete ptext;
-        
-        //if(_name != "root")
-        //    Debug("Deleting section '%S'", &_name);
     }
     
     void Section::structure_changed(bool downwards) {
