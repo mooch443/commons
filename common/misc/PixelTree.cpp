@@ -546,7 +546,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         try {
             interp = tree.generate_edges();
         } catch(const std::invalid_argument& e) {
-            Debug("Error");
+            print("Error");
             
             Debug("%d: %s %d", blob->blob_id(), e.what(), blob->pixels()->size());
             

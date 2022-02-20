@@ -310,12 +310,12 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
             //deinit_child(true, d);
             if(_owned.find(d) != _owned.end()) {
                 if(_owned.at(d)) {
-                    Debug("Deleting");
+                    print("Deleting");
                     //delete d;
                 }
                 //_owned.erase(d);
             } else
-                Debug("Unknown object.");
+                print("Unknown object.");
             //return;
         }
 */

@@ -4,6 +4,7 @@
 #include "misc/Timer.h"
 #include <misc/ocl.h>
 #include <processing/LuminanceGrid.h>
+#include <misc/ranges.h>
 
 using namespace cmn;
 
@@ -228,7 +229,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     }
     
 #ifndef NDEBUG
-    Debug("dilation_size %d", dilation_size);
+    print("dilation_size ", dilation_size);
 #endif
     if(dilation_size != 0)
         INPUT->copyTo(diff);
@@ -326,16 +327,10 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         CALLCV( cv::dilate(*INPUT, *OUTPUT, gpu_element) )
         CALLCV( cv::erode(*INPUT, *OUTPUT, gpu_element) )
         
-        //_buffer1.copyTo(after_threshold);
-        
         if(dilation_size > 0) {
-            //Debug("Dilation %d", dilation_size);
             CALLCV( cv::dilate(*INPUT, *OUTPUT, gpu_dilation_element) )
         } else if(dilation_size < 0) {
             CALLCV( cv::erode(*INPUT, *OUTPUT, gpu_dilation_element) )
-            /*//Debug("Erosion %d", dilation_size);
-            cv::erode(_buffer1, _buffer1, gpu_dilation_element);
-            cv::erode(_buffer1, _buffer1, gpu_dilation_element);*/
             
             CALLCV( INPUT->convertTo(*OUTPUT, CV_8UC1) )
             CALLCV( diff.copyTo(*OUTPUT, *INPUT) )
@@ -343,13 +338,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             
             CALLCV( cv::dilate(*INPUT, *OUTPUT, gpu_element) )
             CALLCV( cv::erode(*INPUT, *OUTPUT, gpu_element) )
-            
-            //cv::morphologyEx(_buffer1, _buffer1, cv::MORPH_TOPHAT, gpu_dilation_element);
-            
-            //segment();
         }
-        
-        //_buffer1.copyTo(after_dilation);
         
     } else {
         static const int morph_size = closing_size;
@@ -412,7 +401,71 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("after_dilation", after_dilation);
     tf::imshow("after_threshold", after_threshold);*/
     
+    std::vector<cv::Mat> contours;
+    
+    cv::Mat normalized;
+    //INPUT->convertTo(normalized, CV_8UC1);
+    input.copyTo(normalized, *INPUT);
+    cv::Mat tmp3, inverted;
+    cv::threshold(normalized, tmp3, 150, 255, cv::THRESH_BINARY);
+    normalized.copyTo(tmp3, 255 - tmp3);
+    
+    cv::equalizeHist(tmp3, inverted);
+    
+    //cv::Canny(tmp3, inverted, 250, 255);
+    std::vector<cv::Vec4i> hierarchy;
+    //cv::equalizeHist(normalized, normalized);
+    cv::findContours(inverted, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+    
+    cv::Mat local;
+    input.copyTo(local);
+    tf::imshow("input", local);
+    tf::imshow("normalized", normalized);
+    tf::imshow("inverted", inverted);
+    
+    cv::Mat opt;
+    cv::Mat polygon;
+    opt = cv::Mat::zeros(output.rows, output.cols, CV_8UC1);
     output.setTo(cv::Scalar(0));
+    for(size_t i=0; i<contours.size(); ++i) {
+        auto &c = contours[i];
+        auto &h = hierarchy[i];
+        
+        //if(h[0] < 0 || h[3] >= 0)
+        //    continue;
+        
+        auto perimeter = cv::arcLength(c, true);
+        cv::approxPolyDP(c, polygon, 0.05f * perimeter, true);
+        auto area = cv::contourArea(polygon, true);
+        auto peri_area_ratio = (uint)abs(perimeter / area);
+        
+        using namespace gui;
+        Color color = Color(50, 50, 50, 255);
+        
+        if(peri_area_ratio <= 1) {
+            const float area_min = 5, area_max = 100;
+            bool area_sign = true;
+            bool quad_test = polygon.rows >= 4
+                              //&& std::signbit(area) == area_sign
+                              && Rangef(area_min, area_max).contains(abs(area))
+                              && cv::isContourConvex(polygon);
+            if(quad_test)
+                color = White;
+        }
+            
+        if(c.dims != 2)
+            U_EXCEPTION("E");
+        Vec2 prev(-1);
+        for (int i=0; i<c.rows; ++i) {
+            auto pt = c.at<cv::Point2i>(i);
+            if(prev.x > 0)
+                cv::line(opt, prev, pt, color);
+            prev = pt;
+        }
+    }
+    
+    tf::imshow("opt", opt);
+    
     CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1))
 
     input.copyTo(output, *INPUT);

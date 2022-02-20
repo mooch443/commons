@@ -271,9 +271,9 @@ namespace gui {
         
         void set_active_section(Section* section) {
             /*if(!section)
-                Debug("active_section = empty");
+                print("active_section = empty");
             else
-                Debug("Setting active_section = '%S'", &section->HasName::name());*/
+                print("Setting active_section = '", section->HasName::name(),"'");*/
             _active_section = section;
         }
         

@@ -167,6 +167,7 @@ public:
         requires _has_tostr_method<K>
                 && (!std::convertible_to<K, std::string>)
                 && (!is_explicitly_convertible<K, std::string>)
+                && (!_is_number<K>)
     static std::string parse_value(const T& value) {
         auto str = value.toStr();
         return parse_value(str.c_str());
@@ -444,7 +445,8 @@ public:
     }
 
     template<typename T, typename K = remove_cvref_t<T>>
-        requires (!std::same_as<bool, K>) && (is_numeric<K> || std::unsigned_integral<K>)
+        requires (!std::same_as<bool, K>)
+            && _is_number<K>
     static std::string parse_value(T && value) {
         return console_color<FormatColor::GREEN, colors>(Meta::toStr(value));
     }

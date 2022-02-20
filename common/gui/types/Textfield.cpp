@@ -247,10 +247,10 @@ namespace gui {
                 if(system) {
                     if(!_selection.empty()) {
                         auto sub = _text.substr(_selection.first, _selection.last - _selection.first);
-                        Debug("Copying %S", &sub);
+                        print("Copying ", sub);
                         set_clipboard(sub);
                     } else {
-                        Debug("Copying %S", &_text);
+                        print("Copying ", _text);
                         set_clipboard(_text);
                     }
                 }
@@ -260,7 +260,7 @@ namespace gui {
                 if(system) {
                     std::string paste = get_clipboard();
                     if(!paste.empty()) {
-                        Debug("Pasting %S", &paste);
+                        print("Pasting ", paste);
                         
                         std::string copy = _text;
                         size_t before = _cursor_position;

@@ -115,7 +115,7 @@ namespace cmn {
         
         //redefine the construct function (hiding the base-class version):
         /*void construct( pointer p, const_reference cr) {
-         Debug("Construct called!");
+         print("Construct called!");
          //else, do nothing.
          };*/
         

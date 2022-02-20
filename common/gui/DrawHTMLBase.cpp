@@ -146,7 +146,7 @@ namespace gui {
                     _ss << object_str;
                 }
             } catch(UtilsException& e) {
-                Debug("Skipping object that generated an error.");
+                print("Skipping object that generated an error.");
             }
         }
         

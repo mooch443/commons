@@ -254,9 +254,9 @@ namespace gui {
         
 #ifndef NDEBUG
         if(scale.empty())
-            Debug("Scale is zero.");
+            print("Scale is zero.");
         if(std::isnan(scale.x) || std::isinf(scale.x) || std::isnan(scale.y) || std::isinf(scale.y))
-            Debug("NaN or Inf in set_scale.");
+            print("NaN or Inf in set_scale.");
 #endif
         _scale = scale;
     }

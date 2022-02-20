@@ -558,6 +558,7 @@ template<class Q>
     requires _has_tostr_method<Q>
             && (!std::convertible_to<Q, std::string>)
             && (!std::is_constructible_v<std::string, Q>)
+            && (!_is_number<Q>)
 std::string toStr(const Q& obj) {
     return obj.toStr();
 }

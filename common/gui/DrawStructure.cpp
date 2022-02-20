@@ -539,8 +539,8 @@ T* DrawStructure::create(Args... args) {
     
     void DrawStructure::print(const Base* base) {
         auto str = _root.toString(base);
-        Debug("String\n%S", &str);
-        Debug("Length: %lu", collect().size());
+        cmn::print("String\n", str);
+        cmn::print("Length: ", collect().size());
     }
     
     std::vector<Drawable*> DrawStructure::collect() {

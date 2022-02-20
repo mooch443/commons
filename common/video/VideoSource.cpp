@@ -113,7 +113,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                 try {
                     static bool message = false;
                     if(!message) {
-                        Debug("Found timestamps for file '%S'.", &npz.str());
+                        print("Found timestamps for file ", npz.str(),".");
                         message = true;
                     }
                     
@@ -393,7 +393,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             
         } while (true);
         
-        Debug("Last number was %d", i-1);
+        print("Last number was ", i-1);
         _files_in_seq.shrink_to_fit();
         
     } else {
@@ -545,7 +545,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     }*/
     
     // if there are many files, we should use only the first part of each video
-    Debug("Generating multi-file average...");
+    print("Generating multi-file average...");
     
     gpuMat float_mat, f, ref;
     std::vector<gpuMat> vec;
@@ -554,7 +554,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     if(GlobalSettings::has("averaging_method"))
         method = SETTING(averaging_method).value<averaging_method_t::Class>();
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
-    Debug("Use averaging method: '%s'", method.name());
+    print("Use averaging method: '", method.name(),"'");
     if (length() < 10) {
         processImage(average, average);
         return;

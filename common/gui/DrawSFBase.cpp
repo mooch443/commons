@@ -90,7 +90,7 @@ namespace gui {
             _video_mode = sf::VideoMode(_window.getSize().x, _window.getSize().y);
             
             auto modes = sf::VideoMode::getFullscreenModes();
-            Debug("Supported:");
+            print("Supported:");
             for(auto &mode: modes)
                 Debug("%dx%d @ %d", mode.width, mode.height, mode.bitsPerPixel);
             

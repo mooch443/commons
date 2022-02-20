@@ -566,7 +566,7 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         header.push_back(name);
     }
     
-    Debug("Generating table...");
+    print("Generating table...");
     using namespace file;
     
     Table table(header);

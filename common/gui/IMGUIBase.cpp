@@ -386,7 +386,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         if(!monitor) {
             // assume fullscreen?
-            Debug("No monitor found.");
+            print("No monitor found.");
             return;
         }
         
@@ -659,7 +659,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             IMGUIBase::update_size_scale(window);
         });
 
-        Debug("IMGUIBase::init complete");
+        print("IMGUIBase::init complete");
     }
 
     IMGUIBase::~IMGUIBase() {
@@ -1592,7 +1592,7 @@ Size2 IMGUIBase::real_dimensions() {
         static int _wndSize[2];
         static int _wndPos[2];
         
-        Debug("Enabling full-screen.");
+        print("Enabling full-screen.");
         _platform->toggle_full_screen();
         
         Event event(WINDOW_RESIZED);

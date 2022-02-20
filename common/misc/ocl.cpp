@@ -1,7 +1,6 @@
 #include "ocl.h"
 #include <commons.pc.h>
 
-
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc11-extensions"
 
@@ -36,7 +35,7 @@ namespace ocl {
             static bool printed = false;
             
             if(!printed) {
-                Debug("Using CUDA device:");
+                cmn::print("Using CUDA device:");
                 cv::cuda::printCudaDeviceInfo(0);
                 printed = true;
             }

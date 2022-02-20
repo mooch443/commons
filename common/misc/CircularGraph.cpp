@@ -223,12 +223,12 @@ namespace cmn {
                 for (auto &range : ranges) {
                     if(range.end > left_border && range.end < peak.position.x) {
                         left_border = range.end;
-                        //Debug("\tExtending left border to %f", left_border);
+                        //print("\tExtending left border to ", left_border);
                     }
                     
                     if(range.start < right_border && range.start > peak.position.x) {
                         right_border = range.start;
-                        //Debug("\tExtending right border to %f", right_border);
+                        //print("\tExtending right border to ", right_border);
                     }
                 }
                 

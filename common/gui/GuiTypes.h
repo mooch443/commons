@@ -443,7 +443,7 @@ protected:
         public:
             ReturnRef(ExternalImage* source) : source(source) {}
             ~ReturnRef() {
-                Debug("Destructed");
+                print("Destructed");
                 source->clear_cache(); source->set_dirty();
             }
             operator Image& () {

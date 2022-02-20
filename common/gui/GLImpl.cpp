@@ -182,9 +182,9 @@ void GLImpl::create_window(const char* title, int width, int height) {
     }
     
     if OPENGL3_CONDITION
-        Debug("Using OpenGL3.2 (seems supported, %s).", glGetString(GL_VERSION));
+        print("Using OpenGL3.2 (seems supported, ", glGetString(GL_VERSION),").");
     else
-        Debug("Using OpenGL2.1 (%s)", glGetString(GL_VERSION));
+        print("Using OpenGL2.1 (", glGetString(GL_VERSION),")");
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -210,7 +210,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
     RefreshTitleBarThemeColor(native);
 #endif
 
-    Debug("Init complete.");
+    print("Init complete.");
 }
 
 GLFWwindow* GLImpl::window_handle() {
