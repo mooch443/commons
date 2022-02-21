@@ -23,6 +23,32 @@ enum class FormatterType {
     NONE
 };
 
+template<uint8_t N, typename T>
+    requires std::floating_point<T>
+struct decimals_t {
+    T value;
+    std::string toStr() const {
+        return Meta::toStr(value);
+    }
+};
+
+template <std::size_t V, std::size_t N, class I = std::make_integer_sequence<std::size_t, N>>
+struct power;
+
+template <std::size_t V, std::size_t N, std::size_t... Is>
+struct power<V, N, std::integer_sequence<std::size_t, Is...>> {
+   static constexpr std::size_t value = (static_cast<std::size_t>(1) * ... * (V * static_cast<bool>(Is + 1)));
+};
+
+template<std::size_t N, typename T>
+inline auto dec(T value) {
+    if constexpr(N == 0) {
+        return decimals_t<N, T>{ T( int64_t( value + 0.5 ) ) };
+    }
+    constexpr auto D = power<10u, N>::value;
+    return decimals_t<N, T>{ T( int64_t( value * D + 0.5 ) ) / D };
+}
+
 template<FormatColor value, FormatterType type = FormatterType::UNIX>
     requires (type == FormatterType::UNIX)
 std::string console_color(const std::string& enclose = "") {

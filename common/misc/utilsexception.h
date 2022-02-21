@@ -77,11 +77,11 @@ T CustomException(const Args& ...args, cmn::source_location info = cmn::source_l
     return T(cmn::format<FormatterType::UNIX>(args...));
 }*/
 
-template<typename... Args>
 class SoftException : public std::exception {
 public:
+    template<typename... Args>
     SoftException(const Args& ...args, cmn::source_location info = cmn::source_location::current())
-        : msg(cmn::format<FormatterType::UNIX>(args...)), std::exception(msg.c_str())
+        : msg(cmn::format<FormatterType::UNIX>(args...))
     {
         
     }
@@ -98,8 +98,8 @@ private:
 };
 
 
-template<typename... Args>
-SoftException(Args... args) -> SoftException<Args...>;
+//template<typename... Args>
+//SoftException(Args... args) -> SoftException<Args...>;
 
 template<FormatterType formatter, typename... Args>
 struct U_EXCEPTION : UtilsException {

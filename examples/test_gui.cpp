@@ -105,8 +105,15 @@ constexpr void init_offset() {
 
 
 int main(int argc, char**argv) {
-
-    print("Vec2<vec2>");
+    print("dec<0>:", dec<0>( 0.423125123f ));
+    print("dec<0>:", dec<0>( 0.523125123f ));
+    print("dec<1>:", dec<1>( 0.523125123 ));
+    print("dec<2>:", dec<2>( 0.523125123 ));
+    print("dec<3>:", dec<3>( 0.523125123 ));
+    print("dec<4>:", dec<4>( 0.523125123 ));
+    print("dec<5>:", dec<5>( 0.523125123 ));
+    print("dec<6>:", dec<6>( 0.523125123 ));
+    
 
     CommandLine cmd(argc, argv);
     cmd.cd_home();
