@@ -38,7 +38,7 @@ namespace cmn {
                      Debug("'%S'%S %S%S %S", &k, &b, &value, &c, &doc);*/
                 }
                 
-                Debug("'%S'%S %S%S %S", &k, &b, &value, &c, &doc);
+                print(k,b.c_str()," ",value.c_str(),c.c_str()," ",doc.c_str());
             }
         }
         
@@ -180,7 +180,7 @@ namespace cmn {
                                 text << "`<" << param_name << ">`_";
                                 
                             } else {
-                                Warning("Cannot find '%S' in map.", &param_name);
+                                print("Cannot find ",param_name," in map.");
                                 text << "``" << param_name << "``";
                             }
                         }

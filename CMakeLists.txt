@@ -1222,15 +1222,9 @@ else()
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cnpy/)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/cnpy)
 
-#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/common)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cpputils/src/)
-
-add_subdirectory(common/cpputils)
 add_subdirectory(common)
-
 add_subdirectory(examples)
 
 if(POLICY CMP0114)
@@ -1257,4 +1251,4 @@ if(WIN32)
     endif()
 endif()
 
-export(TARGETS commons cnpy cpputils imgui ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+export(TARGETS commons cnpy imgui ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )

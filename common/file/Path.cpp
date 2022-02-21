@@ -95,7 +95,7 @@ std::string_view Path::filename() const {
         }
         
         if(count != position+1)
-            U_EXCEPTION("Path only contains %d segments (requested split at %d).", count, position);
+            throw U_EXCEPTION("Path only contains %d segments (requested split at %d).", count, position);
         
         return {Path(std::string_view(_str.data(), before_len)), Path(std::string_view(_str.data() + before_len, _str.length() - before_len))};
     }
@@ -123,13 +123,13 @@ std::string_view Path::filename() const {
         DWORD ftyp = GetFileAttributesEx(c_str(), GetFileExInfoStandard, &fInfo);
         if (INVALID_FILE_ATTRIBUTES == ftyp || fInfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
-            U_EXCEPTION("Cannot stat file '%S'.", &str());
+            throw U_EXCEPTION("Cannot stat file ",str(),".");
         }
         return (static_cast<ULONGLONG>(fInfo.nFileSizeHigh) << sizeof(fInfo.nFileSizeLow) * 8) | fInfo.nFileSizeLow;
 #else
         struct stat sbuf;
         if (stat(c_str(), &sbuf) == -1)
-            U_EXCEPTION("Cannot stat file '%S'.", &str());
+            throw U_EXCEPTION("Cannot stat file ",str(),".");
         return narrow_cast<uint64_t>(sbuf.st_size);
 #endif
     }
@@ -177,7 +177,7 @@ std::string_view Path::filename() const {
             err = mkdir(folder.c_str(), ACCESSPERMS);
             if(err != 0) {
 #endif
-                Except("Cannot create folder '%S' (error: %d).", &folder, errno);
+                FormatExcept("Cannot create folder ",folder," (error: ",errno,").");
                 return false;
             }
         }
@@ -215,7 +215,7 @@ std::string_view Path::filename() const {
             return false;
         
         if(!is_regular())
-            U_EXCEPTION("Cannot delete non-regular file '%S'.", &str());
+            throw U_EXCEPTION("Cannot delete non-regular file ",str(),".");
         
         return std::remove(str().c_str()) == 0;
     }
@@ -225,21 +225,21 @@ std::string_view Path::filename() const {
             return false;
         
         if(!is_folder())
-            U_EXCEPTION("Cannot folder-delete a non-folder '%S'.", &str());
+            throw U_EXCEPTION("Cannot folder-delete a non-folder ",str(),".");
         
         if(recursively) {
             auto files = find_files();
             for(auto &file : files) {
                 if(file.is_folder()) {
                     if(!file.delete_folder(true))
-                        U_EXCEPTION("Cannot delete folder '%S'.", &file.str());
+                        throw U_EXCEPTION("Cannot delete folder ",file.str(),".");
                     
                 } else if(file.is_regular()) {
                     if(!file.delete_file())
-                        U_EXCEPTION("Cannot delete file '%S'.", &file.str());
+                        throw U_EXCEPTION("Cannot delete file ",file.str(),".");
                     
                 } else
-                    U_EXCEPTION("Unknown file type '%S'.", &file.str());
+                    throw U_EXCEPTION("Unknown file type ",file.str(),".");
             }
         }
 #if defined(WIN32)
@@ -263,9 +263,9 @@ std::string_view Path::filename() const {
     
     std::set<Path> Path::find_files(const std::string& filter_extension) const {
         if(!is_folder())
-            U_EXCEPTION("The path '%S' is not a folder and can not be iterated on.", &str());
+            throw U_EXCEPTION("The path ",str()," is not a folder and can not be iterated on.");
         if(!empty() && !exists())
-            U_EXCEPTION("The path '%S' does not exist.", &str());
+            throw U_EXCEPTION("The path ",str()," does not exist.");
         
         std::set<Path> result;
         DIR *dir;
@@ -282,7 +282,7 @@ std::string_view Path::filename() const {
             closedir (dir);
             
         } else
-            U_EXCEPTION("Folder '%S' exists but cannot be read.", &str());
+            throw U_EXCEPTION("Folder ",str()," exists but cannot be read.");
         
         return result;
     }
@@ -313,7 +313,7 @@ std::string_view Path::filename() const {
             std::ofstream dest( dest_file, std::ios::binary ) ;
             dest << srce.rdbuf() ;
         } catch (std::exception& e) {
-            Except("Caught an exception copying '%s' to '%s': %s", srce_file, dest_file, e.what());
+            FormatExcept("Caught an exception copying '", srce_file,"' to '", dest_file,"': ",e.what(),"");
             return 1;
         }
         
@@ -323,7 +323,7 @@ std::string_view Path::filename() const {
             std::filesystem::copy(srce_file, dest_file);
             
         } catch(const std::filesystem::filesystem_error& e) {
-            Except("Caught an exception copying '%s' to '%s': %s", srce_file, dest_file, e.what());
+            FormatExcept("Caught an exception copying '",srce_file,"' to '",dest_file,"': ", e.what());
             return 1;
         }
         return 0;
@@ -343,17 +343,17 @@ std::string_view Path::filename() const {
         } catch (std::filesystem::filesystem_error& e) {
             // do nothing
     #ifndef NDEBUG
-            Warning("Filesystem error: '%s'", e.what());
+            print("Filesystem error: '",e.what(),"'");
     #endif
 #endif
         }
         
         if(copy_file(c_str(), to.c_str()) != 0) {
-            Except("Failed renaming file '%S' to '%S', so I tried copying. That also failed. Make sure the second location is writable (this means that the file is still available in the first location, it just failed to be moved).", &str(), &to.str());
+            FormatExcept("Failed renaming file ",str()," to ",to.str(),", so I tried copying. That also failed. Make sure the second location is writable (this means that the file is still available in the first location, it just failed to be moved).");
             
         } else {
             if(!delete_file())
-                Warning("Cannot remove file '%S' from its original location after moving.", &str());
+                FormatWarning("Cannot remove file ",str()," from its original location after moving.");
             return true;
         }
         
@@ -387,7 +387,7 @@ std::string_view Path::filename() const {
     FILE* Path::fopen(const std::string &access_rights) const {
         auto f = ::fopen(c_str(), access_rights.c_str());
         if(!f)
-            Error("fopen failed, errno = %d\n", errno);
+            FormatError("fopen failed, errno = ", errno);
         return f;
     }
         

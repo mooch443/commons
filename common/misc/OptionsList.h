@@ -6,11 +6,8 @@
 #include <algorithm>
 #include <array>
 #include <set>
-#include "cpputils.h"
 
-#define UNUSED(VAR) { (void)VAR; }
-
-#include "utilsexception.h"
+#include <misc/utilsexception.h>
 
 /**
  * Provides a wrapper for a vector of enum values.
@@ -36,8 +33,8 @@ public:
             }
         }
         
-        //U_EXCEPTION("Cannot find value '%d' of enum in this OptionsList.", v);
-        //U_EXCEPTION("Cannot find value '%S' of enumeration '%s' in this OptionsList.", &v.toString(), T::name());
+        //throw U_EXCEPTION("Cannot find value '",v,"' of enum in this OptionsList.");
+        //throw U_EXCEPTION("Cannot find value '%S' of enumeration '%s' in this OptionsList.", &v.toString(), T::name());
     }
     void clear() {
         list.clear();
@@ -56,45 +53,5 @@ public:
 		return list == other.list;
     }
 };
-
-template<typename T1, typename T2, typename T3>
-class triplet {
-public:
-    triplet(const T1& t1, const T2& t2, const T3& t3)
-        : first(t1), second(t2), third(t3)
-    { }
-    
-public:
-    T1 first;
-    T2 second;
-    T3 third;
-};
-
-template<typename T1, typename T2, typename T3>
-bool operator==(const triplet<T1, T2, T3>& first, const triplet<T1, T2, T3>& second) {
-    return first.first == second.first && first.second == second.second && first.third == second.third;
-}
-
-
-// -------------------------------
-//          FILE UTILS
-// -------------------------------
-
-#include <fstream>
-
-namespace utils {
-
-inline std::string read_file(const std::string& filename) {
-    std::ifstream input(filename, std::ios::binary);
-    if(!input.is_open())
-        U_EXCEPTION("Cannot read file '%S'.", &filename);
-    
-    std::stringstream ss;
-    ss << input.rdbuf();
-    
-    return ss.str();
-}
-    
-}
 
 #endif

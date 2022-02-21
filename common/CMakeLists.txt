@@ -69,7 +69,6 @@ endforeach()
 
 
 target_link_libraries(commons
-    PUBLIC cpputils
     PUBLIC cnpy
     PUBLIC Commons::IMGUI 
     PUBLIC Commons::OpenGL 

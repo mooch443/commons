@@ -13,9 +13,9 @@ namespace gui {
         if(!_font_loaded) {
 			file::Path path("fonts/Avenir.ttc");
 			if (!path.exists())
-				U_EXCEPTION("Cannot find file '%S'", &path.str());
+                throw U_EXCEPTION("Cannot find file ",path.str());
             if(!_font.loadFromFile(path.str())) {
-                U_EXCEPTION("Cannot load '%S'", &path.str());
+                throw U_EXCEPTION("Cannot load ",path.str());
             }
             else
                 _font_loaded = true;
@@ -95,7 +95,7 @@ namespace gui {
                 Debug("%dx%d @ %d", mode.width, mode.height, mode.bitsPerPixel);
             
             auto mode = modes.front();
-            Debug("using (first) mode: %dx%d @ %d", mode.width, mode.height, mode.bitsPerPixel);
+            print("using (first) mode: ", mode.width,"x", mode.height," @ ",mode.bitsPerPixel,"");
             _window.create(mode, _title, sf::Style::Fullscreen);
             _window.setView(sf::View(sf::FloatRect(0, 0, mode.width, mode.height)));
             _window.setActive(false);
@@ -230,21 +230,21 @@ namespace gui {
         if (!shader.loadFromMemory(vertexShader, sf::Shader::Vertex))
         {
             // error...
-            U_EXCEPTION("Cannot load vertex shader.");
+            throw U_EXCEPTION("Cannot load vertex shader.");
         }
         
         // load only the fragment shader
         if (!shader.loadFromMemory(fragmentShader, sf::Shader::Fragment))
         {
             // error...
-            U_EXCEPTION("Cannot load fragment shader.");
+            throw U_EXCEPTION("Cannot load fragment shader.");
         }
         
         // load both shaders
         if (!shader.loadFromMemory(vertexShader, fragmentShader))
         {
             // error...
-            U_EXCEPTION("Cannot load shaders.");
+            throw U_EXCEPTION("Cannot load shaders.");
         }
         
         shader.setUniform("texture", sf::Shader::CurrentTexture);
@@ -268,7 +268,7 @@ namespace gui {
         if(_has_texture) {
             if(_texture.getSize().x != _window.getView().getSize().x * 2 || _texture.getSize().y != _window.getView().getSize().y * 2) {
                 _texture.create(_window.getView().getSize().x * 2, _window.getView().getSize().y * 2, sf::ContextSettings(0, 0, 8));
-                Debug("Updated texture %dx%d", _texture.getSize().x, _texture.getSize().y);
+                print("Updated texture ", _texture.getSize());
             }
             
             _texture.clear(Transparent);
@@ -408,7 +408,7 @@ namespace gui {
                 text.setScale(gscale.reciprocal());
                 text.setCharacterSize(font.size * gscale.x * 25);
             } catch(const UtilsException& ex) {
-                Warning("Not initialising scale of (probably StaticText) fully because of a UtilsException.");
+                FormatWarning("Not initialising scale of (probably StaticText) fully because of a UtilsException.");
                 text.setCharacterSize(font.size * 25);
                 text.setScale(1, 1);
             }
@@ -426,7 +426,7 @@ namespace gui {
         try {
             bounds = text.getGlobalBounds();// getLocalBounds();
         } catch(const std::exception& e) {
-            Except("size:%f scale:0x%X '%s'", font.size, obj, e.what());
+            FormatExcept("size:", font.size," scale:", obj," '",e.what(),"'");
             return Bounds(0,0,1,1);
         }
         
@@ -738,7 +738,7 @@ namespace gui {
                 
             default: {
                 auto type = state.obj()->type().name();
-                U_EXCEPTION("Unknown type '%s' in SFBase.", type);
+                throw U_EXCEPTION("Unknown type '",type,"' in SFBase.");
             }
         }
         

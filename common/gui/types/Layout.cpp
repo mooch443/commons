@@ -52,7 +52,7 @@ namespace gui {
 
     void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
         if(std::set<Layout::Ptr>(objects.begin(), objects.end()).size() != objects.size())
-            U_EXCEPTION("Cannot insert the same object multiple times.");
+            throw U_EXCEPTION("Cannot insert the same object multiple times.");
         
         std::vector<Layout::Ptr> next;
         bool dirty = false;
@@ -106,12 +106,12 @@ namespace gui {
             _objects.erase(it);
             return;
         }
-        //Warning("Cannot find object %X", ptr);
+        //print("Cannot find object ",ptr,"");
     }
     
     /*void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
         if(std::set<Layout::Ptr>(objects.begin(), objects.end()).size() != objects.size())
-            U_EXCEPTION("Cannot insert the same object multiple times.");
+            throw U_EXCEPTION("Cannot insert the same object multiple times.");
         
         if(_objects == objects)
             return;

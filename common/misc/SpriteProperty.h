@@ -37,19 +37,19 @@ namespace cmn {
         public:
             PropertyType(Map *map)
                 : _name("<invalid>"), _valid(false), _is_array(false), _is_enum(false),
-                _set_value_from_string([this](const std::string&){U_EXCEPTION("Uninitialized function set_value_from_string (%S).", &_name);}),
+                _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
                 _type_name([](){return "unknown";}),
-                _enum_values([]() -> std::vector<std::string> {     U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
-                _enum_index([]() -> size_t{ U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
+                _enum_values([]() -> std::vector<std::string> {     throw U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
+                _enum_index([]() -> size_t{ throw U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
                 _map(map)
             { }
             
             PropertyType(Map *map, const std::string& name)
                 : _name(name), _valid(true), _is_array(false), _is_enum(false),
-                _set_value_from_string([this](const std::string&){U_EXCEPTION("Uninitialized function set_value_from_string (%S).", &_name);}),
+                _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
                 _type_name([](){return "unknown";}),
-                _enum_values([]() -> std::vector<std::string> {     U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
-                _enum_index([]() -> size_t{ U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
+                _enum_values([]() -> std::vector<std::string> {     throw U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
+                _enum_index([]() -> size_t{ throw U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
                 _map(map)
             { }
             
@@ -59,7 +59,7 @@ namespace cmn {
                 try {
                     _set_value_from_string(str);
                 } catch(const std::invalid_argument& e) {
-                    U_EXCEPTION("Cannot set %@ to '%S' ('%s')", this, &str, e.what());
+                    throw U_EXCEPTION("Cannot set %@ to '%S' ('%s')", this, &str, e.what());
                 }
             }
             
@@ -196,7 +196,7 @@ namespace cmn {
             
             template<typename T = ValueType>
             void init_enum(typename std::enable_if_t<!cmn::is_enum<T>::value, T> * = nullptr) {
-                _enum_values = []() -> std::vector<std::string> { U_EXCEPTION("This type is not an Enum, so enum_values() cannot be called."); };
+                _enum_values = []() -> std::vector<std::string> { throw U_EXCEPTION("This type is not an Enum, so enum_values() cannot be called."); };
             }
             
             template<typename K>

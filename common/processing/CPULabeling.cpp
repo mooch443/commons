@@ -932,7 +932,7 @@ void Brototype::move_to_cache(List_t* list, typename std::unique_ptr<Brototype>&
     if(list)
         list->cache().receive(std::move(node));
     else
-        Warning("No list");
+        FormatWarning("No list");
     node = nullptr;
 }
 
@@ -1177,7 +1177,7 @@ blobs_t run_fast(List_t* blobs)
     
 #if defined(DEBUG_MEM)
     if(!Brototype::brototypes().empty())
-        Warning("Still have %lu brototypes in memory", Brototype::brototypes().size());
+        print("Still have ",Brototype::brototypes().size()," brototypes in memory");
     
     source._nodes.clear();
     
@@ -1186,7 +1186,7 @@ blobs_t run_fast(List_t* blobs)
         
         std::lock_guard guard(Node_t::mutex());
         if(!Node_t::created_nodes().empty())
-            Warning("Still have %lu nodes in memory", Node_t::created_nodes().size());
+            print("Still have ",Node_t::created_nodes().size()," nodes in memory");
     }
     
     Brototype::brototypes().clear();

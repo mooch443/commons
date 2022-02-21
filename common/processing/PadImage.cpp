@@ -34,7 +34,7 @@ namespace cmn {
             //size_t left = (output.cols - ratio_size.width) * 0.5,
             //        top = (output.rows - ratio_size.height) * 0.5;
             
-            U_EXCEPTION("Resize is not allowed.");
+            throw U_EXCEPTION("Resize is not allowed.");
             
             /*if(dtype == input.type()) {
                 assert(mask.empty());

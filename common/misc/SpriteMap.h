@@ -221,7 +221,7 @@ namespace sprite {
             
             for(; it0 != other._props.end(); ++it0, ++it1) {
                 if(!(it0->first == it1->first) || !(*it0->second == *it1->second)) {
-                    Debug("'%S' != '%S' || ", &it0->first.name(), &it1->first.name());
+                    print(it0->first.name()," != ",it1->first.name()," || ");
                     return false;
                 }
             }
@@ -321,7 +321,7 @@ namespace sprite {
                 LockGuard guard(this);
                 if(has(property)) {
                     std::string e = "Property already "+((const PropertyType&)property).toStr()+" already exists.";
-                    Error(e.c_str());
+                    FormatError(e.c_str());
                     throw new PropertyException(e);
                 }
                 
@@ -366,7 +366,7 @@ namespace sprite {
         }
         
         std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +".";
-        Error(e.c_str());
+        FormatError(e.c_str());
         throw new PropertyException(e);
     }
     
@@ -399,7 +399,7 @@ namespace sprite {
         }
         
         std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +" .";
-        Error(e.c_str());
+        FormatError(e.c_str());
         throw new PropertyException(e);
     }
     
@@ -418,7 +418,7 @@ namespace sprite {
             std::stringstream ss;
             ss << "Reference to "+toStr()+" cannot be cast to type of ";
             ss << Meta::name<T>();
-            Error(ss.str().c_str());
+            FormatError(ss.str().c_str());
             throw new PropertyException(ss.str());
         }
     }

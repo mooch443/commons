@@ -34,7 +34,7 @@ namespace cmn {
             
             const uint64_t read_size = read_data(size, (char*)&val);
             if(read_size != size)
-                U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
+                throw U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
         }
         
         template <typename T, typename K>
@@ -77,7 +77,7 @@ namespace cmn {
         virtual uint64_t read_data(uint64_t num_bytes, char *buffer) = 0;
         virtual uint64_t write_data(uint64_t num_bytes, const char *buffer) = 0;
 
-        virtual const char* read_data_fast(uint64_t) { U_EXCEPTION("Not supported."); }
+        virtual const char* read_data_fast(uint64_t) { throw U_EXCEPTION("Not supported."); }
         
         uint64_t read_data(uint64_t pos, uint64_t num_bytes, char *buffer) {
             auto old = tell();
@@ -122,7 +122,7 @@ namespace cmn {
         }
         
         virtual uint64_t write_data(uint64_t, const char *) override {
-            U_EXCEPTION("This class is read-only.");
+            throw U_EXCEPTION("This class is read-only.");
         }
         
         virtual uint64_t read_data(uint64_t num_bytes, char *buffer) override {
@@ -232,7 +232,7 @@ namespace cmn {
         const file::Path& filename() const { return _filename; }
         const std::string& project_name() const { return _project_name; }
         
-        //long read_size() const { if(!_mmapped) U_EXCEPTION("Must be mmapped."); return _reading_file_size; }
+        //long read_size() const { if(!_mmapped) throw U_EXCEPTION("Must be mmapped."); return _reading_file_size; }
 		uint64_t current_offset() const;
 		virtual uint64_t tell() const override;
         
@@ -252,7 +252,7 @@ namespace cmn {
         virtual void seek(uint64_t pos) override {
             if(!_mmapped) {
                 if(!f)
-                    U_EXCEPTION("File not open.");
+                    throw U_EXCEPTION("File not open.");
 #ifdef WIN32
 				_fseeki64(f, (int64_t)pos, SEEK_SET);
 #else

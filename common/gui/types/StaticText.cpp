@@ -374,7 +374,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
                             }
                             
                         } else
-                            Warning("Cannot pop tag '%S'", &s);
+                            print("Cannot pop tag ",s,"");
                     } else {
                         if(commands.find(s) == commands.end()) {
                             if(tags.empty()) {
@@ -410,7 +410,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
             front.close(_txt.size(), _txt, _txt.size());
             global_tags.push_back(front);
             if(!tags.empty())
-                Warning("Did not properly close all tags.");
+                FormatWarning("Did not properly close all tags.");
         } else if(global_tags.empty() || global_tags.back().after < _txt.size()) {
             global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
             global_tags.back().close(_txt.size(), _txt, _txt.size());
@@ -468,7 +468,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
                 tag.font.style |= Style::Bold;
                 tag.color = mix_colors(tag.color, Gray);
             }
-            else Warning("Unknown tag '%S' in RichText.", &tag.name);
+            else print("Unknown tag ",tag.name," in RichText.");
             
             if(!tag.subranges.empty()) {
                 auto sub = *tag.subranges.begin();

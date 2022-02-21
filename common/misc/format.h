@@ -6,7 +6,7 @@
 #include <io.h>
 #endif
 
-#define COMMONS_FORMAT_LOG_TO_FILE
+//#define COMMONS_FORMAT_LOG_TO_FILE
 
 namespace cmn {
 
@@ -19,7 +19,8 @@ enum class FormatColor {
 enum class FormatterType {
     UNIX,
     TAGS,
-    HTML
+    HTML,
+    NONE
 };
 
 template<FormatColor value, FormatterType type = FormatterType::UNIX>
@@ -152,6 +153,12 @@ std::string console_color(const std::string& enclose = "") {
     return "<" + tag + ">" + (enclose.empty() ? "" : (utils::find_replace(enclose, { {"\n", "<br/>"},{"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }) + "</" + tag + ">"));
 }
 
+template<FormatColor value, FormatterType type>
+    requires (type == FormatterType::NONE)
+std::string console_color(const std::string& enclose = "") {
+    return enclose;
+}
+
 template<typename T, typename U>
 concept is_explicitly_convertible =
            std::is_constructible<U, T>::value
@@ -163,7 +170,7 @@ private:
     ParseValue() = delete;
 
 public:
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = std::remove_cvref_t<T>>
         requires _has_tostr_method<K>
                 && (!std::convertible_to<K, std::string>)
                 && (!is_explicitly_convertible<K, std::string>)
@@ -463,6 +470,16 @@ public:
     static std::string parse_value(T value) {
         return console_color<FormatColor::PURPLE, colors>(Meta::toStr(value));
     }
+    
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires is_instantiation<cv::Size_, T>::value
+    static std::string parse_value(T value) {
+        return console_color<FormatColor::BLACK, colors>("[")
+            + parse_value(value.width)
+            + console_color<FormatColor::BLACK, colors>(","),
+            parse_value(value.height)
+            + console_color<FormatColor::BLACK, colors>("]");
+    }
 
     template<typename T, typename K = remove_cvref_t<T>>
         requires std::same_as<K, std::string>
@@ -572,20 +589,5 @@ void print(const Args & ... args) {
     log_to_file(str);
 #endif
 }
-
-
-template<typename... Args>
-void FORMAT_WARNING(const char* path, int line, const Args & ...args) {
-    std::string str =
-        "["
-            + console_color<FormatColor::YELLOW, FormatterType::UNIX>(
-            "WARNING " + std::string(path) + ":" + Meta::toStr(line) + current_time_string())
-      + "] "
-      + format<FormatterType::UNIX>(args...);
-    
-    printf("%s\n", str.c_str());
-}
-
-#define FormatWarning(...) FORMAT_WARNING(__FILE_NO_PATH__, __LINE__, __VA_ARGS__)
 
 }

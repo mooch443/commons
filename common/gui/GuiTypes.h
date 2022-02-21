@@ -51,7 +51,7 @@ public:
     
     virtual const std::vector<Vertex>& points() {
         if(_transport)
-            U_EXCEPTION("Vertices must be prepare()d before first use.");
+            throw U_EXCEPTION("Vertices must be prepare()d before first use.");
         assert(_points);
         
         return *_points;

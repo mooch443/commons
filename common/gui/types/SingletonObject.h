@@ -31,7 +31,7 @@ namespace gui {
                 // No swapping needs to be done here
                 
             } else {
-                U_EXCEPTION("Can only be swapped with Singletons.");
+                throw U_EXCEPTION("Can only be swapped with Singletons.");
             }
             
             return true;

@@ -56,7 +56,7 @@ namespace cmn {
                 throw std::invalid_argument("r must be >= 1");
             
             if(!points || points->empty()) {
-                Warning("[curvature] points cannot be empty or nullptr.");
+                FormatWarning("[curvature] points cannot be empty or nullptr.");
                 return nullptr;
             }
             
@@ -233,7 +233,7 @@ namespace cmn {
                 }
                 
                 range_t search_range(left_border, right_border);
-                //Debug("Search_range for %f is %f-%f. *prev=%f after=%f", peak.position.x, search_range.start, search_range.end, *prev, *after);
+                //print("Search_range for ",peak.position.x," is ",search_range.start,"-",search_range.end,". *prev=",*prev," after=",*after,"");
                 
                 auto copy_left = prev;
                 scalar_t last_y = peak.position.y;
@@ -319,7 +319,7 @@ namespace cmn {
                 peak.width = search_range.length();
                 peak.range = range_t(index_left, index_right);
                 
-                //Debug("Avoiding range %f-%f", peak.range.start, peak.range.end);
+                //print("Avoiding range ", peak.range.start,"-",peak.range.end,"");
                 ranges.push_back(peak.range);
             }
             
@@ -469,7 +469,7 @@ namespace cmn {
         namespace EFT {
             std::tuple<points_t, scalars_t, scalars_t, scalars_t> dt(points_t dxy) {
                 if (!dxy || dxy->empty())
-                    U_EXCEPTION("[periodic::EFT] Cannot work on empty (or null) dxy array.");
+                    throw U_EXCEPTION("[periodic::EFT] Cannot work on empty (or null) dxy array.");
                 
                 auto dt = std::make_shared<scalars_t::element_type>();
                 dt->resize(dxy->size() - 1); // -1 because dxy is same size as array
@@ -556,7 +556,7 @@ namespace cmn {
                 return {};
             
             if(order > coeffs->size())
-                U_EXCEPTION("Cannot compute order > coeffs.size().");
+                throw U_EXCEPTION("Cannot compute order > coeffs.size().");
             
             assert(n_points > 0);
             
@@ -597,7 +597,7 @@ namespace cmn {
         
         void Curve::make_clockwise() {
             if(!_points)
-                U_EXCEPTION("[periodic] Have to set points first.");
+                throw U_EXCEPTION("[periodic] Have to set points first.");
             if(_is_clockwise)
                 return;
             

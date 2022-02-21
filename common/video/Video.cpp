@@ -33,7 +33,7 @@ Video::Video() : _maps_calculated(false), _cap(NULL), _please_stop(false), _thre
     
     cv::ocl::Context context;
     if (!context.create(cv::ocl::Device::TYPE_DGPU) || context.ndevices() == 0)
-        U_EXCEPTION("Cannot create OpenCL context for dedicated GPU.");
+        throw U_EXCEPTION("Cannot create OpenCL context for dedicated GPU.");
     cv::ocl::Device(context.device(0));
 
 #else
@@ -125,7 +125,7 @@ bool Video::isOpened() const {
  */
 const cv::Size& Video::size() const {
     if(!_cap)
-        U_EXCEPTION("Trying to retrieve size of a video that has not been opened.");
+        throw U_EXCEPTION("Trying to retrieve size of a video that has not been opened.");
     return _size;
 }
 
@@ -164,16 +164,16 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     //TakeTiming take(timing);
     
 	if (index >= length())
-		U_EXCEPTION("Read out of bounds %d/%d.", index, length());
+        throw U_EXCEPTION("Read out of bounds %d/%d.", index, length());
 
 #if defined(VIDEOS_USE_CUDA)
     if(index != _last_index+1) {
-        U_EXCEPTION("Cannot jump with gpu Video (to %d from %d).", index, _last_index);
+        throw U_EXCEPTION("Cannot jump with gpu Video (to %d from %d).", index, _last_index);
     }
     
     cv::cuda::GpuMat d_frame;
     if(!d_reader->nextFrame(d_frame)) {
-        U_EXCEPTION("Reading frame %d failed.", index);
+        throw U_EXCEPTION("Reading frame ",index," failed.");
     }
     d_frame.download(frame);
     
@@ -181,15 +181,15 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     
 #else
 	if (!_cap)
-        U_EXCEPTION("Video '%S' has not yet been loaded.", &_filename);
+        throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
     // Set position to requested frame
     if(index <= _last_index || (lazy && index != _last_index+1)) {
-        //Warning("Have to reset video index from %d to %d (%S)", _last_index, index, &_filename);
+        //FormatWarning("Have to reset video index from ", _last_index," to ", index," (",_filename.c_str(),")");
         _cap->set(cv::CAP_PROP_POS_FRAMES, index);
     } else if(index > _last_index+1) {
 #ifndef NDEBUG
-        Warning("Have to skip from video index from %d to %d (%S)", _last_index, index-1, &_filename);
+        FormatWarning("Have to skip from video index from ", _last_index," to ", index-1," (",_filename.c_str(),")");
 #endif
         for(; _last_index+1 < index; _last_index++)
             _cap->grab();
@@ -199,7 +199,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     
     // Read requested frame
     if(!_cap->read(read))
-        U_EXCEPTION("Cannot read frame %d of video '%S'.", index, &_filename);
+        throw U_EXCEPTION("Cannot read frame %d of video '%S'.", index, &_filename);
 #endif
     
     if(read.channels() > 1) {
@@ -210,7 +210,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
                 cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
                 extractu8(read, frame, color_channel % 3);
                 
-            } else Error("Cannot copy to read frame with %d channels.", read.channels());
+            } else print("Cannot copy to read frame with ",read.channels()," channels.");
         } else {
             if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
                 frame = cv::Mat(read.rows, read.cols, CV_8UC1);

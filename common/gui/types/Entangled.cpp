@@ -90,7 +90,7 @@ namespace gui {
     
     void Entangled::set_scroll_offset(Vec2 scroll_offset) {
         if(!_scroll_enabled)
-            U_EXCEPTION("Cannot set scroll offset for object that doesnt have scrolling enabled.");
+            throw U_EXCEPTION("Cannot set scroll offset for object that doesnt have scrolling enabled.");
         
         //if(_scroll_limit_x != Rangef())
         {
@@ -114,18 +114,10 @@ namespace gui {
     }
 
 std::vector<Drawable*>& Entangled::children() {
-    //if(_begun)
-    //    return _new_children;
-    //if(_begun)
-    //    Except("Undefined while updating.");
     return _current_children;
 }
 
 bool Entangled::empty() const {
-    //if(_begun)
-    //    return _new_children.empty();
-    //if(_begun)
-    //    U_EXCEPTION("Undefined while updating.");
     return _current_children.empty();
 }
     
@@ -141,7 +133,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     void Entangled::begin() {
         if(_begun) {
             print_stacktrace();
-            U_EXCEPTION("Cannot begin twice.");
+            throw U_EXCEPTION("Cannot begin twice.");
         }
         
         _begun = true;
@@ -170,7 +162,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
             
             if(!_currently_removed.empty() && *_currently_removed.begin() == d) {
 /*#ifndef NDEBUG
-                Warning("Had to deinit forcefully");
+                FormatWarning("Had to deinit forcefully");
 #endif*/
                 deinit_child(false, d);
             }
@@ -200,9 +192,6 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         if(!bounds_changed())
             return;
         
-        //before_draw();
-        //if(_begun)
-        //    Except("Undefined while updating.");
         SectionInterface::update_bounds();
     }
     
@@ -269,7 +258,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     
     bool Entangled::swap_with(Drawable*) {
         // TODO: ownership
-        U_EXCEPTION("Ownership not implemented. You need to save Entangled objects and use wrap_object instead of add_object.");
+        throw U_EXCEPTION("Ownership not implemented. You need to save Entangled objects and use wrap_object instead of add_object.");
         
         /*if(!SectionInterface::swap_with(d))
             return false;
@@ -320,13 +309,13 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         }
 */
         //if(_begun)
-        //    U_EXCEPTION("Undefined while updating.");
+        //    throw U_EXCEPTION("Undefined while updating.");
         deinit_child(true, d);
     }
     
     void Entangled::clear_children() {
         if(_begun)
-            U_EXCEPTION("Undefined while updating.");
+            throw U_EXCEPTION("Undefined while updating.");
         
         while(!_current_children.empty())
             deinit_child(true, _current_children.begin(), _current_children.front());
@@ -345,9 +334,9 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
             _currently_removed.erase(it);
         
         if(d->type() == Type::SECTION) {
-            U_EXCEPTION("Cannot entangle Sections.");
+            throw U_EXCEPTION("Cannot entangle Sections.");
         } else if(d->type() == Type::SINGLETON)
-            U_EXCEPTION("Cannot entangle wrapped objects.");
+            throw U_EXCEPTION("Cannot entangle wrapped objects.");
         
         d->set_parent(this);
         
@@ -415,7 +404,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     }
     
     if(!used_or_deleted)
-        U_EXCEPTION("Not used or deleted.");
+        throw U_EXCEPTION("Not used or deleted.");
     
     _set_child(d, true, _index);
     return d;

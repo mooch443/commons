@@ -58,7 +58,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
 
     inline blobs_t _threshold_blob(pv::BlobPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
         if(!blob->pixels())
-            U_EXCEPTION("Cannot threshold a blob without pixels.");
+            throw U_EXCEPTION("Cannot threshold a blob without pixels.");
         //return blob;
         //blob->threshold(threshold, *bg);
         //Timer timer;
@@ -303,7 +303,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
     {
         if(!next_row->valid()) {
             if(next_row->range.start >= 0)
-                U_EXCEPTION("Both");
+                throw U_EXCEPTION("Both");
         }
         else if(y > next_row->y+1) {
             //! ---- CASE 0 ----
@@ -524,7 +524,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
 /*#ifndef NDEBUG
         {
             int h = blob->bounds().height;
-            Debug("Height: %d, lines: %d", h, caches.size());
+            print("Height: ", h,", lines: ",caches.size(),"");
             cv::Mat image = cv::Mat::zeros(h+2, blob->bounds().width+2, CV_8UC4);
             
             using namespace gui;
@@ -547,13 +547,8 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
             interp = tree.generate_edges();
         } catch(const std::invalid_argument& e) {
             print("Error");
-            
-            Debug("%d: %s %d", blob->blob_id(), e.what(), blob->pixels()->size());
-            
-            auto pxstr = Meta::toStr(*blob->pixels());
-            auto hlstr = Meta::toStr(blob->hor_lines());
-            
-            printf("%s\n%s\n\n", pxstr.c_str(), hlstr.c_str());
+            print(blob->blob_id(),": ", e.what(), " ", blob->pixels()->size());
+            print(*blob->pixels(), "\n", blob->hor_lines(), "\n\n");
         }
         
         return interp;
@@ -595,7 +590,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         /*auto it = edges.find(edge);
         if(it != edges.end()) {
             auto other = *it;
-            U_EXCEPTION("Already contains edge with direction %d->%d from %f,%f to %f,%f (%f,%f)", edge.out_direction, edge.in_direction, edge.A->position.x, edge.A->position.y, edge.B->position.x, edge.B->position.y, it->B->position.x, it->B->position.y);
+            throw U_EXCEPTION("Already contains edge with direction %d->%d from %f,%f to %f,%f (%f,%f)", edge.out_direction, edge.in_direction, edge.A->position.x, edge.A->position.y, edge.B->position.x, edge.B->position.y, it->B->position.x, it->B->position.y);
         }*/
         
         const auto& half_out = pixel::half_vectors[edge.out_direction];
@@ -832,7 +827,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             }
             ss << "]";
             auto str = ss.str();
-            Debug("Pixel at %f,%f has borders: %S", offset.x, offset.y, &str);*/
+            print("Pixel at ", offset.x,",", offset.y," has borders: ",str,"");*/
             
             for (uchar i=0; i<node->border.size(); ++i) {
                 if(!node->border[i])
@@ -920,7 +915,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         
                         */
                         
-                        //Debug("\t%s and %s are not set. adding inner connection with %s -> %s", NAME(left), NAME(left_left), NAME(border), NAME(left_left));
+                        //print("\t",NAME(left)," and ",NAME(left_left)," are not set. adding inner connection with ",NAME(border)," -> ",NAME(left_left),"");
                         add_edge(_sides, _non_full_nodes, Edge(border, (Direction)left_left, node.get(), node.get()), _nodes);
                     }
                 }

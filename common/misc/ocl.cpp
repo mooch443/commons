@@ -43,7 +43,7 @@ namespace ocl {
 		}
         
         if(!cv::ocl::haveOpenCL()) {
-			Except("No OCL devices available. Please check your graphics drivers and point the PATH variable to the appropriate folders.");
+            cmn::FormatExcept("No OCL devices available. Please check your graphics drivers and point the PATH variable to the appropriate folders.");
             return false;
         }
         assert(cv::ocl::haveOpenCL());

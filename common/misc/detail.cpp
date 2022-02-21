@@ -16,7 +16,7 @@ namespace cmn {
         
         auto check_obj = [](HorizontalLine&, bool cond, const std::string& cond_name) {
             if(!cond) {
-                Error("The program is not pleased. '%S'", &cond_name);
+                FormatError("The program is not pleased. ",cond_name,"");
             }
         };
 #define _assert(obj, COND) { check_obj(obj, (COND), #COND); }
@@ -75,7 +75,7 @@ namespace cmn {
                 }
                 
             } else if(result.back().y > it->y)
-                U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
+                throw U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
             
             prev = it;
             result.push_back(*it);
@@ -118,7 +118,7 @@ namespace cmn {
                 }
                 
             } else if(result.back().y > it->y)
-                U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
+                throw U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
             
             prev = it;
             result.push_back(*it);
@@ -642,7 +642,7 @@ namespace cmn {
             if(utils::beginsWith(str, '{') && utils::endsWith(str, '}'))
                 str = str.substr(1, str.length()-2);
             else
-                U_EXCEPTION("Malformed map string '%S'", &str);
+                throw U_EXCEPTION("Malformed map string ",str);
             
             auto parts = util::parse_array_parts(str);
             for (auto &p : parts) {
@@ -685,12 +685,12 @@ namespace cmn {
                             
                         case VECTOR:
                             if(!map.has("quiet") || !map.get<bool>("quiet"))
-                                U_EXCEPTION("(Key '%S') Vector not yet implemented.", &key);
+                                throw U_EXCEPTION("(Key ",key,") Vector not yet implemented.");
                             break;
                             
                         case INVALID:
                             if(!map.has("quiet") || !map.get<bool>("quiet"))
-                                Warning("Data of invalid type '%S' for key '%S'", &value, &key);
+                                FormatWarning("Data of invalid type ", value," for key ",key,"");
                             break;
                             
                         case BOOL:

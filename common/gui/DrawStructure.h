@@ -168,7 +168,7 @@ namespace gui {
         template<typename T>
         T* add_object(T *ptr, typename std::enable_if<std::is_base_of<Drawable, T>::value, bool>::type = false) {
             if(ptr->type() == Type::SECTION)
-                U_EXCEPTION("Cannot add Section using add_object. Use wrap_object instead.");
+                throw U_EXCEPTION("Cannot add Section using add_object. Use wrap_object instead.");
             
             if(!_active_section)
                 begin_section("root");
@@ -308,7 +308,7 @@ namespace gui {
                     set_active_section(NULL);
                 }
             } else
-                U_EXCEPTION("Popping empty stack.");
+                throw U_EXCEPTION("Popping empty stack.");
         }
         
         void do_hover(Drawable *d, Event e) {

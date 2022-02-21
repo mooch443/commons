@@ -11,10 +11,8 @@ namespace gui {
             if(cit != _children.end()) {
                 _children.erase(cit);
                 delete it->second;
-            } //else
-                //Except("Cannot find object");
+            }
             
-            //delete it->second;
             _wrapped_children.erase(it);
             
         } else {
@@ -22,13 +20,12 @@ namespace gui {
             if(it != _children.end()) {
                 _children.erase(it);
                 delete d;
-            } //else
-                //Except("Cannot find object");
+            }
         }
     }
     
     bool Section::remove_wrapped(gui::Drawable *) {
-        U_EXCEPTION("Unused.");
+        throw U_EXCEPTION("Unused.");
         
         /*for(auto it=_children.begin(); it != _children.end(); ++it) {
             auto c = *it;
@@ -205,7 +202,7 @@ namespace gui {
 							//if(size_t(it - _children.begin()) < _index)
 							--_index;
                         else if(size_t(it - _children.begin()) < _index)
-                            U_EXCEPTION("problem: %ld vs %lu", (long)std::distance(it, start), size_t(it - _children.begin()));
+                            throw U_EXCEPTION("problem: ",std::distance(it, start)," vs ", size_t(it - _children.begin()));
 
                         _children.erase(it);
                         

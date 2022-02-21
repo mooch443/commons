@@ -9,7 +9,7 @@ bool CSVExport::save(const file::Path &filename) const {
     
     std::ofstream out(filename.add_extension("csv").str());
     if (!out.is_open())
-        U_EXCEPTION("Cannot open file '%S'.", &filename.str());
+        throw U_EXCEPTION("Cannot open file ",filename.str(),".");
     
     auto write_line = [&out](const Row& row) {
         for (size_t i=0; i<row.size(); i++) {

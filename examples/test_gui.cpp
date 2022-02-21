@@ -169,7 +169,7 @@ int main(int argc, char**argv) {
     {
         Timer timer;
         for (size_t i=0; i<count; ++i) {
-            Debug("Test %lu/%lu",i,count);
+            print("Test ",i,"/",count,"");
         }
         
         auto seconds = timer.elapsed();

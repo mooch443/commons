@@ -63,11 +63,7 @@ struct DurationUS {
         ss << std::string(names[i].begin(), names[i].end());
         return ss.str();
     }
-        
-    static DurationUS fromStr(const std::string&) {
-        U_EXCEPTION("Not implemented.");
-        return DurationUS{0};
-    }
+    
     static std::string class_name() { return "duration"; }
     std::string toStr() const {
         return to_string();
@@ -95,10 +91,6 @@ struct FileSize {
         ss << std::fixed << std::setprecision(2) << scaled << descriptions[i];
             
         return ss.str();
-    }
-        
-    static FileSize fromStr(const std::string&) {
-        U_EXCEPTION("Not implemented.");
     }
 
     static std::string class_name() {
@@ -195,7 +187,7 @@ inline std::string truncate(const std::string& str) {
         || (utils::beginsWith(str, '[') && utils::endsWith(str, ']')))
         return utils::trim(str.substr(1, str.length() - 2));
 
-    throw CustomException<illegal_syntax>("Cannot parse array '%S'", &str);
+    throw illegal_syntax("Cannot parse array '"+str+"'.");
 }
 
 inline std::string escape(std::string str) {
@@ -363,10 +355,8 @@ template<class Q> std::string name(const typename std::enable_if< std::is_same<c
 template<class Q> std::string name(const typename std::enable_if< std::is_same<cv::Range, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "range"; }
         
 /**
-    * chrono:: time objects
-    */
-template<class Q> std::string name(const typename std::enable_if< std::is_same<DurationUS, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "time"; }
-        
+ * chrono:: time objects
+ */
 template<class Q>
     requires _has_class_name<Q>
 std::string name() {
@@ -609,7 +599,7 @@ std::string toStr(const Q& obj)
                     ss << mat.at<double>(i, j);
                     break;
                 default:
-                    U_EXCEPTION("unknown matrix type");
+                    throw std::invalid_argument("unknown matrix type");
             }
             if(j < mat.cols-1)
                 ss << ",";
@@ -673,7 +663,7 @@ Q fromStr(const std::string& str)
     if(parts.size() != 2) {
         std::string x = name<typename Q::first_type>();
         std::string y = name<typename Q::second_type>();
-        throw CustomException<std::invalid_argument>("Illegal pair<%S, %S> format ('%S').", &x, &y, &str);
+        throw std::invalid_argument("Illegal pair<"+x+", "+y+"> format ('"+str+"').");
     }
             
     auto x = Meta::fromStr<typename Q::first_type>(parts[0]);
@@ -700,13 +690,6 @@ Q fromStr(const std::string& str)
 }
         
 template<class Q>
-    requires _clean_same<DurationUS, Q>
-Q fromStr(const std::string& str)
-{
-    return DurationUS::fromStr(str);
-}
-        
-template<class Q>
     requires (is_container<Q>::value || is_deque<Q>::value)
 Q fromStr(const std::string& str)
 {
@@ -718,7 +701,7 @@ Q fromStr(const std::string& str)
     for(auto &s : parts) {
         if(s.empty()) {
             ret.push_back(typename Q::value_type());
-            Warning("Empty value in '%S'.", &str);
+            throw std::invalid_argument("Empty value in '"+str+"'.");
         }
         else {
             auto v = Meta::fromStr<typename Q::value_type>(s);
@@ -741,7 +724,7 @@ Q fromStr(const std::string& str)
     for(auto &s : parts) {
         if(s.empty()) {
             ret.push(typename Q::value_type());
-            Warning("Empty value in '%S'.", &str);
+            throw std::invalid_argument("Empty value in '"+str+"'.");
         }
         else {
             auto v = Meta::fromStr<typename Q::value_type>(s);
@@ -764,7 +747,7 @@ Q fromStr(const std::string& str)
     for(auto &s : parts) {
         if(s.empty()) {
             ret.insert(typename Q::value_type());
-            Warning("Empty value in '%S'.", &str);
+            throw std::invalid_argument("Empty value in '"+str+"'.");
         }
         else {
             auto v = Meta::fromStr<typename Q::value_type>(s);
@@ -786,7 +769,7 @@ Q fromStr(const std::string& str)
     for(auto &p: parts) {
         auto value_key = util::parse_array_parts(p, ':');
         if(value_key.size() != 2)
-            throw CustomException<std::invalid_argument>("Illegal value/key pair: '%S'", &p);
+            throw std::invalid_argument("Illegal value/key pair: "+p);
                 
         auto x = Meta::fromStr<typename Q::key_type>(value_key[0]);
         try {
@@ -794,7 +777,7 @@ Q fromStr(const std::string& str)
             r[x] = y;
         } catch(const std::logic_error&) {
             auto name = Meta::name<Q>();
-            Warning("Empty/illegal value in %S['%S'] = '%S'", &name, &value_key[0], &value_key[1]);
+            throw std::invalid_argument("Empty/illegal value in "+name+"['"+value_key[0]+"'] = '"+value_key[1]+"'.");
         }
     }
             
@@ -828,7 +811,7 @@ Q fromStr(const std::string& str) {
     auto parts = util::parse_array_parts(util::truncate(str));
     //size_t i=0;
     if(parts.size() != std::tuple_size<Q>::value)
-        throw CustomException<illegal_syntax>("tuple has %d parts instead of %d.",parts.size(), std::tuple_size<Q>::value);
+        throw illegal_syntax("tuple has "+std::to_string(parts.size())+" parts instead of " + std::to_string(std::tuple_size<Q>::value));
             
     Q tup;
     return transform_each(tup, [&](size_t i, auto&& obj) {
@@ -840,7 +823,7 @@ template<class Q>
     requires _clean_same<cv::Mat, Q>
 Q fromStr(const std::string&)
 {
-    U_EXCEPTION("Not supported.");
+    throw std::invalid_argument("Not supported.");
 }
         
 template<class Q>
@@ -856,7 +839,7 @@ Q fromStr(const std::string& str)
 {
     auto parts = util::parse_array_parts(util::truncate(str));
     if(parts.size() != 2) {
-        throw CustomException<std::invalid_argument>("Illegal cv::Range format.");
+        throw std::invalid_argument("Illegal cv::Range format: "+str);
     }
             
     int x = Meta::fromStr<int>(parts[0]);
@@ -929,7 +912,7 @@ Q fromStr(const std::string& str)
     auto parts = util::parse_array_parts(util::truncate(str));
     if(parts.size() != 2) {
         std::string x = name<typename Q::value_type>();
-        throw CustomException<std::invalid_argument>("Illegal cv::Size_<%S> format.", &x);
+        throw std::invalid_argument("Illegal cv::Size_<"+x+"> format.");
     }
             
     auto x = Meta::fromStr<typename Q::value_type>(parts[0]);
@@ -947,7 +930,7 @@ Q fromStr(const std::string& str)
     auto parts = util::parse_array_parts(util::truncate(str));
     if(parts.size() != 4) {
         std::string x = name<C>();
-        throw CustomException<std::invalid_argument>("Illegal cv::Rect_<%S> format.", &x);
+        throw std::invalid_argument("Illegal cv::Rect_<"+x+"> format.");
     }
             
     auto x = Meta::fromStr<C>(parts[0]);

@@ -465,7 +465,7 @@ void Graph::add_line(const std::vector<Vec2>& v, Color color, float t) {
 
 void Graph::highlight_point(const std::string &name, float x) {
     if(_gui_points.find(name) == _gui_points.end()) {
-        Warning("Cannot find point %f of function %S in gui points.", x, &name);
+        FormatWarning("Cannot find point ", x," of function ",name," in gui points.");
         return;
     }
     
@@ -476,7 +476,7 @@ void Graph::highlight_point(const std::string &name, float x) {
         }
     }
     
-    Warning("Cannot find point %f of function %S in gui points.", x, &name);
+    FormatWarning("Cannot find point ", x," of function ",name," in gui points.");
 }
 
 void Graph::highlight_point(std::shared_ptr<Circle> ptr) {
@@ -594,7 +594,7 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         table.add(row);
         
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000) {
-            Debug("%d/%.0f done", x, rx.end);
+            print(x, "/",int(rx.end)," done");
         }
         
         if(percent_callback && int(x)%100 == 0) {
@@ -609,7 +609,7 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
 
 void Graph::save_npz(const std::string &filename, std::function<void(float)> *percent_callback, bool quiet) const {
     if(!utils::endsWith(filename, ".npz"))
-        U_EXCEPTION("Can only save to NPZ with save_npz (%S)", &filename);
+        throw U_EXCEPTION("Can only save to NPZ with save_npz (",filename,")");
     
     std::stringstream header;
     
@@ -654,7 +654,7 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
         }
         
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000 && !quiet) {
-            Debug("%d/%.0f done", x, rx.end);
+            print(x, "/", int(rx.end)," done");
         }
         
         if(percent_callback && int(x)%100 == 0) {
@@ -667,7 +667,7 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
         try {
             cmn::npz_save(filename, ptr->_name, vec, first ? "w" : "a");
         } catch(...) {
-            U_EXCEPTION("Giving up (%d floats for '%S', %s) trying to save '%S'.", vec.size(), &ptr->_name, first ? "first" : "", &filename);
+            throw U_EXCEPTION("Giving up (",vec.size()," floats for ",ptr->_name,", ",first ? "first" : "",") trying to save ",filename,".");
         }
         if(first)
             first = false;

@@ -170,7 +170,7 @@ static std::mutex mutex, _shutdown_mutex;
 void MetalImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
     if(std::this_thread::get_id() != _update_thread)
-        U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
+        throw U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
 #else
     UNUSED(line);
     UNUSED(file);
@@ -191,7 +191,7 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
         std::lock_guard<std::mutex> guard(_shutdown_mutex);
         if(dispatch_semaphore_wait(_frameBoundarySemaphore, dispatch_time(DISPATCH_TIME_NOW, 500000000lu)) != 0)
         {
-            Error("Semaphore did not receive a signal and had to time out.");
+            FormatError("Semaphore did not receive a signal and had to time out.");
         }
         
         if(gui::metal::current_instance == this)
@@ -231,7 +231,7 @@ bool MetalImpl::open_files(const std::vector<file::Path> &paths) {
         // Setup window
         glfwSetErrorCallback(glfw_error_callback);
         if (!glfwInit())
-            U_EXCEPTION("[METAL] Cannot init GLFW.");
+            throw U_EXCEPTION("[METAL] Cannot init GLFW.");
     }
 
     void MetalImpl::post_init() {
@@ -245,7 +245,7 @@ bool MetalImpl::open_files(const std::vector<file::Path> &paths) {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (window == NULL)
-            U_EXCEPTION("[METAL] Cannot create GLFW window.");
+            throw U_EXCEPTION("[METAL] Cannot create GLFW window.");
         
         _data->device = MTLCreateSystemDefaultDevice();
         //_data->commandQueue = [_data->device newCommandQueue];
@@ -599,7 +599,7 @@ void MetalImpl::message(const std::string &msg) const {
                 } else if(ptr->dims == 2) {
                     swizzle = MTLTextureSwizzleChannelsMake(MTLTextureSwizzleRed, MTLTextureSwizzleRed, MTLTextureSwizzleRed, MTLTextureSwizzleGreen);
                 } else
-                    U_EXCEPTION("Unknown texture format with %d channels.", ptr->dims);
+                    throw U_EXCEPTION("Unknown texture format with ",ptr->dims," channels.");
                 textureDescriptor.swizzle = swizzle;
                 //texture = [texture newTextureViewWithPixelFormat:MTLPixelFormatRGBA8Unorm textureType:MTLTextureType2D levels:NSMakeRange(0, 0) slices:NSMakeRange(0, 0) swizzle:swizzle];
             }

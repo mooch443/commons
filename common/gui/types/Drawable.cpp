@@ -43,7 +43,7 @@ namespace gui {
             fwrite(str.data(), sizeof(char), str.length(), f);
             fclose(f);
         } else
-            Error("Cannot write 'objects.log'");
+            FormatError("Cannot write 'objects.log'");
         return all_objects.size() + all_drawables.size();
 #else
         return 0;
@@ -62,7 +62,7 @@ namespace gui {
         std::lock_guard<std::mutex> guard(all_mutex);
         auto it = all_objects.find(this);
         if(it == all_objects.end())
-            Error("Double delete?");
+            FormatError("Double delete?");
         else
             all_objects.erase(it);
 #endif
@@ -198,7 +198,7 @@ namespace gui {
             std::lock_guard<std::mutex> guard(all_mutex);
             auto it = all_drawables.find(this);
             if(it == all_drawables.end())
-                Error("Double delete?");
+                FormatError("Double delete?");
             else
                 all_drawables.erase(it);
         }
@@ -218,7 +218,7 @@ namespace gui {
         if(it != _delete_handlers.end()) {
             _delete_handlers.erase(it);
         } else
-            Error("Delete handler not registered in Drawable. Something went wrong?");
+            FormatError("Delete handler not registered in Drawable. Something went wrong?");
     }
     
     void Drawable::clear_parent_dont_check() {
@@ -269,7 +269,7 @@ namespace gui {
             set_bounds_changed();
 #ifndef NDEBUG
         if(std::isnan(npos.x) || std::isnan(npos.y) || std::isinf(npos.x) || std::isinf(npos.y))
-            Warning("NaN in set_pos.");
+            FormatWarning("NaN in set_pos.");
 #endif
         _bounds << npos;
     }
@@ -282,7 +282,7 @@ namespace gui {
             set_bounds_changed();
 #ifndef NDEBUG
         if(std::isnan(size.width) || std::isnan(size.height) || std::isinf(size.height) || std::isinf(size.width))
-            Warning("NaN in set_size.");
+            FormatWarning("NaN in set_size.");
 #endif
         _bounds << size;
     }
@@ -295,7 +295,7 @@ namespace gui {
             set_bounds_changed();
 #ifndef NDEBUG
         if(std::isnan(rect.width) || std::isnan(rect.height) || std::isnan(rect.x) || std::isnan(rect.y) || std::isinf(rect.x) || std::isinf(rect.y) || std::isinf(rect.width) || std::isinf(rect.height))
-            Warning("NaN in set_bounds.");
+            FormatWarning("NaN in set_bounds.");
 #endif
         _bounds = rect;
     }
@@ -333,7 +333,7 @@ namespace gui {
             _cache.erase(it);
         }
         
-        //U_EXCEPTION("Cannot find cache for base.");
+        //throw U_EXCEPTION("Cannot find cache for base.");
     }
     
     void Drawable::clear_cache() {

@@ -80,7 +80,7 @@ GLImpl::GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn) :
 void GLImpl::init() {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
-        U_EXCEPTION("[GL] Cannot initialize GLFW.");
+        throw U_EXCEPTION("[GL] Cannot initialize GLFW.");
     
     draw_calls = 0;
     _update_thread = std::this_thread::get_id();
@@ -99,7 +99,7 @@ void GLImpl::set_icons(const std::vector<file::Path>& icons) {
 
     for (auto& path : icons) {
         if (!path.exists()) {
-            Except("Cant find application icon '%S'.", &path.str());
+            FormatExcept("Cant find application icon ",path.str(),".");
             continue;
         }
 
@@ -124,7 +124,7 @@ void GLImpl::set_icons(const std::vector<file::Path>& icons) {
 
 void GLImpl::create_window(const char* title, int width, int height) {
     glfwSetErrorCallback([](int code, const char* str) {
-        Except("[GLFW] Error %d: '%s'", code, str);
+        FormatExcept("[GLFW] Error ", code,": '", str,"'");
     });
 
 #if __APPLE__
@@ -162,7 +162,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
     // Create window with graphics context
     window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
-        U_EXCEPTION("[GL] Cannot create GLFW window.");
+        throw U_EXCEPTION("[GL] Cannot create GLFW window.");
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
     
@@ -178,7 +178,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     if (err)
     {
-        U_EXCEPTION("Failed to initialize OpenGL loader!");
+        throw U_EXCEPTION("Failed to initialize OpenGL loader!");
     }
     
     if OPENGL3_CONDITION
@@ -373,7 +373,7 @@ const Image::UPtr& GLImpl::current_frame_buffer() {
 void GLImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
     if(std::this_thread::get_id() != _update_thread)
-        U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
+        throw U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
 #endif
 }
 
@@ -435,7 +435,7 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     GLuint my_opengl_texture;
     glGenTextures(1, &my_opengl_texture);
     if(my_opengl_texture == 0)
-        U_EXCEPTION("Cannot create texture of dimensions %dx%d", ptr->cols, ptr->rows);
+        throw U_EXCEPTION("Cannot create texture of dimensions ",ptr->cols,"x", ptr->rows);
     glBindTexture(GL_TEXTURE_2D, my_opengl_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -538,7 +538,7 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
     GLuint _id = (GLuint) object->texture_id;
     
     if(object->greyscale != (ptr->dims != 4))
-        U_EXCEPTION("Texture has not been allocated for number of color channels in Image (%d) != texture (%d)", ptr->dims, object->greyscale ? 1 : 4);
+        throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (%d) != texture (%d)", ptr->dims, object->greyscale ? 1 : 4);
     
     glBindTexture(GL_TEXTURE_2D, _id);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);

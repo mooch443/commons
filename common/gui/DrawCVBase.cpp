@@ -70,7 +70,7 @@ namespace gui {
             small.copyTo(big, split[3](Bounds(mx, my, w, h)));
             
         } else {
-            Debug("Didnt draw %f,%f %dx%d. (%dx%d) in window %dx%d", pos.x, pos.y, mat.cols, mat.rows, mat.cols, mat.rows, _window.cols, _window.rows);
+            print("Didnt draw ", pos, " ", mat.cols, "x", mat.rows,". in window ",_window.cols, "x", _window.rows);
         }
     }
     
@@ -118,7 +118,7 @@ namespace gui {
                     t = max(1, min(static_cast<Line*>(o)->thickness(), CV_MAX_THICKNESS));
                 
                 if(ptr->primitive() != PrimitiveType::LineStrip && ptr->primitive() != PrimitiveType::Lines)
-                    U_EXCEPTION("Does not support other primitive types yet.");
+                    throw U_EXCEPTION("Does not support other primitive types yet.");
                 
                 if(ptr->primitive() == PrimitiveType::LineStrip) {
                     Vec2 prev;
@@ -185,8 +185,7 @@ namespace gui {
             }
                 
             default: {
-                auto type = o->type().name();
-                U_EXCEPTION("Unknown type '%s' in CVBase.", type)
+                throw U_EXCEPTION("Unknown type '", o->type().name(),"' in CVBase.");
             }
         }
     }

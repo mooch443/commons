@@ -34,31 +34,31 @@ GlobalSettings::~GlobalSettings() {
  */
 sprite::Map& GlobalSettings::map() {
     if(!instance())
-        U_EXCEPTION("No GlobalSettings instance.");
+        throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_map;
 }
 
 const sprite::Map& GlobalSettings::defaults() {
     if (!instance())
-        U_EXCEPTION("No GlobalSettings instance.");
+        throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_defaults;
 }
 
 sprite::Map& GlobalSettings::set_defaults() {
     if (!instance())
-        U_EXCEPTION("No GlobalSettings instance.");
+        throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_defaults;
 }
 
 GlobalSettings::docs_map_t& GlobalSettings::docs() {
     if (!instance())
-        U_EXCEPTION("No GlobalSettings instance.");
+        throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_doc;
 }
 
 GlobalSettings::user_access_map_t& GlobalSettings::access_levels() {
     if (!instance())
-        U_EXCEPTION("No GlobalSettings instance.");
+        throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_access_levels;
 }
 
@@ -156,7 +156,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                 }
             } catch(const UtilsException& e) {
                 if(!SETTING(quiet)) {
-                    Debug("Line '%S' cannot be loaded. ('%s')", &str, e.what());
+                    print("Line '", str,"' cannot be loaded. ('",e.what(),"')");
                 }
             }
             

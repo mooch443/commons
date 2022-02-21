@@ -143,7 +143,7 @@ void DataFormat::start_modifying() {
     
     f = fopen(_filename.c_str(), "r+");
     if(!f)
-        U_EXCEPTION("Cannot open file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot open file ",_filename,".");
     
     _open_for_modifying = true;
     _open_for_writing = false;
@@ -168,11 +168,11 @@ void DataFormat::start_reading() {
 
 	f = _filename.fopen("rb");
 	if (!f)
-		U_EXCEPTION("Cannot open file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot open file ",_filename,".");
 #else*/
 
     if (!_filename.exists())
-        U_EXCEPTION("Cannot find file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot find file ",_filename,".");
 
     _reading_file_size = _filename.file_size();
     
@@ -181,19 +181,19 @@ void DataFormat::start_reading() {
     if (result != 0) {
         if (reg)
             memunmap(&reg);
-        U_EXCEPTION("Cannot mmap file '%S' (%d).", &_filename, result);
+        throw U_EXCEPTION("Cannot mmap file '%S' (%d).", &_filename, result);
     }
     _data = memGetAddr(&reg);
 #else
     struct stat sbuf;
     if (stat(_filename.c_str(), &sbuf) == -1)
-        U_EXCEPTION("Cannot stat file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot stat file ",_filename,".");
 
     if ((fd = ::open(_filename.c_str(), O_RDONLY)) == -1)
-        U_EXCEPTION("Cannot open file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot open file ",_filename,".");
 
     if ((_data = (char*)mmap((caddr_t)0, (size_t)sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0)) == (caddr_t)(-1))
-        U_EXCEPTION("Cannot mmap file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot mmap file ",_filename,".");
 #endif
     _supports_fast = true;
     _mmapped = true;
@@ -209,11 +209,11 @@ void DataFormat::start_writing(bool overwrite) {
         close();
     
     if (_filename.exists() && !overwrite)
-        U_EXCEPTION("File already exists '%S'.", &_filename);
+        throw U_EXCEPTION("File already exists ",_filename,".");
     
     f = _filename.fopen("wb");
     if(!f)
-        U_EXCEPTION("Cannot open file '%S'.", &_filename);
+        throw U_EXCEPTION("Cannot open file ",_filename,".");
     
     _file_offset = 0;
     _open_for_writing = true;
@@ -235,13 +235,13 @@ uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
     if(!_mmapped) {
         std::lock_guard<std::mutex> guard(_internal_modification);
         if(!f)
-            U_EXCEPTION("File is not opened yet.");
+            throw U_EXCEPTION("File is not opened yet.");
         if(feof(f))
-            U_EXCEPTION("File is over.");
+            throw U_EXCEPTION("File is over.");
         
         uint64_t ret = fread(buffer, sizeof(char), num_bytes, f);
         if(ret != num_bytes)
-            U_EXCEPTION("Read an unexpected number of bytes (%lu != %lu) at position %lu / %lu.", ret, num_bytes, _file_offset, _reading_file_size);
+            throw U_EXCEPTION("Read an unexpected number of bytes (",ret," != ",num_bytes,") at position ",_file_offset," / ",_reading_file_size,".");
         
         _file_offset += ret;
         /*printf("Reading %ld bytes: ", num_bytes);
@@ -256,7 +256,7 @@ uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
         {
             std::lock_guard<std::mutex> guard(_internal_modification);
             if(_file_offset + num_bytes > _reading_file_size)
-                U_EXCEPTION("Out of range %lu", _file_offset+num_bytes);
+               throw U_EXCEPTION("Out of range ",_file_offset+num_bytes);
             
             offset = _file_offset;
             _file_offset += num_bytes;
@@ -273,9 +273,9 @@ const char* DataFormat::read_data_fast(uint64_t num_bytes) {
     {
         std::lock_guard<std::mutex> guard(_internal_modification);
         if(!_mmapped)
-            U_EXCEPTION("Only available for mmapped files.");
+            throw U_EXCEPTION("Only available for mmapped files.");
         if(uint64_t(_file_offset + num_bytes) > _reading_file_size) {
-            Error("Exceeding reported file size of %lu at %lu reading %lu bytes.", _reading_file_size, _file_offset, num_bytes);
+            FormatError("Exceeding reported file size of ", _reading_file_size, " at ", _file_offset," reading ", num_bytes," bytes.");
         }
         
         offset = _file_offset;
@@ -293,7 +293,7 @@ const char* ReadonlyMemoryWrapper::read_data_fast(uint64_t num_bytes) {
 
 uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
     if(!f)
-        U_EXCEPTION("File is not opened yet.");
+        throw U_EXCEPTION("File is not opened yet.");
     
     uint64_t written;
     if((written = fwrite(buffer, sizeof(char), num_bytes, f)) != num_bytes) {
@@ -304,14 +304,14 @@ uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
         try {
             fs::space_info space = fs::space(_filename.remove_filename().str());
             if(space.available <= num_bytes)
-                U_EXCEPTION("Cannot write %lu bytes to disk ('%S') since there is not enough empty space available on disk (%lu).", num_bytes, &_filename.str(), space.available);
+                throw U_EXCEPTION("Cannot write ",num_bytes," bytes to disk (",_filename,") since there is not enough empty space available on disk (",space.available,").");
         } catch(const fs::filesystem_error& ex)
         {
-            Warning("An exception occurred while handling another exception: '%s'.", ex.what());
+            print("An exception occurred while handling another exception: '",ex.what(),"'.");
         }
 #endif
 #endif
-		U_EXCEPTION("Did not expect to not write %lu bytes (instead of %lu) o.O", written, num_bytes);
+        throw U_EXCEPTION("Did not expect to not write ",written," bytes (instead of ",num_bytes,") o.O");
     }
     
     uint64_t before = _file_offset;
@@ -461,7 +461,7 @@ void Data::read(uint8_t& c) {
     
     const uint64_t read_size = read_data(size, (char*)&c);
     if(read_size != size)
-        U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
+        throw U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
 }
 
 /**

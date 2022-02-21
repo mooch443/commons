@@ -71,7 +71,7 @@ constexpr int CV_MAX_THICKNESS = 32767;
 }
 
 
-#define DEBUG_CV(COMMAND) try { COMMAND; } catch(const cv::Exception& e) { Except("OpenCV Exception ('%s':%d): %s\n%s", __FILE__, __LINE__, #COMMAND, e.what()); }
+#define DEBUG_CV(COMMAND) try { COMMAND; } catch(const cv::Exception& e) { FormatExcept("OpenCV Exception ('", __FILE__ ,"':", __LINE__ ,"): ", #COMMAND ,"\n", e.what()); }
 
 namespace tf {
     void imshow(const std::string& name, const cv::Mat& mat, std::string label = "");

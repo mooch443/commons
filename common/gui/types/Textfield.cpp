@@ -20,7 +20,7 @@ namespace gui {
 #elif CMN_CLIPBOARD_CLIP
         clip::set_text(text);
 #else
-        Except("Cannot copy text '%S'. Please enable CLIP or GLFW in CMake.", &text);
+        FormatExcept("Cannot copy text ",text,". Please enable CLIP or GLFW in CMake.");
 #endif
     }
     
@@ -39,7 +39,7 @@ namespace gui {
         
         return std::string();
 #else
-        Except("Cannot paste from clipboard. Please enable CLIP or GLFW in CMake.");
+        FormatExcept("Cannot paste from clipboard. Please enable CLIP or GLFW in CMake.");
         return std::string();
 #endif
     }

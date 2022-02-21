@@ -19,23 +19,23 @@ Map::Map(const Map& other) {
 
 void Map::register_callback(const char *obj, const callback_func &func) {
     if(!obj) {
-        Except("nullptr in register_callback");
+        FormatExcept("nullptr in register_callback");
         return;
     }
     
     LockGuard guard(this);
     if(_callbacks.find(obj) != _callbacks.end())
-        U_EXCEPTION("Object %s (%x) already in map callbacks.", obj, obj);
+        throw U_EXCEPTION("Object %s (%x) already in map callbacks.", obj, obj);
     
     _callbacks[obj] = func;
 #ifndef NDEBUG
-    Debug("Registered map callback %s (%x)", obj, obj);
+    print("Registered map callback ", obj," (",obj,")");
 #endif
 }
 
 void Map::unregister_callback(const char *obj) {
     if(!obj) {
-        Except("nullptr in unregister_callback");
+        FormatExcept("nullptr in unregister_callback");
         return;
     }
     

@@ -90,7 +90,7 @@ namespace gui {
                 return *static_cast<const NumericTextfield<T>*>(this);
             }
             
-            U_EXCEPTION("Cannot cast.");
+            throw U_EXCEPTION("Cannot cast.");
         }
         
         template<typename T>
@@ -99,7 +99,7 @@ namespace gui {
                 return *static_cast<const MetaTextfield<T>*>(this);
             }
             
-            U_EXCEPTION("Cannot cast.");
+            throw U_EXCEPTION("Cannot cast.");
         }
         
     protected:
@@ -165,7 +165,7 @@ namespace gui {
     protected:
         virtual void set_filter(const std::function<bool(std::string& text, char inserted, size_t at)>&) override {
             // do nothing
-            U_EXCEPTION("This function is disabled for numeric textfields.");
+            throw U_EXCEPTION("This function is disabled for numeric textfields.");
         }
         
         virtual bool isTextValid(std::string& text, char inserted, size_t at) override
@@ -240,8 +240,8 @@ namespace gui {
                 set_valid(false);
                 return false;
             }
-            catch(illegal_syntax e) {Except("illegal_syntax: %s", e.what()); set_valid(false); return false;}
-            catch(std::logic_error e) {Except("logic_error: %s", e.what());}
+            catch(const illegal_syntax& e) {FormatExcept("illegal_syntax: ", e.what()); set_valid(false); return false;}
+            catch(const std::logic_error& e) {FormatExcept("logic_error: ", e.what());}
             
             // syntax error
             set_valid(false);

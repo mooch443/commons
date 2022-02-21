@@ -124,7 +124,7 @@ namespace cmn {
             
             //! Wait for the pausing to finish.
             if(std::this_thread::get_id() == _loading_thread->get_id() || std::this_thread::get_id() == _analysis_thread->get_id())
-                U_EXCEPTION("Cannot be called from LoadingThread or AnalysisThread (deadlock territory).");
+                throw U_EXCEPTION("Cannot be called from LoadingThread or AnalysisThread (deadlock territory).");
             
             auto task = std::async(std::launch::async, [this](){
                 cmn::set_thread_name("set_paused");

@@ -24,7 +24,7 @@ namespace cmn {
         
         if (_NSGetExecutablePath(dirNameBuffer, &ret) != 0) {
             // Buffer size is too small.
-            Error("NSGetExecutablePath failed.");
+            FormatError("NSGetExecutablePath failed.");
         } else {
             ret = (uint32_t)strlen(dirNameBuffer);
 #elif WIN32
@@ -88,7 +88,7 @@ namespace cmn {
                 _settings.push_back({key, sval});
                 
             } else if(deprecated.find(key) != deprecated.end()) {
-                Warning("Found deprecated key '%S' = '%s' in command-line (replaced by '%S').", &key, val ? val : "", &deprecated.at(key));
+                FormatWarning("Found deprecated key ", key," = '", val ? val : "","' in command-line (replaced by ", deprecated.at(key),").");
                 _settings.push_back({deprecated.at(key), sval});
                 
             } else {
@@ -143,6 +143,6 @@ namespace cmn {
 #else
         if (chdir(_wd.str().c_str()))
 #endif
-            Error("Cannot change directory to '%S'.", &_wd.str());
+            FormatError("Cannot change directory to ",_wd.str(),".");
     }
 }

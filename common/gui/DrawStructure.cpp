@@ -45,13 +45,14 @@ namespace gui {
     static void* debug_callback = nullptr;
 
     void deinit_errorlog() {
-        if(debug_callback)
-            DEBUG::UnsetDebugCallback(debug_callback);
+        throw std::invalid_argument("implement.");
+        //if(debug_callback)
+        //    DEBUG::UnsetDebugCallback(debug_callback);
         debug_callback = nullptr;
     }
 
     void init_errorlog() {
-        debug_callback = DEBUG::SetDebugCallback({DEBUG::DEBUG_TYPE::TYPE_ERROR,DEBUG::DEBUG_TYPE::TYPE_EXCEPTION,DEBUG::DEBUG_TYPE::TYPE_WARNING/*,DEBUG::DEBUG_TYPE::TYPE_INFO*/}, [](const DEBUG::StatusMsg* type, const std::string& msg)
+        /*debug_callback = DEBUG::SetDebugCallback({DEBUG::DEBUG_TYPE::TYPE_ERROR,DEBUG::DEBUG_TYPE::TYPE_EXCEPTION,DEBUG::DEBUG_TYPE::TYPE_WARNING}, [](const DEBUG::StatusMsg* type, const std::string& msg)
         {
             std::lock_guard<std::recursive_mutex> lock(error_message_lock);
             ErrorMessage obj;
@@ -79,7 +80,7 @@ namespace gui {
             if(error_messages.size()+1 >= 10)
                 error_messages.erase(error_messages.begin());
             error_messages.push_back(obj);
-        });
+        });*/
     }
 
     void DrawStructure::draw_log_messages(const Bounds& screen) {
@@ -474,11 +475,11 @@ T* DrawStructure::create(Args... args) {
     
     ExternalImage* DrawStructure::image(const Vec2 &pos, ExternalImage::Ptr&& image, const Vec2& scale, const Color& color) {
         if(!image) {
-            Warning("Trying to add image that is nullptr.");
+            FormatWarning("Trying to add image that is nullptr.");
             return NULL;
         }
         if(image->empty()) {
-            Warning("Trying to add image with dimensions %dx%d.", image->cols, image->rows);
+            FormatWarning("Trying to add image with dimensions ", image->cols,"x",image->rows,".");
             return NULL;
         }
         
@@ -488,7 +489,7 @@ T* DrawStructure::create(Args... args) {
     
     /*Drawable* DrawStructure::_add_object(gui::Drawable *ptr) {
         if(ptr->type() == Type::SECTION)
-            U_EXCEPTION("Cannot add Section using add_object. Use wrap_object instead.");
+            throw U_EXCEPTION("Cannot add Section using add_object. Use wrap_object instead.");
         
         if(!_active_section)
             begin_section("root");
@@ -560,7 +561,7 @@ T* DrawStructure::create(Args... args) {
         if(_active_section && !(s = _active_section->find_section(name))) {
             if(&_root != _active_section
                && (s = _root.find_section(name)) != NULL)
-                U_EXCEPTION("Cannot add section '%S' twice.", &name);
+                throw U_EXCEPTION("Cannot add section ",name," twice.");
             
             Section *section = new Section(this, _active_section, name);
             _active_section->add(section);
@@ -570,7 +571,7 @@ T* DrawStructure::create(Args... args) {
             if(!s)
                 s = &_root;
             if(contains(_sections, s))
-                U_EXCEPTION("Cannot add section '%S' twice.", &name);
+                throw U_EXCEPTION("Cannot add section ",name," twice.");
             
             if(s->parent()) {
                 assert(s->parent()->type() == Type::SECTION);
@@ -586,7 +587,7 @@ T* DrawStructure::create(Args... args) {
                         
                         parent->children().insert(parent->children().begin() + (int64_t)parent->_index, s);
 #ifndef NDEBUG
-                        Debug("Moved section '%S' (%d)", &name, parent->_index);
+                        print("Moved section '",e,"' (",parent->_index,")");
 #endif
                     }
                     
@@ -610,7 +611,7 @@ T* DrawStructure::create(Args... args) {
     
     void DrawStructure::finalize_section(const std::string& name) {
         if(!_active_section)
-            U_EXCEPTION("No sections to be ended (%S).", &name);
+            throw U_EXCEPTION("No sections to be ended (",name,").");
         
         pop_section();
     }

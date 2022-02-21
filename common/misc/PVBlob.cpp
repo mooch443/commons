@@ -31,18 +31,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
         if(line.eol()) ++height;
     }
     
-/*#ifndef NDEBUG
-    auto bds = cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
-    auto ptr = unpack();
-    if(ptr->bounds() != bds) {
-        auto A = Meta::toStr(ptr->bounds());
-        auto B = Meta::toStr(bds);
-        Except("%S != %S", &A, &B);
-    }
-    return bds;
-#else*/
     return cmn::Bounds(min_x, start_y, max_x - min_x + 1, height + 1);
-//#endif
 }
 
 pv::BlobPtr CompressedBlob::unpack() const {
@@ -202,7 +191,7 @@ static Callback callback;
             for (auto &line : hor_lines()) {
                 if(!(prev == line) && !(prev < line)) {
                     if(!displayed_warning_once) {
-                        Warning("HorizontalLines are not properly ordered, or overlapping in x [%d-%d] < [%d-%d] (%d/%d). Please set 'correct_illegal_lines' = true in your settings if you havent already.", prev.x0, prev.x1, line.x0, line.x1, prev.y, line.y);
+                        FormatWarning("HorizontalLines are not properly ordered, or overlapping in x [", prev.x0,"-", prev.x1,"] < [", line.x0,"-", line.x1,"] (", prev.y,"/", line.y,"). Please set 'correct_illegal_lines' = true in your settings if you havent already.");
                         displayed_warning_once = true;
                     }
                     incorrect = true;
@@ -239,7 +228,7 @@ static Callback callback;
             _parent_id = bid::invalid;
         
         if(!_parent_id.valid() && split)
-            Warning("Parent has to be set correctly in order to split blobs (%d).", blob_id());
+            print("Parent has to be set correctly in order to split blobs (",blob_id(),").");
     }
     
     void Blob::set_parent_id(const bid& parent_id) {
@@ -249,7 +238,7 @@ static Callback callback;
     
     void Blob::force_set_recount(int32_t threshold, float value) {
         if(threshold && _recount_threshold == threshold) {
-            //Warning("Not forcing recount of %d because it has already been calculated.", blob_id());
+            //print("Not forcing recount of ",blob_id()," because it has already been calculated.");
             return;
         }
         
@@ -266,13 +255,13 @@ static Callback callback;
         }
         
         if(threshold == -1 && _recount_threshold == -1)
-            U_EXCEPTION("Did not calculate recount yet.");
+            throw U_EXCEPTION("Did not calculate recount yet.");
         
         if(_recount_threshold != threshold) {
             //if(_recount_threshold != -1)
             
             if(_pixels == nullptr)
-                U_EXCEPTION("Cannot threshold without pixel values.");
+                throw U_EXCEPTION("Cannot threshold without pixel values.");
             
             _recount = 0;
 #ifndef NDEBUG
@@ -303,16 +292,16 @@ static Callback callback;
         //if(threshold == 0)
         //    return num_pixels() * SQR(cm_per_pixel);
         if(threshold != -1 && _recount_threshold != threshold)
-            U_EXCEPTION("Have to threshold() first.");
+            throw U_EXCEPTION("Have to threshold() first.");
         if(threshold == -1 && _recount_threshold == -1)
-            U_EXCEPTION("Did not calculate recount yet.");
+            throw U_EXCEPTION("Did not calculate recount yet.");
         
         return _recount * SQR(cm_per_pixel);
     }
     
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
         if(_pixels == nullptr)
-            U_EXCEPTION("Cannot threshold without pixel values.");
+            throw U_EXCEPTION("Cannot threshold without pixel values.");
         
         auto lines = std::make_unique<std::vector<HorizontalLine>>();
         lines->reserve(hor_lines().size());
@@ -585,7 +574,7 @@ static Callback callback;
         auto _y = (coord_t)b.y;
         
         if(_pixels == nullptr)
-            U_EXCEPTION("Cannot generate binary image without pixel values.");
+            throw U_EXCEPTION("Cannot generate binary image without pixel values.");
         
         int32_t value;
         auto ptr = _pixels->data();
@@ -627,7 +616,7 @@ static Callback callback;
     }
     
 /*void Blob::set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset) {
-    U_EXCEPTION("Deprecation.");
+    throw U_EXCEPTION("Deprecation.");
         auto pixels = std::make_shared<std::vector<uchar>>();
         for (auto &line : hor_lines()) {
             auto current = pixels->size();

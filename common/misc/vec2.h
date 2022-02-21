@@ -196,7 +196,7 @@ namespace cmn {
         if(vec.empty()) \
             return Vector2D(); \
         if(vec.size() != 2) \
-            throw CustomException<std::invalid_argument>("Can only initialize Vector2D with two or no elements. ('%S')", &str); \
+            throw std::invalid_argument("Can only initialize Vector2D with two or no elements. ('"+str+"')"); \
         return Vector2D(vec[0], vec[1]); \
     }
 
@@ -467,7 +467,7 @@ public:
         if(vec.empty())
             return Bounds();
         if(vec.size() != 4)
-            throw CustomException<std::invalid_argument>("Can only initialize Bounds with exactly four or no elements. ('%S')", &str);
+            throw std::invalid_argument("Can only initialize Bounds with exactly four or no elements. ('"+str+"')");
         return Bounds(vec[0], vec[1], vec[2], vec[3]);
     }
     static std::string class_name() {

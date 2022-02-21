@@ -69,7 +69,7 @@ namespace cmn {
         
         HorizontalLine merge(const HorizontalLine& other) const {
             //if(other.y != y)
-            //    U_EXCEPTION("Cannot merge lines from y=%d and %d", y, other.y);
+            //    throw U_EXCEPTION("Cannot merge lines from y=%d and %d", y, other.y);
             //assert(overlap(other));
             return HorizontalLine(y, cmn::min(x0, other.x0), cmn::max(x1, other.x1));
         }
@@ -322,7 +322,7 @@ namespace cmn {
                         
                     default:
                         type = getImgType(mat.type());
-                        U_EXCEPTION("Unknown data type: %S", &type);
+                        throw std::invalid_argument("Unknown data type: " + type);
                         break;
                 }
             }

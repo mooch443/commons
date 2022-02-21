@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <codecvt>
 
 namespace utils {
     /**

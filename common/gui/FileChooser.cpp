@@ -97,7 +97,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
             file_selected(0, path.str());
             return true;
         } else {
-            Error("Path '%S' cannot be opened.", &path.str());
+            FormatError("Path ",path.str()," cannot be opened.");
         }
         return false;
     });
@@ -132,7 +132,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
             if(!path.is_regular())
                 _textfield->select_textfield();
         } else
-            Error("Path '%S' cannot be opened.", &path.str());
+            FormatError("Path ",path.str()," cannot be opened.");
     });
     
     _textfield->on_text_changed([this](std::string str) {
@@ -174,7 +174,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
         _files.insert("..");
         
     } catch(const UtilsException& ex) {
-        Error("Cannot list folder '%S' (%s).", &_path, ex.what());
+       FormatError("Cannot list folder ", _path," (",ex.what(),").");
     }
     
     update_names();
@@ -267,7 +267,7 @@ void FileChooser::set_tab(std::string tab) {
         
     } else if(!_tabs.count(tab)) {
         auto str = Meta::toStr(_tabs);
-        Except("FileChooser %S does not contain tab '%S'.", &str, &tab);
+        FormatExcept("FileChooser ",str," does not contain tab ",tab,".");
     } else {
         _current_tab = _tabs.at(tab);
         if(_on_tab_change)

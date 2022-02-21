@@ -95,11 +95,11 @@ namespace gui {
         void update_bounds() override;
         
         std::ostream &operator <<(std::ostream &) final override {
-            U_EXCEPTION("Not implemented.");
+            throw U_EXCEPTION("Not implemented.");
         }
         
         bool swap_with(Drawable*) final override {
-            U_EXCEPTION("Cannot swap a section.");
+            throw U_EXCEPTION("Cannot swap a section.");
         }
         
         void begin(bool reuse = false);
@@ -212,7 +212,7 @@ namespace gui {
                     if(Type::SINGLETON == c->type()) {
                         SingletonObject *other = static_cast<SingletonObject*>(c);
                         if(other->ptr() == obj) {
-                            U_EXCEPTION("Found it elsewhere.");
+                            throw U_EXCEPTION("Found it elsewhere.");
                         }
                     }
                 }

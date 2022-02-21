@@ -1,6 +1,7 @@
 #include "Timer.h"
 #include <misc/MetaObject.h>
 #include <misc/metastring.h>
+#include <misc/format.h>
 
 #ifdef NDEBUG
 #undef NDEBUG // we currently want the timers to be always-on
@@ -23,7 +24,7 @@ void Timing::start_measure() {
             std::stringstream ss;
             ss << tid;
             auto str = ss.str();
-            Debug("Deleting timer for tid %S ('%S', %d threads known)", &str, &_name, _threads.size());
+            cmn::print("Deleting timer for tid ", str," (", _name,", ", _threads.size()," threads known)");
             it = _threads.erase(it);
         } else
             ++it;
@@ -31,16 +32,18 @@ void Timing::start_measure() {
 #endif
 }
 double Timing::conclude_measure() {
-    double elapsed;
 #ifndef NDEBUG
+    double elapsed;
     {
         std::lock_guard<std::mutex> guard(_mutex);
         auto id = std::this_thread::get_id();
         auto &info = _threads[id];
         elapsed = info.timer.elapsed();
     }
-#endif
     return conclude_measure(elapsed);
+#else
+    return 0;
+#endif
 }
 
 double Timing::conclude_measure(double elapsed) {
@@ -51,7 +54,7 @@ double Timing::conclude_measure(double elapsed) {
     
     bool exchange = true;
     if(info.initial_frame.compare_exchange_strong(exchange, false)) {
-        Debug("-- (%d) %S initial frame took %fms", sample_count, &_name, info.timer.elapsed() * 1000);
+        cmn::print("-- (", sample_count,") ", _name," initial frame took ", info.timer.elapsed() * 1000,"ms");
         sample_count++;
         return -1;
     }
@@ -68,7 +71,7 @@ double Timing::conclude_measure(double elapsed) {
     }
     
     if (all_elapsed / _threads.size() >= _print_threshold) {
-        Debug("-- (%d) %S took %fms", sample_count, &_name, info.averageTime / (double)info.timingCount * 1000);
+        cmn::print("-- (", sample_count,") ", _name," took ", info.averageTime / (double)info.timingCount * 1000,"ms");
         
         for(auto && [id, inf] : _threads) {
             if(inf.timingCount > 0) {
@@ -78,6 +81,9 @@ double Timing::conclude_measure(double elapsed) {
             }
         }
     }
-#endif
     return elapsed * 1000;
+#else
+    UNUSED(elapsed)
+    return 0;
+#endif
 }

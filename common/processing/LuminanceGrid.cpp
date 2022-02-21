@@ -112,7 +112,7 @@ namespace cmn {
             cv::multiply(_buffer, _gpumat, _buffer);
             _buffer.convertTo(input, CV_8UC1);
         } else
-            Warning("LuminanceGrid has resolution %dx%d whereas input has %dx%d", _gpumat.cols, _gpumat.rows, input.cols, input.rows);
+            FormatWarning("LuminanceGrid has resolution ", _gpumat.cols, "x", _gpumat.rows," whereas input has ",input.cols, "x", input.rows);
     }
     
 #ifdef USE_GPU_MAT

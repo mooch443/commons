@@ -121,7 +121,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     //cv::Mat after_threshold, after_dilation;
     
     if (_average->empty()) {
-        U_EXCEPTION("Average image is empty.");
+        throw U_EXCEPTION("Average image is empty.");
     }
     
     assert(_average->type() == CV_8UC1);
@@ -138,8 +138,8 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("average", m);*/
     
 #ifndef NDEBUG
-    Debug("enable_diff %d / enable_abs_diff %d", enable_diff, enable_abs_diff);
-    Debug("Average: %dx%d Input: %dx%d", _average->cols, _average->rows, input.cols, input.rows);
+    print("enable_diff ", enable_diff," / enable_abs_diff ",enable_abs_diff,"");
+    print("Average: ",_average->cols,"x",_average->rows," Input: ",input.cols,"x",input.rows,"");
 #endif
     
     /*cv::Mat local;
@@ -222,7 +222,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             const cv::Mat dilation_element = cv::Mat::ones(abs(dilation_size), abs(dilation_size), CV_8UC1); //cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2*abs(dilation_size) + 1, 2*abs(dilation_size)+1 ), cv::Point( abs(dilation_size), abs(dilation_size) ) );
             
 #ifndef NDEBUG
-            Debug("copy %d,%d %d %dx%d", dilation_element.cols, dilation_element.rows, dilation_size, gpu_dilation_element.cols, gpu_dilation_element.rows);
+            print("copy ",dilation_element.cols,",",dilation_element.rows," ",dilation_size," ",gpu_dilation_element.cols,"x",gpu_dilation_element.rows,"");
 #endif
             dilation_element.copyTo(gpu_dilation_element);
         }
@@ -294,7 +294,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         //cv::minMaxLoc(labels, &mi, &ma);
         
         cv::minMaxLoc(labels2, &mi, &ma);
-        Debug("second %f - %f Empty", mi, ma);
+        print("second ", mi," - ",ma," Empty");
         
         labels2.convertTo(_buffer1, CV_8UC1);
         labels2.copyTo(local);
@@ -454,7 +454,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         }
             
         if(c.dims != 2)
-            U_EXCEPTION("E");
+            throw U_EXCEPTION("E");
         Vec2 prev(-1);
         for (int i=0; i<c.rows; ++i) {
             auto pt = c.at<cv::Point2i>(i);

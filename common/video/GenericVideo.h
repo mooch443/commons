@@ -31,10 +31,10 @@ public:
     virtual const cv::Mat& mask() const = 0;
     virtual bool has_timestamps() const = 0;
     virtual uint64_t timestamp(uint64_t) const {
-        U_EXCEPTION("Not implemented.");
+        throw U_EXCEPTION("Not implemented.");
     }
     virtual uint64_t start_timestamp() const {
-        U_EXCEPTION("Not implemented.");
+        throw U_EXCEPTION("Not implemented.");
     }
     virtual short framerate() const = 0;
     
@@ -45,7 +45,7 @@ public:
     void undistort(const gpuMat& disp, gpuMat& image) const;
     
     virtual void set_offsets(const CropOffsets&) {
-        U_EXCEPTION("Not implemented.");
+        throw U_EXCEPTION("Not implemented.");
     }
     
     void processImage(const gpuMat& disp, gpuMat& out, bool do_mask = true) const;

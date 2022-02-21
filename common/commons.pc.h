@@ -127,16 +127,32 @@ using long_t = int32_t;
 #endif
 
 #include <opencv2/opencv.hpp>
-
-#include <common/cpputils/cpputils.h>
-#include <common/cpputils/debug/Debug.h>
-#include <common/cpputils/utilsexception.h>
 #include <cnpy/cnpy.h>
 #include <bytell_hash_map.hpp>
 #include <tsl/sparse_map.h>
 #include <tsl/sparse_set.h>
 #include <robin_hood.h>
+
+#include <misc/stringutils.h>
 #include <misc/format.h>
+#include <misc/utilsexception.h>
+
+#include <fstream>
+
+namespace utils {
+
+inline std::string read_file(const std::string& filename) {
+    std::ifstream input(filename, std::ios::binary);
+    if(!input.is_open())
+        throw cmn::U_EXCEPTION("Cannot read file ", filename);
+    
+    std::stringstream ss;
+    ss << input.rdbuf();
+    
+    return ss.str();
+}
+    
+}
 
 #ifdef __llvm__
 #pragma clang diagnostic pop

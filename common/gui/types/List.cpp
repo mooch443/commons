@@ -172,7 +172,7 @@ namespace gui {
             }
         }
         
-        Error("Item %d cannot be found.", ID);
+        print("Item ",ID," cannot be found.");
     }
     
     void List::toggle_item(long ID) {
@@ -210,7 +210,7 @@ namespace gui {
             }
         }
         
-        U_EXCEPTION("Item %d cannot be found.", ID);
+        throw U_EXCEPTION("Item ",ID," cannot be found.");
     }
     
     void List::set_selected(long ID, bool selected) {
@@ -246,7 +246,7 @@ namespace gui {
             }
         }
         
-        U_EXCEPTION("Item %d cannot be found.", ID);
+        throw U_EXCEPTION("Item ",ID," cannot be found.");
     }
     
     void List::deselect_all() {

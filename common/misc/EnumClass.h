@@ -1,5 +1,7 @@
 #pragma once
 
+#include <misc/defines.h>
+
 #define CHOOSE_MAP_START(count) MAP ## count
 
 #define APPLY(macro, ...) IDENTITY(macro(__VA_ARGS__))
@@ -155,6 +157,9 @@ public:
 /*struct enum_has_docs \
 { enum { value = sizeof docs_exist(  ) == sizeof( std::array<const char*, num_elements> ) }; }; \
  */
+
+#define UNUSED(X) {(void)X;}
+
 #undef ENUM_CLASS
 #define ENUM_CLASS(NAME, ...) \
 namespace NAME { \
@@ -202,7 +207,7 @@ namespace NAME { \
         UNUSED(names) \
         for(auto &v : values) \
             if(utils::lowercase(v.name()) == utils::lowercase(name)) return v; \
-        U_EXCEPTION("Cannot find value '%S' in enum '%s'", &name, NAME :: data :: name ); \
+        throw cmn::U_EXCEPTION("Cannot find value ",name," in enum '", NAME :: data :: name, "'." ); \
     } \
     \
 template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\

@@ -83,10 +83,10 @@ namespace gui {
         template<typename T, typename = typename std::enable_if<std::is_convertible<T, const Drawable*>::value && std::is_pointer<T>::value>::type>
         T child(size_t index) const {
             if(index >= _current_children.size())
-                throw CustomException<std::invalid_argument>("Item %d out of range.", index);
+                throw CustomException(cmn::type<std::invalid_argument>, "Item ",index," out of range.");
             auto ptr = dynamic_cast<T>(_current_children.at(index));
             if(!ptr)
-                throw CustomException<std::invalid_argument>("Item %d of type %s cannot be converted to", index, _current_children.at(index)->type().name());
+                throw CustomException(cmn::type<std::invalid_argument>, "Item ", index," of type ", _current_children.at(index)->type().name(), " cannot be converted to");
             return ptr;
         }
         
@@ -186,7 +186,7 @@ namespace gui {
             }
             
             if(!used_or_deleted)
-                U_EXCEPTION("Not used or deleted.");
+                throw U_EXCEPTION("Not used or deleted.");
             
             //auto ptr = insert_at_current_index(d);
             //T *ret = dynamic_cast<T*>(d);

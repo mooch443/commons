@@ -23,7 +23,7 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) const {
         if(map1.cols == disp.cols && map1.rows == disp.rows && map2.cols == disp.cols && map2.rows == disp.rows)
         {
             if(!map1.empty() && !map2.empty()) {
-                Debug("Undistorting %dx%d", disp.cols, disp.rows);
+                print("Undistorting ", disp.cols,"x",disp.rows,"");
                 
                 static gpuMat _map1, _map2;
                 if(_map1.empty())
@@ -37,10 +37,10 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) const {
                 cv::remap(input, image, _map1, _map2, cv::INTER_LINEAR, cv::BORDER_DEFAULT);
                 //output.copyTo(image);
             } else {
-                Warning("remap maps are empty.");
+                FormatWarning("remap maps are empty.");
             }
         } else {
-            Error("Undistortion maps are of invalid size (%dx%d vs %dx%d).", map1.cols, map1.rows, disp.cols, disp.rows);
+            FormatError("Undistortion maps are of invalid size (", map1.cols, "x", map1.rows, " vs ", disp.cols, "x", disp.rows, ").");
         }
         
         
@@ -108,7 +108,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     }
     AveragingAccumulator accumulator;
     
-    Debug("Generating average for frame %d (method='%s')...", frameIndex, accumulator.mode().name());
+    print("Generating average for frame ", frameIndex," (method='",accumulator.mode().name(),"')...");
     
     float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length() * 0.1f);
     const auto step = narrow_cast<uint>(max(1, length() / samples));
@@ -125,7 +125,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
         if(counted > float(length()) * 0.1) {
             if(callback)
                 callback(float(samples - i) / float(step));
-            Debug("generating average: %d/%d step:%d (frame %d)", (samples - i) / step, int(samples), step, i);
+            print("generating average: ", (samples - i) / step,"/", int(samples)," step:", step," (frame ", i,")");
             counted = 0;
         }
         

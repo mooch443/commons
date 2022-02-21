@@ -105,7 +105,7 @@ void AveragingAccumulator::_add(const Mat &f) {
             cv::min(_accumulator, f, _accumulator);
         
     } else
-        U_EXCEPTION("Unknown averaging_method '%s'.", _mode.name())
+        throw U_EXCEPTION("Unknown averaging_method ", _mode.name());
 }
 
 std::unique_ptr<cmn::Image> AveragingAccumulator::finalize() {

@@ -179,7 +179,7 @@ namespace gui {
     
     void PieChart::draw_slices() {
         if(!begun())
-            U_EXCEPTION("begin() first");
+            throw U_EXCEPTION("begin() first");
         
         add<Vertices>(_vertices, PrimitiveType::Triangles);
         add<Vertices>(_lines, PrimitiveType::Lines);

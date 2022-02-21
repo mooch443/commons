@@ -34,19 +34,28 @@ public:
     }
     
     template<typename T>
+        requires (!_clean_same<T, Frame_t>)
     const std::string to_string(const T& data, typename std::enable_if<!std::is_floating_point<T>::value, bool>::type* = 0, decltype((operator<<(std::ofstream(), data).bad()))* =0) {
         std::stringstream ss;
         ss << data;
         return ss.str();
     }
     
-    const std::string to_string(Frame_t frame) {
-        return frame.toStr();
+    const std::string to_string(const Frame_t& data) {
+        return data.toStr();
     }
     
     template<typename T>
+        requires (!_clean_same<T, std::string>) && (!std::convertible_to<T, std::string>)
     Row& add(T value) {
         _values.push_back(to_string(value));
+        return *this;
+    }
+    
+    template<typename T>
+        requires (_clean_same<T, std::string>) || (std::convertible_to<T, std::string>)
+    Row& add(T value) {
+        _values.push_back(value);
         return *this;
     }
     

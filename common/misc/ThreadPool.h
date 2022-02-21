@@ -51,7 +51,7 @@ namespace cmn {
                 
                 // don't allow enqueueing after stopping the pool
                 if(stop) {
-                    Except("enqueue on stopped ThreadPool");
+                    FormatExcept("enqueue on stopped ThreadPool");
                     return res;
                 }
                     

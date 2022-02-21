@@ -122,14 +122,14 @@ class PolyCache : public CacheObject {
                             if(it != all_gpu_texture.end()) {
                                 all_gpu_texture.erase(it);
                             } else
-                                Warning("Cannot find GPU texture of %X", cache);
+                                print("Cannot find GPU texture of ",cache,"");
 #endif
                             ptr = nullptr;
                             //base->clear_texture(std::move(ptr));
                         }
                     });
                 } else
-                    Except("Cannot clear texture because platform is gone.");
+                    FormatExcept("Cannot clear texture because platform is gone.");
             }*/
             
 #ifndef NDEBUG
@@ -138,7 +138,7 @@ class PolyCache : public CacheObject {
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
-                    Warning("Cannot find GPU texture of %X", this);
+                    print("Cannot find GPU texture of ",this,"");
             }
 #endif
             
@@ -197,7 +197,7 @@ class PolyCache : public CacheObject {
                 _object = o;
                 pobj->remove_cache(_base);
                 if(o)
-                    Warning("Exchanging cache for object");
+                    FormatWarning("Exchanging cache for object");
             }
         }
         
@@ -369,14 +369,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         auto monitors = glfwGetMonitors(&count);
         int mx, my, mw, mh;
 #ifndef NDEBUG
-        Debug("Window is at %d, %d (%dx%d).", x, y, fw, fh);
+        print("Window is at ",x,", ",y," (",fw,"x",fh,").");
 #endif
         
         for (int i=0; i<count; ++i) {
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifndef NDEBUG
             auto name = glfwGetMonitorName(monitors[i]);
-            Debug("Monitor '%s': %d,%d %dx%d", name, mx, my, mw, mh);
+            print("Monitor '",name,"': ",mx,",",my," ",mw,"x",mh,"");
 #endif
             if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, fw-10, fh-10))) {
                 monitor = monitors[i];
@@ -394,7 +394,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         int mx, my, mw, mh;
         glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
 #ifndef NDEBUG
-        Debug("FS Monitor: %d,%d %dx%d", mx, my, mw, mh);
+        print("FS Monitor: ",mx,",",my," ",mw,"x",mh,"");
 #endif
     }
     
@@ -406,7 +406,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
     
 #ifndef NDEBUG
-    Debug("Content scale: %f, %f", xscale, yscale);
+    print("Content scale: ", xscale,", ",yscale);
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
@@ -529,7 +529,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         file::Path path("fonts/Quicksand-");
         if (!path.add_extension("ttf").exists())
-            Except("Cannot find file '%S'", &path.str());
+            FormatExcept("Cannot find file ",path.str(),"");
         
         auto& io = ImGui::GetIO();
         //io.FontAllowUserScaling = true;
@@ -564,7 +564,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 auto full = path.str() + suffix + ".ttf";
                 auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale, &config);
                 if (!ptr) {
-                    Warning("Cannot load font '%S' with index %d.", &path.str(), config.FontNo);
+                    FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,".");
                     ptr = io.Fonts->AddFontDefault();
                     im_font_scale = max(1, dpi_scale) * 0.5f;
                 }
@@ -742,7 +742,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         if(fw > 0 && fh > 0 && (fw != _last_framebuffer_size.width || fh != _last_framebuffer_size.height))
         {
 #ifndef NDEBUG
-            Debug("Changed framebuffer size to %dx%d", fw, fh);
+            print("Changed framebuffer size to ", fw,"x",fh,"");
 #endif
             _last_framebuffer_size = Size2(fw, fh);
         }
@@ -1062,7 +1062,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         if(list->_ClipRectStack.size() > 1) {
             //list->PopClipRect();
         } else
-            Warning("Cannot pop too many rects.");
+            FormatWarning("Cannot pop too many rects.");
         return;
     }*/
     
@@ -1070,7 +1070,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         auto o = order.ptr;
         assert(o->has_global_rotation());
         if(!_rotation_starts.count(o)) {
-            Warning("Cannot find object.");
+            FormatWarning("Cannot find object.");
             return;
         }
         auto && [rotation_start, center] = _rotation_starts.at(o);
@@ -1528,7 +1528,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 //font_size = font.size * gscale.x * font_size;
                 
             } catch(const UtilsException& ex) {
-                Warning("Not initialising scale of (probably StaticText) fully because of a UtilsException.");
+                FormatWarning("Not initialising scale of (probably StaticText) fully because of a UtilsException.");
                 //text.setCharacterSize(font.size * 25);
                 //text.setScale(1, 1);
             }
@@ -1539,7 +1539,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }*/
         
         if(_fonts.empty()) {
-            Warning("Trying to retrieve text_bounds before fonts are available.");
+            FormatWarning("Trying to retrieve text_bounds before fonts are available.");
             return gui::Base::text_bounds(text, obj, font);
         }
         
@@ -1555,7 +1555,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
 
     uint32_t IMGUIBase::line_spacing(const Font& font) {
         if(_fonts.empty()) {
-            Warning("Trying to get line_spacing without a font loaded.");
+            FormatWarning("Trying to get line_spacing without a font loaded.");
             return Base::line_spacing(font);
         }
         return sign_cast<uint32_t>(font.size * _fonts.at(font.style)->FontSize / im_font_scale);

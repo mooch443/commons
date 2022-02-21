@@ -115,12 +115,12 @@ namespace cmn {
                 _data = (uchar*)realloc(_data, _array_size);
 #ifndef NDEBUG
                 //! this does not help us anyway... just crash, i guess.
-                if (!_data) Except("Cannot allocate memory for image of size %dx%dx%d. Leaking.", rows, cols, dims);
+                if (!_data) FormatExcept("Cannot allocate memory for image of size ",rows,"x",cols,"x",dims,". Leaking.");
 #endif
             } // otherwise just be memory-inefficient and leave the array as it is :-)
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
             else
-                Debug("Reusing %lu for %lu array", _size, _array_size);
+                print("Reusing ", _size," for ",_array_size," array");
 #endif
         }
         else {
@@ -191,7 +191,7 @@ namespace cmn {
         _index = other.index();
         _timestamp = other.timestamp();
         if(other._custom_data)
-            U_EXCEPTION("Cannot copy custom data from one image to another.");
+            throw U_EXCEPTION("Cannot copy custom data from one image to another.");
         
         if(_data)
             std::memcpy(_data, other.data(), _size);
@@ -216,7 +216,7 @@ namespace cmn {
         
 #ifndef NDEBUG
         if(image._custom_data)
-            Warning("Cannot copy custom data from one image to another.");
+            FormatWarning("Cannot copy custom data from one image to another.");
 #endif
     }*/
     
@@ -320,7 +320,7 @@ namespace cmn {
     
     void to_png(const Image& _input, std::vector<uchar>& output) {
         if(_input.dims < 4 && _input.dims != 1 && _input.dims != 2)
-            U_EXCEPTION("Currently, only RGBA and GRAY is supported.");
+            throw U_EXCEPTION("Currently, only RGBA and GRAY is supported.");
         
         Image::UPtr tmp;
         const Image *input = &_input;
@@ -338,16 +338,16 @@ namespace cmn {
         
         png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
         if(!p)
-            U_EXCEPTION("png_create_write_struct() failed");
+            throw U_EXCEPTION("png_create_write_struct() failed");
         PNGGuard PNG(p);
         
         png_infop info_ptr = png_create_info_struct(p);
         if(!info_ptr) {
-            U_EXCEPTION("png_create_info_struct() failed");
+            throw U_EXCEPTION("png_create_info_struct() failed");
         }
         PNG.info = info_ptr;
         if(0 != setjmp(png_jmpbuf(p)))
-            U_EXCEPTION("setjmp(png_jmpbuf(p) failed");
+            throw U_EXCEPTION("setjmp(png_jmpbuf(p) failed");
         png_set_IHDR(p, info_ptr, input->cols, input->rows, 8,
                      input->dims == 4 ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_GRAY,
                      PNG_INTERLACE_NONE,

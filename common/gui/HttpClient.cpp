@@ -59,7 +59,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
                 else if(key == 188) event.key.code = Codes::Comma;
                 else {
                     std::string str = "unknown key";
-                    Warning("Unknown key %d / '%c' in HttpClient", key, key);
+                    FormatWarning("Unknown key ", key," / '",key,"' in HttpClient");
                     return Httpd::Response(std::vector<uchar>(str.begin(), str.end()), "text/html");
                 }
                 
@@ -72,7 +72,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
             }
             
         } else
-            U_EXCEPTION("Malformed URL format '%S'", &url);
+            throw U_EXCEPTION("Malformed URL format ",url);
         
         std::string str = "1";
         return Httpd::Response(std::vector<uchar>(str.begin(), str.end()), "text/html");
@@ -91,7 +91,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
                 else if(key == 188) event.key.code = Codes::Comma;
                 else {
                     std::string str = "unknown key";
-                    Warning("Unknown key %d / '%c' in HttpClient", key, key);
+                    FormatWarning("Unknown key ", key," / '",key,"' in HttpClient");
                     return Httpd::Response(std::vector<uchar>(str.begin(), str.end()), "text/html");
                 }
                 
@@ -106,7 +106,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
             }
             
         } else
-            U_EXCEPTION("Malformed URL format '%S'", &url);
+            throw U_EXCEPTION("Malformed URL format ",url);
         
         std::string str = "1";
         return Httpd::Response(std::vector<uchar>(str.begin(), str.end()), "text/html");
@@ -128,7 +128,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
             _gui.set_dirty(&_base);
             
         } else
-            U_EXCEPTION("Malformed URL format '%S'", &url);
+            throw U_EXCEPTION("Malformed URL format ",url);
         
         std::string str = "1";
         return Httpd::Response(std::vector<uchar>(str.begin(), str.end()), "text/html");
@@ -188,7 +188,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
         
     }
     
-    Error("URL does not exist '%S'", &url);
+    FormatError("URL does not exist ",url,"");
     std::string str = "URL does not exist.";
     std::vector<uchar> bytes(str.begin(), str.end());
     return Httpd::Response(bytes, "text/html");

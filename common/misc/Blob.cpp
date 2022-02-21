@@ -21,7 +21,7 @@ Blob::Blob(std::unique_ptr<std::vector<HorizontalLine>>&& points)
     : _hor_lines(std::move(points))
 {
     if(!_hor_lines)
-        U_EXCEPTION("Blob initialized with NULL lines array");
+        throw U_EXCEPTION("Blob initialized with NULL lines array");
     _properties.ready = false;
 #ifdef _DEBUG_MEMORY
     std::lock_guard<std::mutex> guard(all_mutex_blob);
@@ -34,7 +34,7 @@ Blob::~Blob() {
     std::lock_guard<std::mutex> guard(all_mutex_blob);
     auto it = all_blobs_map.find(this);
     if(it == all_blobs_map.end())
-        Error("Double delete?");
+        FormatError("Double delete?");
     else
         all_blobs_map.erase(it);
 #endif
@@ -55,7 +55,7 @@ size_t Blob::all_blobs() {
         fwrite(str.data(), sizeof(char), str.length(), f);
         fclose(f);
     } else
-        Error("Cannot write 'blobs.log'");
+        FormatError("Cannot write 'blobs.log'");
     return all_blobs_map.size();
 #else
     return 0;

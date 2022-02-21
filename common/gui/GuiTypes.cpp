@@ -104,7 +104,7 @@ bool VertexArray::swap_with(gui::Drawable *d) {
         return false;
     
     if(d == this)
-        U_EXCEPTION("Cannot swap object with itself.");
+        throw U_EXCEPTION("Cannot swap object with itself.");
     
     auto ptr = dynamic_cast<VertexArray*>(d);
     if(!ptr)
@@ -114,7 +114,7 @@ bool VertexArray::swap_with(gui::Drawable *d) {
         return false;
         
     if(_transport)
-        U_EXCEPTION("Cannot use Line in this way. Transport is supposed to be temporary.");
+        throw U_EXCEPTION("Cannot use Line in this way. Transport is supposed to be temporary.");
     
     /*set_pos(d->pos());*/
     set_origin(d->origin());
@@ -444,7 +444,7 @@ void Line::prepare() {
 
 const std::vector<Vertex>& Line::points() {
     if(_transport)
-        U_EXCEPTION("Line must be prepare()d before first use.");
+        throw U_EXCEPTION("Line must be prepare()d before first use.");
     assert(_points);
     
     auto _s = 1 / _max_scale;
@@ -551,7 +551,7 @@ ExternalImage::ExternalImage(Ptr&& source, const Vec2& pos, const Vec2& scale, c
 
 void ExternalImage::update_with(const gpuMat& mat) {
     if(mat.channels() > 0 && mat.channels() != 4 && mat.channels() != 1 && mat.channels() != 2)
-        U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
 
     cv::Mat local;
     mat.copyTo(local);
@@ -571,7 +571,7 @@ void ExternalImage::update_with(const gpuMat& mat) {
 
 void ExternalImage::update_with(const Image& mat) {
     if(mat.dims > 0 && mat.dims != 4 && mat.dims != 1 && mat.dims != 2)
-        U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     if(!_source) {
         _source = Image::Make(mat.rows, mat.cols, mat.dims, mat.data(), mat.timestamp());
@@ -604,7 +604,7 @@ void ExternalImage::set_source(Ptr&& source) {
         return;
     
     if(source && source->dims > 0 && source->dims != 4 && source->dims != 1 && source->dims != 2)
-        U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     //if(_source && source && _source->array_size() >= source->array_size()) {
     if(_source && source)
@@ -622,7 +622,7 @@ void ExternalImage::set_source(Ptr&& source) {
         return;
     
     if(source.dims > 0 && source.dims != 4 && source.dims != 1 && source.dims != 2)
-        U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
             
     if(!_source) {
         _source = new Image(source.rows, source.cols, source.dims);
@@ -647,7 +647,7 @@ void ExternalImage::set_source(Ptr&& source) {
         if(source.dims)
             _source->set(0, source.data());
     } else
-        U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     for(auto& c : _cache) {
         c.second->set_changed(true);
@@ -695,7 +695,7 @@ std::ostream & VertexArray::operator <<(std::ostream &os) {
         case PrimitiveType::Lines:     primitive_type = 'L'; break;
             
         default:
-            Warning("Serialization: Unknown primitive type.");
+            FormatWarning("Serialization: Unknown primitive type.");
             os << "0," << "\"L\"," << "[]," << Color();
             return os;
     }

@@ -120,7 +120,7 @@ namespace gui {
             ss << "]";
             
             if(dynamic_cast<HasName*>(d))
-                Debug("Sending '%S'",& dynamic_cast<HasName*>(d)->name());
+                print("Sending ", dynamic_cast<HasName*>(d)->name());
             
             if(cache) {
                 cache->set_text(ss.str());
