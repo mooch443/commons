@@ -496,6 +496,12 @@ public:
     static std::string parse_value(T value) {
         return console_color<FormatColor::PURPLE, colors>(Meta::toStr(value));
     }
+
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires std::is_enum<K>::value
+    static std::string parse_value(T value) {
+        return parse_value((int)value);
+    }
     
     template<typename T, typename K = remove_cvref_t<T>>
         requires is_instantiation<cv::Size_, T>::value

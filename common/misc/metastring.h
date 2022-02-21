@@ -140,9 +140,9 @@ template<typename T>
 concept _is_dumb_pointer =
     (std::is_pointer<T>::value) && (!_is_smart_pointer<T>);
 
-template<typename T>
-concept _is_number = 
-    (!_clean_same<bool, T>) && (std::floating_point<T> || std::integral<T> || std::convertible_to<T, int>);
+template<typename T, typename K = typename std::remove_cv<T>::type>
+concept _is_number =
+    (!_clean_same<bool, T>) && (std::floating_point<K> || std::integral<K>); //|| std::convertible_to<T, int>);
 
 template<typename T>
 concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::integral<T>);
@@ -302,6 +302,10 @@ inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value
 template<typename Q>
 inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
         
+template<typename Q, typename K = typename remove_cvref<Q>::type>
+    requires is_instantiation<std::atomic, K>::value
+inline std::string toStr(const Q& value);
+
 template<typename Q>
 inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
         
@@ -442,7 +446,7 @@ std::string toStr(const Q& obj) {
 template<class Q>
     requires (std::convertible_to<Q, std::string> || (std::is_constructible_v<std::string, Q>))
         && (!(is_instantiation<std::tuple, Q>::value))
-        //&& (!_has_tostr_method<Q>)
+        && (!_is_number<Q>)
 std::string toStr(const Q& obj) {
     return "\"" + util::escape(std::string(obj)) + "\"";
 }
@@ -957,6 +961,12 @@ inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::valu
 template<typename Q>
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* ) {
     return _Meta::toStr<typename remove_cvref<Q>::type>(value);
+}
+
+template<typename Q, typename K>
+    requires is_instantiation<std::atomic, K>::value
+inline std::string toStr(const Q& value) {
+    return toStr(value.load());
 }
         
 template<typename Q, typename T>
