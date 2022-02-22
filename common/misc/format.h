@@ -283,7 +283,7 @@ public:
                     break;
                 case NUMBER:
                     //printf("NUMBER %s\n", tmp.c_str());
-                    ss << parse_value(Meta::fromStr<double>(tmp));
+                    ss << console_color<FormatColor::GREEN, colors>(tmp);
                     break;
                 case TAG_WHITESPACE:
                     ss << console_color<FormatColor::LIGHT_CYAN, colors>(tmp);
