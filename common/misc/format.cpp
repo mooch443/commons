@@ -5,7 +5,7 @@ namespace cmn {
 
 IMPLEMENT(PrefixLiterals::WARNING);
 IMPLEMENT(PrefixLiterals::EXCEPT);
-IMPLEMENT(PrefixLiterals::ERROR);
+IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
 
 void log_to_file(std::string str) {
     static FILE* f{ nullptr };

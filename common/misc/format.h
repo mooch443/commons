@@ -692,7 +692,7 @@ struct FormatColoredPrefix {
 
 struct PrefixLiterals {
     static constexpr const char WARNING[] = "WARNING";
-    static constexpr const char ERROR[] = "ERROR";
+    static constexpr const char ERROR_PREFIX[] = "ERROR";
     static constexpr const char EXCEPT[] = "EXCEPT";
 };
 
@@ -707,9 +707,9 @@ template<typename... Args>
 FormatWarning(const Args&... args) -> FormatWarning<Args...>;
 
 template<typename... Args>
-struct FormatError : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR, FormatColor::RED, Args...> {
+struct FormatError : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR_PREFIX, FormatColor::RED, Args...> {
     FormatError(const Args& ...args, cmn::source_location info = cmn::source_location::current())
-        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR, FormatColor::RED, Args...>(args..., info)
+        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR_PREFIX, FormatColor::RED, Args...>(args..., info)
     { }
 };
 
