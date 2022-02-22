@@ -170,7 +170,7 @@ static std::mutex mutex, _shutdown_mutex;
 void MetalImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
     if(std::this_thread::get_id() != _update_thread)
-        throw U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
+        throw U_EXCEPTION("Wrong thread in '",file,"' line ",line,".");
 #else
     UNUSED(line);
     UNUSED(file);
@@ -542,7 +542,7 @@ void MetalImpl::message(const std::string &msg) const {
             dispatch_semaphore_signal(_frameBoundarySemaphore);
         
         /*if(_draw_timer.elapsed() >= 1) {
-            Debug("%f draw_calls / s", _draw_calls);
+            print("",_draw_calls," draw_calls / s");
             _draw_calls = 0;
             _draw_timer.reset();
         }*/

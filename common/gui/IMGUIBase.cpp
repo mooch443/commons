@@ -771,7 +771,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #ifndef NDEBUG
         if(_last_debug_print.elapsed() > 60) {
             auto str = Meta::toStr(_type_counts);
-            Debug("%d drawn, %d skipped, types: %S", _objects_drawn, _skipped, &str);
+            print("",_objects_drawn," drawn, ",_skipped,"skipped, types: ",str,"");
             _last_debug_print.reset();
         }
 #endif

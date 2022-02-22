@@ -34,7 +34,7 @@ namespace cmn {
             
             const uint64_t read_size = read_data(size, (char*)&val);
             if(read_size != size)
-                throw U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
+                throw U_EXCEPTION("Read unexpected number of bytes (",read_size,"/",size,").");
         }
         
         template <typename T, typename K>

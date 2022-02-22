@@ -164,11 +164,11 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     //TakeTiming take(timing);
     
 	if (index >= length())
-        throw U_EXCEPTION("Read out of bounds %d/%d.", index, length());
+        throw U_EXCEPTION("Read out of bounds ",index,"/",length(),".");
 
 #if defined(VIDEOS_USE_CUDA)
     if(index != _last_index+1) {
-        throw U_EXCEPTION("Cannot jump with gpu Video (to %d from %d).", index, _last_index);
+        throw U_EXCEPTION("Cannot jump with gpu Video (to ",index," from ",_last_index,").");
     }
     
     cv::cuda::GpuMat d_frame;
@@ -199,7 +199,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     
     // Read requested frame
     if(!_cap->read(read))
-        throw U_EXCEPTION("Cannot read frame %d of video '%S'.", index, &_filename);
+        throw U_EXCEPTION("Cannot read frame ",index," of video '",_filename,"'.");
 #endif
     
     if(read.channels() > 1) {

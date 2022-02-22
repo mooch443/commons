@@ -518,6 +518,30 @@ public:
     static std::string parse_value(const T& value) {
         return console_color<FormatColor::RED, colors>(Meta::toStr(value));
     }
+    
+            
+    template<class TupType, size_t... I>
+    static std::string tuple_str(const TupType& _tup, std::index_sequence<I...>)
+    {
+                
+        std::stringstream str;
+        str << console_color<FormatColor::BLACK, colors>("[");
+        (..., (str << (I == 0? "" : console_color<FormatColor::BLACK, colors>(",")) << parse_value(std::get<I>(_tup))));
+        str << console_color<FormatColor::BLACK, colors>("]");
+        return str.str();
+    }
+            
+    template<class... Q>
+    static std::string tuple_str (const std::tuple<Q...>& _tup)
+    {
+        return tuple_str(_tup, std::make_index_sequence<sizeof...(Q)>());
+    }
+    
+    template<typename T, typename K = remove_cvref_t<T>>
+        requires is_instantiation<std::tuple, K>::value
+    static std::string parse_value(const T& value) {
+        return tuple_str(value);
+    }
 
     template<template <typename, typename> class T, typename A, typename B>
         requires is_pair<T<A, B>>::value
@@ -553,6 +577,19 @@ public:
         return str + console_color<FormatColor::BLACK, colors>("]");
     }
 
+    template<bool A, size_t S, typename... Args>
+    static std::string parse_value(const robin_hood::detail::Table<A, S, Args...>& m) {
+        std::string str = console_color<FormatColor::BLACK, colors>("{");
+        for (auto& [k, v] : m) {
+            str += console_color<FormatColor::DARK_GRAY, colors>("[")
+                + parse_value(k)
+                + console_color<FormatColor::GRAY, colors>(":")
+                + parse_value(v)
+                + console_color<FormatColor::DARK_GRAY, colors>("]");
+        }
+        return str + console_color<FormatColor::BLACK, colors>("}");
+    }
+    
     template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
         requires is_map<K>::value
     static std::string parse_value(const T<Args...>& m) {

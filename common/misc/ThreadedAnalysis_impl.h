@@ -196,7 +196,7 @@ void ThreadedAnalysis<T, _cache_size>::loading_function() {
                 
                 if (_array_index != array_idx) {
                     continue;
-                    //throw U_EXCEPTION("Array index changed from %d to %d while loading.", array_idx, _array_index);
+                    //throw U_EXCEPTION("Array index changed from ",array_idx," to ",_array_index," while loading.");
                 }
                 
                 for (uint32_t i=0; i<count; i++) {

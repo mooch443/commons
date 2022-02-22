@@ -47,7 +47,6 @@ class UtilsException : public std::exception {
 public:
 
 	UtilsException(const std::string& str);
-	UtilsException(const char*fmt, ...);
 
 	~UtilsException() throw();
 
@@ -77,16 +76,16 @@ T CustomException(const Args& ...args, cmn::source_location info = cmn::source_l
     return T(cmn::format<FormatterType::UNIX>(args...));
 }*/
 
-class SoftException : public std::exception {
+class SoftExceptionImpl : public std::exception {
 public:
     template<typename... Args>
-    SoftException(const Args& ...args, cmn::source_location info = cmn::source_location::current())
+    SoftExceptionImpl(cmn::source_location info, const Args& ...args)
         : msg(cmn::format<FormatterType::UNIX>(args...))
     {
         
     }
     
-    ~SoftException() throw() {
+    ~SoftExceptionImpl() throw() {
     }
 
     virtual const char * what() const throw() {
@@ -96,6 +95,18 @@ public:
 private:
     std::string msg;
 };
+
+template< typename... Args>
+struct SoftException : SoftExceptionImpl {
+    SoftException(const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+        : SoftExceptionImpl(info, args...)
+    {
+    }
+};
+
+
+template<typename... Args>
+SoftException(Args... args) -> SoftException<Args...>;
 
 
 //template<typename... Args>

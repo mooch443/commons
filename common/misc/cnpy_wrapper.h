@@ -8,7 +8,7 @@ namespace cmn {
         try {
             cnpy::npz_save(zipname, fname, data, shape, mode);
         } catch(const std::runtime_error& e) {
-            throw U_EXCEPTION("Exception while saving '%S': %s", &zipname, e.what());
+            throw U_EXCEPTION("Exception while saving '",zipname,"': ",e.what(),"");
         } catch(...) {
             throw U_EXCEPTION("Unknown exception while saving ",zipname,".");
         }
@@ -18,7 +18,7 @@ namespace cmn {
         try {
             cnpy::npz_save(zipname, fname, data, mode);
         } catch(const std::runtime_error& e) {
-            throw U_EXCEPTION("Exception while saving '%S': %s", &zipname, e.what());
+            throw U_EXCEPTION("Exception while saving '",zipname,"': ",e.what(),"");
         } catch(...) {
             throw U_EXCEPTION("Unknown exception while saving ",zipname,".");
         }

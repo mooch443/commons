@@ -84,7 +84,7 @@ VideoSource::File * VideoSource::File::open(size_t index, const std::string& bas
     if (file_exists(complete_name(basename, ext))) {
         return new File(index, basename, ext);
     } //else {
-        //throw U_EXCEPTION("Cannot open file '%S.%S'.", &basename, &ext);
+        //throw U_EXCEPTION("Cannot open file '",basename,".",ext,"'.");
     //}
     
     return NULL;
@@ -103,7 +103,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
     
     if (_type == UNKNOWN)
-        throw U_EXCEPTION("Unknown extension '%S' for file '%S'.", &extension, &_filename);
+        throw U_EXCEPTION("Unknown extension '",extension,"' for file '",_filename,"'.");
     
     switch (_type) {
         case VIDEO: {
@@ -164,7 +164,7 @@ void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_vide
             break;
             
         default:
-            throw U_EXCEPTION("Grabbing frame %d from '%S' failed because the type was unknown.", frameIndex, &_filename);
+            throw U_EXCEPTION("Grabbing frame ",frameIndex," from '",_filename,"' failed because the type was unknown.");
     }
 }
 
@@ -356,7 +356,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             _files_in_seq.push_back(f);
             _length += f->length();
         } else {
-            throw U_EXCEPTION("Input source '%S%s%S' not found.", &prefix, suffix.empty() ? "" : "%d", &suffix);
+            throw U_EXCEPTION("Input source '",prefix,"",suffix,"",suffix.empty() ? "" : "","' not found.","");
         }
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
@@ -397,7 +397,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         _files_in_seq.shrink_to_fit();
         
     } else {
-        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(), "'...");
+        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "'...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
@@ -417,11 +417,11 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
         
         if (_files_in_seq.empty())
-            throw U_EXCEPTION("Provided an empty video sequence for video source '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(), "'.");
+            throw U_EXCEPTION("Provided an empty video sequence for video source '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "'.");
     }
     
     if(_files_in_seq.empty())
-        throw U_EXCEPTION("Cannot load video sequence '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(), "' (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "' (it is empty).");
     
     _size = _files_in_seq.at(0)->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
@@ -449,7 +449,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
     }
     
-    print("Resolution of VideoSource '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(),"' is ", _size);
+    print("Resolution of VideoSource '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"","' is ", _size);
     
     if(type() == File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();
@@ -464,7 +464,7 @@ void VideoSource::frame(uint64_t, gpuMat&) {
 
 void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame %d/%d requested.", globalIndex, _length);
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
     
     if(type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex);
@@ -475,7 +475,7 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
         f->frame(0, output);
         
         if(output.empty())
-            throw U_EXCEPTION("Could not find frame %d/%d in VideoSource.", globalIndex, length());
+            throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
         
         return;
         
@@ -492,7 +492,7 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
                 f->frame(globalIndex-index, output);
                 
                 if(output.empty())
-                    throw U_EXCEPTION("Could not find frame %d/%d in VideoSource.", globalIndex, length());
+                    throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
                 
                 return;
             }
@@ -500,13 +500,13 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
             index += f->length();
         }
         
-        throw U_EXCEPTION("Could not find frame %d/%d in VideoSource.", globalIndex, index);
+        throw U_EXCEPTION("Could not find frame ",globalIndex,"/",index," in VideoSource.");
     }
 }
 
 uint64_t VideoSource::timestamp(uint64_t globalIndex) const {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame %d/%d requested.", globalIndex, _length);
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
     
     uint64_t index = 0;
     
@@ -518,7 +518,7 @@ uint64_t VideoSource::timestamp(uint64_t globalIndex) const {
         index += f->length();
     }
     
-    throw U_EXCEPTION("Could not find frame %d/%d in VideoSource.", globalIndex, index);
+    throw U_EXCEPTION("Could not find frame ",globalIndex,"/",index," in VideoSource.");
 }
 
 #include <locale>

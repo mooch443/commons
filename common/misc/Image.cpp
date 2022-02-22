@@ -110,7 +110,7 @@ namespace cmn {
                     _array_size = N;
 
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-                Debug("Realloc of image %dx%dx%d to %dx%dx%d (%lu >= %lu)", this->cols, this->rows, this->dims, cols, rows, dims, _array_size, N);
+                print("Realloc of image ",this->cols,"x",this->rows,"x",this->dims," to ",cols,"x",rows,"x",dims," (",_array_size," >= ",N,")");
 #endif
                 _data = (uchar*)realloc(_data, _array_size);
 #ifndef NDEBUG
@@ -132,7 +132,7 @@ namespace cmn {
 
             _data = (uchar*)malloc(_array_size);
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-            Debug("New malloc for %dx%d of size %lu at %X (%lu >= %lu)", cols, rows, _size, _data, _array_size, N);
+            print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
             print_stacktrace(stdout);
 #endif
         }

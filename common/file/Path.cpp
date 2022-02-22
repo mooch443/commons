@@ -95,7 +95,7 @@ std::string_view Path::filename() const {
         }
         
         if(count != position+1)
-            throw U_EXCEPTION("Path only contains %d segments (requested split at %d).", count, position);
+            throw U_EXCEPTION("Path only contains ",count," segments (requested split at ",position,").");
         
         return {Path(std::string_view(_str.data(), before_len)), Path(std::string_view(_str.data() + before_len, _str.length() - before_len))};
     }

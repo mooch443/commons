@@ -113,7 +113,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #ifndef NDEBUG
-#define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); Debug("(%s:%d) %s: %dx%d vs. %dx%d", __FILENAME__, __LINE__, #X, INPUT->cols, INPUT->rows, OUTPUT->cols, OUTPUT->rows); }
+#define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows,""); }
 #else
 #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); }
 #endif
@@ -287,7 +287,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         tf::imshow("labels3", local);
         
         cv::minMaxLoc(labels, &mi, &ma);
-        Debug("%f %f", mi, ma);
+        print("",mi," ",ma,"");
         //cv::cvtColor(_buffer1, _buffer1, cv::COLOR_BGR2GRAY);
         cv::Mat labels2;
         cv::inRange(labels, 2, ma + 1, labels2);

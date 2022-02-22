@@ -34,7 +34,7 @@ public:
         }
         
         //throw U_EXCEPTION("Cannot find value '",v,"' of enum in this OptionsList.");
-        //throw U_EXCEPTION("Cannot find value '%S' of enumeration '%s' in this OptionsList.", &v.toString(), T::name());
+        //throw U_EXCEPTION("Cannot find value '",v.toString(),"' of enumeration '",T::name(),"' in this OptionsList.");
     }
     void clear() {
         list.clear();

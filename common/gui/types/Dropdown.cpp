@@ -109,7 +109,7 @@ namespace gui {
                 if(filtered_items.find(i) != filtered_items.end()) {
                     real_id = filtered_items[i];
                 } else
-                    throw U_EXCEPTION("Unknown item id %d (%d items)", i, filtered_items.size());
+                    throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
             }
             
             if(_button) {

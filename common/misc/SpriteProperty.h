@@ -59,7 +59,7 @@ namespace cmn {
                 try {
                     _set_value_from_string(str);
                 } catch(const std::invalid_argument& e) {
-                    throw U_EXCEPTION("Cannot set %@ to '%S' ('%s')", this, &str, e.what());
+                    throw U_EXCEPTION("Cannot set %@ to '",this,"' ('",str,"')", e.what());
                 }
             }
             

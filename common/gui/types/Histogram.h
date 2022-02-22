@@ -196,7 +196,7 @@ namespace gui {
             } else {
                 if(_colors.size() < max(1u, _data.size())) {
                     auto str = Meta::name<T>();
-                    Error("Number of colors (%lu) does not match data (%lu) in histogram<%S>.", _colors.size(), max(1u, _data.size()), &str);
+                    FormatError("Number of colors (",_colors.size(),") does not match data (",max(1u,_data.size()),") in histogram<",str.c_str(),">.");
                     
                     ColorWheel wheel;
                     for(size_t i=_colors.size(); i<max(1u, _data.size()); i++) {

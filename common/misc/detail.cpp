@@ -75,7 +75,7 @@ namespace cmn {
                 }
                 
             } else if(result.back().y > it->y)
-                throw U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
+                throw U_EXCEPTION("Cannot repair ",result.back().y," > ",it->y,"");
             
             prev = it;
             result.push_back(*it);
@@ -118,7 +118,7 @@ namespace cmn {
                 }
                 
             } else if(result.back().y > it->y)
-                throw U_EXCEPTION("Cannot repair %d > %d", result.back().y, it->y);
+                throw U_EXCEPTION("Cannot repair ",result.back().y," > ",it->y,"");
             
             prev = it;
             result.push_back(*it);

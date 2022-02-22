@@ -69,7 +69,7 @@ namespace cmn {
         
         HorizontalLine merge(const HorizontalLine& other) const {
             //if(other.y != y)
-            //    throw U_EXCEPTION("Cannot merge lines from y=%d and %d", y, other.y);
+            //    throw U_EXCEPTION("Cannot merge lines from y=",y," and ",other.y,"");
             //assert(overlap(other));
             return HorizontalLine(y, cmn::min(x0, other.x0), cmn::max(x1, other.x1));
         }

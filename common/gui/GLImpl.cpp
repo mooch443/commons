@@ -280,7 +280,7 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
     }
     
     /*if(draw_timer.elapsed() >= 1) {
-        Debug("%f draw_calls / s", draw_calls);
+        print("",draw_calls," draw_calls / s");
         draw_calls = 0;
         draw_timer.reset();
     }*/
@@ -373,7 +373,7 @@ const Image::UPtr& GLImpl::current_frame_buffer() {
 void GLImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
     if(std::this_thread::get_id() != _update_thread)
-        throw U_EXCEPTION("Wrong thread in '%s' line %d.", file, line);
+        throw U_EXCEPTION("Wrong thread in '",file,"' line ",line,".");
 #endif
 }
 
@@ -538,7 +538,7 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
     GLuint _id = (GLuint) object->texture_id;
     
     if(object->greyscale != (ptr->dims != 4))
-        throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (%d) != texture (%d)", ptr->dims, object->greyscale ? 1 : 4);
+        throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (",ptr->dims,") != texture (",object->greyscale ? 1 : 4,")");
     
     glBindTexture(GL_TEXTURE_2D, _id);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);

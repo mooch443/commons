@@ -181,7 +181,7 @@ void DataFormat::start_reading() {
     if (result != 0) {
         if (reg)
             memunmap(&reg);
-        throw U_EXCEPTION("Cannot mmap file '%S' (%d).", &_filename, result);
+        throw U_EXCEPTION("Cannot mmap file '",_filename,"' (",result,").");
     }
     _data = memGetAddr(&reg);
 #else
@@ -461,7 +461,7 @@ void Data::read(uint8_t& c) {
     
     const uint64_t read_size = read_data(size, (char*)&c);
     if(read_size != size)
-        throw U_EXCEPTION("Read unexpected number of bytes (%d/%d).", read_size, size);
+        throw U_EXCEPTION("Read unexpected number of bytes (",read_size,"/",size,").");
 }
 
 /**

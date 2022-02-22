@@ -590,7 +590,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         /*auto it = edges.find(edge);
         if(it != edges.end()) {
             auto other = *it;
-            throw U_EXCEPTION("Already contains edge with direction %d->%d from %f,%f to %f,%f (%f,%f)", edge.out_direction, edge.in_direction, edge.A->position.x, edge.A->position.y, edge.B->position.x, edge.B->position.y, it->B->position.x, it->B->position.y);
+            throw U_EXCEPTION("Already contains edge with direction ",edge.out_direction,"->",edge.in_direction," from ",edge.A->position.x,",",edge.A->position.y," to ",edge.B->position.x,",",edge.B->position.y," (",it->B->position.x,",",it->B->position.y,")");
         }*/
         
         const auto& half_out = pixel::half_vectors[edge.out_direction];
@@ -870,7 +870,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                     if(opposite >= max_val) opposite -= max_val;
                     
                     auto v = offset + vectors[(size_t)left];
-                    //Debug("\t%s is set. add %f,%f (%s with sides %s -> %s %f,%f)", NAME(left), v.x, v.y, NAME(left), NAME(border), NAME(opposite), vectors[left].x, vectors[left].y);
+                    //print("\t",NAME(left)," is set. add ",v.x,",",v.y," (",NAME(left)," with sides ",NAME(border)," -> ",NAME(opposite)," ",vectors[left].x,",",vectors[left].y,")");
                     auto ptr = linear_search(LEAF_INDEX(v), _nodes);
                     if(ptr)
                         add_edge(_sides, _non_full_nodes, Edge(border, (Direction)opposite, node.get(), ptr), _nodes);
@@ -899,7 +899,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         */
                         
                         auto v = offset + vectors[left_left];
-                        //Debug("\t%s is not set, but %s is. adding long route %s -> (%f,%f) %s", NAME(left), NAME(left_left), NAME(border), v.x, v.y, NAME(border));
+                        //print("\t",NAME(left)," is not set, but ",NAME(left_left)," is. adding long route ",NAME(border)," -> (",v.x,",",v.y,") ",NAME(border),"");
                         
                         auto ptr = linear_search(LEAF_INDEX(v), _nodes);
                         if(ptr)
@@ -966,7 +966,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         
         cv::Mat output = cv::Mat::zeros((bounds.height+margin.y*2) * scale, (bounds.width+margin.x*2) * scale, CV_8UC3);
         
-        Debug("Dimensions: %f,%f %fx%f (%dx%d)", bounds.x, bounds.y, bounds.width, bounds.height, output.cols, output.rows);
+        print("Dimensions: ",bounds.x,",",bounds.y," ",bounds.width,"x",bounds.height," (",output.cols,"x",output.rows,")");
         
         using namespace gui;
 #endif
