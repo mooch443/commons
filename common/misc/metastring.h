@@ -315,9 +315,11 @@ inline std::string name<illegal_syntax>() {
 }
 
 template<typename Q>
+    requires (!std::is_base_of<std::exception, Q>::value)
 inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
+    requires (!std::is_base_of<std::exception, Q>::value)
 inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q, typename K = typename cmn::remove_cvref<Q>::type>
@@ -972,11 +974,13 @@ Q fromStr(const std::string& str)
 namespace Meta {
 
 template<typename Q>
+    requires (!std::is_base_of<std::exception, Q>::value)
 inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::name<typename cmn::remove_cvref<Q>::type>();
 }
         
 template<typename Q>
+    requires (!std::is_base_of<std::exception, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
 }
