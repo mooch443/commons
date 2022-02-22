@@ -524,7 +524,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
 /*#ifndef NDEBUG
         {
             int h = blob->bounds().height;
-            print("Height: ", h,", lines: ",caches.size(),"");
+            print("Height: ", h,", lines: ",caches.size());
             cv::Mat image = cv::Mat::zeros(h+2, blob->bounds().width+2, CV_8UC4);
             
             using namespace gui;
@@ -827,7 +827,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             }
             ss << "]";
             auto str = ss.str();
-            print("Pixel at ", offset.x,",", offset.y," has borders: ",str,"");*/
+            print("Pixel at ", offset.x,",", offset.y," has borders: ",str);*/
             
             for (uchar i=0; i<node->border.size(); ++i) {
                 if(!node->border[i])
@@ -899,7 +899,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         */
                         
                         auto v = offset + vectors[left_left];
-                        //print("\t",NAME(left)," is not set, but ",NAME(left_left)," is. adding long route ",NAME(border)," -> (",v.x,",",v.y,") ",NAME(border),"");
+                        //print("\t",NAME(left)," is not set, but ",NAME(left_left)," is. adding long route ",NAME(border)," -> (",v.x,",",v.y,") ",NAME(border));
                         
                         auto ptr = linear_search(LEAF_INDEX(v), _nodes);
                         if(ptr)
@@ -915,7 +915,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         
                         */
                         
-                        //print("\t",NAME(left)," and ",NAME(left_left)," are not set. adding inner connection with ",NAME(border)," -> ",NAME(left_left),"");
+                        //print("\t",NAME(left)," and ",NAME(left_left)," are not set. adding inner connection with ",NAME(border)," -> ",NAME(left_left));
                         add_edge(_sides, _non_full_nodes, Edge(border, (Direction)left_left, node.get(), node.get()), _nodes);
                     }
                 }

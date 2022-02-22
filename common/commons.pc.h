@@ -61,6 +61,7 @@
 #include <stdarg.h>
 #include <concepts>
 #include <span>
+#include <misc/date.h>
 
 #ifdef WIN32
 #define _USE_MATH_DEFINES

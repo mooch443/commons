@@ -29,13 +29,13 @@ namespace cmn {
                     doc = docs.at(k.first);
                     /*if(doc.length() > 50) {
                      auto sub = doc.substr(0, 50);
-                     print("",k,"",b," ",value,"",c," ",sub,"");
+                     print(k,b," ",value,c," ",sub);
                      for(size_t i=50; i<doc.length(); i+=50) {
                      auto sub = doc.substr(i, min(doc.length() - i, 50u));
-                     print("",sub,"");
+                     print(sub);
                      }
                      } else
-                     print("",k,"",b," ",value,"",c," ",doc,"");*/
+                     print(k,b," ",value,c," ",doc);*/
                 }
                 
                 print(k,b.c_str()," ",value.c_str(),c.c_str()," ",doc.c_str());

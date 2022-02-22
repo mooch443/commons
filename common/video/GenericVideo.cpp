@@ -23,7 +23,7 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) const {
         if(map1.cols == disp.cols && map1.rows == disp.rows && map2.cols == disp.cols && map2.rows == disp.rows)
         {
             if(!map1.empty() && !map2.empty()) {
-                print("Undistorting ", disp.cols,"x",disp.rows,"");
+                print("Undistorting ", disp.cols,"x",disp.rows);
                 
                 static gpuMat _map1, _map2;
                 if(_map1.empty())

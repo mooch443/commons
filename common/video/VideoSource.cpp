@@ -288,11 +288,11 @@ VideoSource::VideoSource(const std::string& source) {
         throw U_EXCEPTION("File extension not found in ",source);
     }
     
-    print("Searching for ",prefix,"");
+    print("Searching for ",prefix);
     if(std::regex_search (prefix,m,rplaceholder)) {
         auto x = m[0];
         auto s = x.str();
-        print("Match ",s,"");
+        print("Match ",s);
         
         auto L = s.length();
         auto p = (uint64_t)m.position();
@@ -397,7 +397,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         _files_in_seq.shrink_to_fit();
         
     } else {
-        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "'...");
+        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(), "'...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
@@ -449,7 +449,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
     }
     
-    print("Resolution of VideoSource '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"","' is ", _size);
+    print("Resolution of VideoSource '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"' is ", _size);
     
     if(type() == File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();

@@ -113,7 +113,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #ifndef NDEBUG
-#define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows,""); }
+#define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows); }
 #else
 #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); }
 #endif
@@ -138,8 +138,8 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("average", m);*/
     
 #ifndef NDEBUG
-    print("enable_diff ", enable_diff," / enable_abs_diff ",enable_abs_diff,"");
-    print("Average: ",_average->cols,"x",_average->rows," Input: ",input.cols,"x",input.rows,"");
+    print("enable_diff ", enable_diff," / enable_abs_diff ",enable_abs_diff);
+    print("Average: ",_average->cols,"x",_average->rows," Input: ",input.cols,"x",input.rows);
 #endif
     
     /*cv::Mat local;
@@ -222,7 +222,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             const cv::Mat dilation_element = cv::Mat::ones(abs(dilation_size), abs(dilation_size), CV_8UC1); //cv::getStructuringElement( cv::MORPH_ELLIPSE, cv::Size( 2*abs(dilation_size) + 1, 2*abs(dilation_size)+1 ), cv::Point( abs(dilation_size), abs(dilation_size) ) );
             
 #ifndef NDEBUG
-            print("copy ",dilation_element.cols,",",dilation_element.rows," ",dilation_size," ",gpu_dilation_element.cols,"x",gpu_dilation_element.rows,"");
+            print("copy ",dilation_element.cols,",",dilation_element.rows," ",dilation_size," ",gpu_dilation_element.cols,"x",gpu_dilation_element.rows);
 #endif
             dilation_element.copyTo(gpu_dilation_element);
         }
@@ -287,7 +287,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         tf::imshow("labels3", local);
         
         cv::minMaxLoc(labels, &mi, &ma);
-        print("",mi," ",ma,"");
+        print(mi," ",ma);
         //cv::cvtColor(_buffer1, _buffer1, cv::COLOR_BGR2GRAY);
         cv::Mat labels2;
         cv::inRange(labels, 2, ma + 1, labels2);

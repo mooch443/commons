@@ -16,7 +16,7 @@ namespace cmn {
         
         auto check_obj = [](HorizontalLine&, bool cond, const std::string& cond_name) {
             if(!cond) {
-                FormatError("The program is not pleased. ",cond_name,"");
+                FormatError("The program is not pleased. ",cond_name);
             }
         };
 #define _assert(obj, COND) { check_obj(obj, (COND), #COND); }
@@ -690,7 +690,7 @@ namespace cmn {
                             
                         case INVALID:
                             if(!map.has("quiet") || !map.get<bool>("quiet"))
-                                FormatWarning("Data of invalid type ", value," for key ",key,"");
+                                FormatWarning("Data of invalid type ", value," for key ",key);
                             break;
                             
                         case BOOL:

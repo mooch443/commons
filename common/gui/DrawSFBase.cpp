@@ -92,10 +92,10 @@ namespace gui {
             auto modes = sf::VideoMode::getFullscreenModes();
             print("Supported:");
             for(auto &mode: modes)
-                print("",mode.width,"x",mode.height,"@ ",mode.bitsPerPixel,"");
+                print(mode.width,"x",mode.height,"@ ",mode.bitsPerPixel);
             
             auto mode = modes.front();
-            print("using (first) mode: ", mode.width,"x", mode.height," @ ",mode.bitsPerPixel,"");
+            print("using (first) mode: ", mode.width,"x", mode.height," @ ",mode.bitsPerPixel);
             _window.create(mode, _title, sf::Style::Fullscreen);
             _window.setView(sf::View(sf::FloatRect(0, 0, mode.width, mode.height)));
             _window.setActive(false);

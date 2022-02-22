@@ -52,6 +52,7 @@ namespace gui {
     }
 
     void init_errorlog() {
+        //!TODO: Error log not implemented
         /*debug_callback = DEBUG::SetDebugCallback({DEBUG::DEBUG_TYPE::TYPE_ERROR,DEBUG::DEBUG_TYPE::TYPE_EXCEPTION,DEBUG::DEBUG_TYPE::TYPE_WARNING}, [](const DEBUG::StatusMsg* type, const std::string& msg)
         {
             std::lock_guard<std::recursive_mutex> lock(error_message_lock);

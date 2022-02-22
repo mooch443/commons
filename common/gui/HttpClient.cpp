@@ -188,7 +188,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
         
     }
     
-    FormatError("URL does not exist ",url,"");
+    FormatError("URL does not exist ",url);
     std::string str = "URL does not exist.";
     std::vector<uchar> bytes(str.begin(), str.end());
     return Httpd::Response(bytes, "text/html");

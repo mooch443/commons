@@ -633,14 +633,8 @@ void log_to_file(std::string);
 #endif
 
 inline std::string current_time_string() {
-    time_t rawtime;
-    struct tm* timeinfo;
-    char buffer[128];
-
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-    strftime(buffer, sizeof(buffer), "%H:%M:%S", timeinfo);
-    return std::string(buffer);
+    using namespace std::chrono;
+    return date::format("%H:%M:%S", date::floor<seconds>(system_clock::now()));
 }
 
 template<typename... Args>

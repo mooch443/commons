@@ -113,7 +113,7 @@ int main(int argc, char**argv) {
     print("dec<4>:", dec<4>( 0.523125123 ));
     print("dec<5>:", dec<5>( 0.523125123 ));
     print("dec<6>:", dec<6>( 0.523125123 ));
-    
+    FormatWarning("Something is wrong.");
 
     CommandLine cmd(argc, argv);
     cmd.cd_home();
@@ -121,9 +121,7 @@ int main(int argc, char**argv) {
     map["test"] = 25;
     map["path"] = file::Path("test");
     
-    
     print("Test \"\\\"string\\\"\".");
-    
     print("File: ", file::Path("test"));
 
     for (size_t i = 0; ; ++i) {
@@ -176,7 +174,7 @@ int main(int argc, char**argv) {
     {
         Timer timer;
         for (size_t i=0; i<count; ++i) {
-            print("Test ",i,"/",count,"");
+            print("Test ",i,"/",count);
         }
         
         auto seconds = timer.elapsed();

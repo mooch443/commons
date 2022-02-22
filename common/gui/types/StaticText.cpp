@@ -374,7 +374,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
                             }
                             
                         } else
-                            print("Cannot pop tag ",s,"");
+                            print("Cannot pop tag ",s);
                     } else {
                         if(commands.find(s) == commands.end()) {
                             if(tags.empty()) {

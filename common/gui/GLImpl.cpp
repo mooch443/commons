@@ -280,7 +280,7 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
     }
     
     /*if(draw_timer.elapsed() >= 1) {
-        print("",draw_calls," draw_calls / s");
+        print(draw_calls," draw_calls / s");
         draw_calls = 0;
         draw_timer.reset();
     }*/

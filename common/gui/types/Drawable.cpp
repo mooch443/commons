@@ -147,7 +147,7 @@ namespace gui {
             }
             
             //str = Meta::toStr(copy);
-            print("",copy.size()," objects maybe garbage");
+            print(copy.size()," objects maybe garbage");
             
             if(!copy.empty()) {
                 auto ten = copy.begin();
@@ -157,7 +157,7 @@ namespace gui {
                     auto && [_, object] = *ten;
                     auto && [timer, r, t] = all_drawables.at(object);
                     auto trace = resolve_stacktrace({r, t});
-                    print("",trace,"");
+                    print(trace);
                 }
             }
             

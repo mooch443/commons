@@ -122,7 +122,7 @@ class PolyCache : public CacheObject {
                             if(it != all_gpu_texture.end()) {
                                 all_gpu_texture.erase(it);
                             } else
-                                print("Cannot find GPU texture of ",cache,"");
+                                print("Cannot find GPU texture of ",cache);
 #endif
                             ptr = nullptr;
                             //base->clear_texture(std::move(ptr));
@@ -138,7 +138,7 @@ class PolyCache : public CacheObject {
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
-                    print("Cannot find GPU texture of ",this,"");
+                    print("Cannot find GPU texture of ",this);
             }
 #endif
             
@@ -376,7 +376,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifndef NDEBUG
             auto name = glfwGetMonitorName(monitors[i]);
-            print("Monitor '",name,"': ",mx,",",my," ",mw,"x",mh,"");
+            print("Monitor '",name,"': ",mx,",",my," ",mw,"x",mh);
 #endif
             if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, fw-10, fh-10))) {
                 monitor = monitors[i];
@@ -394,7 +394,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         int mx, my, mw, mh;
         glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
 #ifndef NDEBUG
-        print("FS Monitor: ",mx,",",my," ",mw,"x",mh,"");
+        print("FS Monitor: ",mx,",",my," ",mw,"x",mh);
 #endif
     }
     
@@ -742,7 +742,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         if(fw > 0 && fh > 0 && (fw != _last_framebuffer_size.width || fh != _last_framebuffer_size.height))
         {
 #ifndef NDEBUG
-            print("Changed framebuffer size to ", fw,"x",fh,"");
+            print("Changed framebuffer size to ", fw,"x",fh);
 #endif
             _last_framebuffer_size = Size2(fw, fh);
         }
@@ -771,7 +771,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #ifndef NDEBUG
         if(_last_debug_print.elapsed() > 60) {
             auto str = Meta::toStr(_type_counts);
-            print("",_objects_drawn," drawn, ",_skipped,"skipped, types: ",str,"");
+            print(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
             _last_debug_print.reset();
         }
 #endif

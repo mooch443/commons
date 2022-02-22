@@ -542,7 +542,7 @@ void MetalImpl::message(const std::string &msg) const {
             dispatch_semaphore_signal(_frameBoundarySemaphore);
         
         /*if(_draw_timer.elapsed() >= 1) {
-            print("",_draw_calls," draw_calls / s");
+            print(_draw_calls," draw_calls / s");
             _draw_calls = 0;
             _draw_timer.reset();
         }*/

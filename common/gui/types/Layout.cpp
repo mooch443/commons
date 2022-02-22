@@ -106,7 +106,7 @@ namespace gui {
             _objects.erase(it);
             return;
         }
-        //print("Cannot find object ",ptr,"");
+        //print("Cannot find object ",ptr);
     }
     
     /*void Layout::set_children(const std::vector<Layout::Ptr>& objects) {

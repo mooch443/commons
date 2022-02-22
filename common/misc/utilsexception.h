@@ -123,10 +123,14 @@ struct U_EXCEPTION : UtilsException {
 template<FormatterType formatter, char const *prefix, FormatColor color, typename... Args>
 struct FormatColoredPrefix {
     FormatColoredPrefix(const Args& ...args, cmn::source_location info = cmn::source_location::current()) {
+        auto split = utils::split(info.file_name(), '/');
+        auto file = split.empty() ? info.file_name() : split.back();
+        
         std::string str =
-            "["
-                + cmn::console_color<color, formatter>(
-                std::string(prefix) + " " + std::string(info.file_name()) + ":" + std::to_string(info.line()) + cmn::current_time_string())
+          "["
+          + cmn::console_color<color, formatter>(
+                std::string(prefix) + " " + cmn::current_time_string()
+                + " " + file + ":" + std::to_string(info.line()))
           + "] "
           + format<formatter>(args...);
         
