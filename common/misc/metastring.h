@@ -296,6 +296,24 @@ namespace tuple_tools {
 // <Meta prototypes>
 #pragma region Meta prototypes
 namespace Meta {
+
+
+template<typename Q>
+    requires std::is_base_of_v<std::exception, Q>
+inline std::string name() {
+    return "exception";
+}
+
+template<>
+inline std::string name<std::invalid_argument>() {
+    return "invalid_argument";
+}
+
+template<> 
+inline std::string name<illegal_syntax>() {
+    return "illegal_syntax";
+}
+
 template<typename Q>
 inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         

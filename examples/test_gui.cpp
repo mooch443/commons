@@ -114,6 +114,18 @@ int main(int argc, char**argv) {
     print("dec<5>:", dec<5>( 0.523125123 ));
     print("dec<6>:", dec<6>( 0.523125123 ));
     FormatWarning("Something is wrong.");
+    
+    try {
+        throw CustomException(type<std::invalid_argument>, "Test",argc,argv);
+    } catch(const std::invalid_argument& e) {
+        print("Got: ",e);
+    }
+    
+    try {
+        throw SoftException("Soft exception ",argc);
+    } catch(const SoftExceptionImpl& soft) {
+        print("Got: ", soft);
+    }
 
     CommandLine cmd(argc, argv);
     cmd.cd_home();

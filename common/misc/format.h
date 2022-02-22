@@ -255,9 +255,9 @@ public:
             return contains(keywords, word);
         };
 
-        auto alpha_numeric = [](char c) {
+        /*auto alpha_numeric = [](char c) {
             return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
-        };
+        };*/
 
         auto apply_state = [&](State s) {
             if (!tmp.empty()) {
@@ -545,6 +545,12 @@ public:
         requires is_instantiation<std::tuple, K>::value
     static std::string parse_value(const T& value) {
         return tuple_str(value);
+    }
+    
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
+        requires std::is_base_of<std::exception, K>::value
+    static std::string parse_value(const T& value) {
+        return console_color<FormatColor::RED>(Meta::name<K>()) + console_color<FormatColor::BLACK>("<") + (value.what() ? parse_value(value.what()) : console_color<FormatColor::DARK_GRAY>("unknown")) + console_color<FormatColor::BLACK>(">") ;
     }
 
     template<template <typename, typename> class T, typename A, typename B>
