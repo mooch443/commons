@@ -29,7 +29,7 @@ void Map::register_callback(const char *obj, const callback_func &func) {
     
     _callbacks[obj] = func;
 #ifndef NDEBUG
-    print("Registered map callback ", obj," (",obj,")");
+    //print("Registered map callback ", obj," (",obj,")");
 #endif
 }
 

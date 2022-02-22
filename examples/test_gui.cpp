@@ -105,7 +105,26 @@ constexpr void init_offset() {
 
 
 int main(int argc, char**argv) {
+    
+    
+    try {
+        throw SoftException("Soft exception ",argc);
+    } catch(const SoftExceptionImpl& soft) {
+        print("Got: ", soft);
+    }
+    try {
+        throw CustomException(type<std::invalid_argument>, "Test",argc,argv);
+    } catch(const std::invalid_argument& e) {
+        print("Got: ",e);
+    }
+    
+    
+    print("OpenGL1.32");
+    print("str.c_str()");
+    print("printf(\"%s\\n\", str.c_str());");
     print("dec<0>:", dec<0>( 0.423125123f ));
+    print("Test \"\\\"string\\\"\".");
+    print("File: ", file::Path("test"));
     print("dec<0>:", dec<0>( 0.523125123f ));
     print("dec<1>:", dec<1>( 0.523125123 ));
     print("dec<2>:", dec<2>( 0.523125123 ));
@@ -114,18 +133,6 @@ int main(int argc, char**argv) {
     print("dec<5>:", dec<5>( 0.523125123 ));
     print("dec<6>:", dec<6>( 0.523125123 ));
     FormatWarning("Something is wrong.");
-    
-    try {
-        throw CustomException(type<std::invalid_argument>, "Test",argc,argv);
-    } catch(const std::invalid_argument& e) {
-        print("Got: ",e);
-    }
-    
-    try {
-        throw SoftException("Soft exception ",argc);
-    } catch(const SoftExceptionImpl& soft) {
-        print("Got: ", soft);
-    }
 
     CommandLine cmd(argc, argv);
     cmd.cd_home();
@@ -133,14 +140,12 @@ int main(int argc, char**argv) {
     map["test"] = 25;
     map["path"] = file::Path("test");
     
-    print("Test \"\\\"string\\\"\".");
-    print("File: ", file::Path("test"));
 
     for (size_t i = 0; ; ++i) {
         print("Iteration ", i);
         print(std::vector<file::Path>{"/a/b/c","./d.exe"});
         print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
-        print("std::map<int,float>{\n\t\"key\":value\n}");
+        print("std::map<std::string,float>{\n\t\"key\":value\n}");
 
         std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
 

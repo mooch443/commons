@@ -110,9 +110,9 @@ FormatExcept(Args... args) -> FormatExcept<Args...>;
 template<FormatterType formatter, typename... Args>
 struct U_EXCEPTION : UtilsException {
     U_EXCEPTION(const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
-        : UtilsException(cmn::format<formatter>(args...))
+        : UtilsException(cmn::format<FormatterType::NONE>(args...))
     {
-        FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
+        FormatColoredPrefix<formatter, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
     }
 };
 
@@ -123,7 +123,7 @@ class SoftExceptionImpl : public std::exception {
 public:
     template<typename... Args>
     SoftExceptionImpl(cmn::source_location info, const Args& ...args)
-        : msg(cmn::format<FormatterType::UNIX>(args...))
+        : msg(cmn::format<FormatterType::NONE>(args...))
     {
         FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
     }
@@ -157,7 +157,7 @@ template <typename T> inline type_t<T> type{};
 template< class T, typename... Args>
 struct CustomException : T {
     CustomException(type_t<T>, const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
-        : T(cmn::format<FormatterType::UNIX>(args...))
+        : T(cmn::format<FormatterType::NONE>(args...))
     {
         FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
     }
@@ -179,7 +179,7 @@ void DebugHeader(const Args& ...args) {
 
 template<typename... Args>
 void DebugCallback(const Args& ...args) {
-    DebugHeader<Args...>(args...);
+    print<Args...>(args...);
 }
 
 namespace Meta {

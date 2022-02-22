@@ -588,7 +588,7 @@ T* DrawStructure::create(Args... args) {
                         
                         parent->children().insert(parent->children().begin() + (int64_t)parent->_index, s);
 #ifndef NDEBUG
-                        print("Moved section '",e,"' (",parent->_index,")");
+                        cmn::print("Moved section ",name," (",parent->_index,")");
 #endif
                     }
                     

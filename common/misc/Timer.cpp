@@ -24,7 +24,7 @@ void Timing::start_measure() {
             std::stringstream ss;
             ss << tid;
             auto str = ss.str();
-            cmn::print("Deleting timer for tid ", str," (", _name,", ", _threads.size()," threads known)");
+            cmn::print("Deleting timer for tid ", str," (", _name.c_str(),", ", _threads.size()," threads known)");
             it = _threads.erase(it);
         } else
             ++it;
@@ -71,7 +71,7 @@ double Timing::conclude_measure(double elapsed) {
     }
     
     if (all_elapsed / _threads.size() >= _print_threshold) {
-        cmn::print("-- (", sample_count,") ", _name," took ", info.averageTime / (double)info.timingCount * 1000,"ms");
+        cmn::print("-- (", sample_count,") ", _name.c_str()," took ", info.averageTime / (double)info.timingCount * 1000,"ms");
         
         for(auto && [id, inf] : _threads) {
             if(inf.timingCount > 0) {

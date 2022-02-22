@@ -13,7 +13,7 @@ namespace cmn {
 enum class FormatColor {
     BLACK = 0, DARK_BLUE = 1, DARK_GREEN = 2, DARK_CYAN = 3, DARK_RED = 4, PURPLE = 5, DARK_YELLOW = 6,
     GRAY = 7, DARK_GRAY = 8, BLUE = 9, GREEN = 10, CYAN = 11, RED = 12, PINK = 13, YELLOW = 14,
-    WHITE = 15, LIGHT_BLUE, ORANGE
+    WHITE = 15, LIGHT_BLUE, LIGHT_CYAN, ORANGE
 };
 
 enum class FormatterType {
@@ -49,7 +49,7 @@ inline auto dec(T value) {
     return decimals_t<N, T>{ T( int64_t( value * D + 0.5 ) ) / D };
 }
 
-template<FormatColor value, FormatterType type = FormatterType::UNIX>
+template<FormatColor value, FormatterType type>
     requires (type == FormatterType::UNIX)
 std::string console_color(const std::string& enclose = "") {
     static std::once_flag flag;
@@ -105,6 +105,7 @@ std::string console_color(const std::string& enclose = "") {
 #endif
         case FormatColor::RED: COLOR(1, 31)
         case FormatColor::LIGHT_BLUE: COLOR(0, 94)
+        case FormatColor::LIGHT_CYAN: COLOR(0, 30)
         case FormatColor::ORANGE: COLOR(0, 33)
             
         default:
@@ -137,6 +138,7 @@ std::string console_color(const std::string& enclose = "") {
         case FormatColor::PURPLE: tag = "purple"; break;
         case FormatColor::RED: tag = "red"; break;
         case FormatColor::LIGHT_BLUE: tag = "lightblue"; break;
+        case FormatColor::LIGHT_CYAN: tag = "lightcyan"; break;
         case FormatColor::ORANGE: tag = "orange"; break;
 
         default:
@@ -172,6 +174,7 @@ std::string console_color(const std::string& enclose = "") {
     case FormatColor::PURPLE: tag = "purple"; break;
     case FormatColor::RED: tag = "red"; break;
     case FormatColor::LIGHT_BLUE: tag = "lightblue"; break;
+    case FormatColor::LIGHT_CYAN: tag = "lightcyan"; break;
     case FormatColor::ORANGE: tag = "orange"; break;
 
     default:
@@ -219,7 +222,7 @@ public:
                 && (!std::same_as<K, std::string>)
                 && (!_is_dumb_pointer<T>)
     static std::string parse_value(const T& value) {
-        return console_color<FormatColor::RED, colors>(Meta::toStr<std::string>((std::string)value));
+        return parse_value((std::string)value);
     }
 
     static std::string pretty_text(const std::string& s) {
@@ -233,7 +236,7 @@ public:
             WHITESPACE = 4,
             TAG = 5,
             FUNCTION = 6,
-            COMMENT = 7, MULTI_COMMENT, NAMESPACE, ESCAPED_CHAR
+            COMMENT = 7, MULTI_COMMENT, NAMESPACE, ESCAPED_CHAR, TAG_WHITESPACE
         };
 
         std::vector<State> states{ NONE };
@@ -263,22 +266,27 @@ public:
             if (!tmp.empty()) {
                 switch (s) {
                 case MULTI_COMMENT:
+                    //printf("MULTI COMMENT %s\n", tmp.c_str());
                     ss << console_color<FormatColor::DARK_GREEN, colors>(tmp);
                     break;
                 case COMMENT:
+                    //printf("COMMENT %s\n", tmp.c_str());
                     ss << console_color<FormatColor::GREEN, colors>(tmp);
                     break;
                 case ESCAPED_CHAR:
-                        //printf("ESCAPED %s\n", tmp.c_str());
+                    //printf("ESCAPED %s\n", tmp.c_str());
                     ss << console_color<FormatColor::DARK_RED, colors>(tmp);
                     break;
                 case STRING:
                     //printf("STRING %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::RED, colors>() << tmp;
+                    ss << console_color<FormatColor::RED, colors>(tmp);
                     break;
                 case NUMBER:
                     //printf("NUMBER %s\n", tmp.c_str());
                     ss << parse_value(Meta::fromStr<double>(tmp));
+                    break;
+                case TAG_WHITESPACE:
+                    ss << console_color<FormatColor::LIGHT_CYAN, colors>(tmp);
                     break;
                 case CLASS:
                     //printf("CLASS %s\n", tmp.c_str());
@@ -366,6 +374,20 @@ public:
                 if (i == 0 || s[i] != s[i - 1])
                     pop_state();
             }
+            
+            if (is_state(NUMBER)) {
+                if (s[i] == '.' || (s[i] >= '0' && s[i] <= '9') || s[i] == 'f') {
+                }
+                else
+                    pop_state();
+            }
+            
+            if (is_state(TAG) && s[i] == '>') {
+                //printf("is_state TAG : %c\n", s[i]);
+                pop_state();
+                push_state(TAG_WHITESPACE); tmp += s[i]; pop_state();
+                continue;
+            }
 
             if (is_state(COMMENT) || is_state(MULTI_COMMENT)) {
                 if (is_state(COMMENT) && s[i] == '\n') {
@@ -423,27 +445,16 @@ public:
             }
             else if (s[i] == '<') {
                 states.push_back(CLASS); pop_state();
-                push_state(WHITESPACE); tmp += s[i]; pop_state();
+                push_state(TAG_WHITESPACE); tmp += s[i]; pop_state();
                 push_state(TAG);
                 continue;
             }
-            else if (is_state(TAG) && s[i] == '>') {
-                pop_state();
-                push_state(WHITESPACE); tmp += s[i]; pop_state();
-                continue;
-            }
-            else if ((i == 0 || utils::contains(whitespace, s[i-1])) && !is_state(NUMBER) && s[i] >= '0' && s[i] <= '9') {
+            else if ((i == 0 || (utils::contains(whitespace, s[i-1]) && s[i-1] != '.')) && !is_state(NUMBER) && s[i] >= '0' && s[i] <= '9') {
                 push_state(NUMBER);
             }
-            else if (is_state(NUMBER)) {
-                if (s[i] == '.' || (s[i] >= '0' && s[i] <= '9') || s[i] == 'f') {
-                }
-                else
-                    pop_state();
-            }
-            else if (utils::contains(whitespace, s[i])) {
+            else if ((!is_state(NUMBER) || s[i] != '.') &&  utils::contains(whitespace, s[i])) {
                 if (!is_state(WHITESPACE)) {
-                    while (is_state(CLASS) || is_state(NAMESPACE)) {
+                    while (is_state(CLASS) || is_state(NAMESPACE) || is_state(FUNCTION)) {
                         pop_state();
                     }
 
@@ -550,7 +561,12 @@ public:
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::is_base_of<std::exception, K>::value
     static std::string parse_value(const T& value) {
-        return console_color<FormatColor::RED>(Meta::name<K>()) + console_color<FormatColor::BLACK>("<") + (value.what() ? parse_value(value.what()) : console_color<FormatColor::DARK_GRAY>("unknown")) + console_color<FormatColor::BLACK>(">") ;
+        return console_color<FormatColor::CYAN, colors>(Meta::name<K>())
+            + console_color<FormatColor::BLACK, colors>("<")
+            + (value.what()
+               ? console_color<FormatColor::RED, colors>("\""+std::string(value.what())+"\"")
+               : console_color<FormatColor::DARK_GRAY, colors>("unknown"))
+            + console_color<FormatColor::BLACK, colors>(">") ;
     }
 
     template<template <typename, typename> class T, typename A, typename B>
@@ -650,10 +666,10 @@ inline std::string current_time_string() {
 template<typename... Args>
 void print(const Args & ... args) {
     auto str =
-        "["
+        console_color<FormatColor::BLACK, FormatterType::UNIX>( "[" )
         + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
-        + "] "
-        + console_color<FormatColor::BLACK, FormatterType::UNIX>( format<FormatterType::UNIX>(args...) );
+        + console_color<FormatColor::BLACK, FormatterType::UNIX>( "]" ) + " "
+        + format<FormatterType::UNIX>(args...);
     
     printf("%s\n", str.c_str());
 
