@@ -11,3 +11,5 @@ target_link_libraries(test_gui commons Commons::OpenCV )
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(test_gui PRIVATE -fbracket-depth=400)
 endif()
+
+target_precompile_headers(test_gui REUSE_FROM commons)

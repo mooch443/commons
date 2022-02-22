@@ -84,7 +84,7 @@ else()
     target_precompile_headers(commons
       PUBLIC
         commons.pc.h
-      PRIVATE
+      PUBLIC
     )
 endif()
 
