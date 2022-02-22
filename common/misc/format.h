@@ -699,7 +699,7 @@ struct FormatWarning : FormatColoredPrefix<FormatterType::UNIX, WARNING_PREFIX, 
 };
 
 template<typename... Args>
-FormatWarning(Args... args) -> FormatWarning<Args...>;
+FormatWarning(const Args&... args) -> FormatWarning<Args...>;
 
 static constexpr const char ERROR_PREFIX[] = "ERROR";
 template<typename... Args>
@@ -710,7 +710,7 @@ struct FormatError : FormatColoredPrefix<FormatterType::UNIX, ERROR_PREFIX, Form
 };
 
 template<typename... Args>
-FormatError(Args... args) -> FormatError<Args...>;
+FormatError(const Args&... args) -> FormatError<Args...>;
 
 static constexpr const char EXCEPTION_PREFIX[] = "EXCEPT";
 template<typename... Args>
@@ -721,7 +721,7 @@ struct FormatExcept : FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX,
 };
 
 template<typename... Args>
-FormatExcept(Args... args) -> FormatExcept<Args...>;
+FormatExcept(const Args&... args) -> FormatExcept<Args...>;
 
 template<FormatterType formatter, typename... Args>
 struct U_EXCEPTION : UtilsException {
