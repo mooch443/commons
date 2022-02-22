@@ -84,24 +84,6 @@ struct Formatter {
     template<FormatColor value = _value>
         requires (type == FormatterType::UNIX)
     static constexpr auto tag() {
-        /*static std::once_flag flag;
-        static bool dont_print = true;
-        std::call_once(flag, []() {
-    #if __APPLE__
-            char* xcode_colors = getenv("OS_ACTIVITY_DT_MODE");
-            if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
-            {
-    #endif
-                if (isatty(fileno(stdout)))
-                    dont_print = false;
-    #if __APPLE__
-            }
-    #endif
-        });
-
-        if(dont_print)
-            return enclose;*/
-        
         switch (value) {
             case FormatColor::YELLOW: return COLOR(1, 33);
             case FormatColor::DARK_RED: return COLOR(2, 91);
@@ -144,8 +126,30 @@ struct Formatter {
 
     template<FormatColor value = _value>
         requires (type == FormatterType::HTML)
-    static constexpr auto tint(const std::string& s) {
-        return std::string("<") + tag() + ">" + s + "</" +tag() + ">";
+    static auto tint(const std::string& s) {
+        static std::once_flag flag;
+        static bool dont_print = true;
+        std::call_once(flag, []() {
+#if __APPLE__
+            char* xcode_colors = getenv("OS_ACTIVITY_DT_MODE");
+            if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
+            {
+#endif
+                if (isatty(fileno(stdout)))
+                    dont_print = false;
+#if __APPLE__
+            }
+#endif
+        });
+
+        if(dont_print)
+            return s;
+        
+        if(s.empty())
+            return std::string();
+        if(utils::trim(s).empty())
+            return s;
+        return std::string("<") + tag() + ">" + (utils::find_replace(s, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} })) + "</" + tag() + ">";
     }
 
     template<FormatColor value = _value>
@@ -172,150 +176,6 @@ auto console_color(const std::string& str) {
     using Formatter_t = Formatter<type, value>;
     return Formatter_t::tint(str);
 }
-
-
-/*template<FormatColor value, FormatterType type>
-    requires (type == FormatterType::UNIX)
-std::string console_color(const std::string& enclose = "") {
-    static std::once_flag flag;
-    static bool dont_print = true;
-    std::call_once(flag, []() {
-#if __APPLE__
-        char* xcode_colors = getenv("OS_ACTIVITY_DT_MODE");
-        if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
-        {
-#endif
-            if (isatty(fileno(stdout)))
-                dont_print = false;
-#if __APPLE__
-        }
-#endif
-    });
-
-    if(dont_print)
-        return enclose;
-    
-#define COLOR(PREFIX, FINAL) { prefix = PREFIX; final = FINAL; break; }
-    int final = 0, prefix = 22;
-    
-    switch (value) {
-        case FormatColor::YELLOW: COLOR(1, 33)
-        case FormatColor::DARK_RED: COLOR(2, 91)
-        case FormatColor::GREEN: COLOR(1, 32)
-    #if defined(__APPLE__)
-        case FormatColor::GRAY: COLOR(1, 30)
-    #elif defined(WIN32)
-        case FormatColor::GRAY: COLOR(1, 90)
-    #else
-        case FormatColor::GRAY: COLOR(0, 37)
-    #endif
-        case FormatColor::CYAN: COLOR(1,36)
-        case FormatColor::DARK_CYAN: COLOR(0, 36)
-        case FormatColor::PINK: COLOR(0,35)
-        case FormatColor::BLUE: COLOR(1,34)
-#if defined(WIN32)
-        case FormatColor::BLACK: COLOR(1, 37)
-        case FormatColor::WHITE: COLOR(0, 30)
-        case FormatColor::DARK_GRAY: COLOR(0, 37)
-#else
-        case FormatColor::BLACK: COLOR(0, 30)
-        case FormatColor::WHITE: COLOR(0, 37)
-        case FormatColor::DARK_GRAY: COLOR(0, 30)
-#endif
-        case FormatColor::DARK_GREEN: COLOR(0, 32)
-#if defined(WIN32)
-        case FormatColor::PURPLE: COLOR(0, 95)
-#else
-        case FormatColor::PURPLE: COLOR(22, 35)
-#endif
-        case FormatColor::RED: COLOR(1, 31)
-        case FormatColor::LIGHT_BLUE: COLOR(0, 94)
-        case FormatColor::LIGHT_CYAN: COLOR(0, 30)
-        case FormatColor::ORANGE: COLOR(0, 33)
-            
-        default:
-            COLOR(0, 0)
-    }
-    
-    char buffer[128];
-    snprintf(buffer, sizeof(buffer), "\033[%02d;%dm", prefix, final);
-    return std::string(buffer) + (!enclose.empty() ? enclose + "\033[0m" : "");
-#undef COLOR
-}
-
-template<FormatColor value, FormatterType type>
-    requires (type == FormatterType::TAGS)
-std::string console_color(const std::string& enclose = "") {
-    std::string tag;
-    switch (value) {
-    case FormatColor::YELLOW: tag = "yellow"; break;
-        case FormatColor::DARK_RED: tag = "darkred"; break;
-        case FormatColor::GREEN: tag = "green"; break;
-        case FormatColor::GRAY: tag = "gray"; break;
-        case FormatColor::CYAN: tag = "cyan"; break;
-        case FormatColor::DARK_CYAN: tag = "darkcyan"; break;
-        case FormatColor::PINK: tag = "pink"; break;
-        case FormatColor::BLUE: tag = "blue"; break;
-        case FormatColor::BLACK: tag = "black"; break;
-        case FormatColor::WHITE: tag = "white"; break;
-        case FormatColor::DARK_GRAY: tag = "darkgray"; break;
-        case FormatColor::DARK_GREEN: tag = "darkgreen"; break;
-        case FormatColor::PURPLE: tag = "purple"; break;
-        case FormatColor::RED: tag = "red"; break;
-        case FormatColor::LIGHT_BLUE: tag = "lightblue"; break;
-        case FormatColor::LIGHT_CYAN: tag = "lightcyan"; break;
-        case FormatColor::ORANGE: tag = "orange"; break;
-
-        default:
-            break;
-    }
-
-    if (enclose == " ")
-        return " ";
-    return "{" + tag + "}" + (enclose.empty() ? "" : (enclose + "{/"+tag+"}"));
-}
-
-template<FormatColor value, FormatterType type>
-    requires (type == FormatterType::HTML)
-std::string console_color(const std::string& enclose = "") {
-    if (enclose.empty())
-        return "";
-
-    std::string tag;
-
-    switch (value) {
-    case FormatColor::YELLOW: tag = "yellow"; break;
-    case FormatColor::DARK_RED: tag = "darkred"; break;
-    case FormatColor::GREEN: tag = "green"; break;
-    case FormatColor::GRAY: tag = "gray"; break;
-    case FormatColor::CYAN: tag = "cyan"; break;
-    case FormatColor::DARK_CYAN: tag = "darkcyan"; break;
-    case FormatColor::PINK: tag = "pink"; break;
-    case FormatColor::BLUE: tag = "blue"; break;
-    case FormatColor::BLACK: tag = "black"; break;
-    case FormatColor::WHITE: tag = "white"; break;
-    case FormatColor::DARK_GRAY: tag = "darkgray"; break;
-    case FormatColor::DARK_GREEN: tag = "darkgreen"; break;
-    case FormatColor::PURPLE: tag = "purple"; break;
-    case FormatColor::RED: tag = "red"; break;
-    case FormatColor::LIGHT_BLUE: tag = "lightblue"; break;
-    case FormatColor::LIGHT_CYAN: tag = "lightcyan"; break;
-    case FormatColor::ORANGE: tag = "orange"; break;
-
-    default:
-        break;
-    }
-
-    if (enclose == " ")
-        return " ";
-    return "<" + tag + ">" + (enclose.empty() ? "" : (utils::find_replace(enclose, { {"\n", "<br/>"},{"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }))) + "</" + tag + ">";
-}
-
-template<FormatColor value, FormatterType type>
-    requires (type == FormatterType::NONE)
-std::string console_color(const std::string& enclose = "") {
-    return enclose;
-}*/
 
 template<typename T, typename U>
 concept is_explicitly_convertible =
