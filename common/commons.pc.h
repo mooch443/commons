@@ -562,24 +562,7 @@ using remove_cvref_t = std::remove_cvref_t<T>;
     }
 }
 
+#include <misc/math.h>
 #include <misc/EnumClass.h>
 #include <misc/stringutils.h>
-#include <misc/format.h>
-#include <misc/utilsexception.h>
 
-namespace utils {
-
-inline std::string read_file(const std::string& filename) {
-    std::ifstream input(filename, std::ios::binary);
-    if(!input.is_open())
-        throw cmn::U_EXCEPTION("Cannot read file ", filename);
-    
-    std::stringstream ss;
-    ss << input.rdbuf();
-    
-    return ss.str();
-}
-    
-}
-
-#include <misc/math.h>

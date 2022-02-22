@@ -1,7 +1,4 @@
 #include "Timer.h"
-#include <misc/MetaObject.h>
-#include <misc/metastring.h>
-#include <misc/format.h>
 
 #ifdef NDEBUG
 #undef NDEBUG // we currently want the timers to be always-on

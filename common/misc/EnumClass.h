@@ -1,6 +1,6 @@
 #pragma once
 
-#include <misc/defines.h>
+#include <commons.pc.h>
 
 #define CHOOSE_MAP_START(count) MAP ## count
 

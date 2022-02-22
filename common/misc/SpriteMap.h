@@ -1,8 +1,7 @@
 #ifndef SPRITE_MAP_H
 #define SPRITE_MAP_H
 
-//#include <commons.pc.h>
-#include <misc/metastring.h>
+#include <commons.pc.h>
 #include <bytell_hash_map.hpp>
 
 namespace cmn {

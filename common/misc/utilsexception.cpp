@@ -1,6 +1,4 @@
 #include "utilsexception.h"
-#include <stdlib.h>
-#include <misc/format.h>
 
 namespace cmn {
 

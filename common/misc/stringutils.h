@@ -206,4 +206,10 @@ inline std::string ws2utf8 (const std::wstring& str)
     return myconv.to_bytes(str);
 }
 
+namespace utils {
+
+std::string read_file(const std::string& filename);
+    
+}
+
 #endif
