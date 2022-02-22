@@ -6,7 +6,7 @@
 #include <io.h>
 #endif
 
-//#define COMMONS_FORMAT_LOG_TO_FILE
+#define COMMONS_FORMAT_LOG_TO_FILE
 
 namespace cmn {
 
@@ -151,7 +151,11 @@ std::string console_color(const std::string& enclose = "") {
 template<FormatColor value, FormatterType type>
     requires (type == FormatterType::HTML)
 std::string console_color(const std::string& enclose = "") {
+    if (enclose.empty())
+        return "";
+
     std::string tag;
+
     switch (value) {
     case FormatColor::YELLOW: tag = "yellow"; break;
     case FormatColor::DARK_RED: tag = "darkred"; break;
@@ -176,7 +180,7 @@ std::string console_color(const std::string& enclose = "") {
 
     if (enclose == " ")
         return " ";
-    return "<" + tag + ">" + (enclose.empty() ? "" : (utils::find_replace(enclose, { {"\n", "<br/>"},{"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }) + "</" + tag + ">"));
+    return "<" + tag + ">" + (enclose.empty() ? "" : (utils::find_replace(enclose, { {"\n", "<br/>"},{"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }))) + "</" + tag + ">";
 }
 
 template<FormatColor value, FormatterType type>
@@ -648,7 +652,9 @@ void print(const Args & ... args) {
     printf("%s\n", str.c_str());
 
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
-    str = format<FormatterType::HTML>(args...) + "<br/>\n";
+    str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+        + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+        + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
     log_to_file(str);
 #endif
 }

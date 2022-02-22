@@ -5,8 +5,6 @@ namespace cmn {
 
 void log_to_file(std::string str) {
     static FILE* f{ nullptr };
-    str = "[" + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() ) + "]"
-        + console_color<FormatColor::BLACK, FormatterType::HTML>(str);
     
     if (!f) {
         f = fopen("site.html", "w");
@@ -17,6 +15,7 @@ void log_to_file(std::string str) {
                 "        background:  black;\n"
                 "        font-family: Cascadia Mono,Source Code Pro,monospace;\n"
                 "    }\n"
+                "    row { display: block; color:white; }\n"
                 "    black { color: white; }\n"
                 "    purple { color: purple; }\n"
                 "    yellow { color: yellow; }\n"

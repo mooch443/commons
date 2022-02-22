@@ -60,7 +60,9 @@
 #include <exception>
 #include <stdarg.h>
 #include <concepts>
+#include <fstream>
 #include <span>
+
 #include <misc/date.h>
 
 #ifdef WIN32
@@ -560,8 +562,6 @@ using remove_cvref_t = std::remove_cvref_t<T>;
     }
 }
 
-#include <fstream>
-
 #include <misc/EnumClass.h>
 #include <misc/stringutils.h>
 #include <misc/format.h>
@@ -583,15 +583,3 @@ inline std::string read_file(const std::string& filename) {
 }
 
 #include <misc/math.h>
-
-#ifdef __llvm__
-#pragma clang diagnostic pop
-#endif
-
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
