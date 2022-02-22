@@ -222,7 +222,7 @@ public:
                 && (!std::same_as<K, std::string>)
                 && (!_is_dumb_pointer<T>)
     static std::string parse_value(const T& value) {
-        return parse_value((std::string)value);
+        return console_color<FormatColor::RED, colors>(Meta::toStr(value));
     }
 
     static std::string pretty_text(const std::string& s) {
@@ -483,7 +483,7 @@ public:
     template<typename T, size_t N, typename K = cmn::remove_cvref_t<T>>
         requires std::convertible_to<T[N], std::string>
     static std::string parse_value(T(&s)[N]) {
-        return parse_value((const char*)s);
+        return pretty_text(std::string(s));
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
@@ -515,7 +515,7 @@ public:
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::is_enum<K>::value
     static std::string parse_value(T value) {
-        return parse_value((int)value);
+        return console_color<FormatColor::GREEN, colors>(Meta::toStr<int>((int)value));
     }
     
     template<typename T, typename K = cmn::remove_cvref_t<T>>
