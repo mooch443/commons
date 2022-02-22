@@ -3,6 +3,10 @@
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
 namespace cmn {
 
+IMPLEMENT(PrefixLiterals::WARNING);
+IMPLEMENT(PrefixLiterals::EXCEPT);
+IMPLEMENT(PrefixLiterals::ERROR);
+
 void log_to_file(std::string str) {
     static FILE* f{ nullptr };
     

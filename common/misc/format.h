@@ -690,22 +690,26 @@ struct FormatColoredPrefix {
     }
 };
 
-static constexpr const char WARNING_PREFIX[] = "WARNING";
+struct PrefixLiterals {
+    static constexpr const char WARNING[] = "WARNING";
+    static constexpr const char ERROR[] = "ERROR";
+    static constexpr const char EXCEPT[] = "EXCEPT";
+};
+
 template<typename... Args>
-struct FormatWarning : FormatColoredPrefix<FormatterType::UNIX, WARNING_PREFIX, FormatColor::YELLOW, Args...> {
+struct FormatWarning : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...> {
     FormatWarning(const Args& ...args, cmn::source_location info = cmn::source_location::current())
-        : FormatColoredPrefix<FormatterType::UNIX, WARNING_PREFIX, FormatColor::YELLOW, Args...>(args..., info)
+        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...>(args..., info)
     { }
 };
 
 template<typename... Args>
 FormatWarning(const Args&... args) -> FormatWarning<Args...>;
 
-static constexpr const char ERROR_PREFIX[] = "ERROR";
 template<typename... Args>
-struct FormatError : FormatColoredPrefix<FormatterType::UNIX, ERROR_PREFIX, FormatColor::RED, Args...> {
+struct FormatError : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR, FormatColor::RED, Args...> {
     FormatError(const Args& ...args, cmn::source_location info = cmn::source_location::current())
-        : FormatColoredPrefix<FormatterType::UNIX, ERROR_PREFIX, FormatColor::RED, Args...>(args..., info)
+        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR, FormatColor::RED, Args...>(args..., info)
     { }
 };
 
@@ -714,9 +718,9 @@ FormatError(const Args&... args) -> FormatError<Args...>;
 
 static constexpr const char EXCEPTION_PREFIX[] = "EXCEPT";
 template<typename... Args>
-struct FormatExcept : FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...> {
+struct FormatExcept : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...> {
     FormatExcept(const Args& ...args, cmn::source_location info = cmn::source_location::current())
-        : FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info)
+        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info)
     { }
 };
 
@@ -728,7 +732,7 @@ struct U_EXCEPTION : UtilsException {
     U_EXCEPTION(const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
         : UtilsException(cmn::format<FormatterType::NONE>(args...))
     {
-        FormatColoredPrefix<formatter, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
+        FormatColoredPrefix<formatter, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info);
     }
 };
 
@@ -741,7 +745,7 @@ public:
     SoftExceptionImpl(cmn::source_location info, const Args& ...args)
         : msg(cmn::format<FormatterType::NONE>(args...))
     {
-        FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
+        FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info);
     }
     
     ~SoftExceptionImpl() throw() {
@@ -775,7 +779,7 @@ struct CustomException : T {
     CustomException(type_t<T>, const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
         : T(cmn::format<FormatterType::NONE>(args...))
     {
-        FormatColoredPrefix<FormatterType::UNIX, EXCEPTION_PREFIX, FormatColor::RED, Args...>(args..., info);
+        FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info);
     }
 };
 
