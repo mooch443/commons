@@ -335,10 +335,12 @@ inline T fromStr(const std::string& str, const typename std::enable_if< std::is_
         
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
+        && (!is_instantiation<std::atomic, Q>::value)
 inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
+        && (!is_instantiation<std::atomic, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
@@ -975,12 +977,14 @@ namespace Meta {
 
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
+        && (!is_instantiation<std::atomic, Q>::value)
 inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::name<typename cmn::remove_cvref<Q>::type>();
 }
         
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
+        && (!is_instantiation<std::atomic, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
 }
