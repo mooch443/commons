@@ -126,6 +126,22 @@ struct Formatter {
 
     template<FormatColor value = _value>
         requires (type == FormatterType::HTML)
+    static constexpr auto tint(const std::string& s) {
+        if(s.empty())
+            return std::string();
+        if(utils::trim(s).empty())
+            return s;
+        return std::string("<") + tag() + ">" + (utils::find_replace(s, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} })) + "</" + tag() + ">";
+    }
+
+    template<FormatColor value = _value>
+        requires (type == FormatterType::TAGS)
+    static constexpr auto tint(const std::string& s) {
+        return std::string("{") + tag() + "}" + s + "{/" +tag() + "}";
+    }
+
+    template<FormatColor value = _value>
+        requires (type == FormatterType::UNIX)
     static auto tint(const std::string& s) {
         static std::once_flag flag;
         static bool dont_print = true;
@@ -145,22 +161,6 @@ struct Formatter {
         if(dont_print)
             return s;
         
-        if(s.empty())
-            return std::string();
-        if(utils::trim(s).empty())
-            return s;
-        return std::string("<") + tag() + ">" + (utils::find_replace(s, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} })) + "</" + tag() + ">";
-    }
-
-    template<FormatColor value = _value>
-        requires (type == FormatterType::TAGS)
-    static constexpr auto tint(const std::string& s) {
-        return std::string("{") + tag() + "}" + s + "{/" +tag() + "}";
-    }
-
-    template<FormatColor value = _value>
-        requires (type == FormatterType::UNIX)
-    static constexpr auto tint(const std::string& s) {
         return tag() + s + tag<FormatColor::BLACK>();
     }
     
