@@ -35,8 +35,8 @@ void fail_type(From&&
                )
 {
 #ifndef NDEBUG
-    using FromType = typename remove_cvref<From>::type;
-    using ToType = typename remove_cvref<To>::type;
+    using FromType = typename cmn::remove_cvref<From>::type;
+    using ToType = typename cmn::remove_cvref<To>::type;
     
     auto type1 = Meta::name<FromType>();
     auto type2 = Meta::name<ToType>();
@@ -56,8 +56,8 @@ void fail_type(From&&
 template<typename To, typename From>
 inline constexpr To sign_cast(From&& value) {
 #ifndef NDEBUG
-    using FromType = typename remove_cvref<From>::type;
-    using ToType = typename remove_cvref<To>::type;
+    using FromType = typename cmn::remove_cvref<From>::type;
+    using ToType = typename cmn::remove_cvref<To>::type;
     
     if constexpr(std::is_integral<ToType>::value)
     {
@@ -81,8 +81,8 @@ inline constexpr To sign_cast(From&& value) {
 template<typename To, typename From>
 constexpr bool check_narrow_cast(const From& value) {
 #ifndef NDEBUG
-    using FromType = typename remove_cvref<From>::type;
-    using ToType = typename remove_cvref<To>::type;
+    using FromType = typename cmn::remove_cvref<From>::type;
+    using ToType = typename cmn::remove_cvref<To>::type;
 
     auto str = Meta::toStr(value);
     if constexpr (

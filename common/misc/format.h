@@ -210,7 +210,7 @@ public:
     //! as well as the ones that might have a toStr,
     //! but ALSO a string operator (since they can apparently
     //! be represented directly AS a string, so they ARE one).
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires (std::convertible_to<K, std::string> || is_explicitly_convertible<K, std::string>)
                 && (!std::same_as<K, std::string>)
                 && (!_is_dumb_pointer<T>)
@@ -465,45 +465,45 @@ public:
         return ss.str();
     }
 
-    template<typename T, size_t N, typename K = remove_cvref_t<T>>
+    template<typename T, size_t N, typename K = cmn::remove_cvref_t<T>>
         requires std::convertible_to<T[N], std::string>
     static std::string parse_value(T(&s)[N]) {
         return parse_value((const char*)s);
     }
 
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires _is_dumb_pointer<T> && std::same_as<T, const char*>
     static std::string parse_value(T s) {
         return pretty_text(s);
     }
     
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires _is_smart_pointer<K>
     static std::string parse_value(const T& s) {
         return "ptr<"+ console_color<FormatColor::CYAN, colors>( Meta::name<typename K::element_type>() ) + ">"
         + (s ? parse_value(*s) : console_color<FormatColor::PURPLE, colors>("null"));
     }
 
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires (!std::same_as<bool, K>)
             && _is_number<K>
     static std::string parse_value(T && value) {
         return console_color<FormatColor::GREEN, colors>(Meta::toStr(value));
     }
 
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::same_as<bool, K>
     static std::string parse_value(T value) {
         return console_color<FormatColor::PURPLE, colors>(Meta::toStr(value));
     }
 
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::is_enum<K>::value
     static std::string parse_value(T value) {
         return parse_value((int)value);
     }
     
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_instantiation<cv::Size_, T>::value
     static std::string parse_value(T value) {
         return console_color<FormatColor::BLACK, colors>("[")
@@ -513,7 +513,7 @@ public:
             + console_color<FormatColor::BLACK, colors>("]");
     }
 
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::same_as<K, std::string>
     static std::string parse_value(const T& value) {
         return console_color<FormatColor::RED, colors>(Meta::toStr(value));
@@ -537,7 +537,7 @@ public:
         return tuple_str(_tup, std::make_index_sequence<sizeof...(Q)>());
     }
     
-    template<typename T, typename K = remove_cvref_t<T>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_instantiation<std::tuple, K>::value
     static std::string parse_value(const T& value) {
         return tuple_str(value);
@@ -561,7 +561,7 @@ public:
     }
 #endif
     
-    template<template <typename...> class T, typename... Args, typename K = remove_cvref_t<T<Args...>>>
+    template<template <typename...> class T, typename... Args, typename K = cmn::remove_cvref_t<T<Args...>>>
         requires is_set<K>::value || is_container<K>::value
     static std::string parse_value(const T<Args...>&m) {
         std::string str = console_color<FormatColor::BLACK, colors>("[");

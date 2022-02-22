@@ -297,32 +297,32 @@ namespace tuple_tools {
 #pragma region Meta prototypes
 namespace Meta {
 template<typename Q>
-inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
-template<typename Q, typename K = typename remove_cvref<Q>::type>
+template<typename Q, typename K = typename cmn::remove_cvref<Q>::type>
     requires is_instantiation<std::atomic, K>::value
 inline std::string toStr(const Q& value);
 
 template<typename Q>
-inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
-template<typename Q, typename T = typename remove_cvref<Q>::type>
-inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* =nullptr);
-        
-template<typename Q>
-inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
+inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
-inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
-template<typename Q, typename T = typename remove_cvref<Q>::type>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* =nullptr);
+template<typename Q>
+inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+        
+template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
 }
 #pragma endregion Meta prototypes
 // </Meta prototypes>
@@ -954,13 +954,13 @@ Q fromStr(const std::string& str)
 namespace Meta {
 
 template<typename Q>
-inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* ) {
-    return _Meta::name<typename remove_cvref<Q>::type>();
+inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return _Meta::name<typename cmn::remove_cvref<Q>::type>();
 }
         
 template<typename Q>
-inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* ) {
-    return _Meta::toStr<typename remove_cvref<Q>::type>(value);
+inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
 }
 
 template<typename Q, typename K>
@@ -970,33 +970,33 @@ inline std::string toStr(const Q& value) {
 }
         
 template<typename Q, typename T>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* ) {
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::fromStr<T>(str);
 }
         
 template<typename Q, typename T>
-inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename remove_cvref<Q>::type >::type* ) {
-    return new typename std::remove_pointer<typename remove_cvref<Q>::type>(str);
+inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return new typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>(str);
 }
         
 template<typename Q>
-inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* ) {
+inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return "c_str";
 }
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* ) {
+inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return Meta::toStr(std::string(value));
 }
         
 template<typename Q>
-inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* ) {
-    return Meta::name<typename std::remove_pointer<typename remove_cvref<Q>::type>::type>();
+inline std::string name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return Meta::name<typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type>();
 }
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename remove_cvref<Q>::type >::type* ) {
-    return "("+Meta::name<Q>()+"*)"+Meta::toStr<const typename std::remove_pointer<typename remove_cvref<Q>::type>::type&>(*value);
+inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return "("+Meta::name<Q>()+"*)"+Meta::toStr<const typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type&>(*value);
 }
 }
 #pragma endregion Meta implementation
