@@ -58,6 +58,7 @@
 #include <ostream>
 #include <array>
 #include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <stdarg.h>
 #include <concepts>
