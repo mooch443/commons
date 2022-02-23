@@ -4,7 +4,11 @@
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
 namespace cmn {
 
-//extern IMPLEMENT(PrefixLiterals::WARNING);
+extern IMPLEMENT(PrefixLiterals::names) = {
+    "WARNING",
+    "ERROR",
+    "EXCEPT"
+};
 //extern IMPLEMENT(PrefixLiterals::EXCEPT);
 //extern IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
 

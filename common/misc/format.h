@@ -675,7 +675,18 @@ void print(const Args & ... args) {
 #include <misc/utilsexception.h>
 
 namespace cmn {
-template<FormatterType formatter, char const *prefix, FormatColor color, typename... Args>
+
+namespace PrefixLiterals {
+    enum Prefix {
+        WARNING,
+        ERROR_PREFIX,
+        EXCEPT
+    };
+
+    extern const std::array<const char*, 3> names;
+};
+
+template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor color, typename... Args>
 struct FormatColoredPrefix {
     FormatColoredPrefix(const Args& ...args, cmn::source_location info = cmn::source_location::current()) {
         auto universal = utils::find_replace(info.file_name(), "\\", "/");
@@ -685,19 +696,13 @@ struct FormatColoredPrefix {
         std::string str =
           console_color<FormatColor::BLACK, formatter>("[")
           + cmn::console_color<color, formatter>(
-                std::string(prefix) + " " + cmn::current_time_string()
+                std::string(PrefixLiterals::names[(size_t)prefix]) + " " + cmn::current_time_string()
                 + " " + file + ":" + std::to_string(info.line()))
           + console_color<FormatColor::BLACK, formatter>("]") + " "
           + format<formatter>(args...);
         
         printf("%s\n", str.c_str());
     }
-};
-
-namespace PrefixLiterals {
-    extern constexpr const char WARNING[] = "WARNING";
-    extern constexpr const char ERROR_PREFIX[] = "ERROR";
-    extern constexpr const char EXCEPT[] = "EXCEPT";
 };
 
 template<typename... Args>
