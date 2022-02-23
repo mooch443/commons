@@ -36,7 +36,7 @@ protected:
     GETTER(float, thickness)
     
 public:
-    VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory);
+    VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type = Type::VERTICES);
     virtual ~VertexArray();
     
     void set(const std::vector<Vertex>& p, PrimitiveType primitive) {
@@ -127,11 +127,10 @@ protected:
         {}
         
         Line(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT)
-            : VertexArray(p, PrimitiveType::LineStrip, memory),
+            : VertexArray(p, PrimitiveType::LineStrip, memory, Type::LINE),
               _processed_points(NULL), _process_scale(-1),
               _max_scale(1)
         {
-            _type = Type::LINE;
             if(_thickness != 1) set_thickness(t);
         }
         

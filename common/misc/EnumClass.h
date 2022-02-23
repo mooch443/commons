@@ -97,6 +97,7 @@ _61,_62,_63,N,...) N
 #define _APPLYX18(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r)
 #define _APPLYX19(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s)
 #define _APPLYX20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s) XSEP X_PASTE_FUNC_(a, t)
+#define _APPLYX21(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s) XSEP X_PASTE_FUNC_(a, t) XSEP X_PASTE_FUNC_(a, u)
 
 #define APPLYX_(M, ...) IDENTITY( M(__VA_ARGS__) )
 #define _APPLYXn(...) APPLYX_(XPASTE(_APPLYX, PP_NARG(__VA_ARGS__)), __VA_ARGS__)
@@ -113,7 +114,7 @@ public:
     typedef Enum<ValueType, N, _names> self_type;
     typedef _names Data;
     
-protected:
+public:
     ValueType _value;
     
 public:
@@ -207,7 +208,7 @@ namespace NAME { \
         UNUSED(names) \
         for(auto &v : values) \
             if(utils::lowercase(v.name()) == utils::lowercase(name)) return v; \
-        throw cmn::U_EXCEPTION("Cannot find value ",name," in enum '", NAME :: data :: name, "'." ); \
+        throw std::invalid_argument(std::string("Cannot find value ")+name+" in enum '" + NAME :: data :: name + "'." ); \
     } \
     \
 template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\

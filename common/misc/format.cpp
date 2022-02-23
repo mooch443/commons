@@ -12,7 +12,11 @@ extern IMPLEMENT(PrefixLiterals::names) = {
 //extern IMPLEMENT(PrefixLiterals::EXCEPT);
 //extern IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
 
-void log_to_file(std::string str) {
+void log_to_terminal(const std::string& str) {
+    printf("%s\n", str.c_str());
+}
+
+void log_to_file(const std::string& str) {
     static FILE* f{ nullptr };
     
     if (!f) {

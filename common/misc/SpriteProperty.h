@@ -1,5 +1,4 @@
-#ifndef _SPRITE_PROPERTY_H
-#define _SPRITE_PROPERTY_H
+#pragma once
 
 #include <misc/defines.h>
 #include <misc/metastring.h>
@@ -278,5 +277,3 @@ namespace cmn {
         }
     }
 }
-            
-#endif

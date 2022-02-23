@@ -10,11 +10,32 @@
 
 namespace cmn {
 
-enum class FormatColor {
-    BLACK = 0, DARK_BLUE = 1, DARK_GREEN = 2, DARK_CYAN = 3, DARK_RED = 4, PURPLE = 5, DARK_YELLOW = 6,
-    GRAY = 7, DARK_GRAY = 8, BLUE = 9, GREEN = 10, CYAN = 11, RED = 12, PINK = 13, YELLOW = 14,
-    WHITE = 15, LIGHT_BLUE, LIGHT_CYAN, ORANGE
-};
+ENUM_CLASS(FormatColorNames,
+    BLACK, 
+    DARK_BLUE, 
+    DARK_GREEN, 
+    DARK_CYAN, 
+    DARK_RED,
+    PURPLE,
+    DARK_YELLOW,
+    GRAY, 
+    DARK_GRAY, 
+    BLUE, 
+    GREEN, 
+    CYAN, 
+    RED, 
+    PINK, 
+    YELLOW,
+    WHITE, 
+    LIGHT_BLUE, 
+    LIGHT_CYAN, 
+    ORANGE,
+    INVALID);
+
+//static_assert(std::is_trivial_v<FormatColorNames::Class>, "Trivial enums please.");
+
+using FormatColor_t = FormatColorNames::Class;
+namespace FormatColor = FormatColorNames;
 
 enum class FormatterType {
     UNIX,
@@ -49,10 +70,10 @@ inline auto dec(T value) {
     return decimals_t<N, T>{ T( int64_t( value * D + 0.5 ) ) / D };
 }
 
-template<FormatterType type, FormatColor _value>
+template<FormatterType type, FormatColor_t _value>
 struct Formatter {
-    template<FormatColor value = _value>
-        requires (type == FormatterType::HTML || type == FormatterType::TAGS)
+    template<FormatColor_t value = _value>
+        requires (type == FormatterType::HTML)
     static constexpr auto tag() {
         switch (value) {
             case FormatColor::YELLOW:       return "yellow";
@@ -77,11 +98,17 @@ struct Formatter {
         }
     }
 
+    template<FormatColor_t value = _value>
+        requires (type == FormatterType::TAGS)
+    inline static constexpr auto tag() {
+        return value.value();
+    }
+
     static constexpr auto COLOR(size_t prefix, size_t postfix) {
         return "\033[" + std::to_string(prefix)+ ";"+ std::to_string(postfix) + "m";
     }
     
-    template<FormatColor value = _value>
+    template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
     static constexpr auto tag() {
         switch (value) {
@@ -124,7 +151,7 @@ struct Formatter {
         }
     }
 
-    template<FormatColor value = _value>
+    template<FormatColor_t value = _value>
         requires (type == FormatterType::HTML)
     static constexpr auto tint(const std::string& s) {
         if(s.empty())
@@ -134,13 +161,30 @@ struct Formatter {
         return std::string("<") + tag() + ">" + (utils::find_replace(s, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} })) + "</" + tag() + ">";
     }
 
-    template<FormatColor value = _value>
-        requires (type == FormatterType::TAGS)
-    static constexpr auto tint(const std::string& s) {
-        return std::string("{") + tag() + "}" + s + "{/" +tag() + "}";
+    template<char value>
+    inline static constexpr auto from_code_to_tag() {
+        if constexpr (value >= FormatColor_t::fields().size()) {
+            return FormatColor::BLACK.value();
+        }
+        return FormatColor::data::values( value - 1 );
     }
 
-    template<FormatColor value = _value>
+    template<FormatColor::data::values value, bool end_tag = false>
+    inline static constexpr auto from_tag_to_code() {
+        if constexpr (end_tag)
+            return char(value) + (char)FormatColor::data::values::INVALID + 1;
+        else
+            return char(value) + 1;
+    }
+
+    template<FormatColor_t value = _value>
+        requires (type == FormatterType::TAGS)
+    static constexpr auto tint(const std::string& s) {
+        constexpr char buffer[] = { from_tag_to_code<tag()>(), from_tag_to_code<tag(), true>() };
+        return std::string(buffer, 1) + s + std::string(buffer + 1, 1);
+    }
+
+    template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
     static auto tint(const std::string& s) {
         static std::once_flag flag;
@@ -168,14 +212,14 @@ struct Formatter {
         return tag() + s + COLOR(0, 0);
     }
     
-    template<FormatColor value = _value>
+    template<FormatColor_t value = _value>
         requires (type == FormatterType::NONE)
     static constexpr auto tint(const std::string& s) {
         return s;
     }
 };
 
-template<FormatColor value, FormatterType type>
+template<FormatColor_t value, FormatterType type>
 auto console_color(const std::string& str) {
     using Formatter_t = Formatter<type, value>;
     return Formatter_t::tint(str);
@@ -644,8 +688,10 @@ std::string format(const Args& ... args) {
 }
 
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
-void log_to_file(std::string);
+void log_to_file(const std::string&);
 #endif
+
+void log_to_terminal(const std::string&);
 
 inline std::string current_time_string() {
     using namespace std::chrono;
@@ -686,12 +732,12 @@ namespace PrefixLiterals {
     extern const std::array<const char*, 3> names;
 };
 
-template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor color, typename... Args>
+template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor_t color, typename... Args>
 struct FormatColoredPrefix {
     FormatColoredPrefix(const Args& ...args, cmn::source_location info = cmn::source_location::current()) {
         auto universal = utils::find_replace(info.file_name(), "\\", "/");
         auto split = utils::split(universal, '/');
-        auto file = split.empty() ? universal : split.back();
+        auto &file = split.empty() ? universal : split.back();
         
         std::string str =
           console_color<FormatColor::BLACK, formatter>("[")
@@ -701,7 +747,7 @@ struct FormatColoredPrefix {
           + console_color<FormatColor::BLACK, formatter>("]") + " "
           + format<formatter>(args...);
         
-        printf("%s\n", str.c_str());
+        log_to_terminal(str);
     }
 };
 

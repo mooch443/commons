@@ -1,8 +1,6 @@
-#ifndef SPRITE_MAP_H
-#define SPRITE_MAP_H
+#pragma once
 
 #include <commons.pc.h>
-#include <bytell_hash_map.hpp>
 
 namespace cmn {
 namespace sprite {
@@ -433,5 +431,3 @@ namespace sprite {
     }
 }
 }
-
-#endif
