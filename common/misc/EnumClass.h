@@ -28,12 +28,14 @@
 #define MAP18(m, x, ...) m(x) IDENTITY(MAP17(m, __VA_ARGS__))
 #define MAP19(m, x, ...) m(x) IDENTITY(MAP18(m, __VA_ARGS__))
 #define MAP20(m, x, ...) m(x) IDENTITY(MAP19(m, __VA_ARGS__))
+#define MAP21(m, x, ...) m(x) IDENTITY(MAP20(m, __VA_ARGS__))
+#define MAP22(m, x, ...) m(x) IDENTITY(MAP21(m, __VA_ARGS__))
 
-#define EVALUATE_COUNT(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, count, ...) \
+#define EVALUATE_COUNT(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, count, ...) \
 count
 
 #define COUNT(...) \
-IDENTITY(EVALUATE_COUNT(__VA_ARGS__, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
+IDENTITY(EVALUATE_COUNT(__VA_ARGS__, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 
 #define MAP(macro, ...) \
 IDENTITY( \
@@ -53,10 +55,10 @@ _21,_22,_23,_24,_25,_26,_27,_28,_29,_30, \
 _31,_32,_33,_34,_35,_36,_37,_38,_39,_40, \
 _41,_42,_43,_44,_45,_46,_47,_48,_49,_50, \
 _51,_52,_53,_54,_55,_56,_57,_58,_59,_60, \
-_61,_62,_63,N,...) N
+_61,_62,_63,_64,_65,N,...) N
 
 #define PP_RSEQ_N() \
-63,62,61,60,                   \
+65,64,63,62,61,60,             \
 59,58,57,56,55,54,53,52,51,50, \
 49,48,47,46,45,44,43,42,41,40, \
 39,38,37,36,35,34,33,32,31,30, \
@@ -102,7 +104,7 @@ _61,_62,_63,N,...) N
 #define APPLYX_(M, ...) IDENTITY( M(__VA_ARGS__) )
 #define _APPLYXn(...) APPLYX_(XPASTE(_APPLYX, PP_NARG(__VA_ARGS__)), __VA_ARGS__)
 
-constexpr inline bool strings_equal(char const * a, char const * b) {
+constexpr inline bool strings_equal(char const * a, char const * b) noexcept {
     return *a == *b && (*a == '\0' || strings_equal(a + 1, b + 1));
 }
 
@@ -118,34 +120,34 @@ public:
     ValueType _value;
     
 public:
-    Enum() = default;
+    constexpr Enum() noexcept = default;
     constexpr Enum(const ValueType& value) noexcept
         : _value(value)
     {}
     
-    constexpr const char * name() const { return _names::str()[(size_t)_value]; }
-    explicit constexpr operator const char*() const { return name(); }
+    constexpr const char * name() const noexcept { return _names::str()[(size_t)_value]; }
+    explicit constexpr operator const char*() const noexcept { return name(); }
     //operator std::string() const { return std::string(name()); }
     //constexpr uint32_t toInt() const { return (uint32_t)_value; }
-    constexpr explicit operator uint32_t() const { return (uint32_t)_value; }
-    constexpr operator ValueType() const { return _value; }
-    constexpr const ValueType& value() const { return _value; }
+    constexpr explicit operator uint32_t() const noexcept { return (uint32_t)_value; }
+    constexpr operator ValueType() const noexcept { return _value; }
+    constexpr const ValueType& value() const noexcept { return _value; }
     
     // comparison operators
-    constexpr bool operator==(const Enum& other) const { return other._value == _value; }
-    constexpr bool operator==(const ValueType& other) const { return other == _value; }
-    constexpr bool operator!=(const Enum& other) const { return other._value != _value; }
-    constexpr bool operator!=(const ValueType& other) const { return other != _value; }
-    std::string toStr() const { return name(); }
-    static std::string class_name() { return std::string(_names::class_name());}
+    constexpr bool operator==(const Enum& other) const noexcept { return other._value == _value; }
+    constexpr bool operator==(const ValueType& other) const noexcept { return other == _value; }
+    constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
+    constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
+    std::string toStr() const noexcept { return name(); }
+    static std::string class_name() noexcept { return std::string(_names::class_name());}
     
     template<typename T = std::string>
     static const self_type& get(T name) {
         return _names::get(name);
     }
-    static auto fields() { return _names::str(); }
+    static auto fields() noexcept { return _names::str(); }
     
-    constexpr bool operator==(const std::string& other) const { return other == _names::str()[(size_t)_value]; }
+    constexpr bool operator==(const std::string& other) const noexcept { return other == _names::str()[(size_t)_value]; }
 };
 
 /*namespace cmn {
@@ -171,7 +173,7 @@ namespace NAME { \
         \
         constexpr const char *name = #NAME; \
         constexpr static const size_t num_elements = PP_NARG( __VA_ARGS__ ) ; \
-        std::array<const char*, num_elements> docs_exist(); \
+        std::array<const char*, num_elements> docs_exist() noexcept; \
          \
         struct names {						       \
             template<class T> struct enum_has_docs : public std::false_type {}; \
@@ -181,13 +183,13 @@ namespace NAME { \
             { \
                 return docs_exist(); \
             } \
-            constexpr static const std::array<const char *, num_elements> str() {	\
+            constexpr static const std::array<const char *, num_elements> str() noexcept {	\
                 const std::array<const char*, num_elements> _names = {	\
                   {IDENTITY( STRINGIZE(__VA_ARGS__) )}			\
                 };								\
                 return _names;						\
             }								\
-            constexpr static std::string_view class_name() { return std::string_view( #NAME ); } \
+            constexpr static std::string_view class_name() noexcept { return std::string_view( #NAME ); } \
             template<typename T = std::string> static inline const Enum<NAME :: data::values, NAME :: data::num_elements, NAME :: data::names>& get(T name); \
         }; \
     } \
@@ -198,7 +200,7 @@ namespace NAME { \
     constexpr std::array<Class, data::num_elements> values = {{ __VA_ARGS__ }}; \
     constexpr std::array<const char*, data::num_elements> names = data::names::str(); \
     template<typename T = std::string > \
-    static inline bool has(T name) { \
+    static inline bool has(T name) noexcept { \
         for(size_t i=0; i<data::num_elements; i++) \
             if(utils::lowercase(name) == utils::lowercase(data::names::str()[i])) return true; \
         return false; \
@@ -224,7 +226,7 @@ namespace NAME { \
 #define ENUM_CLASS_DOCS(NAME, ...) \
 namespace NAME { \
     namespace data { \
-        std::array<const char*, num_elements> docs_exist( ) { \
+        std::array<const char*, num_elements> docs_exist( ) noexcept { \
             return std::array<const char*, num_elements> { \
                 __VA_ARGS__ \
             }; \

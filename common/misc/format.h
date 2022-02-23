@@ -62,7 +62,7 @@ struct power<V, N, std::integer_sequence<std::size_t, Is...>> {
 };
 
 template<std::size_t N, typename T>
-inline auto dec(T value) {
+inline auto dec(T value) noexcept {
     if constexpr(N == 0) {
         return decimals_t<N, T>{ T( int64_t( value + 0.5 ) ) };
     }
@@ -70,11 +70,28 @@ inline auto dec(T value) {
     return decimals_t<N, T>{ T( int64_t( value * D + 0.5 ) ) / D };
 }
 
+template<size_t prefix, size_t postfix>
+struct TCOLOR {
+    static constexpr const char value[] = {
+        27, '[',
+        '0' + ((prefix - (prefix % 10)) / 10),
+        '0' + (prefix % 10),
+        ';',
+        '0' + ((postfix - (postfix % 10)) / 10),
+        '0' + (postfix % 10),
+        'm',
+        0
+    };
+};
+
+template<size_t prefix, size_t postfix>
+inline constexpr auto COLOR = TCOLOR<prefix, postfix>::value;
+
 template<FormatterType type, FormatColor_t _value>
 struct Formatter {
     template<FormatColor_t value = _value>
         requires (type == FormatterType::HTML)
-    static constexpr auto tag() {
+    static constexpr auto tag() noexcept {
         switch (value) {
             case FormatColor::YELLOW:       return "yellow";
             case FormatColor::DARK_RED:     return "darkred";
@@ -100,60 +117,56 @@ struct Formatter {
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::TAGS)
-    inline static constexpr auto tag() {
+    inline static constexpr auto tag() noexcept {
         return value.value();
-    }
-
-    static constexpr auto COLOR(size_t prefix, size_t postfix) {
-        return "\033[" + std::to_string(prefix)+ ";"+ std::to_string(postfix) + "m";
     }
     
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
-    static constexpr auto tag() {
+    static constexpr auto tag() noexcept {
         switch (value) {
-            case FormatColor::YELLOW: return COLOR(1, 33);
-            case FormatColor::DARK_RED: return COLOR(2, 91);
-            case FormatColor::GREEN: return COLOR(1, 32);
+            case FormatColor::YELLOW: return COLOR<1, 33>;
+            case FormatColor::DARK_RED: return COLOR<2, 91>;
+            case FormatColor::GREEN: return COLOR<1, 32>;
         #if defined(__APPLE__)
-            case FormatColor::GRAY: return COLOR(1, 30);
+            case FormatColor::GRAY: return COLOR<1, 30>;
         #elif defined(WIN32)
-            case FormatColor::GRAY: return COLOR(1, 90);
+            case FormatColor::GRAY: return COLOR<1, 90>;
         #else
-            case FormatColor::GRAY: return COLOR(0, 37);
+            case FormatColor::GRAY: return COLOR<0, 37>;
         #endif
-            case FormatColor::CYAN: return COLOR(1,36);
-            case FormatColor::DARK_CYAN: return COLOR(0, 36);
-            case FormatColor::PINK: return COLOR(0,35);
-            case FormatColor::BLUE: return COLOR(1,34);
+            case FormatColor::CYAN: return COLOR<1,36>;
+            case FormatColor::DARK_CYAN: return COLOR<0, 36>;
+            case FormatColor::PINK: return COLOR<0,35>;
+            case FormatColor::BLUE: return COLOR<1,34>;
     #if defined(WIN32)
-            case FormatColor::BLACK: return COLOR(1, 37);
-            case FormatColor::WHITE: return COLOR(0, 30);
-            case FormatColor::DARK_GRAY: return COLOR(0, 37);
+            case FormatColor::BLACK: return COLOR<1, 37>;
+            case FormatColor::WHITE: return COLOR<0, 30>;
+            case FormatColor::DARK_GRAY: return COLOR<0, 37>;
     #else
-            case FormatColor::BLACK: return COLOR(0, 30);
-            case FormatColor::WHITE: return COLOR(0, 37);
-            case FormatColor::DARK_GRAY: return COLOR(0, 30);
+            case FormatColor::BLACK: return COLOR<0, 30>;
+            case FormatColor::WHITE: return COLOR<0, 37>;
+            case FormatColor::DARK_GRAY: return COLOR<0, 30>;
     #endif
-            case FormatColor::DARK_GREEN: return COLOR(0, 32);
+            case FormatColor::DARK_GREEN: return COLOR<0, 32>;
     #if defined(WIN32)
-            case FormatColor::PURPLE: return COLOR(0, 95);
+            case FormatColor::PURPLE: return COLOR<0, 95>;
     #else
-            case FormatColor::PURPLE: return COLOR(22, 35);
+            case FormatColor::PURPLE: return COLOR<22, 35>;
     #endif
-            case FormatColor::RED: return COLOR(1, 31);
-            case FormatColor::LIGHT_BLUE: return COLOR(0, 94);
-            case FormatColor::LIGHT_CYAN: return COLOR(0, 30);
-            case FormatColor::ORANGE: return COLOR(0, 33);
+            case FormatColor::RED: return COLOR<1, 31>;
+            case FormatColor::LIGHT_BLUE: return COLOR<0, 94>;
+            case FormatColor::LIGHT_CYAN: return COLOR<0, 30>;
+            case FormatColor::ORANGE: return COLOR<0, 33>;
                 
             default:
-                return COLOR(0, 0);
+                return COLOR<0, 0>;
         }
     }
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::HTML)
-    static constexpr auto tint(const std::string& s) {
+    static constexpr auto tint(const std::string& s) noexcept {
         if(s.empty())
             return std::string();
         if(utils::trim(s).empty())
@@ -162,7 +175,7 @@ struct Formatter {
     }
 
     template<char value>
-    inline static constexpr auto from_code_to_tag() {
+    inline static constexpr auto from_code_to_tag() noexcept {
         if constexpr (value >= FormatColor_t::fields().size()) {
             return FormatColor::BLACK.value();
         }
@@ -170,7 +183,7 @@ struct Formatter {
     }
 
     template<FormatColor::data::values value, bool end_tag = false>
-    inline static constexpr auto from_tag_to_code() {
+    inline static constexpr auto from_tag_to_code() noexcept {
         if constexpr (end_tag)
             return char(value) + (char)FormatColor::data::values::INVALID + 1;
         else
@@ -179,14 +192,14 @@ struct Formatter {
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::TAGS)
-    static constexpr auto tint(const std::string& s) {
+    static constexpr auto tint(const std::string& s) noexcept {
         constexpr char buffer[] = { from_tag_to_code<tag()>(), from_tag_to_code<tag(), true>() };
         return std::string(buffer, 1) + s + std::string(buffer + 1, 1);
     }
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
-    static auto tint(const std::string& s) {
+    static auto tint(const std::string& s) noexcept {
         static std::once_flag flag;
         static bool dont_print = true;
         std::call_once(flag, []() {
@@ -209,18 +222,18 @@ struct Formatter {
         if(dont_print)
             return s;
         
-        return tag() + s + COLOR(0, 0);
+        return tag() + s + COLOR<0, 0>;
     }
     
     template<FormatColor_t value = _value>
         requires (type == FormatterType::NONE)
-    static constexpr auto tint(const std::string& s) {
+    static constexpr auto tint(const std::string& s) noexcept {
         return s;
     }
 };
 
 template<FormatColor_t value, FormatterType type>
-auto console_color(const std::string& str) {
+auto console_color(const std::string& str) noexcept {
     using Formatter_t = Formatter<type, value>;
     return Formatter_t::tint(str);
 }
