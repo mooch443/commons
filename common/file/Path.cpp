@@ -385,7 +385,12 @@ std::string_view Path::filename() const {
     }
     
     FILE* Path::fopen(const std::string &access_rights) const {
+#if WIN32
+        FILE* f = nullptr;
+        ::fopen_s(&f, c_str(), access_rights.c_str());
+#else
         auto f = ::fopen(c_str(), access_rights.c_str());
+#endif
         if(!f)
             FormatError("fopen failed, errno = ", errno);
         return f;

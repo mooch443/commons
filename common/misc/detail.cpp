@@ -722,12 +722,23 @@ namespace cmn {
 #elif __linux__
         pthread_setname_np(pthread_self(), name.c_str());
 #elif defined(WIN32)
-        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-        auto wide = converter.from_bytes(name);
-        SetThreadDescription(
-            GetCurrentThread(),
-            wide.c_str()
-        );
+        int convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), NULL, 0);
+        if (convertResult <= 0)
+        {
+            FormatError("Cannot convert string ", name, " to wide char.");
+        }
+        else
+        {
+            ::std::wstring wide;
+            wide.resize(convertResult + 10);
+            convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), wide.data(), (int)wide.size());
+            if (convertResult > 0) {
+                SetThreadDescription(
+                    GetCurrentThread(),
+                    wide.c_str()
+                );
+            }
+        }
 #endif
     }
 

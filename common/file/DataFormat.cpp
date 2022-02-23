@@ -141,7 +141,7 @@ void DataFormat::start_modifying() {
     if(open())
         close();
     
-    f = fopen(_filename.c_str(), "r+");
+    f = _filename.fopen("r+");
     if(!f)
         throw U_EXCEPTION("Cannot open file ",_filename,".");
     

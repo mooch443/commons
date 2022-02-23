@@ -368,7 +368,7 @@ namespace cmn {
         png_byte bit_depth;
         png_bytep *row_pointers;
         
-        FILE *fp = fopen(path.str().c_str(), "rb");
+        FILE *fp = path.fopen("rb");
         
         png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
         if(!png) abort();

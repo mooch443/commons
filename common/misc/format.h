@@ -151,7 +151,11 @@ struct Formatter {
             if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
             {
 #endif
+#if WIN32
+                if (_isatty(_fileno(stdout)))
+#else
                 if (isatty(fileno(stdout)))
+#endif
                     dont_print = false;
 #if __APPLE__
             }
@@ -161,7 +165,7 @@ struct Formatter {
         if(dont_print)
             return s;
         
-        return tag() + s + tag<FormatColor::BLACK>();
+        return tag() + s + COLOR(0, 0);
     }
     
     template<FormatColor value = _value>
@@ -690,10 +694,10 @@ struct FormatColoredPrefix {
     }
 };
 
-struct PrefixLiterals {
-    static constexpr const char WARNING[] = "WARNING";
-    static constexpr const char ERROR_PREFIX[] = "ERROR";
-    static constexpr const char EXCEPT[] = "EXCEPT";
+namespace PrefixLiterals {
+    extern constexpr const char WARNING[] = "WARNING";
+    extern constexpr const char ERROR_PREFIX[] = "ERROR";
+    extern constexpr const char EXCEPT[] = "EXCEPT";
 };
 
 template<typename... Args>

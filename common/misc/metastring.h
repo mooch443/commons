@@ -152,7 +152,6 @@ concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::
 
 // <util>
 #pragma region util
-#pragma mark
 namespace util {
 
 template <typename T>
