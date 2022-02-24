@@ -141,7 +141,7 @@ int main(int argc, char**argv) {
     map["path"] = file::Path("test");
     
 
-    for (size_t i = 0; ; ++i) {
+    for (size_t i = 0; i<2; ++i) {
         print("Iteration ", i);
         print(std::vector<file::Path>{"/a/b/c","./d.exe"});
         print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
@@ -175,9 +175,9 @@ int main(int argc, char**argv) {
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    exit(0);
+    //exit(0);
     
-    constexpr size_t count = 1000;
+    constexpr size_t count = 10;
     {
         Timer timer;
         for (size_t i=0; i<count; ++i) {

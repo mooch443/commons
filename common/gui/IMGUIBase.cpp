@@ -21,9 +21,15 @@
 #include <misc/metastring.h>
 #include <misc/GlobalSettings.h>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/fetch.h>
+#endif
+
 #if GLFW_VERSION_MAJOR <= 3 && GLFW_VERSION_MINOR <= 2
 #define GLFW_HAVE_MONITOR_SCALE false
+#if !defined(__EMSCRIPTEN__)
 #include <GLFW/glfw3native.h>
+#endif
 #else
 #define GLFW_HAVE_MONITOR_SCALE true
 #endif
@@ -353,6 +359,39 @@ class PolyCache : public CacheObject {
 
     std::unordered_map<GLFWwindow*, IMGUIBase*> base_pointers;
 
+#if defined(__EMSCRIPTEN__)
+/*void IMGUIBase::downloadSuccess(emscripten_fetch_t* fetch) {
+    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
+    font_data.resize(fetch->numBytes);
+    std::copy(fetch->data, fetch->data + fetch->numBytes, font_data.data());
+    // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
+
+    auto self = (IMGUIBase*)fetch->userData;
+    emscripten_fetch_close(fetch); // Free data associated with the fetch.
+    //self->init(self->title());
+    self->_download_finished = true;
+    self->_download_variable.notify_all();
+}
+
+void IMGUIBase::downloadFailed(emscripten_fetch_t* fetch) {
+    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
+    auto self = (IMGUIBase*)fetch->userData;
+    emscripten_fetch_close(fetch); // Also free data on failure.
+    //self->init(self->title());
+    self->_download_finished = true;
+    self->_download_variable.notify_all();
+}*/
+
+
+EM_JS(int, canvas_get_width, (), {
+    return canvas.width;
+});
+
+EM_JS(int, canvas_get_height, (), {
+    return canvas.height;
+});
+#endif
+
 void IMGUIBase::update_size_scale(GLFWwindow* window) {
     auto base = base_pointers.at(window);
     std::lock_guard lock_guard(base->_graph->lock());
@@ -372,6 +411,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         print("Window is at ",x,", ",y," (",fw,"x",fh,").");
 #endif
         
+#if !defined(__EMSCRIPTEN__)
         for (int i=0; i<count; ++i) {
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifndef NDEBUG
@@ -389,13 +429,24 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             print("No monitor found.");
             return;
         }
+#else
+
+        // Then call
+        //int width = canvas_get_width();
+        //int height = canvas_get_height();
+        //print("Canvas size: ", width, " ", height);
+#endif
         
     } else {
+#if !defined(__EMSCRIPTEN__)
         int mx, my, mw, mh;
         glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
 #ifndef NDEBUG
         print("FS Monitor: ",mx,",",my," ",mw,"x",mh);
 #endif
+#endif
+        //width = canvas_get_width();
+        //height = canvas_get_height();
     }
     
     float xscale, yscale;
@@ -410,12 +461,20 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
+#if defined(__EMSCRIPTEN__)
+    dpi_scale = emscripten_get_device_pixel_ratio();
+#endif
     im_font_scale = max(1, dpi_scale) * 0.75f;
     base->_dpi_scale = dpi_scale;
     base->_graph->set_scale(1 / dpi_scale);
     
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
-    
+
+#if defined(__EMSCRIPTEN__)
+    base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
+#endif
+
+    print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
     {
         Event e(EventType::WINDOW_RESIZED);
@@ -467,7 +526,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         mx = my = 0;
         glfwGetMonitorPhysicalSize(monitor, &mw, &mh);
 #endif
-        
+
+        print("Received monitor work area with mx:", mx, " my:", my, " mw:", mw, " mh:", mh);
+#if defined(__EMSCRIPTEN__)
+        width = canvas_get_width();
+        height = canvas_get_height();
+        print("Canvas size: ", width, " ", height);
+#endif
+
 #if WIN32
         my += mh * 0.04; mh -= my;
         mh *= 0.95; //! task bar
@@ -526,7 +592,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 return _open_files_fn(files);
             return false;
         });
-        
+
         file::Path path("fonts/Quicksand-");
         if (!path.add_extension("ttf").exists())
             FormatExcept("Cannot find file ",path.str(),"");
@@ -562,7 +628,12 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     config.MergeMode = false;
 
                 auto full = path.str() + suffix + ".ttf";
+#if defined(__EMSCRIPTEN__)
+                print("Loading font...");
+                auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale, &config);
+#else
                 auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale, &config);
+#endif
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,".");
                     ptr = io.Fonts->AddFontDefault();
@@ -645,8 +716,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             base->event(e);
             base->_graph->set_dirty(NULL);
         });
-        glfwSetWindowSizeCallback(_platform->window_handle(), [](GLFWwindow* window, int, int)
+        glfwSetWindowSizeCallback(_platform->window_handle(), [](GLFWwindow* window, int width, int height)
         {
+            //print("Updating size callback: ", width, "x", height);
             IMGUIBase::update_size_scale(window);
         });
         
@@ -694,7 +766,32 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
     void IMGUIBase::loop() {
         LoopStatus status = LoopStatus::IDLE;
-        
+#if defined(__EMSCRIPTEN__)
+        emscripten_set_main_loop_arg([](void *data) {
+            auto self = ((IMGUIBase*)data);
+            auto width = canvas_get_width();
+            auto height = canvas_get_height();
+            if (width != self->_graph->width() || height != self->_graph->height()) {
+                Event event(WINDOW_RESIZED);
+
+                glfwSetWindowSize(self->_platform->window_handle(), width, height );
+
+                event.size.width = width;
+                event.size.height = height;
+
+                self->_graph->event(event);
+            }
+
+            auto status = ((IMGUIBase*)data)->update_loop();
+            //emscripten_sleep(16);
+        }, (void*)this, 0 /* fps */, 1 /* simulate_infinite_loop */);
+
+        //while(status != LoopStatus::END)
+        //    emscripten_sleep(16);
+        while (true) {
+
+        }
+#else
         // Main loop
         while (status != LoopStatus::END)
         {
@@ -702,6 +799,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if(status != gui::LoopStatus::UPDATED)
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
+#endif
     }
 
     LoopStatus IMGUIBase::update_loop() {

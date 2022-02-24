@@ -89,7 +89,7 @@ else()
 endif()
 
 target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL})
-if(CMN_USE_OPENGL2)
+if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
     target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
 else()
     target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=false)

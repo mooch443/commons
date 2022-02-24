@@ -743,7 +743,7 @@ namespace cmn {
     }
 
     std::string get_thread_name() {
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
         char buffer[1024];
         pthread_getname_np(pthread_self(), buffer, sizeof(buffer));
         return std::string(buffer);

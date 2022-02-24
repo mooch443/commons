@@ -31,12 +31,13 @@ namespace cmn {
         return ::sqrtf(s);
     }
     
+#if !defined(__EMSCRIPTEN__) || true
     template<typename T0>
     inline bool isnan(const T0& x, typename std::enable_if<std::is_floating_point<T0>::value || std::is_integral<T0>::value, bool>::type * =NULL) {
         return std::isnan(x);
     }
 
-#ifdef _WIN32
+#if defined(_WIN32)
     template<>
     inline bool isnan(const size_t& x, bool *) {
         return std::isnan<double>(static_cast<double>(x));
@@ -63,6 +64,7 @@ namespace cmn {
     inline bool isinf(T s, typename std::enable_if<std::is_floating_point<T>::value || std::is_integral<T>::value, bool>::type * = NULL) {
         return std::isinf(s);
     }
+#endif
 #endif
     
     namespace Detail

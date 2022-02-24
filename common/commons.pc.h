@@ -68,7 +68,7 @@
 #include <misc/date.h>
 
 #ifdef WIN32
-#define _USE_MATH_DEFINES
+//#define _USE_MATH_DEFINES
 #include <cmath>
 #include <intrin.h>
 #include <cstdint>
@@ -134,8 +134,8 @@ using long_t = int32_t;
 #include <opencv2/opencv.hpp>
 #include <cnpy/cnpy.h>
 #include <bytell_hash_map.hpp>
-#include <tsl/sparse_map.h>
-#include <tsl/sparse_set.h>
+//#include <tsl/sparse_map.h>
+//#include <tsl/sparse_set.h>
 #include <robin_hood.h>
 
 
@@ -425,8 +425,8 @@ using remove_cvref_t = std::remove_cvref_t<T>;
     struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
     template<class T, class Alloc>
     struct is_set<robin_hood::unordered_flat_set<T, Alloc>> : public std::true_type {};
-    template<class T, class Alloc>
-    struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
+   // template<class T, class Alloc>
+    //struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
     template<class T>
     struct is_set<UnorderedVectorSet<T>> : public std::true_type {};
     
@@ -532,11 +532,11 @@ using remove_cvref_t = std::remove_cvref_t<T>;
         return s.contains(value);
     }
 
-    template<typename T, typename K>
+    /*template<typename T, typename K>
         requires std::convertible_to<K, T>
     inline bool contains(const tsl::sparse_set<T>& s, const K& value) {
         return s.contains(value);
-    }
+    }*/
 
     /*template<typename T, typename Q>
     inline bool contains(const Q& v, const T& obj) {
@@ -564,6 +564,7 @@ using remove_cvref_t = std::remove_cvref_t<T>;
     }
 }
 
+#undef isnormal
 #include <misc/math.h>
 #include <misc/EnumClass.h>
 #include <misc/stringutils.h>

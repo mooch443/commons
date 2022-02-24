@@ -1,14 +1,20 @@
 #include "Path.h"
 #include <cstdlib>
-#if WIN32
+#if WIN32 && !defined(__EMSCRIPTEN__)
 #include <misc/dirent.h>
 #define OS_SEP '\\'
 #define NOT_OS_SEP '/'
-#else
+#elif !defined(__EMSCRIPTEN__)
 #include <dirent.h>
 #define OS_SEP '/'
 #define NOT_OS_SEP '\\'
 #endif
+
+#if defined(__EMSCRIPTEN__)
+#define OS_SEP '/'
+#define NOT_OS_SEP '\\'
+#endif
+
 #include <errno.h>
 
 #ifdef __APPLE__
@@ -117,7 +123,7 @@ std::string_view Path::filename() const {
     }
 
     uint64_t Path::file_size() const {
-#if defined(WIN32)
+#if defined(WIN32) && !defined(__EMSCRIPTEN__)
         WIN32_FILE_ATTRIBUTE_DATA fInfo;
 
         DWORD ftyp = GetFileAttributesEx(c_str(), GetFileExInfoStandard, &fInfo);
@@ -126,6 +132,9 @@ std::string_view Path::filename() const {
             throw U_EXCEPTION("Cannot stat file ",str(),".");
         }
         return (static_cast<ULONGLONG>(fInfo.nFileSizeHigh) << sizeof(fInfo.nFileSizeLow) * 8) | fInfo.nFileSizeLow;
+#elif defined(__EMSCRIPTEN__)
+        //!TODO: [EMSCRIPTEN] can we do this?
+        throw U_EXCEPTION("Cannot stat file in Emscripten.");
 #else
         struct stat sbuf;
         if (stat(c_str(), &sbuf) == -1)
@@ -169,10 +178,12 @@ std::string_view Path::filename() const {
         
         for(auto &folder : folders) {
             int err = -1;
-#if WIN32
+#if WIN32 && !defined(__EMSCRIPTEN__)
 			if (!folder.empty() && folder.back() == ':')
 				continue;
 			if(!CreateDirectory(folder.c_str(), NULL)) {
+#elif defined(__EMSCRIPTEN__)
+            { //!TODO: [EMSCRIPTEN]
 #else
             err = mkdir(folder.c_str(), ACCESSPERMS);
             if(err != 0) {
@@ -186,7 +197,7 @@ std::string_view Path::filename() const {
     }
     
     bool Path::is_folder() const {
-#if WIN32
+#if WIN32 && !defined(__EMSCRIPTEN__)
         DWORD ftyp = GetFileAttributesA(str().c_str());
         if (ftyp == INVALID_FILE_ATTRIBUTES)
             return false;  //something is wrong with your path!
@@ -194,6 +205,9 @@ std::string_view Path::filename() const {
         if (ftyp & FILE_ATTRIBUTE_DIRECTORY)
             return true;   // this is a directory!
 
+        return false;
+#elif defined(__EMSCRIPTEN__)
+        //!TODO: [EMSCRIPTEN]
         return false;
 #else
         struct stat path_stat;
@@ -242,8 +256,10 @@ std::string_view Path::filename() const {
                     throw U_EXCEPTION("Unknown file type ",file.str(),".");
             }
         }
-#if defined(WIN32)
+#if defined(WIN32) && !defined(__EMSCRIPTEN__)
         return RemoveDirectory(str().c_str());
+#elif defined(__EMSCRIPTEN__)
+        throw U_EXCEPTION("Emscripten cannot delete folders.");
 #else
         return rmdir(str().c_str()) == 0;
 #endif
@@ -262,6 +278,10 @@ std::string_view Path::filename() const {
         }
     
     std::set<Path> Path::find_files(const std::string& filter_extension) const {
+#if defined(__EMSCRIPTEN__)
+        //!TODO: [EMSCRIPTEN]
+        throw U_EXCEPTION("Cannot iterate folders in Emscripten.");
+#else
         if(!is_folder())
             throw U_EXCEPTION("The path ",str()," is not a folder and can not be iterated on.");
         if(!empty() && !exists())
@@ -285,6 +305,7 @@ std::string_view Path::filename() const {
             throw U_EXCEPTION("Folder ",str()," exists but cannot be read.");
         
         return result;
+#endif
     }
 
     Path Path::replace_extension(std::string_view ext) const {
@@ -385,9 +406,13 @@ std::string_view Path::filename() const {
     }
     
     FILE* Path::fopen(const std::string &access_rights) const {
-#if WIN32
+#if WIN32 && !defined(__EMSCRIPTEN__)
         FILE* f = nullptr;
         ::fopen_s(&f, c_str(), access_rights.c_str());
+#elif defined(__EMSCRIPTEN__)
+        //!TODO: [EMSCRIPTEN] can it?
+        FILE* f = nullptr;
+        throw U_EXCEPTION("Emscripten cannot open files.");
 #else
         auto f = ::fopen(c_str(), access_rights.c_str());
 #endif
@@ -396,7 +421,7 @@ std::string_view Path::filename() const {
         return f;
     }
         
-#ifdef WIN32
+#if defined(WIN32) && !defined(__EMSCRIPTEN__)
 #define pclose _pclose
 #define popen _popen
 #endif

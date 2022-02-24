@@ -23,6 +23,7 @@ endif()
 option(COMMONS_BUILD_GLFW ON)
 option(COMMONS_BUILD_PNG ON)
 option(COMMONS_BUILD_ZIP ON)
+option(COMMONS_FOR_JS OFF)
 option(COMMONS_BUILD_ZLIB ON)
 option(COMMONS_BUILD_OPENCV ON)
 option(COMMONS_CONDA_PACKAGE_INSTALL OFF)
@@ -31,6 +32,7 @@ option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
 option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
+option(COMMONS_NO_PYTHON "Disable Python support" OFF)
 option(COMMONS_ENABLE_CPP20 "Enables CPP20 language standard (if available). Only for GCC and Clang at the moment. Experimental feature." ON)
 
 if(COMMONS_ENABLE_CPP20)
@@ -109,12 +111,24 @@ endif()
 
 set(CMAKE_DEBUG_POSTFIX -d)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 --llvm-lto 1 --bind -s ASSERTIONS=2 --memory-init-file 0")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
 endif()
 
+
+if(COMMONS_FOR_JS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 -o app_wasm2.html")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_PTHREADS=1 -pthread -s PTHREAD_POOL_SIZE=8 -s ASYNCIFY -s TOTAL_MEMORY=500MB")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O3 -s USE_PTHREADS=1 -pthread")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O3 -s USE_PTHREADS=1 -pthread")
+endif()
+
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+
 
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF)
@@ -144,7 +158,8 @@ endif()
 
 message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
 add_library(Commons::X11 INTERFACE IMPORTED GLOBAL)
-if(UNIX AND NOT APPLE)
+if(UNIX AND NOT APPLE AND NOT COMMONS_FOR_JS)
+    message(STATUS "Finding X11...")
     find_package(X11 REQUIRED)
     target_link_libraries(Commons::X11 INTERFACE X11::X11 ${X11_LIBRARIES} dl)
     
@@ -167,7 +182,10 @@ endif()
 
 add_library(Commons::OpenGL INTERFACE IMPORTED GLOBAL)
 set(CMN_FOUND_OPENGL false)
-if(COMMONS_BUILD_GLFW OR UNIX)
+if(COMMONS_FOR_JS)
+    target_link_libraries(Commons::OpenGL INTERFACE GL glfw3)
+endif()
+if((COMMONS_BUILD_GLFW OR UNIX) AND NOT COMMONS_FOR_JS)
     if(WIN32)
         find_package(OpenGL REQUIRED)
         target_link_libraries(Commons::OpenGL INTERFACE OpenGL::GL)
@@ -200,13 +218,14 @@ if(COMMONS_BUILD_GLFW OR UNIX)
             set(CMN_FOUND_OPENGL false)
         endif()
     endif()
-else()
+elseif(NOT COMMONS_FOR_JS)
     find_package(OpenGL REQUIRED)
     target_link_libraries(Commons::OpenGL INTERFACE OpenGL::GL)
     message(STATUS "OpenGL library ${OPENGL_LIBRARY}")
     include_directories(${OPENGL_INCLUDE_DIR})
     set(CMN_FOUND_OPENGL true)
 endif()
+
 
 
 if(APPLE)
@@ -263,18 +282,20 @@ else()
     endif()
 endif(APPLE)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+else()
+
 set(COMMONS_CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
 set(COMMONS_CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DTT_DEBUG_ENABLED")
 
 # Set output paths
 set(PROJECT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" )
+endif()
 
-#set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -Wall)
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DTT_DEBUG_ENABLED")
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -291,7 +312,9 @@ else()
 endif()
 
 #if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    message(STATUS "Not adding any options.")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     #set(C_SANITIZE_OPTIONS "-fsanitize=thread,signed-integer-overflow,null,alignment,undefined,bounds -fno-sanitize-recover=null -fsanitize-trap=alignment,undefined,signed-integer-overflow")
     set(C_SANITIZE_OPTIONS "")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 ${C_SANITIZE_OPTIONS}")
@@ -391,7 +414,7 @@ message(STATUS "MACOSX_DEPLOYMENT_TARGET = $ENV{MACOSX_DEPLOYMENT_TARGET}")
 #    FINDING      P Y T H O N
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(NOT APPLE)
+if(NOT APPLE AND NOT COMMONS_NO_PYTHON)
     set(PY_VERSION "3.6")
     find_package(PythonLibs ${PY_VERSION} REQUIRED)
     find_package(PythonInterp ${PY_VERSION} REQUIRED)
@@ -413,7 +436,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/comm
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 add_library (Commons::GLAD INTERFACE IMPORTED GLOBAL)
-if(COMMONS_WITH_OPENGL)
+if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
     # glad
     if(CMN_USE_OPENGL2)
         set(GLAD_PROFILE "compatibility")
@@ -461,7 +484,7 @@ endif()
 
 add_library (Commons::GLFW INTERFACE IMPORTED GLOBAL)
 
-if(NOT COMMONS_BUILD_GLFW)
+if(NOT COMMONS_BUILD_GLFW OR COMMONS_FOR_JS)
     find_package(GLFW)
     if(NOT GLFW_FOUND)
         message(STATUS "Cannot find GLFW. Trying to build it instead.")
@@ -483,7 +506,7 @@ if(NOT COMMONS_BUILD_GLFW)
     endif()
 endif()
 
-if(COMMONS_BUILD_GLFW)
+if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_add_flags "")
     if(WIN32)
         set(GLFW_add_flags ${GLFW_add_flags} -DCMAKE_CXX_FLAGS_RELEASE="/MT" -DCMAKE_CXX_FLAGS_DEBUG="/MTd" -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF)
@@ -552,8 +575,10 @@ file(GLOB imgui_sources ${imgui_path}/*.cpp ${imgui_path}/*.h
 )
 
 if(COMMONS_WITH_OPENGL)
-    set(imgui_sources ${imgui_sources} ${imgui_path}/backends/imgui_impl_opengl2.cpp ${imgui_path}/backends/imgui_impl_opengl2.h)
-    if(NOT CMN_USE_OPENGL2)
+    if(NOT COMMONS_FOR_JS)
+        set(imgui_sources ${imgui_sources} ${imgui_path}/backends/imgui_impl_opengl2.cpp ${imgui_path}/backends/imgui_impl_opengl2.h)
+    endif() 
+    if(NOT CMN_USE_OPENGL2 OR COMMONS_FOR_JS)
         set(imgui_sources ${imgui_sources} ${imgui_path}/backends/imgui_impl_opengl3.cpp ${imgui_path}/backends/imgui_impl_opengl3.h)
     endif()
 endif()
@@ -640,7 +665,7 @@ endif()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
 
-if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
+if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
     ExternalProject_Add (pybind11
         PREFIX ${pybind11_install_dir}
@@ -663,7 +688,7 @@ if(${CMAKE_VERSION} VERSION_LESS "3.11.0")
     include_directories(${PYTHON_INCLUDE_DIRS})
     message(STATUS "pybind11 external_project ${PYTHON_INCLUDE_DIRS} ${INSTALL_DIR} ${pybind11_LIBRARY}")
 
-else()
+elseif(NOT COMMONS_NO_PYTHON)
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11
@@ -1012,14 +1037,111 @@ if(${COMMONS_BUILD_OPENCV})
    
    message(STATUS "COMMONS_CMAKE_BUILD_TYPE ${COMMONS_CMAKE_BUILD_TYPE}")
    message(STATUS "ALL COMMONS_subproject_CMAKE_ARGS: ${COMMONS_subproject_CMAKE_ARGS}")
-   set(OPENCV_CXX_FLAGS "${ORIGINAL_CXX_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
-   set(OPENCV_C_FLAGS "${CMAKE_C_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
-   set(OPENCV_CMAKE_ARGS
-            #${OPENCV_EXTRA_FLAGS_}
-            ${COMMONS_subproject_CMAKE_ARGS}
-            -DCMAKE_CXX_FLAGS:STRING=${OPENCV_CXX_FLAGS}
-            -DCMAKE_C_FLAGS:STRING=${OPENCV_C_FLAGS}
-			-DCMAKE_BUILD_TYPE:STRING=${COMMONS_CMAKE_BUILD_TYPE}
+   set(OPENCV_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
+   set(OPENCV_C_FLAGS "${CMAKE_C_FLAGS}")
+   if(COMMONS_FOR_JS)
+    set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS}")
+    set(OPENCV_C_FLAGS "${OPENCV_CXX_FLAGS}")
+    set(OPENCV_CMAKE_ARGS 
+            -DBUILD_IPP_IW=OFF 
+            -DBUILD_ITT=OFF 
+            -DWITH_1394=OFF 
+            -DWITH_CUDA=OFF 
+            -DWITH_JPEG=OFF
+            -DWITH_CUFFT=OFF 
+            -DWITH_GSTREAMER=OFF 
+            -DWITH_IPP=OFF 
+            -DWITH_JASPER=OFF 
+            -DWITH_WEBP=ON 
+            -DWITH_OPENEXR=OFF 
+            -DWITH_PVAPI=OFF 
+            -DWITH_GIGEAPI=OFF 
+            -DWITH_QT=ON 
+            -DWITH_TIFF=OFF 
+            -DWITH_V4L=OFF 
+            -DWITH_LIBV4L=OFF 
+            -DWITH_OPENCL=OFF 
+            -DWITH_OPENCLAMDFFT=OFF 
+            -DWITH_OPENCLAMDBLAS=OFF 
+            -DWITH_MATLAB=OFF 
+            -DWITH_GPHOTO2=OFF 
+            -DWITH_LAPACK=OFF 
+            -DBUILD_opencv_apps=OFF 
+            -DBUILD_ANDROID_EXAMPLES=OFF 
+            -DBUILD_DOCS=OFF 
+            -DBUILD_PACKAGE=OFF 
+            -DBUILD_PERF_TESTS=OFF 
+            -DBUILD_TESTS=OFF 
+            -DBUILD_FAT_JAVA_LIB=OFF 
+            -DENABLE_PRECOMPILED_HEADERS=OFF 
+            -DCMAKE_BUILD_TYPE=RELEASE 
+            -DBUILD_opencv_highgui=ON
+            -DBUILD_opencv_dnn=OFF 
+            -DBUILD_opencv_video=ON
+            -DBUILD_opencv_videoio=ON
+            -DBUILD_opencv_flann:BOOL=ON
+            -DBUILD_opencv_photo=ON
+            -DBUILD_opencv_stitching=OFF 
+            -DBUILD_opencv_superres=OFF 
+            -DBUILD_opencv_ts=OFF 
+            -DBUILD_opencv_videostab=OFF 
+            -DBUILD_opencv_aruco=OFF 
+            -DBUILD_opencv_bgsegm=OFF 
+            -DBUILD_opencv_bioinspired=OFF 
+            -DBUILD_opencv_ccalib=OFF 
+            -DBUILD_opencv_cnn_3dobj=OFF 
+            -DBUILD_opencv_contrib_world=OFF 
+            -DBUILD_opencv_cvv=OFF 
+            -DBUILD_opencv_datasets=OFF 
+            -DBUILD_opencv_dnns_easily_fooled=OFF 
+            -DBUILD_opencv_dnn_modern=OFF 
+            -DBUILD_opencv_dpm=OFF 
+            -DBUILD_opencv_face=OFF 
+            -DBUILD_opencv_freetype=OFF 
+            -DBUILD_opencv_fuzzy=OFF 
+            -DBUILD_opencv_hdf=OFF 
+            -DBUILD_opencv_img_hash=OFF 
+            -DBUILD_opencv_shape=OFF 
+            -DBUILD_opencv_line_descriptor=OFF 
+            -DBUILD_opencv_matlab=OFF 
+            -DBUILD_opencv_optflow=OFF 
+            -DBUILD_opencv_phase_unwrapping=OFF 
+            -DBUILD_opencv_plot=OFF 
+            -DBUILD_opencv_python_bindings_generator=OFF 
+            -DBUILD_opencv_reg=OFF 
+            -DBUILD_opencv_rgbd=OFF 
+            -DBUILD_opencv_saliency=OFF 
+            -DBUILD_opencv_structured_light=OFF 
+            -DBUILD_opencv_surface_matching=OFF 
+            -DBUILD_opencv_text=OFF 
+            -DBUILD_opencv_tracking=OFF 
+            -DBUILD_opencv_ximgproc=OFF 
+            -DBUILD_opencv_xobjdetect=OFF 
+            -DBUILD_opencv_xphoto=OFF
+            -DBUILD_JPEG=OFF
+            -DBUILD_DOCS=OFF
+            -DBUILD_EXAMPLES=OFF
+            -DBUILD_FAT_JAVA_LIB=OFF
+            -DBUILD_IPP_IW=OFF
+            -DBUILD_PACKAGE=OFF
+            -DBUILD_PERF_TESTS=OFF
+            -DBUILD_SHARED_LIBS=OFF
+            -DBUILD_TESTS=OFF
+            -DBUILD_WITH_DEBUG_INFO=OFF
+            -DCV_ENABLE_INTRINSICS=OFF
+            -DCPU_BASELINE=
+            -DCPU_BASELINE_DISABLE=
+            -DCV_DISABLE_OPTIMIZATION=ON
+            -DCPU_DISPATCH=
+            -DCV_DISABLE_OPTIMIZATION=ON -D CPU_BASELINE= -D CPU_DISPATCH=
+            -DCMAKE_BUILD_TYPE=Release
+            -DWITH_PTHREADS_PF=OFF
+    )
+
+else()
+    set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
+    set(OPENCV_C_FLAGS "${OPENCV_C_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
+    set(OPENCV_CMAKE_ARGS
             -DBUILD_DOCS:BOOL=FALSE
             -DBUILD_EXAMPLES:BOOL=FALSE
             -DBUILD_TESTS:BOOL=FALSE
@@ -1061,10 +1183,17 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
-            -DWITH_OPENEXR=OFF
-            "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}"
-            "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}/opencv_install"
-            -DCMAKE_DEBUG_POSTFIX=)
+            -DWITH_OPENEXR=OFF)
+    endif()
+    set(OPENCV_CMAKE_ARGS ${OPENCV_CMAKE_ARGS} 
+                ${COMMONS_subproject_CMAKE_ARGS}
+                -DCMAKE_CXX_FLAGS:STRING=${OPENCV_CXX_FLAGS}
+                -DCMAKE_C_FLAGS:STRING=${OPENCV_C_FLAGS}
+                -DCMAKE_BUILD_TYPE:STRING=${COMMONS_CMAKE_BUILD_TYPE}
+                -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
+                "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}"
+                "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}/opencv_install"
+                -DCMAKE_DEBUG_POSTFIX=)
 
     message(STATUS "OPENCV_EXTRA_FLAGS_ = ${OPENCV_EXTRA_FLAGS_}")
     set(COMMONS_OPENCV_VERSION "4.5.5")
@@ -1117,7 +1246,10 @@ if(${COMMONS_BUILD_OPENCV})
     message(STATUS "OPENCVDIR = ${OpenCV_DIR}")
     
     set(OpenCV_LIB_PATH "")
-    if(WIN32)
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
+        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi ade libwebp ${FFMPEG_LIBRARIES})
+    elseif(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
         
@@ -1140,7 +1272,7 @@ if(${COMMONS_BUILD_OPENCV})
 		endif()
     endif()
     
-    message(STATUS "Find OpenCV")
+    message(STATUS "Find OpenCV ${OpenCV_DIR} ${COMMONS_OPENCV_VERSION}")
 	find_package(OpenCV ${COMMONS_OPENCV_VERSION} PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
 	if(OpenCV_FOUND)
 		set(OpenCV_LIBS ${OpenCV_LIBRARIES})
@@ -1223,6 +1355,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/cnpy)
+
 
 add_subdirectory(common)
 add_subdirectory(examples)

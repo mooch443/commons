@@ -1,17 +1,25 @@
-#if COMMONS_HAS_OPENGL
+#if COMMONS_HAS_OPENGL || defined(__EMSCRIPTEN__)
 #include <types.h>
 #include <cstdio>
 
 #include <imgui/imgui.h>
 #include <imgui/backends/imgui_impl_glfw.h>
-
+#if !defined(__EMSCRIPTEN__)
 #include <imgui/backends/imgui_impl_opengl2.h>
 using ImTextureID_t = ImGui_OpenGL2_TextureID;
+#endif
 
 #include <imgui/backends/imgui_impl_opengl3.h>
-//using ImTextureID_t = ImGui_OpenGL3_TextureID;
+#if defined(__EMSCRIPTEN__)
+using ImTextureID_t = ImGui_OpenGL3_TextureID;
+#endif
 
-#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+#if defined(__EMSCRIPTEN__)
+#define IMGUI_IMPL_OPENGL_ES3
+#define GLFW_INCLUDE_ES3
+#define GL_VERSION_3_2
+#include <GLES3/gl3.h>
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
 #include <GL/gl3w.h>    // Initialize with gl3wInit()
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
 #include <GL/glew.h>    // Initialize with glewInit()
@@ -21,12 +29,23 @@ using ImTextureID_t = ImGui_OpenGL2_TextureID;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
-#ifndef GL_VERSION_3_2
+#if !defined(GL_VERSION_3_2) && !defined(__EMSCRIPTEN__)
 #define OPENGL3_CONDITION (false)
+#elif defined(__EMSCRIPTEN__)
+#define OPENGL3_CONDITION (true)
 #else
 #define OPENGL3_CONDITION (!CMN_USE_OPENGL2 && ((GLVersion.major == 3 && GLVersion.minor >= 2) || (GLVersion.major > 3)))
 #endif
 
+#ifndef GL_READ_ONLY
+#define GL_READ_ONLY 0
+#endif
+#ifndef glMapBuffer
+#define glMapBuffer
+#endif
+#ifndef GL_BGRA
+#define GL_BGRA GL_RGBA
+#endif
 #ifndef GL_PIXEL_PACK_BUFFER
 #define GL_PIXEL_PACK_BUFFER 0
 #endif
@@ -89,8 +108,11 @@ void GLImpl::init() {
 void GLImpl::post_init() {
     if OPENGL3_CONDITION {
         ImGui_ImplOpenGL3_NewFrame();
-    } else
+    } 
+#if !defined(__EMSCRIPTEN__)
+    else
         ImGui_ImplOpenGL2_NewFrame();
+#endif
 }
 
 void GLImpl::set_icons(const std::vector<file::Path>& icons) {
@@ -143,7 +165,17 @@ void GLImpl::create_window(const char* title, int width, int height) {
     #endif
     
 #else
-    #if !CMN_USE_OPENGL2
+    #if defined(__EMSCRIPTEN__)
+        width = 800;
+        height = 600;
+        glfwWindowHint(GLFW_MAXIMIZED, 1);
+        glfwWindowHint(GLFW_RESIZABLE, 1);
+        const char* glsl_version = "#version 300 es";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, 0);
+
+    #elif !CMN_USE_OPENGL2
         // GL 3.0 + GLSL 130
         const char* glsl_version = "#version 130";
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -160,6 +192,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     
     // Create window with graphics context
+    print("Creating window with dimensions ", width, "x", height, " and title ", title);
     window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
         throw U_EXCEPTION("[GL] Cannot create GLFW window.");
@@ -167,6 +200,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
     glfwSwapInterval(1); // Enable vsync
     
     // Initialize OpenGL loader
+#if !defined(__EMSCRIPTEN__)
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
     bool err = gl3wInit() != 0;
 #elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
@@ -180,6 +214,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
     {
         throw U_EXCEPTION("Failed to initialize OpenGL loader!");
     }
+#endif
     
     if OPENGL3_CONDITION
         print("Using OpenGL3.2 (seems supported, ", glGetString(GL_VERSION),").");
@@ -194,8 +229,10 @@ void GLImpl::create_window(const char* title, int width, int height) {
 
     if OPENGL3_CONDITION
         ImGui_ImplOpenGL3_Init(glsl_version);
+#if !defined(__EMSCRIPTEN__)
     else
         ImGui_ImplOpenGL2_Init();
+#endif
 
 #ifdef WIN32
     auto native = glfwGetWin32Window(window);
@@ -238,8 +275,10 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
         
         if OPENGL3_CONDITION
             ImGui_ImplOpenGL3_NewFrame();
+#if !defined(__EMSCRIPTEN__)
         else
             ImGui_ImplOpenGL2_NewFrame();
+#endif
         ImGui_ImplGlfw_NewFrame();
         
         ImGui::NewFrame();
@@ -259,9 +298,12 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
         glClear(GL_COLOR_BUFFER_BIT);
         if OPENGL3_CONDITION {
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        } else {
+        } 
+#if !defined(__EMSCRIPTEN__)
+        else {
             ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
         }
+#endif
         
         if(_frame_capture_enabled)
             update_pbo();
@@ -347,8 +389,10 @@ GLImpl::~GLImpl() {
     // Cleanup
     if OPENGL3_CONDITION
         ImGui_ImplOpenGL3_Shutdown();
+#if !defined(__EMSCRIPTEN__)
     else
         ImGui_ImplOpenGL2_Shutdown();
+#endif
     
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -393,6 +437,7 @@ void GLImpl::toggle_full_screen() {
 
     Vec2 center = Vec2(wx, wy) + Size2(ww, wh) * 0.5;
 
+#if !defined(__EMSCRIPTEN__)
     for (int i = 0; i < count; ++i) {
         int x, y, w, h;
         glfwGetMonitorWorkarea(monitors[i], &x, &y, &w, &h);
@@ -400,6 +445,7 @@ void GLImpl::toggle_full_screen() {
             _monitor = monitors[i];
         }
     }
+#endif
 
     // get resolution of monitor
     const GLFWvidmode * mode = glfwGetVideoMode(_monitor);
@@ -450,6 +496,15 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     GLint output_type = GL_RGBA8;
     GLenum input_type = GL_RGBA;
     
+#ifdef __EMSCRIPTEN__
+    output_type = GL_RGBA;
+    if (ptr->dims == 1) {
+        input_type = GL_LUMINANCE;
+    }
+    if (ptr->dims == 2) {
+        input_type = GL_LUMINANCE_ALPHA;
+    }
+#else
     if OPENGL3_CONDITION {
         if(ptr->dims == 1) {
             output_type = GL_RED;
@@ -475,6 +530,7 @@ TexturePtr GLImpl::texture(const Image * ptr) {
             input_type = GL_LUMINANCE_ALPHA;
         }
     }
+#endif
     
     auto width = next_pow2(sign_cast<uint64_t>(ptr->cols)), height = next_pow2(sign_cast<uint64_t>(ptr->rows));
     auto capacity = size_t(ptr->dims) * size_t(width) * size_t(height);

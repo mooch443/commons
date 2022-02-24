@@ -8,10 +8,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
 #include <execinfo.h>
 #include <cxxabi.h>
-#else
+#elif WIN32
 
 #include "DbgHelp.h"
 #include <WinBase.h>
@@ -25,7 +25,7 @@
 /** Print a demangled stack backtrace of the caller function to FILE* out. */
 static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames = 63)
 {
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
     fprintf(out, "stack trace:\n");
     
     // storage array for stack trace address data
@@ -104,7 +104,7 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
     free(funcname);
     free(symbollist);
 
-#else
+#elif !defined(__EMSCRIPTEN__)
     typedef USHORT(WINAPI* CaptureStackBackTraceType)(__in ULONG, __in ULONG, __out PVOID*, __out_opt PULONG);
     CaptureStackBackTraceType func = (CaptureStackBackTraceType)(GetProcAddress(LoadLibrary("kernel32.dll"), "RtlCaptureStackBackTrace"));
 
@@ -143,7 +143,7 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
 
 static inline std::tuple<int, std::shared_ptr<void*>> retrieve_stacktrace(unsigned int max_frames = 63)
 {
-#ifdef WIN32
+#if defined(WIN32) || defined(__EMSCRIPTEN__)
     return { 0, nullptr };
 #else
     // storage array for stack trace address data
@@ -156,7 +156,7 @@ static inline std::tuple<int, std::shared_ptr<void*>> retrieve_stacktrace(unsign
 #endif
 }
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
 static inline std::string resolve_stacktrace(const std::tuple<int, std::shared_ptr<void*>>& tuple) {
     auto && [addrlen, addrlist] = tuple;
     std::stringstream ss;

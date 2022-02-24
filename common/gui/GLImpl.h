@@ -1,5 +1,12 @@
 #pragma once
-#if COMMONS_HAS_OPENGL
+#if COMMONS_HAS_OPENGL || defined(__EMSCRIPTEN__)
+
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+#endif
+
 #include <gui/CrossPlatform.h>
 #include <misc/Timer.h>
 #include <gui/colors.h>

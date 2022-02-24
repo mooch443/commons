@@ -124,6 +124,7 @@ struct Formatter {
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
     static constexpr auto tag() noexcept {
+#if !defined(__EMSCRIPTEN__)
         switch (value) {
             case FormatColor::YELLOW: return COLOR<1, 33>;
             case FormatColor::DARK_RED: return COLOR<2, 91>;
@@ -162,6 +163,9 @@ struct Formatter {
             default:
                 return COLOR<0, 0>;
         }
+#else
+        return std::string("");
+#endif
     }
 
     template<FormatColor_t value = _value>
@@ -208,12 +212,14 @@ struct Formatter {
             if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
             {
 #endif
-#if WIN32
+#if !defined(__EMSCRIPTEN__)
+#if defined(WIN32)
                 if (_isatty(_fileno(stdout)))
 #else
                 if (isatty(fileno(stdout)))
 #endif
                     dont_print = false;
+#endif
 #if __APPLE__
             }
 #endif

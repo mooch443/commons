@@ -109,9 +109,9 @@ namespace tf {
         
         if(!nowindow && !display_map.empty()) {
             lock.unlock();
-//#ifdef __linux__
+#if !defined(__EMSCRIPTEN__)
             cv::waitKey(1);
-//#endif
+#endif
             lock.lock();
         }
         
@@ -143,7 +143,9 @@ namespace tf {
                 delete show;
                 if(!nowindow) {
                     lock.unlock();
+#if !defined(__EMSCRIPTEN__)
                     cv::waitKey();
+#endif
                     lock.lock();
                 }
             }

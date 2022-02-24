@@ -17,6 +17,7 @@ void log_to_terminal(const std::string& str) {
 }
 
 void log_to_file(const std::string& str) {
+#if !defined(__EMSCRIPTEN__)
     static FILE* f{ nullptr };
     
     if (!f) {
@@ -53,6 +54,7 @@ void log_to_file(const std::string& str) {
         fwrite((void*)str.c_str(), sizeof(char), str.length()-1, f);
         fflush(f);
     }
+#endif
 }
 
 }
