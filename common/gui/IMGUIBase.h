@@ -134,6 +134,7 @@ namespace gui {
             
             _platform = std::shared_ptr<impl_t>(ptr);
 
+#if defined(__EMSCRIPTEN__)
             emscripten_async_wget_data("/fonts/Quicksand.ttf", (void*)this, [](void* arg, void* buffer, int size) {
                 printf("Downloaded data %X, %X %d", (char*)arg, (char*)buffer, size);
                 auto self = (IMGUIBase*)arg;
@@ -144,7 +145,6 @@ namespace gui {
             }, [](void*) {
                 printf("Failed to download data!!!\n");
             });
-#if defined(__EMSCRIPTEN__)
             /*std::thread thread([&] {
                 emscripten_fetch_attr_t attr;
                 emscripten_fetch_attr_init(&attr);
@@ -204,12 +204,12 @@ namespace gui {
                 //_download_variable.notify_all();
        // });
 
-#endif
             std::unique_lock guard(_download_mutex);
             while (!_download_finished) {
                 _download_variable.wait_for(guard, std::chrono::milliseconds(100));
                 emscripten_sleep(10);
             }
+#endif
 
            // thread.join();
             init(title);

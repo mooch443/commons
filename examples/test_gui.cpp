@@ -147,33 +147,33 @@ int main(int argc, char**argv) {
         print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
         print("std::map<std::string,float>{\n\t\"key\":value\n}");
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
 
         print("Python:\ndef func():\n\tprint(\"Hello world\")\n\nfunc()");
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
 
         print("<html><head><style>.css-tag { bla; }</style></head><tag style='test'>tag content</tag><int></int></html>");
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
 
         std::map<pv::bid, std::pair<std::string, float>> mappe;
         mappe[pv::bid::invalid] = { "Test", 0.5f };
         print("pv::bid: ", pv::bid::invalid);
         print("<html><head><style>.css-tag { bla; }</style></head><tag>tag content</tag><int></int></html>");
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         print("Map: ", mappe, " ", FileSize{uint64_t(1000 * 1000 * 2123)});
         print(std::set<pv::bid>{pv::bid::invalid});
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+       // std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
 
         pv::bid value;
         print(std::set<pv::bid*>{nullptr, & value});
         print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
         print(std::vector<bool>{true, false, true, false});
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+       // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     //exit(0);
     

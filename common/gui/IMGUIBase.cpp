@@ -461,17 +461,28 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
+    auto& io = ImGui::GetIO();
 #if defined(__EMSCRIPTEN__)
-    dpi_scale = emscripten_get_device_pixel_ratio();
+    dpi_scale = 1.0; // (emscripten_get_device_pixel_ratio());
+    //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
+   // io.FontGlobalScale = 1.f / dpi_scale;
 #endif
+    //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
+    //print(io.DisplaySize.x, "x", io.DisplaySize.y);
     im_font_scale = max(1, dpi_scale) * 0.75f;
     base->_dpi_scale = dpi_scale;
-    base->_graph->set_scale(1 / dpi_scale);
+
+#if defined(__EMSCRIPTEN__)
+    base->_graph->set_scale(1.0 / dpi_scale);
+#else
+    const float interface_scale = gui::interface_scale();
+    base->_graph->set_scale(1.0 / interface_scale);
+#endif
     
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
 
 #if defined(__EMSCRIPTEN__)
-    base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
+    //base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
 #endif
 
     print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
@@ -602,9 +613,15 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //io.WantCaptureMouse = false;
         //io.WantCaptureKeyboard = false;
         
+        
         const float base_scale = 32;
         //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
         float dpi_scale = 1 / max(xscale, yscale);
+#if defined(__EMSCRIPTEN__)
+        dpi_scale = 1.0; // (emscripten_get_device_pixel_ratio());
+        //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
+        //io.FontGlobalScale = 1.f / dpi_scale;
+#endif
         im_font_scale = max(1, dpi_scale) * 0.75f;
         _dpi_scale = dpi_scale;
         
@@ -719,6 +736,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         glfwSetWindowSizeCallback(_platform->window_handle(), [](GLFWwindow* window, int width, int height)
         {
             //print("Updating size callback: ", width, "x", height);
+            static int prev_width = 0, prev_height = 0;
+            if (prev_width == width && prev_height == height)
+                return;
+            prev_width = width;
+            prev_height = height;
             IMGUIBase::update_size_scale(window);
         });
         
