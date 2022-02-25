@@ -8,7 +8,7 @@
 
 namespace cmn {
     std::string Image::toStr() const {
-        return "("+Meta::toStr(cols)+"x"+Meta::toStr(rows)+"x"+Meta::toStr(dims)+" "+Meta::toStr(DurationUS{std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count() - _timestamp})+" ago)";
+        return "("+Meta::toStr(cols)+"x"+Meta::toStr(rows)+"x"+Meta::toStr(dims)+" "+Meta::toStr(DurationUS{timestamp_t(std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch()) - _timestamp})+" ago)";
     }
     
     Image::Image()
@@ -18,21 +18,21 @@ namespace cmn {
     }
 
     Image::Image(const cv::Mat& mat, int index) : Image(mat, index, now()) {}
-    Image::Image(const cv::Mat& mat, int index, uint64_t timestamp)
+    Image::Image(const cv::Mat& mat, int index, timestamp_t timestamp)
     {
         create(mat, index, timestamp);
     }
 
     Image::Image(uint rows, uint cols, uint dims, int index) : Image(rows, cols, dims, index, now()) { }
-    Image::Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp) {
+    Image::Image(uint rows, uint cols, uint dims, int index, timestamp_t timestamp) {
         create(rows, cols, dims, index, timestamp);
     }
 
     Image::Image(const Image& other, long_t index) : Image(other, index != -1 ? index : other.index(), other.timestamp()) {}
-    Image::Image(const Image& other, long_t index, uint64_t timestamp) : Image(other.rows, other.cols, other.dims, other.data(), index, timestamp) {}
+    Image::Image(const Image& other, long_t index, timestamp_t timestamp) : Image(other.rows, other.cols, other.dims, other.data(), index, timestamp) {}
 
     Image::Image(uint rows, uint cols, uint dims, const uchar* data, int index) : Image(rows, cols, dims, data, index, now()) {}
-    Image::Image(uint rows, uint cols, uint dims, const uchar* data, int index, uint64_t timestamp)
+    Image::Image(uint rows, uint cols, uint dims, const uchar* data, int index, timestamp_t timestamp)
     {
         create(rows, cols, dims, data, index, timestamp);
     }
@@ -97,7 +97,7 @@ namespace cmn {
     void Image::create(uint rows, uint cols, uint dims, long_t index) {
         create(rows, cols, dims, index, now());
     }
-    void Image::create(uint rows, uint cols, uint dims, long_t index, uint64_t stamp) {
+    void Image::create(uint rows, uint cols, uint dims, long_t index, timestamp_t stamp) {
         size_t N = size_t(cols) * size_t(rows) * size_t(dims);
 
         if (_data) {
@@ -149,7 +149,7 @@ namespace cmn {
     void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index) {
         create(rows, cols, dims, data, index, now());
     }
-    void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index, uint64_t stamp) {
+    void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index, timestamp_t stamp) {
         create(rows, cols, dims, index, stamp);
         if(data != nullptr)
             std::memcpy(_data, data, _size);
@@ -158,7 +158,7 @@ namespace cmn {
     void Image::create(const cv::Mat& mat, long_t index) {
         create(mat, index, now());
     }
-    void Image::create(const cv::Mat& mat, long_t index, uint64_t stamp) {
+    void Image::create(const cv::Mat& mat, long_t index, timestamp_t stamp) {
         assert(mat.isContinuous());
         create(mat.rows, mat.cols, mat.channels(), mat.data, index, stamp);
     }
@@ -166,7 +166,7 @@ namespace cmn {
     void Image::create(const Image& mat, long_t index) {
         create(mat, index, now());
     }
-    void Image::create(const Image& mat, long_t index, uint64_t stamp) {
+    void Image::create(const Image& mat, long_t index, timestamp_t stamp) {
         create(mat.rows, mat.cols, mat.dims, mat.data(), index, stamp);
     }
     
@@ -220,7 +220,7 @@ namespace cmn {
 #endif
     }*/
     
-    /*void Image::set(long_t idx, const cv::Mat& matrix, uint64_t stamp) {
+    /*void Image::set(long_t idx, const cv::Mat& matrix, timestamp_t stamp) {
         assert(int(rows) == matrix.rows);
         assert(int(cols) == matrix.cols);
         assert(int(dims) == matrix.channels());
@@ -238,7 +238,7 @@ namespace cmn {
             std::memcpy(_data, matrix.data, _size);
     }
     
-    void Image::set(long_t idx, const uchar* matrix, uint64_t stamp) {
+    void Image::set(long_t idx, const uchar* matrix, timestamp_t stamp) {
         assert(_data);
         assert(matrix);
         

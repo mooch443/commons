@@ -126,6 +126,46 @@ template <class T>
 
 using long_t = int32_t;
 
+#ifdef __cpp_lib_source_location
+#include <source_location>
+namespace cmn {
+using source_location = std::source_location;
+}
+#else
+namespace cmn {
+
+class source_location {
+    const char* _file_name;
+    const char* _function_name;
+    int _line;
+
+    constexpr source_location(const char* file, const char* func, int line) noexcept
+        : _file_name(file)
+        , _function_name(func)
+        , _line(line)
+    { }
+    
+public:
+    constexpr source_location() noexcept = default;
+    source_location(const source_location& other) = default;
+    source_location(source_location&& other) = default;
+
+    static source_location current(
+        const char* file = __builtin_FILE(),
+        const char* func = __builtin_FUNCTION(),
+        int line = __builtin_LINE()) noexcept
+    {
+        return source_location(file, func, line);
+    }
+
+    constexpr const char* file_name() const noexcept { return _file_name; }
+    constexpr const char* function_name() const noexcept { return _function_name; }
+    constexpr int line() const noexcept { return _line; }
+};
+
+}
+#endif
+
 #ifndef _MSC_VER
 #define CV_STATIC_ANALYSIS 0
 #define CV_ErrorNoReturn(code, msg) cv::errorNoReturn( code, msg, CV_Func, __FILE__, __LINE__ )
@@ -562,6 +602,75 @@ using remove_cvref_t = std::remove_cvref_t<T>;
         return v.find(key) != v.end();
 #endif
     }
+}
+
+namespace cmn {
+struct timestamp_t {
+    using value_type = uint64_t;
+    std::optional<value_type> value;
+    
+    timestamp_t() = default;
+    timestamp_t(const timestamp_t&) = default;
+    timestamp_t(timestamp_t&&) = default;
+    
+    constexpr timestamp_t(value_type v) : value(v) {}
+    template<typename Rep, typename C>
+    explicit timestamp_t(const std::chrono::duration<Rep, C>& duration)
+        : value(std::chrono::duration_cast<std::chrono::microseconds>(duration).count())
+    {}
+    //constexpr timestamp_t(double v) : value(v) {}
+    
+    constexpr timestamp_t& operator=(const timestamp_t&) = default;
+    constexpr timestamp_t& operator=(timestamp_t&&) = default;
+    
+    explicit constexpr operator value_type() const { return get(); }
+    explicit constexpr operator double() const { return double(get()); }
+    constexpr value_type get(cmn::source_location loc = cmn::source_location::current()) const {
+        if(!valid())
+            throw std::invalid_argument("Invalid access to "+std::string(loc.file_name())+":"+std::to_string(loc.line())+".");
+        return value.value();
+    }
+    
+    constexpr bool valid() const { return value.has_value(); }
+    
+    constexpr bool operator==(const timestamp_t& other) const {
+        return other.get() == get();
+    }
+    constexpr bool operator!=(const timestamp_t& other) const {
+        return other.get() != get();
+    }
+    
+    constexpr bool operator<(const timestamp_t& other) const {
+        return get() < other.get();
+    }
+    constexpr bool operator>(const timestamp_t& other) const {
+        return get() > other.get();
+    }
+    
+    constexpr bool operator<=(const timestamp_t& other) const {
+        return get() <= other.get();
+    }
+    constexpr bool operator>=(const timestamp_t& other) const {
+        return get() >= other.get();
+    }
+    
+    constexpr timestamp_t operator-(const timestamp_t& other) const {
+        return timestamp_t(get() - other.get());
+    }
+    constexpr timestamp_t operator+(const timestamp_t& other) const {
+        return timestamp_t(get() + other.get());
+    }
+    constexpr timestamp_t operator/(const timestamp_t& other) const {
+        return timestamp_t(get() / other.get());
+    }
+    constexpr timestamp_t operator*(const timestamp_t& other) const {
+        return timestamp_t(get() * other.get());
+    }
+    
+    std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
+    static std::string class_name() { return "timestamp"; }
+    static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
+};
 }
 
 #undef isnormal

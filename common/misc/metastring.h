@@ -12,13 +12,13 @@ public:
     
 struct DurationUS {
     //! A duration in microseconds.
-    uint64_t timestamp;
+    timestamp_t timestamp;
         
     std::string to_string() const {
         static constexpr std::array<std::string_view, 5> names{{"us", "ms", "s", "min", "h"}};
         static constexpr std::array<double, 5> ratios{{1000, 1000, 60, 60, 24}};
             
-        double scaled = static_cast<double>(timestamp), previous_scaled = 0;
+        double scaled = static_cast<double>(timestamp.get()), previous_scaled = 0;
         size_t i = 0;
         while(i < ratios.size()-1 && scaled >= ratios[i]) {
             scaled /= ratios[i];
@@ -43,7 +43,7 @@ struct DurationUS {
         static constexpr std::array<std::string_view, 5> names{{"us", "ms", "s", "min", "h"}};
         static constexpr std::array<double, 5> ratios{{1000, 1000, 60, 60, 24}};
             
-        double scaled = static_cast<double>(timestamp), previous_scaled = 0;
+        double scaled = static_cast<double>(timestamp.get()), previous_scaled = 0;
         size_t i = 0;
         while(i < ratios.size()-1 && scaled >= ratios[i]) {
             scaled /= ratios[i];

@@ -487,6 +487,7 @@ protected:
         std::ostream &operator <<(std::ostream &os) override;
         void update_with(const gpuMat&);
         void update_with(const Image&);
+        void update_with(Image::UPtr&&);
         void updated_source();
         
     private:

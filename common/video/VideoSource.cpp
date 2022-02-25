@@ -213,7 +213,7 @@ short VideoSource::File::framerate() {
     }
 }
 
-uint64_t VideoSource::File::timestamp(uint64_t frameIndex) const {
+timestamp_t VideoSource::File::timestamp(uint64_t frameIndex) const {
     if(_type != VIDEO)
         throw U_EXCEPTION("Cannot retrieve timestamps from anything else other than videos.");
     
@@ -225,8 +225,8 @@ uint64_t VideoSource::File::timestamp(uint64_t frameIndex) const {
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(point);
     //uint64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
     //uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-    auto ns = narrow_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(duration).count());
-    return ns;
+    //auto ns = timestamp_t(std::chrono::duration_cast<std::chrono::microseconds>(duration));
+    return timestamp_t(duration);
 }
 
 const cv::Size& VideoSource::File::resolution() {
@@ -504,7 +504,7 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
     }
 }
 
-uint64_t VideoSource::timestamp(uint64_t globalIndex) const {
+timestamp_t VideoSource::timestamp(uint64_t globalIndex) const {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
     
@@ -523,7 +523,7 @@ uint64_t VideoSource::timestamp(uint64_t globalIndex) const {
 
 #include <locale>
 
-uint64_t VideoSource::start_timestamp() const {
+timestamp_t VideoSource::start_timestamp() const {
     return _files_in_seq.front()->timestamp(0);
 }
 

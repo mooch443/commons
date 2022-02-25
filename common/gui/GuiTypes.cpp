@@ -574,15 +574,19 @@ void ExternalImage::update_with(const Image& mat) {
         throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     if(!_source) {
-        _source = Image::Make(mat.rows, mat.cols, mat.dims, mat.data(), mat.timestamp());
-        
-    } else if(   _source->cols != mat.cols
-              || _source->rows != mat.rows
-              || _source->dims != mat.dims)
-    {
-        _source->create(mat.rows, mat.cols, mat.dims, mat.data(), mat.timestamp());
+        _source = Image::Make(mat.rows, mat.cols, mat.dims, mat.data(), mat.index(), mat.timestamp());
+    } else {
+        _source->create(mat.rows, mat.cols, mat.dims, mat.data(), mat.index(), mat.timestamp());
     }
     
+    updated_source();
+}
+
+void ExternalImage::update_with(Image::UPtr&& mat) {
+    if(mat->dims > 0 && mat->dims != 4 && mat->dims != 1 && mat->dims != 2)
+        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+    
+    _source = std::move(mat);
     updated_source();
 }
 

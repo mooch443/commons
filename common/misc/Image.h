@@ -32,7 +32,7 @@ namespace cmn {
         GETTER_PTR_I(uchar*, data, nullptr)
         GETTER_I(size_t, size, 0)
         GETTER_I(size_t, array_size, 0)
-        GETTER_SETTER_I(uint64_t, timestamp, 0)
+        GETTER_SETTER_I(timestamp_t, timestamp, 0)
         GETTER_SETTER_PTR_I(CustomData*, custom_data, nullptr)
         
     public:
@@ -41,30 +41,30 @@ namespace cmn {
     public:
         Image(Image&&) = delete;
         Image(const Image& other, long_t index = -1);
-        Image(const Image& other, long_t index, uint64_t timestamp);
-        Image(uint rows, uint cols, uint dims, const uchar* datat, int index, uint64_t timestamp);
+        Image(const Image& other, long_t index, timestamp_t timestamp);
+        Image(uint rows, uint cols, uint dims, const uchar* datat, int index, timestamp_t timestamp);
         Image(uint rows, uint cols, uint dims, const uchar* data, int index = -1);
         Image(uint rows, uint cols, uint dims = 1, int index = -1);
 
-        Image(uint rows, uint cols, uint dims, int index, uint64_t timestamp);
+        Image(uint rows, uint cols, uint dims, int index, timestamp_t timestamp);
         explicit Image(const cv::Mat& mat, int index = -1);
-        explicit Image(const cv::Mat& mat, int index, uint64_t timestamp);
+        explicit Image(const cv::Mat& mat, int index, timestamp_t timestamp);
 
         Image();
         ~Image();
         
     public:
         void create(uint rows, uint cols, uint dims, long_t index = -1);
-        void create(uint rows, uint cols, uint dims, long_t index, uint64_t stamp);
+        void create(uint rows, uint cols, uint dims, long_t index, timestamp_t stamp);
 
         void create(uint rows, uint cols, uint dims, const uchar* data, long_t index = -1);
-        void create(uint rows, uint cols, uint dims, const uchar* data, long_t index, uint64_t stamp);
+        void create(uint rows, uint cols, uint dims, const uchar* data, long_t index, timestamp_t stamp);
 
         void create(const cv::Mat& mat, long_t index = -1);
-        void create(const cv::Mat& mat, long_t index, uint64_t stamp);
+        void create(const cv::Mat& mat, long_t index, timestamp_t stamp);
 
         void create(const Image& other, long_t index = -1);
-        void create(const Image& other, long_t index, uint64_t stamp);
+        void create(const Image& other, long_t index, timestamp_t stamp);
 
         void clear();
         
@@ -101,7 +101,7 @@ namespace cmn {
         Bounds bounds() const { return Bounds(0, 0, static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
         Size2 dimensions() const { return Size2(static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
         
-        uint64_t stamp() const { return _timestamp; }//return std::chrono::time_point_cast<std::chrono::microseconds>(_timestamp).time_since_epoch().count(); }
+        auto stamp() const { return _timestamp; }//return std::chrono::time_point_cast<std::chrono::microseconds>(_timestamp).time_since_epoch().count(); }
         
         bool operator==(const Image& other) const {
             return other.cols == cols && other.rows == rows && other.dims == dims && (_data == other._data || (_size == other._size && memcmp(_data, other._data, _size) == 0));
@@ -111,8 +111,8 @@ namespace cmn {
         static std::string class_name() {
             return "Image";
         }
-        static uint64_t now() {
-            return (uint64_t)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count();
+        static auto now() {
+            return timestamp_t((timestamp_t::value_type)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count());
         }
         
     private:

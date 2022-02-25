@@ -30,10 +30,10 @@ public:
     virtual bool has_mask() const = 0;
     virtual const cv::Mat& mask() const = 0;
     virtual bool has_timestamps() const = 0;
-    virtual uint64_t timestamp(uint64_t) const {
+    virtual timestamp_t timestamp(uint64_t) const {
         throw U_EXCEPTION("Not implemented.");
     }
-    virtual uint64_t start_timestamp() const {
+    virtual timestamp_t start_timestamp() const {
         throw U_EXCEPTION("Not implemented.");
     }
     virtual short framerate() const = 0;

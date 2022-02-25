@@ -52,7 +52,7 @@ public:
         void close() const;
         Type type() const { return _type; }
         bool has_timestamps() const;
-        uint64_t timestamp(uint64_t frameIndex) const;
+        timestamp_t timestamp(uint64_t frameIndex) const;
         short framerate();
     };
     
@@ -98,8 +98,8 @@ public:
     File::Type type() const { if(_files_in_seq.empty()) return File::Type::UNKNOWN; return _files_in_seq.at(0)->type(); }
     
     virtual bool has_timestamps() const override;
-    virtual uint64_t timestamp(uint64_t) const override;
-    virtual uint64_t start_timestamp() const override;
+    virtual timestamp_t timestamp(uint64_t) const override;
+    virtual timestamp_t start_timestamp() const override;
     
     virtual short framerate() const override;
     
