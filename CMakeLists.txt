@@ -1184,8 +1184,8 @@ else()
             -DBUILD_ZLIB:BOOL=OFF
             -DBUILD_PROTOBUF:BOOL=ON
             -DBUILD_JPEG:BOOL=ON
-            -DBUILD_OPENJPEG:BOOL=ON
-            -DWITH_OPENJPEG:BOOL=ON
+            -DBUILD_OPENJPEG:BOOL=OFF
+            -DWITH_OPENJPEG:BOOL=OFF
             -DBUILD_JASPER:BOOL=OFF
             -DBUILD_opencv_python3=OFF
             -DBUILD_opencv_python2=OFF
