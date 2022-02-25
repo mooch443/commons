@@ -465,7 +465,7 @@ std::string_view Path::filename() const {
         auto f = ::fopen(c_str(), access_rights.c_str());
 #endif
         if(!f)
-            FormatError("fopen failed, errno = ", errno);
+            FormatError("fopen failed (", str(), "), errno = ", errno);
         return f;
     }
         

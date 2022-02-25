@@ -718,7 +718,9 @@ std::string format(const Args& ... args) {
 }
 
 #if COMMONS_FORMAT_LOG_TO_FILE
-void log_to_file(const std::string&);
+void write_log_message(const std::string&);
+void set_log_file(const std::string&);
+bool has_log_file();
 #endif
 
 void log_to_terminal(const std::string&, bool force_display = false);
@@ -743,10 +745,12 @@ void print(const Args & ... args) {
     log_to_terminal(str);
 
 #if COMMONS_FORMAT_LOG_TO_FILE
-    str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
-        + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
-        + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
-    log_to_file(str);
+    if (has_log_file()) {
+        str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+        write_log_message(str);
+    }
 #endif
     if (has_log_callback())
         log_to_callback(format<FormatterType::NONE>(args...));
@@ -776,10 +780,12 @@ struct FormatColoredPrefix {
         log_to_terminal(str);
 
 #if COMMONS_FORMAT_LOG_TO_FILE
-        str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
-            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
-            + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
-        log_to_file(str);
+        if (has_log_file()) {
+            str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+                + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+                + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+            write_log_message(str);
+        }
 #endif
         if (has_log_callback())
             log_to_callback(format<FormatterType::NONE>(args...), prefix);

@@ -1,5 +1,6 @@
 #include "format.h"
 #include <file/Path.h>
+#include <misc/GlobalSettings.h>
 
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
 namespace cmn {
@@ -12,6 +13,9 @@ extern IMPLEMENT(PrefixLiterals::names) = {
 };
 
 static std::atomic_bool runtime_is_quiet{ false };
+static std::mutex log_file_mutex;
+static file::Path runtime_log_file{ "" };
+static FILE* f{ nullptr };
 
 void set_runtime_quiet(bool quiet) {
     runtime_is_quiet = quiet;
@@ -38,12 +42,27 @@ bool has_log_callback() {
     return log_callback_function != nullptr;
 }
 
-void log_to_file(const std::string& str) {
+bool has_log_file() {
+    std::lock_guard guard(log_file_mutex);
+    return !runtime_log_file.empty();
+}
+void set_log_file(const std::string& path) {
+    std::lock_guard guard(log_file_mutex);
+    if (f)
+        fclose(f);
+    f = nullptr;
+    runtime_log_file = file::Path(path);
+}
+
+void write_log_message(const std::string& str) {
 #if !defined(__EMSCRIPTEN__)
-    static FILE* f{ nullptr };
-    
-    if (!f) {
-        f = file::Path("site.html").fopen("w");
+    if (!has_log_file())
+        return;
+
+    static std::once_flag flag;
+    std::call_once(flag, []() {
+        std::lock_guard guard(log_file_mutex);
+        f = runtime_log_file.fopen("w");
         if (f) {
             static const char head[] =
                 "<style>\n"
@@ -69,10 +88,10 @@ void log_to_file(const std::string& str) {
 
             fwrite((const void*)head, sizeof(char), sizeof(head) - 1, f);
         }
-    }
+    });
 
+    std::lock_guard guard(log_file_mutex);
     if (f) {
-        
         fwrite((void*)str.c_str(), sizeof(char), str.length()-1, f);
         fflush(f);
     }
