@@ -211,7 +211,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     
     // Create window with graphics context
-    print("Creating window with dimensions ", width, "x", height, " and title ", title);
+    print("Creating window with dimensions ", width, "x", height, " and title ", std::string(title));
     window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
         throw U_EXCEPTION("[GL] Cannot create GLFW window.");
@@ -236,9 +236,9 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     
     if OPENGL3_CONDITION
-        print("Using OpenGL3.2 (seems supported, ", glGetString(GL_VERSION),").");
+        print("Using OpenGL3.2 (seems supported, ", (const char*)glGetString(GL_VERSION),").");
     else
-        print("Using OpenGL2.1 (", glGetString(GL_VERSION),")");
+        print("Using OpenGL2.1 (", (const char*)glGetString(GL_VERSION),")");
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

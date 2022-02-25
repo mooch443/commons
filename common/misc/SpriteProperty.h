@@ -108,7 +108,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
                 
-                throw PropertyException("Cannot cast " + toStr() + " to const reference type.");
+                throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ").");
             }
 
             template<typename T>
@@ -117,7 +117,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
 
-                throw PropertyException("Cannot cast " + toStr() + " to reference type.");
+                throw PropertyException("Cannot cast " + toStr() + " to reference type ("+ Meta::name<T>()+").");
             }
             
             virtual const std::string type_name() const {

@@ -156,7 +156,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                 }
             } catch(const UtilsException& e) {
                 if(!SETTING(quiet)) {
-                    print("Line '", str,"' cannot be loaded. ('",e.what(),"')");
+                    print("Line ", str," cannot be loaded. (",std::string(e.what()),")");
                 }
             }
             
