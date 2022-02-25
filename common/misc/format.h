@@ -655,13 +655,15 @@ public:
     static std::string parse_value(const T<Args...>&m) {
         std::string str = console_color<FormatColor::BLACK, colors>("[");
         auto it = m.begin(), end = m.end();
-        for (;;) {
-            str += parse_value(*it);
+        if (it != end) {
+            for (;;) {
+                str += parse_value(*it);
 
-            if (++it != end)
-                str += console_color<FormatColor::BLACK, colors>(",");
-            else
-                break;
+                if (++it != end)
+                    str += console_color<FormatColor::BLACK, colors>(",");
+                else
+                    break;
+            }
         }
         return str + console_color<FormatColor::BLACK, colors>("]");
     }
@@ -703,8 +705,8 @@ public:
             + console_color<FormatColor::BLACK, colors>("*)");
         if (!ptr)
             return str + console_color<FormatColor::PURPLE, colors>("null");
-        if constexpr (_has_tostr_method<std::remove_pointer_t<T>>)
-            return str + parse_value(*ptr);
+        //if constexpr (_has_tostr_method<std::remove_pointer_t<T>>)
+        //    return str + parse_value(*ptr);
 
         std::stringstream stream;
         stream << "0x" << std::hex << (uint64_t)ptr;
