@@ -593,9 +593,11 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         }
         table.add(row);
         
+#ifndef NDEBUG
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000) {
             print(x, "/",int(rx.end)," done");
         }
+#endif
         
         if(percent_callback && int(x)%100 == 0) {
             (*percent_callback)(cmn::abs(x-rx.start) / cmn::abs(rx.end - rx.start));
@@ -653,9 +655,11 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
             }
         }
         
+#ifndef NDEBUG
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000 && !quiet) {
             print(x, "/", int(rx.end)," done");
         }
+#endif
         
         if(percent_callback && int(x)%100 == 0) {
             (*percent_callback)(cmn::abs(x-rx.start) / cmn::abs(rx.end - rx.start));
