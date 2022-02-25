@@ -70,6 +70,7 @@ namespace file {
         Path remove_extension() const;
         
         FILE* fopen(const std::string& access_rights) const;
+        std::vector<char> retrieve_data() const;
         
         std::string_view extension() const;
         

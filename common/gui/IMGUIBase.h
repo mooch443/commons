@@ -60,6 +60,7 @@ namespace gui {
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
         float _dpi_scale;
+        float _last_dpi_scale = -1;
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;
         
@@ -135,83 +136,9 @@ namespace gui {
             _platform = std::shared_ptr<impl_t>(ptr);
 
 #if defined(__EMSCRIPTEN__)
-            emscripten_async_wget_data("/fonts/Quicksand.ttf", (void*)this, [](void* arg, void* buffer, int size) {
-                printf("Downloaded data %X, %X %d", (char*)arg, (char*)buffer, size);
-                auto self = (IMGUIBase*)arg;
-                self->font_data.resize(size);
-                std::copy((char*)buffer, (char*)buffer + size, self->font_data.data());
-                self->_download_finished = true;
-                self->_download_variable.notify_all();
-            }, [](void*) {
-                printf("Failed to download data!!!\n");
-            });
-            /*std::thread thread([&] {
-                emscripten_fetch_attr_t attr;
-                emscripten_fetch_attr_init(&attr);
-                strcpy(attr.requestMethod, "GET");
-                attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_WAITABLE;
-
-                print("Loading file from /fonts/Quicksand.ttf");
-                emscripten_fetch_t* fetch = emscripten_fetch(&attr, "/fonts/Quicksand.ttf"); // Starts as asynchronous.
-
-                EMSCRIPTEN_RESULT ret = EMSCRIPTEN_RESULT_TIMED_OUT;
-                while (ret == EMSCRIPTEN_RESULT_TIMED_OUT) {
-                    print("Waiting...");
-                    ret = emscripten_fetch_wait(fetch, INFINITY);
-                }
-                // The operation has finished, safe to examine the fields of the 'fetch' pointer now.
-
-                if (fetch->status == 200) {
-                    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
-                    // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
-                    font_data.resize(fetch->numBytes);
-                    std::copy(fetch->data, fetch->data + fetch->numBytes, font_data.data());
-                }
-                else {
-                    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
-                }
-                emscripten_fetch_close(fetch);*/
-
-
-                //_download_finished = true;
-                //_download_variable.notify_all();
-
-                /*emscripten_fetch_attr_t attr;
-                emscripten_fetch_attr_init(&attr);
-                strcpy(attr.requestMethod, "GET");
-                attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
-                emscripten_fetch_t* fetch = emscripten_fetch(&attr, "/fonts/Quicksand-.ttf"); // Blocks here until the operation is complete.
-                if (fetch->status == 200) {
-                    printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
-                    // The data is now available at fetch->data[0] through fetch->data[fetch->numBytes-1];
-                    font_data.resize(fetch->numBytes);
-                    std::copy(fetch->data, fetch->data + fetch->numBytes, font_data.data());
-                }
-                else {
-                    printf("Downloading %s failed, HTTP failure status code: %d.\n", fetch->url, fetch->status);
-                }
-                emscripten_fetch_close(fetch);*/
-
-                /*emscripten_fetch_attr_t attr;
-                emscripten_fetch_attr_init(&attr);
-                strcpy(attr.requestMethod, "GET");
-                attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-                attr.onsuccess = downloadSuccess;
-                attr.onerror = downloadFailed;
-                attr.userData = (void*)this;
-                emscripten_fetch(&attr, "/fonts/Quicksand-.ttf");*/
-                
-                //_download_variable.notify_all();
-       // });
-
-            std::unique_lock guard(_download_mutex);
-            while (!_download_finished) {
-                _download_variable.wait_for(guard, std::chrono::milliseconds(100));
-                emscripten_sleep(10);
-            }
+            file::Path path("./fonts/Quicksand.ttf");
+            font_data = path.retrieve_data();
 #endif
-
-           // thread.join();
             init(title);
         }
         

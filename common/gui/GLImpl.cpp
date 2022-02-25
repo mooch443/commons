@@ -92,6 +92,23 @@ static void glfw_error_callback(int error, const char* description)
 
 namespace gui {
 
+
+
+void checkGLError(cmn::source_location loc = cmn::source_location::current())
+{
+    GLenum err;
+    const char* buffer = "";
+#if !defined(__EMSCRIPTEN__)
+    while ((err = glfwGetError(&buffer)) != GL_NO_ERROR) {
+#else
+    while ((err = glGetError()) != GL_NO_ERROR) {
+
+
+#endif
+        print(loc.file_name(), ":", loc.line(), " [GL]: ", err, ": '", (const char*)buffer, "'.");
+    }
+}
+
 GLImpl::GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn) : draw_function(draw), new_frame_fn(new_frame_fn)
 {
 }
@@ -486,7 +503,11 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims != 4 ? (GLint)ptr->dims : 0);
+    if (ptr->dims == 3 || ptr->dims > 4) {
+        FormatExcept("Cannot load pixel store alignment of ", ptr->dims);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    } else
+        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);
     
 #if !CMN_USE_OPENGL2
 #define GL_LUMINANCE 0x1909
@@ -532,15 +553,20 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     }
 #endif
     
+#if defined(__EMSCRIPTEN__)
+    auto width = ptr->cols, height = ptr->rows;
+#else
     auto width = next_pow2(sign_cast<uint64_t>(ptr->cols)), height = next_pow2(sign_cast<uint64_t>(ptr->rows));
+#endif
     auto capacity = size_t(ptr->dims) * size_t(width) * size_t(height);
     if (empty.size() < capacity)
         empty.resize(capacity, 0);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, empty.data());
+    glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
 
-    glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLsizei)ptr->cols, (GLsizei)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data());
-    glBindTexture(GL_TEXTURE_2D, 0);
+    print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLsizei)ptr->cols, (GLsizei)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
+    glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
     
     return std::make_unique<PlatformTexture>(
         new ImTextureID_t{ (uint64_t)my_opengl_texture, ptr->dims != 4 },
@@ -551,9 +577,9 @@ TexturePtr GLImpl::texture(const Image * ptr) {
                 
                 GLuint _id = (GLuint) object->texture_id;
                 
-                glBindTexture(GL_TEXTURE_2D, _id);
-                glDeleteTextures(1, &_id);
-                glBindTexture(GL_TEXTURE_2D, 0);
+                glBindTexture(GL_TEXTURE_2D, _id); checkGLError();
+                glDeleteTextures(1, &_id); checkGLError();
+                glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
                 
                 delete object;
             });
@@ -598,38 +624,60 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
     
     glBindTexture(GL_TEXTURE_2D, _id);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims != 4 ? (GLint)ptr->dims : 0);
+    if (ptr->dims == 3 || ptr->dims > 4) {
+        FormatExcept("Cannot load pixel store alignment of ", ptr->dims);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    }
+    else
+        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);
+
+    checkGLError();
     
     GLenum input_type = GL_RGBA;
-    if OPENGL3_CONDITION {
-        if(ptr->dims == 1) {
+#ifdef __EMSCRIPTEN__
+    if (ptr->dims == 1) {
+        input_type = GL_LUMINANCE;
+    }
+    if (ptr->dims == 2) {
+        input_type = GL_LUMINANCE_ALPHA;
+    }
+#else
+    if OPENGL3_CONDITION{
+        if (ptr->dims == 1) {
             input_type = GL_RED;
         }
-        if(ptr->dims == 2) {
+        if (ptr->dims == 2) {
             input_type = GL_RG;
+
+            GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
         }
-        
-    } else {
-        if(ptr->dims == 1) {
+
+    }
+    else {
+        if (ptr->dims == 1) {
+            //output_type = GL_LUMINANCE8;
             input_type = GL_LUMINANCE;
         }
-        if(ptr->dims == 2) {
+        if (ptr->dims == 2) {
+            //output_type = GL_LUMINANCE_ALPHA;
             input_type = GL_LUMINANCE_ALPHA;
         }
     }
+#endif
 
     auto capacity = size_t(ptr->dims) * size_t(id_.width) * size_t(id_.height);
     if (empty.size() < capacity)
         empty.resize(capacity, 0);
-
+    
     if (ptr->cols != (uint)id_.width || ptr->rows != (uint)id_.height) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, (GLint)ptr->cols, 0, GLint(id_.width) - GLint(ptr->cols), id_.height, input_type, GL_UNSIGNED_BYTE, empty.data());
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, (GLint)ptr->rows, (GLint)ptr->cols, GLint(id_.height) - GLint(ptr->rows), input_type, GL_UNSIGNED_BYTE, empty.data());
+        glTexSubImage2D(GL_TEXTURE_2D, 0, (GLint)ptr->cols, 0, GLint(id_.width) - GLint(ptr->cols), id_.height, input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, (GLint)ptr->rows, (GLint)ptr->cols, GLint(id_.height) - GLint(ptr->rows), input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
         //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, id_.width, id_.height, input_type, GL_UNSIGNED_BYTE, empty.data());
     }
-    glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLint)ptr->cols, (GLint)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data());
+    glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLint)ptr->cols, (GLint)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ptr->cols, ptr->rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->data());
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
     
     id_.image_width = int(ptr->cols);
     id_.image_height = int(ptr->rows);

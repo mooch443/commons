@@ -45,7 +45,8 @@ namespace gui {
     static void* debug_callback = nullptr;
 
     void deinit_errorlog() {
-        throw std::invalid_argument("implement.");
+        set_debug_callback(nullptr);
+        //throw std::invalid_argument("implement.");
         //if(debug_callback)
         //    DEBUG::UnsetDebugCallback(debug_callback);
         debug_callback = nullptr;
@@ -53,22 +54,22 @@ namespace gui {
 
     void init_errorlog() {
         //!TODO: Error log not implemented
-        /*debug_callback = DEBUG::SetDebugCallback({DEBUG::DEBUG_TYPE::TYPE_ERROR,DEBUG::DEBUG_TYPE::TYPE_EXCEPTION,DEBUG::DEBUG_TYPE::TYPE_WARNING}, [](const DEBUG::StatusMsg* type, const std::string& msg)
+        debug_callback = set_debug_callback([](PrefixLiterals::Prefix type, const std::string& msg, bool force_callback)
         {
             std::lock_guard<std::recursive_mutex> lock(error_message_lock);
             ErrorMessage obj;
             obj.msg = msg;
-            switch (type->type) {
-                case DEBUG::TYPE_EXCEPTION:
-                case DEBUG::TYPE_ERROR:
+            switch (type) {
+                case PrefixLiterals::EXCEPT:
+                case PrefixLiterals::ERROR_PREFIX:
                     obj.clr = Red;
                     break;
                     
-                case DEBUG::TYPE_WARNING:
+                case PrefixLiterals::WARNING:
                     obj.clr = Yellow;
                     break;
-                case DEBUG::TYPE_INFO:
-                    if(!type->force_callback)
+                case PrefixLiterals::INFO:
+                    if(!force_callback)
                         return;
                     obj.clr = gui::Color(150, 225, 255, 255);
                     break;
@@ -81,10 +82,18 @@ namespace gui {
             if(error_messages.size()+1 >= 10)
                 error_messages.erase(error_messages.begin());
             error_messages.push_back(obj);
-        });*/
+        });
     }
 
-    void DrawStructure::draw_log_messages(const Bounds& screen) {
+    void DrawStructure::draw_log_messages(Bounds screen) {
+        if (screen.empty()) {
+            auto scale = this->scale().reciprocal();
+            //cmn::print("scale: ", scale, " dims: ", Size2(this->width(), this->height()));
+            //scale = Vec2(1);
+            auto dim = Size2(this->width(), this->height()).mul(scale * gui::interface_scale());
+            screen = Bounds(Vec2(), dim);
+        }
+
         SectionGuard guard(*this, "log_messages()");
         //guard._section->set_scale(scale().reciprocal());
         

@@ -120,11 +120,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
 endif()
 
 
-if(COMMONS_FOR_JS)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 -o app_wasm2.html")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s USE_PTHREADS=1 -pthread -s PTHREAD_POOL_SIZE=8 -s ASYNCIFY -s TOTAL_MEMORY=500MB")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O3 -s USE_PTHREADS=1 -pthread")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O3 -s USE_PTHREADS=1 -pthread")
+if(COMMONS_FOR_JS) #-pthread -s PTHREAD_POOL_SIZE=8  -s TOTAL_MEMORY=250MB
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -s ASYNCIFY")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O3 ")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O3 ")
+    set(CMAKE_CONFIGURATION_TYPES "Release" FORCE)
 endif()
 
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
@@ -309,6 +310,10 @@ else()
     else()
         set(COMMONS_CMAKE_BUILD_TYPE $<IF:$<CONFIG:Debug>,Debug,Release>)
     endif()
+endif()
+
+if(COMMONS_FOR_JS)
+    set(COMMONS_CMAKE_BUILD_TYPE Release)
 endif()
 
 #if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -1039,7 +1044,12 @@ if(${COMMONS_BUILD_OPENCV})
    message(STATUS "ALL COMMONS_subproject_CMAKE_ARGS: ${COMMONS_subproject_CMAKE_ARGS}")
    set(OPENCV_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
    set(OPENCV_C_FLAGS "${CMAKE_C_FLAGS}")
+
+
    if(COMMONS_FOR_JS)
+    IF(NOT CMAKE_BUILD_TYPE)
+       SET(CMAKE_BUILD_TYPE Release FORCE)
+    ENDIF()
     set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS}")
     set(OPENCV_C_FLAGS "${OPENCV_CXX_FLAGS}")
     set(OPENCV_CMAKE_ARGS 
@@ -1073,8 +1083,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF 
             -DBUILD_TESTS=OFF 
             -DBUILD_FAT_JAVA_LIB=OFF 
-            -DENABLE_PRECOMPILED_HEADERS=OFF 
-            -DCMAKE_BUILD_TYPE=RELEASE 
+            -DENABLE_PRECOMPILED_HEADERS=ON 
             -DBUILD_opencv_highgui=ON
             -DBUILD_opencv_dnn=OFF 
             -DBUILD_opencv_video=ON
@@ -1127,6 +1136,8 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF
             -DBUILD_SHARED_LIBS=OFF
             -DBUILD_TESTS=OFF
+            -DBUILD_OPENJPEG:BOOL=OFF
+            -DWITH_OPENJPEG:BOOL=OFF
             -DBUILD_WITH_DEBUG_INFO=OFF
             -DCV_ENABLE_INTRINSICS=OFF
             -DCPU_BASELINE=
@@ -1136,6 +1147,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DCV_DISABLE_OPTIMIZATION=ON -D CPU_BASELINE= -D CPU_DISPATCH=
             -DCMAKE_BUILD_TYPE=Release
             -DWITH_PTHREADS_PF=OFF
+            -DCMAKE_CONFIGURATION_TYPES:STRING=Release
     )
 
 else()
@@ -1172,7 +1184,8 @@ else()
             -DBUILD_ZLIB:BOOL=OFF
             -DBUILD_PROTOBUF:BOOL=ON
             -DBUILD_JPEG:BOOL=ON
-            -DWITH_OPENJPEG:BOOL=OFF
+            -DBUILD_OPENJPEG:BOOL=ON
+            -DWITH_OPENJPEG:BOOL=ON
             -DBUILD_JASPER:BOOL=OFF
             -DBUILD_opencv_python3=OFF
             -DBUILD_opencv_python2=OFF
@@ -1184,7 +1197,7 @@ else()
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
             -DWITH_OPENEXR=OFF)
-    endif()
+endif()
     set(OPENCV_CMAKE_ARGS ${OPENCV_CMAKE_ARGS} 
                 ${COMMONS_subproject_CMAKE_ARGS}
                 -DCMAKE_CXX_FLAGS:STRING=${OPENCV_CXX_FLAGS}
@@ -1248,7 +1261,7 @@ else()
     set(OpenCV_LIB_PATH "")
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi ade libwebp ${FFMPEG_LIBRARIES})
+        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi ade libwebp  ${FFMPEG_LIBRARIES})
     elseif(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
@@ -1291,16 +1304,32 @@ else()
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
 
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        target_include_directories(Commons::OpenCV INTERFACE
+            ${CMAKE_BINARY_DIR}/opencv_install/include
+            ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
+        )
+    endif()
+
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
     target_include_directories(Commons::OpenCV INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
       "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
     )
-    set_target_properties(Commons::OpenCV PROPERTIES
-      IMPORTED_LOCATION "${OpenCV_LIBS}"
-      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
-      INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
-    )
+
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        set_target_properties(Commons::OpenCV PROPERTIES
+          IMPORTED_LOCATION "${OpenCV_LIBS}"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+        )
+    else()
+        set_target_properties(Commons::OpenCV PROPERTIES
+          IMPORTED_LOCATION "${OpenCV_LIBS}"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+        )
+    endif()
 endif()
 
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)

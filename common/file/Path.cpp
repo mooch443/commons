@@ -36,6 +36,13 @@
 #include <sys/stat.h>
 #include <misc/detail.h>
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten/bind.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+#include <emscripten/fetch.h>
+#endif
+
 namespace file {
     char Path::os_sep() { return OS_SEP; }
     
@@ -120,6 +127,47 @@ std::string_view Path::filename() const {
 
     bool Path::exists() const {
         return file_exists(_str);
+    }
+
+    std::vector<char> Path::retrieve_data() const {
+#if defined(__EMSCRIPTEN__)
+        struct Data {
+            std::mutex _download_mutex;
+            std::condition_variable _download_variable;
+            std::atomic_bool _download_finished{ false };
+            std::vector<char> data;
+        };
+
+        static Data _data;
+
+        std::unique_lock guard(_data._download_mutex);
+        _data.data.clear();
+        _data._download_finished = false;
+
+        emscripten_async_wget_data(c_str(), (void*)&_data, [](void* arg, void* buffer, int size) {
+            printf("Downloaded data (%d)", size);
+            auto self = (Data*)arg;
+            self->data.resize(size);
+            std::copy((char*)buffer, (char*)buffer + size, self->data.data());
+            self->_download_finished = true;
+            self->_download_variable.notify_all();
+        }, [](void*) {
+            printf("Failed to download data!!!\n");
+        });
+
+        while (!_data._download_finished) {
+            _data._download_variable.wait_for(guard, std::chrono::milliseconds(10));
+            emscripten_sleep(10);
+        }
+
+        return _data.data;
+#else
+        std::ifstream input(str(), std::ios::binary);
+        if (!input.is_open())
+            throw cmn::U_EXCEPTION("Cannot read file ", str());
+
+        return std::vector<char>(std::istreambuf_iterator<char>(input), {});
+#endif
     }
 
     uint64_t Path::file_size() const {

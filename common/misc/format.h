@@ -6,7 +6,7 @@
 #include <io.h>
 #endif
 
-#define COMMONS_FORMAT_LOG_TO_FILE
+#define COMMONS_FORMAT_LOG_TO_FILE true
 
 namespace cmn {
 
@@ -42,6 +42,17 @@ enum class FormatterType {
     TAGS,
     HTML,
     NONE
+};
+
+namespace PrefixLiterals {
+    enum Prefix {
+        WARNING,
+        ERROR_PREFIX,
+        EXCEPT,
+        INFO
+    };
+
+    extern const std::array<const char*, 4> names;
 };
 
 template<uint8_t N, typename T>
@@ -706,11 +717,15 @@ std::string format(const Args& ... args) {
     return (... + (ParseValue<type>::parse_value(args)));
 }
 
-#ifdef COMMONS_FORMAT_LOG_TO_FILE
+#if COMMONS_FORMAT_LOG_TO_FILE
 void log_to_file(const std::string&);
 #endif
 
-void log_to_terminal(const std::string&);
+void log_to_terminal(const std::string&, bool force_display = false);
+void log_to_callback(const std::string&, PrefixLiterals::Prefix = PrefixLiterals::Prefix::INFO, bool force = false);
+void set_runtime_quiet(bool);
+void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)>);
+bool has_log_callback();
 
 inline std::string current_time_string() {
     using namespace std::chrono;
@@ -725,14 +740,16 @@ void print(const Args & ... args) {
         + console_color<FormatColor::BLACK, FormatterType::UNIX>( "]" ) + " "
         + format<FormatterType::UNIX>(args...);
     
-    printf("%s\n", str.c_str());
+    log_to_terminal(str);
 
-#ifdef COMMONS_FORMAT_LOG_TO_FILE
+#if COMMONS_FORMAT_LOG_TO_FILE
     str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
         + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
         + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
     log_to_file(str);
 #endif
+    if (has_log_callback())
+        log_to_callback(format<FormatterType::NONE>(args...));
 }
 
 }
@@ -740,16 +757,6 @@ void print(const Args & ... args) {
 #include <misc/utilsexception.h>
 
 namespace cmn {
-
-namespace PrefixLiterals {
-    enum Prefix {
-        WARNING,
-        ERROR_PREFIX,
-        EXCEPT
-    };
-
-    extern const std::array<const char*, 3> names;
-};
 
 template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor_t color, typename... Args>
 struct FormatColoredPrefix {
@@ -767,6 +774,15 @@ struct FormatColoredPrefix {
           + format<formatter>(args...);
         
         log_to_terminal(str);
+
+#if COMMONS_FORMAT_LOG_TO_FILE
+        str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+        log_to_file(str);
+#endif
+        if (has_log_callback())
+            log_to_callback(format<FormatterType::NONE>(args...), prefix);
     }
 };
 

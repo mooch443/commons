@@ -1,0 +1,69 @@
+﻿{
+  "configurations": [
+    {
+      "name": "webassembly",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "linux_x64" ],
+      "buildRoot": "${projectDir}\\out\\build\\${name}",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v libpng_custom CustomOpenCV test_gui",
+      "ctestCommandArgs": "",
+      "intellisenseOptions": {
+        "additionalCompilerArgs": "-DCMN_USE_OPENGL2=false -DCOMMONS_HAS_OPENGL=false -DIMGUI_IMPL_OPENGL_LOADER_GLAD=true -IC:/Users/tristan/trex/Application/src/commons/out/build/webassembly/opencv_install/include/opencv4 -IC:/Users/tristan/trex/Application/src/commons -IC:/Users/tristan/trex/Application/src/commons/examples/../common -IC:/Users/tristan/trex/Application/src/commons/common/../flat_hash_map -IC:/Users/tristan/trex/Application/src/commons/common/../sparse-map/include -IC:/Users/tristan/trex/Application/src/commons/common/../robin-hood-hashing/src/include -IC:/Users/tristan/trex/Application/src/commons/cnpy -IC:/Users/tristan/trex/Application/src/commons/cnpy/extern/libzippp -isystem C:/Users/tristan/trex/Application/src/commons/imgui -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/zlib/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/libzip/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/libpng/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/opencv_install/include -fexceptions -O3  -O3 -DNDEBUG -std=c++2a -fbracket-depth=400 -std=c++20 -Winvalid-pch -Xclang -include-pch -Xclang C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/examples/CMakeFiles/test_gui.dir/cmake_pch.hxx.pch -Xclang"
+      },
+      "environments": [
+        { "PATH": "C:\\Users\\tristan\\emsdk;C:\\Users\\tristan\\emsdk\\node\\14.18.2_64bit\\bin;C:\\Users\\tristan\\emsdk\\upstream\\emscripten;C:\\Users\\tristan\\anaconda3\\envs\\emscript;C:\\Users\\tristan\\anaconda3\\envs\\emscript\\Library\\mingw-w64\\bin;C:\\Users\\tristan\\anaconda3\\envs\\emscript\\Library\\usr\\bin;C:\\Users\\tristan\\anaconda3\\envs\\emscript\\Library\\bin;C:\\Users\\tristan\\anaconda3\\envs\\emscript\\Scripts;C:\\Users\\tristan\\anaconda3\\envs\\emscript\\bin;C:\\Users\\tristan\\anaconda3\\condabin;C:\\Windows\\system32;C:\\Windows;C:\\Windows\\System32\\Wbem;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Windows\\System32\\OpenSSH;C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common;C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR;C:\\Program Files (x86)\\IncrediBuild;C:\\Users\\tristan\\AppData\\Local\\Microsoft\\WindowsApps;" }
+      ],
+      "cmakeToolchain": "C:/Users/tristan/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "variables": [
+        {
+          "name": "COMMONS_BUILD_GLFW",
+          "value": "False",
+          "type": "BOOL"
+        },
+        {
+          "name": "COMMONS_NO_PYTHON",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "COMMONS_BUILD_ZIP",
+          "value": "False",
+          "type": "BOOL"
+        },
+        {
+          "name": "COMMONS_BUILD_PNG",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "COMMONS_BUILD_ZLIB",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "CMAKE_EXE_LINKER_FLAGS",
+          "value": "-s USE_GLFW=3",
+          "type": "STRING"
+        },
+        {
+          "name": "COMMONS_BUILD_OPENCV",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "COMMONS_FOR_JS",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "CMAKE_CROSSCOMPILING_EMULATOR",
+          "value": "C:/Users/tristan/emsdk/node/14.18.2_64bit/bin/node.exe;--experimental-wasm-threads",
+          "type": "STRING"
+        }
+      ]
+    }
+  ]
+}

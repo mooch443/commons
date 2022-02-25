@@ -105,7 +105,7 @@ constexpr void init_offset() {
 
 
 int main(int argc, char**argv) {
-    
+    gui::init_errorlog();
     
     try {
         throw SoftException("Soft exception ",argc);
@@ -214,6 +214,23 @@ int main(int argc, char**argv) {
     Timer timer;
     Timer action_timer;
     Vec2 last_mouse_pos;
+
+#if defined(__EMSCRIPTEN__)
+    //file::Path image_path("/photomode_21012022_190427.png");
+    file::Path image_path("./trex_screenshot_web.png");
+    print("loading ", image_path);
+#else
+    file::Path image_path("C:/Users/tristan/Pictures/Cyberpunk 2077/photomode_21012022_190427.png");
+#endif
+    auto data = image_path.retrieve_data();
+    if (data.empty())
+        throw U_EXCEPTION("Image is empty.");
+    auto mat = cv::imdecode(data, cv::ImreadModes::IMREAD_UNCHANGED);
+    resize_image(mat, 0.25);
+
+    ExternalImage image;
+    image.set_source(std::make_unique<Image>(mat));
+    image.set_scale(0.55);
     
     //! open window and start looping
     bool terminate = false;
@@ -241,6 +258,14 @@ int main(int argc, char**argv) {
             action_timer.reset();
         }
 
+        static double el = 0;
+        el += dt;
+
+        if (el >= 5) {
+            FormatWarning("A warning.");
+            el = 0;
+        }
+
         //! update positions based on the two gvars
         owl_update(owl_indexes);
 
@@ -252,9 +277,16 @@ int main(int argc, char**argv) {
         
         graph.text("BBC MicroOwl", Vec2(10, 10), White, Font(1));
         e.update([](Entangled &e) {
-            e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
+           // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });
         graph.wrap_object(e);
+
+        image.set_pos(last_mouse_pos);
+        graph.wrap_object(image);
+
+        auto scale = graph.scale().reciprocal();
+        auto dim = ptr->window_dimensions().mul(scale * gui::interface_scale());
+        graph.draw_log_messages();//Bounds(Vec2(0), dim));
         
         timer.reset();
         return !terminate;

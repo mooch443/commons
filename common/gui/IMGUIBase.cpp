@@ -160,8 +160,12 @@ class PolyCache : public CacheObject {
         static Size2 gpu_size_of(const ExternalImage* image) {
             if(!image || !image->source())
                 return Size2();
+#if defined(__EMSCRIPTEN__)
+            return image->source()->bounds().size();
+#else
             return Size2(next_pow2(sign_cast<uint64_t>(image->source()->bounds().width)),
                          next_pow2(sign_cast<uint64_t>(image->source()->bounds().height)));
+#endif
         }
         
         void update_with(const ExternalImage* image) {
@@ -463,31 +467,27 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
     auto& io = ImGui::GetIO();
 #if defined(__EMSCRIPTEN__)
-    dpi_scale = 1.0; // (emscripten_get_device_pixel_ratio());
-    //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
-   // io.FontGlobalScale = 1.f / dpi_scale;
+    dpi_scale = 1.0;
 #endif
-    //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
-    //print(io.DisplaySize.x, "x", io.DisplaySize.y);
     im_font_scale = max(1, dpi_scale) * 0.75f;
     base->_dpi_scale = dpi_scale;
 
-#if defined(__EMSCRIPTEN__)
-    base->_graph->set_scale(1.0 / dpi_scale);
-#else
     const float interface_scale = gui::interface_scale();
     base->_graph->set_scale(1.0 / interface_scale);
-#endif
     
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
-
-#if defined(__EMSCRIPTEN__)
-    //base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
-#endif
 
     print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
     {
+        base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
+
+        int ww, wh;
+        glfwGetWindowSize(window, &ww, &wh);
+        print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
+
+        //
+
         Event e(EventType::WINDOW_RESIZED);
         e.size.width = fw * dpi_scale;
         e.size.height = fh * dpi_scale;
@@ -496,6 +496,17 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     }
     
     base->_graph->set_dirty(NULL);
+
+#if WIN32
+    if (base->_last_dpi_scale != -1 && base->_last_dpi_scale != dpi_scale && dpi_scale > 0) {
+        auto p = base->_last_dpi_scale / dpi_scale;
+        base->_last_dpi_scale = dpi_scale;
+        glfwSetWindowSize(window, fw * p, fh * p);
+    }
+    else {
+        base->_last_dpi_scale = dpi_scale;
+    }
+#endif
 }
 
     ImU32 cvtClr(const gui::Color& clr) {

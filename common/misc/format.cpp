@@ -7,13 +7,35 @@ namespace cmn {
 extern IMPLEMENT(PrefixLiterals::names) = {
     "WARNING",
     "ERROR",
-    "EXCEPT"
+    "EXCEPT",
+    "INFO"
 };
+
+static std::atomic_bool runtime_is_quiet{ false };
+
+void set_runtime_quiet(bool quiet) {
+    runtime_is_quiet = quiet;
+}
+
+std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> log_callback_function;
 //extern IMPLEMENT(PrefixLiterals::EXCEPT);
 //extern IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
+void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> fn) {
+    log_callback_function = fn;
+    return (void*) & fn;
+}
+void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool force) {
+    if (!has_log_callback())
+        return;
+    log_callback_function(prefix, str, force);
+}
+void log_to_terminal(const std::string& str, bool force_display) {
+    if(!runtime_is_quiet || force_display)
+        printf("%s\n", str.c_str());
+}
 
-void log_to_terminal(const std::string& str) {
-    printf("%s\n", str.c_str());
+bool has_log_callback() {
+    return log_callback_function != nullptr;
 }
 
 void log_to_file(const std::string& str) {
