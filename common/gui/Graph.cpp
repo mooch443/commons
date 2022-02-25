@@ -566,7 +566,6 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         header.push_back(name);
     }
     
-    print("Generating table...");
     using namespace file;
     
     Table table(header);
@@ -574,7 +573,9 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
     table.reserve(sign_cast<size_t>(cmn::abs(rx.end - rx.start)));
     
     Row row;
+#ifndef NDEBUG
     int print_step = max(1, int((rx.end - rx.start) * 0.1));
+#endif
     for(float x=rx.start; x<=rx.end; x++) {
         row.clear();
         row.add(x);
