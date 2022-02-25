@@ -465,7 +465,7 @@ public:
                 }
 
             }
-            else if (s[i] == '"' || s[i] == '\'') {
+            else if (s[i] == '"' || s[i] == '\'' || s[i] == '`') {
                 if (!is_state(STRING)) {
                     str_char = s[i];
                     push_state(STRING);
@@ -586,8 +586,8 @@ public:
     static std::string parse_value(T value) {
         return console_color<FormatColor::BLACK, colors>("[")
             + parse_value(value.width)
-            + console_color<FormatColor::BLACK, colors>(","),
-            parse_value(value.height)
+            + console_color<FormatColor::BLACK, colors>(",")
+            + parse_value(value.height)
             + console_color<FormatColor::BLACK, colors>("]");
     }
 

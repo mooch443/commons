@@ -319,7 +319,7 @@ namespace sprite {
                 if(has(property)) {
                     std::string e = "Property already "+((const PropertyType&)property).toStr()+" already exists.";
                     FormatError(e.c_str());
-                    throw new PropertyException(e);
+                    throw PropertyException(e);
                 }
                 
                 property_ = new Property<T>(this, property.name(), property.value());
@@ -364,7 +364,7 @@ namespace sprite {
         
         std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +".";
         FormatError(e.c_str());
-        throw new PropertyException(e);
+        throw PropertyException(e);
     }
     
     template<typename T>
@@ -397,7 +397,7 @@ namespace sprite {
         
         std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +" .";
         FormatError(e.c_str());
-        throw new PropertyException(e);
+        throw PropertyException(e);
     }
     
     template<typename T>
@@ -416,7 +416,7 @@ namespace sprite {
             ss << "Reference to "+toStr()+" cannot be cast to type of ";
             ss << Meta::name<T>();
             FormatError(ss.str().c_str());
-            throw new PropertyException(ss.str());
+            throw PropertyException(ss.str());
         }
     }
 

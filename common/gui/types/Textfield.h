@@ -155,7 +155,7 @@ namespace gui {
         T get_value() const {
             try {
                 return Meta::fromStr<T>(_text);
-            } catch(std::logic_error) {}
+            } catch(const std::logic_error&) {}
             
             if(_text == "-")
                 return T(-0);
@@ -198,7 +198,7 @@ namespace gui {
                             return true; // flash limits error
                         }
                     }
-                    catch(std::logic_error e) { return false; }
+                    catch(const std::logic_error &e) { return false; }
                 }
                 
                 return true;
@@ -221,7 +221,7 @@ namespace gui {
         T get_value() const {
             try {
                 return Meta::fromStr<T>(_text);
-            } catch(std::logic_error) {}
+            } catch(const std::logic_error&) {}
             
             return T();
         }

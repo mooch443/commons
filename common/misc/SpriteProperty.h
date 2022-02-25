@@ -58,7 +58,7 @@ namespace cmn {
                 try {
                     _set_value_from_string(str);
                 } catch(const std::invalid_argument& e) {
-                    throw U_EXCEPTION("Cannot set %@ to '",this,"' ('",str,"')", e.what());
+                    throw U_EXCEPTION("Cannot set ", this," to (",str,"): ", std::string(e.what()));
                 }
             }
             
@@ -108,7 +108,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
                 
-                throw new PropertyException("Cannot cast " + toStr() + " to const reference type.");
+                throw PropertyException("Cannot cast " + toStr() + " to const reference type.");
             }
 
             template<typename T>
@@ -117,7 +117,7 @@ namespace cmn {
                 if (p.valid())
                     return p.value();
 
-                throw new PropertyException("Cannot cast " + toStr() + " to reference type.");
+                throw PropertyException("Cannot cast " + toStr() + " to reference type.");
             }
             
             virtual const std::string type_name() const {
@@ -126,8 +126,8 @@ namespace cmn {
             
             virtual std::string valueString() const {
                 if(!valid())
-                    throw new PropertyException("ValueString of invalid PropertyType.");
-                throw new PropertyException("Cannot use valueString of PropertyType directly.");
+                    throw PropertyException("ValueString of invalid PropertyType.");
+                throw PropertyException("Cannot use valueString of PropertyType directly.");
             }
             
             std::string toStr() const {
@@ -261,7 +261,7 @@ namespace cmn {
             if (_other)
                 *this = _other;
             else
-                throw new PropertyException("Cannot assign " + other.toStr() + " to " + this->toStr());
+                throw PropertyException("Cannot assign " + other.toStr() + " to " + this->toStr());
         }
         
         template<typename T>
@@ -272,7 +272,7 @@ namespace cmn {
                 *this = _other.value();
                 
             } else {
-                throw new PropertyException("Cannot assign "+other.toStr()+" to "+this->toStr());
+                throw PropertyException("Cannot assign "+other.toStr()+" to "+this->toStr());
             }
         }
     }

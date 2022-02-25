@@ -92,8 +92,7 @@ static void glfw_error_callback(int error, const char* description)
 
 namespace gui {
 
-
-
+#ifndef NDEBUG
 void checkGLError(cmn::source_location loc = cmn::source_location::current())
 {
     GLenum err;
@@ -108,6 +107,9 @@ void checkGLError(cmn::source_location loc = cmn::source_location::current())
         print(loc.file_name(), ":", loc.line(), " [GL]: ", err, ": '", (const char*)buffer, "'.");
     }
 }
+#else
+#define checkGLError()
+#endif
 
 GLImpl::GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn) : draw_function(draw), new_frame_fn(new_frame_fn)
 {
@@ -564,7 +566,7 @@ TexturePtr GLImpl::texture(const Image * ptr) {
 
     glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
 
-    print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
+    //print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
     glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLsizei)ptr->cols, (GLsizei)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
     glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
     

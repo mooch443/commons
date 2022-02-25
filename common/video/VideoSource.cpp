@@ -361,7 +361,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
         std::string base(file::Path(prefix).is_folder() ? "" : file::Path(prefix).filename());
-        print("Trying to find the last file (starting at ", seq_start,") pattern '", base.c_str(), "%", padding, "d", suffix.c_str(), ".", extension.c_str(), "'...");
+        print("Trying to find the last file (starting at ", seq_start,") pattern ", base+"%"+Meta::toStr(padding)+"d"+suffix+"."+extension, "...");
         
         _files_in_seq.reserve(10000);
         
@@ -449,7 +449,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
     }
     
-    print("Resolution of VideoSource '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"' is ", _size);
+    print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
     
     if(type() == File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();

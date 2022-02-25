@@ -145,7 +145,7 @@ namespace gui {
                     else prepend_comma = true;
                     _ss << object_str;
                 }
-            } catch(UtilsException& e) {
+            } catch(const UtilsException& e) {
                 print("Skipping object that generated an error.");
             }
         }

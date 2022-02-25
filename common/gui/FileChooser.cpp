@@ -9,7 +9,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
-    _graph(std::make_unique<DrawStructure>(1300, 820)),
+    _graph(std::make_unique<DrawStructure>(1300, 640)),
     _description(std::make_shared<Text>("Please choose a file in order to continue.", Vec2(10, 10), White, Font(0.75))),
     _columns(std::make_shared<HorizontalLayout>()),
     _overall(std::make_shared<VerticalLayout>()),
@@ -60,8 +60,8 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                 std::lock_guard guard(_graph->lock());
                 Size2 size(e.size.width, e.size.height);
                 
-                float min_height = 820;
-                auto scale = gui::interface_scale() / max(1, min_height / size.height);
+                float min_height = 640;
+                auto scale = gui::interface_scale() * 2 / max(1, min_height / size.height);
                 _graph->set_size(size);
                 _graph->set_scale(scale);
                 
@@ -107,7 +107,12 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _overall->set_policy(VerticalLayout::CENTER);
     //_overall->set_background(Transparent, Blue);
     
-    _list = std::make_shared<ScrollableList<FileItem>>(Bounds(0, 0, _graph->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0), _graph->height() - 70 - 10 - 70));
+    _list = std::make_shared<ScrollableList<FileItem>>(Bounds(
+        0,
+        0, 
+        _graph->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0), 
+        _graph->height() - 70 - 10 - 100 - 70));
+
     _list->set_stays_toggled(true);
     //if(_extra)
     //    _extra->set_background(Transparent, Green);
@@ -477,9 +482,10 @@ void FileChooser::update_size() {
     else
         _columns->set_children({_rows});
     
+    //_columns->set_background(Transparent, Purple);
     if(_current_tab.content) _current_tab.content->auto_size(Margin{0,0});
     
-    float left_column_height = _graph->height() / s - 50 - 10 - (_selected_text && !_selected_file.empty() ? _button->height() + 65 : 0) - (_tabs_bar ? _tabs_bar->height() + 10 : 0);
+    float left_column_height = _graph->height() / s - 50 - 10 - (_selected_text && !_selected_file.empty() ? _button->height() + 85 : 0) - (_tabs_bar ? _tabs_bar->height() + 10 : 0);
     _button->set_bounds(Bounds(_list->pos() + Vec2(0, left_column_height), Size2(100, 30)));
     
     float left_column_width = (_graph->width() / s - 20 - (_current_tab.content && _current_tab.content->width() > 20 && !_selected_file.empty() ? _current_tab.content->width() + 10 : 0) - 10);
