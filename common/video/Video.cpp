@@ -203,7 +203,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
 #endif
     
     if(read.channels() > 1) {
-        static const size_t color_channel = SETTING(color_channel).value<size_t>();
+        static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
         if(color_channel >= 3) {
             // turn into HUE
             if(read.channels() == 3) {

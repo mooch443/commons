@@ -72,16 +72,7 @@ void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask)
     
     gpuMat use;
     assert(display.channels() == 1);
-    /*if (display.channels() > 1) {
-        const uint64_t channel = SETTING(color_channel);
-        
-        std::vector<gpuMat> split;
-        cv::split(display, split);
-        use = split[channel];
-        
-    } else*/ use = display;
-    
-    //cv::Mat processed;
+    use = display;
     
     if (has_mask() && do_mask) {
         if(this->mask().rows == use.rows && this->mask().cols == use.cols) {
@@ -95,8 +86,6 @@ void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask)
     }
     
     timing.conclude_measure();
-    
-    //return processed;
 }
 
 void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::function<void(float)>&& callback) {
