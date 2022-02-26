@@ -401,7 +401,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("after_dilation", after_dilation);
     tf::imshow("after_threshold", after_threshold);*/
     
-    std::vector<cv::Mat> contours;
+    /*std::vector<cv::Mat> contours;
     
     cv::Mat normalized;
     //INPUT->convertTo(normalized, CV_8UC1);
@@ -464,7 +464,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         }
     }
     
-    tf::imshow("opt", opt);
+    tf::imshow("opt", opt);*/
     
     CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1))
 
