@@ -465,7 +465,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
-    auto& io = ImGui::GetIO();
+    //auto& io = ImGui::GetIO();
 #if defined(__EMSCRIPTEN__)
     dpi_scale = 1.0;
 #endif
@@ -477,16 +477,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
 
-    print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
+    //print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
     {
         base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
 
-        int ww, wh;
-        glfwGetWindowSize(window, &ww, &wh);
-        print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
-
-        //
+        //int ww, wh;
+        //glfwGetWindowSize(window, &ww, &wh);
+        //print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
 
         Event e(EventType::WINDOW_RESIZED);
         e.size.width = fw * dpi_scale;

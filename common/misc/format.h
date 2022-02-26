@@ -260,14 +260,26 @@ concept is_explicitly_convertible =
            std::is_constructible<U, T>::value
         && (!std::is_convertible<T, U>::value);
 
+template<typename T>
+concept _has_fmt_color = requires {
+    std::same_as<cmn::remove_cvref_t<decltype(T::color)>, cmn::FormatColor_t>;
+};
+
 template<FormatterType colors = FormatterType::UNIX>
 class ParseValue {
 private:
     ParseValue() = delete;
 
 public:
+    template<typename T>
+        requires _has_tostr_method<T> && _has_fmt_color<T>
+    static std::string parse_value(const T& value) {
+        return console_color<T::color, colors>(value.toStr());
+    }
+    
     template<typename T, typename K = std::remove_cvref_t<T>>
         requires _has_tostr_method<K>
+                && (!_has_fmt_color<T>)
                 && (!std::convertible_to<K, std::string>)
                 && (!is_explicitly_convertible<K, std::string>)
                 && (!_is_number<K>)
@@ -713,6 +725,34 @@ public:
         return str + console_color<FormatColor::LIGHT_BLUE, colors>(stream.str());
     }
 };
+
+namespace fmt {
+    template<cmn::FormatColor_t _color, typename T>
+    struct _clr {
+        static constexpr cmn::FormatColor_t color = _color;
+        using value_type = T;
+        
+        const T& obj;
+        _clr(const T& obj) : obj(obj) { }
+        
+        //operator const T&() const { return obj; }
+        std::string toStr() const {
+            if constexpr(std::convertible_to<T, std::string>) {
+                return (std::string)obj;
+            } else
+                return Meta::toStr(obj);
+        }
+    };
+
+    template<cmn::FormatColor_t _color, typename T>
+    auto clr(const T& obj) -> _clr<_color, T> { return { obj }; }
+
+    template<typename T> auto red(const T& obj) -> _clr<FormatColor::RED, T> { return { obj }; }
+    template<typename T> auto green(const T& obj) -> _clr<FormatColor::GREEN, T> { return { obj }; }
+    template<typename T> auto yellow(const T& obj) -> _clr<FormatColor::YELLOW, T> { return { obj }; }
+    template<typename T> auto cyan(const T& obj) -> _clr<FormatColor::CYAN, T> { return { obj }; }
+    template<typename T> auto black(const T& obj) -> _clr<FormatColor::BLACK, T> { return { obj }; }
+}
 
 template<FormatterType type, typename... Args>
 std::string format(const Args& ... args) {
