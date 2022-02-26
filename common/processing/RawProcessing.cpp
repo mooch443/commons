@@ -467,7 +467,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("opt", opt);*/
     
     CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1))
-
+    output.setTo(cv::Scalar(0));
     input.copyTo(output, *INPUT);
     //OUTPUT->copyTo(binary);
     
