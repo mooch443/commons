@@ -27,8 +27,9 @@ ENUM_CLASS(FormatColorNames,
     PINK, 
     YELLOW,
     WHITE, 
-    LIGHT_BLUE, 
-    LIGHT_CYAN, 
+    DARK_PINK,
+    LIGHT_CYAN,
+    LIGHT_GRAY,
     ORANGE,
     INVALID);
 
@@ -118,7 +119,7 @@ struct Formatter {
             case FormatColor::DARK_GREEN:   return "darkgreen";
             case FormatColor::PURPLE:       return "purple";
             case FormatColor::RED:          return "red";
-            case FormatColor::LIGHT_BLUE:   return "lightblue";
+            case FormatColor::DARK_PINK:    return "darkpink";
             case FormatColor::LIGHT_CYAN:   return "lightcyan";
             case FormatColor::ORANGE:       return "orange";
             default:
@@ -135,41 +136,47 @@ struct Formatter {
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
     static constexpr auto tag() noexcept {
+        enum Style {
+            none = 0, bold = 1, dark = 2, cursive = 3, underline = 4, blink = 5
+        };
+        
 #if !defined(__EMSCRIPTEN__)
         switch (value) {
-            case FormatColor::YELLOW: return COLOR<1, 33>;
-            case FormatColor::DARK_RED: return COLOR<2, 91>;
-            case FormatColor::GREEN: return COLOR<1, 32>;
+            case FormatColor::DARK_YELLOW: return COLOR<dark, 93>;
+            case FormatColor::YELLOW: return COLOR<none, 93>;
+            case FormatColor::DARK_RED: return COLOR<dark, 91>;
+            case FormatColor::GREEN: return COLOR<none, 92>;
         #if defined(__APPLE__)
-            case FormatColor::GRAY: return COLOR<1, 30>;
+            case FormatColor::GRAY: return COLOR<bold, 37>;
         #elif defined(WIN32)
-            case FormatColor::GRAY: return COLOR<1, 90>;
+            case FormatColor::GRAY: return COLOR<bold, 90>;
         #else
-            case FormatColor::GRAY: return COLOR<0, 37>;
+            case FormatColor::GRAY: return COLOR<none, 37>;
         #endif
-            case FormatColor::CYAN: return COLOR<1,36>;
-            case FormatColor::DARK_CYAN: return COLOR<0, 36>;
-            case FormatColor::PINK: return COLOR<0,35>;
-            case FormatColor::BLUE: return COLOR<1,34>;
+            case FormatColor::CYAN: return COLOR<none,96>;
+            case FormatColor::DARK_CYAN: return COLOR<none, 36>;
+            case FormatColor::PINK: return COLOR<none,95>;
+            case FormatColor::BLUE: return COLOR<bold,34>;
     #if defined(WIN32)
-            case FormatColor::BLACK: return COLOR<1, 37>;
-            case FormatColor::WHITE: return COLOR<0, 30>;
-            case FormatColor::DARK_GRAY: return COLOR<0, 37>;
+            case FormatColor::BLACK: return COLOR<bold, 37>;
+            case FormatColor::WHITE: return COLOR<none, 30>;
+            case FormatColor::DARK_GRAY: return COLOR<none, 37>;
     #else
-            case FormatColor::BLACK: return COLOR<0, 30>;
-            case FormatColor::WHITE: return COLOR<0, 37>;
-            case FormatColor::DARK_GRAY: return COLOR<0, 30>;
+            case FormatColor::BLACK: return COLOR<none, 0>;
+            case FormatColor::WHITE: return COLOR<bold, 0>;
+            case FormatColor::DARK_GRAY: return COLOR<none, 90>;
+            case FormatColor::LIGHT_GRAY: return COLOR<none, 97>;
     #endif
-            case FormatColor::DARK_GREEN: return COLOR<0, 32>;
+            case FormatColor::DARK_GREEN: return COLOR<dark, 32>;
     #if defined(WIN32)
-            case FormatColor::PURPLE: return COLOR<0, 95>;
+            case FormatColor::PURPLE: return COLOR<none, 95>;
     #else
-            case FormatColor::PURPLE: return COLOR<22, 35>;
+            case FormatColor::PURPLE: return COLOR<none, 94>;
     #endif
-            case FormatColor::RED: return COLOR<1, 31>;
-            case FormatColor::LIGHT_BLUE: return COLOR<0, 94>;
-            case FormatColor::LIGHT_CYAN: return COLOR<0, 30>;
-            case FormatColor::ORANGE: return COLOR<0, 33>;
+            case FormatColor::RED: return COLOR<none, 91>;
+            case FormatColor::DARK_PINK: return COLOR<bold, 35>;
+            case FormatColor::LIGHT_CYAN: return COLOR<none, 96>;
+            case FormatColor::ORANGE: return COLOR<cursive, 33>;
                 
             default:
                 return COLOR<0, 0>;
@@ -269,8 +276,24 @@ template<FormatterType colors = FormatterType::UNIX>
 class ParseValue {
 private:
     ParseValue() = delete;
-
+    
 public:
+    inline static constexpr auto bracket_color = FormatColor::GRAY;
+    inline static constexpr auto number_color = FormatColor::GREEN;
+    inline static constexpr auto string_color = FormatColor::RED;
+    inline static constexpr auto keyword_color = FormatColor::PINK;
+    inline static constexpr auto comment_color = FormatColor::GREEN;
+    inline static constexpr auto function_color = FormatColor::YELLOW;
+    inline static constexpr auto class_color = FormatColor::CYAN;
+    
+    /*inline static constexpr auto bracket_color = FormatColor::GRAY;
+    inline static constexpr auto number_color = FormatColor::CYAN;
+    inline static constexpr auto string_color = FormatColor::RED;
+    inline static constexpr auto keyword_color = FormatColor::DARK_CYAN;
+    inline static constexpr auto comment_color = FormatColor::DARK_CYAN;
+    inline static constexpr auto function_color = FormatColor::GREEN;
+    inline static constexpr auto class_color = FormatColor::YELLOW;*/
+    
     template<typename T>
         requires _has_tostr_method<T> && _has_fmt_color<T>
     static std::string parse_value(const T& value) {
@@ -297,7 +320,7 @@ public:
                 && (!std::same_as<K, std::string>)
                 && (!_is_dumb_pointer<T>)
     static std::string parse_value(const T& value) {
-        return console_color<FormatColor::RED, colors>(Meta::toStr(value));
+        return console_color<string_color, colors>(Meta::toStr(value));
     }
 
     static std::string pretty_text(const std::string& s) {
@@ -323,9 +346,9 @@ public:
         auto is_keyword = [](std::string word) {
             word = utils::trim(utils::lowercase(word));
             static const std::vector<std::string> keywords{
-                "string", "pv",
-                "path",
-                "array", "map", "set", "pair",
+                //"string", "pv",
+                //"path",
+                //"array", "map", "set", "pair",
                 "int", "float", "double", "bool", "byte", "char", "unsigned", "int64_t", "uint64_t", "int32_t", "uint32_t", "int16_t", "uint16_t", "int8_t", "uint8_t", "uint",
                 "true", "false",
                 "if", "def"
@@ -342,11 +365,11 @@ public:
                 switch (s) {
                 case MULTI_COMMENT:
                     //printf("MULTI COMMENT %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::DARK_GREEN, colors>(tmp);
+                    ss << console_color<comment_color, colors>(tmp);
                     break;
                 case COMMENT:
                     //printf("COMMENT %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::GREEN, colors>(tmp);
+                    ss << console_color<comment_color, colors>(tmp);
                     break;
                 case ESCAPED_CHAR:
                     //printf("ESCAPED %s\n", tmp.c_str());
@@ -354,18 +377,18 @@ public:
                     break;
                 case STRING:
                     //printf("STRING %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::RED, colors>(tmp);
+                    ss << console_color<string_color, colors>(tmp);
                     break;
                 case NUMBER:
                     //printf("NUMBER %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::GREEN, colors>(tmp);
+                    ss << console_color<number_color, colors>(tmp);
                     break;
                 case TAG_WHITESPACE:
-                    ss << console_color<FormatColor::LIGHT_CYAN, colors>(tmp);
+                    ss << console_color<FormatColor::LIGHT_GRAY, colors>(tmp);
                     break;
                 case CLASS:
                     //printf("CLASS %s\n", tmp.c_str());
-                    ss << console_color<FormatColor::CYAN, colors>(tmp);
+                    ss << console_color<class_color, colors>(tmp);
                     break;
                 case NAMESPACE:
                     ss << console_color<FormatColor::DARK_CYAN, colors>(tmp);
@@ -373,21 +396,21 @@ public:
                 case FUNCTION:
                     //printf("FUNCTION: %s\n", tmp.c_str());
                     if (!is_keyword(tmp))
-                        ss << console_color<FormatColor::YELLOW, colors>(tmp);
+                        ss << console_color<function_color, colors>(tmp);
                     else
-                        ss << console_color<FormatColor::PURPLE, colors>(tmp);
+                        ss << console_color<keyword_color, colors>(tmp);
                     break;
                 case TAG:
                     //printf("TAG %s\n", tmp.c_str());
                     if (!is_keyword(tmp))
                         ss << console_color<FormatColor::CYAN, colors>(tmp);
                     else
-                        ss << console_color<FormatColor::PURPLE, colors>(tmp);
+                        ss << console_color<keyword_color, colors>(tmp);
                     break;
                 case WHITESPACE: {
                     if (tmp == "::") {
                         //printf("TAG:: %s\n", tmp.c_str());
-                        ss << console_color<FormatColor::DARK_GRAY, colors>(tmp);
+                        ss << console_color<FormatColor::LIGHT_GRAY, colors>(tmp);
                     }
                     else {
                         //printf("WHITESPACE: %s\n", tmp.c_str());
@@ -398,7 +421,7 @@ public:
 
                 default:
                     if (is_keyword(tmp)) {
-                        ss << console_color<FormatColor::PURPLE, colors>(tmp);
+                        ss << console_color<keyword_color, colors>(tmp);
                         //printf("word: %s\n", tmp.c_str());
                     }
                     else if (s == TAG) {
@@ -571,36 +594,36 @@ public:
         requires _is_smart_pointer<K>
     static std::string parse_value(const T& s) {
         return "ptr<"+ console_color<FormatColor::CYAN, colors>( Meta::name<typename K::element_type>() ) + ">"
-        + (s ? parse_value(*s) : console_color<FormatColor::PURPLE, colors>("null"));
+        + (s ? parse_value(*s) : console_color<keyword_color, colors>("null"));
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires (!std::same_as<bool, K>)
             && _is_number<K>
     static std::string parse_value(T && value) {
-        return console_color<FormatColor::GREEN, colors>(Meta::toStr(value));
+        return console_color<number_color, colors>(Meta::toStr(value));
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::same_as<bool, K>
     static std::string parse_value(T value) {
-        return console_color<FormatColor::PURPLE, colors>(Meta::toStr(value));
+        return console_color<keyword_color, colors>(Meta::toStr(value));
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::is_enum<K>::value
     static std::string parse_value(T value) {
-        return console_color<FormatColor::GREEN, colors>(Meta::toStr<int>((int)value));
+        return console_color<number_color, colors>(Meta::toStr<int>((int)value));
     }
     
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_instantiation<cv::Size_, T>::value
     static std::string parse_value(T value) {
-        return console_color<FormatColor::BLACK, colors>("[")
+        return console_color<bracket_color, colors>("[")
             + parse_value(value.width)
-            + console_color<FormatColor::BLACK, colors>(",")
+            + console_color<bracket_color, colors>(",")
             + parse_value(value.height)
-            + console_color<FormatColor::BLACK, colors>("]");
+            + console_color<bracket_color, colors>("]");
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
@@ -615,9 +638,9 @@ public:
     {
                 
         std::stringstream str;
-        str << console_color<FormatColor::BLACK, colors>("[");
+        str << console_color<bracket_color, colors>("[");
         (..., (str << (I == 0? "" : console_color<FormatColor::BLACK, colors>(",")) << parse_value(std::get<I>(_tup))));
-        str << console_color<FormatColor::BLACK, colors>("]");
+        str << console_color<bracket_color, colors>("]");
         return str.str();
     }
             
@@ -647,11 +670,11 @@ public:
     template<template <typename, typename> class T, typename A, typename B>
         requires is_pair<T<A, B>>::value
     static std::string parse_value(const T<A, B>& m) {
-        return console_color<FormatColor::DARK_GRAY, colors>("[")
+        return console_color<bracket_color, colors>("[")
             + parse_value(m.first)
-            + console_color<FormatColor::GRAY, colors>(",")
+            + console_color<bracket_color, colors>(",")
             + parse_value(m.second)
-            + console_color<FormatColor::DARK_GRAY, colors>("]");
+            + console_color<bracket_color, colors>("]");
     }
 
 #ifdef __llvm__
@@ -665,46 +688,46 @@ public:
     template<template <typename...> class T, typename... Args, typename K = cmn::remove_cvref_t<T<Args...>>>
         requires is_set<K>::value || is_container<K>::value
     static std::string parse_value(const T<Args...>&m) {
-        std::string str = console_color<FormatColor::BLACK, colors>("[");
+        std::string str = console_color<bracket_color, colors>("[");
         auto it = m.begin(), end = m.end();
         if (it != end) {
             for (;;) {
                 str += parse_value(*it);
 
                 if (++it != end)
-                    str += console_color<FormatColor::BLACK, colors>(",");
+                    str += console_color<bracket_color, colors>(",");
                 else
                     break;
             }
         }
-        return str + console_color<FormatColor::BLACK, colors>("]");
+        return str + console_color<bracket_color, colors>("]");
     }
 
     template<bool A, size_t S, typename... Args>
     static std::string parse_value(const robin_hood::detail::Table<A, S, Args...>& m) {
-        std::string str = console_color<FormatColor::BLACK, colors>("{");
+        std::string str = console_color<bracket_color, colors>("{");
         for (auto& [k, v] : m) {
-            str += console_color<FormatColor::DARK_GRAY, colors>("[")
+            str += console_color<bracket_color, colors>("[")
                 + parse_value(k)
-                + console_color<FormatColor::GRAY, colors>(":")
+                + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<FormatColor::DARK_GRAY, colors>("]");
+                + console_color<bracket_color, colors>("]");
         }
-        return str + console_color<FormatColor::BLACK, colors>("}");
+        return str + console_color<bracket_color, colors>("}");
     }
     
     template<template <typename...> class T, typename... Args, typename K = std::remove_cvref_t<T<Args...>>>
         requires is_map<K>::value
     static std::string parse_value(const T<Args...>& m) {
-        std::string str = console_color<FormatColor::BLACK, colors>("{");
+        std::string str = console_color<bracket_color, colors>("{");
         for (auto& [k, v] : m) {
-            str += console_color<FormatColor::DARK_GRAY, colors>("[")
+            str += console_color<bracket_color, colors>("[")
                 + parse_value(k)
-                + console_color<FormatColor::GRAY, colors>(":")
+                + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<FormatColor::DARK_GRAY, colors>("]");
+                + console_color<bracket_color, colors>("]");
         }
-        return str + console_color<FormatColor::BLACK, colors>("}");
+        return str + console_color<bracket_color, colors>("}");
     }
 
     template<typename T>
@@ -716,13 +739,13 @@ public:
             + console_color<FormatColor::CYAN, colors>((std::remove_pointer_t<T>::class_name()))
             + console_color<FormatColor::BLACK, colors>("*)");
         if (!ptr)
-            return str + console_color<FormatColor::PURPLE, colors>("null");
+            return str + console_color<keyword_color, colors>("null");
         //if constexpr (_has_tostr_method<std::remove_pointer_t<T>>)
         //    return str + parse_value(*ptr);
 
         std::stringstream stream;
         stream << "0x" << std::hex << (uint64_t)ptr;
-        return str + console_color<FormatColor::LIGHT_BLUE, colors>(stream.str());
+        return str + console_color<FormatColor::PURPLE, colors>(stream.str());
     }
 };
 
@@ -778,19 +801,21 @@ inline std::string current_time_string() {
 
 template<typename... Args>
 void print(const Args & ... args) {
+    auto &bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+    
     auto str =
-        console_color<FormatColor::BLACK, FormatterType::UNIX>( "[" )
+        console_color<bracket_color, FormatterType::UNIX>( "[" )
         + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
-        + console_color<FormatColor::BLACK, FormatterType::UNIX>( "]" ) + " "
+        + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
         + format<FormatterType::UNIX>(args...);
     
     log_to_terminal(str);
 
 #if COMMONS_FORMAT_LOG_TO_FILE
     if (has_log_file()) {
-        str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+        str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
             + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
-            + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
         write_log_message(str);
     }
 #endif
@@ -807,25 +832,27 @@ namespace cmn {
 template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor_t color, typename... Args>
 struct FormatColoredPrefix {
     FormatColoredPrefix(const Args& ...args, cmn::source_location info = cmn::source_location::current()) {
+        auto &bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+        
         auto universal = utils::find_replace(info.file_name(), "\\", "/");
         auto split = utils::split(universal, '/');
         auto &file = split.empty() ? universal : split.back();
         
         std::string str =
-          console_color<FormatColor::BLACK, formatter>("[")
+          console_color<bracket_color, formatter>("[")
           + cmn::console_color<color, formatter>(
                 std::string(PrefixLiterals::names[(size_t)prefix]) + " " + cmn::current_time_string()
                 + " " + file + ":" + std::to_string(info.line()))
-          + console_color<FormatColor::BLACK, formatter>("]") + " "
+          + console_color<bracket_color, formatter>("]") + " "
           + format<formatter>(args...);
         
         log_to_terminal(str);
 
 #if COMMONS_FORMAT_LOG_TO_FILE
         if (has_log_file()) {
-            str = "<row>" + console_color<FormatColor::BLACK, FormatterType::HTML>("[")
+            str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
                 + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
-                + console_color<FormatColor::BLACK, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+                + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
             write_log_message(str);
         }
 #endif

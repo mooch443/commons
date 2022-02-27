@@ -103,6 +103,15 @@ constexpr void init_offset() {
     };
 }
 
+template<typename T, T... ints>
+void print_sequence(std::integer_sequence<T, ints...> int_seq)
+{
+    std::cout << "The sequence of size " << int_seq.size() << ": ";
+    ((std::cout << ints << ' '),...);
+    ((printf("%s: %stext%s\n", FormatColor::names[ints], Formatter<FormatterType::UNIX, FormatColor::Class((FormatColor::data::values)ints)>::tag(), Formatter<FormatterType::UNIX, FormatColor::BLACK>::tag())), ...);
+    
+    std::cout << '\n';
+}
 
 int main(int argc, char**argv) {
     gui::init_errorlog();
@@ -118,6 +127,12 @@ int main(int argc, char**argv) {
         print("Got: ",e);
     }
     
+    print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
+    /*for (int j=0; j<11; ++j) {
+        for(int k=0; k<11; ++k)
+            for(int i=0; i<8; ++i)
+                printf("[%d;%dm \033[%d;%dmtext\033[0;0m\n", j, j + k * 10 + i, j, j + k * 10 + i);
+    }*/
     
     print("OpenGL1.32");
     print("str.c_str()");

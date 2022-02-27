@@ -30,12 +30,15 @@
 #define MAP20(m, x, ...) m(x) IDENTITY(MAP19(m, __VA_ARGS__))
 #define MAP21(m, x, ...) m(x) IDENTITY(MAP20(m, __VA_ARGS__))
 #define MAP22(m, x, ...) m(x) IDENTITY(MAP21(m, __VA_ARGS__))
+#define MAP23(m, x, ...) m(x) IDENTITY(MAP21(m, __VA_ARGS__))
+#define MAP24(m, x, ...) m(x) IDENTITY(MAP21(m, __VA_ARGS__))
+#define MAP25(m, x, ...) m(x) IDENTITY(MAP21(m, __VA_ARGS__))
 
-#define EVALUATE_COUNT(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, count, ...) \
+#define EVALUATE_COUNT(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20, _21, _22, _23, _24, _25, count, ...) \
 count
 
 #define COUNT(...) \
-IDENTITY(EVALUATE_COUNT(__VA_ARGS__, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
+IDENTITY(EVALUATE_COUNT(__VA_ARGS__, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1))
 
 #define MAP(macro, ...) \
 IDENTITY( \
@@ -100,6 +103,7 @@ _61,_62,_63,_64,_65,N,...) N
 #define _APPLYX19(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s)
 #define _APPLYX20(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s) XSEP X_PASTE_FUNC_(a, t)
 #define _APPLYX21(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s) XSEP X_PASTE_FUNC_(a, t) XSEP X_PASTE_FUNC_(a, u)
+#define _APPLYX22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)       X_PASTE_FUNC_(a, b) XSEP X_PASTE_FUNC_(a, c) XSEP X_PASTE_FUNC_(a, d) XSEP X_PASTE_FUNC_(a, e) XSEP X_PASTE_FUNC_(a, f) XSEP X_PASTE_FUNC_(a, g) XSEP X_PASTE_FUNC_(a, h) XSEP X_PASTE_FUNC_(a, i) XSEP X_PASTE_FUNC_(a, j) XSEP X_PASTE_FUNC_(a, k) XSEP X_PASTE_FUNC_(a, l) XSEP X_PASTE_FUNC_(a, m) XSEP X_PASTE_FUNC_(a, n) XSEP X_PASTE_FUNC_(a, o) XSEP X_PASTE_FUNC_(a, p) XSEP X_PASTE_FUNC_(a, q) XSEP X_PASTE_FUNC_(a, r) XSEP X_PASTE_FUNC_(a, s) XSEP X_PASTE_FUNC_(a, t) XSEP X_PASTE_FUNC_(a, u) XSEP X_PASTE_FUNC_(a, v)
 
 #define APPLYX_(M, ...) IDENTITY( M(__VA_ARGS__) )
 #define _APPLYXn(...) APPLYX_(XPASTE(_APPLYX, PP_NARG(__VA_ARGS__)), __VA_ARGS__)
