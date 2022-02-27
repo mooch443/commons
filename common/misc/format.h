@@ -113,9 +113,10 @@ struct Formatter {
             case FormatColor::DARK_CYAN:    return "darkcyan";
             case FormatColor::PINK:         return "pink";
             case FormatColor::BLUE:         return "blue";
-            case FormatColor::BLACK:        return "black";
+            case FormatColor::BLACK:        return "\0";
             case FormatColor::WHITE:        return "white";
             case FormatColor::DARK_GRAY:    return "darkgray";
+            case FormatColor::LIGHT_GRAY:   return "lightgray";
             case FormatColor::DARK_GREEN:   return "darkgreen";
             case FormatColor::PURPLE:       return "purple";
             case FormatColor::RED:          return "red";
@@ -193,7 +194,9 @@ struct Formatter {
             return std::string();
         if(utils::trim(s).empty())
             return s;
-        return std::string("<") + tag() + ">" + (utils::find_replace(s, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} })) + "</" + tag() + ">";
+        if constexpr(*tag() == 0)
+            return s;
+        return std::string("<") + tag() + ">" + s + "</" + tag() + ">";
     }
 
     template<char value>
@@ -278,7 +281,7 @@ private:
     ParseValue() = delete;
     
 public:
-    inline static constexpr auto bracket_color = FormatColor::GRAY;
+    inline static constexpr auto bracket_color = FormatColor::LIGHT_GRAY;
     inline static constexpr auto number_color = FormatColor::GREEN;
     inline static constexpr auto string_color = FormatColor::RED;
     inline static constexpr auto keyword_color = FormatColor::PINK;
@@ -593,7 +596,7 @@ public:
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires _is_smart_pointer<K>
     static std::string parse_value(const T& s) {
-        return "ptr<"+ console_color<FormatColor::CYAN, colors>( Meta::name<typename K::element_type>() ) + ">"
+        return "ptr<"+ console_color<class_color, colors>( Meta::name<typename K::element_type>() ) + ">"
         + (s ? parse_value(*s) : console_color<keyword_color, colors>("null"));
     }
 
@@ -629,7 +632,7 @@ public:
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::same_as<K, std::string>
     static std::string parse_value(const T& value) {
-        return console_color<FormatColor::RED, colors>(Meta::toStr(value));
+        return console_color<string_color, colors>(Meta::toStr(value));
     }
     
             
@@ -659,10 +662,10 @@ public:
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires std::is_base_of<std::exception, K>::value
     static std::string parse_value(const T& value) {
-        return console_color<FormatColor::CYAN, colors>(Meta::name<K>())
+        return console_color<class_color, colors>(Meta::name<K>())
             + console_color<FormatColor::BLACK, colors>("<")
             + (value.what()
-               ? console_color<FormatColor::RED, colors>("\""+std::string(value.what())+"\"")
+               ? console_color<string_color, colors>("\""+std::string(value.what())+"\"")
                : console_color<FormatColor::DARK_GRAY, colors>("unknown"))
             + console_color<FormatColor::BLACK, colors>(">") ;
     }
@@ -815,7 +818,7 @@ void print(const Args & ... args) {
     if (has_log_file()) {
         str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
             + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
-            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>\n";
+            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>";
         write_log_message(str);
     }
 #endif

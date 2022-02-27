@@ -114,6 +114,8 @@ void print_sequence(std::integer_sequence<T, ints...> int_seq)
 }
 
 int main(int argc, char**argv) {
+    set_log_file("site.html");
+    print("int main() {\n\tprintf();\n}\n");
     gui::init_errorlog();
     
     try {

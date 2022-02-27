@@ -72,7 +72,8 @@ void write_log_message(const std::string& str) {
                 "    }\n"
                 "    row { display: block; color:white; }\n"
                 "    black { color: white; }\n"
-                "    purple, pink { color: magenta; }\n"
+                "    purple { color: rgb(255, 125, 255); }\n"
+                "    pink { color: rgb(255, 107, 255); }\n"
                 "    yellow { color: yellow; }\n"
                 "    green { color:  lightgreen; }\n"
                 "    red { color: red; }\n"
@@ -81,8 +82,9 @@ void write_log_message(const std::string& str) {
                 "    lightcyan { color: lightcyan; }\n"
                 "    cyan { color: cyan; }\n"
                 "    darkred { color: darkred; }\n"
-                "    darkcyan { color: darkcyan; }\n"
+                "    darkcyan { color: rgb(0, 176, 176); }\n"
                 "    gray {color: gray;}\n"
+                "    lightgray {color: lightgray;}\n"
                 "    darkgray {color:  darkgray;}\n"
                 "</style>\n";
 
@@ -92,7 +94,8 @@ void write_log_message(const std::string& str) {
 
     std::lock_guard guard(log_file_mutex);
     if (f) {
-        fwrite((void*)str.c_str(), sizeof(char), str.length()-1, f);
+        auto r = utils::find_replace(str, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }) + "\n";
+        fwrite((void*)r.c_str(), sizeof(char), r.length(), f);
         fflush(f);
     }
 #endif
