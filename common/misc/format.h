@@ -147,21 +147,16 @@ struct Formatter {
             case FormatColor::YELLOW: return COLOR<none, 93>;
             case FormatColor::DARK_RED: return COLOR<dark, 91>;
             case FormatColor::GREEN: return COLOR<none, 92>;
-        #if defined(__APPLE__)
             case FormatColor::GRAY: return COLOR<bold, 37>;
-        #elif defined(WIN32)
-            case FormatColor::GRAY: return COLOR<bold, 90>;
-        #else
-            case FormatColor::GRAY: return COLOR<none, 37>;
-        #endif
             case FormatColor::CYAN: return COLOR<none,96>;
             case FormatColor::DARK_CYAN: return COLOR<none, 36>;
             case FormatColor::PINK: return COLOR<none,95>;
             case FormatColor::BLUE: return COLOR<bold,34>;
     #if defined(WIN32)
-            case FormatColor::BLACK: return COLOR<bold, 37>;
-            case FormatColor::WHITE: return COLOR<none, 30>;
-            case FormatColor::DARK_GRAY: return COLOR<none, 37>;
+            case FormatColor::BLACK: return COLOR<none, 97>;
+            case FormatColor::WHITE: return COLOR<bold, 97>;
+            case FormatColor::DARK_GRAY: return COLOR<none, 0>;
+            case FormatColor::LIGHT_GRAY: return COLOR<none, 37>;
     #else
             case FormatColor::BLACK: return COLOR<none, 0>;
             case FormatColor::WHITE: return COLOR<bold, 0>;
@@ -169,18 +164,18 @@ struct Formatter {
             case FormatColor::LIGHT_GRAY: return COLOR<none, 97>;
     #endif
             case FormatColor::DARK_GREEN: return COLOR<dark, 32>;
-    #if defined(WIN32)
-            case FormatColor::PURPLE: return COLOR<none, 95>;
-    #else
             case FormatColor::PURPLE: return COLOR<none, 94>;
-    #endif
             case FormatColor::RED: return COLOR<none, 91>;
             case FormatColor::DARK_PINK: return COLOR<bold, 35>;
             case FormatColor::LIGHT_CYAN: return COLOR<none, 96>;
             case FormatColor::ORANGE: return COLOR<cursive, 33>;
                 
             default:
-                return COLOR<0, 0>;
+#ifdef WIN32
+                return COLOR<none, 97>;
+#else
+                return COLOR<none, 0>;
+#endif
         }
 #else
         return std::string("");
@@ -804,7 +799,7 @@ inline std::string current_time_string() {
 
 template<typename... Args>
 void print(const Args & ... args) {
-    auto &bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+    static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
     
     auto str =
         console_color<bracket_color, FormatterType::UNIX>( "[" )
@@ -835,7 +830,7 @@ namespace cmn {
 template<FormatterType formatter, PrefixLiterals::Prefix prefix, FormatColor_t color, typename... Args>
 struct FormatColoredPrefix {
     FormatColoredPrefix(const Args& ...args, cmn::source_location info = cmn::source_location::current()) {
-        auto &bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+        static constexpr auto bracket_color = ParseValue<formatter>::bracket_color;
         
         auto universal = utils::find_replace(info.file_name(), "\\", "/");
         auto split = utils::split(universal, '/');

@@ -117,6 +117,8 @@ int main(int argc, char**argv) {
     set_log_file("site.html");
     print("int main() {\n\tprintf();\n}\n");
     gui::init_errorlog();
+
+    print(fmt::red("Hi in red."));
     
     try {
         throw SoftException("Soft exception ",argc);
