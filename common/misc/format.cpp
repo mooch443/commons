@@ -67,8 +67,9 @@ void write_log_message(const std::string& str) {
             static const char head[] =
                 "<style>\n"
                 "    body {\n"
-                "        background:  black;\n"
+                "        background: rgb(19, 19, 19);\n"
                 "        font-family: Cascadia Mono,Source Code Pro,monospace;\n"
+                "        font-size: 13px;\n"
                 "    }\n"
                 "    row { display: block; color:white; }\n"
                 "    black { color: white; }\n"
