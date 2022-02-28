@@ -316,15 +316,16 @@ namespace gui {
         set_bounds_changed();
     }
     
-    CacheObject::Ptr Drawable::cached(const Base* base) const {
+    CacheObject* Drawable::cached(const Base* base) const {
         auto it = _cache.find(base);
         if(it != _cache.end())
-            return it->second;
+            return it->second.get();
         return nullptr;
     }
     
-    void Drawable::insert_cache(const Base* base, CacheObject::Ptr o) {
-        _cache[base] = o;
+    const CacheObject::Ptr& Drawable::insert_cache(const Base* base, CacheObject::Ptr&& o) {
+        _cache[base] = std::move(o);
+        return _cache.at(base);
     }
     
     void Drawable::remove_cache(const Base* base) {
@@ -344,7 +345,7 @@ namespace gui {
         if(_bounds_changed)
             return true;
         
-        for(auto p : _cache) {
+        for(auto &p : _cache) {
             if(!base || p.first == base) {
                 if(p.second->changed())
                     return true;

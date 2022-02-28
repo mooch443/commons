@@ -880,7 +880,7 @@ T* DrawStructure::create(Args... args) {
         if(cache)
             cache->set_changed(true);
         else
-            _root.insert_cache(base, std::make_shared<CacheObject>());
+            _root.insert_cache(base, std::make_unique<CacheObject>());
     }
 
     void DrawStructure::set_size(const Size2& size) {

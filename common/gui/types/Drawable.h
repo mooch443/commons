@@ -16,7 +16,7 @@ namespace gui {
         GETTER(std::atomic_bool, changed)
         
     public:
-        typedef std::shared_ptr<CacheObject> Ptr;
+        typedef std::unique_ptr<CacheObject> Ptr;
         CacheObject();
         virtual ~CacheObject();
         static size_t memory();
@@ -240,8 +240,8 @@ namespace gui {
         virtual void set_z_index(int index);
         
         //! Accessed by DrawBases to save their own object states (and reuse them).
-        CacheObject::Ptr cached(const Base* base) const;
-        void insert_cache(const Base* base, CacheObject::Ptr o);
+        CacheObject* cached(const Base* base) const;
+        const CacheObject::Ptr& insert_cache(const Base* base, CacheObject::Ptr&& o);
         void remove_cache(const Base* base);
         void clear_cache();
         

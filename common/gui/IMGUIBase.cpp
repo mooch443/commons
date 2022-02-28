@@ -72,29 +72,29 @@ class PolyCache : public CacheObject {
         GETTER_PTR(Drawable*, object)
         GETTER_SETTER(uint32_t, channels)
         
-        static std::unordered_map<const IMGUIBase*, std::set<std::shared_ptr<TextureCache>>> _all_textures;
-        static std::mutex _texture_mutex;
+        //static std::unordered_map<const IMGUIBase*, std::set<const TextureCache*>> _all_textures;
+        //static std::mutex _texture_mutex;
         
     public:
-        static std::shared_ptr<TextureCache> get(IMGUIBase* base) {
-            auto ptr = std::make_shared<TextureCache>();
+        static std::unique_ptr<TextureCache> get(IMGUIBase* base) {
+            auto ptr = std::make_unique<TextureCache>();
             ptr->set_base(base);
             ptr->platform() = base->platform().get();
             
-            std::lock_guard<std::mutex> guard(_texture_mutex);
-            _all_textures[base].insert(ptr);
+            //std::lock_guard<std::mutex> guard(_texture_mutex);
+            //_all_textures[base].insert(ptr.get());
             
             return ptr;
         }
         
         static void remove_base(IMGUIBase* base) {
-            std::unique_lock<std::mutex> guard(_texture_mutex);
+            /*std::unique_lock<std::mutex> guard(_texture_mutex);
             for(auto & tex : _all_textures[base]) {
                 tex->set_ptr(nullptr);
                 tex->set_base(nullptr);
                 tex->platform() = nullptr;
             }
-            _all_textures.erase(base);
+            _all_textures.erase(base);*/
         }
         
     public:
@@ -214,7 +214,7 @@ class PolyCache : public CacheObject {
         ~TextureCache() {
             set_ptr(nullptr);
             
-            if(_base ) {
+            /*if(_base ) {
                 std::lock_guard<std::mutex> guard(_texture_mutex);
                 auto &tex = _all_textures[_base];
                 for(auto it=tex.begin(); it != tex.end(); ++it) {
@@ -223,12 +223,12 @@ class PolyCache : public CacheObject {
                         break;
                     }
                 }
-            }
+            }*/
         }
     };
 
-    std::unordered_map<const IMGUIBase*, std::set<std::shared_ptr<TextureCache>>> TextureCache::_all_textures;
-    std::mutex TextureCache::_texture_mutex;
+    //std::unordered_map<const IMGUIBase*, std::set<std::shared_ptr<TextureCache>>> TextureCache::_all_textures;
+    //std::mutex TextureCache::_texture_mutex;
 
     constexpr Codes glfw_key_map[GLFW_KEY_LAST + 1] {
         Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
@@ -1322,16 +1322,15 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     output.clear();
                     
                     if(!cache) {
-                        cache = std::make_shared<PolyCache>();
-                        o->insert_cache(this, cache);
+                        cache = o->insert_cache(this, std::make_unique<PolyCache>()).get();
                     }
                     
                     if(cache->changed()) {
                         PolyFillScanFlood(list, &points, output, ptr->fill_clr());
-                        ((PolyCache*)cache.get())->points() = output;
+                        ((PolyCache*)cache)->points() = output;
                         cache->set_changed(false);
                     } else {
-                        auto& output = ((PolyCache*)cache.get())->points();
+                        auto& output = ((PolyCache*)cache)->points();
                         for(size_t i=0; i<output.size(); i+=2) {
                             list->AddLine(output[i], output[i+1], (ImColor)ptr->fill_clr(), 1);
                         }
@@ -1372,12 +1371,13 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         case Type::IMAGE: {
             if(!cache) {
                 auto tex_cache = TextureCache::get(this);
-                cache = tex_cache;
-                o->insert_cache(this, cache);
+                cache = tex_cache.get();
+                tex_cache->set_object(o);
+                o->insert_cache(this, std::move(tex_cache));
                 
                 //tex_cache->platform() = _platform.get();
                 //tex_cache->set_base(this);
-                tex_cache->set_object(o);
+                
                 
                 //_all_textures[this].insert(tex_cache);
             }
@@ -1389,7 +1389,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             if(image_size.empty())
                 break;
             
-            auto tex_cache = (TextureCache*)cache.get();
+            auto tex_cache = (TextureCache*)cache;
             tex_cache->update_with(static_cast<ExternalImage*>(o));
             tex_cache->set_changed(false);
             

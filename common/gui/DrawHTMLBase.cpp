@@ -58,11 +58,9 @@ namespace gui {
             std::stringstream ss;
             
             auto ptr = o->cached(this);
-            HTMLCache* cache = ptr ? (HTMLCache*)ptr.get() : nullptr;
+            HTMLCache* cache = ptr ? (HTMLCache*)ptr : nullptr;
             if(!cache) {
-                ptr = std::shared_ptr<CacheObject>(new HTMLCache);
-                cache = (HTMLCache*)ptr.get();
-                o->insert_cache(this, ptr);
+                cache = (HTMLCache*)o->insert_cache(this, std::make_unique<HTMLCache>()).get();
             }
             
             if(_initial_draw && cache)
@@ -154,8 +152,7 @@ namespace gui {
         _ss << Meta::toStr<decltype(order)>(order) << "}";
         
         if(!t) {
-            t = std::shared_ptr<CacheObject>(new HTMLCache);
-            s.root().insert_cache(this, t);
+            t = s.root().insert_cache(this, std::make_unique<HTMLCache>()).get();
         }
         t->set_changed(false);
         

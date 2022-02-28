@@ -126,8 +126,7 @@ namespace gui {
                 
                 auto cache = _graph->root().cached(this);
                 if(!cache) {
-                    cache = std::make_shared<CacheObject>();
-                    _graph->root().insert_cache(this, cache);
+                    cache = _graph->root().insert_cache(this, std::make_unique<CacheObject>()).get();
                 }
                 
                 return cache->changed();
