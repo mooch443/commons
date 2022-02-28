@@ -558,11 +558,7 @@ void ExternalImage::update_with(const gpuMat& mat) {
 
     if(!_source) {
         _source = Image::Make(local, _source->index());
-
-    } else if(   (int)_source->cols != mat.cols
-              || (int)_source->rows != mat.rows
-              || (int)_source->dims != mat.channels())
-    {
+    } else {
         _source->create(local, _source->index(), Image::now());
     }
     
