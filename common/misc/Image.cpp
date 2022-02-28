@@ -88,8 +88,12 @@ namespace cmn {
     }
 
     Image::~Image() {
-        if(_data)
+        if (_data) {
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+            print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
+#endif
             free(_data);
+        }
         if(_custom_data)
             delete _custom_data;
     }
@@ -112,7 +116,7 @@ namespace cmn {
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
                 print("Realloc of image ",this->cols,"x",this->rows,"x",this->dims," to ",cols,"x",rows,"x",dims," (",_array_size," >= ",N,")");
 #endif
-                _data = (uchar*)realloc(_data, _array_size);
+                _data = (uchar*)realloc(_data, _array_size * sizeof(uchar));
 #ifndef NDEBUG
                 //! this does not help us anyway... just crash, i guess.
                 if (!_data) FormatExcept("Cannot allocate memory for image of size ",rows,"x",cols,"x",dims,". Leaking.");
@@ -130,10 +134,10 @@ namespace cmn {
             else
                 _array_size = N;
 
-            _data = (uchar*)malloc(_array_size);
+            _data = (uchar*)malloc(_array_size * sizeof(uchar));
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
             print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
-            print_stacktrace(stdout);
+            //print_stacktrace(stdout);
 #endif
         }
 
