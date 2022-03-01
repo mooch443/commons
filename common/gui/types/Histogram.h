@@ -365,15 +365,15 @@ namespace gui {
                 Vec2 pos(margin + axes_width + _y_label_width,
                          margin + _title_obj.height() + 5);
                 
-                std::vector<Vertex> vertices;
-                vertices.push_back({ pos + Vec2(-axes_width * 0.5f, 0), White });
-                vertices.push_back({ Vec2(pos.x - axes_width * 0.5f,
-                                          size.height - margin - axes_width * 0.5f), White });
-                
-                vertices.push_back({ pos + Vec2(-axes_width * 0.5f,
-                                                element.y + axes_width * 0.5f), White });
-                vertices.push_back({ Vec2(size.width - margin,
-                                          pos.y + element.y + axes_width * 0.5f), White });
+                add<Line>(pos + Vec2(-axes_width * 0.5f, 0),
+                          Vec2(pos.x - axes_width * 0.5f,
+                               size.height - margin - axes_width * 0.5f),
+                          White);
+                add<Line>(pos + Vec2(-axes_width * 0.5f,
+                                    element.y + axes_width * 0.5f),
+                          Vec2(size.width - margin,
+                                pos.y + element.y + axes_width * 0.5f),
+                          White);
                 
                 if(!_data.empty()) {
                     //Vec2 pos(size.x + margin + axes_width * 0.5f,
@@ -381,8 +381,9 @@ namespace gui {
                     Vec2 lpos = pos + Vec2(-axes_width * 0.5f, element.y);
                     
                     for(auto text : _y_labels) {
-                        vertices.push_back({lpos + Vec2(-3, 0), White});
-                        vertices.push_back({lpos + Vec2( 3, 0), White});
+                        add<Line>(lpos + Vec2(-3, 0),
+                                  lpos + Vec2( 3, 0),
+                                  White);
                         
                         text->set_pos(lpos + Vec2(-3, 0) + Vec2(-text->width()*0.5f - 7, 0));
                         lpos.y -= text_height + 10;
@@ -444,12 +445,11 @@ namespace gui {
                                 last_text.x = text_x;
                                 
                                 // tick on x-axis
-                                vertices.push_back({ Vec2(bar_pos.x + element.x * 0.5f,
+                                add<Line>(Vec2(bar_pos.x + element.x * 0.5f,
                                                           bar_pos.y + element.y + axes_width * 0.5f - 3),
-                                                     White });
-                                vertices.push_back({ Vec2(bar_pos.x + element.x * 0.5f,
+                                          Vec2(bar_pos.x + element.x * 0.5f,
                                                           bar_pos.y + element.y + axes_width * 0.5f + 3),
-                                                     White });
+                                          White);
                                 
                             }
                         }
@@ -458,7 +458,6 @@ namespace gui {
                     }
                 }
                 
-                add<Vertices>(vertices, PrimitiveType::Lines);
                 end();
                 
                 _needs_update = false;
