@@ -178,7 +178,7 @@ struct Formatter {
 #endif
         }
 #else
-        return std::string("");
+        return "";
 #endif
     }
 
