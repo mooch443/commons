@@ -56,26 +56,30 @@ void VertexArray::update_size() {
     } else
         _points = std::make_shared<std::vector<Vertex>>(_original_points);
     
-    Vec2 maximum(-std::numeric_limits<Float2_t>::max()), minimum(std::numeric_limits<Float2_t>::max());
-    float x, y;
-    
-    for(auto &p : *_points) {
-        x = p.position().x;
-        y = p.position().y;
-            
-        if(x < minimum.x) minimum.x = x;
-        if(y < minimum.y) minimum.y = y;
-        if(maximum.x < x) maximum.x = x;
-        if(maximum.y < y) maximum.y = y;
+    if(_points->empty()) {
+        set_bounds(Bounds());
+    } else {
+        Vec2 maximum(-std::numeric_limits<Float2_t>::max()), minimum(std::numeric_limits<Float2_t>::max());
+        float x, y;
+        
+        for(auto &p : *_points) {
+            x = p.position().x;
+            y = p.position().y;
+                
+            if(x < minimum.x) minimum.x = x;
+            if(y < minimum.y) minimum.y = y;
+            if(maximum.x < x) maximum.x = x;
+            if(maximum.y < y) maximum.y = y;
+        }
+        
+        maximum.x -= minimum.x;
+        maximum.y -= minimum.y;
+                
+        for(auto &p : *_points)
+            p.position() -= minimum;
+        
+        set_bounds(Bounds(minimum, maximum));
     }
-    
-    maximum.x -= minimum.x;
-    maximum.y -= minimum.y;
-            
-    for(auto &p : *_points)
-        p.position() -= minimum;
-    
-    set_bounds(Bounds(minimum, maximum));
     _size_calculated = true;
 }
             
@@ -185,6 +189,7 @@ Polygon::Polygon()
 Polygon::Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr, const Color& line_clr)
     : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(fill_clr), _border_clr(line_clr), _size_calculated(false)
 {
+    update_size();
 }
 
 Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, const Color& line_clr)

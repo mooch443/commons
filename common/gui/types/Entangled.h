@@ -21,8 +21,8 @@ namespace gui {
     //  PARENT.
     class Entangled : public SectionInterface {
     protected:
-        std::vector<Drawable*> _current_children;
-        std::vector<Drawable*> _new_children;
+        GETTER(std::vector<Drawable*>, current_children)
+        GETTER(std::vector<Drawable*>, new_children)
         robin_hood::unordered_set<Drawable*> _currently_removed;
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false)
@@ -66,7 +66,7 @@ namespace gui {
                 return true;
             
             for(auto o : _current_children)
-                if(o->clickable())
+                if(o && o->clickable())
                     return true;
             return false;
         }
@@ -76,8 +76,6 @@ namespace gui {
         void set_scroll_offset(Vec2 scroll_offset);
         void set_scroll_enabled(bool enable);
         void set_scroll_limits(const Rangef& x, const Rangef& y);
-        
-        std::vector<Drawable*>& children() override;
         bool empty() const;
         
         template<typename T, typename = typename std::enable_if<std::is_convertible<T, const Drawable*>::value && std::is_pointer<T>::value>::type>
@@ -116,19 +114,14 @@ namespace gui {
         //  Drawable (and trying to match it with current one).
         //Drawable* advance(Drawable *d);
         
-    private:
-        /*template<typename T>
-        T* advance(T* d) {
-            static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
-            
-            
-            auto ptr = insert_at_current_index(d);
-            T *ret = dynamic_cast<T*>(ptr);
-            assert(ret != nullptr);
-            
-            _index++;
-            return ret;
-        }*/
+        const std::vector<Drawable*>& in_progress_children() const {
+            return _begun ? _new_children : _current_children;
+        }
+        const std::vector<Drawable*>& last_children() const {
+            return _current_children;
+        }
+        
+        std::vector<Drawable*>& children() override;
         
     public:
         template<typename T, class... Args, Type::data::values type = T::Class>
@@ -149,7 +142,9 @@ namespace gui {
             if(_index < _current_children.size()) {
                 auto current = _current_children[_index];
                 auto owned = _owned[current];
+                
                 if(owned
+                   && current
                    && current->type() == type
                    /*&& dynamic_cast<T*>(current) != nullptr*/)
                 { //&& current->swap_with(d)) {
@@ -163,7 +158,8 @@ namespace gui {
                 } else {
                     ptr = new T(std::forward<Args>(args)...);
                     if(!owned) {
-                        _currently_removed.insert(current);
+                        if(current)
+                            _currently_removed.insert(current);
                         //current = ptr;
                         used_or_deleted = true;
 
@@ -212,10 +208,10 @@ namespace gui {
                 auto current = _current_children[_index];
                 if(current != ptr) {
                     assert(!contains(_new_children, ptr));
-                    if(_owned[current]) {
+                    if(current && _owned[current]) {
                         current->set_parent(NULL);
                         //deinit_child(false, current);
-                    } else {
+                    } else if(current) {
                         _currently_removed.insert(current);
                     }
                     

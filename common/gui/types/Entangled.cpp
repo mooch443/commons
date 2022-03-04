@@ -117,13 +117,16 @@ namespace gui {
     }
 
 std::vector<Drawable*>& Entangled::children() {
-    //if(_begun)
-    //    FormatWarning("Accessing children() while iterating.");
+    if(_begun) {
+        FormatExcept("Accessing children() while iterating.");
+        return _new_children;
+    }
     return _current_children;
 }
 
 bool Entangled::empty() const {
-    //if(_begun)
+    if(_begun)
+        return _new_children.empty();
     //    FormatWarning("Accessing children() while iterating.");
     return _current_children.empty();
 }
@@ -194,6 +197,9 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         std::swap(_current_children, _new_children);
             //deinit_child(false, *_currently_removed.begin());
         
+        for(auto c : _current_children) {
+            assert(c);
+        }
     }
     
     void Entangled::auto_size(Margin margin) {
@@ -226,25 +232,6 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         
         _content_changed = c;
         _content_changed_while_updating = true;
-        
-        if(c) {
-#ifndef NDEBUG
-//            if(!Drawable::name().empty())
-#endif
-            /*SectionInterface* p = this;
-            while((p = p->parent()) != nullptr) {
-                if(p->type() == Type::ENTANGLED)
-                    static_cast<Entangled*>(p)->set_content_changed(true);
-                else
-                    p->set_bounds_changed();
-            }*/
-            
-            /*for(auto &c : children()) {
-                if(c->type() == Type::ENTANGLED) {
-                    static_cast<Entangled*>(c)->set_dirty();
-                }
-            }*/
-        }
         
         if(c)
             set_dirty();
@@ -287,61 +274,14 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     bool Entangled::swap_with(Drawable*) {
         // TODO: ownership
         throw U_EXCEPTION("Ownership not implemented. You need to save Entangled objects and use wrap_object instead of add_object.");
-        
-        /*if(!SectionInterface::swap_with(d))
-            return false;
-        
-        auto ptr = static_cast<Entangled*>(d);
-        
-        // fast matching of objects with swapping if possible
-        auto it0 = _children.begin(), it1 = ptr->_children.begin();
-        for(;it0 != _children.end() && it1 != ptr->_children.end();
-            ++it0, ++it1)
-        {
-            if((*it0)->swap_with(*it1)) {
-                delete *it1;
-            } else {
-                delete *it0;
-                *it0 = *it1;
-                //init_child(*it1, true);
-            }
-        }
-        
-        while(it0 != _children.end()) {
-            delete *it0;
-            it0 = _children.erase(it0);
-        }
-        while(it1 != ptr->_children.end()) {
-            //init_child(*it1, true);
-            _children.push_back(*it1++);
-        }
-        
-        ptr->_children.clear();
-        
-        return true;*/
     }
     
     void Entangled::remove_child(Drawable* d) {
-        /*auto it = std::find(_children.begin(), _children.end(), d);
-        if (it == _children.end()) {
-            //deinit_child(true, d);
-            if(_owned.find(d) != _owned.end()) {
-                if(_owned.at(d)) {
-                    print("Deleting");
-                    //delete d;
-                }
-                //_owned.erase(d);
-            } else
-                print("Unknown object.");
-            //return;
-        }
-*/
         //if(_begun)
         //    throw U_EXCEPTION("Undefined while updating.");
         
         //if(_begun)
         //    FormatWarning("Deleting child while updating parent.");
-        
         
         auto oit = _owned.find(d);
         if(oit != _owned.end()) {
@@ -357,20 +297,12 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         }
         
         *it = nullptr;
-        
-        //if(!_begun || _current_children.begin() + _index < it) {
-        //    _current_children.erase(it); // can afford to remove
-        //}
-        
-        //deinit_child(true, d);
     }
     
     void Entangled::clear_children() {
         if(_begun)
             throw U_EXCEPTION("Undefined while updating.");
         
-        //while(!_current_children.empty())
-        //    deinit_child(true, _current_children.begin(), _current_children.front());
         for (size_t i=0; i<_current_children.size(); ++i) {
             if(_current_children[i]) {
                 auto tmp = _current_children[i];
@@ -413,68 +345,5 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     void Entangled::set_bounds_changed() {
         Drawable::set_bounds_changed();
     }
-    
-    /*void Entangled::deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d) {
-        if(erase) {
-            if(it != _current_children.end())
-                _current_children.erase(it);
-        }
-        
-        if(_owned.find(d) != _owned.end()) {
-            if(_owned.at(d))
-                delete d;
-            else
-                d->set_parent(NULL);
-            _owned.erase(d);
-        }
-        
-        auto rmit = _currently_removed.find(d);
-        if(rmit != _currently_removed.end())
-            _currently_removed.erase(rmit);
-    }
-    
-    void Entangled::deinit_child(bool erase, Drawable* d) {
-        if(!erase) {
-            deinit_child(false, _current_children.end(), d);
-        } else
-            deinit_child(erase, std::find(_current_children.begin(), _current_children.end(), d), d);
-    }*/
-
-/*Drawable* Entangled::insert_at_current_index(Drawable* d) {
-    bool used_or_deleted = false;
-    
-    if(_index < _current_children.size()) {
-        auto current = _current_children[_index];
-        auto owned = _owned[current];
-        if(owned && current->swap_with(d)) {
-            delete d; used_or_deleted = true;
-            d = current;
-
-        } else {
-            if(!owned) {
-                _currently_removed.insert(current);
-                used_or_deleted = true;
-
-            } else {
-                used_or_deleted = true;
-                current->set_parent(NULL);
-            }
-            
-            init_child(d, _index, true);
-        }
-        
-    } else {
-        assert(_index == _children.size());
-        //_children.push_back(d);
-        used_or_deleted = true;
-        init_child(d, _index, true);
-    }
-    
-    if(!used_or_deleted)
-        throw U_EXCEPTION("Not used or deleted.");
-    
-    _set_child(d, true, _index);
-    return d;
-}*/
 
 }
