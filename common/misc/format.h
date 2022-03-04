@@ -703,13 +703,14 @@ public:
 
     template<bool A, size_t S, typename... Args>
     static std::string parse_value(const robin_hood::detail::Table<A, S, Args...>& m) {
+        size_t i = 0, N = m.size();
         std::string str = console_color<bracket_color, colors>("{");
         for (auto& [k, v] : m) {
             str += console_color<bracket_color, colors>("[")
                 + parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<bracket_color, colors>("]");
+                + console_color<bracket_color, colors>(i++ < N ? "]," : "]");
         }
         return str + console_color<bracket_color, colors>("}");
     }
@@ -718,12 +719,13 @@ public:
         requires is_map<K>::value
     static std::string parse_value(const T<Args...>& m) {
         std::string str = console_color<bracket_color, colors>("{");
+        size_t i = 0, N = m.size();
         for (auto& [k, v] : m) {
             str += console_color<bracket_color, colors>("[")
                 + parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<bracket_color, colors>("]");
+                + console_color<bracket_color, colors>(i++ < N ? "]," : "]");
         }
         return str + console_color<bracket_color, colors>("}");
     }
