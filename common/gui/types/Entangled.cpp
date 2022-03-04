@@ -118,7 +118,7 @@ namespace gui {
 
 std::vector<Drawable*>& Entangled::children() {
     if(_begun) {
-        FormatExcept("Accessing children() while iterating.");
+        //FormatExcept("Accessing children() while iterating.");
         return _new_children;
     }
     return _current_children;
