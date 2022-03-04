@@ -979,6 +979,8 @@ void SectionInterface::set_z_index(int index) {
     void SectionInterface::find(float x, float y, std::vector<Drawable*>& results) {
         for(auto it = children().rbegin(); it != children().rend(); ++it) {
             auto ptr = *it;
+            if (!ptr)
+                continue;
             
             // use actual object instead
             if(ptr->type() == Type::SINGLETON)
@@ -1002,6 +1004,9 @@ void SectionInterface::set_z_index(int index) {
     
     Drawable* SectionInterface::find(const std::string& search) {
         for(auto it=children().begin(), ite=children().end(); it != ite; ++it) {
+            if (!*it)
+                continue;
+
             if((*it)->type() == Type::SECTION || (*it)->type() == Type::ENTANGLED) {
                 auto ptr = static_cast<SectionInterface*>(*it);
                 auto r = ptr->find(search);

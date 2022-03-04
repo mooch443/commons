@@ -173,6 +173,10 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         
         while(!_currently_removed.empty()) {
             auto d = *_currently_removed.begin();
+            if (!d) {
+                _currently_removed.erase(_currently_removed.begin());
+                continue;
+            }
             d->set_parent(NULL);
             
             if(!_currently_removed.empty() && *_currently_removed.begin() == d) {
