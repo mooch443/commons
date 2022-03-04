@@ -708,6 +708,7 @@ namespace gui {
             if(old->stage() && (!parent || !parent->stage() || parent->stage() != old->stage()))
                 old->stage()->erase(this);
             old->remove_child(this);
+            clear_cache();
             
             return;
             
@@ -924,9 +925,11 @@ void SectionInterface::set_z_index(int index) {
                 c = static_cast<SingletonObject*>(c)->ptr();
             if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
                 static_cast<SectionInterface*>(c)->set_stage(s);
+            else c->clear_cache();
         }
         
         _stage = s;
+        clear_cache();
         set_dirty();
     }
     

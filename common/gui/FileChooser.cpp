@@ -5,6 +5,10 @@
 
 namespace gui {
 
+FileChooser::~FileChooser() {
+    _graph = nullptr;
+}
+
 FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)

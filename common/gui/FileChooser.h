@@ -93,7 +93,7 @@ public:
     FileChooser(const file::Path& start, const std::string& extension,
                 std::function<void(const file::Path&, std::string)> callback,
                 std::function<void(const file::Path&, std::string)> on_select_callback = nullptr);
-    virtual ~FileChooser() {}
+    virtual ~FileChooser();
     
     void set_tabs(const std::vector<Settings>&);
     void set_tab(std::string);
