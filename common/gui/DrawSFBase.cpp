@@ -460,6 +460,7 @@ namespace gui {
                 bool tex_dirty = false;
                 auto ptr = static_cast<Entangled*>(state.obj());
                 Vec2 inside_scale(1);
+                assert(!ptr->begun());
                 
                 for(auto child : ptr->children()) {
                     auto c = child->cached(this);

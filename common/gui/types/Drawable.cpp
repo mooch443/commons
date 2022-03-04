@@ -708,6 +708,9 @@ namespace gui {
             if(old->stage() && (!parent || !parent->stage() || parent->stage() != old->stage()))
                 old->stage()->erase(this);
             old->remove_child(this);
+            
+            return;
+            
         } else
             _parent = parent;
     }
@@ -778,22 +781,24 @@ namespace gui {
     
     void SectionInterface::set_pos(const Vec2 &pos) {
         if(pos != _bounds.pos()) {
-            if(!pos.Equals(_bounds.pos())) {
+            auto c = _bounds.pos();
+            Drawable::set_pos(pos);
+            
+            if(!pos.Equals(c)) {
                 children_rect_changed();
             }
-            
-            Drawable::set_pos(pos);
         }
     }
     
     void SectionInterface::set_size(const gui::Size2 &size) {
         if(size != _bounds.size()) {
-            if(!size.Equals(_bounds.size())) {
+            auto c = _bounds.size();
+            Drawable::set_size(size);
+            
+            if(!size.Equals(c)) {
                 if(origin() != Vec2(0, 0))
                     children_rect_changed();
             }
-            
-            Drawable::set_size(size);
         }
     }
     
@@ -912,6 +917,9 @@ void SectionInterface::set_z_index(int index) {
             _stage->erase(this);
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             if(c->type() == Type::SINGLETON)
                 c = static_cast<SingletonObject*>(c)->ptr();
             if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
@@ -955,6 +963,9 @@ void SectionInterface::set_z_index(int index) {
             _background->set_bounds_changed();
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             if(c->type() == Type::SINGLETON)
                 c = static_cast<SingletonObject*>(c)->ptr();
             
@@ -1030,6 +1041,9 @@ void SectionInterface::set_z_index(int index) {
             ss << "~";
         ss << "[\n";
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             if((c->type() == Type::SINGLETON && (static_cast<SingletonObject*>(c)->ptr()->type() == Type::SECTION || static_cast<SingletonObject*>(c)->ptr()->type() == Type::ENTANGLED)) || c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
             {
                 if(c->type() == Type::SINGLETON)

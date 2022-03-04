@@ -1602,6 +1602,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     redraw(bg, draw_order, true, clip_rect);
                 }
                 
+                assert(!ptr->begun());
                 if(entangled_will_texture(ptr)) {
                     clip_rect = bounds;
                     

@@ -859,6 +859,9 @@ T* DrawStructure::create(Args... args) {
             ptr->set_bounds_changed();
             
             for(auto c : ptr->children()) {
+                if(!c)
+                    continue;
+                
                 if(c->type() == Type::SINGLETON)
                     c = static_cast<SingletonObject*>(c)->ptr();
                 c->set_bounds_changed();

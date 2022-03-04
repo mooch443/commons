@@ -104,8 +104,8 @@ namespace gui {
         
         
         void update_bounds() override;
-        void deinit_child(bool erase, Drawable* d);
-        void deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d);
+        //void deinit_child(bool erase, Drawable* d);
+        //void deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d);
         
     public:
         //! Begin delta update
@@ -178,6 +178,8 @@ namespace gui {
                     init_child(ptr, _index, true);
                 }
                 
+                _current_children[_index] = nullptr;
+                
             } else {
                 assert(_index == _new_children.size());
                 ptr = new T(std::forward<Args>(args)...);
@@ -218,6 +220,7 @@ namespace gui {
                     }
                     
                     //current = ptr;
+                    _current_children[_index] = nullptr;
                     init_child(ptr, _index, false);
                     
                     // try to see if this object already exists somewhere

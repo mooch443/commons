@@ -78,6 +78,7 @@ namespace gui {
                     }
                 }
                 
+                assert(!static_cast<Entangled*>(o)->begun());
                 for(auto c : static_cast<Entangled*>(o)->children()) {
                     std::string str = fn(c, false);
                     

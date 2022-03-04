@@ -279,8 +279,8 @@ namespace gui {
     void List::update() {
         Timer timer;
         
-        auto &size = bounds();
-        auto &gb = global_bounds();
+        auto size = bounds();
+        auto gb = global_bounds();
         float gscale = gb.height / height() * stage()->scale().y;
         
         //if(!folded())
@@ -288,7 +288,8 @@ namespace gui {
         //    stage()->height() - (gb.y + _items.size() * _row_height * gscale));
         const bool inverted = foldable() && stage() 
             //&& gb.y + (_items.size()) * _row_height * gscale >= stage()->height() / stage()->scale().y
-            && stage()->height() - (gb.y + _items.size() * _row_height * gscale) < gb.y - (gb.y + _items.size() * _row_height * gscale);
+            && gb.y >= stage()->height() * 0.5;
+            //&& stage()->height() - (gb.y + _items.size() * _row_height * gscale) < gb.y - (gb.y + _items.size() * _row_height * gscale);
         
         if(foldable()) {
             set_size(Size2(bounds().width, _row_height));//(1 + (_folded ? 0 : _items.size())) * _row_height));

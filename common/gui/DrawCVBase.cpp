@@ -178,6 +178,7 @@ namespace gui {
                 
             case Type::ENTANGLED: {
                 auto ptr = static_cast<Entangled*>(o);
+                assert(!ptr->begun());
                 for(auto c : ptr->children())
                     draw(s, c);
                 

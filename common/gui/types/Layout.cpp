@@ -142,17 +142,25 @@ namespace gui {
         float max_height = _margins.y + _margins.height;
         
         for(auto c : children()) {
+            if(!c)
+                continue;
             //c->set_bounds_changed();
             c->update_bounds();
         }
         
         //if(_policy == CENTER || _policy == BOTTOM)
         {
-            for(auto c : children())
+            for(auto c : children()) {
+                if(!c)
+                    continue;
                 max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
+            }
         }
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             x += _margins.x;
             
             auto local = c->local_bounds();
@@ -196,15 +204,23 @@ namespace gui {
         float max_width = _margins.x + _margins.width;
         
         for(auto c : children()) {
+            if(!c)
+                continue;
             //c->set_bounds_changed();
             c->update_bounds();
         }
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
         }
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             y += _margins.y;
             
             auto local = c->local_bounds();
@@ -227,6 +243,9 @@ namespace gui {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);

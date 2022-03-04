@@ -40,11 +40,14 @@ namespace gui {
         _current_children.clear();
         
         for(size_t i=0; i<children.size(); i++) {
-			if (stage() && stage()->selected_object() == children[i])
-				stage()->select(NULL);
-            if (stage() && stage()->hovered_object() == children[i])
-                stage()->clear_hover();
-            children[i]->set_parent(NULL);
+            if(children[i]) {
+                if (stage() && stage()->selected_object() == children[i])
+                    stage()->select(NULL);
+                if (stage() && stage()->hovered_object() == children[i])
+                    stage()->clear_hover();
+            
+                children[i]->set_parent(NULL);
+            }
             //deinit_child(false, children[i]);
         }
     }
@@ -114,10 +117,14 @@ namespace gui {
     }
 
 std::vector<Drawable*>& Entangled::children() {
+    //if(_begun)
+    //    FormatWarning("Accessing children() while iterating.");
     return _current_children;
 }
 
 bool Entangled::empty() const {
+    //if(_begun)
+    //    FormatWarning("Accessing children() while iterating.");
     return _current_children.empty();
 }
     
@@ -139,6 +146,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         _begun = true;
         _index = 0;
         _currently_removed.clear();
+        //std::fill(_current_children.begin(), _current_children.end(), nullptr);
         //_new_children.resize(_current_children.size());
         //std::fill(_new_children.begin(), _new_children.end(), nullptr);
         _new_children.clear();
@@ -146,25 +154,39 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     void Entangled::end() {
         _begun = false;
         
-        while(_index < _current_children.size()) {
-            auto tmp = _current_children[_index];
-            tmp->set_parent(NULL);
-            if(_current_children.size() > _index && _current_children[_index] == tmp)
-                deinit_child(true, _current_children.begin() + _index, tmp);
+        for(size_t i=_index; i < _current_children.size(); ++i) {
+            auto tmp = _current_children[i];
+            if(tmp) {
+                tmp->set_parent(NULL);
+                auto it = _owned.find(tmp);
+                if(it != _owned.end()) {
+                    if(it->second)
+                        delete tmp;
+                    _owned.erase(it);
+                }
+                _current_children[i] = nullptr;
+            }
         }
         
         while(!_currently_removed.empty()) {
             auto d = *_currently_removed.begin();
-            if(d->parent()) {
-                d->set_parent(NULL);
-               //assert(_currently_removed.empty() || *_currently_removed.begin() != d);
-            }
+            d->set_parent(NULL);
             
             if(!_currently_removed.empty() && *_currently_removed.begin() == d) {
 /*#ifndef NDEBUG
                 FormatWarning("Had to deinit forcefully");
 #endif*/
-                deinit_child(false, d);
+                if(d->parent()) {
+                    d->set_parent(nullptr);
+                }
+                
+                auto it = _owned.find(d);
+                if(it != _owned.end()) {
+                    if(it->second)
+                        delete d;
+                    _owned.erase(it);
+                }
+                _currently_removed.erase(_currently_removed.begin());
             }
         }
         
@@ -178,6 +200,9 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
@@ -230,6 +255,9 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         update();
         
         for(auto c : children()) {
+            if(!c)
+                continue;
+            
             if(c->type() == Type::ENTANGLED)
                 static_cast<Entangled*>(c)->before_draw();
         }
@@ -310,15 +338,54 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
 */
         //if(_begun)
         //    throw U_EXCEPTION("Undefined while updating.");
-        deinit_child(true, d);
+        
+        //if(_begun)
+        //    FormatWarning("Deleting child while updating parent.");
+        
+        
+        auto oit = _owned.find(d);
+        if(oit != _owned.end()) {
+            if(oit->second)
+                delete d;
+            _owned.erase(oit);
+        }
+        
+        auto it = std::find(_current_children.begin(), _current_children.end(), d);
+        if (it == _current_children.end()) {
+            //FormatWarning("Cannot find child of type ", d->type(), " in Entangled.");
+            return;
+        }
+        
+        *it = nullptr;
+        
+        //if(!_begun || _current_children.begin() + _index < it) {
+        //    _current_children.erase(it); // can afford to remove
+        //}
+        
+        //deinit_child(true, d);
     }
     
     void Entangled::clear_children() {
         if(_begun)
             throw U_EXCEPTION("Undefined while updating.");
         
-        while(!_current_children.empty())
-            deinit_child(true, _current_children.begin(), _current_children.front());
+        //while(!_current_children.empty())
+        //    deinit_child(true, _current_children.begin(), _current_children.front());
+        for (size_t i=0; i<_current_children.size(); ++i) {
+            if(_current_children[i]) {
+                auto tmp = _current_children[i];
+                tmp->set_parent(nullptr);
+                
+                auto it = _owned.find(tmp);
+                if(it != _owned.end()) {
+                    if(it->second)
+                        delete tmp;
+                    _owned.erase(it);
+                }
+                
+                _current_children[i] = nullptr;
+            }
+        }
         
         _current_children.clear();
         _owned.clear();
@@ -347,7 +414,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         Drawable::set_bounds_changed();
     }
     
-    void Entangled::deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d) {
+    /*void Entangled::deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d) {
         if(erase) {
             if(it != _current_children.end())
                 _current_children.erase(it);
@@ -371,7 +438,7 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
             deinit_child(false, _current_children.end(), d);
         } else
             deinit_child(erase, std::find(_current_children.begin(), _current_children.end(), d), d);
-    }
+    }*/
 
 /*Drawable* Entangled::insert_at_current_index(Drawable* d) {
     bool used_or_deleted = false;

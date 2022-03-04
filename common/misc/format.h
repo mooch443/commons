@@ -710,7 +710,7 @@ public:
                 + parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<bracket_color, colors>(i++ < N ? "]," : "]");
+                + console_color<bracket_color, colors>(i++ < N-1 ? "]," : "]");
         }
         return str + console_color<bracket_color, colors>("}");
     }
@@ -725,7 +725,7 @@ public:
                 + parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<bracket_color, colors>(i++ < N ? "]," : "]");
+                + console_color<bracket_color, colors>(i++ < N-1 ? "]," : "]");
         }
         return str + console_color<bracket_color, colors>("}");
     }
