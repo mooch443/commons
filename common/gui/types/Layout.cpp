@@ -30,7 +30,10 @@ namespace gui {
             _objects.erase(it);
         }
         
-        _objects.insert(_objects.begin() + pos, ptr);
+        if (pos < _objects.size())
+            _objects.insert(_objects.begin() + pos, ptr);
+        else
+            _objects.push_back(ptr);
         
         set_content_changed(true);
         update();
