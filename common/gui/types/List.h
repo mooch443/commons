@@ -61,7 +61,7 @@ namespace gui {
         
     public:
         List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});
-        
+        virtual ~List() override;
         void set_display_selection(bool v) {
             if(v == _display_selection)
                 return;

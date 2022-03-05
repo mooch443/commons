@@ -36,8 +36,9 @@ namespace gui {
     }
     
     Entangled::~Entangled() {
-        auto children = _current_children;
+        auto children = this->children();
         _current_children.clear();
+        _new_children.clear();
         
         for(size_t i=0; i<children.size(); i++) {
             if(children[i]) {
@@ -289,8 +290,10 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         
         auto oit = _owned.find(d);
         if(oit != _owned.end()) {
-            if(oit->second)
+            if (oit->second)
                 delete d;
+            else
+                d->set_parent(nullptr);
             _owned.erase(oit);
         }
         

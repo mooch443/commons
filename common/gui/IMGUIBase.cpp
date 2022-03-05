@@ -1549,6 +1549,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
 }
 
     void IMGUIBase::redraw(Drawable *o, std::vector<DrawOrder>& draw_order, bool is_background, ImVec4 clip_rect) {
+        if (!o)
+            return;
+
         static auto entangled_will_texture = [](Entangled* e) {
             assert(e);
             if(e->scroll_enabled() && e->size().max() > 0) {
@@ -1609,6 +1612,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     //draw_order.emplace_back(DrawOrder::DEFAULT, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                     for(auto c : ptr->children()) {
+                        if (!c)
+                            continue;
+
                         if(ptr->scroll_enabled()) {
                             auto b = c->local_bounds();
                             

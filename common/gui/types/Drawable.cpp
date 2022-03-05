@@ -702,13 +702,14 @@ namespace gui {
         }
         
         if(_parent) {
+            clear_cache();
+
             auto old = _parent;
             _parent = parent;
             
             if(old->stage() && (!parent || !parent->stage() || parent->stage() != old->stage()))
                 old->stage()->erase(this);
             old->remove_child(this);
-            clear_cache();
             
             return;
             
@@ -879,6 +880,7 @@ void SectionInterface::set_z_index(int index) {
             _background->_parent = NULL; // at this point the object is purely virtual,
             // just clear the parent and be done with it
             delete _background;
+            _background = nullptr;
         }
     }
     

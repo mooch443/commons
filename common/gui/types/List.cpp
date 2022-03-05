@@ -25,6 +25,10 @@ namespace gui {
             _list->_selected_rect = r;
         }
     }
+
+    List::~List() {
+
+    }
     
     List::List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click)
     : //gui::DrawableCollection("List"+std::to_string((long)this)),

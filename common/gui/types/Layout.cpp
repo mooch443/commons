@@ -102,7 +102,7 @@ namespace gui {
 
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it != _objects.end()) {
-            
+            set_content_changed(true);
             _objects.erase(it);
             return;
         }
@@ -124,8 +124,9 @@ namespace gui {
     }*/
     
     void Layout::clear_children() {
-        _objects.clear();
-        Entangled::clear_children();
+        _objects.clear(); 
+        set_content_changed(true);
+        Entangled::clear_children(); 
     }
     
     HorizontalLayout::HorizontalLayout(const std::vector<Layout::Ptr>& objects,
