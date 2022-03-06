@@ -61,7 +61,14 @@ template<uint8_t N, typename T>
 struct decimals_t {
     T value;
     std::string toStr() const {
-        return Meta::toStr(value);
+        std::string str = Meta::toStr(value);
+        auto it = std::find(str.begin(), str.end(), '.');
+        if(it != str.end()) {
+            size_t offset = 0;
+            while(++it != str.end() && offset++ < N) {}
+            str.erase(it, str.end());
+        }
+        return str;
     }
 };
 

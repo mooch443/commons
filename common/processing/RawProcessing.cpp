@@ -480,6 +480,6 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     tf::imshow("average", local);
     tf::imshow("output", output);
     INPUT->copyTo(local);
-    tf::imshow("mask", local);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));*/
+    tf::imshow("mask", local);*/
+    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
