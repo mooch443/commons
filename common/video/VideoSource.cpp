@@ -150,6 +150,9 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
 }
 
 void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {
+    assert(output.cols == video->size().width
+           && output.rows == video->size().height);
+    
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened())
@@ -457,8 +460,10 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
 }
 
 #ifdef USE_GPU_MAT
-void VideoSource::frame(uint64_t, gpuMat&) {
-    throw U_EXCEPTION("Using empty function.");
+void VideoSource::frame(uint64_t globalIndex, gpuMat& output) {
+    cv::Mat m(size().height, size().width, CV_8UC1);
+    frame(globalIndex, m);
+    m.copyTo(output);
 }
 #endif
 

@@ -475,10 +475,11 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     binary.copyTo(__binary);
     resize_image(__binary, 0.3);
     tf::imshow("binary", __binary);*/
-    
-    /*_average->copyTo(local);
+    /*cv::Mat local;
+    _average->copyTo(local);
     tf::imshow("average", local);
     tf::imshow("output", output);
     INPUT->copyTo(local);
-    tf::imshow("mask", local);*/
+    tf::imshow("mask", local);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));*/
 }
