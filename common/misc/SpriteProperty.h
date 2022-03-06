@@ -58,7 +58,7 @@ namespace cmn {
                 try {
                     _set_value_from_string(str);
                 } catch(const std::invalid_argument& e) {
-                    throw U_EXCEPTION("Cannot set ", this," to (",str,"): ", std::string(e.what()));
+                    throw U_EXCEPTION("Cannot set ", this->name().c_str()," to (",str,"): ", std::string(e.what()));
                 }
             }
             

@@ -1546,6 +1546,17 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         assert(!list->_ClipRectStack.empty());
         list->PopClipRect();
     }
+    
+#if false
+    list->AddRect((ImVec2)transform.transformPoint(Vec2()),
+                  (ImVec2)transform.transformPoint(o->size()),
+                  cvtClr(Red));
+    
+    auto font = _fonts.at(Style::Regular);
+    auto str = Meta::toStr(o->bounds())+" scale:"+Meta::toStr(o->scale());
+    list->AddText(font, 0.5 * font->FontSize * (1.f / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos() - Vec2(0, 10), (ImColor)Red, str.c_str());
+#endif
+    
 }
 
     void IMGUIBase::redraw(Drawable *o, std::vector<DrawOrder>& draw_order, bool is_background, ImVec4 clip_rect) {

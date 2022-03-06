@@ -7,6 +7,7 @@
 using namespace cmn;
 
 void GlobalSettings::set_instance(const std::shared_ptr<GlobalSettings>& ptr) {
+    std::lock_guard<std::mutex> lock(mutex());
     instance() = ptr;
 }
 

@@ -150,8 +150,8 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
 }
 
 void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {
-    assert(output.cols == video->size().width
-           && output.rows == video->size().height);
+    assert(output.cols == _video->size().width
+           && output.rows == _video->size().height);
     
     switch (_type) {
         case VIDEO:
