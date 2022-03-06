@@ -75,7 +75,7 @@ namespace cmn {
                 _instance = ptr;
             } else if (!_instance) {
                 _instance = std::make_shared<GlobalSettings>();
-                _instance->map().set_do_print(false);
+                _instance->_map.set_do_print(false);
             }
             
             return _instance;
