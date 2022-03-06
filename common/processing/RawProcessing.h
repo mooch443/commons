@@ -18,17 +18,22 @@ namespace cmn {
  */
 class cmn::RawProcessing {
     gpuMat _buffer0, _buffer1, diff;
+    gpuMat _floatb0, _floatb1, _polygon;
     const gpuMat* _average;
+    const gpuMat* _float_average;
     //const LuminanceGrid *_grid;
     //gpuMat _binary;
     //gpuMat _difference;
     //cv::Mat _hsv;
 
 public:
-    RawProcessing(const gpuMat &average, const LuminanceGrid* grid = NULL);
+    RawProcessing(const gpuMat &average, const gpuMat *float_average, const LuminanceGrid* grid);
     ~RawProcessing() {
         _buffer0.release();
         _buffer1.release();
+        diff.release();
+        _floatb0.release();
+        _floatb1.release();
     }
 
     void generate_binary(const gpuMat& input, cv::Mat& output);
