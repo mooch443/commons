@@ -515,7 +515,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _platform->init();
         
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-        int count;
+        /*int count;
         auto monitors = glfwGetMonitors(&count);
         int maximum = 0;
         GLFWmonitor* choice = glfwGetPrimaryMonitor();
@@ -529,7 +529,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         }
         
         if (choice)
-            monitor = choice;
+            monitor = choice;*/
 
         float xscale, yscale;
 #if GLFW_HAVE_MONITOR_SCALE
