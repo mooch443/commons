@@ -497,45 +497,93 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 
-
+//#define REC_TAGS
+#ifdef REC_TAGS
 //#define DEBUG_TAGS
 
-    /*INPUT = &_floatb0;
+    INPUT = &_floatb0;
     OUTPUT = &_floatb1;
 
     input.convertTo(*INPUT, CV_32FC1, 1.0 / 255.0);
 
     CALLCV(cv::subtract(*_float_average, *INPUT, *OUTPUT));
-    CALLCV(cv::threshold(*INPUT, *OUTPUT, 0.5, 1.0, cv::THRESH_BINARY));
-    CALLCV(cv::subtract(1.0, *INPUT, *OUTPUT));
+    CALLCV(cv::threshold(*INPUT, *OUTPUT, 1, 1, cv::THRESH_TRUNC));
+    CALLCV(cv::threshold(*INPUT, *OUTPUT, 0, 1, cv::THRESH_TOZERO));
 
-    const double cm_per_pixel = 234.0 / 3007.0;
-    const Range<double> tag_area_range(0.25, 1.5);
-
-    OUTPUT = &_buffer0;
-    CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1, 255.0));
+    INPUT->convertTo(_buffer0, CV_8UC1, 255.0);
+    INPUT = &_buffer0;
     OUTPUT = &_buffer1;
+
+    static const auto tags_equalize_hist = SETTING(tags_equalize_hist).value<bool>();
+    static const auto tags_threshold = SETTING(tags_threshold).value<uchar>();
+    static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
+    static const auto tags_approximation = SETTING(tags_approximation).value<float>();
+
+    if(tags_equalize_hist)
+        CALLCV(cv::equalizeHist(*INPUT, *OUTPUT));
+    CALLCV(cv::threshold(*INPUT, *OUTPUT, tags_threshold, 255, cv::THRESH_BINARY));
+    CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
+
+#ifdef DEBUG_TAGS
+    cv::Mat local;
+    INPUT->copyTo(local);
+    //INPUT->convertTo(local, CV_8UC1, 255.0);
+    tf::imshow("only_bg", local);
+#endif
+    //return;
+
+    static const double cm_per_pixel = SETTING(cm_per_pixel).value<float>() <= 0 ? 234.0 / 3007.0 : SETTING(cm_per_pixel).value<float>();
+    static const Range<double> tag_area_range = SETTING(tags_size_range).value<Range<double>>();
+    //const Range<double> tag_area_range(0.5, 1.25);
+    //print("cm_per_pixel: ", cm_per_pixel);
+    //OUTPUT = &_buffer0;
+    //CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1, 255.0));
+    //OUTPUT = &_buffer1;
 
     std::vector<std::vector<cv::Vec2i>> contours;
     std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(*INPUT, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_TC89_L1);
+    cv::findContours(*INPUT, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
 
 #ifdef DEBUG_TAGS
     cv::Mat result;// = cv::Mat::zeros(buffer.rows, buffer.cols, CV_8UC4);
     cv::cvtColor(input, result, cv::COLOR_GRAY2BGRA);
 #endif
     size_t found = 0;
+    using namespace gui;
 
     for (int i = 0; i < contours.size(); ++i) {
         if (hierarchy[i][2] == -1 && hierarchy[i][3] != -1) {
+#ifdef DEBUG_TAGS
+            cv::drawContours(result, contours, i, Color(50, 0, 0, 255));
+#endif
             continue;
         }
 
         auto perimeter = cv::arcLength(contours[i], true);
-        cv::approxPolyDP(contours[i], _polygon, 0.01f * perimeter, true);
-        auto area = cv::contourArea(_polygon, false);
-        if (area == 0)
+        cv::approxPolyDP(cv::Mat(contours[i]), contours[i], tags_approximation * perimeter, true);
+        if (!tags_num_sides.contains(contours[i].size())) {
+#ifdef DEBUG_TAGS
+            cv::drawContours(result, contours, i, Color(50, 50, 0, 255));
+
+            int min_x = INPUT->cols, min_y = INPUT->rows,
+                max_x = 0, max_y = 0;
+
+            for (int j = 0; j < contours[i].size(); ++j) {
+                auto& pt = contours[i][j];
+                min_x = min(pt[0], min_x);
+                max_x = max(pt[0], max_x);
+                min_y = min(pt[1], min_y);
+                max_y = max(pt[1], max_y);
+            }
+            cv::putText(result, cmn::format<FormatterType::NONE>("sides: ", contours[i].size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
+#endif
             continue;
+        }
+
+        auto area = cv::contourArea(contours[i], false);
+        if (area == 0) {
+            continue;
+        }
 
         area = sqrt(area * SQR(cm_per_pixel));
 
@@ -550,7 +598,6 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             max_y = max(pt[1], max_y);
         }
 
-        using namespace gui;
         if (tag_area_range.contains(area)) {
             ++found;
 #ifdef DEBUG_TAGS
@@ -559,7 +606,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
 
             auto p = cv::sum(b)[0] / 255.0 / double(N);
 
-            print("area: ", area, " white/black ratio: ", p, " N: ", N);
+            //print("area: ", area, " white/black ratio: ", p, " N: ", N, " sides: ", contours[i].size());
 
             //if (Range<double>(0.84, 0.95).contains(p)) 
             //{
@@ -568,7 +615,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             cv::line(result, Vec2(max_x, max_y), Vec2(min_x, max_y), Cyan, 2);
             cv::line(result, Vec2(min_x, max_y), Vec2(min_x, min_y), Cyan, 2);
 
-            //cv::putText()
+            cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area, " sides: ", contours[i].size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Cyan);
         //}
        //else {
             cv::drawContours(result, contours, i, Color(255, 150, 0, 255));
@@ -578,14 +625,16 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         else {
 #ifdef DEBUG_TAGS
             cv::drawContours(result, contours, i, Color(150, 0, 0, 255));
+            cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
 #endif
         }
     }
 
-    //print( "found ", found, " tags.");
 #ifdef DEBUG_TAGS
+    print("found ", found, " tags.");
     //resize_image(result, 0.5, cv::INTER_LINEAR);
     cv::cvtColor(result, result, cv::COLOR_BGRA2RGBA);
     tf::imshow("result", result);
-#endif*/
+#endif
+#endif
 }
