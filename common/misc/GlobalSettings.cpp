@@ -6,7 +6,7 @@
 #include <misc/detail.h>
 using namespace cmn;
 
-void GlobalSettings::set_instance(const std::shared_ptr<GlobalSettings>& ptr) {
+void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);
 }
 
@@ -20,6 +20,7 @@ std::mutex& GlobalSettings::mutex() {
  */
 
 GlobalSettings::GlobalSettings() {
+    _map.set_do_print(false);
 }
 
 /**

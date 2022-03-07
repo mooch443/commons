@@ -66,22 +66,17 @@ namespace cmn {
         ~GlobalSettings();
         
         //! return the instance
-        static const std::shared_ptr<GlobalSettings>& instance(const std::shared_ptr<GlobalSettings>& ptr = nullptr) {
-            static std::shared_ptr<GlobalSettings> _instance;
+        static GlobalSettings* instance(GlobalSettings* ptr = nullptr) {
             static std::mutex _mutex;
+            static GlobalSettings* _instance{new GlobalSettings()};
             
-            std::lock_guard<std::mutex> lock(_mutex);
-            if(ptr) {
+            std::unique_lock guard(_mutex);
+            if(ptr)
                 _instance = ptr;
-            } else if (!_instance) {
-                _instance = std::make_shared<GlobalSettings>();
-                _instance->_map.set_do_print(false);
-            }
-            
             return _instance;
         }
         
-        static void set_instance(const std::shared_ptr<GlobalSettings>&);
+        static void set_instance(GlobalSettings*);
         
         /**
          * Returns a reference to the settings map.
