@@ -18,10 +18,7 @@ void Timing::start_measure() {
     for(auto it = _threads.begin(); it != _threads.end();) {
         auto && [tid, info] = *it;
         if (info.timer.elapsed() > 10) {
-            std::stringstream ss;
-            ss << tid;
-            auto str = ss.str();
-            cmn::print("Deleting timer for tid ", str," (", _name.c_str(),", ", _threads.size()," threads known)");
+            cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
             it = _threads.erase(it);
         } else
             ++it;
