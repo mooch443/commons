@@ -1,13 +1,15 @@
 #include "PadImage.h"
 
 namespace cmn {
-    void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype, bool reset, const cv::Mat& mask)
+    void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype, bool reset, const cv::Mat& mask, uchar background)
     {
         assert(&input != &output);
         dtype = dtype == -1 ? input.type() : dtype;
         assert(reset || (output.cols == target.width && output.rows == target.height));
         if(reset || output.cols != target.width || output.rows != target.height)
             output = cv::Mat::zeros(target.height, target.width, dtype);
+        if(background != 0)
+            output.setTo(background);
         
         if(input.cols > output.cols || input.rows > output.rows) {
             Size2 ratio_size(target);

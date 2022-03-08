@@ -338,8 +338,8 @@ static Callback callback;
         return std::make_shared<Blob>(std::move(lines), std::move(tmp_pixels));
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted) const {
-        Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+    std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
+        Bounds b(bounds().pos() - float(padding), bounds().size() + float(padding) * 2);
         if(background)
             b.restrict_to(background->bounds());
         else if(restricted.width > 0)

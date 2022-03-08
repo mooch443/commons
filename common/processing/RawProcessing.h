@@ -4,6 +4,7 @@
 #include <types.h>
 #include <misc/Blob.h>
 #include <misc/GlobalSettings.h>
+#include <misc/PVBlob.h>
 
 namespace cmn {
 	class RawProcessing;
@@ -36,7 +37,7 @@ public:
         _floatb1.release();
     }
 
-    void generate_binary(const gpuMat& input, cv::Mat& output);
+    void generate_binary(const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>&);
     cv::Mat get_binary() const;
 };
 

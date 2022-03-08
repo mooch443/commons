@@ -13,5 +13,5 @@ namespace cmn {
         return mat;
     }*/
     
-    void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype = -1, bool reset = true, const cv::Mat &mask = cv::Mat());
+    void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype = -1, bool reset = true, const cv::Mat &mask = cv::Mat(), uchar background = 0);
 }

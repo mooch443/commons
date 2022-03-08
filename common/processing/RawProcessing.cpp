@@ -5,11 +5,15 @@
 #include <misc/ocl.h>
 #include <processing/LuminanceGrid.h>
 #include <misc/ranges.h>
+#include <processing/PadImage.h>
+#include <misc/ThreadPool.h>
 
 using namespace cmn;
 
 gpuMat gpu_dilation_element;
 std::shared_mutex mutex;
+
+GenericThreadPool _contour_pool(5);
 
 template<typename Calc = float, typename A = uchar, typename B = uchar>
 class SubtractConvert : public cv::ParallelLoopBody
@@ -31,7 +35,7 @@ RawProcessing::RawProcessing(const gpuMat &average, const gpuMat *float_average,
     : _average(&average), _float_average(float_average)
 { }
 
-void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
+void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>& tags) {
     assert(input.type() == CV_8UC1);
 
     static bool enable_diff = SETTING(enable_difference);
@@ -43,7 +47,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     static int closing_size = 1;
     static bool use_adaptive_threshold = false;
     static int32_t dilation_size = 0;
-    static bool image_adjust = false, image_square_brightness = false, image_invert = false;
+    static bool image_adjust = false, image_square_brightness = false, image_invert = false, tags_enable = false;
     static float image_contrast_increase = 1, image_brightness_increase = 0;
 
     bool expected = false;
@@ -84,6 +88,8 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
                 image_brightness_increase = value.template value<float>();
             else if (key == std::string("image_invert"))
                 image_invert = value.template value<bool>();
+            else if (key == std::string("tags_enable"))
+                tags_enable = value.template value<bool>();
         };
         GlobalSettings::map().register_callback(ptr, callback);
 
@@ -103,6 +109,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_contrast_increase", GlobalSettings::get("image_contrast_increase").get());
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_brightness_increase", GlobalSettings::get("image_brightness_increase").get());
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_invert", GlobalSettings::get("image_invert").get());
+        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "tags_enable", GlobalSettings::get("tags_enable").get());
     }
 
     //static Timing timing("thresholding", 30);
@@ -163,7 +170,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
             CALLCV(cv::subtract(*_average, *INPUT, *OUTPUT));
         }
 
-
+        INPUT->copyTo(_floatb0);
         //INPUT->copyTo(local);
         //tf::imshow("difference", local);
 
@@ -441,7 +448,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     //output.setTo(cv::Scalar(0));
     for(size_t i=0; i<contours.size(); ++i) {
         auto &c = contours[i];
-        auto &h = hierarchy[i];
+        auto &h = h;
 
         //if(h[0] < 0 || h[3] >= 0)
         //    continue;
@@ -497,144 +504,356 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output) {
     //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 
-//#define REC_TAGS
+#define REC_TAGS
 #ifdef REC_TAGS
-//#define DEBUG_TAGS
+#define DEBUG_TAGS
+    if (tags_enable) {
 
-    INPUT = &_floatb0;
-    OUTPUT = &_floatb1;
+        INPUT = &_floatb0;
+        OUTPUT = &_buffer1;
 
-    input.convertTo(*INPUT, CV_32FC1, 1.0 / 255.0);
-
-    CALLCV(cv::subtract(*_float_average, *INPUT, *OUTPUT));
-    CALLCV(cv::threshold(*INPUT, *OUTPUT, 1, 1, cv::THRESH_TRUNC));
-    CALLCV(cv::threshold(*INPUT, *OUTPUT, 0, 1, cv::THRESH_TOZERO));
-
-    INPUT->convertTo(_buffer0, CV_8UC1, 255.0);
-    INPUT = &_buffer0;
-    OUTPUT = &_buffer1;
-
-    static const auto tags_equalize_hist = SETTING(tags_equalize_hist).value<bool>();
-    static const auto tags_threshold = SETTING(tags_threshold).value<uchar>();
-    static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
-    static const auto tags_approximation = SETTING(tags_approximation).value<float>();
-
-    if(tags_equalize_hist)
-        CALLCV(cv::equalizeHist(*INPUT, *OUTPUT));
-    CALLCV(cv::threshold(*INPUT, *OUTPUT, tags_threshold, 255, cv::THRESH_BINARY));
-    CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
-
-#ifdef DEBUG_TAGS
-    cv::Mat local;
-    INPUT->copyTo(local);
-    //INPUT->convertTo(local, CV_8UC1, 255.0);
-    tf::imshow("only_bg", local);
-#endif
-    //return;
-
-    static const double cm_per_pixel = SETTING(cm_per_pixel).value<float>() <= 0 ? 234.0 / 3007.0 : SETTING(cm_per_pixel).value<float>();
-    static const Range<double> tag_area_range = SETTING(tags_size_range).value<Range<double>>();
-    //const Range<double> tag_area_range(0.5, 1.25);
-    //print("cm_per_pixel: ", cm_per_pixel);
-    //OUTPUT = &_buffer0;
-    //CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1, 255.0));
-    //OUTPUT = &_buffer1;
-
-    std::vector<std::vector<cv::Vec2i>> contours;
-    std::vector<cv::Vec4i> hierarchy;
-    cv::findContours(*INPUT, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
-
-#ifdef DEBUG_TAGS
-    cv::Mat result;// = cv::Mat::zeros(buffer.rows, buffer.cols, CV_8UC4);
-    cv::cvtColor(input, result, cv::COLOR_GRAY2BGRA);
-#endif
-    size_t found = 0;
-    using namespace gui;
-
-    for (int i = 0; i < contours.size(); ++i) {
-        if (hierarchy[i][2] == -1 && hierarchy[i][3] != -1) {
-#ifdef DEBUG_TAGS
-            cv::drawContours(result, contours, i, Color(50, 0, 0, 255));
-#endif
-            continue;
+        if (!enable_diff) {
+            if (OUTPUT->cols != input.cols || OUTPUT->rows != input.rows || OUTPUT->type() != input.type())
+                FormatWarning("OUTPUT != input: ", Size2(input.cols, input.rows), " OUTPUT: ", Size2(OUTPUT->cols, OUTPUT->rows));
+            CALLCV(cv::subtract(*_average, input, *OUTPUT));
         }
 
-        auto perimeter = cv::arcLength(contours[i], true);
-        cv::approxPolyDP(cv::Mat(contours[i]), contours[i], tags_approximation * perimeter, true);
-        if (!tags_num_sides.contains(contours[i].size())) {
+        static const auto tags_equalize_hist = SETTING(tags_equalize_hist).value<bool>();
+        static const auto tags_threshold = SETTING(tags_threshold).value<uchar>();
+        static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
+        static const auto tags_approximation = SETTING(tags_approximation).value<float>();
+
+        if (tags_equalize_hist)
+            CALLCV(cv::equalizeHist(*INPUT, *OUTPUT));
+        CALLCV(cv::threshold(*INPUT, *OUTPUT, tags_threshold, 255, cv::THRESH_BINARY));
+        CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
+
 #ifdef DEBUG_TAGS
-            cv::drawContours(result, contours, i, Color(50, 50, 0, 255));
+        static const bool show_debug_info = SETTING(tags_debug).value<bool>();
+        cv::Mat local;
+        if (show_debug_info) {
+            INPUT->copyTo(local);
+            //INPUT->convertTo(local, CV_8UC1, 255.0);
+            tf::imshow("only_bg", local);
+        }
+#endif
 
-            int min_x = INPUT->cols, min_y = INPUT->rows,
-                max_x = 0, max_y = 0;
+        static const double cm_per_pixel = SETTING(cm_per_pixel).value<float>() <= 0 ? 234.0 / 3007.0 : SETTING(cm_per_pixel).value<float>();
+        static const Range<double> tag_area_range = SETTING(tags_size_range).value<Range<double>>();
 
-            for (int j = 0; j < contours[i].size(); ++j) {
-                auto& pt = contours[i][j];
-                min_x = min(pt[0], min_x);
-                max_x = max(pt[0], max_x);
-                min_y = min(pt[1], min_y);
-                max_y = max(pt[1], max_y);
+        tags.clear();
+
+        std::vector<std::vector<cv::Vec2i>> contours;
+        std::vector<cv::Vec4i> hierarchy;
+        cv::findContours(*INPUT, contours, hierarchy, cv::RETR_CCOMP, cv::CHAIN_APPROX_SIMPLE);
+
+#ifdef DEBUG_TAGS
+        cv::Mat result;// = cv::Mat::zeros(buffer.rows, buffer.cols, CV_8UC4);
+        if (show_debug_info)
+            cv::cvtColor(input, result, cv::COLOR_GRAY2BGRA);
+#endif
+        size_t found = 0;
+        std::mutex mutex;
+        using namespace gui;
+
+        auto process = [&](auto index, auto start, auto end, auto) {
+            cv::Mat l;
+            cv::Mat rotated;
+            cv::Mat smaller;
+            std::vector<pv::BlobPtr> blobs;
+
+            for (auto it = start; it != end; ++it, ++index) {
+                auto& c = *it;
+                auto& h = hierarchy[index];
+
+                if (c.size() < 2 || (h[2] == -1 && h[3] != -1)) {
+#ifdef DEBUG_TAGS
+                    if (show_debug_info)
+                        cv::drawContours(result, contours, index, Color(50, 0, 0, 255));
+#endif
+                    continue;
+                }
+
+                auto perimeter = cv::arcLength(c, true);
+                cv::approxPolyDP(cv::Mat(c), c, tags_approximation * perimeter, true);
+                if (!tags_num_sides.contains(c.size())) {
+#ifdef DEBUG_TAGS
+                    if (show_debug_info) {
+                        cv::drawContours(result, contours, index, Color(50, 50, 0, 255));
+
+                        int min_x = INPUT->cols, min_y = INPUT->rows,
+                            max_x = 0, max_y = 0;
+
+                        for (int j = 0; j < c.size(); ++j) {
+                            auto& pt = c[j];
+                            min_x = min(pt[0], min_x);
+                            max_x = max(pt[0], max_x);
+                            min_y = min(pt[1], min_y);
+                            max_y = max(pt[1], max_y);
+                        }
+                        cv::putText(result, cmn::format<FormatterType::NONE>("sides: ", c.size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
+                    }
+#endif
+                    continue;
+                }
+
+                auto area = cv::contourArea(c, false);
+                if (area == 0) {
+                    continue;
+                }
+
+                area = sqrt(area * SQR(cm_per_pixel));
+
+                int min_x = INPUT->cols, min_y = INPUT->rows,
+                    max_x = 0, max_y = 0;
+
+                for (int j = 0; j < c.size(); ++j) {
+                    auto& pt = c[j];
+                    min_x = min(pt[0], min_x);
+                    max_x = max(pt[0], max_x);
+                    min_y = min(pt[1], min_y);
+                    max_y = max(pt[1], max_y);
+                }
+
+                if (tag_area_range.contains(area)) {
+                    ++found;
+#ifdef DEBUG_TAGS
+                    //auto N = (max_y - min_y + 1) * (max_x - min_x + 1);
+                    //auto b = input(Bounds(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1));
+
+                   // auto p = cv::sum(b)[0] / 255.0 / double(N);
+
+                    //print("area: ", area, " white/black ratio: ", p, " N: ", N, " sides: ", c.size());
+
+                    //if (Range<double>(0.84, 0.95).contains(p)) 
+                    //{
+                    if (show_debug_info) {
+                        cv::line(result, Vec2(min_x, min_y), Vec2(max_x, min_y), Cyan, 2);
+                        cv::line(result, Vec2(max_x, min_y), Vec2(max_x, max_y), Cyan, 2);
+                        cv::line(result, Vec2(max_x, max_y), Vec2(min_x, max_y), Cyan, 2);
+                        cv::line(result, Vec2(min_x, max_y), Vec2(min_x, min_y), Cyan, 2);
+
+                        cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area, " sides: ", c.size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Cyan);
+                        //}
+                       //else {
+                        cv::drawContours(result, contours, index, Color(255, 150, 0, 255));
+                    }
+#endif
+                    auto add_padding = [](Bounds bds, float padding, const Size2& image_size) -> Bounds {
+                        Bounds b(bds.x - padding, bds.y - padding, bds.width + padding * 2, bds.height + padding * 2);
+                        b.restrict_to(Bounds(Vec2(0), image_size));
+                        return b;
+                    };
+
+                    auto bds = add_padding(Bounds(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1), 5, Size2(input.cols, input.rows));
+                    input(bds).copyTo(l);
+                    //cv::equalizeHist(l, l);
+                   //.copyTo(l);
+                    //resize_image(l, l, 5, cv::INTER_LINEAR);
+                    //tf::imshow("tag", l);
+
+                    Vec2 prev{ (float)c.back()[0], (float)c.back()[1] };
+                    int max_side = 0;
+                    float maximum = 0;
+                    for (int j = 0; j < c.size(); ++j) {
+                        Vec2 pos{ (float)c[j][0], (float)c[j][1] };
+                        float L = sqdistance(prev, pos);
+
+                        if (L > maximum) {
+                            maximum = L;
+                            max_side = j;
+                        }
+
+                        prev = pos;
+                    }
+
+                    //print("max side: ", max_side, " max length: ", maximum);
+                    {
+                        auto idx = (max_side == 0 ? c.size() : max_side) - 1;
+                        //print("max_side = ", max_side, " idx = ", idx, " L = ", c.size());
+                        Vec2 prev = Vec2{ (float)c[idx][0], (float)c[idx][1] };//.normalize();
+                        Vec2 pos = Vec2{ (float)c[max_side][0], (float)c[max_side][1] };//.normalize();
+
+                       // auto angle = atan2(prev.x* pos.y - pos.x * prev.y, prev.x* pos.x + prev.y * pos.y);
+                        //print("pos:", pos, " prev:", prev);
+                        //auto angle = atan2(pos) - atan2(prev);
+                        auto angle = atan2((pos - prev).normalize());
+                        //if (angle > M_PI) { angle -= 2 * M_PI; }
+                        //else if (angle <= -M_PI) { angle += 2 * M_PI; }
+
+                        //print("m = ", angle);
+
+                        /*float max_height;
+                        auto max_width = euclidean_distance(prev, pos);
+
+                        {
+                            max_side = (max_side + 1) % 4;
+                            idx = (max_side == 0 ? c.size() : max_side) - 1;
+                            Vec2 prev0 = Vec2{ (float)c[idx][0], (float)c[idx][1] };//.normalize();
+                            Vec2 pos0 = Vec2{ (float)c[max_side][0], (float)c[max_side][1] };//.normalize();
+
+                            max_side = (max_side + 2) % 4;
+
+                            idx = (max_side == 0 ? c.size() : max_side) - 1;
+                            Vec2 prev1 = Vec2{ (float)c[idx][0], (float)c[idx][1] };//.normalize();
+                            Vec2 pos1 = Vec2{ (float)c[max_side][0], (float)c[max_side][1] };//.normalize();
+
+                            if (sqdistance(prev0, pos0) > sqdistance(prev1, pos1)) {
+                                max_height = euclidean_distance(prev0, pos0);
+                            }
+                            else {
+                                max_height = euclidean_distance(prev1, pos1);
+                            }
+
+                            auto L1 = [](auto& A, auto& B) {
+                                return sqrt(SQR((float)A[0] - (float)B[0]) + SQR((float)A[1] - (float)B[1]));
+                            };
+                            auto widthAB = L1(c[0], c[1]);
+                            auto widthBC = L1(c[1], c[2]);
+                            auto widthCD = L1(c[2], c[3]);
+                            auto widthAD = L1(c.front(), c.back());
+                            auto maxWidth = max((widthAD), (widthBC));
+                            auto maxHeight = max((widthAB), (widthCD));
+
+
+                            std::vector<cv::Point2f> output_pts{
+                                {0,0}, {(float)maxWidth, 0}, {(float)maxWidth,(float)maxHeight}, {0, (float)maxHeight}
+                            };
+
+                            cv::Mat input_pts;
+                            cv::Mat(c).convertTo(input_pts, CV_32FC2);
+                            auto transform = cv::getPerspectiveTransform(input_pts, output_pts);
+                            cv::warpPerspective(l, rotated, transform, Size2(l.cols, l.rows), cv::INTER_LINEAR);
+                            if (rotated.type() != CV_8UC1) {
+                                print("type != CV_8UC1");
+                            }
+                        }*/
+
+                        auto rot = cv::getRotationMatrix2D(Size2(l) * 0.5, DEGREE(angle), 1.0);
+                        cv::warpAffine(l, rotated, rot, Size2(l));
+
+                        int cut_off = 4;
+                        auto xy = Size2(rotated) * 0.5 - (Size2(rotated) * 0.5 - cut_off);
+                        const Size2 tag_size(24, 24);
+
+                        if (rotated.cols - cut_off * 2 > tag_size.width) {
+                            cut_off = (rotated.cols - tag_size.width) / 2 + 1;
+                        }
+                        if (rotated.rows - cut_off * 2 > tag_size.height) {
+                            cut_off = (rotated.rows - tag_size.height) / 2 + 1;
+                        }
+
+                        auto cut = Bounds(Vec2(cut_off), Size2(rotated) - cut_off * 2);
+                        cut.restrict_to(Bounds(Vec2(), Size2(rotated)));
+
+                        if (cut.height <= 0 || cut.width <= 0)
+                            continue;
+
+                        //
+#ifdef DEBUG_TAGS
+                        if (show_debug_info) {
+                            cv::cvtColor(l, smaller, cv::COLOR_GRAY2BGR);
+                            resize_image(smaller, 5, cv::INTER_LINEAR);
+
+                            prev = Vec2(c.back()[0], c.back()[1]);
+                            for (auto j = 0; j < c.size(); ++j) {
+                                Vec2 pos(c[j][0], c[j][1]);
+                                cv::line(smaller, (prev - bds.pos() + 0.5) * 5, (pos - bds.pos() + 0.5) * 5, Cyan);
+                            }
+
+                            tf::imshow("original", smaller);
+                        }
+#endif
+                        //
+
+                        bds.x += cut_off;
+                        bds.y += cut_off;
+                        bds.width -= cut_off * 2;
+                        bds.height -= cut_off * 2;
+
+                        //cut.restrict_to(Bounds(Vec2(0), Size2(32, 32)));
+
+                        rotated(cut).copyTo(smaller);
+
+                        cv::resize(smaller, l, Size2{ 32, 32 }, 0, 0, cv::INTER_LINEAR);
+                        bds.width = bds.height = l.cols;
+                        if (bds.x + bds.width > _average->cols)
+                            bds.x = _average->cols - bds.width;
+                        if (bds.y + bds.height > _average->rows)
+                            bds.y = _average->rows - bds.height;
+                        if (bds.y < 0)
+                            bds.y = 0;
+                        if (bds.x < 0)
+                            bds.x = 0;
+                        //pad_image(l, smaller, tag_size,-1, true, cv::Mat(),255);
+                        //smaller.copyTo(l);
+
+                        //
+#ifdef DEBUG_TAGS
+                        if (show_debug_info) {
+                            resize_image(smaller, 5, cv::INTER_LINEAR);
+                            tf::imshow("rotated", smaller);
+                        }
+#endif
+                    }
+
+                    auto lines = std::make_unique<cmn::blob::line_ptr_t::element_type>();
+                    auto pixels = std::make_unique<cmn::blob::pixel_ptr_t::element_type>();
+                    pixels->resize(size_t(l.rows) * size_t(l.cols));
+                    lines->resize(l.rows);
+
+                    std::copy(l.ptr(), l.ptr() + pixels->size(), pixels->begin());
+#ifndef NDEBUG
+                    if (bds.width != l.cols)
+                        throw U_EXCEPTION("width ", bds, " != ", Size2(l));
+#endif
+
+                    for (int y = 0; y < l.rows; ++y) {
+                        (*lines)[y].y = y + bds.y;
+                        (*lines)[y].x0 = bds.x;
+                        (*lines)[y].x1 = bds.x + bds.width - 1;
+                    }
+
+                    blobs.emplace_back(std::make_unique<pv::Blob>(std::move(lines), std::move(pixels)));
+                    //cv::imwrite("C:/Users/tristan/tag_images/" + tags.back()->blob_id().toStr() + ".png", l);
+#ifdef DEBUG_TAGS
+                /*auto&& [pos, img] = blobs.back()->image(nullptr, Bounds(-1, -1, -1, -1), 0);
+                cv::cvtColor(img->get(), l, cv::COLOR_GRAY2BGR);
+                if (l.cols != 32 || l.rows != 32) {
+                    print("Size different: ", Size2(l));
+                }
+
+
+                resize_image(l, 5, cv::INTER_LINEAR);
+                tf::imshow("tag", l);*/
+#endif
+                // }
+
+                }
+                else {
+#ifdef DEBUG_TAGS
+                    if (show_debug_info) {
+                        cv::drawContours(result, contours, index, Color(150, 0, 0, 255));
+                        cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
+                    }
+#endif
+                }
             }
-            cv::putText(result, cmn::format<FormatterType::NONE>("sides: ", contours[i].size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
-#endif
-            continue;
-        }
 
-        auto area = cv::contourArea(contours[i], false);
-        if (area == 0) {
-            continue;
-        }
+            std::unique_lock guard(mutex);
+            tags.insert(tags.end(), std::make_move_iterator(blobs.begin()), std::make_move_iterator(blobs.end()));
+        };
 
-        area = sqrt(area * SQR(cm_per_pixel));
+        distribute_vector(process, _contour_pool, contours.begin(), contours.end());
 
-        int min_x = INPUT->cols, min_y = INPUT->rows,
-            max_x = 0, max_y = 0;
-
-        for (int j = 0; j < contours[i].size(); ++j) {
-            auto& pt = contours[i][j];
-            min_x = min(pt[0], min_x);
-            max_x = max(pt[0], max_x);
-            min_y = min(pt[1], min_y);
-            max_y = max(pt[1], max_y);
-        }
-
-        if (tag_area_range.contains(area)) {
-            ++found;
 #ifdef DEBUG_TAGS
-            auto N = (max_y - min_y + 1) * (max_x - min_x + 1);
-            auto b = input(Bounds(min_x, min_y, max_x - min_x + 1, max_y - min_y + 1));
-
-            auto p = cv::sum(b)[0] / 255.0 / double(N);
-
-            //print("area: ", area, " white/black ratio: ", p, " N: ", N, " sides: ", contours[i].size());
-
-            //if (Range<double>(0.84, 0.95).contains(p)) 
-            //{
-            cv::line(result, Vec2(min_x, min_y), Vec2(max_x, min_y), Cyan, 2);
-            cv::line(result, Vec2(max_x, min_y), Vec2(max_x, max_y), Cyan, 2);
-            cv::line(result, Vec2(max_x, max_y), Vec2(min_x, max_y), Cyan, 2);
-            cv::line(result, Vec2(min_x, max_y), Vec2(min_x, min_y), Cyan, 2);
-
-            cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area, " sides: ", contours[i].size()), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Cyan);
-        //}
-       //else {
-            cv::drawContours(result, contours, i, Color(255, 150, 0, 255));
-            // }
-#endif
+        if (show_debug_info) {
+            print("found ", found, " tags. ", tags);
+            //resize_image(result, 0.5, cv::INTER_LINEAR);
+            cv::cvtColor(result, result, cv::COLOR_BGRA2RGBA);
+            tf::imshow("result", result);
         }
-        else {
-#ifdef DEBUG_TAGS
-            cv::drawContours(result, contours, i, Color(150, 0, 0, 255));
-            cv::putText(result, cmn::format<FormatterType::NONE>("area: ", area), Vec2(min_x, min_y - 10), cv::FONT_HERSHEY_PLAIN, 0.6, Red);
 #endif
-        }
     }
-
-#ifdef DEBUG_TAGS
-    print("found ", found, " tags.");
-    //resize_image(result, 0.5, cv::INTER_LINEAR);
-    cv::cvtColor(result, result, cv::COLOR_BGRA2RGBA);
-    tf::imshow("result", result);
-#endif
 #endif
 }
