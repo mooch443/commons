@@ -70,7 +70,10 @@ endforeach()
 
 target_link_libraries(commons
     PUBLIC cnpy
+    PUBLIC Commons::OpenCV
     PUBLIC Commons::IMGUI 
+    PUBLIC Commons::GLFW
+    PUBLIC Commons::FFMPEG
     PUBLIC Commons::OpenGL 
     PUBLIC Commons::LibPNG 
     PUBLIC Commons::LibZIP 
