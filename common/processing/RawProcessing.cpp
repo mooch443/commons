@@ -734,7 +734,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
 
                         int cut_off = 4;
                         auto xy = Size2(rotated) * 0.5 - (Size2(rotated) * 0.5 - cut_off);
-                        const Size2 tag_size(24, 24);
+                        const Size2 tag_size(32, 32);
 
                         if (rotated.cols - cut_off * 2 > tag_size.width) {
                             cut_off = (rotated.cols - tag_size.width) / 2 + 1;
@@ -775,7 +775,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
 
                         rotated(cut).copyTo(smaller);
 
-                        cv::resize(smaller, l, Size2{ 32, 32 }, 0, 0, cv::INTER_LINEAR);
+                        cv::resize(smaller, l, tag_size, 0, 0, cv::INTER_LINEAR);
                         bds.width = bds.height = l.cols;
                         if (bds.x + bds.width > _average->cols)
                             bds.x = _average->cols - bds.width;
