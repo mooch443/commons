@@ -848,9 +848,10 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
 
 #ifdef DEBUG_TAGS
         if (show_debug_info) {
-            print("found ", found, " tags. ", tags);
+            //print("found ", found, " tags. ", tags);
             //resize_image(result, 0.5, cv::INTER_LINEAR);
             cv::cvtColor(result, result, cv::COLOR_BGRA2RGBA);
+            cv::imwrite("C:/Users/tristan/Videos/result.png", result);
             tf::imshow("result", result);
         }
 #endif
