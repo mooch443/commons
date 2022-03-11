@@ -378,6 +378,20 @@ if(XCODE)
     set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_NON_VIRTUAL_DESTRUCTOR "YES")
 endif()
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#    FINDING      P Y T H O N
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+if(NOT COMMONS_NO_PYTHON)
+    find_package(Python COMPONENTS Interpreter Development REQUIRED)
+    message(STATUS "After find PYTHON: ${Python_FOUND}")
+    message(STATUS "PYTHON: ${Python_LIBRARIES}")
+    message(STATUS "PYTHON: ${Python_EXECUTABLE}")
+    set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
+    set(PYTHON_LIBRARY "${Python_LIBRARIES}")
+endif()
+
+
 set(COMMONS_subproject_CMAKE_ARGS "")
 
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
@@ -415,19 +429,15 @@ endif()
 message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET = ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 message(STATUS "MACOSX_DEPLOYMENT_TARGET = $ENV{MACOSX_DEPLOYMENT_TARGET}")
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    FINDING      P Y T H O N
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#if(NOT APPLE AND NOT COMMONS_NO_PYTHON)
+#    set(PY_VERSION "3.6")
+#    find_package(PythonLibs ${PY_VERSION} REQUIRED)
+#    find_package(PythonInterp ${PY_VERSION} REQUIRED)
+#    include_directories(${PYTHON_INCLUDE_DIRS})
 
-if(NOT APPLE AND NOT COMMONS_NO_PYTHON)
-    set(PY_VERSION "3.6")
-    find_package(PythonLibs ${PY_VERSION} REQUIRED)
-    find_package(PythonInterp ${PY_VERSION} REQUIRED)
-    include_directories(${PYTHON_INCLUDE_DIRS})
-
-    message(STATUS "${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-    message(STATUS "Using python version ${PYTHON_EXECUTABLE}")
-endif()
+#    message(STATUS "${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+#    message(STATUS "Using python version ${PYTHON_EXECUTABLE}")
+#endif()
 
 if (DEFINED TRACKER_GLOBAL_THREADS)
     ADD_DEFINITIONS(-DTRACKER_GLOBAL_THREADS=${TRACKER_GLOBAL_THREADS})
@@ -705,6 +715,8 @@ elseif(NOT COMMONS_NO_PYTHON)
         FetchContent_Populate(pybind11)
         add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
     endif()
+
+    message(STATUS "PYTHON VARS: lib:${PYTHON_LIBRARY} inc:${PYTHON_INCLUDE_DIR} exec:${PYTHON_EXECUTABLE}")
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1222,6 +1234,8 @@ endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})
     message(STATUS "Commons using opencv version ${COMMONS_OPENCV_VERSION_NO_DOTS}")
 
+    set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
+
     if(UNIX)
         message(STATUS "Using custom configure command")
         ExternalProject_add(CustomOpenCV
@@ -1229,9 +1243,9 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
-            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${COMMONS_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
-            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE}
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE} --target install
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
     else()
