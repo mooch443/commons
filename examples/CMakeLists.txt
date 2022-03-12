@@ -16,7 +16,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(test_gui PRIVATE -fbracket-depth=400)
 endif()
 
-target_precompile_headers(test_gui REUSE_FROM commons)
+##target_precompile_headers(test_gui REUSE_FROM commons)
 
 
 add_executable(
@@ -31,7 +31,7 @@ if(COMMONS_FOR_JS)
 set_target_properties(test_python PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS}") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
 endif()
 
-target_precompile_headers(test_python REUSE_FROM commons)
+#target_precompile_headers(test_python REUSE_FROM commons)
 
 install(TARGETS test_python
     EXPORT test_python
