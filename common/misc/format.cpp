@@ -26,7 +26,7 @@ std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> log_callba
 //extern IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
 void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> fn) {
     log_callback_function = fn;
-    return (void*) & fn;
+    return (void*) & log_callback_function;
 }
 void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool force) {
     if (!has_log_callback())
