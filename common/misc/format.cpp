@@ -39,20 +39,22 @@ void log_to_terminal(const std::string& str, bool force_display) {
     std::call_once(tag, []() {
         auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
         if (handle == INVALID_HANDLE_VALUE) {
+#ifndef NDEBUG
             printf("Cannot get console handle\n");
+#endif
             return;
         }
 
         DWORD dwMode = 0;
         if (!GetConsoleMode(handle, &dwMode)) {
+#ifndef NDEBUG
             printf("Get console handle error: %d\n", GetLastError());
+#endif
             return;
         }
 
         dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         SetConsoleMode(handle, dwMode);
-
-        printf("Set console mode.\n");
     });
 #endif
 
