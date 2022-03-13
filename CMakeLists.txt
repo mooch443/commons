@@ -383,7 +383,19 @@ endif()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if(NOT COMMONS_NO_PYTHON)
-    find_package(Python COMPONENTS Interpreter Development REQUIRED)
+    if(CONDA_PREFIX AND NOT Python_ROOT_DIR)
+        message(STATUS "Using conda prefix = ${CONDA_PREFIX} to find Python.")
+        set(Python_ROOT_DIR ${CONDA_PREFIX})
+    endif()
+
+    set(Python_USE_STATIC_LIBS ON)
+    find_package(Python COMPONENTS Interpreter Development)
+
+    if(NOT Python_FOUND)
+        set(Python_USE_STATIC_LIBS OFF)
+        find_package(Python COMPONENTS Interpreter Development REQUIRED)
+    endif()
+
     message(STATUS "After find PYTHON: ${Python_FOUND}")
     message(STATUS "PYTHON: ${Python_LIBRARIES}")
     message(STATUS "PYTHON: ${Python_EXECUTABLE}")
