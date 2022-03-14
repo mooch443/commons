@@ -403,10 +403,10 @@ if(NOT COMMONS_NO_PYTHON)
     message(STATUS "After find PYTHON: ${Python_FOUND}")
     message(STATUS "PYTHON: ${Python_LIBRARIES}")
     message(STATUS "PYTHON: ${Python_EXECUTABLE}")
+
     set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
     set(PYTHON_LIBRARY "${Python_LIBRARIES}")
 endif()
-
 
 set(COMMONS_subproject_CMAKE_ARGS "")
 
@@ -434,7 +434,7 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DPYTHON_LIBRARY:PATH=${PYTHON_LIBRARY}
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
     -DPython_ROOT_DIR:FILEPATH=${Python_ROOT_DIR}
-    
+
 )
 
 if(APPLE)

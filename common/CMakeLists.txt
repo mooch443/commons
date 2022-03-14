@@ -91,7 +91,7 @@ else()
     )
 endif()
 
-target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL})
+target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
 if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
     target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
 else()
