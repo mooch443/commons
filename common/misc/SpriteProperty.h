@@ -103,12 +103,12 @@ namespace cmn {
             }
             
             template<typename T>
-            const T& value() const {
+            const T& value(cmn::source_location loc = cmn::source_location::current()) const {
                 const Property<T>& p = toProperty<T>();
                 if (p.valid())
                     return p.value();
                 
-                throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ").");
+                throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
             }
 
             template<typename T>
