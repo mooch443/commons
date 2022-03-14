@@ -504,7 +504,7 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
     //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 
-#define REC_TAGS
+//#define REC_TAGS
 #ifdef REC_TAGS
 #define DEBUG_TAGS
     if (tags_enable) {
