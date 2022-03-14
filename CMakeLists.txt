@@ -389,6 +389,7 @@ if(NOT COMMONS_NO_PYTHON)
     if(CONDA_PREFIX AND NOT Python_ROOT_DIR)
         message(STATUS "Using conda prefix = ${CONDA_PREFIX} to find Python.")
         set(Python_ROOT_DIR ${CONDA_PREFIX})
+        set(Python_DIR ${CONDA_PREFIX})
     endif()
 
     set(Python_USE_STATIC_LIBS ON)
@@ -432,6 +433,8 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DPYTHON_INCLUDE_DIR:PATH=${PYTHON_INCLUDE_DIR}
     -DPYTHON_LIBRARY:PATH=${PYTHON_LIBRARY}
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
+    -DPython_ROOT_DIR:FILEPATH=${Python_ROOT_DIR}
+    
 )
 
 if(APPLE)
