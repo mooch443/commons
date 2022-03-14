@@ -8,6 +8,7 @@
 #include <processing/PadImage.h>
 #include <misc/ThreadPool.h>
 
+//#define REC_TAGS
 using namespace cmn;
 
 gpuMat gpu_dilation_element;
@@ -88,8 +89,10 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
                 image_brightness_increase = value.template value<float>();
             else if (key == std::string("image_invert"))
                 image_invert = value.template value<bool>();
+#if defined(REC_TAGS)
             else if (key == std::string("tags_enable"))
                 tags_enable = value.template value<bool>();
+#endif
         };
         GlobalSettings::map().register_callback(ptr, callback);
 
@@ -109,7 +112,9 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_contrast_increase", GlobalSettings::get("image_contrast_increase").get());
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_brightness_increase", GlobalSettings::get("image_brightness_increase").get());
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_invert", GlobalSettings::get("image_invert").get());
+#if defined(REC_TAGS)
         callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "tags_enable", GlobalSettings::get("tags_enable").get());
+#endif
     }
 
     //static Timing timing("thresholding", 30);
@@ -504,7 +509,6 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
     //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 
-//#define REC_TAGS
 #ifdef REC_TAGS
 #define DEBUG_TAGS
     if (tags_enable) {
