@@ -275,7 +275,7 @@ const char* DataFormat::read_data_fast(uint64_t num_bytes) {
         if(!_mmapped)
             throw U_EXCEPTION("Only available for mmapped files.");
         if(uint64_t(_file_offset + num_bytes) > _reading_file_size) {
-            FormatError("Exceeding reported file size of ", _reading_file_size, " at ", _file_offset," reading ", num_bytes," bytes.");
+            throw U_EXCEPTION("Exceeding reported file size of ", _reading_file_size, " at ", _file_offset," reading ", num_bytes," bytes.");
         }
         
         offset = _file_offset;
