@@ -92,16 +92,14 @@ else()
 endif()
 
 
-if(APPLE)
-    try_compile(HAVE_CONCEPT_IMPLEMENTATION "${CMAKE_BINARY_DIR}/temp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concepts.cpp"
-                 CXX_STANDARD 20
-                 CXX_STANDARD_REQUIRED TRUE)
-    if(${HAVE_CONCEPT_IMPLEMENTATION})
-        target_compile_definitions(commons PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
-        message(STATUS "Setting to true.")
-    endif()
-    message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
+try_compile(HAVE_CONCEPT_IMPLEMENTATION "${CMAKE_BINARY_DIR}/temp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concepts.cpp"
+             CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED TRUE)
+if(${HAVE_CONCEPT_IMPLEMENTATION})
+    target_compile_definitions(commons PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
+    message(STATUS "Setting to true.")
 endif()
+message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
 
 target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
 if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
