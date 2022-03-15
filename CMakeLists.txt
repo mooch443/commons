@@ -390,7 +390,7 @@ if(NOT COMMONS_NO_PYTHON)
         message(STATUS "Using conda prefix = ${CONDA_PREFIX} to find Python.")
         set(Python_ROOT_DIR "${CONDA_PREFIX}")
         set(Python_DIR "${CONDA_PREFIX}")
-        message(STATUS "Set conda prefix ${Python_DIR}")
+        message(STATUS "Set conda prefix ${Python_DIR} (exec ${Python_EXECUTABLE} vs. ${PYTHON_EXECUTABLE})")
     #endif()
 
     unset(Python_USE_STATIC_LIBS)
