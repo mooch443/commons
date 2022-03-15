@@ -64,6 +64,7 @@
 #include <concepts>
 #include <fstream>
 #include <span>
+#include <optional>
 
 #include <misc/date.h>
 
