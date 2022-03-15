@@ -56,9 +56,9 @@ int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t len
     /* create or open file */
     if (!create) {
         assert(path.exists());
-        
-        hFile = CreateFile ( path.c_str(), GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_READ | FILE_SHARE_WRITE, &sa, OPEN_EXISTING,
+        print("Opening for reading...");
+        hFile = CreateFile ( path.c_str(), GENERIC_READ,
+            FILE_SHARE_READ, &sa, OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL, NULL);
     }
     else {
@@ -68,6 +68,13 @@ int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t len
     }
     if (hFile == INVALID_HANDLE_VALUE) {
         free( pSD);
+        auto error = GetLastError();
+        if (error == 0x20) {
+            FormatError("The requested file (", path, ") is currently in use by another process.");
+        }
+        else
+            FormatError("hFile is null for path ", path, " error: ", GetLastError());
+
         return -3;
     }
     if (! exists) {
@@ -86,12 +93,18 @@ int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t len
     ULARGE_INTEGER maxSize;
     maxSize.QuadPart = reg->length;
 
-    hMem = CreateFileMapping( hFile, &sa, PAGE_READWRITE, maxSize.HighPart, maxSize.LowPart, NULL);
+    hMem = CreateFileMapping( hFile, &sa, PAGE_READONLY, maxSize.HighPart, maxSize.LowPart, NULL);
     free( pSD);
-    if (NULL == hMem) return -3;
+    if (NULL == hMem) {
+        FormatError("hMem was null.");
+        return -3;
+    }
 
-    reg->addr = MapViewOfFile( hMem, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-    if (NULL == reg->addr) return -3;
+    reg->addr = MapViewOfFile( hMem, FILE_MAP_READ, 0, 0, 0);
+    if (NULL == reg->addr) {
+        FormatError("reg->addr was null.");
+        return -3;
+    }
 
     CloseHandle( hFile);
     CloseHandle( hMem);
@@ -104,10 +117,15 @@ void memunmap( mappedRegion *hReg)
     mappedRegion reg = *hReg;
     if (reg) {
         if (reg->addr) {
-            UnmapViewOfFile( reg->addr);
+            if (!UnmapViewOfFile(reg->addr))
+                FormatError("Unmapping of file did not work: ", GetLastError());
         }
+        else
+            FormatError("reg->addr was null.");
         free( reg);
     }
+    else
+        FormatError("reg was null, no file was open.");
     *hReg = 0;
 }
 #endif
@@ -179,9 +197,9 @@ void DataFormat::start_reading() {
 #if defined(WIN32)
     int result = memmap(false, _filename, &reg);
     if (result != 0) {
-        if (reg)
-            memunmap(&reg);
-        throw U_EXCEPTION("Cannot mmap file '",_filename,"' (",result,").");
+        //if (reg)
+        //    memunmap(&reg);
+        throw U_EXCEPTION("Cannot mmap file ",_filename," (",result,").");
     }
     _data = memGetAddr(&reg);
 #else
