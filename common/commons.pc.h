@@ -95,11 +95,8 @@ static inline int __builtin_clzl(T x) {
 
 #endif
 
-#if defined(__clang__)
-    #if (__clang_major__) <= 13
-
+#if !defined(HAVE_CONCEPT_IMPLEMENTATION)
 namespace std {
-
 template<class From, class To>
     concept convertible_to =
         std::is_convertible_v<From, To> &&
@@ -115,8 +112,6 @@ template <class T>
 template <class T>
     concept unsigned_integral = std::integral<T> && !std::signed_integral<T>;
 }
-
-    #endif
 #endif
 
 #ifdef WIN32

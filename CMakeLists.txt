@@ -158,6 +158,7 @@ else()
 endif()
 
 message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
+
 add_library(Commons::X11 INTERFACE IMPORTED GLOBAL)
 if(UNIX AND NOT APPLE AND NOT COMMONS_FOR_JS)
     message(STATUS "Finding X11...")
