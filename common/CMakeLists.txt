@@ -94,8 +94,8 @@ endif()
 
 if(APPLE)
     try_compile(HAVE_CONCEPT_IMPLEMENTATION "${CMAKE_BINARY_DIR}/temp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concepts.cpp"
-                 CMAKE_FLAGS 
-                      "-std=c++20")
+                 CXX_STANDARD 20
+                 CXX_STANDARD_REQUIRED TRUE)
     if(${HAVE_CONCEPT_IMPLEMENTATION})
         target_compile_definitions(commons PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
         message(STATUS "Setting to true.")
