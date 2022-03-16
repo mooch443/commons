@@ -249,7 +249,7 @@ namespace gui {
         
         if(stage()) {
             auto &gb = global_bounds();
-            if(gb.y >= stage()->height() * 0.5) {
+            if(gb.y >= stage()->height()/stage()->scale().y * 0.5) {
                 set_inverted(true);
             } else
                 set_inverted(false);
