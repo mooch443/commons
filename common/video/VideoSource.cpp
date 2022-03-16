@@ -338,8 +338,7 @@ VideoSource::VideoSource(const std::vector<file::Path>& files)
     }
     
     if(_files_in_seq.empty()) {
-        auto str = Meta::toStr(files);
-        throw U_EXCEPTION("Cannot load video sequence ",str," (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence ",files," (it is empty).");
     }
     
     _size = _files_in_seq.at(0)->resolution();
@@ -400,14 +399,14 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         _files_in_seq.shrink_to_fit();
         
     } else {
-        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(), "'...");
+        print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
             
             File *f = File::open(i-seq_start, ss.str(), extension, i != seq_start);
             if(!f)
-                throw U_EXCEPTION("Cannot find file '", ss.str().c_str(), ".", extension.c_str(), "' in sequence ", seq_start,"-", seq_end, ".");
+                throw U_EXCEPTION("Cannot find file ", ss.str() + "." + extension, " in sequence ", seq_start,"-", seq_end, ".");
             _files_in_seq.push_back(f);
             
             _length += f->length();
@@ -420,11 +419,11 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
         
         if (_files_in_seq.empty())
-            throw U_EXCEPTION("Provided an empty video sequence for video source '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "'.");
+            throw U_EXCEPTION("Provided an empty video sequence for video source ", prefix+(suffix.empty() ? "" : "."+suffix), ".");
     }
     
     if(_files_in_seq.empty())
-        throw U_EXCEPTION("Cannot load video sequence '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "' (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence ", prefix + (suffix.empty() ? "" : "."+suffix)," (it is empty).");
     
     _size = _files_in_seq.at(0)->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
@@ -445,7 +444,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             cv::Mat image;
             first->frame(0, image);
             if(image.cols != _size.width || image.rows != _size.height) {
-                FormatWarning("VideoSource '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(),"' reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
+                FormatWarning("VideoSource ", prefix + (suffix.empty() ? "" : "%d") + suffix," reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
                 _size = cv::Size(image.cols, image.rows);
             }
             _last_file = first;
