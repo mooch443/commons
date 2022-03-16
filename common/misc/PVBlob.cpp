@@ -37,7 +37,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 pv::BlobPtr CompressedBlob::unpack() const {
     auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
     auto ptr = std::make_shared<pv::Blob>(std::move(flines), nullptr);
-    ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : -1);
+    ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : pv::bid::invalid);
     
     bool tried_to_split = (status_byte & 0x4) != 0;
     ptr->set_tried_to_split(tried_to_split);
@@ -529,14 +529,23 @@ static Callback callback;
         }
     }
     
-    decltype(Blob::_pixels) Blob::calculate_pixels(Image::Ptr image, const decltype(_hor_lines) &lines) {
+    decltype(Blob::_pixels) Blob::calculate_pixels(const Image::UPtr& image, const decltype(_hor_lines) &lines, const Vec2& offset) {
         auto pixels = std::make_unique<std::vector<uchar>>();
         for(auto &line : *lines) {
-            auto start = image->data() + ptr_safe_t(line.y) * image->cols + ptr_safe_t(line.x0);
+            auto start = image->ptr(int64_t(line.y) + int64_t(offset.y), int64_t(line.x0) + int64_t(offset.x));
+            //auto start = image->data() + (ptr_safe_t(line.y) + ptr_safe_t(offset.y)) * image->cols + (ptr_safe_t(line.x0) + ptr_safe_t(offset.x));
             auto end = start + ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
-            assert(line.x1 < image->cols && line.y < image->rows);
-            
-            pixels->insert(pixels->end(), start, end);
+            if(int64_t(line.x1) + int64_t(offset.x) < int64_t(image->cols)
+               && int64_t(line.y) + int64_t(offset.y) < int64_t(image->rows)
+               && int64_t(line.x0) + int64_t(offset.x) >= 0
+               && int64_t(line.y) + int64_t(offset.y) >= 0)
+            {
+                pixels->insert(pixels->end(), start, end);
+            } else {
+#ifndef NDEBUG
+                FormatExcept("line.x1 + offset.x = ", int64_t(line.x1) + int64_t(offset.x), " line.y + offset.y = ", int64_t(line.y) + int64_t(offset.y), " image:", image->bounds());
+#endif
+            }
         }
         return pixels;
     }

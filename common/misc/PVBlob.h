@@ -131,7 +131,7 @@ namespace pv {
         void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
         //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
         
-        static decltype(_pixels) calculate_pixels(cmn::Image::Ptr image, const decltype(_hor_lines)& lines);
+        static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
         
         float recount(int32_t threshold) const;
         float recount(int32_t threshold, const cmn::Background&);
