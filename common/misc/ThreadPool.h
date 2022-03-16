@@ -141,8 +141,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
         std::condition_variable finish_condition;
         std::vector<std::thread*> thread_pool;
         const size_t nthreads;
-        std::atomic_bool stop;
-        std::atomic_int _working;
+        std::atomic_bool stop{false};
+        std::atomic_int _working{0};
         std::function<void(T&)> work_function;
         
     public:
@@ -165,7 +165,11 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
                         ++_working;
                         
                         lock.unlock();
-                        work_function(item);
+                        try {
+                            work_function(item);
+                        } catch(...) {
+                            FormatExcept("Exception caught in work item of thread ", cmn::get_thread_name());
+                        }
                         lock.lock();
                         
                         --_working;
