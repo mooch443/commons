@@ -156,7 +156,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
  * @param index
  * @return cv::Mat
  */
-void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
+void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
     /*if(_frames.count(index)) {
         return _frames.at(index);
     }*/
@@ -164,7 +164,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     //TakeTiming take(timing);
     
 	if (index >= length())
-        throw U_EXCEPTION("Read out of bounds ",index,"/",length(),".");
+        throw U_EXCEPTION("Read out of bounds ",index,"/",length(),". (caller ", loc.file_name(), ":", loc.line(),")");
 
 #if defined(VIDEOS_USE_CUDA)
     if(index != _last_index+1) {
@@ -199,7 +199,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     
     // Read requested frame
     if(!_cap->read(read))
-        throw U_EXCEPTION("Cannot read frame ",index," of video '",_filename,"'.");
+        throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
 #endif
     
     if(read.channels() > 1) {

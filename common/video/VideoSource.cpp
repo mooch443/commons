@@ -149,7 +149,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {    
+void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened())
@@ -160,7 +160,7 @@ void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_vide
             assert(output.cols == _video->size().width
                 && output.rows == _video->size().height);
 
-            _video->frame(frameIndex, output, lazy_video);
+            _video->frame(frameIndex, output, lazy_video, loc);
             break;
             
         case IMAGE:
@@ -217,9 +217,9 @@ short VideoSource::File::framerate() {
     }
 }
 
-timestamp_t VideoSource::File::timestamp(uint64_t frameIndex) const {
+timestamp_t VideoSource::File::timestamp(uint64_t frameIndex, cmn::source_location loc) const {
     if(_type != VIDEO)
-        throw U_EXCEPTION("Cannot retrieve timestamps from anything else other than videos.");
+        throw U_EXCEPTION<FormatterType::UNIX, const char*>("Cannot retrieve timestamps from anything else other than videos.", loc);
     
     if(!has_timestamps())
         throw U_EXCEPTION("No timestamps available for ",_filename,".");
@@ -460,16 +460,16 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
 }
 
 #ifdef USE_GPU_MAT
-void VideoSource::frame(uint64_t globalIndex, gpuMat& output) {
+void VideoSource::frame(uint64_t globalIndex, gpuMat& output, cmn::source_location loc) {
     cv::Mat m(size().height, size().width, CV_8UC1);
-    frame(globalIndex, m);
+    frame(globalIndex, m, loc);
     m.copyTo(output);
 }
 #endif
 
-void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
+void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_location loc) {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
     if(type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex);
@@ -509,9 +509,9 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
     }
 }
 
-timestamp_t VideoSource::timestamp(uint64_t globalIndex) const {
+timestamp_t VideoSource::timestamp(uint64_t globalIndex, cmn::source_location loc) const {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
     uint64_t index = 0;
     

@@ -78,7 +78,7 @@ public:
      * will be set instead
      */
     //void frame(long_t index, cv::Mat& output, bool lazy = false);
-    void frame(int64_t index, cv::Mat& output, bool lazy = false);
+    void frame(int64_t index, cv::Mat& output, bool lazy = false, cmn::source_location loc = cmn::source_location::current());
     
     /**
      * Sets a callback function for video playback. If a new frame is ready, this

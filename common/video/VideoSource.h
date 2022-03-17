@@ -48,11 +48,11 @@ public:
         size_t length() const { return _length; }
         const cv::Size& resolution();
         
-        void frame(long_t frameIndex, cv::Mat& output, bool lazy_video = false) const;
+        void frame(long_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
         void close() const;
         Type type() const { return _type; }
         bool has_timestamps() const;
-        timestamp_t timestamp(uint64_t frameIndex) const;
+        timestamp_t timestamp(uint64_t frameIndex, cmn::source_location loc = cmn::source_location::current()) const;
         short framerate();
     };
     
@@ -86,9 +86,9 @@ public:
      * ### GENERICVIDEO INTERFACE ###
      **/
 #ifdef USE_GPU_MAT
-    void frame(uint64_t globalIndex, gpuMat& output) override;
+    void frame(uint64_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) override;
 #endif
-    void frame(uint64_t globalIndex, cv::Mat& output) override;
+    void frame(uint64_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) override;
     const cv::Size& size() const override { return _size; }
     uint64_t length() const override { return _length; }
     const cv::Mat& average() const override { return _average; }
@@ -98,7 +98,7 @@ public:
     File::Type type() const { if(_files_in_seq.empty()) return File::Type::UNKNOWN; return _files_in_seq.at(0)->type(); }
     
     virtual bool has_timestamps() const override;
-    virtual timestamp_t timestamp(uint64_t) const override;
+    virtual timestamp_t timestamp(uint64_t, cmn::source_location loc = cmn::source_location::current()) const override;
     virtual timestamp_t start_timestamp() const override;
     
     virtual short framerate() const override;
