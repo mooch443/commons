@@ -149,16 +149,17 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {
-    assert(output.cols == _video->size().width
-           && output.rows == _video->size().height);
-    
+void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {    
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened())
                 _video->open(_filename);
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
+
+            assert(output.cols == _video->size().width
+                && output.rows == _video->size().height);
+
             _video->frame(frameIndex, output, lazy_video);
             break;
             
