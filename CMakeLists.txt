@@ -1223,7 +1223,9 @@ else()
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
-            -DWITH_OPENEXR=OFF)
+            -DWITH_OPENEXR=OFF
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CONFIGURATION_TYPES:STRING=Release)
 endif()
     set(OPENCV_CMAKE_ARGS ${OPENCV_CMAKE_ARGS} 
                 ${COMMONS_subproject_CMAKE_ARGS}
