@@ -1072,6 +1072,11 @@ if(${COMMONS_BUILD_OPENCV})
    set(OPENCV_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
    set(OPENCV_C_FLAGS "${CMAKE_C_FLAGS}")
 
+    if(UNIX AND NOT APPLE)
+        set(OPENCV_USE_PCH OFF)
+    else()
+        set(OPENCV_USE_PCH ON)
+    endif()
 
    if(COMMONS_FOR_JS)
     IF(NOT CMAKE_BUILD_TYPE)
@@ -1110,7 +1115,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF 
             -DBUILD_TESTS=OFF 
             -DBUILD_FAT_JAVA_LIB=OFF 
-            -DENABLE_PRECOMPILED_HEADERS=ON 
+            -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DBUILD_opencv_highgui=ON
             -DBUILD_opencv_dnn=OFF 
             -DBUILD_opencv_video=ON
@@ -1169,9 +1174,10 @@ if(${COMMONS_BUILD_OPENCV})
             -DCV_ENABLE_INTRINSICS=OFF
             -DCPU_BASELINE=
             -DCPU_BASELINE_DISABLE=
-            -DCV_DISABLE_OPTIMIZATION=ON
             -DCPU_DISPATCH=
-            -DCV_DISABLE_OPTIMIZATION=ON -D CPU_BASELINE= -D CPU_DISPATCH=
+            -DCV_DISABLE_OPTIMIZATION=ON 
+            -DCPU_BASELINE= 
+            -DCPU_DISPATCH=
             -DCMAKE_BUILD_TYPE=Release
             -DWITH_PTHREADS_PF=OFF
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
@@ -1224,7 +1230,7 @@ else()
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
             -DWITH_OPENEXR=OFF
-            -DENABLE_PRECOMPILED_HEADERS=ON
+            -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release)
 endif()

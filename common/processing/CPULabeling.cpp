@@ -430,9 +430,7 @@ struct Source {
      */
     void init(const cv::Mat& image, bool enable_threads) {
         // assuming the number of threads allowed is < 255
-        static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()));
-        static const uchar sys_max_threads = max(1u, cmn::hardware_concurrency());
-        const uchar max_threads = enable_threads && image.cols*image.rows > 100*100 ? sys_max_threads : 1;
+        static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()), nullptr, "extract_lines");
         
         assert(image.cols < USHRT_MAX && image.rows < USHRT_MAX);
         assert(image.type() == CV_8UC1);
@@ -444,35 +442,12 @@ struct Source {
         lw = image.cols;
         lh = image.rows;
         
-        if(max_threads > 1) {
+        if(enable_threads
+           && int32_t(image.cols)*int32_t(image.rows) > int32_t(100*100))
+        {
             /**
              * FIND HORIZONTAL LINES IN ORIGINAL IMAGE
              */
-            /*std::vector<Range<int32_t>> thread_ranges;
-            thread_ranges.resize(max_threads);
-            int32_t step = max(1, ceil(lh / float(max_threads)));
-            int32_t end = 0;
-            
-            for(uchar i=0; i<max_threads; i++) {
-                thread_ranges[i].start = end;
-                
-                end = min(int32_t(lh), end + step);
-                thread_ranges[i].end = end;
-            }
-            
-            std::vector<std::thread*> threads;
-            std::vector<Source> thread_sources;
-            thread_sources.resize(max_threads);
-            
-            // start threads:
-            // TODO: maybe could use a thread pool here) to extract lines in parallel)
-            for(uchar i=0; i<max_threads; i++) {
-                thread_sources[i].lw = lw;
-                thread_sources[i].lh = lh;
-                
-                //threads.push_back(new std::thread(Source::extract_lines, image, &thread_sources[i], thread_ranges[i]));
-            }*/
-            
             uint8_t current_index{0};
             std::mutex m;
             std::condition_variable variable;
@@ -483,8 +458,10 @@ struct Source {
                     .lh = lh,
                 };
                 
+                //! perform the actual work
                 Source::extract_lines(image, &source, Range<int32_t>(start, end));
                 
+                // now merge lines (partly) in parallel:
                 std::unique_lock guard(m);
                 while(current_index < i) {
                     variable.wait(guard);
@@ -509,28 +486,6 @@ struct Source {
                 variable.notify_all();
                 
             }, pool, int32_t(0), int32_t(lh));
-            
-            // now merge lines (partly) in parallel:
-            /*for(uchar i=0; i<max_threads; ++i) {
-                threads[i]->join();
-                delete threads[i];
-                
-                // merge arrays:
-                // TODO: can reuse vectors, no need to allocate over an over again...
-                size_t S = _lines.size();
-                _pixels.insert(_pixels.end(), thread_sources[i]._pixels.begin(), thread_sources[i]._pixels.end());
-                _full_lines.insert(_full_lines.end(), thread_sources[i]._full_lines.begin(), thread_sources[i]._full_lines.end());
-                for(auto &o : thread_sources[i]._lines) {
-                    o = (const HorizontalLine*)((size_t)o + S);
-                }
-                _lines.insert(_lines.end(), thread_sources[i]._lines.begin(), thread_sources[i]._lines.end());
-                _nodes.insert(_nodes.end(), std::make_move_iterator(thread_sources[i]._nodes.begin()), std::make_move_iterator(thread_sources[i]._nodes.end()));
-                for(auto &o : thread_sources[i]._row_offsets) {
-                    o += S;
-                }
-                _row_offsets.insert(_row_offsets.end(), thread_sources[i]._row_offsets.begin(), thread_sources[i]._row_offsets.end());
-                _row_y.insert(_row_y.end(), thread_sources[i]._row_y.begin(), thread_sources[i]._row_y.end());
-            }*/
             
         } else {
             extract_lines(image, this, Range<int32_t>{0, int32_t(lh)});
