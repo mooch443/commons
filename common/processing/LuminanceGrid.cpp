@@ -36,7 +36,7 @@ namespace cmn {
         cv::Mat corrected;
         background.copyTo(corrected);
         
-        correct_image(corrected);
+        correct_image(corrected, corrected);
         
         background.convertTo(_corrected_average, CV_32FC1);
         gpuMat product;
@@ -105,24 +105,24 @@ namespace cmn {
     }
 //#endif
     
-    void LuminanceGrid::correct_image(cv::Mat& input) {
+    void LuminanceGrid::correct_image(cv::Mat& input, cv::Mat& output) {
         if(input.cols == _gpumat.cols && input.rows == _gpumat.rows) {
             std::lock_guard<std::mutex> guard(buffer_mutex);
             input.convertTo(_buffer, CV_32FC1);
             cv::multiply(_buffer, _gpumat, _buffer);
-            _buffer.convertTo(input, CV_8UC1);
+            _buffer.convertTo(output, CV_8UC1);
         } else
             FormatWarning("LuminanceGrid has resolution ", _gpumat.cols, "x", _gpumat.rows," whereas input has ",input.cols, "x", input.rows);
     }
     
 #ifdef USE_GPU_MAT
-    void LuminanceGrid::correct_image(gpuMat& input) {
+    void LuminanceGrid::correct_image(const gpuMat& input, gpuMat& output) {
         assert(input.cols == _gpumat.cols && input.rows == _gpumat.rows);
         
         std::lock_guard<std::mutex> guard(buffer_mutex);
         input.convertTo(_buffer, CV_32FC1);
         cv::multiply(_buffer, _gpumat, _buffer);
-        _buffer.convertTo(input, CV_8UC1);
+        _buffer.convertTo(output, CV_8UC1);
     }
 #endif
     

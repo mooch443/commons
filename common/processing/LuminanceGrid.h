@@ -43,8 +43,8 @@ namespace cmn {
         
         void correct_image(const gpuMat& input, cv::Mat& output);
 #ifdef USE_GPU_MAT
-        void correct_image(gpuMat& input_output);
+        void correct_image(const gpuMat& input_output, gpuMat& output);
 #endif
-        void correct_image(cv::Mat& input_output);
+        void correct_image(cv::Mat& input_output, cv::Mat& output);
     };
 }

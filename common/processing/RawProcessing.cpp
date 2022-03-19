@@ -36,7 +36,7 @@ RawProcessing::RawProcessing(const gpuMat &average, const gpuMat *float_average,
     : _average(&average), _float_average(float_average)
 { }
 
-void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>& tags) {
+void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>& tags) {
     assert(input.type() == CV_8UC1);
 
     static bool enable_diff = SETTING(enable_difference);
@@ -492,8 +492,10 @@ void RawProcessing::generate_binary(const gpuMat& input, cv::Mat& output, std::v
     tf::imshow("opt", opt);*/
 
     CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1))
-        output.setTo(cv::Scalar(0));
-    input.copyTo(output, *INPUT);
+    cv::bitwise_and(*INPUT, input, output);
+        //CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
+    //output.setTo(cv::Scalar(0), *INPUT);
+    //cpu_input.copyTo(output, *INPUT);
     //OUTPUT->copyTo(binary);
 
    /* cv::Mat __binary;

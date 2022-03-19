@@ -37,7 +37,7 @@ public:
         _floatb1.release();
     }
 
-    void generate_binary(const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>&);
+    void generate_binary(const cv::Mat& cpu_input, const gpuMat& input, cv::Mat& output, std::vector<pv::BlobPtr>&);
     cv::Mat get_binary() const;
 };
 
