@@ -1224,6 +1224,7 @@ else()
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
             -DWITH_OPENEXR=OFF
+            -DENABLE_PRECOMPILED_HEADERS=ON
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release)
 endif()
