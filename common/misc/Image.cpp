@@ -127,7 +127,7 @@ namespace cmn {
                 print("Reusing ", _size," for ",_array_size," array");
 #endif
         }
-        else {
+        else if(N > 0) {
             //! no array yet, malloc.
             if (cols < 128 && rows < 128)
                 _array_size = N * 2;

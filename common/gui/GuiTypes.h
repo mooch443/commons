@@ -489,6 +489,7 @@ protected:
         void update_with(const Image&);
         void update_with(Image::UPtr&&);
         void updated_source();
+        bool empty() const { return !_source || _source->size() == 0; }
         
     private:
         bool swap_with(Drawable* d) override {
