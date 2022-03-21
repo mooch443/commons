@@ -7,9 +7,6 @@
 [submodule "flat_hash_map"]
 	path = flat_hash_map
 	url = https://mooch443@github.com/mooch443/flat_hash_map.git
-[submodule "sparse-map"]
-	path = sparse-map
-	url = https://github.com/Tessil/sparse-map.git
 [submodule "robin-hood-hashing"]
 	path = robin-hood-hashing
 	url = https://github.com/martinus/robin-hood-hashing.git
