@@ -363,9 +363,12 @@ void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& inpu
         static const int morph_size = closing_size;
         static const cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
         static gpuMat gpu_element;
+        static std::once_flag flag;
 
-        if (gpu_element.empty())
-            element.copyTo(gpu_element);
+        std::call_once(flag, []() {
+            if (gpu_element.empty())
+                element.copyTo(gpu_element);
+        });
 
         if (use_adaptive_threshold) {
             CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, gauss, -threshold))

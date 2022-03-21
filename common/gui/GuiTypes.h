@@ -122,24 +122,35 @@ protected:
         GETTER(float, max_scale)
         
     public:
-        Line(const Vec2& pos0, const Vec2& pos1, const Color& color, float t = 1, MEMORY memory = COPY)
+        Line(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY memory = COPY)
             : Line({Vertex(pos0, color), Vertex(pos1, color)}, t, memory)
         {}
+        Line(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1)
+            : Line({ Vertex(pos0, color), Vertex(pos1, color) }, t, MEMORY::COPY, scale)
+        {}
         
-        Line(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT)
+        Line(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT, const Vec2& scale = Vec2(1))
             : VertexArray(p, PrimitiveType::LineStrip, memory, Type::LINE),
               _processed_points(NULL), _process_scale(-1),
               _max_scale(1)
         {
             if(_thickness != 1) set_thickness(t);
+            set_scale(scale);
         }
         
-        void set(const std::vector<Vertex>& p, float t) {
+        void set(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT, const Vec2& scale = Vec2(1)) {
             set_thickness(t);
+            set_scale(scale);
             VertexArray::set(p, PrimitiveType::LineStrip);
         }
         
-        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t = 1) {
+        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1) {
+            set_scale(scale);
+            set_thickness(t);
+            VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
+        }
+        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY m = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
+            set_scale(scale);
             set_thickness(t);
             VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
         }

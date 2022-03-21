@@ -547,7 +547,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         glfwGetMonitorPhysicalSize(monitor, &mw, &mh);
 #endif
 
-        print("Received monitor work area with mx:", mx, " my:", my, " mw:", mw, " mh:", mh);
+       // print("Received monitor work area with mx:", mx, " my:", my, " mw:", mw, " mh:", mh);
 #if defined(__EMSCRIPTEN__)
         width = canvas_get_width();
         height = canvas_get_height();
