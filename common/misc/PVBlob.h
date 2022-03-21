@@ -23,6 +23,8 @@ struct bid {
     uint32_t _id = invalid;
     bid() = default;
     bid(const bid&) = default;
+    bid& operator=(const bid&) = default;
+    bid& operator=(bid&&) = default;
     constexpr bid(uint32_t v) : _id(v) {}
     
     explicit constexpr operator uint32_t() const {

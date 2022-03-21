@@ -92,10 +92,10 @@ namespace cmn {
     };
 
 template<typename F, typename Iterator, typename Pool>
-void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const uint8_t = 5) {
-    static const auto threads = cmn::hardware_concurrency();
+void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
+    const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
-    const int64_t per_thread = max(1, N / threads);
+    const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
     int64_t processed = 0, enqueued = 0;
     std::mutex mutex;
     std::condition_variable variable;
