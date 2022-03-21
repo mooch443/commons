@@ -1,4 +1,5 @@
 #include "Layout.h"
+#include <gui/types/SingletonObject.h>
 
 namespace gui {
     Layout::Layout(const std::vector<Layout::Ptr>& objects)
@@ -148,7 +149,17 @@ namespace gui {
         for(auto c : children()) {
             if(!c)
                 continue;
-            //c->set_bounds_changed();
+
+            auto _c = c;
+            if (c->type() == Type::SINGLETON)
+                _c = static_cast<const SingletonObject*>(_c)->ptr();
+
+            if (_c->type() == Type::ENTANGLED
+                && dynamic_cast<Layout*>(_c))
+            {
+                static_cast<Layout*>(_c)->update_layout();
+            }
+
             c->update_bounds();
         }
         
@@ -166,7 +177,7 @@ namespace gui {
                 continue;
             
             x += _margins.x;
-            
+
             auto local = c->local_bounds();
             auto offset = local.size().mul(c->origin());
             
@@ -210,7 +221,17 @@ namespace gui {
         for(auto c : children()) {
             if(!c)
                 continue;
-            //c->set_bounds_changed();
+
+            auto _c = c;
+            if (c->type() == Type::SINGLETON)
+                _c = static_cast<const SingletonObject*>(_c)->ptr();
+
+            if (_c->type() == Type::ENTANGLED
+                && dynamic_cast<Layout*>(_c))
+            {
+                static_cast<Layout*>(_c)->update_layout();
+            }
+
             c->update_bounds();
         }
         
@@ -249,7 +270,17 @@ namespace gui {
         for(auto c : children()) {
             if(!c)
                 continue;
-            
+
+            auto _c = c;
+            if (c->type() == Type::SINGLETON)
+                _c = static_cast<const SingletonObject*>(_c)->ptr();
+
+            if (_c->type() == Type::ENTANGLED
+                && dynamic_cast<Layout*>(_c))
+            {
+                static_cast<Layout*>(_c)->auto_size(margin);
+            }
+
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
