@@ -112,19 +112,17 @@ endif()
 set(CMAKE_DEBUG_POSTFIX -d)
 
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 --llvm-lto 1 --bind -s ASSERTIONS=2 --memory-init-file 0")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
 endif()
 
 
-if(COMMONS_FOR_JS) #-pthread -s PTHREAD_POOL_SIZE=8  -s TOTAL_MEMORY=250MB
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -s ASYNCIFY")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O3 ")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O3 ")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten") #-pthread 
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -s ASYNCIFY -s PTHREAD_POOL_SIZE=24  -s TOTAL_MEMORY=250MB") # 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O0 -pthread")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O0 -pthread")
     set(CMAKE_CONFIGURATION_TYPES "Release" FORCE)
 endif()
 
@@ -386,7 +384,8 @@ endif()
 #    FINDING      P Y T H O N
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(NOT COMMONS_NO_PYTHON)
+#if(NOT COMMONS_NO_PYTHON)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     #if(CONDA_PREFIX AND NOT Python_ROOT_DIR)
         message(STATUS "Using conda prefix = ${CONDA_PREFIX} to find Python.")
         set(Python_ROOT_DIR "${CONDA_PREFIX}")
@@ -1094,7 +1093,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_GSTREAMER=OFF 
             -DWITH_IPP=OFF 
             -DWITH_JASPER=OFF 
-            -DWITH_WEBP=ON 
+            -DWITH_WEBP=OFF 
             -DWITH_OPENEXR=OFF 
             -DWITH_PVAPI=OFF 
             -DWITH_GIGEAPI=OFF 
@@ -1299,7 +1298,7 @@ endif()
     set(OpenCV_LIB_PATH "")
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi ade libwebp  ${FFMPEG_LIBRARIES})
+        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi  ${FFMPEG_LIBRARIES})
     elseif(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)

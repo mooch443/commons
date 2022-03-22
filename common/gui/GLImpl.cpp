@@ -371,6 +371,7 @@ void GLImpl::init_pbo(uint width, uint height) {
 }
 
 void GLImpl::update_pbo() {
+#if !COMMONS_NO_PYTHON
     if OPENGL3_CONDITION {
         // "index" is used to read pixels from framebuffer to a PBO
         // "nextIndex" is used to update pixels in the other PBO
@@ -400,6 +401,7 @@ void GLImpl::update_pbo() {
         // back to conventional pixel operation
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     }
+#endif
 }
 
 GLImpl::~GLImpl() {

@@ -102,6 +102,12 @@ endif()
 message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
 
 target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
+if(COMMONS_NO_PYTHON)
+    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=true)
+else()
+    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=false)
+endif()
+
 if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
     target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
 else()

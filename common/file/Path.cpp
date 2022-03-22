@@ -136,12 +136,14 @@ std::string_view Path::filename() const {
             std::condition_variable _download_variable;
             std::atomic_bool _download_finished{ false };
             std::vector<char> data;
+            file::Path _path;
         };
 
         static Data _data;
 
         std::unique_lock guard(_data._download_mutex);
         _data.data.clear();
+        _data._path = *this;
         _data._download_finished = false;
 
         emscripten_async_wget_data(c_str(), (void*)&_data, [](void* arg, void* buffer, int size) {
@@ -151,8 +153,9 @@ std::string_view Path::filename() const {
             std::copy((char*)buffer, (char*)buffer + size, self->data.data());
             self->_download_finished = true;
             self->_download_variable.notify_all();
-        }, [](void*) {
-            printf("Failed to download data!!!\n");
+        }, [](void* arg) {
+            auto self = (Data*)arg;
+            printf("Failed to download data for '%s'.\n", self->_path.c_str());
         });
 
         while (!_data._download_finished) {

@@ -673,6 +673,60 @@ struct timestamp_t {
 };
 }
 
+namespace cmn {
+#if !defined(__EMSCRIPTEN__) || true
+    template<typename T>
+    using atomic = std::atomic<T>;
+#else
+    template<typename T>
+    struct atomic {
+        T value;
+        mutable std::mutex m;
+
+        atomic() = default;
+        atomic(T v) : value( v ) {}
+
+        T load() const {
+            std::unique_lock guard(m);
+            return value;
+        }
+
+        void store(T v) {
+            std::unique_lock guard(m);
+            value = v;
+        }
+
+        operator T() const {
+            return load();
+        }
+
+        void operator=(T v) {
+            store(v);
+        }
+
+        bool operator==(T v) const {
+            return load() == v;
+        }
+
+        bool operator!=(T v) const {
+            return load() != v;
+        }
+
+        T operator++() {
+            std::unique_lock g(m);
+            ++value;
+            return value;
+        }
+
+        T operator--() {
+            std::unique_lock g(m);
+            --value;
+            return value;
+        }
+    };
+#endif
+}
+
 #undef isnormal
 #include <misc/math.h>
 #include <misc/EnumClass.h>

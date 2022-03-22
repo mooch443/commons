@@ -636,6 +636,9 @@ namespace cmn {
     }
     
     inline uint8_t hardware_concurrency() {
+#if  defined(__EMSCRIPTEN__)
+        return 1;
+#else
 #if TRACKER_GLOBAL_THREADS
         return TRACKER_GLOBAL_THREADS;
 #else
@@ -643,6 +646,7 @@ namespace cmn {
         if(!c)
             return 1;
         return c;
+#endif
 #endif
     }
     

@@ -179,7 +179,12 @@ uint64_t DataFormat::tell() const {
 void DataFormat::start_reading() {
     if (open())
         close();
-    
+
+#if defined(__EMSCRIPTEN__)
+    _data_container = _filename.retrieve_data();
+    _data = _data_container.data();
+    _reading_file_size = _data_container.size();
+#else
 /*#if defined(WIN32)
 	_supports_fast = false;
 	_mmapped = false;
@@ -212,6 +217,7 @@ void DataFormat::start_reading() {
 
     if ((_data = (char*)mmap((caddr_t)0, (size_t)sbuf.st_size, PROT_READ, MAP_SHARED, fd, 0)) == (caddr_t)(-1))
         throw U_EXCEPTION("Cannot mmap file ",_filename,".");
+#endif
 #endif
     _supports_fast = true;
     _mmapped = true;
