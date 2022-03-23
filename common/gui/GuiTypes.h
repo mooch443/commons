@@ -138,7 +138,7 @@ protected:
             set_scale(scale);
         }
         
-        void set(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT, const Vec2& scale = Vec2(1)) {
+        void set(const std::vector<Vertex>& p, float t, MEMORY = TRANSPORT, const Vec2& scale = Vec2(1)) {
             set_thickness(t);
             set_scale(scale);
             VertexArray::set(p, PrimitiveType::LineStrip);
@@ -149,7 +149,7 @@ protected:
             set_thickness(t);
             VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
         }
-        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY m = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
+        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
             set_scale(scale);
             set_thickness(t);
             VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
