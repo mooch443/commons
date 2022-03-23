@@ -799,6 +799,15 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         LoopStatus status = LoopStatus::IDLE;
 #if defined(__EMSCRIPTEN__)
         emscripten_set_main_loop_arg([](void *data) {
+            //static Timer timer;
+            //print("Frame timing ", timer.elapsed());
+            //timer.reset();
+
+            static std::once_flag flag;
+            std::call_once(flag, []() {
+                emscripten_set_main_loop_timing(EM_TIMING_RAF, 1);
+            });
+
             auto self = ((IMGUIBase*)data);
             auto width = canvas_get_width();
             auto height = canvas_get_height();
@@ -814,14 +823,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             }
 
             auto status = ((IMGUIBase*)data)->update_loop();
+            if (status == LoopStatus::END)
+                emscripten_cancel_main_loop();
             //emscripten_sleep(16);
         }, (void*)this, 0 /* fps */, 1 /* simulate_infinite_loop */);
 
         //while(status != LoopStatus::END)
         //    emscripten_sleep(16);
-        while (true) {
-
-        }
+        
 #else
         // Main loop
         while (status != LoopStatus::END)
