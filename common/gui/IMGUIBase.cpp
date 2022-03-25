@@ -528,8 +528,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
 
-    print("MonitorScale = ", Vec2(xscale, yscale));
-    
 #ifndef NDEBUG
     print("Content scale: ", xscale,", ",yscale);
 #endif
@@ -611,7 +609,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #else
         xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
-        print("MonitorScale = ", Vec2(xscale, yscale));
         
         int width = _graph->width(), height = _graph->height();
         int mx, my, mw, mh;
