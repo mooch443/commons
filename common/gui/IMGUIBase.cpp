@@ -394,7 +394,73 @@ EM_JS(int, canvas_get_width, (), {
 EM_JS(int, canvas_get_height, (), {
     return canvas.height;
 });
+
+/*EM_JS(void, canvas_set_, (int w, int h), {
+    canvas.width = w;
+    canvas.height = h;
+});*/
+
+void canvas_set_(int w, int h) {
+    /*auto canvas_css_resize_result = emscripten_set_element_css_size(
+        "canvas",
+        w,
+        h
+    );*/
+}
+/*EM_JS(void, canvas_set, (int w, int h), {
+
+    //canvas.width = w;
+    //canvas.height = h;
+});*/
 #endif
+
+void set_window_size(GLFWwindow* window, Size2 size) {
+#if defined(__EMSCRIPTEN__)
+    glfwSetWindowSize(window, size.width, size.height);
+    canvas_set_(size.width, size.height);
+#else
+    glfwSetWindowSize(window, size.width, size.height);
+#endif
+}
+
+float get_scale_multiplier() {
+#if defined(__EMSCRIPTEN__)
+    return 1.f;//emscripten_get_device_pixel_ratio();
+#else
+    return 1.f;
+#endif
+}
+
+Size2 get_window_size(GLFWwindow* window) {
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    auto r = get_scale_multiplier();
+    w *= r;
+    h *= r;
+    return { float(w), float(h) };
+}
+
+Size2 get_frame_buffer_size(GLFWwindow* window) {
+    int display_w, display_h;
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    auto r = get_scale_multiplier();
+    display_w *= r;
+    display_h *= r;
+    return { float(display_w), float(display_h) };
+}
+
+Size2 frame_buffer_scale(GLFWwindow* window) {
+    // Setup display size (every frame to accommodate for window resizing)
+    auto window_size = get_window_size(window);
+    auto fb = get_frame_buffer_size(window);
+
+    Size2 DisplayFramebufferScale(1,1);
+    if (window_size.width > 0 && window_size.height > 0)
+        DisplayFramebufferScale = fb.div(window_size);
+
+    //print("Size: ", DisplaySize, " Scale: ", DisplayFramebufferScale);
+    return window_size;
+}
 
 void IMGUIBase::update_size_scale(GLFWwindow* window) {
     auto base = base_pointers.at(window);
@@ -404,7 +470,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     glfwGetWindowPos(window, &x, &y);
     
     int fw, fh;
-    glfwGetFramebufferSize(window, &fw, &fh);
+    auto fb = frame_buffer_scale(window);
+    fw = fb.width;
+    fh = fb.height;
     
     GLFWmonitor* monitor = glfwGetWindowMonitor(window);
     if(!monitor) {
@@ -457,18 +525,23 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #if GLFW_HAVE_MONITOR_SCALE
     glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #else
-    xscale = yscale = 1;
+    xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
+
+    print("MonitorScale = ", Vec2(xscale, yscale));
     
 #ifndef NDEBUG
     print("Content scale: ", xscale,", ",yscale);
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
-    //auto& io = ImGui::GetIO();
+    auto& io = ImGui::GetIO();
+
 #if defined(__EMSCRIPTEN__)
-    dpi_scale = 1.0;
+    dpi_scale = 0.5; // emscripten_get_device_pixel_ratio();
+    //io.DisplayFramebufferScale = ImVec2(emscripten_get_device_pixel_ratio(), emscripten_get_device_pixel_ratio());
 #endif
+    //SETTING(gui_interface_scale) = float(1);// / dpi_scale);
     im_font_scale = max(1, dpi_scale) * 0.75f;
     base->_dpi_scale = dpi_scale;
 
@@ -499,7 +572,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     if (base->_last_dpi_scale != -1 && base->_last_dpi_scale != dpi_scale && dpi_scale > 0) {
         auto p = base->_last_dpi_scale / dpi_scale;
         base->_last_dpi_scale = dpi_scale;
-        glfwSetWindowSize(window, fw * p, fh * p);
+        set_window_size(window, { fw * p, fh * p });
+        //glfwSetWindowSize(window, fw * p, fh * p);
     }
     else {
         base->_last_dpi_scale = dpi_scale;
@@ -535,8 +609,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #if GLFW_HAVE_MONITOR_SCALE
         glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #else
-        xscale = yscale = 1;
+        xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
+        print("MonitorScale = ", Vec2(xscale, yscale));
         
         int width = _graph->width(), height = _graph->height();
         int mx, my, mw, mh;
@@ -587,14 +662,16 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
         else {
 #ifndef WIN32
-            glfwSetWindowSize(_platform->window_handle(), width, height);
+            set_window_size(_platform->window_handle(), Vec2( width, height ));
+            //glfwSetWindowSize(_platform->window_handle(), width, height);
 #endif
             set_title(title);
         }
         
         glfwSetWindowPos(_platform->window_handle(), mx + (mw - width) / 2, my + (mh - height) / 2);
 #ifdef WIN32
-        glfwSetWindowSize(_platform->window_handle(), width, height);
+        set_window_size(_platform->window_handle(), Vec2( width, height ));
+        //glfwSetWindowSize(_platform->window_handle(), width, height);
 #endif
 
         glfwSetDropCallback(_platform->window_handle(), [](GLFWwindow* window, int N, const char** texts){
@@ -626,8 +703,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         const float base_scale = 32;
         //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
         float dpi_scale = 1 / max(xscale, yscale);
+        //dpi_scale = 1;
 #if defined(__EMSCRIPTEN__)
-        dpi_scale = 1.0; // (emscripten_get_device_pixel_ratio());
+        //print("dpi:",emscripten_get_device_pixel_ratio());
+        dpi_scale = 0.5;
         //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
         //io.FontGlobalScale = 1.f / dpi_scale;
 #endif
@@ -635,7 +714,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _dpi_scale = dpi_scale;
         
         int fw, fh;
-        glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
+        //glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
+        auto fb = get_frame_buffer_size(_platform->window_handle());
+        fw = fb.width;
+        fh = fb.height;
+
         _last_framebuffer_size = Size2(fw, fh).mul(_dpi_scale);
         
         if (!soft) {
@@ -698,8 +781,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             Event e(EventType::MMOVE);
             auto &io = ImGui::GetIO();
-            e.move.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
-            e.move.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
+            e.move.x = float(xpos * io.DisplayFramebufferScale.x * get_scale_multiplier()) * base->_dpi_scale;
+            e.move.y = float(ypos * io.DisplayFramebufferScale.y * get_scale_multiplier()) * base->_dpi_scale;
             
             base->event(e);
             
@@ -718,8 +801,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             auto base = base_pointers.at(window);
             auto &io = ImGui::GetIO();
-            e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
-            e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
+            e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x * get_scale_multiplier()) * base->_dpi_scale;
+            e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y * get_scale_multiplier()) * base->_dpi_scale;
             e.mbutton.button = GLFW_MOUSE_BUTTON_RIGHT == button ? 1 : 0;
             
             base->event(e);
@@ -745,6 +828,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         glfwSetWindowSizeCallback(_platform->window_handle(), [](GLFWwindow* window, int width, int height)
         {
             //print("Updating size callback: ", width, "x", height);
+                //width /= 2;
+                //height /= 2;
             static int prev_width = 0, prev_height = 0;
             if (prev_width == width && prev_height == height)
                 return;
@@ -814,7 +899,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if (width != self->_graph->width() || height != self->_graph->height()) {
                 Event event(WINDOW_RESIZED);
 
-                glfwSetWindowSize(self->_platform->window_handle(), width, height );
+                set_window_size(self->_platform->window_handle(), Vec2( width, height ));
+                //glfwSetWindowSize(self->_platform->window_handle(), width, height );
 
                 event.size.width = width;
                 event.size.height = height;
@@ -873,7 +959,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     void IMGUIBase::paint(DrawStructure& s) {
         int fw, fh;
         auto window = _platform->window_handle();
-        glfwGetFramebufferSize(window, &fw, &fh);
+        //glfwGetFramebufferSize(window, &fw, &fh);
+        auto fb = get_frame_buffer_size(window);
+        fw = fb.width;
+        fh = fb.height;
+
         fw *= _dpi_scale;
         fh *= _dpi_scale;
         
@@ -1586,7 +1676,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         o->set_visible(false);
         
         auto &io = ImGui::GetIO();
-        Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale) .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
+        Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale).div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
         Transform transform;
         transform.scale(scale);
         
@@ -1755,11 +1845,10 @@ Size2 IMGUIBase::real_dimensions() {
         
         // backup window position and window size
         glfwGetWindowPos( _platform->window_handle(), &_wndPos[0], &_wndPos[1] );
-        glfwGetFramebufferSize(_platform->window_handle(), &_wndSize[0], &_wndSize[1]);
-        //glfwGetWindowSize( _platform->window_handle(), &_wndSize[0], &_wndSize[1] );
-        
-        event.size.width = _wndSize[0];
-        event.size.height = _wndSize[1];
+        auto fb = get_frame_buffer_size(_platform->window_handle());
+
+        event.size.width = fb.width;
+        event.size.height = fb.height;
         graph.event(event);
         
         return event;

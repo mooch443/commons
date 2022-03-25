@@ -119,8 +119,8 @@ endif()
 
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten") #-pthread 
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s TOTAL_MEMORY=250MB -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -s PTHREAD_POOL_SIZE=8 -s AGGRESSIVE_VARIABLE_ELIMINATION=1 -s INLINING_LIMIT=1") # 
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=0 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -s PTHREAD_POOL_SIZE=4 -s GL_PREINITIALIZED_CONTEXT=1") # 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pthread")
     set(CMAKE_CONFIGURATION_TYPES "Release" FORCE)
@@ -474,7 +474,6 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
         set(GLAD_PROFILE "core")
         set(GLAD_API "gl=3.2")
     endif()
-
     ExternalProject_Add(gladex PREFIX gladex
         GIT_REPOSITORY https://github.com/Dav1dde/glad.git
         GIT_TAG v0.1.33
@@ -624,6 +623,7 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
 endif()
 
 add_library (Commons::IMGUI INTERFACE IMPORTED GLOBAL)
+
 target_link_libraries(Commons::IMGUI INTERFACE imgui Commons::GLFW)
 target_include_directories(Commons::IMGUI INTERFACE
   "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
@@ -1093,7 +1093,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_GSTREAMER=OFF 
             -DWITH_IPP=OFF 
             -DWITH_JASPER=OFF 
-            -DWITH_WEBP=OFF 
+            -DWITH_WEBP=ON
             -DWITH_OPENEXR=OFF 
             -DWITH_PVAPI=OFF 
             -DWITH_GIGEAPI=OFF 
@@ -1159,6 +1159,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_opencv_xobjdetect=OFF 
             -DBUILD_opencv_xphoto=OFF
             -DBUILD_JPEG=OFF
+            -DWITH_FFMPEG:BOOL=OFF
             -DBUILD_DOCS=OFF
             -DBUILD_EXAMPLES=OFF
             -DBUILD_FAT_JAVA_LIB=OFF
@@ -1298,7 +1299,7 @@ endif()
     set(OpenCV_LIB_PATH "")
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi  ${FFMPEG_LIBRARIES})
+        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi libwebp ade ${FFMPEG_LIBRARIES})
     elseif(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
@@ -1321,6 +1322,12 @@ endif()
 	#		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_stitching opencv_photo)
 		endif()
     endif()
+
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
+    target_include_directories(Commons::OpenCV INTERFACE
+      "$<BUILD_INTERFACE:${png_install_dir}/include>"
+      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
+    )
     
     message(STATUS "Find OpenCV ${OpenCV_DIR} ${COMMONS_OPENCV_VERSION}")
 	find_package(OpenCV ${COMMONS_OPENCV_VERSION} PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
@@ -1330,11 +1337,21 @@ endif()
 	endif()
     
     if(UNIX)
-        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
+        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
     else()
-        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include )
+        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include )
     endif()
-    link_directories(${CMAKE_BINARY_DIR}/opencv_install/lib ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
+
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        target_include_directories(Commons::OpenCV INTERFACE
+            ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
+        )
+    endif()
+
+    message(STATUS "Adding path: ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty")
+    target_link_directories(Commons::OpenCV INTERFACE 
+        ${CMAKE_BINARY_DIR}/opencv_install/lib 
+        ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
     target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZIP Commons::LibZ)
     add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
@@ -1342,29 +1359,16 @@ endif()
     set(OpenCV_LIBS Commons::OpenCV)
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-        target_include_directories(Commons::OpenCV INTERFACE
-            ${CMAKE_BINARY_DIR}/opencv_install/include
-            ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
-        )
-    endif()
-
-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
-    target_include_directories(Commons::OpenCV INTERFACE
-      "$<BUILD_INTERFACE:${png_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
-    )
-
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     else()
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     endif()
 endif()

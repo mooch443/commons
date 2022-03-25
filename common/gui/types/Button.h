@@ -19,7 +19,8 @@ namespace gui {
         
     public:
         Button(const std::string& txt,
-               const Bounds& size);
+               const Bounds& size,
+               std::function<void()> on_click = nullptr);
         Button(const std::string& txt,
                const Bounds& size,
                const Color& fill,

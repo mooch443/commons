@@ -43,6 +43,16 @@ namespace gui {
             static float interface_scale;
         };
     }
+
+    struct TopLeft { constexpr operator Vec2() const { return Vec2(0, 0); } };
+    struct TopRight { constexpr operator Vec2() const { return Vec2(1, 0); } };
+    struct BottomRight { constexpr operator Vec2() const { return Vec2(1, 1); } };
+    struct BottomLeft { constexpr operator Vec2() const { return Vec2(0, 1); } };
+
+    template<typename T>
+    concept _has_origin = requires (T t) {
+        { t.origin() } -> std::convertible_to<Vec2>;
+    };
     
     class Drawable {
     public:

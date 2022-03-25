@@ -120,6 +120,7 @@ int main(int argc, char**argv) {
 
     print(fmt::red("Hi in red."));
     
+#if !defined(__EMSCRIPTEN__)
     try {
         throw SoftException("Soft exception ",argc);
     } catch(const SoftExceptionImpl& soft) {
@@ -130,6 +131,7 @@ int main(int argc, char**argv) {
     } catch(const std::invalid_argument& e) {
         print("Got: ",e);
     }
+#endif
     
     print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
     /*for (int j=0; j<11; ++j) {

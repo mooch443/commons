@@ -2,9 +2,12 @@
 #include <gui/DrawSFBase.h>
 
 namespace gui {
-    Button::Button(const std::string& txt, const Bounds& size)
+    Button::Button(const std::string& txt, const Bounds& size, std::function<void()> on_click)
         : Button(txt, size, Drawable::accent_color)
-    {}
+    {
+        if(on_click)
+            this->on_click([on_click](auto) { on_click(); });
+    }
     
     Button::Button(const std::string& txt, const Bounds& size, const Color& fill, const Color& text_clr, const Color& line)
         :   _txt(txt),

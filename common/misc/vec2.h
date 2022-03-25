@@ -455,6 +455,8 @@ public:
     }
         
     constexpr bool empty() const { return width == 0 && height == 0; }
+
+    constexpr Vec2 bottom_right() const { return Vec2{ x + width, y + height }; }
         
     Float2_t distance(const Vec2& p) const;
         
