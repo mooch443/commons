@@ -533,7 +533,8 @@ timestamp_t VideoSource::start_timestamp() const {
 }
 
 bool VideoSource::has_timestamps() const {
-    return _has_timestamps;
+    return false;
+    //return _has_timestamps;
 }
 
 short VideoSource::framerate() const {

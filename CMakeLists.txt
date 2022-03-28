@@ -1343,6 +1343,7 @@ endif()
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4)
         target_include_directories(Commons::OpenCV INTERFACE
             ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
         )
