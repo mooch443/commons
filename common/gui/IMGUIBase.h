@@ -59,7 +59,7 @@ namespace gui {
         std::unordered_map<Type::Class, size_t> _type_counts;
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
-        float _dpi_scale;
+        GETTER(float, dpi_scale)
         float _last_dpi_scale = -1;
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;
@@ -152,6 +152,7 @@ namespace gui {
             _open_files_fn = fn;
         }
         
+        float get_scale_multiplier();
         void set_background_color(const Color&) override;
         void set_frame_recording(bool v) override;
         const Image::UPtr& current_frame_buffer() override;

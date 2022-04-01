@@ -423,36 +423,34 @@ void set_window_size(GLFWwindow* window, Size2 size) {
 #endif
 }
 
-float get_scale_multiplier() {
+float IMGUIBase::get_scale_multiplier() {
 #if defined(__EMSCRIPTEN__)
     return 1.f;//emscripten_get_device_pixel_ratio();
 #else
-    return 1.f;
+    return 1.0 / _dpi_scale;
 #endif
 }
 
-Size2 get_window_size(GLFWwindow* window) {
+Size2 get_window_size(GLFWwindow* window, float r) {
     int w, h;
     glfwGetWindowSize(window, &w, &h);
-    auto r = get_scale_multiplier();
     w *= r;
     h *= r;
     return { float(w), float(h) };
 }
 
-Size2 get_frame_buffer_size(GLFWwindow* window) {
+Size2 get_frame_buffer_size(GLFWwindow* window, float r) {
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
-    auto r = get_scale_multiplier();
     display_w *= r;
     display_h *= r;
     return { float(display_w), float(display_h) };
 }
 
-Size2 frame_buffer_scale(GLFWwindow* window) {
+Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     // Setup display size (every frame to accommodate for window resizing)
-    auto window_size = get_window_size(window);
-    auto fb = get_frame_buffer_size(window);
+    auto window_size = get_window_size(window, r);
+    auto fb = get_frame_buffer_size(window, r);
 
     Size2 DisplayFramebufferScale(1,1);
     if (window_size.width > 0 && window_size.height > 0)
@@ -469,8 +467,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     int x, y;
     glfwGetWindowPos(window, &x, &y);
     
+    auto r = base->get_scale_multiplier();
+    
     int fw, fh;
-    auto fb = frame_buffer_scale(window);
+    auto fb = frame_buffer_scale(window, r);
     fw = fb.width;
     fh = fb.height;
     
@@ -528,12 +528,12 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
 
-#ifndef NDEBUG
+//#ifndef NDEBUG
     print("Content scale: ", xscale,", ",yscale);
-#endif
+//#endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
-    auto& io = ImGui::GetIO();
+    //auto& io = ImGui::GetIO();
 
 #if defined(__EMSCRIPTEN__)
     dpi_scale = 0.5; // emscripten_get_device_pixel_ratio();
@@ -700,7 +700,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         const float base_scale = 32;
         //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
         float dpi_scale = 1 / max(xscale, yscale);
-        //dpi_scale = 1;
 #if defined(__EMSCRIPTEN__)
         //print("dpi:",emscripten_get_device_pixel_ratio());
         dpi_scale = 0.5;
@@ -712,7 +711,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         int fw, fh;
         //glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
-        auto fb = get_frame_buffer_size(_platform->window_handle());
+        auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
         fw = fb.width;
         fh = fb.height;
 
@@ -778,8 +777,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             Event e(EventType::MMOVE);
             auto &io = ImGui::GetIO();
-            e.move.x = float(xpos * io.DisplayFramebufferScale.x * get_scale_multiplier()) * base->_dpi_scale;
-            e.move.y = float(ypos * io.DisplayFramebufferScale.y * get_scale_multiplier()) * base->_dpi_scale;
+            e.move.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
+            e.move.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
             
             base->event(e);
             
@@ -798,8 +797,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             auto base = base_pointers.at(window);
             auto &io = ImGui::GetIO();
-            e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x * get_scale_multiplier()) * base->_dpi_scale;
-            e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y * get_scale_multiplier()) * base->_dpi_scale;
+            e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
+            e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
             e.mbutton.button = GLFW_MOUSE_BUTTON_RIGHT == button ? 1 : 0;
             
             base->event(e);
@@ -957,7 +956,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         int fw, fh;
         auto window = _platform->window_handle();
         //glfwGetFramebufferSize(window, &fw, &fh);
-        auto fb = get_frame_buffer_size(window);
+        auto fb = get_frame_buffer_size(window, 1);
         fw = fb.width;
         fh = fb.height;
 
@@ -1673,7 +1672,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         o->set_visible(false);
         
         auto &io = ImGui::GetIO();
-        Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale).div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
+        Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale) .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
         Transform transform;
         transform.scale(scale);
         
@@ -1842,7 +1841,7 @@ Size2 IMGUIBase::real_dimensions() {
         
         // backup window position and window size
         glfwGetWindowPos( _platform->window_handle(), &_wndPos[0], &_wndPos[1] );
-        auto fb = get_frame_buffer_size(_platform->window_handle());
+        auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
 
         event.size.width = fb.width;
         event.size.height = fb.height;
