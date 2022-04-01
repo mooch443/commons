@@ -434,8 +434,8 @@ float IMGUIBase::get_scale_multiplier() {
 Size2 get_window_size(GLFWwindow* window, float r) {
     int w, h;
     glfwGetWindowSize(window, &w, &h);
-    w *= r;
-    h *= r;
+    //w *= r;
+    //h *= r;
     return { float(w), float(h) };
 }
 
@@ -449,7 +449,7 @@ Size2 get_frame_buffer_size(GLFWwindow* window, float r) {
 
 Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     // Setup display size (every frame to accommodate for window resizing)
-    auto window_size = get_window_size(window, r);
+    auto window_size = get_window_size(window, 1);
     auto fb = get_frame_buffer_size(window, r);
 
     Size2 DisplayFramebufferScale(1,1);
@@ -466,13 +466,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     
     int x, y;
     glfwGetWindowPos(window, &x, &y);
-    
-    auto r = base->get_scale_multiplier();
-    
-    int fw, fh;
-    auto fb = frame_buffer_scale(window, r);
-    fw = fb.width;
-    fh = fb.height;
+    auto ws = get_window_size(window, 1);
     
     GLFWmonitor* monitor = glfwGetWindowMonitor(window);
     if(!monitor) {
@@ -490,7 +484,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             auto name = glfwGetMonitorName(monitors[i]);
             print("Monitor '",name,"': ",mx,",",my," ",mw,"x",mh);
 #endif
-            if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, fw-10, fh-10))) {
+            if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, ws.width-10, ws.height-10))) {
                 monitor = monitors[i];
                 break;
             }
@@ -545,7 +539,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
     const float interface_scale = gui::interface_scale();
     base->_graph->set_scale(1.0 / interface_scale);
-    
+
+    auto r = base->get_scale_multiplier();
+
+    int fw, fh;
+    auto fb = frame_buffer_scale(window, r);
+    fw = fb.width;
+    fh = fb.height;
+
     base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
 
     //print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
@@ -715,7 +716,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         fw = fb.width;
         fh = fb.height;
 
-        _last_framebuffer_size = Size2(fw, fh).mul(_dpi_scale);
+        _last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
         
         if (!soft) {
             io.Fonts->Clear();
@@ -960,15 +961,15 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         fw = fb.width;
         fh = fb.height;
 
-        fw *= _dpi_scale;
-        fh *= _dpi_scale;
+        //fw *= _dpi_scale;
+        //fh *= _dpi_scale;
         
         if(fw > 0 && fh > 0 && (fw != _last_framebuffer_size.width || fh != _last_framebuffer_size.height))
         {
 #ifndef NDEBUG
             print("Changed framebuffer size to ", fw,"x",fh);
 #endif
-            _last_framebuffer_size = Size2(fw, fh);
+            _last_framebuffer_size = Size2(fw, fh).mul(_dpi_scale);
         }
         
         std::unique_lock<std::recursive_mutex> lock(s.lock());

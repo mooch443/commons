@@ -65,7 +65,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                 Size2 size(e.size.width, e.size.height);
                 
                 float min_height = 640;
-                auto scale = gui::interface_scale() * 2 / max(1, min_height / size.height);
+                auto scale = gui::interface_scale() / max(1, min_height / size.height);
                 _graph->set_size(size);
                 _graph->set_scale(scale);
                 
