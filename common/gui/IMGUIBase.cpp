@@ -540,10 +540,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     const float interface_scale = gui::interface_scale();
     base->_graph->set_scale(1.0 / interface_scale);
 
-    auto r = base->get_scale_multiplier();
-
     int fw, fh;
+#if __APPLE__
+    auto fb = frame_buffer_scale(window, 1);
+#else
+    auto r = base->get_scale_multiplier();
     auto fb = frame_buffer_scale(window, r);
+#endif
     fw = fb.width;
     fh = fb.height;
 
@@ -557,10 +560,15 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //int ww, wh;
         //glfwGetWindowSize(window, &ww, &wh);
         //print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
-
+        
         Event e(EventType::WINDOW_RESIZED);
+#if __APPLE__
+        e.size.width = fw;
+        e.size.height = fh;
+#else
         e.size.width = fw * base->dpi_scale();
         e.size.height = fh * base->dpi_scale();
+#endif
 
         base->event(e);
     }
