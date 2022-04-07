@@ -559,8 +559,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
 
         Event e(EventType::WINDOW_RESIZED);
-        e.size.width = fw * dpi_scale;
-        e.size.height = fh * dpi_scale;
+        e.size.width = fw * base->dpi_scale();
+        e.size.height = fh * base->dpi_scale();
 
         base->event(e);
     }
