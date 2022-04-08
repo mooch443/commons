@@ -523,7 +523,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
 
 //#ifndef NDEBUG
-    print("Content scale: ", xscale,", ",yscale);
+    //print("Content scale: ", xscale,", ",yscale);
 //#endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
