@@ -96,9 +96,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
     const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
-    int64_t processed = 0, enqueued = 0;
-    std::mutex mutex;
-    std::condition_variable variable;
+    std::atomic<int64_t> processed(0), enqueued(0);
+    //std::condition_variable variable;
     
     Iterator nex = start;
     
@@ -109,6 +108,7 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
         assert(step > 0);
         if(nex == end) {
             fn(i, it, nex, step);
+            //variable.notify_one();
             
         } else {
             ++enqueued;
@@ -116,9 +116,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
             pool.enqueue([&](auto i, auto it, auto nex, auto step) {
                 fn(i, it, nex, step);
                 
-                std::unique_lock g(mutex);
                 ++processed;
-                variable.notify_one();
+                //variable.notify_one();
                 
             }, i, it, nex, step);
         }
@@ -127,9 +126,9 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
         i += step;
     }
     
-    std::unique_lock g(mutex);
-    while(processed < enqueued)
-        variable.wait(g);
+    while(processed < enqueued) {
+        //print("processed=", processed.load(), " enqueued=",enqueued.load());
+    }
 }
 
     template<typename T>

@@ -514,7 +514,6 @@ void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& inpu
     tf::imshow("mask", local);*/
     //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-
 #ifdef REC_TAGS
 #define DEBUG_TAGS
     if (tags_enable) {
