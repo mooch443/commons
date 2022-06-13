@@ -534,6 +534,9 @@ void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& inpu
 
         if (tags_equalize_hist)
             CALLCV(cv::equalizeHist(*INPUT, *OUTPUT));
+        //CALLCV(cv::blur(*INPUT, *OUTPUT, cv::Size(5, 5)));
+        CALLCV(cv::dilate(*INPUT, *OUTPUT, gpu_dilation_element));
+        CALLCV(cv::erode(*INPUT, *OUTPUT, gpu_dilation_element));
         CALLCV(cv::threshold(*INPUT, *OUTPUT, tags_threshold, 255, cv::THRESH_BINARY));
         CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
 
@@ -743,7 +746,7 @@ void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& inpu
 
                         int cut_off = 4;
                         auto xy = Size2(rotated) * 0.5 - (Size2(rotated) * 0.5 - cut_off);
-                        const Size2 tag_size(32, 32);
+                        const Size2 tag_size(80, 80);
 
                         if (rotated.cols - cut_off * 2 > tag_size.width) {
                             cut_off = (rotated.cols - tag_size.width) / 2 + 1;
@@ -784,7 +787,7 @@ void RawProcessing::generate_binary(const cv::Mat& cpu_input, const gpuMat& inpu
 
                         rotated(cut).copyTo(smaller);
 
-                        cv::resize(smaller, l, tag_size, 0, 0, cv::INTER_LINEAR);
+                        cv::resize(smaller, l, Size2(32, 32), 0, 0, cv::INTER_LINEAR);
                         bds.width = bds.height = l.cols;
                         if (bds.x + bds.width > _average->cols)
                             bds.x = _average->cols - bds.width;
