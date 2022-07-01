@@ -474,7 +474,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         auto monitors = glfwGetMonitors(&count);
         int mx, my, mw, mh;
 #ifndef NDEBUG
-        print("Window is at ",x,", ",y," (",fw,"x",fh,").");
+        print("Window is at ",x,", ",y," (",mw,"x",mh,").");
 #endif
         
 #if !defined(__EMSCRIPTEN__)

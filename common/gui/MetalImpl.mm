@@ -256,7 +256,7 @@ bool MetalImpl::open_files(const std::vector<file::Path> &paths) {
         _data->layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 #ifndef NO_ALLOWS_NEXT_DRAWABLE
         _data->layer.allowsNextDrawableTimeout = YES;
-        _data->layer.displaySyncEnabled = NO;
+        _data->layer.displaySyncEnabled = YES;
 #endif
         _data->layer.framebufferOnly = NO;
         nswin.contentView.layer = _data->layer;
@@ -585,7 +585,7 @@ void MetalImpl::message(const std::string &msg) const {
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input_format width:width height:height mipmapped:NO];
         textureDescriptor.usage = MTLTextureUsageShaderRead;
     #if TARGET_OS_OSX
-        textureDescriptor.storageMode = MTLStorageModeManaged;
+        textureDescriptor.storageMode = MTLStorageModeShared;
     #else
         textureDescriptor.storageMode = MTLStorageModeShared;
     #endif
