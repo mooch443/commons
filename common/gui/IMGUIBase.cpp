@@ -474,7 +474,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         auto monitors = glfwGetMonitors(&count);
         int mx, my, mw, mh;
 #ifndef NDEBUG
-        print("Window is at ",x,", ",y," (",mw,"x",mh,").");
+        //print("Window is at ",x,", ",y," (",mw,"x",mh,").");
 #endif
         
 #if !defined(__EMSCRIPTEN__)
@@ -1541,7 +1541,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             auto ptr = static_cast<VertexArray*>(o);
             
             // Non Anti-aliased Stroke
-            auto &points = ptr->points();
+            auto &points = ptr->VertexArray::points();
             auto points_count = points.size();
             
             if(points_count <= 1)

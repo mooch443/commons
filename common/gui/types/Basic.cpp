@@ -5,4 +5,8 @@ namespace gui {
         throw U_EXCEPTION("Nope.");
         return os;
     }
+
+    std::string Vertex::toStr() const {
+        return "V<"+Meta::toStr(position()) + ">";
+    }
 }
