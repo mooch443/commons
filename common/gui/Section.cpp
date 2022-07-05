@@ -367,7 +367,8 @@ namespace gui {
         
         for(auto c: children) {
             if(c->type() == Type::SECTION) {
-                auto ptr = static_cast<DrawableCollection*>(c);
+                //! TODO: Untested whether the change from static_cast to dynamic_cast does anything, but cannot see what that would be.
+                auto ptr = dynamic_cast<DrawableCollection*>(c);
                 if(ptr) {
                     // dont delete DrawableCollections...
                     //ptr->set_parent(NULL);

@@ -975,7 +975,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         if(fw > 0 && fh > 0 && (fw != _last_framebuffer_size.width || fh != _last_framebuffer_size.height))
         {
 #ifndef NDEBUG
-            print("Changed framebuffer size to ", fw,"x",fh);
+            //print("Changed framebuffer size to ", fw,"x",fh);
 #endif
             _last_framebuffer_size = Size2(fw, fh).mul(_dpi_scale);
         }
@@ -1538,7 +1538,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
         case Type::LINE:
         case Type::VERTICES: {
-            auto ptr = static_cast<Vertices*>(o);
+            auto ptr = static_cast<VertexArray*>(o);
             
             // Non Anti-aliased Stroke
             auto &points = ptr->points();
