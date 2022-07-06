@@ -13,6 +13,15 @@ namespace std
             return ((hash<A>()(std::get<0>(k)) ^ (hash<B>()(std::get<1>(k)) << 1)) >> 1);
         }
     };
+
+    template <typename A, typename B, typename C>
+    struct hash<std::tuple<A, B, C>>
+    {
+        size_t operator()(const std::tuple<A, B, C>& k) const
+        {
+            return ((hash<A>()(std::get<0>(k)) ^ (hash<B>()(std::get<1>(k)) << 1) ^ (hash<C>()(std::get<2>(k)) << 2)) >> 1);
+        }
+    };
 }
 
 namespace cmn {
