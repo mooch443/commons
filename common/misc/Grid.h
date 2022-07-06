@@ -25,7 +25,7 @@ namespace grid {
         }
 
         template<typename K>
-            requires !std::same_as<remove_cvref_t<K>, pixel<T>>
+            requires (!std::same_as<remove_cvref_t<K>, pixel<T>>)
         bool operator==(const K& v) const {
             return this->v == v;
         }
