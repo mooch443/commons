@@ -70,6 +70,8 @@ namespace cmn {
         return almost_equal(A(), other.A()) && almost_equal(B(), other.B()); \
     } \
     \
+    constexpr auto operator<=>(const Vector2D& bla) const = default; \
+    \
     template<typename V, bool K> \
     constexpr bool operator==(const Vector2D<V, K>& other) const { \
         return other.A() == A() && other.B() == B(); \

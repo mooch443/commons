@@ -41,18 +41,8 @@ struct bid {
     //constexpr bid(uint32_t b) : _id(b) {}
     constexpr bool valid() const { return _id != invalid; }
     
-    constexpr bool operator<(const bid& other) const {
-        return _id < other._id;
-    }
-    constexpr bool operator>(const bid& other) const {
-        return _id > other._id;
-    }
-    
-    constexpr bool operator<=(const bid& other) const {
-        return _id <= other._id;
-    }
-    constexpr bool operator>=(const bid& other) const {
-        return _id >= other._id;
+    constexpr auto operator<=>(const bid& other) const {
+        return _id <=> other._id;
     }
     
     std::string toStr() const;
