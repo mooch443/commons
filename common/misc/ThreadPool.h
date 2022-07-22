@@ -2,6 +2,7 @@
 
 #include <types.h>
 #include <misc/metastring.h>
+#include <misc/Timer.h>
 
 namespace cmn {
     class GenericThreadPool {
@@ -96,39 +97,47 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
     const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
-    std::atomic<int64_t> processed(0), enqueued(0);
-    //std::condition_variable variable;
+    int64_t enqueued{0};
     
+    {
+        Iterator nex = start;
+        int64_t i = 0;
+        
+        for(auto it = start; it != end;) {
+            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+            std::advance(nex, step);
+            if(nex != end) {
+                ++enqueued;
+            }
+            
+            it = nex;
+            i += step;
+        }
+    }
+    
+    std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
     Iterator nex = start;
     
     for(auto it = start; it != end;) {
-        auto step = i + per_thread < N ? per_thread : (N - i);
+        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
         std::advance(nex, step);
-        
-        assert(step > 0);
-        if(nex == end) {
-            fn(i, it, nex, step);
-            //variable.notify_one();
-            
-        } else {
-            ++enqueued;
-            
+        if(nex != end) {
             pool.enqueue([&](auto i, auto it, auto nex, auto step) {
                 fn(i, it, nex, step);
-                
-                ++processed;
-                //variable.notify_one();
+                work_done.count_down();
                 
             }, i, it, nex, step);
+            
+        } else {
+            // run in local thread
+            fn(i, it, nex, step);
         }
         
         it = nex;
         i += step;
     }
     
-    while(processed < enqueued) {
-        //print("processed=", processed.load(), " enqueued=",enqueued.load());
-    }
+    work_done.wait();
 }
 
     template<typename T>

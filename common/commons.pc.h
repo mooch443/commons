@@ -66,6 +66,7 @@
 #include <span>
 #include <optional>
 #include <compare>
+#include <latch>
 
 #include <misc/date.h>
 
