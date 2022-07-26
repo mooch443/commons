@@ -66,7 +66,15 @@
 #include <span>
 #include <optional>
 #include <compare>
+
+#if __has_include(<latch>)
 #include <latch>
+#else
+#include <experimental/latch>
+namespace std {
+using experimental;
+}
+#endif
 
 #include <misc/date.h>
 
