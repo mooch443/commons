@@ -97,6 +97,7 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
     const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
+#if defined(COMMONS_HAS_LATCH) && false
     int64_t enqueued{0};
     
     {
@@ -138,6 +139,49 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     }
     
     work_done.wait();
+#else
+    std::atomic<int64_t> processed(0);
+    int64_t enqueued{0};
+    
+    {
+        Iterator nex = start;
+        int64_t i = 0;
+        
+        for(auto it = start; it != end;) {
+            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+            assert(step > 0);
+            
+            std::advance(nex, step);
+            if(nex != end)
+                ++enqueued;
+            
+            it = nex;
+            i += step;
+        }
+    }
+    
+    Iterator nex = start;
+    for(auto it = start; it != end;) {
+        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+        std::advance(nex, step);
+        
+        if(nex == end) {
+            fn(i, it, nex, step);
+            
+        } else {
+            pool.enqueue([&](auto i, auto it, auto nex, auto step) {
+                fn(i, it, nex, step);
+                ++processed;
+                
+            }, i, it, nex, step);
+        }
+        
+        it = nex;
+        i += step;
+    }
+    
+    while(processed < enqueued) { }
+#endif
 }
 
     template<typename T>

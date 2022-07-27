@@ -69,11 +69,14 @@
 
 #if __has_include(<latch>)
 #include <latch>
-#else
+#define COMMONS_HAS_LATCH
+#elif __has_include(<experimental/latch>)
 #include <experimental/latch>
 namespace std {
 using experimental;
 }
+#define COMMONS_HAS_LATCH
+#else
 #endif
 
 #include <misc/date.h>
