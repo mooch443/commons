@@ -12,6 +12,7 @@ using ImTextureID_t = ImGui_OpenGL2_TextureID;
 #include <imgui/backends/imgui_impl_opengl3.h>
 #if defined(__EMSCRIPTEN__)
 using ImTextureID_t = ImGui_OpenGL3_TextureID;
+#include <emscripten/emscripten.h>
 #endif
 
 #if defined(__EMSCRIPTEN__)
@@ -92,26 +93,19 @@ static void glfw_error_callback(int error, const char* description)
 
 namespace gui {
 
-#ifndef NDEBUG
-void checkGLError(cmn::source_location loc = cmn::source_location::current())
-{
+#if  !defined(NDEBUG)
+void checkGLError(cmn::source_location loc = cmn::source_location::current()) {
     GLenum err;
-    const char* buffer = "";
-#if !defined(__EMSCRIPTEN__)
-    while ((err = glfwGetError(&buffer)) != GL_NO_ERROR) {
-#else
-    while ((err = glGetError()) != GL_NO_ERROR) {
-
-
-#endif
-        print(loc.file_name(), ":", loc.line(), " [GL]: ", err, ": '", (const char*)buffer, "'.");
+    while((err = glGetError()) != GL_NO_ERROR) {
+        printf("[GLERR] %s:%d code:%u\n", loc.file_name(), loc.line(), err);
     }
 }
 #else
 #define checkGLError()
 #endif
 
-GLImpl::GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn) : draw_function(draw), new_frame_fn(new_frame_fn)
+GLImpl::GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn) 
+    : texture_mutex(std::make_shared<std::mutex>()), _texture_updates(std::make_shared<decltype(_texture_updates)::element_type>()), draw_function(draw), new_frame_fn(new_frame_fn)
 {
 }
 
@@ -286,12 +280,12 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
     if(new_frame_fn())
     {
         {
-            std::lock_guard guard(texture_mutex);
-            for(auto & fn : _texture_updates)
+            std::lock_guard guard(*texture_mutex);
+            for(auto & fn : *_texture_updates)
                 fn();
-            _texture_updates.clear();
+            _texture_updates->clear();
         }
-        
+
         if OPENGL3_CONDITION
             ImGui_ImplOpenGL3_NewFrame();
 #if !defined(__EMSCRIPTEN__)
@@ -301,20 +295,22 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
         ImGui_ImplGlfw_NewFrame();
         
         ImGui::NewFrame();
-        
         draw_function();
         
         // Rendering
         ImGui::Render();
+
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
-        glViewport(0, 0, display_w, display_h);
+        glViewport(0, 0, display_w, display_h); checkGLError();
+        //glViewport(0, 0, ImGui::GetIO().DisplaySize.x * ImGui::GetIO().DisplayFramebufferScale.x, ImGui::GetIO().DisplaySize.y * ImGui::GetIO().DisplayFramebufferScale.y);
         
         if(_frame_capture_enabled)
             init_pbo((uint)display_w, (uint)display_h);
-        
-        glClearColor(_clear_color.r / 255.f, _clear_color.g / 255.f, _clear_color.b / 255.f, _clear_color.a / 255.f);
-        glClear(GL_COLOR_BUFFER_BIT);
+
+        glClearColor(_clear_color.r / 255.f, _clear_color.g / 255.f, _clear_color.b / 255.f, _clear_color.a / 255.f); checkGLError();
+        glClear(GL_COLOR_BUFFER_BIT); checkGLError();
+
         if OPENGL3_CONDITION {
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         } 
@@ -323,18 +319,18 @@ LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_lo
             ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
         }
 #endif
-        
+
         if(_frame_capture_enabled)
             update_pbo();
         else if(pboImage) {
             pboImage = nullptr;
             pboOutput = nullptr;
         }
-        
+
         if(!OPENGL3_CONDITION)
             glfwMakeContextCurrent(window);
         glfwSwapBuffers(window);
-        
+
         ++draw_calls;
         status = LoopStatus::UPDATED;
         
@@ -371,6 +367,7 @@ void GLImpl::init_pbo(uint width, uint height) {
 }
 
 void GLImpl::update_pbo() {
+#if !COMMONS_NO_PYTHON
     if OPENGL3_CONDITION {
         // "index" is used to read pixels from framebuffer to a PBO
         // "nextIndex" is used to update pixels in the other PBO
@@ -400,6 +397,7 @@ void GLImpl::update_pbo() {
         // back to conventional pixel operation
         glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
     }
+#endif
 }
 
 GLImpl::~GLImpl() {
@@ -505,56 +503,61 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    if (ptr->dims == 3 || ptr->dims > 4) {
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    /*if(ptr->dims == 3 || ptr->dims > 4) {
         FormatExcept("Cannot load pixel store alignment of ", ptr->dims);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     } else
-        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);*/
     
-#if !CMN_USE_OPENGL2
+#if !defined(GL_LUMINANCE)
 #define GL_LUMINANCE 0x1909
 #define GL_LUMINANCE_ALPHA 0x190A
 #endif
     
-    GLint output_type = GL_RGBA8;
+    GLint output_type = GL_RGBA;
     GLenum input_type = GL_RGBA;
-    
+
 #ifdef __EMSCRIPTEN__
     output_type = GL_RGBA;
-    if (ptr->dims == 1) {
-        input_type = GL_LUMINANCE;
-    }
-    if (ptr->dims == 2) {
-        input_type = GL_LUMINANCE_ALPHA;
-    }
+    if(ptr->dims == 1) {
+        input_type = output_type = GL_LUMINANCE;
+    } else if(ptr->dims == 2) {
+        input_type = output_type = GL_LUMINANCE_ALPHA;
+    } else {
+        if(ptr->dims != 4)
+            throw U_EXCEPTION("Channels ", ptr->dims, " was expected to be RGBA format.");
+}
 #else
-    if OPENGL3_CONDITION {
+    if OPENGL3_CONDITION{
         if(ptr->dims == 1) {
             output_type = GL_RED;
             input_type = GL_RED;
+            //GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+            //glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
         }
         if(ptr->dims == 2) {
-            output_type = GL_RG8;
+            //output_type = GL_RG8;
             input_type = GL_RG;
-            
-            GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
-            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-        }
-        
+
+            // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
+            // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+         }
+
     } else {
         output_type = GL_RGBA;
-        
+
         if(ptr->dims == 1) {
-            //output_type = GL_LUMINANCE8;
+            output_type = GL_LUMINANCE;
             input_type = GL_LUMINANCE;
         }
         if(ptr->dims == 2) {
-            //output_type = GL_LUMINANCE_ALPHA;
+            output_type = GL_LUMINANCE_ALPHA;
             input_type = GL_LUMINANCE_ALPHA;
         }
     }
 #endif
-    
+
 #if defined(__EMSCRIPTEN__)
     auto width = ptr->cols, height = ptr->rows;
 #else
@@ -564,18 +567,27 @@ TexturePtr GLImpl::texture(const Image * ptr) {
     if (empty.size() < capacity)
         empty.resize(capacity, 0);
 
+#if defined(__EMSCRIPTEN__)
+    glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
+#else
     glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
 
     //print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
     glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLsizei)ptr->cols, (GLsizei)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
+#endif
     glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
-    
     return std::make_unique<PlatformTexture>(
-        new ImTextureID_t{ (uint64_t)my_opengl_texture, ptr->dims != 4 },
-        [this](void ** ptr) {
-            std::lock_guard guard(texture_mutex);
-            _texture_updates.emplace_back([this, object = (ImTextureID_t*)*ptr](){
-                GLIMPL_CHECK_THREAD_ID();
+        new ImTextureID_t{ (uint64_t)my_opengl_texture,
+#if !defined(__EMSCRIPTEN__)
+            uint8_t(ptr->dims)
+#else
+            uint8_t(ptr->dims)
+#endif
+        },
+        [texture_updates = _texture_updates, mutex_share = texture_mutex](void ** ptr) {
+            std::lock_guard guard(*mutex_share);
+            texture_updates->emplace_back([object = (ImTextureID_t*)*ptr](){
+                //GLIMPL_CHECK_THREAD_ID();
                 
                 GLuint _id = (GLuint) object->texture_id;
                 
@@ -621,53 +633,67 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
     auto object = (ImTextureID_t*)id_.ptr;
     GLuint _id = (GLuint) object->texture_id;
     
-    if(object->greyscale != (ptr->dims != 4))
-        throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (",ptr->dims,") != texture (",object->greyscale ? 1 : 4,")");
-    
+    //if(object->greyscale != (ptr->dims == 2))
+    //    throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (",ptr->dims,") != texture (",object->greyscale ? 1 : 4,")");
+
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _id);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    if (ptr->dims == 3 || ptr->dims > 4) {
+    //glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    /*if(ptr->dims == 3 || ptr->dims > 4) {
         FormatExcept("Cannot load pixel store alignment of ", ptr->dims);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     }
     else
-        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, ptr->dims);*/
 
     checkGLError();
     
+    GLint output_type = GL_RGBA;
     GLenum input_type = GL_RGBA;
+
 #ifdef __EMSCRIPTEN__
+    output_type = GL_RGBA;
     if (ptr->dims == 1) {
-        input_type = GL_LUMINANCE;
+        input_type = output_type = GL_LUMINANCE;
     }
-    if (ptr->dims == 2) {
-        input_type = GL_LUMINANCE_ALPHA;
+    else if (ptr->dims == 2) {
+        input_type = output_type = GL_LUMINANCE_ALPHA;
+    }
+    else {
+        if (ptr->dims != 4)
+            throw U_EXCEPTION("Channels ", ptr->dims, " was expected to be RGBA format.");
     }
 #else
     if OPENGL3_CONDITION{
-        if (ptr->dims == 1) {
+        if(ptr->dims == 1) {
+            output_type = GL_RED;
             input_type = GL_RED;
+            //GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_GREEN };
+            //glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
         }
-        if (ptr->dims == 2) {
+        if(ptr->dims == 2) {
+            //output_type = GL_RG8;
             input_type = GL_RG;
 
-            GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
-            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
-        }
+            // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
+            // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+         }
 
-    }
-    else {
-        if (ptr->dims == 1) {
-            //output_type = GL_LUMINANCE8;
+    } else {
+        output_type = GL_RGBA;
+
+        if(ptr->dims == 1) {
+            output_type = GL_LUMINANCE;
             input_type = GL_LUMINANCE;
         }
-        if (ptr->dims == 2) {
-            //output_type = GL_LUMINANCE_ALPHA;
+        if(ptr->dims == 2) {
+            output_type = GL_LUMINANCE_ALPHA;
             input_type = GL_LUMINANCE_ALPHA;
         }
     }
 #endif
 
+#if !defined(__EMSCRIPTEN__)
     auto capacity = size_t(ptr->dims) * size_t(id_.width) * size_t(id_.height);
     if (empty.size() < capacity)
         empty.resize(capacity, 0);
@@ -678,7 +704,10 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
         //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, id_.width, id_.height, input_type, GL_UNSIGNED_BYTE, empty.data());
     }
     glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLint)ptr->cols, (GLint)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ptr->cols, ptr->rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, ptr->data());
+#else
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, (GLint)ptr->cols, (GLint)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
+    //glTexImage2D(GL_TEXTURE_2D, 0, output_type, (GLint)ptr->cols, (GLint)ptr->rows, 0, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
+#endif
     glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
     
     id_.image_width = int(ptr->cols);

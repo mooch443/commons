@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 
 #include "Video.h"
+#include <misc/ThreadPool.h>
 
 #include <opencv2/opencv.hpp>
 #if CV_MAJOR_VERSION >= 3
@@ -138,14 +139,30 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
        mat.copyTo(output);
        return;
    }
-   
+
+    static const bool video_reading_use_threads = GlobalSettings::has("video_reading_use_threads") ? SETTING(video_reading_use_threads).value<bool>() : true;
    assert(output.type() == CV_8UC1);
    assert(mat.type() == CV_8UC3);
    const auto channels = mat.channels();
    const auto start = output.data;
-   const auto end = start + output.cols * output.rows;
-   for (auto ptr = start; ptr != end; ++ptr) {
-       *ptr = mat.data[size_t(ptr - start) * channels + channel];
+
+   if (video_reading_use_threads
+       && size_t(mat.cols) * size_t(mat.rows) >= size_t(1000u) * size_t(1000u))
+   {
+       static GenericThreadPool pool(cmn::hardware_concurrency(), nullptr, "extractu8");
+
+       distribute_vector([&](auto, const auto s, const auto e, auto) {
+           for (auto ptr = s; ptr != e; ++ptr) {
+               *ptr = mat.data[size_t(ptr - start) * channels + channel];
+           }
+
+       }, pool, start, start + uint64_t(output.rows) * uint64_t(output.cols));
+   }
+   else {
+       const auto end = start + uint64_t(output.rows) * uint64_t(output.cols);
+       for (auto ptr = start; ptr != end; ++ptr) {
+           *ptr = mat.data[size_t(ptr - start) * channels + channel];
+       }
    }
 }
 
@@ -156,7 +173,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
  * @param index
  * @return cv::Mat
  */
-void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
+void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
     /*if(_frames.count(index)) {
         return _frames.at(index);
     }*/
@@ -164,7 +181,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     //TakeTiming take(timing);
     
 	if (index >= length())
-        throw U_EXCEPTION("Read out of bounds ",index,"/",length(),".");
+        throw U_EXCEPTION("Read out of bounds ",index,"/",length(),". (caller ", loc.file_name(), ":", loc.line(),")");
 
 #if defined(VIDEOS_USE_CUDA)
     if(index != _last_index+1) {
@@ -199,7 +216,7 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy) {
     
     // Read requested frame
     if(!_cap->read(read))
-        throw U_EXCEPTION("Cannot read frame ",index," of video '",_filename,"'.");
+        throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
 #endif
     
     if(read.channels() > 1) {

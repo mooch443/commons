@@ -2,6 +2,7 @@
 
 #include <types.h>
 #include <misc/metastring.h>
+#include <misc/Timer.h>
 
 namespace cmn {
     class GenericThreadPool {
@@ -92,33 +93,85 @@ namespace cmn {
     };
 
 template<typename F, typename Iterator, typename Pool>
-void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const uint8_t = 5) {
-    static const auto threads = cmn::hardware_concurrency();
+void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
+    const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
-    const int64_t per_thread = max(1, N / threads);
-    int64_t processed = 0, enqueued = 0;
-    std::mutex mutex;
-    std::condition_variable variable;
+    const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
+#if defined(COMMONS_HAS_LATCH) && false
+    int64_t enqueued{0};
     
+    {
+        Iterator nex = start;
+        int64_t i = 0;
+        
+        for(auto it = start; it != end;) {
+            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+            std::advance(nex, step);
+            if(nex != end) {
+                ++enqueued;
+            }
+            
+            it = nex;
+            i += step;
+        }
+    }
+    
+    std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
     Iterator nex = start;
     
     for(auto it = start; it != end;) {
-        auto step = i + per_thread < N ? per_thread : (N - i);
+        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+        std::advance(nex, step);
+        if(nex != end) {
+            pool.enqueue([&](auto i, auto it, auto nex, auto step) {
+                fn(i, it, nex, step);
+                work_done.count_down();
+                
+            }, i, it, nex, step);
+            
+        } else {
+            // run in local thread
+            fn(i, it, nex, step);
+        }
+        
+        it = nex;
+        i += step;
+    }
+    
+    work_done.wait();
+#else
+    std::atomic<int64_t> processed(0);
+    int64_t enqueued{0};
+    
+    {
+        Iterator nex = start;
+        int64_t i = 0;
+        
+        for(auto it = start; it != end;) {
+            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+            assert(step > 0);
+            
+            std::advance(nex, step);
+            if(nex != end)
+                ++enqueued;
+            
+            it = nex;
+            i += step;
+        }
+    }
+    
+    Iterator nex = start;
+    for(auto it = start; it != end;) {
+        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
         std::advance(nex, step);
         
-        assert(step > 0);
         if(nex == end) {
             fn(i, it, nex, step);
             
         } else {
-            ++enqueued;
-            
             pool.enqueue([&](auto i, auto it, auto nex, auto step) {
                 fn(i, it, nex, step);
-                
-                std::unique_lock g(mutex);
                 ++processed;
-                variable.notify_one();
                 
             }, i, it, nex, step);
         }
@@ -127,9 +180,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
         i += step;
     }
     
-    std::unique_lock g(mutex);
-    while(processed < enqueued)
-        variable.wait(g);
+    while(processed < enqueued) { }
+#endif
 }
 
     template<typename T>
@@ -141,8 +193,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
         std::condition_variable finish_condition;
         std::vector<std::thread*> thread_pool;
         const size_t nthreads;
-        std::atomic_bool stop;
-        std::atomic_int _working;
+        std::atomic_bool stop{false};
+        std::atomic_int _working{0};
         std::function<void(T&)> work_function;
         
     public:
@@ -165,7 +217,11 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end, const u
                         ++_working;
                         
                         lock.unlock();
-                        work_function(item);
+                        try {
+                            work_function(item);
+                        } catch(...) {
+                            FormatExcept("Exception caught in work item of thread ", cmn::get_thread_name());
+                        }
                         lock.lock();
                         
                         --_working;

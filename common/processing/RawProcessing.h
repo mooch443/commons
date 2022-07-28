@@ -4,10 +4,18 @@
 #include <types.h>
 #include <misc/Blob.h>
 #include <misc/GlobalSettings.h>
+#include <misc/PVBlob.h>
 
 namespace cmn {
 	class RawProcessing;
 }
+
+struct TagCache {
+    std::vector<pv::BlobPtr> tags;
+    
+    std::vector<std::vector<cv::Vec2i>> contours;
+    std::vector<cv::Vec4i> hierarchy;
+};
 
 /**
  * The task of this class is to provide functionality that prepares 
@@ -21,6 +29,7 @@ class cmn::RawProcessing {
     gpuMat _floatb0, _floatb1, _polygon;
     const gpuMat* _average;
     const gpuMat* _float_average;
+    
     //const LuminanceGrid *_grid;
     //gpuMat _binary;
     //gpuMat _difference;
@@ -36,7 +45,7 @@ public:
         _floatb1.release();
     }
 
-    void generate_binary(const gpuMat& input, cv::Mat& output);
+    void generate_binary(const cv::Mat& cpu_input, const gpuMat& input, cv::Mat& output, TagCache*);
     cv::Mat get_binary() const;
 };
 

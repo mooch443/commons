@@ -64,6 +64,20 @@
 #include <concepts>
 #include <fstream>
 #include <span>
+#include <optional>
+#include <compare>
+
+#if __has_include(<latch>)
+#include <latch>
+#define COMMONS_HAS_LATCH
+#elif __has_include(<experimental/latch>)
+#include <experimental/latch>
+namespace std {
+using experimental;
+}
+#define COMMONS_HAS_LATCH
+#else
+#endif
 
 #include <misc/date.h>
 
@@ -95,11 +109,8 @@ static inline int __builtin_clzl(T x) {
 
 #endif
 
-#if defined(__clang__)
-    #if (__clang_major__) <= 13
-
+#if !defined(HAVE_CONCEPT_IMPLEMENTATION)
 namespace std {
-
 template<class From, class To>
     concept convertible_to =
         std::is_convertible_v<From, To> &&
@@ -115,8 +126,6 @@ template <class T>
 template <class T>
     concept unsigned_integral = std::integral<T> && !std::signed_integral<T>;
 }
-
-    #endif
 #endif
 
 #ifdef WIN32
@@ -675,6 +684,60 @@ struct timestamp_t {
     static std::string class_name() { return "timestamp"; }
     static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
 };
+}
+
+namespace cmn {
+#if !defined(__EMSCRIPTEN__) || true
+    template<typename T>
+    using atomic = std::atomic<T>;
+#else
+    template<typename T>
+    struct atomic {
+        T value;
+        mutable std::mutex m;
+
+        atomic() = default;
+        atomic(T v) : value( v ) {}
+
+        T load() const {
+            std::unique_lock guard(m);
+            return value;
+        }
+
+        void store(T v) {
+            std::unique_lock guard(m);
+            value = v;
+        }
+
+        operator T() const {
+            return load();
+        }
+
+        void operator=(T v) {
+            store(v);
+        }
+
+        bool operator==(T v) const {
+            return load() == v;
+        }
+
+        bool operator!=(T v) const {
+            return load() != v;
+        }
+
+        T operator++() {
+            std::unique_lock g(m);
+            ++value;
+            return value;
+        }
+
+        T operator--() {
+            std::unique_lock g(m);
+            --value;
+            return value;
+        }
+    };
+#endif
 }
 
 #undef isnormal

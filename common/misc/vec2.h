@@ -70,6 +70,8 @@ namespace cmn {
         return almost_equal(A(), other.A()) && almost_equal(B(), other.B()); \
     } \
     \
+    constexpr auto operator<=>(const Vector2D& bla) const = default; \
+    \
     template<typename V, bool K> \
     constexpr bool operator==(const Vector2D<V, K>& other) const { \
         return other.A() == A() && other.B() == B(); \
@@ -455,6 +457,9 @@ public:
     }
         
     constexpr bool empty() const { return width == 0 && height == 0; }
+
+    constexpr Vec2 bottom_right() const { return Vec2{ x + width, y + height }; }
+    constexpr Vec2 center() const { return Vec2{ x + width * Float2_t(0.5), y + height * Float2_t(0.5) }; }
         
     Float2_t distance(const Vec2& p) const;
         

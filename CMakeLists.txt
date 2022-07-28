@@ -112,19 +112,17 @@ endif()
 set(CMAKE_DEBUG_POSTFIX -d)
 
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 --llvm-lto 1 --bind -s ASSERTIONS=2 --memory-init-file 0")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
 endif()
 
 
-if(COMMONS_FOR_JS) #-pthread -s PTHREAD_POOL_SIZE=8  -s TOTAL_MEMORY=250MB
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=1 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -fexceptions -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -s ASYNCIFY")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -O3 ")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions -O3 ")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten") #-pthread 
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}  -O3 -s FETCH=1 -s ALLOW_MEMORY_GROWTH=0 -s WASM=1 -s FULL_ES3=1 -s USE_GLFW=3 -s LEGACY_GL_EMULATION=0 -s \"BINARYEN_METHOD='native-wasm'\" -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread -s PTHREAD_POOL_SIZE=4 -s GL_PREINITIALIZED_CONTEXT=1") # 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pthread")
     set(CMAKE_CONFIGURATION_TYPES "Release" FORCE)
 endif()
 
@@ -142,13 +140,13 @@ if(WIN32)
     #if(${MSVC_TOOLSET_MAJOR} LESS 190)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_ENABLE_ATOMIC_ALIGNMENT_FIX")
     #endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES -DNOMINMAX -DCURL_STATICLIB -DNOCRYPT -DNOSERVICE -DNOMCX -DNOIME")
-    #set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /GS-")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_USE_MATH_DEFINES -DNOMINMAX -DCURL_STATICLIB")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /bigobj")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
     
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /GS-")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd /bigobj")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
     
@@ -158,6 +156,7 @@ else()
 endif()
 
 message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
+
 add_library(Commons::X11 INTERFACE IMPORTED GLOBAL)
 if(UNIX AND NOT APPLE AND NOT COMMONS_FOR_JS)
     message(STATUS "Finding X11...")
@@ -322,20 +321,23 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     #set(C_SANITIZE_OPTIONS "-fsanitize=thread,signed-integer-overflow,null,alignment,undefined,bounds -fno-sanitize-recover=null -fsanitize-trap=alignment,undefined,signed-integer-overflow")
     set(C_SANITIZE_OPTIONS "")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-stack-address")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g ${C_SANITIZE_OPTIONS}")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -g ${C_SANITIZE_OPTIONS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++98-compat-pedantic -Wall -Wextra -pedantic")
     
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=return-stack-address")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g ${C_SANITIZE_OPTIONS}")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O2 ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O2 -g ${C_SANITIZE_OPTIONS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-c++98-compat-pedantic")
     message(STATUS "hidden visibility in main project ${CMAKE_CXX_FLAGS}")
     
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-nullability-extension")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-nullability-extension")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} ${C_SANITIZE_OPTIONS}")
 elseif(MSVC)
 else()
     message(STATUS "***** compiler ID ${CMAKE_CXX_COMPILER_ID}")
@@ -344,10 +346,11 @@ else()
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-local-addr")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pedantic -Wall -Wextra -Wno-long-long -ggdb -DOM_DEBUG -O0 -no-pie")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g0 -no-pie")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -ggdb -no-pie")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -no-pie -fPIC")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -no-pie -fPIC -Werror=return-local-addr")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O2 -ggdb")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -pedantic -Wall -Wextra -Wno-long-long -ggdb -DOM_DEBUG -O0")
@@ -378,6 +381,30 @@ if(XCODE)
     set(CMAKE_XCODE_ATTRIBUTE_GCC_WARN_NON_VIRTUAL_DESTRUCTOR "YES")
 endif()
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#    FINDING      P Y T H O N
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#if(NOT COMMONS_NO_PYTHON)
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    #if(CONDA_PREFIX AND NOT Python_ROOT_DIR)
+        message(STATUS "Using conda prefix = ${CONDA_PREFIX} to find Python.")
+        set(Python_ROOT_DIR "${CONDA_PREFIX}")
+        set(Python_DIR "${CONDA_PREFIX}")
+        message(STATUS "Set conda prefix ${Python_DIR} (exec ${Python_EXECUTABLE} vs. ${PYTHON_EXECUTABLE})")
+    #endif()
+
+    unset(Python_USE_STATIC_LIBS)
+    find_package(Python 3.6 COMPONENTS Interpreter Development REQUIRED)
+
+    message(STATUS "After find PYTHON: ${Python_FOUND}")
+    message(STATUS "PYTHON: ${Python_LIBRARIES}")
+    message(STATUS "PYTHON: ${Python_EXECUTABLE}")
+
+    set(PYTHON_EXECUTABLE "${Python_EXECUTABLE}")
+    set(PYTHON_LIBRARY "${Python_LIBRARIES}")
+endif()
+
 set(COMMONS_subproject_CMAKE_ARGS "")
 
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
@@ -400,9 +427,13 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DBUILD_SHARED_LIBS=OFF 
     -DSKIP_INSTALL_FILES=1
     -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
+    -DCMAKE_EXE_LINKER_FLAGS_DEBUG=${CMAKE_EXE_LINKER_FLAGS_DEBUG}
+    -DCMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO=${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}
     -DPYTHON_INCLUDE_DIR:PATH=${PYTHON_INCLUDE_DIR}
     -DPYTHON_LIBRARY:PATH=${PYTHON_LIBRARY}
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
+    -DPython_ROOT_DIR:FILEPATH=${Python_ROOT_DIR}
+
 )
 
 if(APPLE)
@@ -415,19 +446,15 @@ endif()
 message(STATUS "CMAKE_OSX_DEPLOYMENT_TARGET = ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 message(STATUS "MACOSX_DEPLOYMENT_TARGET = $ENV{MACOSX_DEPLOYMENT_TARGET}")
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    FINDING      P Y T H O N
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#if(NOT APPLE AND NOT COMMONS_NO_PYTHON)
+#    set(PY_VERSION "3.6")
+#    find_package(PythonLibs ${PY_VERSION} REQUIRED)
+#    find_package(PythonInterp ${PY_VERSION} REQUIRED)
+#    include_directories(${PYTHON_INCLUDE_DIRS})
 
-if(NOT APPLE AND NOT COMMONS_NO_PYTHON)
-    set(PY_VERSION "3.6")
-    find_package(PythonLibs ${PY_VERSION} REQUIRED)
-    find_package(PythonInterp ${PY_VERSION} REQUIRED)
-    include_directories(${PYTHON_INCLUDE_DIRS})
-
-    message(STATUS "${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
-    message(STATUS "Using python version ${PYTHON_EXECUTABLE}")
-endif()
+#    message(STATUS "${PYTHON_INCLUDE_DIRS} ${PYTHON_LIBRARIES} ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}")
+#    message(STATUS "Using python version ${PYTHON_EXECUTABLE}")
+#endif()
 
 if (DEFINED TRACKER_GLOBAL_THREADS)
     ADD_DEFINITIONS(-DTRACKER_GLOBAL_THREADS=${TRACKER_GLOBAL_THREADS})
@@ -450,7 +477,6 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
         set(GLAD_PROFILE "core")
         set(GLAD_API "gl=3.2")
     endif()
-
     ExternalProject_Add(gladex PREFIX gladex
         GIT_REPOSITORY https://github.com/Dav1dde/glad.git
         GIT_TAG v0.1.33
@@ -528,7 +554,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.6
+        GIT_TAG 3.3.7
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"
@@ -600,6 +626,7 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
 endif()
 
 add_library (Commons::IMGUI INTERFACE IMPORTED GLOBAL)
+
 target_link_libraries(Commons::IMGUI INTERFACE imgui Commons::GLFW)
 target_include_directories(Commons::IMGUI INTERFACE
   "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
@@ -705,6 +732,8 @@ elseif(NOT COMMONS_NO_PYTHON)
         FetchContent_Populate(pybind11)
         add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
     endif()
+
+    message(STATUS "PYTHON VARS: lib:${PYTHON_LIBRARY} inc:${PYTHON_INCLUDE_DIR} exec:${PYTHON_EXECUTABLE}")
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1045,6 +1074,11 @@ if(${COMMONS_BUILD_OPENCV})
    set(OPENCV_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
    set(OPENCV_C_FLAGS "${CMAKE_C_FLAGS}")
 
+    if(UNIX AND NOT APPLE)
+        set(OPENCV_USE_PCH OFF)
+    else()
+        set(OPENCV_USE_PCH ON)
+    endif()
 
    if(COMMONS_FOR_JS)
     IF(NOT CMAKE_BUILD_TYPE)
@@ -1062,7 +1096,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_GSTREAMER=OFF 
             -DWITH_IPP=OFF 
             -DWITH_JASPER=OFF 
-            -DWITH_WEBP=ON 
+            -DWITH_WEBP=ON
             -DWITH_OPENEXR=OFF 
             -DWITH_PVAPI=OFF 
             -DWITH_GIGEAPI=OFF 
@@ -1083,7 +1117,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF 
             -DBUILD_TESTS=OFF 
             -DBUILD_FAT_JAVA_LIB=OFF 
-            -DENABLE_PRECOMPILED_HEADERS=ON 
+            -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DBUILD_opencv_highgui=ON
             -DBUILD_opencv_dnn=OFF 
             -DBUILD_opencv_video=ON
@@ -1128,6 +1162,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_opencv_xobjdetect=OFF 
             -DBUILD_opencv_xphoto=OFF
             -DBUILD_JPEG=OFF
+            -DWITH_FFMPEG:BOOL=OFF
             -DBUILD_DOCS=OFF
             -DBUILD_EXAMPLES=OFF
             -DBUILD_FAT_JAVA_LIB=OFF
@@ -1142,9 +1177,10 @@ if(${COMMONS_BUILD_OPENCV})
             -DCV_ENABLE_INTRINSICS=OFF
             -DCPU_BASELINE=
             -DCPU_BASELINE_DISABLE=
-            -DCV_DISABLE_OPTIMIZATION=ON
             -DCPU_DISPATCH=
-            -DCV_DISABLE_OPTIMIZATION=ON -D CPU_BASELINE= -D CPU_DISPATCH=
+            -DCV_DISABLE_OPTIMIZATION=ON 
+            -DCPU_BASELINE= 
+            -DCPU_DISPATCH=
             -DCMAKE_BUILD_TYPE=Release
             -DWITH_PTHREADS_PF=OFF
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
@@ -1196,7 +1232,10 @@ else()
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
-            -DWITH_OPENEXR=OFF)
+            -DWITH_OPENEXR=OFF
+            -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CONFIGURATION_TYPES:STRING=Release)
 endif()
     set(OPENCV_CMAKE_ARGS ${OPENCV_CMAKE_ARGS} 
                 ${COMMONS_subproject_CMAKE_ARGS}
@@ -1222,6 +1261,8 @@ endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})
     message(STATUS "Commons using opencv version ${COMMONS_OPENCV_VERSION_NO_DOTS}")
 
+    set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
+
     if(UNIX)
         message(STATUS "Using custom configure command")
         ExternalProject_add(CustomOpenCV
@@ -1229,9 +1270,9 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
-            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${COMMONS_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
-            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE}
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${COMMONS_CMAKE_BUILD_TYPE} --target install
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
     else()
@@ -1261,7 +1302,7 @@ endif()
     set(OpenCV_LIB_PATH "")
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi ade libwebp  ${FFMPEG_LIBRARIES})
+        set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi libwebp ade ${FFMPEG_LIBRARIES})
     elseif(WIN32)
         string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
         list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
@@ -1284,6 +1325,12 @@ endif()
 	#		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_stitching opencv_photo)
 		endif()
     endif()
+
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
+    target_include_directories(Commons::OpenCV INTERFACE
+      "$<BUILD_INTERFACE:${png_install_dir}/include>"
+      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
+    )
     
     message(STATUS "Find OpenCV ${OpenCV_DIR} ${COMMONS_OPENCV_VERSION}")
 	find_package(OpenCV ${COMMONS_OPENCV_VERSION} PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
@@ -1293,11 +1340,22 @@ endif()
 	endif()
     
     if(UNIX)
-        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
+        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
     else()
-        include_directories( ${CMAKE_BINARY_DIR}/opencv_install/include )
+        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include )
     endif()
-    link_directories(${CMAKE_BINARY_DIR}/opencv_install/lib ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
+
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4)
+        target_include_directories(Commons::OpenCV INTERFACE
+            ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
+        )
+    endif()
+
+    message(STATUS "Adding path: ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty")
+    target_link_directories(Commons::OpenCV INTERFACE 
+        ${CMAKE_BINARY_DIR}/opencv_install/lib 
+        ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
     target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZIP Commons::LibZ)
     add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
@@ -1305,29 +1363,16 @@ endif()
     set(OpenCV_LIBS Commons::OpenCV)
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-        target_include_directories(Commons::OpenCV INTERFACE
-            ${CMAKE_BINARY_DIR}/opencv_install/include
-            ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4
-        )
-    endif()
-
-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
-    target_include_directories(Commons::OpenCV INTERFACE
-      "$<BUILD_INTERFACE:${png_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
-    )
-
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     else()
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
           INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
+          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     endif()
 endif()

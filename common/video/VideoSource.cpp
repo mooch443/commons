@@ -149,17 +149,18 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video) const {
-    assert(output.cols == _video->size().width
-           && output.rows == _video->size().height);
-    
+void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened())
                 _video->open(_filename);
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
-            _video->frame(frameIndex, output, lazy_video);
+
+            assert(output.cols == _video->size().width
+                && output.rows == _video->size().height);
+
+            _video->frame(frameIndex, output, lazy_video, loc);
             break;
             
         case IMAGE:
@@ -216,9 +217,9 @@ short VideoSource::File::framerate() {
     }
 }
 
-timestamp_t VideoSource::File::timestamp(uint64_t frameIndex) const {
+timestamp_t VideoSource::File::timestamp(uint64_t frameIndex, cmn::source_location loc) const {
     if(_type != VIDEO)
-        throw U_EXCEPTION("Cannot retrieve timestamps from anything else other than videos.");
+        throw U_EXCEPTION<FormatterType::UNIX, const char*>("Cannot retrieve timestamps from anything else other than videos.", loc);
     
     if(!has_timestamps())
         throw U_EXCEPTION("No timestamps available for ",_filename,".");
@@ -338,8 +339,7 @@ VideoSource::VideoSource(const std::vector<file::Path>& files)
     }
     
     if(_files_in_seq.empty()) {
-        auto str = Meta::toStr(files);
-        throw U_EXCEPTION("Cannot load video sequence ",str," (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence ",files," (it is empty).");
     }
     
     _size = _files_in_seq.at(0)->resolution();
@@ -400,14 +400,14 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         _files_in_seq.shrink_to_fit();
         
     } else {
-        print("Finding all relevant files in sequence with base name '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(), "'...");
+        print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
             
             File *f = File::open(i-seq_start, ss.str(), extension, i != seq_start);
             if(!f)
-                throw U_EXCEPTION("Cannot find file '", ss.str().c_str(), ".", extension.c_str(), "' in sequence ", seq_start,"-", seq_end, ".");
+                throw U_EXCEPTION("Cannot find file ", ss.str() + "." + extension, " in sequence ", seq_start,"-", seq_end, ".");
             _files_in_seq.push_back(f);
             
             _length += f->length();
@@ -420,11 +420,11 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
         
         if (_files_in_seq.empty())
-            throw U_EXCEPTION("Provided an empty video sequence for video source '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "'.");
+            throw U_EXCEPTION("Provided an empty video sequence for video source ", prefix+(suffix.empty() ? "" : "."+suffix), ".");
     }
     
     if(_files_in_seq.empty())
-        throw U_EXCEPTION("Cannot load video sequence '", prefix.c_str(), suffix.empty() ? "" : "",suffix.c_str(),"", "' (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence ", prefix + (suffix.empty() ? "" : "."+suffix)," (it is empty).");
     
     _size = _files_in_seq.at(0)->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
@@ -445,7 +445,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             cv::Mat image;
             first->frame(0, image);
             if(image.cols != _size.width || image.rows != _size.height) {
-                FormatWarning("VideoSource '", prefix.c_str(), suffix.empty() ? "" : "%d", suffix.c_str(),"' reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
+                FormatWarning("VideoSource ", prefix + (suffix.empty() ? "" : "%d") + suffix," reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
                 _size = cv::Size(image.cols, image.rows);
             }
             _last_file = first;
@@ -460,16 +460,16 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
 }
 
 #ifdef USE_GPU_MAT
-void VideoSource::frame(uint64_t globalIndex, gpuMat& output) {
+void VideoSource::frame(uint64_t globalIndex, gpuMat& output, cmn::source_location loc) {
     cv::Mat m(size().height, size().width, CV_8UC1);
-    frame(globalIndex, m);
+    frame(globalIndex, m, loc);
     m.copyTo(output);
 }
 #endif
 
-void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
+void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_location loc) {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
     if(type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex);
@@ -509,9 +509,9 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output) {
     }
 }
 
-timestamp_t VideoSource::timestamp(uint64_t globalIndex) const {
+timestamp_t VideoSource::timestamp(uint64_t globalIndex, cmn::source_location loc) const {
     if (/*globalIndex < 0 ||*/ globalIndex >= _length)
-        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested.");
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
     uint64_t index = 0;
     
@@ -533,7 +533,8 @@ timestamp_t VideoSource::start_timestamp() const {
 }
 
 bool VideoSource::has_timestamps() const {
-    return _has_timestamps;
+    return false;
+    //return _has_timestamps;
 }
 
 short VideoSource::framerate() const {

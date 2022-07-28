@@ -204,10 +204,14 @@ namespace cmn {
         uint64_t _file_offset;
         bool _mmapped;
         int fd;
-        char *_data;
+        char* _data;
+
+#if defined(__EMSCRIPTEN__)
+        std::vector<char> _data_container;
+#endif
         std::mutex _internal_modification;
         
-        uint64_t _reading_file_size;
+        GETTER(uint64_t, reading_file_size)
 #if defined(WIN32)
         mappedRegion reg;
 #endif

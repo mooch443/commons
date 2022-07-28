@@ -70,7 +70,10 @@ endforeach()
 
 target_link_libraries(commons
     PUBLIC cnpy
+    PUBLIC Commons::OpenCV
     PUBLIC Commons::IMGUI 
+    PUBLIC Commons::GLFW
+    PUBLIC Commons::FFMPEG
     PUBLIC Commons::OpenGL 
     PUBLIC Commons::LibPNG 
     PUBLIC Commons::LibZIP 
@@ -88,7 +91,23 @@ else()
     )
 endif()
 
-target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL})
+
+try_compile(HAVE_CONCEPT_IMPLEMENTATION "${CMAKE_BINARY_DIR}/temp" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_concepts.cpp"
+             CXX_STANDARD 20
+             CXX_STANDARD_REQUIRED TRUE)
+if(${HAVE_CONCEPT_IMPLEMENTATION})
+    target_compile_definitions(commons PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
+    message(STATUS "Setting to true.")
+endif()
+message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
+
+target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
+if(COMMONS_NO_PYTHON)
+    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=true)
+else()
+    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=false)
+endif()
+
 if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
     target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
 else()

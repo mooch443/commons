@@ -4,7 +4,7 @@
 #include <misc/dirent.h>
 #define OS_SEP '\\'
 #define NOT_OS_SEP '/'
-#elif !defined(__EMSCRIPTEN__)
+#else//if !defined(__EMSCRIPTEN__)
 #include <dirent.h>
 #define OS_SEP '/'
 #define NOT_OS_SEP '\\'
@@ -131,36 +131,48 @@ std::string_view Path::filename() const {
 
     std::vector<char> Path::retrieve_data() const {
 #if defined(__EMSCRIPTEN__)
-        struct Data {
-            std::mutex _download_mutex;
-            std::condition_variable _download_variable;
-            std::atomic_bool _download_finished{ false };
-            std::vector<char> data;
-        };
+        if (exists()) {
+            std::ifstream input(str(), std::ios::binary);
+            if (!input.is_open())
+                throw cmn::U_EXCEPTION("Cannot read file ", str());
 
-        static Data _data;
-
-        std::unique_lock guard(_data._download_mutex);
-        _data.data.clear();
-        _data._download_finished = false;
-
-        emscripten_async_wget_data(c_str(), (void*)&_data, [](void* arg, void* buffer, int size) {
-            printf("Downloaded data (%d)", size);
-            auto self = (Data*)arg;
-            self->data.resize(size);
-            std::copy((char*)buffer, (char*)buffer + size, self->data.data());
-            self->_download_finished = true;
-            self->_download_variable.notify_all();
-        }, [](void*) {
-            printf("Failed to download data!!!\n");
-        });
-
-        while (!_data._download_finished) {
-            _data._download_variable.wait_for(guard, std::chrono::milliseconds(10));
-            emscripten_sleep(10);
+            return std::vector<char>(std::istreambuf_iterator<char>(input), {});
         }
+        else {
+            struct Data {
+                std::mutex _download_mutex;
+                std::condition_variable _download_variable;
+                std::atomic_bool _download_finished{ false };
+                std::vector<char> data;
+                file::Path _path;
+            };
 
-        return _data.data;
+            static Data _data;
+
+            std::unique_lock guard(_data._download_mutex);
+            _data.data.clear();
+            _data._path = *this;
+            _data._download_finished = false;
+
+            emscripten_async_wget_data(c_str(), (void*)&_data, [](void* arg, void* buffer, int size) {
+                printf("Downloaded data (%d)", size);
+                auto self = (Data*)arg;
+                self->data.resize(size);
+                std::copy((char*)buffer, (char*)buffer + size, self->data.data());
+                self->_download_finished = true;
+                self->_download_variable.notify_all();
+                }, [](void* arg) {
+                    auto self = (Data*)arg;
+                    printf("Failed to download data for '%s'.\n", self->_path.c_str());
+                });
+
+            while (!_data._download_finished) {
+                _data._download_variable.wait_for(guard, std::chrono::milliseconds(10));
+                //emscripten_sleep(10);
+            }
+
+            return _data.data;
+        }
 #else
         std::ifstream input(str(), std::ios::binary);
         if (!input.is_open())
@@ -254,9 +266,9 @@ std::string_view Path::filename() const {
             return true;   // this is a directory!
 
         return false;
-#elif defined(__EMSCRIPTEN__)
-        //!TODO: [EMSCRIPTEN]
-        return false;
+//#elif defined(__EMSCRIPTEN__)
+ //       //!TODO: [EMSCRIPTEN]
+ //       return false;
 #else
         struct stat path_stat;
         if(stat(empty() ? "/" : str().c_str(), &path_stat) != 0)
@@ -326,10 +338,10 @@ std::string_view Path::filename() const {
         }
     
     std::set<Path> Path::find_files(const std::string& filter_extension) const {
-#if defined(__EMSCRIPTEN__)
+/*#if defined(__EMSCRIPTEN__)
         //!TODO: [EMSCRIPTEN]
         throw U_EXCEPTION("Cannot iterate folders in Emscripten.");
-#else
+#else*/
         if(!is_folder())
             throw U_EXCEPTION("The path ",str()," is not a folder and can not be iterated on.");
         if(!empty() && !exists())
@@ -353,7 +365,7 @@ std::string_view Path::filename() const {
             throw U_EXCEPTION("Folder ",str()," exists but cannot be read.");
         
         return result;
-#endif
+//#endif
     }
 
     Path Path::replace_extension(std::string_view ext) const {

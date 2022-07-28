@@ -23,6 +23,8 @@ struct bid {
     uint32_t _id = invalid;
     bid() = default;
     bid(const bid&) = default;
+    bid& operator=(const bid&) = default;
+    bid& operator=(bid&&) = default;
     constexpr bid(uint32_t v) : _id(v) {}
     
     explicit constexpr operator uint32_t() const {
@@ -39,18 +41,8 @@ struct bid {
     //constexpr bid(uint32_t b) : _id(b) {}
     constexpr bool valid() const { return _id != invalid; }
     
-    constexpr bool operator<(const bid& other) const {
-        return _id < other._id;
-    }
-    constexpr bool operator>(const bid& other) const {
-        return _id > other._id;
-    }
-    
-    constexpr bool operator<=(const bid& other) const {
-        return _id <= other._id;
-    }
-    constexpr bool operator>=(const bid& other) const {
-        return _id >= other._id;
+    constexpr auto operator<=>(const bid& other) const {
+        return _id <=> other._id;
     }
     
     std::string toStr() const;
@@ -115,7 +107,7 @@ namespace pv {
         Blob(const pv::Blob& other);
         
         BlobPtr threshold(int32_t value, const cmn::Background& background);
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1)) const;
+        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
@@ -131,7 +123,7 @@ namespace pv {
         void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
         //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
         
-        static decltype(_pixels) calculate_pixels(cmn::Image::Ptr image, const decltype(_hor_lines)& lines);
+        static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
         
         float recount(int32_t threshold) const;
         float recount(int32_t threshold, const cmn::Background&);

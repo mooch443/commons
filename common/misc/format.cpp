@@ -26,7 +26,7 @@ std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> log_callba
 //extern IMPLEMENT(PrefixLiterals::ERROR_PREFIX);
 void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)> fn) {
     log_callback_function = fn;
-    return (void*) & fn;
+    return (void*) & log_callback_function;
 }
 void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool force) {
     if (!has_log_callback())
@@ -34,6 +34,30 @@ void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool
     log_callback_function(prefix, str, force);
 }
 void log_to_terminal(const std::string& str, bool force_display) {
+#if defined(WIN32) && !defined(__EMSCRIPTEN__)
+    static std::once_flag tag;
+    std::call_once(tag, []() {
+        auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (handle == INVALID_HANDLE_VALUE) {
+#ifndef NDEBUG
+            printf("Cannot get console handle\n");
+#endif
+            return;
+        }
+
+        DWORD dwMode = 0;
+        if (!GetConsoleMode(handle, &dwMode)) {
+#ifndef NDEBUG
+            printf("Get console handle error: %d\n", GetLastError());
+#endif
+            return;
+        }
+
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(handle, dwMode);
+    });
+#endif
+
     if(!runtime_is_quiet || force_display)
         printf("%s\n", str.c_str());
 }

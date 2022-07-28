@@ -53,6 +53,8 @@ namespace gui {
         }
         
         std::ostream &operator <<(std::ostream &os);
+        std::string toStr() const;
+        static std::string class_name() { return "Vertex"; }
     };
     
     enum Style

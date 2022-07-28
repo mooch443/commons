@@ -357,7 +357,7 @@ inline constexpr auto infinity()
 template <typename T>
 constexpr T next_pow2 (T n)
 {
-    if(n == T{1}) return 1;
+    if(n <= T{1}) return 1;
     
     static_assert(sizeof(T) <= 64, "Cannot use this for >64bit.");
     T clz = 0;

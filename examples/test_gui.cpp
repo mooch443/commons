@@ -120,6 +120,7 @@ int main(int argc, char**argv) {
 
     print(fmt::red("Hi in red."));
     
+#if !defined(__EMSCRIPTEN__)
     try {
         throw SoftException("Soft exception ",argc);
     } catch(const SoftExceptionImpl& soft) {
@@ -130,6 +131,7 @@ int main(int argc, char**argv) {
     } catch(const std::invalid_argument& e) {
         print("Got: ",e);
     }
+#endif
     
     print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
     /*for (int j=0; j<11; ++j) {
@@ -233,7 +235,7 @@ int main(int argc, char**argv) {
     Timer timer;
     Timer action_timer;
     Vec2 last_mouse_pos;
-
+    /*
 #if defined(__EMSCRIPTEN__)
     //file::Path image_path("/photomode_21012022_190427.png");
     file::Path image_path("./trex_screenshot_web.png");
@@ -249,7 +251,7 @@ int main(int argc, char**argv) {
 
     ExternalImage image;
     image.set_source(std::make_unique<Image>(mat));
-    image.set_scale(0.55);
+    image.set_scale(0.55);*/
     
     //! open window and start looping
     bool terminate = false;
@@ -281,7 +283,7 @@ int main(int argc, char**argv) {
         el += dt;
 
         if (el >= 5) {
-            FormatWarning("A warning.");
+            //FormatWarning("A warning.");
             el = 0;
         }
 
@@ -294,14 +296,14 @@ int main(int argc, char**argv) {
         }(owl_indexes);
         
         
-        graph.text("BBC MicroOwl", Vec2(10, 10), White, Font(1));
+        graph.text("BBC MicroOwl", Vec2(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         e.update([](Entangled &e) {
            // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });
         graph.wrap_object(e);
 
-        image.set_pos(last_mouse_pos);
-        graph.wrap_object(image);
+        //image.set_pos(last_mouse_pos);
+        //graph.wrap_object(image);
 
         auto scale = graph.scale().reciprocal();
         auto dim = ptr->window_dimensions().mul(scale * gui::interface_scale());

@@ -23,7 +23,10 @@ namespace grid {
         bool operator==(const pixel& other) const {
             return other.v == v && other.x == x && other.y == y;
         }
-        bool operator==(const T& v) const {
+
+        template<typename K>
+            requires (!std::same_as<remove_cvref_t<K>, pixel<T>>)
+        bool operator==(const K& v) const {
             return this->v == v;
         }
     };
@@ -61,7 +64,7 @@ namespace grid {
         GETTER_CONST(const Size2, resolution)
         GETTER(uint, n)
         GETTER(uint, N)
-        ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
+        std::unordered_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
         Grid2D(const Size2& resolution, uint n)
@@ -208,6 +211,32 @@ namespace grid {
             }
             
             _value_where.erase(it);
+        }
+        
+        T find(auto v) {
+            for (auto& set : grid) {
+                auto it = std::find(set.begin(), set.end(), v);
+                if (it != set.end())
+                    return it->v;
+            }
+
+            /*auto it = _value_where.find(v);
+            if (_value_where.end() == it)
+                return;
+
+            for (auto i : it->second) {
+                auto& g = grid[i];
+                auto kit = g.begin();
+                for (; kit != g.end(); ) {
+                    if (*kit == v) {
+                        return *kit;
+                    }
+                    else
+                        ++kit;
+                }
+            }*/
+
+            return T{};
         }
     };
 

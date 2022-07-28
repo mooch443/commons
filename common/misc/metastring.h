@@ -71,9 +71,9 @@ struct DurationUS {
 };
     
 struct FileSize {
-    size_t bytes;
+    uint64_t bytes;
         
-    FileSize(size_t b = 0) : bytes(b) {}
+    FileSize(uint64_t b = 0) : bytes(b) {}
         
     std::string to_string() const {
         std::vector<std::string> descriptions = {

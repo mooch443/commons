@@ -292,7 +292,7 @@ namespace gui {
         //    stage()->height() - (gb.y + _items.size() * _row_height * gscale));
         const bool inverted = foldable() && stage() 
             //&& gb.y + (_items.size()) * _row_height * gscale >= stage()->height() / stage()->scale().y
-            && gb.y >= stage()->height() * 0.5;
+            && gb.y >= stage()->height() / stage()->scale().y * 0.5;
             //&& stage()->height() - (gb.y + _items.size() * _row_height * gscale) < gb.y - (gb.y + _items.size() * _row_height * gscale);
         
         if(foldable()) {

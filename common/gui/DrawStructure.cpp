@@ -441,17 +441,26 @@ T* DrawStructure::create(Args... args) {
         }, thickness, Vertices::TRANSPORT));*/
     }
     
+    Line* DrawStructure::line(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale) {
+        return create<Type::data::values::VERTICES, Line>(std::vector<Vertex>{
+            Vertex(pos0, color),
+                Vertex(pos1, color)
+        }, 1, Vertices::MEMORY::COPY, scale);
+    }
+    
     Line* DrawStructure::line(const std::vector<Vec2>& points, float thickness, const Color& color) {
         std::vector<Vertex> array;
         array.resize(points.size());
         for(size_t i=0; i<points.size(); i++)
             array[i] = Vertex(points[i], color);
         
-        return add_object(new Line(array, thickness, Vertices::TRANSPORT));
+        return create<Type::data::values::VERTICES, Line>(
+            array, thickness
+        );
     }
     
     Line* DrawStructure::line(const std::vector<Vertex>& points, float thickness) {
-        return static_cast<Line*>(add_object(new Line(points, thickness, Vertices::TRANSPORT)));
+        return create<Type::data::values::VERTICES, Line>(points, thickness);
     }
 
     Rect* DrawStructure::rect(const Vec2 &pos, const Vec2 &size, const gui::Color &inside, const Color& outside) {
@@ -477,10 +486,6 @@ T* DrawStructure::create(Args... args) {
     
     Vertices* DrawStructure::vertices(const std::vector<Vertex> &points, PrimitiveType type) {
         return static_cast<Vertices*>(add_object(new Vertices(points, type, Vertices::TRANSPORT)));
-    }
-    
-    Vertices* DrawStructure::line(const Vec2& pos0, const Vec2& pos1, const Color& color) {
-        return static_cast<Vertices*>(add_object(new Vertices(pos1,pos0, color)));
     }
     
     ExternalImage* DrawStructure::image(const Vec2 &pos, ExternalImage::Ptr&& image, const Vec2& scale, const Color& color) {

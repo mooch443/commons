@@ -478,8 +478,8 @@ namespace cmn {
         cv::resize(mat, mat, cv::Size(), factor, factor, flags);
     }
     
-    template<typename T>
-    inline void resize_image(const T& mat, T& output, double factor, int flags = cv::INTER_NEAREST)
+    template<typename T, typename K>
+    inline void resize_image(const T& mat, K& output, double factor, int flags = cv::INTER_NEAREST)
     {
         cv::resize(mat, output, cv::Size(), factor, factor, flags);
     }
@@ -636,6 +636,9 @@ namespace cmn {
     }
     
     inline uint8_t hardware_concurrency() {
+#if  defined(__EMSCRIPTEN__)
+        return 1;
+#else
 #if TRACKER_GLOBAL_THREADS
         return TRACKER_GLOBAL_THREADS;
 #else
@@ -643,6 +646,7 @@ namespace cmn {
         if(!c)
             return 1;
         return c;
+#endif
 #endif
     }
     

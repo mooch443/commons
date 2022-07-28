@@ -65,7 +65,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                 Size2 size(e.size.width, e.size.height);
                 
                 float min_height = 640;
-                auto scale = gui::interface_scale() * 2 / max(1, min_height / size.height);
+                auto scale = gui::interface_scale() / max(1, min_height / size.height);
                 _graph->set_size(size);
                 _graph->set_scale(scale);
                 
@@ -472,8 +472,8 @@ void FileChooser::update_size() {
         _selected_text->set_max_size(Size2(_graph->width() - 20));
     }
     
-    if(_tabs_bar) _tabs_bar->auto_size(Margin{0,0});
-    if(_tabs_bar) _tabs_bar->update_layout();
+    //if(_tabs_bar) _tabs_bar->auto_size(Margin{0,0});
+    //if(_tabs_bar) _tabs_bar->update_layout();
     
     if(_current_tab.display == Settings::Display::None) {
         if(_current_tab.content) {
@@ -497,11 +497,11 @@ void FileChooser::update_size() {
     _list->set_bounds(Bounds(0, 0, left_column_width, left_column_height));
     _textfield->set_bounds(Bounds(0, 0, left_column_width, 30));
     
-    if(_rows) _rows->auto_size(Margin{0,0});
+    /*if (_rows) _rows->auto_size(Margin{0,0});
     if(_rows) _rows->update_layout();
     
     _columns->auto_size(Margin{0,0});
-    _columns->update_layout();
+    _columns->update_layout();*/
     
     _overall->auto_size(Margin{0,0});
     _overall->update_layout();

@@ -31,8 +31,8 @@ namespace gui {
         int _wndSize[2];
         int _wndPos[2];
         
-        std::mutex texture_mutex;
-        std::vector<std::function<void()>> _texture_updates;
+        std::shared_ptr<std::mutex> texture_mutex;
+        std::shared_ptr<std::vector<std::function<void()>>> _texture_updates;
         
     public:
         GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn);
