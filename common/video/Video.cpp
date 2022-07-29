@@ -201,6 +201,9 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location
         throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
     // Set position to requested frame
+    if(index > _last_index + 1000)
+        lazy = true;
+    
     if(index <= _last_index || (lazy && index != _last_index+1)) {
         //FormatWarning("Have to reset video index from ", _last_index," to ", index," (",_filename.c_str(),")");
         _cap->set(cv::CAP_PROP_POS_FRAMES, index);
@@ -208,8 +211,12 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location
 #ifndef NDEBUG
         FormatWarning("Have to skip from video index from ", _last_index," to ", index-1," (",_filename.c_str(),")");
 #endif
-        for(; _last_index+1 < index; _last_index++)
+        for(; _last_index+1 < index; _last_index++) {
             _cap->grab();
+            if(_last_index - index > 1000 && _last_index % 1000 == 0) {
+                print("... ", _last_index, " / ", index);
+            }
+        }
     }
     
     _last_index = index;

@@ -319,11 +319,11 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
 
     // These macros exchange them:
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#ifndef NDEBUG
+/*#ifndef NDEBUG
     #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows); } void()
-#else
+#else*/
     #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); } void()
-#endif
+//#endif
 
     assert(_average->type() == CV_8UC1);
     assert(_buffer0.type() == CV_8UC1);

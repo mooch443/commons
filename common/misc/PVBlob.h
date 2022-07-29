@@ -42,6 +42,10 @@ struct bid {
     constexpr bool valid() const { return _id != invalid; }
     
     constexpr auto operator<=>(const bid& other) const {
+//#ifndef NDEBUG
+        if(!valid() || !other.valid())
+            throw std::invalid_argument("Comparing to an invalid pv::bid does not produce the desired outcome.");
+//#endif
         return _id <=> other._id;
     }
     
