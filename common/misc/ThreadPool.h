@@ -97,7 +97,7 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     const auto threads = pool.num_threads();
     int64_t i = 0, N = std::distance(start, end);
     const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
-#if defined(COMMONS_HAS_LATCH) && false
+#if defined(COMMONS_HAS_LATCH) //&& false
     int64_t enqueued{0};
     
     {
