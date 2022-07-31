@@ -129,7 +129,7 @@ namespace gui {
             }
             
             auto str = Meta::toStr(difference);
-            DebugHeader("%d drawables in memory, %d new, %d deleted", all_drawables.size(), difference.size(), deleted.size());
+            DebugHeader(all_drawables.size(), " drawables in memory, ", difference.size()," new, ", deleted.size()," deleted");
             
             std::set<std::tuple<float, Drawable*>> oldest;
             for (auto && [object, info] : all_drawables) {
