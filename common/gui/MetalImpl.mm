@@ -390,7 +390,24 @@ void MetalImpl::message(const std::string &msg) const {
                 ImGui_ImplGlfw_NewFrame();
                 ImGui::NewFrame();
                 
-                auto lock = new std::lock_guard<std::mutex>(mutex);
+                static std::mutex cache_mutex;
+                static std::vector<std::unique_lock<std::mutex>*> unused;
+                
+                std::unique_lock<std::mutex>* lock = nullptr;
+                {
+                    std::unique_lock g(cache_mutex);
+                    if(!unused.empty()) {
+                        lock = std::move(unused.back());
+                        unused.pop_back();
+                    }
+                }
+                
+                std::unique_lock stack(mutex);
+                if(!lock)
+                    lock = new std::unique_lock<std::mutex>();
+                lock->swap(stack);
+                
+                //auto lock = new std::lock_guard<std::mutex>(mutex);
                 
                 draw_function();
                 
@@ -518,7 +535,11 @@ void MetalImpl::message(const std::string &msg) const {
                         [drawable.texture getBytes:_current_framebuffer->data() bytesPerRow:_current_framebuffer->dims * _current_framebuffer->cols fromRegion:MTLRegionMake2D(0, 0, _current_framebuffer->cols, _current_framebuffer->rows) mipmapLevel:0];
                     }
                     
-                    delete lock;
+                    lock->unlock();
+                    {
+                        std::unique_lock g(cache_mutex);
+                        unused.emplace_back(std::move(lock));
+                    }
                     
                     {
                         std::lock_guard<std::mutex> guard(_texture_mutex);

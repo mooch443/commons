@@ -75,6 +75,10 @@ namespace gui {
         GETTER(Policy, policy)
         
     public:
+        HorizontalLayout(const Bounds& margins)
+            : HorizontalLayout({}, Vec2(), margins)
+        {}
+        
         HorizontalLayout(const std::vector<Layout::Ptr>& objects = {},
                          const Vec2& position = Vec2(),
                          const Bounds& margins = {5, 5, 5, 5});
@@ -97,6 +101,9 @@ namespace gui {
         GETTER(Policy, policy)
         
     public:
+        VerticalLayout(const Bounds& margins)
+            : VerticalLayout({}, Vec2(), margins)
+        {}
         VerticalLayout(const std::vector<Layout::Ptr>& objects = {},
                          const Vec2& position = Vec2(),
                          const Bounds& margins = {5, 5, 5, 5});

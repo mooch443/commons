@@ -13,7 +13,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
-    _graph(std::make_unique<DrawStructure>(1300, 640)),
+    _graph(std::make_unique<DrawStructure>(1200, 640)),
     _description(std::make_shared<Text>("Please choose a file in order to continue.", Vec2(10, 10), White, Font(0.75))),
     _columns(std::make_shared<HorizontalLayout>()),
     _overall(std::make_shared<VerticalLayout>()),
@@ -23,10 +23,13 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
         
         {
             std::lock_guard<std::mutex> guard(_execute_mutex);
+            auto N = _execute.size();
             while(!_execute.empty()) {
                 _execute.front()();
                 _execute.pop();
             }
+            if(N > 0)
+                update_size();
         }
         
         if(!_list)
@@ -69,7 +72,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                 _graph->set_size(size);
                 _graph->set_scale(scale);
                 
-                update_size();
+                //update_size();
                 
                 //if(_base.window_dimensions().height < min_height)
                 {
@@ -469,7 +472,7 @@ void FileChooser::update_size() {
     float s = _graph->scale().x / gui::interface_scale();
     
     if(_selected_text && !_selected_file.empty()) {
-        _selected_text->set_max_size(Size2(_graph->width() - 20));
+        _selected_text->set_max_size(Size2(_graph->width() / s, -1));
     }
     
     //if(_tabs_bar) _tabs_bar->auto_size(Margin{0,0});
@@ -487,12 +490,14 @@ void FileChooser::update_size() {
         _columns->set_children({_rows});
     
     //_columns->set_background(Transparent, Purple);
-    if(_current_tab.content) _current_tab.content->auto_size(Margin{0,0});
+    if(_current_tab.content)
+        _current_tab.content->auto_size(Margin{0,0});
     
     float left_column_height = _graph->height() / s - 50 - 10 - (_selected_text && !_selected_file.empty() ? _button->height() + 85 : 0) - (_tabs_bar ? _tabs_bar->height() + 10 : 0);
     _button->set_bounds(Bounds(_list->pos() + Vec2(0, left_column_height), Size2(100, 30)));
     
-    float left_column_width = (_graph->width() / s - 20 - (_current_tab.content && _current_tab.content->width() > 20 && !_selected_file.empty() ? _current_tab.content->width() + 10 : 0) - 10);
+    float left_column_width = _graph->width() / s - 20
+            - (_current_tab.content && _current_tab.content->width() > 20 && !_selected_file.empty() ? _current_tab.content->width() + 30 : 0) - 10;
     
     _list->set_bounds(Bounds(0, 0, left_column_width, left_column_height));
     _textfield->set_bounds(Bounds(0, 0, left_column_width, 30));

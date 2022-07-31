@@ -380,9 +380,10 @@ std::string_view Path::filename() const {
         return *this;
     }
     
-    Path Path::remove_extension() const {
-        if(has_extension())
+    Path Path::remove_extension(const std::string& only) const {
+        if(has_extension() && (only.empty() || extension() == only)) {
             return Path(_str.substr(0, _str.length() - extension().length() - 1));
+        }
         return *this;
     }
     

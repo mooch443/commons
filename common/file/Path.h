@@ -67,7 +67,7 @@ namespace file {
         Path replace_extension(std::string_view ext) const;
         Path add_extension(std::string_view ext) const;
         bool has_extension() const;
-        Path remove_extension() const;
+        Path remove_extension(const std::string& = "") const;
         
         FILE* fopen(const std::string& access_rights) const;
         std::vector<char> retrieve_data() const;
