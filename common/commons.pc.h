@@ -611,6 +611,16 @@ using remove_cvref_t = std::remove_cvref_t<T>;
         return v.find(key) != v.end();
 #endif
     }
+
+    template<class T>
+    auto insert_sorted(std::vector<T>& vector, T&& element) {
+        return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), std::move(element));
+    }
+
+    template<class T>
+    auto insert_sorted(std::vector<T>& vector, const T& element) {
+        return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), element);
+    }
 }
 
 namespace cmn {

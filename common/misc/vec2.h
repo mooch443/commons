@@ -160,6 +160,10 @@ namespace cmn {
         return Vector2D(Scalar(1) / A(), Scalar(1) / B()); \
     } \
     \
+    constexpr Scalar atan2() const { \
+        return std::atan2(B(), A()); \
+    } \
+    \
     constexpr Vector2D& operator+=(Scalar other) { A() += other; B() += other; return *this; } \
     constexpr Vector2D& operator-=(Scalar other) { A() -= other; B() -= other; return *this; } \
     constexpr Vector2D& operator*=(Scalar other) { A() *= other; B() *= other; return *this; } \
@@ -229,6 +233,13 @@ struct Vector2D<Scalar, true>
         return Vector2D {
             x * cmn::cos(angle) - y * cmn::sin(angle),
             x * cmn::sin(angle) + y * cmn::cos(angle)
+        };
+    }
+    
+    static constexpr Vector2D from_angle(Scalar angle) {
+        return {
+            cmn::cos(angle),
+            cmn::sin(angle)
         };
     }
 

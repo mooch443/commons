@@ -5,73 +5,51 @@
 
 namespace cmn {
 
-struct Frame_t {
+class Frame_t {
+public:
     using number_t = int32_t;
     static constexpr number_t invalid = -1;
 
+private:
     number_t _frame = invalid;
     
+public:
     Frame_t() = default;
     explicit constexpr Frame_t(number_t frame)
         : _frame(frame)
-    {
-    }
+    { }
     
     constexpr void invalidate() { _frame = invalid; }
     
     constexpr number_t get() const { return _frame; }
-    //constexpr operator long_t() const { return _frame; }
     constexpr bool valid() const { return _frame >= 0; }
+    
+    constexpr auto operator<=>(const Frame_t& other) const = default;
+    
+    constexpr Frame_t operator-() const {
+        return Frame_t(-get());
+    }
+    
     constexpr Frame_t& operator+=(const Frame_t& other) {
         _frame += other._frame;
         return *this;
     }
-    /*constexpr Frame_t& operator+=(long_t&& other) {
-        assert(valid() && other != invalid);
-        if(!valid())
-            _frame = other;
-        else
-            _frame += other;
+    constexpr Frame_t& operator-=(const Frame_t& other) {
+        _frame -= other._frame;
         return *this;
-    }*/
-    /*constexpr Frame_t& operator=(Frame value) {
-        _frame = value;
-        return *this;
-    }*/
-    
-    constexpr bool operator<(const Frame_t& other) const {
-        //return (valid() ^ other.valid() && valid()) || (valid() && get() < other.get());
-        return get() < other.get(); // invalid is fine - can be <<<< 0, but still sorted
-    }
-    constexpr bool operator>(const Frame_t& other) const {
-        return get() > other.get();
-        //return (other.valid() ^ valid() && other.valid()) || (valid() && get() > other.get());
-    }
-    constexpr bool operator<=(const Frame_t& other) const {
-        return *this < other || *this == other;
-    }
-    constexpr bool operator>=(const Frame_t& other) const {
-        return *this > other || *this == other;
     }
     
-    constexpr Frame_t operator-(const Frame_t& other) const {
-        return Frame_t(get() - other.get());
-    }
-    constexpr Frame_t operator-() const {
-        return Frame_t(-get());
-    }
     constexpr Frame_t& operator--() {
         --_frame;
         return *this;
     }
-    
     constexpr Frame_t& operator++() {
         ++_frame;
         return *this;
     }
     
-    constexpr bool operator==(const Frame_t& other) const {
-        return other.get() == get();
+    constexpr Frame_t operator-(const Frame_t& other) const {
+        return Frame_t(get() - other.get());
     }
     constexpr Frame_t operator+(const Frame_t& other) const {
         return Frame_t(get() + other.get());
