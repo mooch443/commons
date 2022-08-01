@@ -91,9 +91,27 @@ namespace std
 namespace pv {
     
     class Blob : public cmn::Blob {
+    public:
+        enum class Flags {
+            split = 1,
+            is_tag = 2
+        };
+        
+        static void set_flag(uint8_t &flags, Flags flag, bool v) {
+            flags ^= (-uint8_t(v) ^ flags) & (1UL << uint8_t(flag));
+        }
+
+        static bool is_flag(uint8_t flags, Flags flag) {
+            return (flags >> uint8_t(flag)) & 1u;
+        }
+        
+        static constexpr uint8_t flag(Flags flag) {
+            return uint8_t(1UL << uint8_t(flag));
+        }
+        
     protected:
         GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels)
-        GETTER_I(bool, split, false)
+        GETTER_I(uint8_t, flags, 0)
         GETTER_I(bid, parent_id, pv::bid::invalid)
         GETTER_I(bid, blob_id, pv::bid::invalid)
         GETTER_SETTER(bool, tried_to_split)
@@ -104,11 +122,16 @@ namespace pv {
         
     public:
         Blob();
-        Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels);
+        Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags);
         //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
-        Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels);
+        Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags);
         Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
         Blob(const pv::Blob& other);
+        
+        bool split() const;
+        
+        bool is_tag() const;
+        void set_tag(bool);
         
         BlobPtr threshold(int32_t value, const cmn::Background& background);
         std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
@@ -214,14 +237,16 @@ public:
         parent_id(val->parent_id()),
         own_id(val->blob_id())
     {
-        status_byte = (uint8_t(val->split())             * 0x1)
-                    | (uint8_t(val->parent_id().valid()) * 0x2)
-                    | (uint8_t(val->tried_to_split())    * 0x4);
+        status_byte = (uint8_t(val->split())             << 0)
+                    | (uint8_t(val->parent_id().valid()) << 1)
+                    | (uint8_t(val->tried_to_split())    << 2)
+                    | (uint8_t(val->is_tag())            << 3);
         _lines = ShortHorizontalLine::compress(val->hor_lines());
         start_y = val->lines()->empty() ? 0 : val->lines()->front().y;
     }
         
     bool split() const { return status_byte & 0x1; }
+    bool is_tag() const { return (status_byte >> 3) & 1u; }
     cmn::Bounds calculate_bounds() const;
         
     pv::BlobPtr unpack() const;

@@ -47,11 +47,13 @@ using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
 struct Pair {
     blob::line_ptr_t lines;
     blob::pixel_ptr_t pixels;
+    uint8_t extra_flags;
     
     Pair() = default;
-    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels)
+    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0)
         : lines(std::move(lines)),
-          pixels(std::move(pixels))
+          pixels(std::move(pixels)),
+          extra_flags(extra_flags)
     {}
     /*Pair& operator=(Pair&& other) {
         if(!lines) {

@@ -97,7 +97,7 @@ namespace cmn {
         };
         
         for (int i=1; i<argc; i++) {
-            if (argv[i][0] == '-') {
+            if (argv[i][0] == '-' && (/*argv[i][1] == 0 || */argv[i][1] > '9' || argv[i][1] < '0')) {
                 check_option(argptr, nullptr);
                 argptr = *argv[i] ? (argv[i]+1) : argv[i];
                 

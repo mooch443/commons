@@ -36,7 +36,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 
 pv::BlobPtr CompressedBlob::unpack() const {
     auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
-    auto ptr = std::make_shared<pv::Blob>(std::move(flines), nullptr);
+    auto ptr = std::make_shared<pv::Blob>(std::move(flines), nullptr, 0);
     ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : pv::bid::invalid);
     
     bool tried_to_split = (status_byte & 0x4) != 0;
@@ -47,13 +47,27 @@ pv::BlobPtr CompressedBlob::unpack() const {
     } else
         ptr->set_split(false);
     
+    ptr->set_tag(is_tag());
+    
     return ptr;
 }
 
-    void Blob::set_split(bool split) {
-        _split = split;
+    bool Blob::split() const {
+        return Blob::is_flag(_flags, Flags::split);
     }
-    
+
+    void Blob::set_split(bool split) {
+        Blob::set_flag(_flags, Flags::split, split);
+    }
+
+    bool Blob::is_tag() const {
+        return Blob::is_flag(_flags, Flags::is_tag);
+    }
+
+    void Blob::set_tag(bool v) {
+        Blob::set_flag(_flags, Flags::is_tag, v);
+    }
+
     std::vector<ShortHorizontalLine>
         ShortHorizontalLine::compress(const std::vector<HorizontalLine>& lines)
     {
@@ -103,30 +117,38 @@ pv::BlobPtr CompressedBlob::unpack() const {
     std::mutex cm_per_pixel_mutex;
     std::atomic_bool callback_registered = false;
     
-    Blob::Blob() : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr) {
+    Blob::Blob() : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr, 0) {
         
     }
 
-    Blob::Blob(const line_ptr_t::element_type& lines, const pixel_ptr_t::element_type& pixels)
+    Blob::Blob(const line_ptr_t::element_type& lines,
+               const pixel_ptr_t::element_type& pixels,
+               uint8_t flags)
         : Blob(std::make_unique<line_ptr_t::element_type>(lines),
-               std::make_unique<pixel_ptr_t::element_type>(pixels))
+               std::make_unique<pixel_ptr_t::element_type>(pixels),
+               flags)
     { }
     
     Blob::Blob(const Blob& other)
         : Blob(std::make_unique<line_ptr_t::element_type>(*other.lines()),
-               other.pixels() ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels()) : nullptr)
-    //Blob(other.hor_lines(), other.pixels() ? std::make_shared<decltype(_pixels)::element_type>(*other.pixels()) : nullptr)
+               other.pixels()
+                   ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels())
+                   : nullptr,
+               other.flags())
     {
         _tried_to_split = other._tried_to_split;
     }
     
-    Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels)
+    Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t flags)
         : cmn::Blob(std::move(lines)), _pixels(std::move(pixels))
     {
         init();
+        _flags |= flags;
     }
     Blob::Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels)
-        : Blob(std::make_unique<line_ptr_t::element_type>(*blob->lines()), std::move(pixels))
+        : Blob(std::make_unique<line_ptr_t::element_type>(*blob->lines()),
+               std::move(pixels),
+               0)
     { }
     
     /*Blob::Blob(const std::vector<HorizontalLine>& lines,
@@ -174,8 +196,8 @@ static Callback callback;
     
     void Blob::init() {
         _tried_to_split = false;
+        _flags = 0x0;
         
-        _split = false;
         _recount = _recount_threshold = -1;
         _parent_id = bid::invalid;
         
@@ -221,10 +243,12 @@ static Callback callback;
     }
     
     void Blob::set_split(bool split, pv::BlobPtr parent) {
-        _split = split;
-        if(parent)
+        set_split(split);
+        
+        if(parent) {
             _parent_id = parent->parent_id().valid() ? parent->parent_id() : parent->blob_id();
-        else
+            set_tag(parent->is_tag());
+        } else
             _parent_id = bid::invalid;
         
         if(!_parent_id.valid() && split)
@@ -232,7 +256,7 @@ static Callback callback;
     }
     
     void Blob::set_parent_id(const bid& parent_id) {
-        _split = parent_id.valid();
+        set_split(parent_id.valid());
         _parent_id = parent_id;
     }
     
@@ -335,7 +359,11 @@ static Callback callback;
             }
         }
         
-        return std::make_shared<Blob>(std::move(lines), std::move(tmp_pixels));
+        return std::make_shared<Blob>(
+            std::move(lines),
+            std::move(tmp_pixels),
+            flags()
+        );
     }
     
     std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {

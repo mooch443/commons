@@ -103,7 +103,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
             
             auto blobs = CPULabeling::run(local);
             
-            for(auto && [lines, pixels] : blobs) {
+            for(auto && [lines, pixels, flags] : blobs) {
                 for(auto &line : *lines) {
                     line.y += pos.y;
                     line.x0 += pos.x;
@@ -153,7 +153,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         size_t max_size = 0;
         blobs_t::value_type *found = nullptr;
         for(auto &tup : blobs) {
-            auto && [lines, pixels] = tup;
+            auto && [lines, pixels, flags] = tup;
             if(pixels->size() > max_size) {
                 found = &tup;
                 max_size = pixels->size();
@@ -163,10 +163,13 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         if(found)
             return std::make_shared<pv::Blob>(
                     std::move(found->lines),
-                    std::move(found->pixels));
+                    std::move(found->pixels),
+                    found->extra_flags);
         
-        return std::make_shared<pv::Blob>(std::make_unique<std::vector<HorizontalLine>>(),
-                                          std::make_unique<std::vector<uchar>>());
+        return std::make_shared<pv::Blob>(
+                std::make_unique<std::vector<HorizontalLine>>(),
+                std::make_unique<std::vector<uchar>>(),
+                0);
         //auto ptr = std::make_shared<pv::Blob>(lines, pixels);
         //return ptr;
     }
@@ -174,9 +177,9 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
     std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
         auto blobs = _threshold_blob(blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
-        for(auto && [lines, pixels] : blobs) {
+        for(auto && [lines, pixels, flags] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels)));
+                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
         }
         return result;
     }
@@ -235,9 +238,9 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
     std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
         auto blobs = _threshold_blob(blob, difference_cache, threshold);
         std::vector<pv::BlobPtr> result;
-        for(auto && [lines, pixels] : blobs) {
+        for(auto && [lines, pixels, flags] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels)));
+                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
         }
         return result;
     }

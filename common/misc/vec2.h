@@ -224,6 +224,13 @@ struct Vector2D<Scalar, true>
 
     constexpr Scalar& A() { return x; }
     constexpr Scalar& B() { return y; }
+    
+    constexpr Vector2D rotate(Scalar angle) const {
+        return Vector2D {
+            x * cmn::cos(angle) - y * cmn::sin(angle),
+            x * cmn::sin(angle) + y * cmn::cos(angle)
+        };
+    }
 
     Vector2D_COMMON_FUNCTIONS
 
