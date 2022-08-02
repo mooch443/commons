@@ -44,9 +44,10 @@ void process_tags(int64_t index,
     using namespace gui;
     
     static const double cm_per_pixel = SETTING(cm_per_pixel).value<float>() <= 0 ? 234.0 / 3007.0 : SETTING(cm_per_pixel).value<float>();
-    static const Range<double> tag_area_range = SETTING(tags_size_range).value<Range<double>>();
+    static const Range<double> tag_size_range = SETTING(tags_size_range).value<Range<double>>();
     static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
     static const auto tags_approximation = SETTING(tags_approximation).value<float>();
+    static const auto tags_maximum_image_size = SETTING(tags_maximum_image_size).value<Size2>();
     
     static const bool show_debug_info = SETTING(tags_debug).value<bool>();
     
@@ -119,7 +120,7 @@ void process_tags(int64_t index,
 
         // BIT: tag_area_range
         // See if the area is too big or small
-        if (tag_area_range.contains(area)) {
+        if (tag_size_range.contains(area)) {
             if (show_debug_info) {
                 cv::line(result, Vec2(min_x, min_y), Vec2(max_x, min_y), Cyan, 2);
                 cv::line(result, Vec2(max_x, min_y), Vec2(max_x, max_y), Cyan, 2);
@@ -170,7 +171,7 @@ void process_tags(int64_t index,
                 cv::warpAffine(l, rotated, rot, Size2(l));
 
                 int cut_off = 4;
-                const Size2 tag_size(80, 80);
+                const Size2 tag_size = tags_maximum_image_size;
 
                 if (rotated.cols - cut_off * 2 > tag_size.width) {
                     cut_off = (rotated.cols - tag_size.width) / 2 + 1;
