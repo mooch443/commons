@@ -249,8 +249,7 @@ namespace cmn {
                         }
                     }
                     
-                    // add up the area
-                    float v = 0;
+                    // add up the area´
                     float value_min = FLT_MAX, value_max = -FLT_MAX;
                     
                     for(long i=fidx; i<=lidx; i++) {
@@ -262,8 +261,6 @@ namespace cmn {
                             value_max = values[x];
                         if(values[x] < value_min)
                             value_min = values[x];
-                        
-                        v += (values[x]);
                     }
                     
                     

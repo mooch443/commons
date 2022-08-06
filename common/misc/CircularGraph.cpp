@@ -156,18 +156,15 @@ namespace cmn {
             static_assert(n_min < 0, "assuming scalar_t to not be unsigned.");
             
             scalar_t minimum = n_max, maximum = n_min;
-            long min_idx = -1, max_idx = -1;
             scalar_t min_y = n_max;
             
             for (; ptr != end; ++ptr, ++ptr_second, ++point, ++i) {
                 bool c = *ptr < 0;
                 if(*point < minimum) {
                     minimum = *point;
-                    min_idx = i;
                 }
                 if(*point > maximum) {
                     maximum = *point;
-                    max_idx = i;
                 }
                 
                 if (c != sign) {
@@ -237,7 +234,6 @@ namespace cmn {
                 
                 auto copy_left = prev;
                 scalar_t last_y = peak.position.y;
-                scalar_t last_x = peak.position.x;
                 
                 /*if(std::get<1>(*copy_left)) {
                     last_y = points->at(std::get<0>(*copy_left));
@@ -253,7 +249,6 @@ namespace cmn {
                         if(y > last_y * 1.05)
                             break;
                         last_y = y;
-                        last_x = x;
                     }
                     
                     if(y < minimum_left) {
@@ -277,7 +272,6 @@ namespace cmn {
                 copy_left = after;
                 
                 last_y = peak.position.y;
-                last_x = peak.position.x;
                 
                 /*if(std::get<1>(*copy_left)) {
                     last_y = points->at(std::get<0>(*copy_left));
@@ -292,7 +286,6 @@ namespace cmn {
                         if(y > last_y * 1.05)
                             break;
                         last_y = y;
-                        last_x = x;
                     }
                     
                     if(y < minimum_right) {

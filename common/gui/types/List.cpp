@@ -285,7 +285,6 @@ namespace gui {
         
         auto size = bounds();
         auto gb = global_bounds();
-        float gscale = gb.height / height() * stage()->scale().y;
         
         //if(!folded())
         //print(stage()->height(), " -> ", (gb.y + _items.size() * _row_height * gscale), "  @ position ", gb," -> ", 

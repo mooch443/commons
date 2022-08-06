@@ -87,7 +87,7 @@ class PolyCache : public CacheObject {
             return ptr;
         }
         
-        static void remove_base(IMGUIBase* base) {
+        static void remove_base(IMGUIBase* ) {
             /*std::unique_lock<std::mutex> guard(_texture_mutex);
             for(auto & tex : _all_textures[base]) {
                 tex->set_ptr(nullptr);
@@ -431,7 +431,7 @@ float IMGUIBase::get_scale_multiplier() {
 #endif
 }
 
-Size2 get_window_size(GLFWwindow* window, float r) {
+Size2 get_window_size(GLFWwindow* window, float ) {
     int w, h;
     glfwGetWindowSize(window, &w, &h);
     //w *= r;
@@ -1698,7 +1698,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         auto bounds = transform.transformRect(Bounds(0, 0, o->width(), o->height()));
         
         //bool skip = false;
-        auto cache = o->cached(this);
         auto dim = window_dimensions() / _dpi_scale;
         
         if(!Bounds(0, 0, dim.width-0, dim.height-0).overlaps(bounds)) {
@@ -1840,7 +1839,6 @@ Size2 IMGUIBase::real_dimensions() {
 }
 
     Event IMGUIBase::toggle_fullscreen(DrawStructure &graph) {
-        static int _wndSize[2];
         static int _wndPos[2];
         
         print("Enabling full-screen.");

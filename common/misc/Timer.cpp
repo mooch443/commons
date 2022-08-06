@@ -57,11 +57,9 @@ double Timing::conclude_measure(double elapsed) {
     ++info.timingCount;
     info.elapsed += elapsed;
     
-    double all_elapsed = 0, all_average = 0, all_samples = 0;
+    double all_elapsed = 0;
     for(auto && [id, inf] : _threads) {
         all_elapsed += inf.elapsed;
-        all_average += inf.averageTime;
-        all_samples += inf.timingCount;
     }
     
     if (all_elapsed / _threads.size() >= _print_threshold) {

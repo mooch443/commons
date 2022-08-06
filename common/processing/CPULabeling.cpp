@@ -249,7 +249,7 @@ struct Source {
             typedef std::forward_iterator_tag iterator_category;
             typedef int difference_type;
             constexpr _iterator(const value_type& ptr) : ptr_(ptr) { }
-            _iterator& operator=(const _iterator& it) = default;
+            //_iterator& operator=(const _iterator& it) = default;
             
             constexpr self_type operator++() {
                 assert(ptr_.Lit+1 <= ptr_.obj->line_end);
@@ -716,10 +716,8 @@ public:
         Node::Ref ref;
         cache().node(ref);
         
-        bool created = false;
         if(!ref) {
-            ref = Node::make(std::move(obj), this);//Node::Ref(new Node(std::move(obj), this));
-            created = true;
+            ref = Node::make(std::move(obj), this);
         } else {
             assert(!ref->next);
             assert(!ref->prev);
