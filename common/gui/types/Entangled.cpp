@@ -202,9 +202,11 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         std::swap(_current_children, _new_children);
             //deinit_child(false, *_currently_removed.begin());
         
+#ifndef NDEBUG
         for(auto c : _current_children) {
             assert(c);
         }
+#endif
     }
     
     void Entangled::auto_size(Margin margin) {

@@ -88,12 +88,14 @@ namespace cmn {
         
         ls = result;
         
+#ifndef NDEBUG
         ptr_safe_t L = 0;
         for(auto &line : result) {
             L += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
         }
         
         assert(L == corrected.size());
+#endif
     }
     
     void HorizontalLine::repair_lines_array(std::vector<HorizontalLine> &ls)

@@ -611,6 +611,8 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
 }
 
 void Graph::save_npz(const std::string &filename, std::function<void(float)> *percent_callback, bool quiet) const {
+    UNUSED(quiet);
+    
     if(!utils::endsWith(filename, ".npz"))
         throw U_EXCEPTION("Can only save to NPZ with save_npz (",filename,")");
     
@@ -641,7 +643,9 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
     for (auto &f : _functions)
         results[&f].reserve((size_t)_x_range.length()+1);
     
+#ifndef NDEBUG
     int print_step = max(1, int((rx.end - rx.start) * 0.1f));
+#endif
     for(float x=rx.start; x<=rx.end; x++) {
         for (auto &f : _functions) {
             auto y0 = f._get_y(x);

@@ -194,7 +194,9 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
     pixels->reserve(blob->pixels()->size());
     lines->reserve(blob->hor_lines().size());
     
+#ifndef NDEBUG
     ptr_safe_t count = 0;
+#endif
     
     for (auto &line : blob->hor_lines()) {
         tmp_line.y = line.y;
@@ -211,7 +213,9 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
                 else if(x > tmp_line.x1+1) {
                     assert(tmp_line.x0 <= tmp_line.x1);
                     lines->push_back(tmp_line);
+#ifndef NDEBUG
                     count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
+#endif
                     
                     tmp_line.x0 = x;
                     tmp_line.x1 = x;
@@ -222,7 +226,9 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
         
         if(tmp_line.x0 != coord_max_val) {
             lines->push_back(tmp_line);
+#ifndef NDEBUG
             count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
+#endif
         }
         
         assert(count == pixels->size());
