@@ -572,6 +572,13 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     message(STATUS "GLFW LIBRARIES install:${GLFW_INSTALL_DIR}")
     message(STATUS "glfw include: ${GLFW_INCLUDE_DIR}")
 
+    if(APPLE)
+        # make directories to avoid warning messages in Xcode
+        file(MAKE_DIRECTORY "${GLFW_INSTALL_DIR}/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${GLFW_INSTALL_DIR}/lib/Release")
+        file(MAKE_DIRECTORY "${GLFW_INSTALL_DIR}/lib/Debug")
+    endif()
+
     include_directories(${GLFW_INCLUDE_DIR})
     target_link_libraries (Commons::GLFW INTERFACE glfw3 Commons::OpenGL)
     target_include_directories(Commons::GLFW INTERFACE
@@ -724,7 +731,7 @@ elseif(NOT COMMONS_NO_PYTHON)
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11
-        GIT_TAG        v2.9.1
+        GIT_TAG        v2.10.0
     )
 
     FetchContent_GetProperties(pybind11)
@@ -913,6 +920,13 @@ if(COMMONS_BUILD_ZIP)
     target_link_libraries (Commons::LibZIP INTERFACE ${LIBZIP_LIBRARY})
 
     file(MAKE_DIRECTORY ${LIBZIP_INCLUDE_DIR})
+    if(APPLE)
+        # make directories to avoid warning messages in Xcode
+        file(MAKE_DIRECTORY "${libzip_install_dir}/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${libzip_install_dir}/lib/Release")
+        file(MAKE_DIRECTORY "${libzip_install_dir}/lib/Debug")
+    endif()
+
     target_include_directories(Commons::LibZIP INTERFACE
       "$<BUILD_INTERFACE:${LIBZIP_INCLUDE_DIR}>"
       "$<INSTALL_INTERFACE:${libzip_install_dir}/lib>"
@@ -979,6 +993,15 @@ if(${COMMONS_BUILD_PNG})
     add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ Commons::LibZIP)
 
     file(MAKE_DIRECTORY "${png_install_dir}/include")
+    
+    if(APPLE)
+        # make directories to avoid warning messages in Xcode
+        file(MAKE_DIRECTORY "${png_install_dir}/lib")
+        file(MAKE_DIRECTORY "${png_install_dir}/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${png_install_dir}/lib/Release")
+        file(MAKE_DIRECTORY "${png_install_dir}/lib/Debug")
+    endif()
+
     target_include_directories(Commons::LibPNG INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
       "$<INSTALL_INTERFACE:${png_install_dir}/lib>"
@@ -1362,6 +1385,18 @@ endif()
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
 
+    if(APPLE)
+        # make directories to avoid warning messages in Xcode
+        message(STATUS "Making directories at ${CMAKE_BINARY_DIR}/opencv_install/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/Release")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/Debug")
+
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty/Release")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty/Debug")
+    endif()
+
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
@@ -1429,6 +1464,14 @@ endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/cnpy)
+
+if(APPLE)
+    # make directories to avoid warning messages in Xcode
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cnpy")
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cnpy/RelWithDebInfo")
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cnpy/Release")
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/cnpy/Debug")
+endif()
 
 
 add_subdirectory(common)
