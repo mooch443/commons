@@ -171,6 +171,9 @@ namespace pv {
         
         bool operator!=(const pv::Blob& other) const;
         bool operator==(const pv::Blob& other) const;
+        bool operator==(const pv::bid& bdx) const {
+            return blob_id() == bdx;
+        }
         std::string toStr() const override;
         
     protected:
@@ -290,6 +293,10 @@ inline bid bid::from_blob(const pv::CompressedBlob &blob) {
                      blob.lines().front().x1(),
                      blob.start_y,
                      blob.lines().size());
+}
+
+inline bool operator==(const pv::BlobPtr& A, const pv::bid& bdx) {
+    return A->blob_id() == bdx;
 }
 
 }

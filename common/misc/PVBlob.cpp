@@ -1,16 +1,19 @@
 #include <misc/PVBlob.h>
 #include <misc/GlobalSettings.h>
 #include <misc/Timer.h>
+#include <misc/create_struct.h>
+
 namespace pv {
     using namespace cmn;
     using namespace cmn::blob;
 
-    /*const bid& CompressedBlob::blob_id() const {
-        if(!own_id.valid())
-            own_id = pv::bid::from_blob(*this);
-        
-        return own_id;
-    }*/
+
+CREATE_STRUCT(PVSettings,
+    (float, cm_per_pixel),
+    (bool, correct_illegal_lines)
+)
+
+#define setting(NAME) PVSettings::get<PVSettings :: NAME>()
 
 bool Blob::operator!=(const pv::Blob& other) const {
     return blob_id() != other.blob_id();
@@ -112,11 +115,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return uncompressed;
     }
     
-    std::atomic<float> cm_per_pixel = 1;
-    bool correct_illegal_lines = false;
-    std::mutex cm_per_pixel_mutex;
-    std::atomic_bool callback_registered = false;
-    
     Blob::Blob() : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr, 0) {
         
     }
@@ -151,50 +149,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
                0)
     { }
     
-    /*Blob::Blob(const std::vector<HorizontalLine>& lines,
-               decltype(_pixels) pixels)
-        : cmn::Blob(lines), _pixels(pixels)
-    {
-        init();
-    }*/
-
-struct Callback {
-    const char *ptr;
-    
-    Callback() {
-        ptr = "PVBlob::Callback";
-        
-        bool expected = false;
-        if(callback_registered.compare_exchange_strong(expected, true))
-        {
-            sprite::Map::callback_func fn = [this](sprite::Map::Signal signal, sprite::Map&map, auto&name, auto&)
-            {
-                if(signal == sprite::Map::Signal::EXIT) {
-                    map.unregister_callback(ptr);
-                    ptr = nullptr;
-                    return;
-                }
-                
-                if(name != "cm_per_pixel" && name != "correct_illegal_lines")
-                    return;
-                cm_per_pixel = SETTING(cm_per_pixel).value<float>();
-                correct_illegal_lines = SETTING(correct_illegal_lines).value<bool>();
-            };
-            GlobalSettings::map().register_callback(ptr, fn);
-            cm_per_pixel = SETTING(cm_per_pixel).value<float>();
-            correct_illegal_lines = SETTING(correct_illegal_lines).value<bool>();
-        }
-    }
-    
-    ~Callback() {
-        if(ptr)
-            GlobalSettings::map().unregister_callback(ptr);
-    }
-};
-
-static Callback callback;
-    
     void Blob::init() {
+        PVSettings::init();
+        
         _tried_to_split = false;
         _flags = 0x0;
         
@@ -204,7 +161,7 @@ static Callback callback;
 //#ifndef NDEBUG
         static std::atomic_int counter(0);
         static std::atomic_bool displayed_warning_once(false);
-        if(correct_illegal_lines || (!displayed_warning_once && counter < 1000)) {
+        if(setting(correct_illegal_lines) || (!displayed_warning_once && counter < 1000)) {
             ++counter;
             
             HorizontalLine prev = hor_lines().empty() ? HorizontalLine() : hor_lines().front();
@@ -275,7 +232,7 @@ static Callback callback;
         if(threshold == 0) {
             _recount = num_pixels();
             _recount_threshold = 0;
-            return _recount * SQR(cm_per_pixel);
+            return _recount * SQR(setting(cm_per_pixel));
         }
         
         if(threshold == -1 && _recount_threshold == -1)
@@ -309,7 +266,7 @@ static Callback callback;
             _recount_threshold = threshold;
         }
         
-        return _recount * SQR(cm_per_pixel);
+        return _recount * SQR(setting(cm_per_pixel));
     }
     
     float Blob::recount(int32_t threshold) const {
@@ -320,7 +277,7 @@ static Callback callback;
         if(threshold == -1 && _recount_threshold == -1)
             throw U_EXCEPTION("Did not calculate recount yet.");
         
-        return _recount * SQR(cm_per_pixel);
+        return _recount * SQR(setting(cm_per_pixel));
     }
     
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
@@ -672,7 +629,7 @@ static Callback callback;
         auto id = blob_id();
         //auto x = id >> 16;
         //auto y = id & 0x0000FFFF;
-        return Meta::toStr(id)+" "+Meta::toStr(center * cm_per_pixel.load());
+        return Meta::toStr(id)+" "+Meta::toStr(center * setting(cm_per_pixel));
     }
     
     void Blob::add_offset(const cmn::Vec2 &off) {
@@ -711,6 +668,6 @@ static Callback callback;
     }
     
     std::string Blob::toStr() const {
-        return "pv::Blob<" + Meta::toStr(blob_id()) + " " + Meta::toStr(bounds().pos() + bounds().size() * 0.5) + " " + Meta::toStr(_pixels ? _pixels->size() * SQR(cm_per_pixel) : -1) + ">";
+        return "pv::Blob<" + Meta::toStr(blob_id()) + " " + Meta::toStr(bounds().pos() + bounds().size() * 0.5) + " " + Meta::toStr(_pixels ? _pixels->size() * SQR(setting(cm_per_pixel)) : -1) + ">";
     }
 }
