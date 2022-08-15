@@ -212,6 +212,7 @@ namespace gui {
         
     public:
         Drawable(Drawable&) = delete;
+        Drawable(Drawable&&) = default;
         
         Drawable(const Type::Class& type);
         Drawable(const Type::Class& type,
@@ -220,6 +221,7 @@ namespace gui {
         
         virtual ~Drawable();
         Drawable& operator=(const Drawable&) = delete;
+        Drawable& operator=(Drawable&&) = default;
         
         /**
          * Add event handling lambda functions.

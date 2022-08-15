@@ -861,6 +861,28 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _exec_main_queue.pop();
         }
         
+        std::queue<SectionInterface*> q;
+        q.push((SectionInterface*)&_graph->root());
+        while (!q.empty()) {
+            auto obj = q.front();
+            q.pop();
+            
+            for(auto c : obj->children()) {
+                if(c->type() == Type::SINGLETON)
+                    c = ((SingletonObject*)c)->ptr();
+                if(c->type() == Type::SECTION)
+                    q.push((SectionInterface*)c);
+                else if(c->type() == Type::ENTANGLED)
+                    q.push((SectionInterface*)c);
+                else {
+                    print("Clear cache on ", *c);
+                    c->clear_cache();
+                }
+            }
+            
+            obj->clear_cache();
+        }
+        
         TextureCache::remove_base(this);
         
         while(!_exec_main_queue.empty()) {
