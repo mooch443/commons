@@ -13,7 +13,7 @@ CREATE_STRUCT(PVSettings,
     (bool, correct_illegal_lines)
 )
 
-#define setting(NAME) PVSettings::get<PVSettings :: NAME>()
+#define setting(NAME) PVSettings::copy<PVSettings :: NAME>()
 
 bool Blob::operator!=(const pv::Blob& other) const {
     return blob_id() != other.blob_id();
