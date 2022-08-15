@@ -740,7 +740,10 @@ public: \
         std::call_once(flag, [](){ \
             cmn::GlobalSettings::map().register_callback(#NAM, NAM :: variable_changed ); \
             for(auto &n : NAM :: names()) \
-                variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n).get()); \
+                if(cmn::GlobalSettings::map().has(n)) \
+                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n).get()); \
+                else\
+                    FormatWarning("Cannot find parameter ", n, " in global settings."); \
         }); \
     } \
 }; \
