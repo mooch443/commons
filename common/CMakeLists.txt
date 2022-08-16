@@ -26,8 +26,6 @@ if(COMMONS_BUILD_HTTPD)
 	set(SRCS ${SRCS} ${_SRCS})
 endif()
 
-# automatic moc file generation by Qt MOC
-set(CMAKE_AUTOMOC OFF)
 # to include generated moc headers, since they are generated in binary dir
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -39,13 +37,11 @@ add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
 target_include_directories(commons PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/../sparse-map/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include")
 
 foreach(FILE ${HASH_HDR})
     source_group("hash_map" FILES "${FILE}")
 endforeach()
-    
 
 foreach(FILE ${SRCS} ${HDRS}) 
     # Get the directory of the source file
@@ -66,7 +62,6 @@ foreach(FILE ${SRCS} ${HDRS})
 
     source_group("${GROUP}" FILES "${FILE}")
 endforeach()
-
 
 target_link_libraries(commons
     PUBLIC cnpy

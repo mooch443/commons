@@ -166,18 +166,6 @@ if(UNIX AND NOT APPLE AND NOT COMMONS_FOR_JS)
     message(STATUS "X11_LIBRARIES: ${X11_LIBRARIES} ${X11_xcb_FOUND} DIRS:${X11_LIBRARY_DIRS} CFLAGS:${X11_CFLAGS}")
     link_directories(${X11_LIBRARY_DIRS})
     include_directories(${X11_INCLUDE_DIRS})
-
-    #FIND_PATH(UUID_INCLUDE_DIR uuid/uuid.h
-    #     /usr/local/include
-    #/usr/include
-    #)
-
-    #FIND_LIBRARY(UUID_LIBRARY
-    #  NAMES uuid
-    #  PATHS /lib /usr/lib /usr/local/lib
-    #  )
-
-    #message(STATUS "UUID: ${UUID_LIBRARY} ${UUID_INCLUDE_DIR} ${X11_xcb_LIB}")
 endif()
 
 add_library(Commons::OpenGL INTERFACE IMPORTED GLOBAL)
@@ -185,6 +173,7 @@ set(CMN_FOUND_OPENGL false)
 if(COMMONS_FOR_JS)
     target_link_libraries(Commons::OpenGL INTERFACE GL glfw3)
 endif()
+
 if((COMMONS_BUILD_GLFW OR UNIX) AND NOT COMMONS_FOR_JS)
     if(WIN32)
         find_package(OpenGL REQUIRED)
@@ -225,8 +214,6 @@ elseif(NOT COMMONS_FOR_JS)
     include_directories(${OPENGL_INCLUDE_DIR})
     set(CMN_FOUND_OPENGL true)
 endif()
-
-
 
 if(APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-undefined,error -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
@@ -884,14 +871,20 @@ if(COMMONS_BUILD_ZIP)
     if(NOT WIN32)
         set(LIBZIP_LIBRARY "zip$<IF:$<CONFIG:Debug>,d,>")
     endif()
+
+    if(EMSCRIPTEN)
+        set(ZIP_PATCH patch -N -s -d ${libzip_install_dir}/src/libzip -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/libzip_emscripten.diff || echo 1)
+    else()
+        set(ZIP_PATCH "")
+    endif()
     
     ExternalProject_Add(libzip
         PREFIX ${libzip_install_dir}
         DEPENDS Commons::LibZ
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
-        GIT_TAG v1.7.3
+        GIT_TAG v1.9.2
         UPDATE_COMMAND ""
-        #PATCH_COMMAND ${libzip_patchcommand}
+        PATCH_COMMAND "${ZIP_PATCH}"
         CMAKE_ARGS
             ${libzip_configure}
             -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
