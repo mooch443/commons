@@ -823,6 +823,15 @@ else()
     message(STATUS "ZLIB include dir ${ZLIB_INCLUDE_DIR}")
     message(STATUS "ZLIB_LIBRARY = ${ZLIB_LIBRARY} ${ZLIB_VERSION_STRING}")
 
+    if(APPLE)
+        # make directories to avoid warning messages in Xcode
+        file(MAKE_DIRECTORY "${zlib_install_dir}")
+        file(MAKE_DIRECTORY "${zlib_install_dir}/lib")
+        file(MAKE_DIRECTORY "${zlib_install_dir}/lib/RelWithDebInfo")
+        file(MAKE_DIRECTORY "${zlib_install_dir}/lib/Release")
+        file(MAKE_DIRECTORY "${zlib_install_dir}/lib/Debug")
+    endif()
+
     file(MAKE_DIRECTORY ${ZLIB_INCLUDE_DIR})
     target_include_directories(Commons::LibZ INTERFACE
       "$<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>"
