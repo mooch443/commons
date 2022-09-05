@@ -7,6 +7,27 @@
 #include <gui/DrawStructure.h>
 
 namespace gui {
+
+    struct TRange {
+        Range<size_t> range;
+        Font font;
+        std::string name, text;
+        std::set<TRange> subranges;
+        size_t after;
+        size_t before;
+        Color color;
+        
+        TRange(std::string n = "", size_t i = 0, size_t before = 0);
+        
+        void close(size_t i, const std::string& text, size_t after);
+        
+        bool operator<(const TRange& other) const;
+        
+        std::string toStr() const;
+            
+        static std::string class_name();
+    };
+
     class StaticText : public Entangled {
         GETTER(std::string, txt)
         
@@ -63,6 +84,8 @@ namespace gui {
         virtual const Bounds& bounds() override;
         void set_max_size(const Size2&);
         void set_default_font(const Font&);
+        
+        static std::vector<TRange> to_tranges(const std::string& _txt);
         
     private:
         void update_text();

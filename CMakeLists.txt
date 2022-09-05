@@ -34,6 +34,7 @@ option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
 option(COMMONS_ENABLE_CPP20 "Enables CPP20 language standard (if available). Only for GCC and Clang at the moment. Experimental feature." ON)
+set(OPENCV_EXTRA_FLAGS "")
 
 if(COMMONS_ENABLE_CPP20)
     set(CMAKE_CXX_STANDARD 20)
@@ -661,6 +662,18 @@ if(WITH_FFMPEG)
     #find_path(LIBSWSSCALE_INCLUDE_DIR libswscale/swsscale.h)
     find_library(LIBSWSSCALE_LIBRARY swscale)
 
+    
+    get_filename_component(FFMPEG_DIR "${AVDEVICE_LIBRARY}" DIRECTORY)
+    message(STATUS "AVDEVICE_INCLUDE_DIR = ${AVDEVICE_INCLUDE_DIR}/ vs. ${FFMPEG_DIR}")
+
+#
+    set(OPENCV_EXTRA_FLAGS ${OPENCV_EXTRA_FLAGS} 
+        -DFFMPEG_DIR:PATH=${FFMPEG_DIR}
+        -DFFMPEG_LIB_DIR:PATH=${FFMPEG_DIR}
+        -DFFMPEG_INCLUDE_DIRS=${AVDEVICE_INCLUDE_DIR}
+        -DOPENCV_FFMPEG_USE_FIND_PACKAGE=OFF
+        )
+
     if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVDEVICE_LIBRARY OR NOT LIBSWSSCALE_LIBRARY)
         message(STATUS "Cannot find the FFMPEG libraries (WITH_FFMPEG=ON) avformat:${AVFORMAT_LIBRARY} avdevice:${AVDEVICE_LIBRARY} swsscale:${LIBSWSSCALE_LIBRARY}")
         message(STATUS "Disabling FFMPEG.")
@@ -888,15 +901,18 @@ if(COMMONS_BUILD_ZIP)
         CMAKE_ARGS
             ${libzip_configure}
             -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
+            ${COMMONS_subproject_CMAKE_ARGS}
             -DENABLE_BZIP2=OFF
             -DBUILD_REGRESS=OFF
             -DBUILD_EXAMPLES=OFF
             -DBUILD_DOC=OFF
             -DBUILD_TOOLS=OFF
-            -DENABLE_GNUTLS=OFF
-            -DENABLE_OPENSSL=OFF
-            -DENABLE_LZMA=OFF
-            ${COMMONS_subproject_CMAKE_ARGS}
+            -DENABLE_GNUTLS:BOOL=OFF
+            -DENABLE_OPENSSL:BOOL=OFF
+            -DENABLE_LZMA:BOOL=OFF
+            -DENABLE_MBEDTLS:BOOL=OFF
+            -DENABLE_COMMONCRYPTO:BOOL=OFF
+            -DENABLE_ZSTD:BOOL=OFF
             -DCMAKE_DEBUG_POSTFIX=d
     )
     
@@ -1074,10 +1090,6 @@ if(${COMMONS_BUILD_OPENCV})
     
     set(OPENCV_PREFIX_PATH "${png_install_dir}" "${zlib_install_dir}" ${CMAKE_PREFIX_PATH} )
     message(STATUS "CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
-    set(OPENCV_EXTRA_FLAGS_ ${OPENCV_EXTRA_FLAGS}
-        ${COMMONS_subproject_CMAKE_ARGS}
-        -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
-    )
    
    if(COMMONS_CONDA_PACKAGE_INSTALL)
 		set(COMMONS_CMAKE_BUILD_TYPE Release)
@@ -1205,6 +1217,7 @@ if(${COMMONS_BUILD_OPENCV})
 else()
     set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
     set(OPENCV_C_FLAGS "${OPENCV_C_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
+
     set(OPENCV_CMAKE_ARGS
             -DBUILD_DOCS:BOOL=FALSE
             -DBUILD_EXAMPLES:BOOL=FALSE
@@ -1214,7 +1227,7 @@ else()
             -DBUILD_WITH_DEBUG_INFO=OFF
             -DWITH_EIGEN:BOOL=FALSE
             -DWITH_CUDA:BOOL=FALSE
-            -DWITH_FFMPEG:BOOL=${WITH_FFMPEG}
+            -DWITH_FFMPEG:BOOL=TRUE
             -DWITH_MSMF:BOOL=FALSE
             -DWITH_IPP:BOOL=FALSE
             -DWITH_GTK:BOOL=FALSE
@@ -1259,9 +1272,10 @@ endif()
                 -DCMAKE_C_FLAGS:STRING=${OPENCV_C_FLAGS}
                 -DCMAKE_BUILD_TYPE:STRING=${COMMONS_CMAKE_BUILD_TYPE}
                 -DCMAKE_EXE_LINKER_FLAGS=${CMAKE_EXE_LINKER_FLAGS}
-                "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_PREFIX_PATH}"
+                "-DCMAKE_PREFIX_PATH:PATH=${CMAKE_SOURCE_DIR}/cmake;${CMAKE_PREFIX_PATH}"
                 "-DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_BINARY_DIR}/opencv_install"
-                -DCMAKE_DEBUG_POSTFIX=)
+                -DCMAKE_DEBUG_POSTFIX=
+                ${OPENCV_EXTRA_FLAGS})
 
     set(COMMONS_OPENCV_VERSION "4.6.0")
     if(APPLE)
@@ -1279,15 +1293,15 @@ endif()
     set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
 
     if(UNIX)
-        message(STATUS "Using custom configure command")
+        message(STATUS "Using custom configure command CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV")
         ExternalProject_add(CustomOpenCV
             PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
-            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
-            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
+            CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
+            BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
     else()
@@ -1311,7 +1325,7 @@ endif()
         set(OpenCV_DIR ${CMAKE_BINARY_DIR}/opencv_install/)
     endif()
 	
-	message(STATUS "OPENCV_EXTRA_FLAGS_ = ${OPENCV_EXTRA_FLAGS_}")
+	message(STATUS "OPENCV_EXTRA_FLAGS = ${OPENCV_EXTRA_FLAGS}")
     message(STATUS "OPENCVDIR = ${OpenCV_DIR}")
     
     set(OpenCV_LIB_PATH "")

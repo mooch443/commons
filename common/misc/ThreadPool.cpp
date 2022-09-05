@@ -54,10 +54,11 @@ namespace cmn {
                             lock.unlock();
                             try {
                                 task();
+                                lock.lock();
                             } catch(...) {
+                                lock.lock();
                                 _exception_handler(std::current_exception());
                             }
-                            lock.lock();
                             
                             // not busy anymore!
                             _working--;

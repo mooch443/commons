@@ -101,55 +101,6 @@ struct FileSize {
     }
 };
 
-// <concepts>
-#pragma region concepts
-template<typename T, typename U>
-concept _clean_same =
-    std::same_as<T, typename std::remove_cv<U>::type>;
-
-template <template<class...>class T, class U>
-concept _is_instance = (is_instantiation<T, U>::value);
-
-template <typename T>
-concept is_shared_ptr
-    = _is_instance<std::shared_ptr, T>;
-template <typename T>
-concept is_unique_ptr 
-    = _is_instance<std::unique_ptr, T>;
-
-template<typename T>
-concept _has_tostr_method = requires(T t) {
-    { t.toStr() } -> std::convertible_to<std::string>;
-};
-template<typename T>
-concept _has_fromstr_method = requires() {
-    { T::fromStr(std::string()) }
-        -> _clean_same<T>;
-};
-
-template<typename T, typename K = typename std::remove_cv<T>::type>
-concept _has_class_name = requires() {
-    { K::class_name() } -> std::convertible_to<std::string>;
-};
-
-template<typename T>
-concept _is_smart_pointer = 
-    (is_shared_ptr<T> || is_unique_ptr<T>);
-
-template<typename T>
-concept _is_dumb_pointer =
-    (std::is_pointer<T>::value) && (!_is_smart_pointer<T>);
-
-template<typename T, typename K = typename std::remove_cv<T>::type>
-concept _is_number =
-    (!_clean_same<bool, T>) && (std::floating_point<K> || std::integral<K>); //|| std::convertible_to<T, int>);
-
-template<typename T>
-concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::integral<T>);
-
-#pragma region concepts
-// </concepts>
-
 // <util>
 #pragma region util
 namespace util {

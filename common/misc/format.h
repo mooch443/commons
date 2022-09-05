@@ -803,7 +803,8 @@ bool has_log_callback();
 
 inline std::string current_time_string() {
     using namespace std::chrono;
-    return date::format("%H:%M:%S", date::floor<seconds>(system_clock::now()));
+    auto t = date::make_zoned(date::current_zone(), date::floor<seconds>(system_clock::now()));
+    return date::format("%H:%M:%S", t);
 }
 
 template<typename... Args>

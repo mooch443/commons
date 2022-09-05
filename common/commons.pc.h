@@ -80,6 +80,7 @@ using experimental;
 #endif
 
 #include <misc/date.h>
+#include <misc/tz.h>
 
 #ifdef WIN32
 //#define _USE_MATH_DEFINES
@@ -230,6 +231,9 @@ public:
 static_assert(false, "OpenCV version insufficient.");
 #endif
 
+#include <misc/useful_concepts.h>
+#include <misc/UnorderedVectorSet.h>
+
 namespace cmn {
 
 #ifndef __cpp_lib_remove_cvref
@@ -259,22 +263,22 @@ using remove_cvref_t = std::remove_cvref_t<T>;
     typedef cv::Mat gpuMat;
 #endif
     
-    typedef float ScalarType;
-    
-    typedef cv::Matx<ScalarType, 1, 3> Mat13;
-    
-    typedef cv::Matx<ScalarType, 3, 4> Mat34;
-    typedef cv::Matx<ScalarType, 3, 3> Mat33;
-    typedef cv::Matx<ScalarType, 5, 1> Mat51;
-    typedef cv::Matx<ScalarType, 4, 1> Mat41;
-    typedef cv::Matx<ScalarType, 3, 1> Mat31;
-    typedef cv::Matx<ScalarType, 2, 1> Mat21;
-    typedef cv::Matx<ScalarType, 4, 4> Mat44;
+typedef float ScalarType;
+
+typedef cv::Matx<ScalarType, 1, 3> Mat13;
+
+typedef cv::Matx<ScalarType, 3, 4> Mat34;
+typedef cv::Matx<ScalarType, 3, 3> Mat33;
+typedef cv::Matx<ScalarType, 5, 1> Mat51;
+typedef cv::Matx<ScalarType, 4, 1> Mat41;
+typedef cv::Matx<ScalarType, 3, 1> Mat31;
+typedef cv::Matx<ScalarType, 2, 1> Mat21;
+typedef cv::Matx<ScalarType, 4, 4> Mat44;
     
 #define DEGREE(radians) ((radians) * (cmn::ScalarType(1.0) / cmn::ScalarType(M_PI) * cmn::ScalarType(180)))
 #define RADIANS(degree) ((degree) * (cmn::ScalarType(1.0) / cmn::ScalarType(180) * cmn::ScalarType(M_PI)))
 #define SQR(X) ((X)*(X))
-    
+
 #define GETTER_CONST(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE& VAR() const { return _##VAR; } protected:
 #define GETTER(TYPE, VAR) protected: TYPE _##VAR; public: const TYPE& VAR() const { return _##VAR; } protected:
 #define GETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: const TYPE& VAR() const { return _##VAR; } protected:
@@ -289,336 +293,198 @@ using remove_cvref_t = std::remove_cvref_t<T>;
 #define GETTER_SETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
 #define IMPLEMENT(VAR) decltype( VAR ) VAR
 
-    template<typename T0, typename T1,
-        typename T0_ = typename cmn::remove_cvref<T0>::type,
-        typename T1_ = typename cmn::remove_cvref<T1>::type,
-        typename Result = typename std::conditional<(sizeof(T0_) > sizeof(T1_)), T0_, T1_>::type >
-    constexpr inline auto min(T0&& x, T1&& y)
-        -> typename std::enable_if< std::is_signed<T0_>::value == std::is_signed<T1_>::value
-                                && (std::is_integral<T0_>::value || std::is_floating_point<T0_>::value)
-                                && (std::is_integral<T1_>::value || std::is_floating_point<T1_>::value), Result>::type
-    {
-        return std::min(Result(x), Result(y));
-    }
+template<typename T0, typename T1,
+    typename T0_ = typename cmn::remove_cvref<T0>::type,
+    typename T1_ = typename cmn::remove_cvref<T1>::type,
+    typename Result = typename std::conditional<(sizeof(T0_) > sizeof(T1_)), T0_, T1_>::type >
+constexpr inline auto min(T0&& x, T1&& y)
+    -> typename std::enable_if< std::is_signed<T0_>::value == std::is_signed<T1_>::value
+                            && (std::is_integral<T0_>::value || std::is_floating_point<T0_>::value)
+                            && (std::is_integral<T1_>::value || std::is_floating_point<T1_>::value), Result>::type
+{
+    return std::min(Result(x), Result(y));
+}
+
+template<typename T0, typename T1>
+constexpr inline auto min(const T0& x, const T1& y)
+    -> typename std::enable_if<std::is_same<decltype(x.x), decltype(x.y)>::value, T0>::type
+{
+    return T0(std::min(decltype(x.x+y.x)(x.x), decltype(x.x+y.x)(y.x)),
+              std::min(decltype(x.y+y.y)(x.y), decltype(x.y+y.y)(y.y)));
+}
+
+template<typename T0, typename T1>
+constexpr inline T0 min(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(x.height)>::value, bool>::type * =NULL) {
+    return T0(std::min(decltype(x.width+y.width)(x.width), decltype(x.width+y.width)(y.width)),
+              std::min(decltype(x.height+y.height)(x.height), decltype(x.height+y.height)(y.height)));
+}
+
+template<typename T0, typename T1, typename T2>
+constexpr inline auto min(const T0& x, const T1& y, const T2& z) -> decltype(x+y+z) {
+    return std::min(decltype(x+y+z)(x), std::min(decltype(x+y+z)(y), decltype(x+y+z)(z)));
+}
     
-    template<typename T0, typename T1>
-    constexpr inline auto min(const T0& x, const T1& y)
-        -> typename std::enable_if<std::is_same<decltype(x.x), decltype(x.y)>::value, T0>::type
-    {
-        return T0(std::min(decltype(x.x+y.x)(x.x), decltype(x.x+y.x)(y.x)),
-                  std::min(decltype(x.y+y.y)(x.y), decltype(x.y+y.y)(y.y)));
-    }
+template<typename T0, typename T1,
+    typename T0_ = typename cmn::remove_cvref<T0>::type,
+    typename T1_ = typename cmn::remove_cvref<T1>::type,
+    typename Result = typename std::conditional<(sizeof(T0_) > sizeof(T1_)), T0_, T1_>::type >
+constexpr inline auto max(T0&& x, T1&& y)
+    -> typename std::enable_if< std::is_signed<T0_>::value == std::is_signed<T1_>::value
+                            && (std::is_integral<T0_>::value || std::is_floating_point<T0_>::value)
+                            && (std::is_integral<T1_>::value || std::is_floating_point<T1_>::value), Result>::type
+{
+    return std::max(Result(x), Result(y));
+}
+
+template<typename T0, typename T1>
+constexpr inline auto max(const T0& x, const T1& y)
+    -> typename std::enable_if<std::is_same<decltype(x.x), decltype(x.y)>::value, T0>::type
+{
+    return T0(std::max(decltype(x.x+y.x)(x.x), decltype(x.x+y.x)(y.x)),
+              std::max(decltype(x.y+y.y)(x.y), decltype(x.y+y.y)(y.y)));
+}
+
+template<typename T0, typename T1>
+constexpr inline T0 max(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(y.height)>::value, bool>::type * =NULL) {
+    return T0(std::max(decltype(x.width+y.width)(x.width), decltype(x.width+y.width)(y.width)),
+              std::max(decltype(x.height+y.height)(x.height), decltype(x.height+y.height)(y.height)));
+}
+
+template<typename T0, typename T1>
+constexpr inline T0 max(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(y.y)>::value, bool>::type * =NULL) {
+    return T0(std::max(decltype(x.width+y.x)(x.width), decltype(x.width+y.x)(y.x)),
+              std::max(decltype(x.height+y.y)(x.height), decltype(x.height+y.y)(y.y)));
+}
+
+template<typename T0, typename T1, typename T2>
+constexpr inline auto max(const T0& x, const T1& y, const T2& z) -> decltype(x+y+z) {
+    return std::max(decltype(x+y+z)(x), std::max(decltype(x+y+z)(y), decltype(x+y+z)(z)));
+}
+
+/**
+ * ======================
+ * COMMON custom STL selectors and iterators
+ * ======================
+ */
+
+/*template<typename Func, typename T>
+void foreach(Func callback, std::vector<T> &v) {
+    std::for_each(v.begin(), v.end(), callback);
+}
+
+template<typename Func, typename T, typename... Args>
+void foreach(Func callback, std::vector<T> &v, Args... args) {
+    std::for_each(v.begin(), v.end(), callback);
+    return foreach(callback, args...);
+}*/
+
+template<typename Func, typename T>
+void foreach(Func callback, T &v) {
+    std::for_each(v.begin(), v.end(), callback);
+}
+
+template<typename Func, typename T, typename... Args>
+void foreach(Func callback, T &v, Args... args) {
+    std::for_each(v.begin(), v.end(), callback);
+    return foreach(callback, args...);
+}
+
+class IndexedDataTransport {
+protected:
+    GETTER_SETTER(long_t, index)
     
-    template<typename T0, typename T1>
-    constexpr inline T0 min(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(x.height)>::value, bool>::type * =NULL) {
-        return T0(std::min(decltype(x.width+y.width)(x.width), decltype(x.width+y.width)(y.width)),
-                  std::min(decltype(x.height+y.height)(x.height), decltype(x.height+y.height)(y.height)));
-    }
+public:
+    virtual ~IndexedDataTransport() {}
+};
+
+template<typename T>
+typename T::value_type percentile(const T& values, float percent, typename std::enable_if<is_set<T>::value || is_container<T>::value, T>::type* = NULL)
+{
+    using C = typename std::conditional<std::is_floating_point<typename T::value_type>::value,
+        typename T::value_type, double>::type;
     
-    template<typename T0, typename T1, typename T2>
-    constexpr inline auto min(const T0& x, const T1& y, const T2& z) -> decltype(x+y+z) {
-        return std::min(decltype(x+y+z)(x), std::min(decltype(x+y+z)(y), decltype(x+y+z)(z)));
-    }
-        
-    template<typename T0, typename T1,
-        typename T0_ = typename cmn::remove_cvref<T0>::type,
-        typename T1_ = typename cmn::remove_cvref<T1>::type,
-        typename Result = typename std::conditional<(sizeof(T0_) > sizeof(T1_)), T0_, T1_>::type >
-    constexpr inline auto max(T0&& x, T1&& y)
-        -> typename std::enable_if< std::is_signed<T0_>::value == std::is_signed<T1_>::value
-                                && (std::is_integral<T0_>::value || std::is_floating_point<T0_>::value)
-                                && (std::is_integral<T1_>::value || std::is_floating_point<T1_>::value), Result>::type
-    {
-        return std::max(Result(x), Result(y));
-    }
+    auto start = values.begin();
     
-    template<typename T0, typename T1>
-    constexpr inline auto max(const T0& x, const T1& y)
-        -> typename std::enable_if<std::is_same<decltype(x.x), decltype(x.y)>::value, T0>::type
-    {
-        return T0(std::max(decltype(x.x+y.x)(x.x), decltype(x.x+y.x)(y.x)),
-                  std::max(decltype(x.y+y.y)(x.y), decltype(x.y+y.y)(y.y)));
-    }
+    if(values.empty())
+        return std::numeric_limits<typename T::value_type>::max();
     
-    template<typename T0, typename T1>
-    constexpr inline T0 max(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(y.height)>::value, bool>::type * =NULL) {
-        return T0(std::max(decltype(x.width+y.width)(x.width), decltype(x.width+y.width)(y.width)),
-                  std::max(decltype(x.height+y.height)(x.height), decltype(x.height+y.height)(y.height)));
-    }
+    C stride = C(values.size()-1) * percent;
+    std::advance(start, (int64_t)stride);
+    C A = *start;
     
-    template<typename T0, typename T1>
-    constexpr inline T0 max(const T0& x, const T1& y, typename std::enable_if<std::is_same<decltype(x.width), decltype(y.y)>::value, bool>::type * =NULL) {
-        return T0(std::max(decltype(x.width+y.x)(x.width), decltype(x.width+y.x)(y.x)),
-                  std::max(decltype(x.height+y.y)(x.height), decltype(x.height+y.y)(y.y)));
-    }
-
-    template<typename T0, typename T1, typename T2>
-    constexpr inline auto max(const T0& x, const T1& y, const T2& z) -> decltype(x+y+z) {
-        return std::max(decltype(x+y+z)(x), std::max(decltype(x+y+z)(y), decltype(x+y+z)(z)));
-    }
+    auto second = start;
+    ++second;
+    if(second != values.end())
+        start = second;
+    C B = *start;
+    C p = stride - C(size_t(stride));
     
-    /**
-     * ======================
-     * COMMON custom STL selectors and iterators
-     * ======================
-     */
+    return A * (1 - p) + B * p;
+}
+
+template<typename T, typename K>
+std::vector<typename T::value_type> percentile(const T& values, const std::initializer_list<K>& tests, typename std::enable_if<(is_set<T>::value || is_container<T>::value) && std::is_floating_point<typename T::value_type>::value, T>::type* = NULL)
+{
+    std::vector<typename T::value_type> result;
+    for(auto percent : tests)
+        result.push_back(percentile(values, percent));
     
-    /*template<typename Func, typename T>
-    void foreach(Func callback, std::vector<T> &v) {
-        std::for_each(v.begin(), v.end(), callback);
-    }
-    
-    template<typename Func, typename T, typename... Args>
-    void foreach(Func callback, std::vector<T> &v, Args... args) {
-        std::for_each(v.begin(), v.end(), callback);
-        return foreach(callback, args...);
-    }*/
-    
-    template<typename Func, typename T>
-    void foreach(Func callback, T &v) {
-        std::for_each(v.begin(), v.end(), callback);
-    }
-    
-    template<typename Func, typename T, typename... Args>
-    void foreach(Func callback, T &v, Args... args) {
-        std::for_each(v.begin(), v.end(), callback);
-        return foreach(callback, args...);
-    }
+    return result;
+}
 
+template<typename T, typename Q>
+    requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
+inline bool contains(const T& s, const Q& value) {
+    return std::find(s.begin(), s.end(), value) != s.end();
+}
 
-    template<typename T>
-    struct UnorderedVectorSet {
-        using iterator = typename std::vector<T>::iterator;
-        using const_iterator = typename std::vector<T>::const_iterator;
+template<typename T, typename Q>
+    requires is_instantiation<UnorderedVectorSet, T>::value
+inline bool contains(const T& s, const Q& value) {
+    return s.contains(value);
+}
 
-        std::vector<T> _data;
+template<typename T, typename K>
+    requires std::convertible_to<K, T>
+inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
+    return s.count(value) > 0;
+}
 
-        UnorderedVectorSet() = default;
-        UnorderedVectorSet(const std::initializer_list<T>& init) : _data(init) {}
-        UnorderedVectorSet(UnorderedVectorSet&&) = default;
-        UnorderedVectorSet(const UnorderedVectorSet&) = default;
-        UnorderedVectorSet(std::vector<T>&& vic) : _data(std::move(vic)) {}
+template<typename T, typename K>
+    requires std::convertible_to<K, T>
+inline bool contains(const robin_hood::unordered_flat_set<T>& s, const K& value) {
+    return s.contains(value);
+}
 
-        UnorderedVectorSet& operator=(const UnorderedVectorSet&) = default;
-
-        template<typename K>
-            requires std::convertible_to<K, T>
-        void insert(const K& value) {
-            if (!this->contains(value))
-                _data.emplace_back(value);
-        }
-
-        template<typename K>
-            requires std::convertible_to<K, T>
-        bool contains(const K& value) const {
-            return std::find(_data.begin(), _data.end(), value) != _data.end();
-        }
-
-        template<typename K>
-            requires std::convertible_to<K, T>
-        auto find(const K& value) const {
-            return std::find(_data.begin(), _data.end(), value);
-        }
-
-        void clear() {
-            _data.clear();
-        }
-
-        template<typename Iterator>
-        void insert(Iterator start, Iterator end) {
-            for (auto it = start; it != end; ++it)
-                insert(*it);
-        }
-        
-        template<typename Iterator>
-        inline auto erase(Iterator it) {
-            return _data.erase(it);
-        }
-        
-        template<class... Args>
-        constexpr typename std::vector<T>::reference emplace(Args&&... args) {
-            return _data.emplace_back(std::forward<Args>(args)...);
-        }
-
-        auto begin() { return _data.begin(); }
-        auto end() { return _data.end(); }
-        auto begin() const { return _data.begin(); }
-        auto end() const { return _data.end(); }
-        size_t size() const { return _data.size(); }
-        bool empty() const { return _data.empty(); }
-    };
-    
-    template<class T> struct is_container : public std::false_type {};
-    
-    template<class T, class Alloc>
-    struct is_container<std::vector<T, Alloc>> : public std::true_type {};
-    
-    template<class T, size_t Size>
-    struct is_container<std::array<T, Size>> : public std::true_type {};
-
-    template<class T, size_t Size>
-    struct is_container<std::span<T, Size>> : public std::true_type {};
-    
-    template<class T> struct is_set : public std::false_type {};
-    template<class T, class Alloc>
-    struct is_set<std::set<T, Alloc>> : public std::true_type {};
-    template<class T, class Alloc>
-    struct is_set<std::multiset<T, Alloc>> : public std::true_type {};
-    template<class T, class Alloc>
-    struct is_set<std::unordered_set<T, Alloc>> : public std::true_type {};
-    template<class T>
-    struct is_set<ska::bytell_hash_set<T>> : public std::true_type {};
-    template<class T, class Alloc>
-    struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
-    template<class T, class Alloc>
-    struct is_set<robin_hood::unordered_flat_set<T, Alloc>> : public std::true_type {};
-   // template<class T, class Alloc>
-    //struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
-    template<class T>
-    struct is_set<UnorderedVectorSet<T>> : public std::true_type {};
-    
-    template<class T> struct is_map : public std::false_type {};
-    template<class T, class Compare, class Alloc>
-    struct is_map<std::map<T, Compare, Alloc>> : public std::true_type {};
-    template<class T, class Compare, class Alloc>
-    struct is_map<std::unordered_map<T, Compare, Alloc>> : public std::true_type {};
-    template<class T, class Compare, class Alloc>
-    struct is_map<ska::bytell_hash_map<T, Compare, Alloc>> : public std::true_type {};
-    //template<class T, class Compare, class Alloc>
-    //struct is_map<robin_hood::unordered_node_map<T, Compare, Alloc>> : public std::true_type {};
-    //template<class T, class Compare, class Alloc>
-    //struct is_map<robin_hood::unordered_flat_map<T, Compare, Alloc>> : public std::true_type {};
-    template<bool T, size_t S, class... Args>
-    struct is_map<robin_hood::detail::Table<T, S, Args...>> : public std::true_type {};
-
-    template<class T> struct is_queue : public std::false_type {};
-    template<class T, class Container>
-    struct is_queue<std::queue<T, Container>> : public std::true_type {};
-    template<class T, class Allocator>
-    struct is_queue<std::deque<T, Allocator>> : public std::true_type {};
-
-    template<class T> struct is_deque : public std::false_type {};
-    template<class T, class Allocator>
-    struct is_deque<std::deque<T, Allocator>> : public std::true_type {};
-    
-    template< class T >
-    struct is_pair : public std::false_type {};
-    
-    template< class T1 , class T2 >
-    struct is_pair< std::pair< T1 , T2 > > : public std::true_type {};
-    
-    class IndexedDataTransport {
-    protected:
-        GETTER_SETTER(long_t, index)
-        
-    public:
-        virtual ~IndexedDataTransport() {}
-    };
-    
-    template<typename T>
-    typename T::value_type percentile(const T& values, float percent, typename std::enable_if<is_set<T>::value || is_container<T>::value, T>::type* = NULL)
-    {
-        using C = typename std::conditional<std::is_floating_point<typename T::value_type>::value,
-            typename T::value_type, double>::type;
-        
-        auto start = values.begin();
-        
-        if(values.empty())
-            return std::numeric_limits<typename T::value_type>::max();
-        
-        C stride = C(values.size()-1) * percent;
-        std::advance(start, (int64_t)stride);
-        C A = *start;
-        
-        auto second = start;
-        ++second;
-        if(second != values.end())
-            start = second;
-        C B = *start;
-        C p = stride - C(size_t(stride));
-        
-        return A * (1 - p) + B * p;
-    }
-    
-    template<typename T, typename K>
-    std::vector<typename T::value_type> percentile(const T& values, const std::initializer_list<K>& tests, typename std::enable_if<(is_set<T>::value || is_container<T>::value) && std::is_floating_point<typename T::value_type>::value, T>::type* = NULL)
-    {
-        std::vector<typename T::value_type> result;
-        for(auto percent : tests)
-            result.push_back(percentile(values, percent));
-        
-        return result;
-    }
-
-    template<template<class...>class Template, class T>
-    struct is_instantiation : std::false_type {};
-    template<template<class...>class Template, class... Ts>
-    struct is_instantiation<Template, Template<Ts...>> : std::true_type {};
-
-    template<typename T, typename Q>
-        requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
-    inline bool contains(const T& s, const Q& value) {
-        return std::find(s.begin(), s.end(), value) != s.end();
-    }
-
-    template<typename T, typename Q>
-        requires is_instantiation<UnorderedVectorSet, T>::value
-    inline bool contains(const T& s, const Q& value) {
-        return s.contains(value);
-    }
-
-    template<typename T, typename K>
-        requires std::convertible_to<K, T>
-    inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
-        return s.count(value) > 0;
-    }
-
-    template<typename T, typename K>
-        requires std::convertible_to<K, T>
-    inline bool contains(const robin_hood::unordered_flat_set<T>& s, const K& value) {
-        return s.contains(value);
-    }
-
-    /*template<typename T, typename K>
-        requires std::convertible_to<K, T>
-    inline bool contains(const tsl::sparse_set<T>& s, const K& value) {
-        return s.contains(value);
-    }*/
-
-    /*template<typename T, typename Q>
-    inline bool contains(const Q& v, const T& obj) {
-        return std::find(v.begin(), v.end(), obj) != v.end();
-    }*/
-
-    template<typename T>
-    inline bool contains(const std::set<T>& v, T obj) {
-        //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets
+template<typename T>
+inline bool contains(const std::set<T>& v, T obj) {
+    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets
 #if __cplusplus >= 202002L
-        return v.contains(obj);
+    return v.contains(obj);
 #else
-        return v.find(obj) != v.end();
+    return v.find(obj) != v.end();
 #endif
-    }
+}
 
-    template<typename T, typename V>
-    inline bool contains(const std::map<T, V>& v, T key) {
-        //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
+template<typename T, typename V>
+inline bool contains(const std::map<T, V>& v, T key) {
+    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
 #if __cplusplus >= 202002L
-        return v.contains(key);
+    return v.contains(key);
 #else
-        return v.find(key) != v.end();
+    return v.find(key) != v.end();
 #endif
-    }
+}
 
-    template<class T>
-    auto insert_sorted(std::vector<T>& vector, T&& element) {
-        return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), std::move(element));
-    }
+template<class T>
+auto insert_sorted(std::vector<T>& vector, T&& element) {
+    return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), std::move(element));
+}
 
-    template<class T>
-    auto insert_sorted(std::vector<T>& vector, const T& element) {
-        return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), element);
-    }
+template<class T>
+auto insert_sorted(std::vector<T>& vector, const T& element) {
+    return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), element);
+}
 }
 
 namespace cmn {
@@ -696,55 +562,55 @@ struct timestamp_t {
 
 namespace cmn {
 #if !defined(__EMSCRIPTEN__) || true
-    template<typename T>
-    using atomic = std::atomic<T>;
+template<typename T>
+using atomic = std::atomic<T>;
 #else
-    template<typename T>
-    struct atomic {
-        T value;
-        mutable std::mutex m;
+template<typename T>
+struct atomic {
+    T value;
+    mutable std::mutex m;
 
-        atomic() = default;
-        atomic(T v) : value( v ) {}
+    atomic() = default;
+    atomic(T v) : value( v ) {}
 
-        T load() const {
-            std::unique_lock guard(m);
-            return value;
-        }
+    T load() const {
+        std::unique_lock guard(m);
+        return value;
+    }
 
-        void store(T v) {
-            std::unique_lock guard(m);
-            value = v;
-        }
+    void store(T v) {
+        std::unique_lock guard(m);
+        value = v;
+    }
 
-        operator T() const {
-            return load();
-        }
+    operator T() const {
+        return load();
+    }
 
-        void operator=(T v) {
-            store(v);
-        }
+    void operator=(T v) {
+        store(v);
+    }
 
-        bool operator==(T v) const {
-            return load() == v;
-        }
+    bool operator==(T v) const {
+        return load() == v;
+    }
 
-        bool operator!=(T v) const {
-            return load() != v;
-        }
+    bool operator!=(T v) const {
+        return load() != v;
+    }
 
-        T operator++() {
-            std::unique_lock g(m);
-            ++value;
-            return value;
-        }
+    T operator++() {
+        std::unique_lock g(m);
+        ++value;
+        return value;
+    }
 
-        T operator--() {
-            std::unique_lock g(m);
-            --value;
-            return value;
-        }
-    };
+    T operator--() {
+        std::unique_lock g(m);
+        --value;
+        return value;
+    }
+};
 #endif
 }
 

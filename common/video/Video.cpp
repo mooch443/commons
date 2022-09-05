@@ -135,20 +135,20 @@ const cv::Size& Video::size() const {
  * Assumes the output is set, and mat is a 8UC3.
  */
 void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
-   if(mat.channels() == 1 || (uint)mat.channels() < channel) {
+    if(mat.channels() == 1 || (uint)mat.channels() < channel) {
        mat.copyTo(output);
        return;
-   }
-
+    }
+    
     static const bool video_reading_use_threads = GlobalSettings::has("video_reading_use_threads") ? SETTING(video_reading_use_threads).value<bool>() : true;
-   assert(output.type() == CV_8UC1);
-   assert(mat.type() == CV_8UC3);
-   const auto channels = mat.channels();
-   const auto start = output.data;
+    assert(output.type() == CV_8UC1);
+    assert(mat.type() == CV_8UC3);
+    const auto channels = mat.channels();
+    const auto start = output.data;
 
-   if (video_reading_use_threads
+    if (video_reading_use_threads
        && size_t(mat.cols) * size_t(mat.rows) >= size_t(1000u) * size_t(1000u))
-   {
+    {
        static GenericThreadPool pool(cmn::hardware_concurrency(), nullptr, "extractu8");
 
        distribute_vector([&](auto, const auto s, const auto e, auto) {
@@ -157,13 +157,13 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
            }
 
        }, pool, start, start + uint64_t(output.rows) * uint64_t(output.cols));
-   }
-   else {
+    }
+    else {
        const auto end = start + uint64_t(output.rows) * uint64_t(output.cols);
        for (auto ptr = start; ptr != end; ++ptr) {
            *ptr = mat.data[size_t(ptr - start) * channels + channel];
        }
-   }
+    }
 }
 
 /**

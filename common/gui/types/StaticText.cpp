@@ -8,39 +8,29 @@ namespace gui {
     static bool nowindow_updated = false;
     static bool nowindow;
     
-    struct TRange {
-        Range<size_t> range;
-        Font font;
-        std::string name, text;
-        std::set<TRange> subranges;
-        size_t after;
-        size_t before;
-        Color color;
-        
-        TRange(std::string n = "", size_t i = 0, size_t before = 0)
-            : range(i, i), name(n), after(0), before(before)
-        {
-        }
-        
-        void close(size_t i, const std::string& text, size_t after) {
-            range.end = i;
-            this->text = text.substr(range.start, range.end - range.start);
-            this->after = after;
-        }
-        
-        bool operator<(const TRange& other) const {
-            return range < other.range;
-        }
-        
-        std::string toStr() const {
-            return "TRange<"+name+"> "+Meta::toStr(range)+" "+Meta::toStr(subranges)+" '"+text+"'";
-        }
-            
-        static std::string class_name() {
-            return "TRange";
-        }
-    };
+TRange::TRange(std::string n, size_t i, size_t before)
+    : range(i, i), name(n), after(0), before(before)
+{
+}
+
+void TRange::close(size_t i, const std::string& text, size_t after) {
+    range.end = i;
+    this->text = text.substr(range.start, range.end - range.start);
+    this->after = after;
+}
+
+bool TRange::operator<(const TRange& other) const {
+    return range < other.range;
+}
+
+std::string TRange::toStr() const {
+    return "TRange<"+name+"> "+Meta::toStr(range)+" "+Meta::toStr(subranges)+" '"+text+"'";
+}
     
+std::string TRange::class_name() {
+    return "TRange";
+}
+
     StaticText::StaticText(const std::string& txt, const Vec2& pos, const Vec2& max_size, const Font& font) :
         _max_size(max_size),
         _org_position(pos),
@@ -182,6 +172,13 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
     
     void StaticText::add_string(std::shared_ptr<RichString> ptr, std::vector<std::shared_ptr<RichString>> &strings, Vec2& offset)
     {
+        
+        /*if(_max_size.y > 0) {
+            if(ptr->pos.y * Base::default_line_spacing(_default_font) >= _max_size.y ) {
+                print("Cutting off ", ptr->str, "  at ", ptr->pos, " with max size ", _max_size);
+                return;
+            }
+        }*/
         //const Vec2 stage_scale = this->stage_scale();
         //const Vec2 real_scale(1); //= this->real_scale();
         auto real_scale = this;
@@ -304,6 +301,102 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
         
         strings.push_back(ptr);
     }
+
+std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
+    char quote = 0;
+    std::deque<char> brackets;
+    
+    std::deque<TRange> tags;
+    std::vector<TRange> global_tags;
+    
+    size_t before_pos = 0;
+    
+    std::stringstream tag; // holds current tag when inside one
+    
+    std::unordered_set<std::string> commands {
+        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","b","string","number","str","nr","keyword","key","ref","a"
+    };
+    
+    for(size_t i=0; i<_txt.size(); ++i) {
+        char c = _txt[i];
+        
+        if(c == '\'' ||c == '"') {
+            if(quote == c)
+                quote = 0;
+            else
+                quote = c;
+            
+        } else if(/*!quote &&*/ c == '<') {
+            if(brackets.empty())
+                before_pos = i;
+            brackets.push_front(c);
+            
+        } else if(/*!quote &&*/ c == '>') {
+            if(!brackets.empty())
+                brackets.pop_front();
+            
+            auto s = tag.str();
+            if(!s.empty()) {
+                s = utils::lowercase(s);
+                
+                if(s[0] == '/') {
+                    // ending tag
+                    if(!tags.empty() && tags.front().name == s.substr(1)) {
+                        auto front = tags.front();
+                        front.close(before_pos, _txt, i+1);
+                        
+                        tags.pop_front();
+                        if(tags.empty()) {
+                            global_tags.push_back(front);
+                        } else {
+                            tags.front().subranges.insert(front);
+                        }
+                        
+                    } else
+                        print("Cannot pop tag ",s);
+                } else {
+                    if(commands.find(s) == commands.end()) {
+                        if(tags.empty()) {
+                            global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
+                            global_tags.back().close(i+1, _txt, i+1);
+                        }
+                        
+                    } else {
+                        if(tags.empty()) {
+                            if((global_tags.empty() && before_pos > 0) || !global_tags.empty()) {
+                                global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
+                                global_tags.back().close(before_pos, _txt, i+1);
+                            }
+                        }
+                        
+                        tags.push_front(TRange(s, i + 1, before_pos));
+                    }
+                }
+            }
+        
+            tag.str("");
+            before_pos = i+1;
+            
+        } else if(!brackets.empty()) {
+            tag << c;
+        }
+    }
+    
+    if(!tags.empty()) {
+        auto front = tags.front();
+        tags.pop_front();
+        
+        front.close(_txt.size(), _txt, _txt.size());
+        global_tags.push_back(front);
+        if(!tags.empty())
+            FormatWarning("Did not properly close all tags.");
+    } else if(global_tags.empty() || global_tags.back().after < _txt.size()) {
+        global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
+        global_tags.back().close(_txt.size(), _txt, _txt.size());
+    }
+    
+    return global_tags;
+}
     
     void StaticText::update_text() {
         if(!nowindow_updated) {
@@ -324,97 +417,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
         
         std::vector<std::shared_ptr<RichString>> strings;
         
-        char quote = 0;
-        std::deque<char> brackets;
-        
-        std::deque<TRange> tags;
-        std::vector<TRange> global_tags;
-        
-        size_t before_pos = 0;
-        
-        std::stringstream tag; // holds current tag when inside one
-        
-        std::unordered_set<std::string> commands {
-            "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","b","string","number","str","nr","keyword","key","ref","a"
-        };
-        
-        for(size_t i=0; i<_txt.size(); ++i) {
-            char c = _txt[i];
-            
-            if(c == '\'' ||c == '"') {
-                if(quote == c)
-                    quote = 0;
-                else
-                    quote = c;
-                
-            } else if(/*!quote &&*/ c == '<') {
-                if(brackets.empty())
-                    before_pos = i;
-                brackets.push_front(c);
-                
-            } else if(/*!quote &&*/ c == '>') {
-                if(!brackets.empty())
-                    brackets.pop_front();
-                
-                auto s = tag.str();
-                if(!s.empty()) {
-                    s = utils::lowercase(s);
-                    
-                    if(s[0] == '/') {
-                        // ending tag
-                        if(!tags.empty() && tags.front().name == s.substr(1)) {
-                            auto front = tags.front();
-                            front.close(before_pos, _txt, i+1);
-                            
-                            tags.pop_front();
-                            if(tags.empty()) {
-                                global_tags.push_back(front);
-                            } else {
-                                tags.front().subranges.insert(front);
-                            }
-                            
-                        } else
-                            print("Cannot pop tag ",s);
-                    } else {
-                        if(commands.find(s) == commands.end()) {
-                            if(tags.empty()) {
-                                global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
-                                global_tags.back().close(i+1, _txt, i+1);
-                            }
-                            
-                        } else {
-                            if(tags.empty()) {
-                                if((global_tags.empty() && before_pos > 0) || !global_tags.empty()) {
-                                    global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
-                                    global_tags.back().close(before_pos, _txt, i+1);
-                                }
-                            }
-                            
-                            tags.push_front(TRange(s, i + 1, before_pos));
-                        }
-                    }
-                }
-            
-                tag.str("");
-                before_pos = i+1;
-                
-            } else if(!brackets.empty()) {
-                tag << c;
-            }
-        }
-        
-        if(!tags.empty()) {
-            auto front = tags.front();
-            tags.pop_front();
-            
-            front.close(_txt.size(), _txt, _txt.size());
-            global_tags.push_back(front);
-            if(!tags.empty())
-                FormatWarning("Did not properly close all tags.");
-        } else if(global_tags.empty() || global_tags.back().after < _txt.size()) {
-            global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
-            global_tags.back().close(_txt.size(), _txt, _txt.size());
-        }
+        auto global_tags = to_tranges(_txt);
         
         auto mix_colors = [&](const Color& A, const Color& B) {
             if(A != default_clr)

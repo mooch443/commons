@@ -861,7 +861,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _exec_main_queue.pop();
         }
         
-        std::queue<SectionInterface*> q;
+        /*std::queue<SectionInterface*> q;
         q.push((SectionInterface*)&_graph->root());
         while (!q.empty()) {
             auto obj = q.front();
@@ -881,7 +881,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             }
             
             obj->clear_cache();
-        }
+        }*/
         
         TextureCache::remove_base(this);
         

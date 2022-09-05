@@ -160,7 +160,7 @@ namespace sprite {
         
     protected:
         ska::bytell_hash_map<PNameRef, Store> _props;
-        ska::bytell_hash_map<const char*, callback_func> _callbacks;
+        ska::bytell_hash_map<std::string, callback_func> _callbacks;
         ska::bytell_hash_map<std::string, bool> _print_key;
         
         GETTER_NCONST(std::mutex, mutex)
@@ -226,8 +226,8 @@ namespace sprite {
             return true;
         }
         
-        void register_callback(const char *obj, const callback_func &func);
-        void unregister_callback(const char *obj);
+        void register_callback(const std::string& obj, const callback_func &func);
+        void unregister_callback(const std::string& obj);
         
         Reference operator[](const std::string& name) {
             LockGuard guard(this);

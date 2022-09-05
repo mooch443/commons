@@ -718,6 +718,7 @@ private: \
             obj = v; \
         } \
     } \
+    inline static std::once_flag flag; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
     template<Variables M> static void update(const std::string &key, const sprite::PropertyType& value) { auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
@@ -730,15 +731,14 @@ public: \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
     static void variable_changed (sprite::Map::Signal signal, sprite::Map &, const std::string &key, const sprite::PropertyType& value) { \
         if(signal == sprite::Map::Signal::EXIT) { \
-            cmn::GlobalSettings::map().unregister_callback(#NAM); \
+            cmn::GlobalSettings::map().unregister_callback(#NAM + std::to_string((uint64_t)&flag)); \
             return; \
         } \
         if(false); STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
-        static std::once_flag flag; \
         std::call_once(flag, [](){ \
-            cmn::GlobalSettings::map().register_callback(#NAM, NAM :: variable_changed ); \
+            cmn::GlobalSettings::map().register_callback(#NAM + std::to_string((uint64_t)&flag), NAM :: variable_changed ); \
             for(auto &n : NAM :: names()) \
                 if(cmn::GlobalSettings::map().has(n)) \
                     variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n).get()); \
