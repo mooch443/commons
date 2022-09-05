@@ -80,7 +80,9 @@ using experimental;
 #endif
 
 #include <misc/date.h>
+#ifndef WIN32
 #include <misc/tz.h>
+#endif
 
 #ifdef WIN32
 //#define _USE_MATH_DEFINES

@@ -82,7 +82,7 @@ struct F<_Rp(_ArgTypes...)>
     //! Execute the function with parameters.
     //! Simply use the __base_t class' operator().
     template<typename ... _Args>
-    _Rp operator()(_Args && ... args)
+    _Rp operator()(_Args ... args)
     {
         assert(_fn != nullptr);
         return (*_fn)(std::forward<_Args>(args)...);
@@ -104,6 +104,41 @@ struct F<_Rp(_ArgTypes...)>
     // swapping is cool
     void swap(F& other){
         std::swap(_fn, other._fn);
+    }
+};
+
+template<typename R, typename... Args>
+struct promised {
+    using signature = R(Args...);
+    package::F<signature> package;
+    std::promise<R> promise;
+
+    template<typename K>
+    promised(K&& fn) : package(std::move(fn)) { }
+
+    promised& operator=(promised&& other) = default;
+    promised& operator=(const promised& other) = delete;
+
+    promised(promised&& other) = default;
+    promised(const promised& other) = delete;
+
+    R operator()(Args... args) {
+        try {
+            if constexpr (!std::same_as<void, R>) {
+                promise.set_value(package(std::forward<Args>(args)...));
+            }
+            else {
+                package(std::forward<Args>(args)...);
+                promise.set_value();
+            }
+        }
+        catch (...) {
+            promise.set_exception(std::current_exception());
+        }
+    }
+
+    auto get_future() {
+        return promise.get_future();
     }
 };
 

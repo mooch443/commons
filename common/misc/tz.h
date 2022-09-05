@@ -44,13 +44,18 @@
 // Technically any OS may use the mapping process but currently only Windows does use it.
 
 #ifndef USE_OS_TZDB
+#ifdef _WIN32
+#  define USE_OS_TZDB 0
+#else
 #  define USE_OS_TZDB 1
+#endif
 #endif
 
 #ifndef HAS_REMOTE_API
 #  if USE_OS_TZDB == 0
 #    ifdef _WIN32
 #      define HAS_REMOTE_API 0
+#      define INSTALL .
 #    else
 #      define HAS_REMOTE_API 1
 #    endif
