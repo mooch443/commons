@@ -382,6 +382,8 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         message(STATUS "Set conda prefix ${Python_DIR} (exec ${Python_EXECUTABLE} vs. ${PYTHON_EXECUTABLE})")
     #endif()
 
+    set(Python_ROOT_DIR ${CONDA_PREFIX})
+    set(Python_FIND_STRATEGY LOCATION)
     unset(Python_USE_STATIC_LIBS)
     find_package(Python 3.6 COMPONENTS Interpreter Development REQUIRED)
 
@@ -421,6 +423,7 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DPYTHON_LIBRARY:PATH=${PYTHON_LIBRARY}
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
     -DPython_ROOT_DIR:FILEPATH=${Python_ROOT_DIR}
+    -DPython_FIND_STRATEGY=LOCATION
 
 )
 

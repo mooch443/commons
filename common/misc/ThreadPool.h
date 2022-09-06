@@ -118,20 +118,29 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     
     std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
     Iterator nex = start;
+    std::exception_ptr ex;
     
     for(auto it = start; it != end;) {
         auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
         std::advance(nex, step);
         if(nex != end) {
             pool.enqueue([&](auto i, auto it, auto nex, auto step) {
-                fn(i, it, nex, step);
+                try {
+                    fn(i, it, nex, step);
+                } catch(...) {
+                    ex = std::current_exception();
+                }
                 work_done.count_down();
                 
             }, i, it, nex, step);
             
         } else {
-            // run in local thread
-            fn(i, it, nex, step);
+            try {
+                // run in local thread
+                fn(i, it, nex, step);
+            } catch(...) {
+                ex = std::current_exception();
+            }
         }
         
         it = nex;
@@ -139,6 +148,8 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
     }
     
     work_done.wait();
+    if(ex)
+        std::rethrow_exception(ex);
 #else
     std::atomic<int64_t> processed(0);
     int64_t enqueued{0};
