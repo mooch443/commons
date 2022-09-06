@@ -579,7 +579,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
     
     std::mutex mutex;
-    GenericThreadPool pool(cmn::hardware_concurrency(), [](auto e) { std::rethrow_exception(e); }, "AverageImage");
+    GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
     for(uint64_t i=0; i<_files_in_seq.size(); i+=step) {
         auto file = _files_in_seq.at(i);
         file_indexes[file].insert(0);

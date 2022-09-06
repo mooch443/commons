@@ -149,7 +149,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
     if (video_reading_use_threads
        && size_t(mat.cols) * size_t(mat.rows) >= size_t(1000u) * size_t(1000u))
     {
-       static GenericThreadPool pool(cmn::hardware_concurrency(), nullptr, "extractu8");
+       static GenericThreadPool pool(cmn::hardware_concurrency(), "extractu8");
 
        distribute_vector([&](auto, const auto s, const auto e, auto) {
            for (auto ptr = s; ptr != e; ++ptr) {

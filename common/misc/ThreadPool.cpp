@@ -2,8 +2,8 @@
 #include <misc/metastring.h>
 
 namespace cmn {
-    GenericThreadPool::GenericThreadPool(size_t nthreads, std::function<void(std::exception_ptr)> handle_exceptions, const std::string& thread_prefix, std::function<void()> init)
-            : _exception_handler(handle_exceptions ? handle_exceptions : [](auto e) { std::rethrow_exception(e); }),
+    GenericThreadPool::GenericThreadPool(size_t nthreads, const std::string& thread_prefix, std::function<void(std::exception_ptr)> handle_exceptions, std::function<void()> init)
+            : _exception_handler(handle_exceptions),
             nthreads(0), stop(false), _init(init), _working(0), _thread_prefix(thread_prefix)
     {
         resize(nthreads);
@@ -57,7 +57,9 @@ namespace cmn {
                                 lock.lock();
                             } catch(...) {
                                 lock.lock();
-                                _exception_handler(std::current_exception());
+                                if (_exception_handler)
+                                    _exception_handler(std::current_exception());
+                                else throw;
                             }
                             
                             // not busy anymore!

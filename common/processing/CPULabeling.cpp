@@ -430,7 +430,7 @@ struct Source {
      */
     void init(const cv::Mat& image, bool enable_threads) {
         // assuming the number of threads allowed is < 255
-        static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()), nullptr, "extract_lines");
+        static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()), "extract_lines");
         
         assert(image.cols < USHRT_MAX && image.rows < USHRT_MAX);
         assert(image.type() == CV_8UC1);
