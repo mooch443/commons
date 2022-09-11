@@ -66,19 +66,23 @@
 #include <span>
 #include <optional>
 #include <compare>
+#if __APPLE__
+#include <Availability.h>
+#endif
 
 #if __has_include(<latch>)
-    #if !defined(__APPLE__) || defined(_LIBCPP_AVAILABILITY_SYNC)
+    #if !defined(__APPLE__) || defined(__MAC_11_0)
         #include <latch>
         #define COMMONS_HAS_LATCH
     #endif
 #elif __has_include(<experimental/latch>)
-#include <experimental/latch>
-namespace std {
-using experimental;
-}
-#define COMMONS_HAS_LATCH
-#else
+    #if !defined(__APPLE__) || defined(__MAC_11_0)
+        #include <experimental/latch>
+        namespace std {
+        using experimental;
+        }
+        #define COMMONS_HAS_LATCH
+    #endif
 #endif
 
 #include <misc/date.h>
