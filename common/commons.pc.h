@@ -68,8 +68,10 @@
 #include <compare>
 
 #if __has_include(<latch>)
-#include <latch>
-#define COMMONS_HAS_LATCH
+    #if !defined(__APPLE__) || defined(_LIBCPP_AVAILABILITY_SYNC)
+        #include <latch>
+        #define COMMONS_HAS_LATCH
+    #endif
 #elif __has_include(<experimental/latch>)
 #include <experimental/latch>
 namespace std {
