@@ -56,6 +56,7 @@ public:
     Transform& rotate(float angle);
     Transform& scale(float x, float y);
     Transform& scale(const Vec2& factors);
+    Transform& scale(const float factor);
     
     cv::Mat toCV() const {
         cv::Mat t(2,3,CV_64F,cv::Scalar(0.0));

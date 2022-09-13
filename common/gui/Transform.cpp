@@ -191,6 +191,15 @@ Transform& Transform::scale(const Vec2& factors)
     return scale(factors.x, factors.y);
 }
 
+////////////////////////////////////////////////////////////
+Transform& Transform::scale(const float factor)
+{
+    Transform scaling(factor, 0,      0,
+                      0,      factor, 0,
+                      0,      0,      1);
+    
+    return combine(scaling);
+}
 
 ////////////////////////////////////////////////////////////
 Transform operator *(const Transform& left, const Transform& right)

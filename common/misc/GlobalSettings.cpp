@@ -157,6 +157,12 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                 }
             } catch(const UtilsException& e) {
                 if(!SETTING(quiet)) {
+                    if(str.length() > 150) {
+                        auto fr = str.substr(0, 50);
+                        auto en = str.substr(str.length() - 50 - 1);
+                        
+                        str = fr + " [...] " + en;
+                    }
                     print("Line ", str," cannot be loaded. (",std::string(e.what()),")");
                 }
             }
