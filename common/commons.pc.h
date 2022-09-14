@@ -66,6 +66,7 @@
 #include <span>
 #include <optional>
 #include <compare>
+#include <random>
 #if __APPLE__
 #include <Availability.h>
 #endif
