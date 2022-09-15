@@ -20,6 +20,7 @@
 
 #include <misc/metastring.h>
 #include <misc/GlobalSettings.h>
+#include <file/DataLocation.h>
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/fetch.h>
@@ -697,6 +698,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         });
 
         file::Path path("fonts/Quicksand-");
+        if(file::DataLocation::is_registered("app")) {
+            path = file::DataLocation::parse("app", path);
+        }
         if (!path.add_extension("ttf").exists())
             FormatExcept("Cannot find file ",path.str(),"");
         

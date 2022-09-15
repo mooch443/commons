@@ -144,5 +144,7 @@ namespace cmn {
         if (chdir(_wd.str().c_str()))
 #endif
             FormatError("Cannot change directory to ",_wd.str(),".");
+        else
+            print("Changed directory to ",_wd," {CWD=",file::cwd(),"}");
     }
 }

@@ -11,6 +11,10 @@ namespace cmn {
         struct Option {
             std::string name;
             std::string value;
+            
+            bool operator==(const std::string& other) const {
+                return name == other;
+            }
         };
         
     protected:
