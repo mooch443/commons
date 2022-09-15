@@ -15,6 +15,10 @@
 #define NOT_OS_SEP '\\'
 #endif
 
+#if defined(WIN32)
+#include <direct.h>
+#endif
+
 #include <errno.h>
 
 #ifdef __APPLE__
@@ -202,7 +206,11 @@ std::string_view Path::filename() const {
     file::Path cwd() {
         char buffer[PATH_MAX];
         std::string cwd;
+#ifdef WIN32
+        if(_getcwd(buffer, PATH_MAX) != 0) {
+#else
         if(getcwd(buffer, PATH_MAX) != 0) {
+#endif
             cwd = buffer;
         }
         return file::Path(cwd);
