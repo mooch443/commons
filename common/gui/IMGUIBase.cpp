@@ -749,7 +749,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale, &config);
 #endif
                 if (!ptr) {
-                    FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,".");
+                    FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
                     ptr = io.Fonts->AddFontDefault();
                     im_font_scale = max(1, dpi_scale) * 0.5f;
                 }
