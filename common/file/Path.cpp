@@ -175,11 +175,37 @@ std::string_view Path::filename() const {
         }
 #else
         std::ifstream input(str(), std::ios::binary);
-        if (!input.is_open())
-            throw cmn::U_EXCEPTION("Cannot read file ", str());
+        if (!input.is_open()) {
+            throw cmn::U_EXCEPTION("Cannot read file ", str(), " cwd:", cwd(), " exists:", exists());
+        }
 
         return std::vector<char>(std::istreambuf_iterator<char>(input), {});
 #endif
+    }
+
+    std::string Path::read_file() const {
+#if defined(__EMSCRIPTEN__)
+        auto data = retrieve_data();
+        return std::string(data.begin(), data.end());
+#else
+        std::ifstream input(str(), std::ios::binary);
+        if(!input.is_open())
+            throw cmn::U_EXCEPTION("Cannot read file ", str(), " cwd:", cwd(), " exists:", exists());
+        
+        std::stringstream ss;
+        ss << input.rdbuf();
+        
+        return ss.str();
+#endif
+    }
+
+    file::Path cwd() {
+        char buffer[PATH_MAX];
+        std::string cwd;
+        if(getcwd(buffer, PATH_MAX) != 0) {
+            cwd = buffer;
+        }
+        return file::Path(cwd);
     }
 
     uint64_t Path::file_size() const {

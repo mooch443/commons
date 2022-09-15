@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <map>
 #include <misc/format.h>
+#include <file/Path.h>
 
 namespace utils {
     /*
@@ -217,15 +218,7 @@ namespace utils {
         return _split(s, c);
     }
 
-
     std::string read_file(const std::string& filename) {
-        std::ifstream input(filename, std::ios::binary);
-        if(!input.is_open())
-            throw cmn::U_EXCEPTION("Cannot read file ", filename);
-        
-        std::stringstream ss;
-        ss << input.rdbuf();
-        
-        return ss.str();
+        return file::Path(filename).read_file();
     }
 }

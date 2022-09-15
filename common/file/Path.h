@@ -71,6 +71,7 @@ namespace file {
         
         FILE* fopen(const std::string& access_rights) const;
         std::vector<char> retrieve_data() const;
+        std::string read_file() const;
         
         std::string_view extension() const;
         
@@ -93,6 +94,8 @@ namespace file {
     std::string exec(const char* cmd);
 
     bool valid_extension(const file::Path&, const std::string& filter_extension);
+
+    Path cwd();
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p);
