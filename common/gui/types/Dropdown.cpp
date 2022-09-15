@@ -104,10 +104,10 @@ namespace gui {
         }
         
         _list.on_select([this](size_t i, const Dropdown::TextItem& txt){
-            size_t real_id = i;
+            long_t real_id = long_t(i);
             if(!filtered_items.empty()) {
                 if(filtered_items.find(i) != filtered_items.end()) {
-                    real_id = filtered_items[i];
+                    real_id = long_t(filtered_items[i]);
                 } else
                     throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
             }

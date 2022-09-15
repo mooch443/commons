@@ -384,10 +384,10 @@ struct Source {
     template<typename F, typename Index, typename Pool>
         requires std::integral<Index>
     void distribute_indexes(F&& fn, Pool& pool, Index start, Index end) {
-        const auto threads = min(254u, pool.num_threads());
+        const auto threads = Index(min(254u, pool.num_threads()));
         Index i = 0, N = end - start;
         uint8_t thread_index = 0;
-        const Index per_thread = max(1u, N / threads);
+        const Index per_thread = max(Index(1), N / threads);
         Index processed = 0, enqueued = 0;
         std::mutex mutex;
         std::condition_variable variable;

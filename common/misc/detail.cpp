@@ -145,8 +145,8 @@ namespace cmn {
         
         // find best insertion spot
         uint64_t index = std::numeric_limits<long_t>::max();
-        int k = 0;
-        for (long_t k=array.size()-1; k>=0; k--) {
+        long_t k;
+        for (k=long_t(array.size()-1u); k>=0; k--) {
             auto &c = array.at(k);
             
             if(c.y < p.y) {

@@ -593,8 +593,8 @@ void MetalImpl::message(const std::string &msg) const {
     TexturePtr MetalImpl::texture(const Image * ptr) {
         GLIMPL_CHECK_THREAD_ID();
         
-        uint width = next_pow2(sign_cast<uint64_t>(ptr->cols));
-        uint height = next_pow2(sign_cast<uint64_t>(ptr->rows));
+        uint width = narrow_cast<uint>(next_pow2(sign_cast<uint64_t>(ptr->cols)));
+        uint height = narrow_cast<uint>(next_pow2(sign_cast<uint64_t>(ptr->rows)));
         
         auto input_format = MTLPixelFormatRGBA8Unorm;
         if(ptr->dims == 1) {
