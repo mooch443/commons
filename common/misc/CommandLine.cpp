@@ -138,13 +138,6 @@ namespace cmn {
     }
     
     void CommandLine::cd_home() {
-#if defined(WIN32)
-        if(!SetCurrentDirectoryA(_wd.c_str()))
-#else
-        if (chdir(_wd.str().c_str()))
-#endif
-            FormatError("Cannot change directory to ",_wd.str(),".");
-        else
-            print("Changed directory to ",_wd," {CWD=",file::cwd(),"}");
+        file::cd(_wd);
     }
 }

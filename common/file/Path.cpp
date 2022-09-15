@@ -530,6 +530,18 @@ std::string_view Path::filename() const {
         
         return result;
     }
+        
+    void cd(const file::Path& path) {
+#if defined(WIN32)
+        if (SetCurrentDirectoryA(path.c_str()))
+#else
+        if (!chdir(path.c_str()))
+#endif
+            print("Changed directory to ", path,".");
+        else {
+            FormatError("Cannot change directory to ",path,".");
+        }
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p) {

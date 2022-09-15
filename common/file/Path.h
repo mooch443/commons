@@ -96,6 +96,7 @@ namespace file {
     bool valid_extension(const file::Path&, const std::string& filter_extension);
 
     Path cwd();
+    void cd(const file::Path&);
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p);
