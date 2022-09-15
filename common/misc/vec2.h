@@ -39,6 +39,12 @@ namespace cmn {
     constexpr Vector2D div(const Vector2D<Scalar, K>& other) const { \
         return Vector2D{ A() / other.A(), B() / other.B() }; \
     } \
+    constexpr Vector2D mul(Scalar a, Scalar b) const { \
+        return Vector2D{ A() * a, B() * b }; \
+    } \
+    constexpr Vector2D div(Scalar a, Scalar b) const { \
+        return Vector2D{ A() / a, B() / b }; \
+    } \
     \
     constexpr Vector2D mul(const Scalar& other) const { \
         return Vector2D(A() * other, B() * other); \

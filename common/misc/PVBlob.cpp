@@ -15,6 +15,10 @@ CREATE_STRUCT(PVSettings,
 
 #define setting(NAME) PVSettings::copy<PVSettings :: NAME>()
 
+std::string CompressedBlob::toStr() const {
+    return "CompressedBlob<"+Meta::toStr(blob_id())+" parent:"+Meta::toStr(parent_id)+" split:"+Meta::toStr(split())+">";
+}
+
 bool Blob::operator!=(const pv::Blob& other) const {
     return blob_id() != other.blob_id();
 }

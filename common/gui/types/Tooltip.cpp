@@ -29,8 +29,9 @@ namespace gui {
         }
         
         float ox = 0;
-        if(stage() && mp.x > stage()->width() / stage()->scale().x * 0.5)
+        if(stage() && mp.x > stage()->dialog_window_size().width * 0.5) {
             ox = 1;
+        }
             
         if(mp.y - _text.height() < 0)
             set_origin(Vec2(ox, 0));

@@ -210,6 +210,11 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     }
     
     void Entangled::auto_size(Margin margin) {
+        if(children().empty()) {
+            set_size(Size2());
+            return;
+        }
+        
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
         for(auto c : children()) {

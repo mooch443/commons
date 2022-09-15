@@ -271,6 +271,9 @@ public:
     void reset_id() {
         own_id = pv::bid::from_blob(*this);
     }
+    
+    std::string toStr() const;
+    static std::string class_name() { return "CompressedBlob"; }
 };
 
 static_assert(int32_t(-1) == (uint32_t)bid::invalid, "Must be equal to ensure backwards compatibility.");
