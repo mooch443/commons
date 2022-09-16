@@ -9,6 +9,18 @@ namespace cmn {
         resize(nthreads);
     }
 
+    void GenericThreadPool::force_stop() {
+        stop = true;
+        condition.notify_all();
+        
+        for (auto &t : thread_pool) {
+            t->join();
+            delete t;
+        }
+        
+        thread_pool.clear();
+    }
+
     void GenericThreadPool::resize(size_t num_threads) {
         std::unique_lock<std::mutex> lock(m);
         
@@ -25,52 +37,59 @@ namespace cmn {
         } else {
             stop_thread.resize(num_threads);
             
+            auto thread = [this](std::function<void()> init, int idx)
+            {
+                auto name = this->thread_prefix()+"::thread_"+Meta::toStr(idx);
+                set_thread_name(name+"::init");
+                
+                std::unique_lock<std::mutex> lock(m);
+                init();
+                
+                for(;;) {
+#ifndef NDEBUG
+                    set_thread_name(name+"::idle");
+#endif
+                    condition.wait(lock, [&](){ return !q.empty() || stop; });
+                    if(!q.empty()) {
+                        // set busy!
+                        _working++;
+                        
+                        auto task = std::move(q.front());
+                        q.pop();
+#ifndef NDEBUG
+                        set_thread_name(name);
+#endif
+                        
+                        // free mutex, perform task, regain mutex
+                        lock.unlock();
+                        try {
+                            task();
+                            lock.lock();
+                        } catch(...) {
+                            FormatExcept("Exception in GenericThreadPool(", thread_prefix(),").");
+                            lock.lock();
+                            if (_exception_handler)
+                                _exception_handler(std::current_exception());
+                            else {
+                                _working--;
+                                finish_condition.notify_one();
+                                throw;
+                            }
+                        }
+                        
+                        // not busy anymore!
+                        _working--;
+                        finish_condition.notify_one();
+                        
+                    } else if(stop || stop_thread.at(idx))
+                        break;
+                }
+                
+            };
+            
             while(thread_pool.size() < num_threads) {
                 size_t i = thread_pool.size();
-                thread_pool.push_back(new std::thread([this](std::function<void()> init, int idx)
-                {
-                    auto name = this->thread_prefix()+"::thread_"+Meta::toStr(idx);
-                    set_thread_name(name+"::init");
-                    
-                    std::unique_lock<std::mutex> lock(m);
-                    init();
-                    
-                    for(;;) {
-#ifndef NDEBUG
-                        set_thread_name(name+"::idle");
-#endif
-                        condition.wait(lock, [&](){ return !q.empty() || stop; });
-                        if(!q.empty()) {
-                            // set busy!
-                            _working++;
-                            
-                            auto task = std::move(q.front());
-                            q.pop();
-#ifndef NDEBUG
-                            set_thread_name(name);
-#endif
-                            
-                            // free mutex, perform task, regain mutex
-                            lock.unlock();
-                            try {
-                                task();
-                                lock.lock();
-                            } catch(...) {
-                                lock.lock();
-                                if (_exception_handler)
-                                    _exception_handler(std::current_exception());
-                                else throw;
-                            }
-                            
-                            // not busy anymore!
-                            _working--;
-                            finish_condition.notify_one();
-                            
-                        } else if(stop || stop_thread.at(idx))
-                            break;
-                    }
-                    
-                }, _init, i));
+                thread_pool.push_back(new std::thread(thread, _init, i));
             }
         }
         

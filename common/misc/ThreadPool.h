@@ -70,17 +70,7 @@ namespace cmn {
             condition.notify_one();
         }*/
         
-        void force_stop() {
-            stop = true;
-            condition.notify_all();
-            
-            for (auto &t : thread_pool) {
-                t->join();
-                delete t;
-            }
-            
-            thread_pool.clear();
-        }
+        void force_stop();
         
         void wait() {
             std::unique_lock<std::mutex> lock(m);
