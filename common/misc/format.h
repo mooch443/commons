@@ -801,14 +801,18 @@ void set_runtime_quiet(bool);
 void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)>);
 bool has_log_callback();
 
+#if _WIN32
+#    define timegm _mkgmtime
+#endif
+
 inline std::string current_time_string() {
     using namespace std::chrono;
     static const auto tod = ([](){
         time_t t = time(NULL);
-        struct tm lt;
-        memset(&lt, 0, sizeof(tm));
-        localtime_r(&t, &lt);
-        return std::chrono::seconds(lt.tm_gmtoff);
+        struct tm* locg = localtime(&t);
+        struct tm locl;
+        memcpy(&locl, locg, sizeof(struct tm));
+        return std::chrono::seconds(timegm(locg) - mktime(&locl));
     })();
     auto t = date::floor<seconds>(system_clock::now() + tod);
     return date::format("%H:%M:%S", t);
