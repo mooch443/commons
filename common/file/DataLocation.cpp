@@ -38,7 +38,8 @@ file::Path DataLocation::parse(const std::string &purpose, file::Path path) {
         std::lock_guard<std::mutex> guard(location_mutex);
         auto it = location_funcs.find(utils::trim(utils::lowercase(purpose)));
         if(it == location_funcs.end()) {
-            throw U_EXCEPTION("Cannot find purpose ",purpose," in map with keys ",extract_keys(location_funcs)," in order to modify path ",path,".");
+            FormatExcept("Cannot find purpose ",purpose," in map with keys ",extract_keys(location_funcs)," in order to modify path ",path,".");
+            return path;
         }
         
         fn = it->second;

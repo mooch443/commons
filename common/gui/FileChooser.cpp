@@ -2,6 +2,7 @@
 #include <misc/GlobalSettings.h>
 #include <gui/types/StaticText.h>
 #include <misc/SpriteMap.h>
+#include <file/DataLocation.h>
 
 namespace gui {
 
@@ -208,9 +209,9 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _list->set_font(gui::Font(0.6f, gui::Align::Left));
     
     _base.platform()->set_icons({
-        "gfx/"+SETTING(app_name).value<std::string>()+"Icon16.png",
-        "gfx/"+SETTING(app_name).value<std::string>()+"Icon32.png",
-        "gfx/"+SETTING(app_name).value<std::string>()+"Icon64.png"
+        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon16.png"),
+        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon32.png"),
+        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon64.png")
     });
     update_size();
 }
