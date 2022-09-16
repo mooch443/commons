@@ -803,11 +803,14 @@ bool has_log_callback();
 
 inline std::string current_time_string() {
     using namespace std::chrono;
-#ifndef WIN32
-    auto t = date::make_zoned(date::current_zone(), date::floor<seconds>(system_clock::now()));
-#else
-    auto t = date::floor<seconds>(system_clock::now());
-#endif
+    static const auto tod = ([](){
+        time_t t = time(NULL);
+        struct tm lt;
+        memset(&lt, 0, sizeof(tm));
+        localtime_r(&t, &lt);
+        return std::chrono::seconds(lt.tm_gmtoff);
+    })();
+    auto t = date::floor<seconds>(system_clock::now() + tod);
     return date::format("%H:%M:%S", t);
 }
 
