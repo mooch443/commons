@@ -473,6 +473,9 @@ std::ostream & Rect::operator <<(std::ostream &os) {
     return os;
 }
 
+void Circle::init() {
+}
+
 std::ostream & Circle::operator <<(std::ostream &os) {
     Drawable::operator<<(os);
     
@@ -495,21 +498,21 @@ std::ostream & Text::operator <<(std::ostream &os) {
     j.dump() << ","
     ""<<font().size<<","
     "" << color() << "";
-    if(/*font().align != Align::Left || */_font.style) {
+    if(/*font().align != Align::Left || */font().style) {
         os << ",\"";
         
         //if(font().align == Align::Center)
         //    os << "c";
         //else if(font().align == Align::Right)
         //    os << "r";
-        if(_font.style)
-            os << ((_font.style & Style::Bold) ? "b" : ((_font.style & Style::Italic) ? "i" : ""));
+        if(font().style)
+            os << ((font().style & Style::Bold) ? "b" : ((font().style & Style::Italic) ? "i" : ""));
         os << "\"";
     }
     return os;
 }
 
-Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
+/*Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
 : gui::Drawable(Type::TEXT, Bounds(pos),
                 font.align == Align::Center
                     ? Vec2(0.5, 0.5)
@@ -524,7 +527,7 @@ Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Fo
         set_origin(origin);
     set_rotation(rotation);
     //refresh_dims(); //! will be done when parent is set
-}
+}*/
 
 void Text::refresh_dims() {
     if(_bounds_calculated)
@@ -536,7 +539,7 @@ void Text::refresh_dims() {
         _bounds_calculated = true;
     }
     
-    if(_txt.empty()) {
+    if(txt().empty()) {
         _text_bounds = Bounds(Vec2(), Size2(0, Base::default_line_spacing(font())));
     }
     else {

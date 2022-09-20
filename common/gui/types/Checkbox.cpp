@@ -8,7 +8,7 @@ namespace gui {
         : _text(text),
           _checked(checked),
           _font(font),
-          _description(text, Vec2(), Black, _font),
+          _description(text, Loc(), Black, _font),
           _callback([](){})
     {
         set_pos(pos);
@@ -48,7 +48,7 @@ namespace gui {
             begin();
             advance_wrap(_box);
             if(_checked)
-                add<Rect>(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black);
+                add<Rect>(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)));
                 //advance(new Rect(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black));
             if(!_text.empty())
                 advance_wrap(_description);

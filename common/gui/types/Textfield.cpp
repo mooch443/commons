@@ -77,68 +77,51 @@ namespace gui {
         
         return {system, alt};
     }
+
+void Textfield::init() {
+    _selection_rect.set_fillclr(DarkCyan.alpha(100));
+    _cursor_position = text().length();
+    _text_display.create(text(), Black, _settings.font);
     
-    Textfield::Textfield(const std::string& text, const Bounds& bounds)
-        : gui::Entangled(),
-            _cursor_position(text.length()),
-            _cursor(Bounds(0, 0, 2,30), Black),
-            _placeholder(NULL),
-            _text_offset(0),
-            _display_text_len(0),
-            _selection(-1, -1),
-            _valid(true),
-            _check_text([](auto, auto, auto){return true;}),
-            _on_enter([](){}),
-            _on_text_changed([](){}),
-            _text(text),
-            _font(0.75),
-            _text_color(Black),
-            _fill_color(White.alpha(210)),
-            _read_only(false),
-            _text_display(text, Vec2(), Black, _font)
-    {
-        _selection_rect.set_fillclr(DarkCyan.alpha(100));
-        
-        set_bounds(bounds);
-        set_clickable(true);
-        set_scroll_enabled(true);
-        set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
-        
-        add_event_handler(HOVER, [this](Event e) {
-            if(pressed())
-                this->move_cursor(e.hover.x);
-            else
-                this->set_dirty();
-        });
-        add_event_handler(MBUTTON, [this](Event e) {
-            if(e.mbutton.button != 0)
-                return;
-            
-            if(e.mbutton.pressed) {
-                this->move_cursor(e.mbutton.x);
-                _selection_start = _cursor_position;
-                _selection = lrange(_cursor_position, _cursor_position);
-            } else
-                this->move_cursor(e.mbutton.x);
-        });
-        
-        add_event_handler(TEXT_ENTERED, [this](Event e) { if(_read_only) return; this->onEnter(e); });
-        add_event_handler(SELECT, [this](auto) { this->set_dirty(); });
-        
-        add_event_handler(KEY, [this](Event e) {
-            auto && [system, alt] = this->system_alt();
-            if(_read_only && (e.key.code != Keyboard::C || !system)) return;
-            if(e.key.pressed)
-                this->onControlKey(e);
-        });
-    }
+    set_clickable(true);
+    set_scroll_enabled(true);
+    set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
     
-    void Textfield::set_text(const std::string &text) {
-        if(text == _text)
+    add_event_handler(HOVER, [this](Event e) {
+        if(pressed())
+            this->move_cursor(e.hover.x);
+        else
+            this->set_dirty();
+    });
+    add_event_handler(MBUTTON, [this](Event e) {
+        if(e.mbutton.button != 0)
             return;
         
-        _text = text;
-        _cursor_position = _text.length();
+        if(e.mbutton.pressed) {
+            this->move_cursor(e.mbutton.x);
+            _selection_start = _cursor_position;
+            _selection = lrange(_cursor_position, _cursor_position);
+        } else
+            this->move_cursor(e.mbutton.x);
+    });
+    
+    add_event_handler(TEXT_ENTERED, [this](Event e) { if(read_only()) return; this->onEnter(e); });
+    add_event_handler(SELECT, [this](auto) { this->set_dirty(); });
+    
+    add_event_handler(KEY, [this](Event e) {
+        auto && [system, alt] = this->system_alt();
+        if(read_only() && (e.key.code != Keyboard::C || !system)) return;
+        if(e.key.pressed)
+            this->onControlKey(e);
+    });
+}
+    
+    void Textfield::set_text(const std::string &text) {
+        if(text == _settings.text)
+            return;
+        
+        _settings.text = text;
+        _cursor_position = text.length();
         _text_offset = 0;
         _selection = lrange(-1, -1);
         
@@ -149,7 +132,7 @@ namespace gui {
         if(_valid) {
             if(stage())
                 stage()->select(NULL);
-            _on_enter();
+            _settings.on_enter();
         }
     }
     
@@ -167,7 +150,7 @@ namespace gui {
                         _cursor_position = 0;
                     else if(alt) {
                         // find the first word
-                        auto k = find_first_of_reverse(utils::lowercase(_text), before, alphanumeric);
+                        auto k = find_first_of_reverse(utils::lowercase(text()), before, alphanumeric);
                         if(k == std::string::npos)
                             k = 0;
                         
@@ -195,22 +178,22 @@ namespace gui {
                 break;
                 
             case Keyboard::Right:
-                if(_cursor_position < _text.length()) {
+                if(_cursor_position < text().length()) {
                     size_t before = _cursor_position;
                     
                     if(system)
-                        _cursor_position = _text.length();
+                        _cursor_position = text().length();
                     else if(alt) {
                         // find the first word
-                        auto k = utils::lowercase(_text).find_first_of(alphanumeric, before);
+                        auto k = utils::lowercase(text()).find_first_of(alphanumeric, before);
                         if(k != std::string::npos) {
                             // find the end of the word
-                            k = utils::lowercase(_text).find_first_not_of(alphanumeric, k);
+                            k = utils::lowercase(text()).find_first_not_of(alphanumeric, k);
                             if(k == std::string::npos) // not found? jumpt to eof
-                                k = _text.length();
+                                k = text().length();
                             
                         } else
-                            k = _text.length();
+                            k = text().length();
                         
                         _cursor_position = k;
                     }
@@ -237,8 +220,8 @@ namespace gui {
                 
             case Keyboard::A:
                 if(system) {
-                    _selection = lrange(0, _text.length());
-                    _cursor_position = _text.length();
+                    _selection = lrange(0, text().length());
+                    _cursor_position = text().length();
                     set_content_changed(true);
                 }
                 break;
@@ -246,12 +229,12 @@ namespace gui {
             case Keyboard::C:
                 if(system) {
                     if(!_selection.empty()) {
-                        auto sub = _text.substr(_selection.first, _selection.last - _selection.first);
+                        auto sub = text().substr(_selection.first, _selection.last - _selection.first);
                         print("Copying ", sub);
                         set_clipboard(sub);
                     } else {
-                        print("Copying ", _text);
-                        set_clipboard(_text);
+                        print("Copying ", text());
+                        set_clipboard(text());
                     }
                 }
                 break;
@@ -262,7 +245,7 @@ namespace gui {
                     if(!paste.empty()) {
                         print("Pasting ", paste);
                         
-                        std::string copy = _text;
+                        std::string copy = text();
                         size_t before = _cursor_position;
                         
                         if(!_selection.empty()) {
@@ -275,9 +258,9 @@ namespace gui {
                         
                         if(isTextValid(copy, 8, _cursor_position)) {
                             _selection = lrange(-1, -1);
-                            if(_text != copy) {
-                                _text = copy;
-                                _on_text_changed();
+                            if(text() != copy) {
+                                _settings.text = copy;
+                                _settings.on_text_changed();
                             }
                             
                         } else {
@@ -290,7 +273,7 @@ namespace gui {
                 break;
                 
             case Keyboard::BackSpace: {
-                std::string copy = _text;
+                std::string copy = text();
                 size_t before = _cursor_position;
                 
                 if(!_selection.empty()) {
@@ -304,9 +287,9 @@ namespace gui {
                 
                 if(isTextValid(copy, 8, _cursor_position)) {
                     _selection = lrange(-1, -1);
-                    if(_text != copy) {
-                        _text = copy;
-                        _on_text_changed();
+                    if(text() != copy) {
+                        _settings.text = copy;
+                        _settings.on_text_changed();
                     }
                     
                 } else {
@@ -343,7 +326,7 @@ namespace gui {
                 break;
                 
             default: {
-                std::string copy = _text;
+                std::string copy = text();
                 size_t before = _cursor_position;
                 
                 if(!_selection.empty()) {
@@ -355,14 +338,14 @@ namespace gui {
                 _display_text_len++;
                 
                 if(isTextValid(copy, e.text.c, _cursor_position-1)) {
-                    _text = copy;
+                    _settings.text = copy;
                     _selection = lrange(_cursor_position, _cursor_position);
                     
                 } else {
                     _cursor_position = before;
                 }
                 
-                _on_text_changed();
+                _settings.on_text_changed();
                 set_content_changed(true);
                 
                 break;
@@ -371,29 +354,28 @@ namespace gui {
     }
 
 void Textfield::set_text_color(const Color &c) {
-    if(c == _text_color)
+    if(c == _settings.text_color)
         return;
     
-    _text_color = c;
+    _settings.text_color = c;
     _cursor.set_fillclr(c);
     
     set_content_changed(true);
 }
 
 void Textfield::set_fill_color(const Color &c) {
-    if(c == _fill_color)
+    if(c == _settings.fill_color)
         return;
     
-    _fill_color = c;
-    
+    _settings.fill_color = c;
     set_content_changed(true);
 }
 
 void Textfield::set_postfix(const std::string &p) {
-    if(p == _postfix)
+    if(p == _settings.postfix)
         return;
     
-    _postfix = p;
+    _settings.postfix = p;
     set_content_changed(true);
 }
     
@@ -401,16 +383,16 @@ void Textfield::set_postfix(const std::string &p) {
         begin();
         
         static constexpr const Color BrightRed(255,150,150,255);
-        Color base_color   = _fill_color,
-              border_color = _text_color.alpha(255);
+        Color base_color   = fill_color(),
+              border_color = text_color().alpha(255);
         
-        if(!_valid)
+        if(!valid())
             base_color = BrightRed.alpha(210);
-        if(_read_only) {
+        if(read_only()) {
             base_color = base_color.exposure(0.9);
             _text_display.set_color(DarkGray);
         } else
-            _text_display.set_color(_text_color);
+            _text_display.set_color(text_color());
         
         if(hovered())
             base_color = base_color.alpha(255);
@@ -428,19 +410,19 @@ void Textfield::set_postfix(const std::string &p) {
             //Vec2 real_scale = Drawable::real_scale();
             auto real_scale = this;
             
-            if(_cursor_position > _text.length())
-                _cursor_position = _text.length();
-            if(_text_offset > _text.length())
-                _text_offset = _text.length();
+            if(_cursor_position > text().length())
+                _cursor_position = text().length();
+            if(_text_offset > text().length())
+                _text_offset = text().length();
             
-            auto r = Base::default_text_bounds(_text, real_scale, _font);
-            const float cursor_y = (height() - Base::default_line_spacing(_font))*0.5;
+            auto r = Base::default_text_bounds(text(), real_scale, font());
+            const float cursor_y = (height() - Base::default_line_spacing(font()))*0.5;
             
             if(_text_offset >= _cursor_position)
                 _text_offset = (size_t)max(0, long(_cursor_position)-1);
-            std::string before = _text.substr(_text_offset, _cursor_position - _text_offset);
+            std::string before = text().substr(_text_offset, _cursor_position - _text_offset);
             
-            r = Base::default_text_bounds(before, real_scale, _font);
+            r = Base::default_text_bounds(before, real_scale, font());
             
             if(_display_text_len < _cursor_position)
                 _display_text_len = _cursor_position;
@@ -448,27 +430,27 @@ void Textfield::set_postfix(const std::string &p) {
             while(r.width >= max_w && before.length() > 0 && _text_offset < _cursor_position) {
                 _text_offset++;
                 before = before.substr(1);
-                r = Base::default_text_bounds(before, real_scale, _font);
+                r = Base::default_text_bounds(before, real_scale, font());
             }
             
             // check whether after string is too short
-            std::string after = _text.substr(_cursor_position, _display_text_len - _cursor_position);
+            std::string after = text().substr(_cursor_position, _display_text_len - _cursor_position);
             if(after.length() < 2
-               && _cursor_position < _text.length()
-               && after.length() < _text.length() - _cursor_position)
+               && _cursor_position < text().length()
+               && after.length() < text().length() - _cursor_position)
             {
                 _text_offset++; _display_text_len++;
                 before = before.substr(1);
-                after = _text.substr(_cursor_position, _display_text_len - _cursor_position);
+                after = text().substr(_cursor_position, _display_text_len - _cursor_position);
             }
             
-            r = Base::default_text_bounds(before + after, real_scale, _font);
+            r = Base::default_text_bounds(before + after, real_scale, font());
             
             // maximize after string
-            while(r.width < max_w && _display_text_len < _text.length()) {
+            while(r.width < max_w && _display_text_len < text().length()) {
                 _display_text_len++;
-                after = _text.substr(_cursor_position, _display_text_len - _cursor_position);
-                r = Base::default_text_bounds(before + after, real_scale, _font);
+                after = text().substr(_cursor_position, _display_text_len - _cursor_position);
+                r = Base::default_text_bounds(before + after, real_scale, font());
             }
             
             // limit after string
@@ -480,19 +462,19 @@ void Textfield::set_postfix(const std::string &p) {
             // ensure that the string displayed is long enough (otherwise the first character will be hidden, if another one is inserted right after it)
             while(r.width < max_w * 0.75 && _text_offset > 0) {
                 _text_offset--;
-                before = _text.substr(_cursor_position - before.length() - 1, before.length() + 1);
-                r = Base::default_text_bounds(before + after, real_scale, _font);
+                before = text().substr(_cursor_position - before.length() - 1, before.length() + 1);
+                r = Base::default_text_bounds(before + after, real_scale, font());
             }
             
             while(r.width >= max_w + 5 && after.length() > 0) {
                 after = after.substr(0, after.length()-1);
-                r = Base::default_text_bounds(before + after, real_scale, _font);
+                r = Base::default_text_bounds(before + after, real_scale, font());
             }
             
-            r = Base::default_text_bounds(before, real_scale, _font);
+            r = Base::default_text_bounds(before, real_scale, font());
             _cursor.set_bounds(Bounds(
                   Vec2(r.width + r.x + margin, cursor_y),
-                  Size2(2, Base::default_line_spacing(_font))
+                  Size2(2, Base::default_line_spacing(font()))
                 ));
             
             _display_text_len = after.length() + _cursor_position;
@@ -516,16 +498,16 @@ void Textfield::set_postfix(const std::string &p) {
                     
                     if((long)_text_offset < _selection.first) {
                         size_t visible_index = max((size_t)_selection.first, _text_offset);
-                        std::string visible_not_selected = _text.substr(_text_offset, visible_index - _text_offset);
-                        r = Base::default_text_bounds(visible_not_selected, real_scale, _font);
+                        std::string visible_not_selected = text().substr(_text_offset, visible_index - _text_offset);
+                        r = Base::default_text_bounds(visible_not_selected, real_scale, font());
                         sx0 += r.width + r.x;
                     }
                 }
                 
-                std::string visible_selected_text = _text.substr(_text_offset, min(min(_text.length(), _display_text_len + 1), (size_t)_selection.last) - _text_offset);
+                std::string visible_selected_text = text().substr(_text_offset, min(min(text().length(), _display_text_len + 1), (size_t)_selection.last) - _text_offset);
                 
                 // see how long the visible text is
-                r = Base::default_text_bounds(visible_selected_text, real_scale, _font);
+                r = Base::default_text_bounds(visible_selected_text, real_scale, font());
                 
                 float sx1 = r.width + margin + 1;
                 if((long)_cursor_position == _selection.last) {
@@ -539,18 +521,18 @@ void Textfield::set_postfix(const std::string &p) {
         
         advance_wrap(_text_display);
         
-        if(_text.empty() && _placeholder && !selected()) {
+        if(text().empty() && _placeholder && !selected()) {
             _placeholder->set_pos(_text_display.pos());
             advance_wrap(*_placeholder);
            
-        } else if(!_postfix.empty()) {
+        } else if(!postfix().empty()) {
             //auto tmp = new Text(_postfix, Vec2(width() - 5, height() * 0.5), _text_color.exposure(0.5), Font(max(0.1, _text_display.font().size * 0.9)));
             //tmp->set_origin(Vec2(1, 0.5));
-            add<Text>(_postfix,
-                      Vec2(width() - 5, height() * 0.5),
-                      _text_color.exposure(0.5),
+            add<Text>(postfix(),
+                      Loc(width() - 5, height() * 0.5),
+                      text_color().exposure(0.5),
                       Font(max(0.1, _text_display.font().size * 0.9)),
-                      Vec2(1, 0.5));
+                      Origin(1, 0.5));
             //advance(tmp);
         }
             
@@ -559,7 +541,7 @@ void Textfield::set_postfix(const std::string &p) {
             //tmp->set_origin(Vec2(1, 0.5));
             //advance(tmp);
             
-            add<Text>("(read-only)", Vec2(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)), Vec2(1, 0.5));
+            add<Text>("(read-only)", Loc(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
         }
         
         if(!_selection.empty()) {
@@ -573,15 +555,15 @@ void Textfield::set_postfix(const std::string &p) {
     }
     
     void Textfield::move_cursor(float mx) {
-        std::string display = _text.substr(_text_offset, _display_text_len - _text_offset);
+        std::string display = text().substr(_text_offset, _display_text_len - _text_offset);
         float x = 0;
         long idx = 0;
         
-        const float character_size = roundf(25 * _font.size);
+        const float character_size = roundf(25 * font().size);
         while (x + character_size*0.5 < mx
                && idx <= long(display.length()))
         {
-            auto r = Base::default_text_bounds(display.substr(0, (size_t)idx++), this, _font);
+            auto r = Base::default_text_bounds(display.substr(0, (size_t)idx++), this, font());
             x = r.width + r.x;
         }
         
@@ -603,7 +585,7 @@ void Textfield::set_postfix(const std::string &p) {
                 return;
             
             if(!_placeholder)
-                _placeholder = new Text(text, Vec2(), Gray, _text_display.font());
+                _placeholder = new Text(text, Gray, _text_display.font());
             else
                 _placeholder->set_txt(text);
             

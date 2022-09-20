@@ -24,11 +24,12 @@ namespace const_funcs {
 
 class Color {
 public:
-    uint8_t r, g, b, a;
+    uint8_t r{0}, g{0}, b{0}, a{0};
     
 public:
-    constexpr Color() : Color(0, 0, 0, 0) {}
-    constexpr Color(const Color& other) : Color(other.r, other.g, other.b, other.a) {}
+    constexpr Color() = default;
+    constexpr Color(const Color& other) = default;
+    constexpr Color(Color&&) = default;
     explicit constexpr Color(uint8_t gray, uint8_t alpha = 255) : Color(gray, gray, gray, alpha) {}
     constexpr Color(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha = 255)
         : r(red),

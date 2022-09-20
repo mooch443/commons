@@ -6,8 +6,12 @@
 #include <gui/types/Drawable.h>
 #include <misc/Image.h>
 #include <gui/colors.h>
+#include <gui/ControlsAttributes.h>
 
-#define CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _ ## NAME ) & NAME) { \
+#define CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _settings. NAME ) & NAME) { \
+if ( _settings. NAME == NAME ) return; _settings. NAME = NAME; set_dirty(); }
+
+#define _CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _ ## NAME ) & NAME) { \
 if ( _ ## NAME == NAME ) return; _ ## NAME = NAME; set_dirty(); }
 
 namespace gui {
@@ -19,6 +23,8 @@ namespace gui {
         Triangles,
         TriangleStrip
     };
+
+using namespace attr;
 
 class VertexArray : public Drawable {
 public:
@@ -39,7 +45,7 @@ public:
     VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type = Type::VERTICES);
     virtual ~VertexArray();
     
-    void set(const std::vector<Vertex>& p, PrimitiveType primitive) {
+    void create(const std::vector<Vertex>& p, PrimitiveType primitive) {
         if(_original_points != p || primitive != _primitive) {
             _original_points = p;
             _points = nullptr;
@@ -92,26 +98,26 @@ protected:
     virtual std::string vertex_sub_type() const = 0;
 };
     
-    class Vertices final : public VertexArray {
-    public:
-        static constexpr auto Class = Type::data::values::VERTICES;
-        
-    public:
-        Vertices(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory = MEMORY::COPY);
-        Vertices(const Vec2& p0, const Vec2& p1, const Color& clr);
-        
-        ~Vertices() {}
-        
-        void set(const std::vector<Vertex>& p, PrimitiveType primitive) {
-            VertexArray::set(p, primitive);
-        }
-        void set(const Vec2& p0, const Vec2& p1, const Color& clr) {
-            VertexArray::set(std::vector<Vertex>{Vertex(p0, clr), Vertex(p1, clr)}, PrimitiveType::LineStrip);
-        }
-        
-    protected:
-        std::string vertex_sub_type() const override { return "Vertices"; }
-    };
+class Vertices final : public VertexArray {
+public:
+    static constexpr auto Class = Type::data::values::VERTICES;
+    
+public:
+    Vertices(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory = MEMORY::COPY);
+    Vertices(const Vec2& p0, const Vec2& p1, const Color& clr);
+    
+    ~Vertices() {}
+    
+    void create(const std::vector<Vertex>& p, PrimitiveType primitive) {
+        VertexArray::create(p, primitive);
+    }
+    void create(const Vec2& p0, const Vec2& p1, const Color& clr) {
+        VertexArray::create(std::vector<Vertex>{Vertex(p0, clr), Vertex(p1, clr)}, PrimitiveType::LineStrip);
+    }
+    
+protected:
+    std::string vertex_sub_type() const override { return "Vertices"; }
+};
     
     class Line final : public VertexArray {
     public:
@@ -138,21 +144,21 @@ protected:
             set_scale(scale);
         }
         
-        void set(const std::vector<Vertex>& p, float t, MEMORY = TRANSPORT, const Vec2& scale = Vec2(1)) {
+        void create(const std::vector<Vertex>& p, float t, MEMORY = TRANSPORT, const Vec2& scale = Vec2(1)) {
             set_thickness(t);
             set_scale(scale);
-            VertexArray::set(p, PrimitiveType::LineStrip);
+            VertexArray::create(p, PrimitiveType::LineStrip);
         }
         
-        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1) {
+        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1) {
             set_scale(scale);
             set_thickness(t);
-            VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
+            VertexArray::create(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
         }
-        void set(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
+        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
             set_scale(scale);
             set_thickness(t);
-            VertexArray::set(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
+            VertexArray::create(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
         }
         
         const std::vector<Vertex>& points() override final;
@@ -189,7 +195,7 @@ protected:
         void set_border_clr(const Color& clr);
         void set_vertices(const std::vector<Vec2>& vertices);
         
-        void set(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
+        void create(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
         {
             set_fill_clr(fill_clr);
             set_border_clr(line_clr);
@@ -202,93 +208,107 @@ protected:
         bool in_bounds(float x, float y) override;
     };
     
-    class Rect final : public Drawable {
-    public:
-        static constexpr auto Class = Type::data::values::RECT;
-    private:
-        GETTER(Color, lineclr)
-        GETTER(Color, fillclr)
-        
-    public:
-        Rect(const Bounds& size = Bounds(), const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0))
-            : gui::Drawable(Type::RECT, size), _lineclr(line), _fillclr(fill)
-        {
-            set_scale(scale);
-            set_origin(origin);
-        }
-        virtual ~Rect() {}
-        
-        CHANGE_SETTER(lineclr)
-        CHANGE_SETTER(fillclr)
-        
-        std::ostream &operator <<(std::ostream &os) override;
-        
-        void set(const Bounds& size, const Color &fill = Black, const Color &line = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0)) {
-            set_fillclr(fill);
-            set_lineclr(line);
-            set_scale(scale);
-            set_origin(origin);
-            set_bounds(size);
-        }
-        
-    protected:
-        bool swap_with(Drawable* d) override {
-            if(!Drawable::swap_with(d))
-                return false;
-            
-            auto ptr = static_cast<const Rect*>(d);
-            set_fillclr(ptr->_fillclr);
-            set_lineclr(ptr->_lineclr);
-            
-            return true;
-        }
-    };
+class Rect final : public Drawable {
+public:
+    static constexpr auto Class = Type::data::values::RECT;
+private:
+    struct Settings {
+        Color lineclr = Transparent,
+              fillclr = Black;
+    } _settings;
     
+public:
+    const auto& lineclr() const { return _settings.lineclr; }
+    const auto& fillclr() const { return _settings.fillclr; }
+    
+    template<typename... Args>
+    Rect(Args... args) : gui::Drawable(Type::RECT)
+    {
+        create(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    void create(Args... args) {
+        (set(std::forward<Args>(args)), ...);
+    }
+    
+private:
+    using Drawable::set;
+    void set(LineClr clr) { set_lineclr(clr); }
+    void set(FillClr clr) { set_fillclr(clr); }
+    
+public:
+    virtual ~Rect() {}
+    
+    CHANGE_SETTER(lineclr)
+    CHANGE_SETTER(fillclr)
+    
+    std::ostream &operator <<(std::ostream &os) override;
+    
+protected:
+    bool swap_with(Drawable* d) override {
+        if(!Drawable::swap_with(d))
+            return false;
+        
+        auto ptr = static_cast<const Rect*>(d);
+        set_fillclr(ptr->fillclr());
+        set_lineclr(ptr->lineclr());
+        
+        return true;
+    }
+};
+
     class Circle final : public Drawable {
     public:
         static constexpr auto Class = Type::data::values::CIRCLE;
     private:
-        GETTER(float, radius)
-        GETTER(Color, line_clr)
-        GETTER(Color, fill_clr)
+        struct Settings {
+            float radius = 1;
+            Color line_clr = White;
+            Color fill_clr = Transparent;
+        } _settings;
         
     public:
-        Circle(const Vec2& pos = Vec2(),
-               float radius = 1,
-               const Color& line_color = White,
-               const Color& fill_color = Transparent,
-               const Vec2& scale = Vec2(1),
-               const Vec2& origin = Vec2(0.5))
-            : gui::Drawable(Type::CIRCLE, Bounds(pos, Size2(radius*2)), Vec2(0.5)),
-                _radius(radius),
-                _line_clr(line_color),
-                _fill_clr(fill_color)
-        {
-            set_scale(scale);
-            set_origin(origin);
+        template<typename... Args>
+        Circle(Args... args)
+            : gui::Drawable(Type::CIRCLE, Bounds(0, 0, 2, 2), Origin(0.5))
+        { create(std::forward<Args>(args)...); }
+        
+        template<typename... Args>
+        static std::shared_ptr<Circle> MakePtr(Args... args) {
+            return std::make_shared<Circle>(std::forward<Args>(args)...);
         }
+        
+        template<typename... Args>
+        void create(Args... args) {
+            (set(std::forward<Args>(args)), ...);
+            
+            if constexpr(!pack_contains<Origin, Args...>()) {
+                set_origin(Vec2(0.5));
+            }
+        }
+        
+    private:
+        using Drawable::set;
+        void set(Radius radius) { set_radius(radius); }
+        void set(FillClr clr) { set_fill_clr(clr); }
+        void set(LineClr clr) { set_line_clr(clr); }
+        
+        void init();
+        
+    public:
         virtual ~Circle() {}
         
-        void set(const Vec2& pos,
-                 float radius,
-                 const Color& line_color = White,
-                 const Color& fill_color = Transparent,
-                 const Vec2& scale = Vec2(1),
-                 const Vec2& origin = Vec2(0.5))
-        {
-            set_pos(pos);
-            set_radius(radius);
-            set_scale(scale);
-            set_origin(origin);
-            set_line_clr(line_color);
-            set_fill_clr(fill_color);
-        }
+        auto radius() const { return _settings.radius; }
+        const auto& fill_clr() const { return _settings.fill_clr; }
+        const auto& line_clr() const { return _settings.line_clr; }
         
         void set_radius(float radius) {
-            if(_radius != radius) {
-                _radius = radius;
-                set_size(Size2(_radius * 2));
-            }
+            if(int(_settings.radius) == int(radius))
+                return;
+            
+            _settings.radius = radius;
+            set_size(Size2(_settings.radius * 2));
         }
         
         CHANGE_SETTER(line_clr)
@@ -307,12 +327,9 @@ protected:
                 return false;
             
             auto ptr = static_cast<const Circle*>(d);
-            if(int(ptr->_radius) != int(_radius)) {
-                _radius = ptr->_radius;
-                set_size(Size2(_radius * 2));
-            }
-            set_line_clr(ptr->_line_clr);
-            set_fill_clr(ptr->_fill_clr);
+            set_radius(ptr->_settings.radius);
+            set_line_clr(ptr->_settings.line_clr);
+            set_fill_clr(ptr->_settings.fill_clr);
             
             return true;
         }
@@ -322,39 +339,59 @@ protected:
     public:
         static constexpr auto Class = Type::data::values::TEXT;
     private:
-        GETTER(std::string, txt)
-        GETTER(Color, color)
-        GETTER(Font, font)
+        struct Settings {
+            std::string txt;
+            Color color = White;
+            Font font;
+        } _settings;
+        
         Bounds _text_bounds;
-        bool _bounds_calculated;
+        bool _bounds_calculated{false};
         
     public:
-        Text(const std::string& txt = "", const Vec2& pos = Vec2(), const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0);
-        virtual ~Text() {}
-        
-        void set(const std::string& txt, const Vec2& pos, const Color& color = White, const Font& font = Font(), const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0) {
-            set_txt(txt);
-            set_pos(pos);
-            set_color(color);
-            if(origin == Vec2(FLT_MAX)) {
-                auto o = font.align == Align::Center
-                    ? Vec2(0.5, 0.5)
-                    : (font.align == Align::Right
-                       ? Vec2(1.0, 0.0)
-                       : (font.align == Align::VerticalCenter ? Vec2(0, 0.5) : Vec2()));
-                set_origin(o);
-            } else
-                set_origin(origin);
-            set_font(font);
-            set_scale(scale);
-            set_rotation(rotation);
+        template<typename... Args> Text(Args... args)
+            : gui::Drawable(Type::TEXT, Bounds(), Vec2())
+        {
+            create(std::forward<Args>(args)...);
         }
         
+        template<typename... Args> void create(Args... args) {
+            (set(std::forward<Args>(args)), ...);
+            
+            switch(_settings.font.align) {
+                case Align::Center:
+                    set(Origin(0.5));
+                    break;
+                case Align::Right:
+                    set(Origin(1, 0));
+                    break;
+                case Align::VerticalCenter:
+                    set(Origin(0, 0.5));
+                    break;
+                    
+                default:
+                    break;
+            }
+        }
+        
+        virtual ~Text() {}
+        
+    private:
+        using Drawable::set;
+        void set(const std::string& txt) { set_txt(txt); }
+        void set(const Color& color) { set_color(color); }
+        void set(const Font& font) { set_font(font); }
+        
+    public:
+        const auto& font() const { return _settings.font; }
+        const auto& color() const { return _settings.color; }
+        const auto& txt() const { return _settings.txt; }
+        
         void set_txt(const std::string& txt) {
-            if(txt == _txt)
+            if(txt == _settings.txt)
                 return;
             
-            _txt = txt;
+            _settings.txt = txt;
             _bounds_calculated = false;
 			set_bounds_changed();
         }
@@ -362,19 +399,19 @@ protected:
         CHANGE_SETTER(color)
         
         void set_font(const Font& font) {
-            if(font == _font)
+            if(font == _settings.font)
                 return;
             
-            if(font.align != _font.align) {
-                if(font.align == Align::Center)
-                    set_origin(Vec2(0.5, 0.5));
-                else if(font.align == Align::Left)
-                    set_origin(Vec2());
-                else if(font.align == Align::Right)
-                    set_origin(Vec2(1, 0));
-            }
+            //if(font.align != _settings.font.align) {
+            if(font.align == Align::Center)
+                set_origin(Vec2(0.5, 0.5));
+            else if(font.align == Align::Left)
+                set_origin(Vec2());
+            else if(font.align == Align::Right)
+                set_origin(Vec2(1, 0));
+            //}
             
-            _font = font;
+            _settings.font = font;
             _bounds_calculated = false;
             set_bounds_changed();
         }
@@ -391,17 +428,6 @@ protected:
             refresh_dims();
             return Drawable::size();
         }
-        
-        /*Drawable& operator=(const Drawable& other) override {
-            Drawable::operator=(other);
-            
-            auto ptr = static_cast<const Text*>(&other);
-            set_txt(ptr->_txt);
-            set_color(ptr->_color);
-            set_font(ptr->_font);
-            
-            return *this;
-        }*/
         
     private:
         //! Hide set_size method, which doesn't apply to Texts.
@@ -426,9 +452,9 @@ protected:
             set_origin(d->origin());
             set_scale(d->scale());
             
-            set_txt(ptr->_txt);
-            set_color(ptr->_color);
-            set_font(ptr->_font);
+            set_txt(ptr->_settings.txt);
+            set_color(ptr->_settings.color);
+            set_font(ptr->_settings.font);
             
             if(ptr->_bounds_calculated) {
                 _bounds_calculated = true;
@@ -478,15 +504,15 @@ protected:
         
         ExternalImage& operator=(ExternalImage&&) = default;
         
-        void set(Ptr&& source, const Vec2& pos, const Vec2& scale = Vec2(1), const Color& color = Transparent) {
+        void create(Ptr&& source, const Vec2& pos, const Vec2& scale = Vec2(1), const Color& color = Transparent) {
             set_source(std::move(source));
             set_pos(pos);
             set_scale(scale);
             set_color(color);
         }
         
-        CHANGE_SETTER(url)
-        CHANGE_SETTER(color)
+        _CHANGE_SETTER(url)
+        _CHANGE_SETTER(color)
         
         virtual const Image* source() const { return _source.get(); }
 /*#ifdef NDEBUG

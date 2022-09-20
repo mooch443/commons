@@ -5,6 +5,8 @@
 #include <misc/SpriteMap.h>
 
 #include <misc/format.h>
+#include <gui/ControlsAttributes.h>
+#include <gui/types/Button.h>
 
 using namespace gui;
 
@@ -27,7 +29,7 @@ namespace cexpression
 
 struct Pixel {
     Vec2 offset;
-    Vec2 pos;
+    Loc pos;
     Color color;
 };
 
@@ -71,7 +73,7 @@ template<size_t i>
 constexpr void action(DrawStructure& graph) {
     if constexpr (!is_pixel<i>())
         return;
-    graph.circle(offset[i].pos, radius + 3, White.alpha(200), offset[i].color);
+    graph.circle(offset[i].pos, radius + 3, LineClr{White.alpha(200)}, FillClr{offset[i].color});
 }
 
 template<size_t i>
@@ -229,7 +231,7 @@ int main(int argc, char**argv) {
 
     //! initialize color / position arrays
     owl_init(owl_indexes);
-
+    
     //! initialize data struct for gui and timer (for physics)
     DrawStructure graph(1024,1024);
     Timer timer;
@@ -252,6 +254,42 @@ int main(int argc, char**argv) {
     ExternalImage image;
     image.set_source(std::make_unique<Image>(mat));
     image.set_scale(0.55);*/
+    
+    {
+        
+        attr::Loc v(2, 3);
+        Vec2 k(3, 2);
+        
+        auto r = v + k;
+        auto r2 = k + v;
+        print("Result ", r, " and ", r2, " ", attr::Loc(2, 3) + attr::Loc(3, 3));
+    }
+    
+    // Current state:
+    /*Button button({
+        .text = "Test",
+        .bounds = Bounds(100, 100, 100, 33),
+        .text_clr = Cyan
+    });*/
+    
+    using namespace attr;
+    Button button("Text",
+                  Loc(100, 100),
+                  TextClr{Cyan});
+
+    /*
+        // Theoretical optimum:
+        Button("Test",
+               Loc(100, 100),
+               TextClr(Cyan))
+     
+        // Previous state:
+        Button button(
+             "Test",
+             Bounds(100, 100, 100, 33),
+             Drawable::accent_color,
+             Cyan);
+     */
     
     //! open window and start looping
     bool terminate = false;
@@ -296,7 +334,9 @@ int main(int argc, char**argv) {
         }(owl_indexes);
         
         
-        graph.text("BBC MicroOwl", Vec2(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
+        graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
+        graph.wrap_object(button);
+        
         e.update([](Entangled &e) {
            // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });

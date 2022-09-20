@@ -120,14 +120,14 @@ namespace gui {
                         }
                         
                         auto sub = e.msg.substr(i, min(e.msg.length() - i, next - i));
-                        auto t = text(sub, pos, e.clr, Font(0.5f, Align::Right), scale().reciprocal());
+                        auto t = text(sub, Loc(pos), e.clr, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
                         pos.y += t->global_bounds().height;
                         
                         i = next;
                     }
                     
                 } else {
-                    auto t = text(e.msg, pos, e.clr, Font(0.5f, Align::Right), scale().reciprocal());
+                    auto t = text(e.msg, Loc(pos), e.clr, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
                     pos.y += t->global_bounds().height;
                 }
                 
@@ -155,14 +155,14 @@ void Dialog::set_closed() {
     
     Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
-        _title_bg(Bounds(), White.alpha(100)),
-        _text(std::make_shared<StaticText>(text, Vec2(250, 135), Size2(500, 50), Font(0.8f))),
-        _title(title, Vec2(), White, Font(0.9f, Style::Bold)),
-        _okay(std::make_shared<Button>(okay, Bounds())),
-        _abort(abort.empty() ? nullptr : std::make_shared<Button>(abort, Bounds())),
-        _second(second.empty() ? nullptr : std::make_shared<Button>(second, Bounds())),
-        _third(third.empty() ? nullptr : std::make_shared<Button>(third, Bounds())),
-        _fourth(fourth.empty() ? nullptr : std::make_shared<Button>(fourth, Bounds())),
+        _title_bg(Bounds(), FillClr{White.alpha(100)}),
+        _text(std::make_shared<StaticText>(text, Loc(250, 135), Size(500, 50), Font(0.8f))),
+        _title(title, Font(0.9f, Style::Bold)),
+        _okay(Button::MakePtr(okay)),
+        _abort(Button::MakePtr(abort.empty() ? nullptr : abort)),
+        _second(Button::MakePtr(second.empty() ? nullptr : second)),
+        _third(Button::MakePtr(third.empty() ? nullptr : third)),
+        _fourth(Button::MakePtr(fourth.empty() ? nullptr : fourth)),
         _buttons(std::make_shared<HorizontalLayout>()),
         _layout(std::vector<Layout::Ptr>{_text, _buttons}, Vec2()),
         _callback(callback)
@@ -342,7 +342,7 @@ void Dialog::set_closed() {
             if(!dialog_window_size().empty())
                 size = dialog_window_size();
             
-            auto rect = new Rect(Bounds(Vec2(size) * 0.5, size), Black.alpha(200), Red);
+            auto rect = new Rect(Bounds(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red});
             rect->set_origin(Vec2(0.5));
             rect->set_clickable(true);
             rect = add_object(rect);
@@ -369,65 +369,10 @@ void DrawStructure::close_dialogs() {
         return d;
     }
 
-template<Type::data::values type, typename T, class ...Args>
-T* DrawStructure::create(Args... args) {
-    if(!_active_section)
-        begin_section("root");
-    
-    //static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
-    //static_assert(!std::is_base_of<DrawableCollection, T>::value, "Cannot add DrawableCollection using add_object. Use wrap_object.");
-    T* d = nullptr;
-    
-    // check if current object is reusable
-    if(type != Type::SECTION
-       && _active_section->_children.size() > _active_section->_index
-       && _active_section->_children.at(_active_section->_index)->type() == type)
-       //&& dynamic_cast<T*>(_children.at(_index)) != nullptr
-       //&& _children.at(_index)->swap_with(d))
-    {
-        // reusing successful!
-        //auto c = Type::Class(type).name();
-        //delete d;
-        
-        static_cast<T*>(_active_section->_children.at(_active_section->_index))->set(std::forward<Args>(args)...);
-        d = (T*)_active_section->_children.at(_active_section->_index);
-    }
-    else {
-        d = new T(std::forward<Args>(args)...);
-        _active_section->_children.insert(_active_section->_children.begin() + (int64_t)_active_section->_index, d);
-        
-        //if(d->type() == Type::VERTICES)
-        //    static_cast<Vertices*>(d)->prepare();
-        if(d->parent() != _active_section)
-            d->set_parent(_active_section);
-    }
-    
-    _active_section->_index++;
-    return d;
-    
-    //return _active_section->add(ptr);
-}
-
     Dialog* DrawStructure::dialog(const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
         std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
         return _dialog(fn, text, title, okay, abort, second, third, fourth);
-    }
-    
-    Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color)
-    {
-        return create<Type::data::values::TEXT, Text>(txt, pos, color, Font(1), Vec2(1));
-        //return static_cast<Text*>(add_object(new Text(txt, pos, color, Font(1))));
-    }
-
-    Text* DrawStructure::text(const std::string &txt, const Vec2 &pos, const gui::Color &color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
-    {
-        return create<Type::data::values::TEXT, Text>(txt, pos, color, font, scale, origin, rotation);
-    }
-
-    Circle* DrawStructure::circle(const Vec2 &pos, float radius, const Color& color, const Color& fill_color, const Vec2& scale, const Vec2& origin) {
-        return create<Type::data::values::CIRCLE, Circle>(pos, radius, color, fill_color, scale, origin);
-        //return static_cast<Circle*>(add_object(new Circle(pos, radius, color, fill_color)));
     }
 
     Line* DrawStructure::line(const Vec2 &pos0, const Vec2 &pos1, float thickness, const Color& color) {
@@ -461,18 +406,6 @@ T* DrawStructure::create(Args... args) {
     
     Line* DrawStructure::line(const std::vector<Vertex>& points, float thickness) {
         return create<Type::data::values::VERTICES, Line>(points, thickness);
-    }
-
-    Rect* DrawStructure::rect(const Vec2 &pos, const Vec2 &size, const gui::Color &inside, const Color& outside) {
-        return create<Type::data::values::RECT, Rect>(Bounds(pos, size), inside, outside, Vec2(1));
-        //return static_cast<Rect*>(add_object(new Rect(Bounds(pos, size), inside, outside)));
-    }
-    
-    Rect* DrawStructure::rect(const Bounds &rect, const gui::Color &inside, const Color& outside, const Vec2& scale) {
-        //auto r = static_cast<Rect*>(add_object(new Rect(rect, inside, outside)));
-        //r->set_scale(scale);
-        //return r;
-        return create<Type::data::values::RECT, Rect>(rect, inside, outside, scale);
     }
     
     Vertices* DrawStructure::vertices(const std::vector<Vec2> &points, const gui::Color &color, PrimitiveType type) {

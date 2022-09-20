@@ -198,6 +198,10 @@ namespace cmn {
         return self_type{ A() - other.A(), B() - other.B() }; \
     } \
     \
+    constexpr self_type operator -() const { return { -A(), -B() }; } \
+    \
+    constexpr self_type operator +() const { return *this; } \
+    \
     std::string toStr() const { \
         return "[" + Meta::toStr(A()) + "," + Meta::toStr(B()) + "]"; \
     } \
@@ -297,12 +301,6 @@ template<typename Scalar, bool K, typename S1> \
 constexpr Vector2D<Scalar, K> operator SIGN (S1 s, const Vector2D<Scalar, K>& v) { return { v.A() SIGN static_cast<Scalar>(s), v.B() SIGN static_cast<Scalar>(s) }; }
     
 RScalarFloat2operator(*)
-    
-template<typename Scalar, bool K>
-constexpr inline Vector2D<Scalar, K> operator -(const Vector2D<Scalar, K>& v) { return { -v.A(), -v.B() }; }
-
-template<typename Scalar, bool K>
-constexpr inline Vector2D<Scalar, K> operator +(const Vector2D<Scalar, K>& v) { return v; }
     
 template<typename V, bool K>
 constexpr inline Vector2D<V, K> operator+(const Vector2D<V, K>& w, const cv::Point_<V>& v) {

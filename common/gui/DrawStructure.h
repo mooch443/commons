@@ -176,24 +176,65 @@ namespace gui {
             return _active_section->add(ptr);
         }
         
-        template<Type::data::values, typename T, class ...Args>
-        T* create(Args... args);
+        template<Type::data::values type, typename T, class ...Args>
+        T* create(Args... args) {
+            if(!_active_section)
+                begin_section("root");
+            
+            //static_assert(!std::is_same<Drawable, T>::value, "Dont add Drawables directly. Add them with their proper classes.");
+            //static_assert(!std::is_base_of<DrawableCollection, T>::value, "Cannot add DrawableCollection using add_object. Use wrap_object.");
+            T* d = nullptr;
+            
+            // check if current object is reusable
+            if(type != Type::SECTION
+               && _active_section->_children.size() > _active_section->_index
+               && _active_section->_children.at(_active_section->_index)->type() == type)
+               //&& dynamic_cast<T*>(_children.at(_index)) != nullptr
+               //&& _children.at(_index)->swap_with(d))
+            {
+                // reusing successful!
+                //auto c = Type::Class(type).name();
+                //delete d;
+                
+                static_cast<T*>(_active_section->_children.at(_active_section->_index))->create(std::forward<Args>(args)...);
+                d = (T*)_active_section->_children.at(_active_section->_index);
+            }
+            else {
+                d = new T(std::forward<Args>(args)...);
+                _active_section->_children.insert(_active_section->_children.begin() + (int64_t)_active_section->_index, d);
+                
+                //if(d->type() == Type::VERTICES)
+                //    static_cast<Vertices*>(d)->prepare();
+                if(d->parent() != _active_section)
+                    d->set_parent(_active_section);
+            }
+            
+            _active_section->_index++;
+            return d;
+            
+            //return _active_section->add(ptr);
+        }
         //Drawable* _add_object(gui::Drawable *ptr);
         
         ExternalImage* image(const Vec2& pos, ExternalImage::Ptr&& image, const Vec2& scale = Vec2(1.0f, 1.0f), const Color& color = Transparent);
         
-        Text* text(const std::string& txt, const Vec2& pos, const Color& color = White);
-        Text* text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(FLT_MAX), float rotation = 0);
-        
-        Circle* circle(const Vec2& pos, float radius, const Color& color = White, const Color& fill_color = Transparent, const Vec2& scale = Vec2(1), const Vec2& origin = Vec2(0.5));
+        template<typename... Args>
+        Text* text(Args... args) {
+            return create<Type::data::values::TEXT, Text>(std::forward<Args>(args)...);
+        }
+        template<typename... Args>
+        Circle* circle(Args... args) {
+            return create<Type::data::values::CIRCLE, Circle>(std::forward<Args>(args)...);
+        }
+        template<typename... Args>
+        Rect* rect(Args... args) {
+            return create<Type::data::values::RECT, Rect>(std::forward<Args>(args)...);
+        }
         
         Line* line(const Vec2& pos0, const Vec2& pos1, float thickness, const Color& color = White);
         Line* line(const std::vector<Vec2>& points, float thickness, const Color& color = White);
         Line* line(const std::vector<Vertex>& points, float thickness);
         Line* line(const Vec2& pos0, const Vec2& pos1, const Color& color = White, const Vec2& scale = Vec2(1));
-        
-        Rect* rect(const Vec2& pos, const Vec2& size, const Color& inside, const Color& outside = Transparent);
-        Rect* rect(const Bounds& rect, const Color& inside = White, const Color& outside = Transparent, const Vec2& scale = Vec2(1.f, 1.f));
         
         Vertices* vertices(const std::vector<Vec2>& points, const Color& color, PrimitiveType type);
         Vertices* vertices(const std::vector<Vertex>& points, PrimitiveType type = PrimitiveType::LineStrip);

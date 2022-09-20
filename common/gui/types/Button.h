@@ -5,38 +5,76 @@
 #include <gui/types/Basic.h>
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
+#include <gui/ControlsAttributes.h>
 
 namespace gui {
     class Button : public Entangled {
-        GETTER(std::string, txt)
-        GETTER(Color, text_clr)
-        GETTER(Color, fill_clr)
-        GETTER(Color, line_clr)
-        GETTER(bool, toggled)
-        GETTER(bool, toggleable)
+    public:
+        struct Settings {
+            std::string text;
+            Bounds bounds = Bounds(0, 0, 100, 33);
+            Color fill_clr = Drawable::accent_color;
+            Color line_clr = Black.alpha(200);
+            Color text_clr = White;
+            bool toggleable = false;
+            Font font;
+        };
         
+    protected:
+        Settings _settings;
+        GETTER_I(bool, toggled, false)
         Text _text;
         
     public:
-        Button(const std::string& txt,
-               const Bounds& size,
-               std::function<void()> on_click = nullptr);
-        Button(const std::string& txt,
-               const Bounds& size,
-               const Color& fill,
-               const Color& text_clr = White,
-               const Color& line = Black.alpha(200));
+        template<typename... Args>
+        Button(Args... args)
+        {
+            create(std::forward<Args>(args)...);
+        }
+        
+        template<typename... Args>
+        void create(Args... args) {
+            (set(std::forward<Args>(args)), ...);
+            init();
+        }
+        
+    private:
+        void init();
+        
+        void set(attr::Font font)   { _settings.font = font; }
+        void set(attr::Loc loc)     { _settings.bounds << loc; Drawable::set(loc); }
+        void set(attr::FillClr clr) { _settings.fill_clr = clr; }
+        void set(attr::LineClr clr) { _settings.line_clr = clr; }
+        void set(attr::TextClr clr) { _settings.text_clr = clr; }
+        void set(attr::Size size)   { _settings.bounds << size; Drawable::set(size); }
+        void set(Bounds bounds)   { _settings.bounds = bounds; Drawable::set(bounds); }
+        void set(const std::string& text) { _settings.text = text; }
+        void set(std::function<void()> on_click) {
+            if(on_click)
+                this->on_click([on_click](auto) { on_click(); });
+        }
+        
+    public:
+        //Button();
+        //Button(Settings, std::function<void()> on_click = nullptr);
         virtual ~Button() {}
         
+        template<typename... Args>
+        static std::shared_ptr<Button> MakePtr(Args... args)
+        {
+            return std::make_shared<Button>(std::forward<Args>(args)...);
+        }
+        
+        const std::string& txt() const { return _settings.text; }
         void set_txt(const std::string& txt);
         void set_font(Font font);
         const Font& font() const;
         
-        void set_text_clr(const decltype( _text_clr ) & text_clr) {
-            if ( _text_clr == text_clr )
+        void set_text_clr(const Color & text_clr) {
+            if ( _settings.text_clr == text_clr )
                 return;
             
-            _text_clr = text_clr;
+            _settings.text_clr = text_clr;
             _text.set_color(text_clr);
             set_dirty();
         }

@@ -31,37 +31,14 @@ std::string TRange::class_name() {
     return "TRange";
 }
 
-    StaticText::StaticText(const std::string& txt, const Vec2& pos, const Vec2& max_size, const Font& font) :
-        _max_size(max_size),
-        _org_position(pos),
-        _margins(Vec2(10, 5), Vec2(10, 5)),
-        _default_font(font),
-        _base_text_color(White),
-        _alpha(1)
-    {
-        set_clickable(true);
-        set_pos(pos);
-        set_background(Black.alpha(200), Black);
-        set_txt(txt);
-    }
-
 void StaticText::set_txt(const std::string& txt) {
     auto p = utils::find_replace(txt, "<br/>", "\n");
     
-    if(_txt == p)
+    if(_settings.txt == p)
         return;
     
-    _txt = p;
+    _settings.txt = p;
     update_text();
-}
-
-void StaticText::set_alpha(float alpha) {
-    if(alpha == _alpha)
-        return;
-    
-    _alpha = alpha;
-    //update_text();
-    set_content_changed(true);
 }
     
     Size2 StaticText::size() {
@@ -85,27 +62,27 @@ void StaticText::set_alpha(float alpha) {
     }
 
 void StaticText::set_default_font(const Font& font) {
-    if(font == _default_font)
+    if(font == _settings.default_font)
         return;
     
-    _default_font = font;
+    _settings.default_font = font;
     set_content_changed(true);
     update_text();
 }
             
     void StaticText::set_max_size(const Size2 &size) {
-        if(size != _max_size) {
-            _max_size = size;
+        if(size != _settings.max_size) {
+            _settings.max_size = size;
             set_content_changed(true);
             update_text();
         }
     }
     
-    void StaticText::set_margins(const Bounds &margin) {
-        if(_margins == margin)
+    void StaticText::set_margins(const Margins &margin) {
+        if(_settings.margins == margin)
             return;
         
-        _margins = margin;
+        _settings.margins = margin;
         set_content_changed(true);
     }
     
@@ -119,12 +96,12 @@ void StaticText::set_default_font(const Font& font) {
             Vec2 p(Graph::invalid());
             Vec2 m(0);
             
-            for(auto t : texts) {
+            for(auto& t : texts) {
                 if(t->txt().empty())
                     continue;
                 
                 // add texts so that dimensions are retrieved
-                t->set_color(t->color().alpha(255 * _alpha));
+                t->set_color(t->color().alpha(255 * _settings.alpha));
                 advance_wrap(*t);
                 
                 auto local_pos = t->pos() - t->size().mul(t->origin());
@@ -138,11 +115,11 @@ void StaticText::set_default_font(const Font& font) {
             }
             
             // subtract position, add margins
-            m = m + _margins.size();
+            m = m + _settings.margins;
             set_size(m);
             if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
-                set_background(bg_fill_color() != Transparent ? bg_fill_color().alpha(_alpha * 255) : Transparent,
-                    bg_line_color() != Transparent ? bg_line_color().alpha(_alpha * 255) : Transparent);
+                set_background(bg_fill_color() != Transparent ? bg_fill_color().alpha(_settings.alpha * 255) : Transparent,
+                    bg_line_color() != Transparent ? bg_line_color().alpha(_settings.alpha * 255) : Transparent);
             
             end();
         }
@@ -183,11 +160,11 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
         //const Vec2 real_scale(1); //= this->real_scale();
         auto real_scale = this;
         
-        if(_max_size.x > 0 && !ptr->str.empty()) {
+        if(_settings.max_size.x > 0 && !ptr->str.empty()) {
             Bounds bounds = Base::default_text_bounds(ptr->parsed, real_scale, ptr->font);
             auto w = bounds.width + bounds.x;
             
-            const float max_w = _max_size.x - _margins.x - _margins.width - offset.x;
+            const float max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
             
             if(w > max_w) {
                 float cw = w;
@@ -234,7 +211,7 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
                     // do a quick-search for the best-fitting size.
                     cw = w;
                     
-                    if(cw > _max_size.x - _margins.x - _margins.width) {
+                    if(cw > _settings.max_size.x - _settings.margins.x - _settings.margins.x) {
                         // we have to break it up.
                         size_t len = ptr->str.length();
                         size_t middle = len * 0.5;
@@ -404,7 +381,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
         }
         
-        const auto default_clr = _base_text_color;
+        const auto default_clr = _settings.text_color;
         static const auto highlight_clr = DarkCyan;
         
         //_txt = "a <b>very</b> long text, ja ja i <i>dont know</i> whats <b><i>happening</i></b>, my friend. <b>purple rainbows</b> keep bugging mees!\nthisisaverylongtextthatprobablyneedstobesplitwithouthavinganopportunitytoseparateitsomewhere<a custom tag>with text after";
@@ -417,7 +394,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         
         std::vector<std::shared_ptr<RichString>> strings;
         
-        auto global_tags = to_tranges(_txt);
+        auto global_tags = to_tranges(text());
         
         auto mix_colors = [&](const Color& A, const Color& B) {
             if(A != default_clr)
@@ -429,7 +406,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         std::deque<TRange> queue;
         for(auto && tag : global_tags) {
             tag.color = default_clr;
-            tag.font = _default_font;
+            tag.font = _settings.default_font;
             queue.push_back(tag);
         }
         
@@ -461,7 +438,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 if((tag.name.length() == 2 && tag.name[1] >= '0' && tag.name[1] < '9')
                    || tag.name == "h")
                 {
-                    tag.font.size = _default_font.size * (1 + (1 - min(1, (tag.name[1] - '0') / 4.f)));
+                    tag.font.size = _settings.default_font.size * (1 + (1 - min(1, (tag.name[1] - '0') / 4.f)));
                     tag.font.style |= Style::Bold;
                     tag.color = mix_colors(tag.color, highlight_clr);
                     breaks_line = true;
@@ -517,10 +494,10 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         
         update_vector_elements(texts, strings);
         
-        offset = _margins.pos();
+        offset = _settings.margins;
         float y = 0;
         //float height = Base::default_line_spacing(_default_font);
-        Font prev_font = strings.empty() ? _default_font : strings.front()->font;
+        Font prev_font = strings.empty() ? _settings.default_font : strings.front()->font;
         
         //begin();
         
@@ -536,7 +513,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             auto target = positions[i];
             
             if(s->pos.y > y) {
-                offset.x = _margins.x;
+                offset.x = _settings.margins.x;
                 
                 auto current_height = Base::default_line_spacing(prev_font);
                 for(size_t j=row_start; j<i; ++j) {

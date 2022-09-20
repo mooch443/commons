@@ -149,7 +149,7 @@ namespace gui {
                    /*&& dynamic_cast<T*>(current) != nullptr*/)
                 { //&& current->swap_with(d)) {
                     assert(dynamic_cast<T*>(current) != nullptr);
-                    static_cast<T*>(current)->set(std::forward<Args>(args)...);
+                    static_cast<T*>(current)->create(std::forward<Args>(args)...);
                     //delete d;
                     used_or_deleted = true;
                     //d = current;

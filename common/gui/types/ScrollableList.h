@@ -291,7 +291,7 @@ namespace gui {
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
-                    _rects.push_back(new Rect(Bounds(0, 0, width(), item_height), Transparent));
+                    _rects.push_back(new Rect(Bounds(0, 0, width(), item_height), FillClr{Transparent}));
                     _rects.back()->set_clickable(true);
                     _rects.back()->on_hover([r = _rects.back(), this](Event e) {
                         if(!e.hover.hovered)
@@ -305,7 +305,7 @@ namespace gui {
                         }
                     });
                     
-                    _texts.push_back(new Text("", Vec2(), White, _font));
+                    _texts.push_back(new Text(_font));
                 }
             }
             
@@ -424,7 +424,7 @@ namespace gui {
             }
 
             if (stage()) {
-                if(!tooltip.text().txt().empty())
+                if(!tooltip.text().text().empty())
                     stage()->register_end_object(tooltip);
                 else {
                     stage()->unregister_end_object(tooltip);

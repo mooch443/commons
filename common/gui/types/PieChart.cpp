@@ -187,10 +187,9 @@ namespace gui {
         for(size_t i=0; i<_slices.size(); ++i) {
             if(!_slices[i].name.empty())
                 add<Text>(_slices[i].name,
-                          _centers[i],
-                          White,
+                          Loc(_centers[i]),
                           Font(0.8, Align::Center),
-                          Vec2(_slices[i].scale * max(0.1,_radius / 250.f)));
+                          Scale(_slices[i].scale * max(0.1,_radius / 250.f)));
         }
     }
 }

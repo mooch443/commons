@@ -13,8 +13,8 @@ namespace gui {
         Triangle(const Vec2& center, const Size2& size, float angle = 0, const Color& fill = White, const Color& line = Transparent);
         Triangle(const std::vector<Vertex>& vertices);
         
-        CHANGE_SETTER(fill)
-        CHANGE_SETTER(line)
+        _CHANGE_SETTER(fill)
+        _CHANGE_SETTER(line)
         
         bool in_bounds(float x, float y) override;
         

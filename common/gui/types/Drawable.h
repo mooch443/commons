@@ -6,10 +6,13 @@
 #include <gui/Transform.h>
 #include <gui/Event.h>
 #include <gui/colors.h>
+#include <gui/ControlsAttributes.h>
 
 namespace gui {
     class Base;
     class SectionInterface;
+
+    using namespace attr;
     
     class DrawStructure;
     class CacheObject {
@@ -266,6 +269,17 @@ namespace gui {
         
         virtual Vec2 stage_scale() const;
         
+    public:
+        /**
+         * Functions used in variadic construction of GUI elements.
+         */
+        void set(Origin origin) { set_origin(origin); }
+        void set(Scale scale) { set_scale(scale); }
+        void set(Loc loc) { set_pos(loc); }
+        void set(Size size) { set_size(size); }
+        void set(Bounds bounds) { set_bounds(bounds); }
+        void set(Rotation r) { set_rotation(r); }
+        
     protected:
         /**
          * These functions are called for mouse interactions.
@@ -407,6 +421,8 @@ namespace gui {
         
         std::string toString(const Base* base, const std::string& indent = "");
         
+    private:
+        void set(BgClr clr) { set_background(clr, Transparent); }
     protected:
         friend class Drawable;
         friend class DrawableCollection;

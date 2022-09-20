@@ -303,7 +303,10 @@ namespace gui {
     void Drawable::set_origin(const Vec2& origin) {
         if(_origin == origin)
             return;
-        
+#ifndef NDEBUG
+        if(std::isnan(origin.x) || std::isnan(origin.y) || std::isinf(origin.x) || std::isinf(origin.y))
+            FormatWarning("NaN in set_origin.");
+#endif
         _origin = origin;
         set_bounds_changed();
     }
@@ -311,7 +314,10 @@ namespace gui {
     void Drawable::set_rotation(float radians) {
         if(_rotation == radians)
             return;
-        
+#ifndef NDEBUG
+        if(std::isnan(radians) || std::isinf(radians))
+            FormatWarning("NaN in set_rotation.");
+#endif
         _rotation = radians;
         set_bounds_changed();
     }

@@ -58,7 +58,7 @@ namespace gui {
               _filter(filter),
               _display(display),
               _needs_update(true),
-              _title_obj(title, Vec2(margin, margin), White, Font(0.7f, Style::Bold))
+              _title_obj(title, Loc(margin, margin), Font(0.7f, Style::Bold))
         {
             //set_background(Black.alpha(125));
             set_bounds(size);
@@ -235,8 +235,6 @@ namespace gui {
                         y = roundf(y);
                     
                     auto text = new Text(Meta::toStr(y),
-                                         Vec2(),
-                                         White,
                                          Font(0.5, Align::Center));
                     
                     _y_label_width = max(_y_label_width, text->width());
@@ -357,7 +355,7 @@ namespace gui {
                 const auto& size = bounds();
                 
                 begin();
-                add<Rect>(Bounds(Vec2(), this->size()), Black.alpha(125));
+                add<Rect>(Bounds(Vec2(), this->size()), FillClr{Black.alpha(125)});
                 
                 if(!_title.empty())
                     advance_wrap(_title_obj);
@@ -393,8 +391,8 @@ namespace gui {
                     }
                 }
                 
-                Vec2 last_text;
-                Vec2 legend_pos(size.width - margin,
+                Loc last_text;
+                Loc legend_pos(size.width - margin,
                                 margin);
                 
                 for(size_t i=0; i<_bin_x.size(); i++) {
@@ -410,7 +408,7 @@ namespace gui {
                     
                     auto text = add<Text>(
                         "N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median),
-                        legend_pos, 
+                        legend_pos,
                         clr,
                         Font(0.5, Align::Right));
 
@@ -429,18 +427,17 @@ namespace gui {
                         
                         // draw bar
                         add<Rect>(Bounds(
-                            Vec2(bar_pos.x, bar_pos.y + element.y - bar_height), 
+                            Loc(bar_pos.x, bar_pos.y + element.y - bar_height),
                             Size2(element.x, bar_height)), 
-                            clr);
+                                  FillClr{clr});
                         
                         if(i == 0) {
                             // label for x-axis                            
                             float text_x = text->pos().x;
                             if(text_x - last_text.x > 40) {
                                 add<Text>(Meta::toStr(v),
-                                    Vec2(bar_pos.x + element.x * 0.5f,
+                                    Loc(bar_pos.x + element.x * 0.5f,
                                         bar_pos.y + element.y + axes_width + text_height * 0.5f),
-                                    White,
                                     Font(0.5, Align::Center));
                                 last_text.x = text_x;
                                 

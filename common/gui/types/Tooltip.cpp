@@ -3,9 +3,8 @@
 
 namespace gui {
     Tooltip::Tooltip(Drawable* other, float max_width)
-        : _other(other), _text("", Vec2(), Size2(max_width > 0 || !_other ? max_width : _other->width(), -1), Font(0.7)), _max_width(max_width)
+        : _other(other), _text(SizeLimit(max_width > 0 || !_other ? max_width : _other->width(), -1), Font(0.7), BgClr{Black.alpha(150)}), _max_width(max_width)
     {
-        //set_background(Black.alpha(150));
         set_text("");
         set_origin(Vec2(0, 1));
         _text.set_clickable(false);
@@ -55,7 +54,7 @@ namespace gui {
     }
     
     void Tooltip::set_text(const std::string& text) {
-        if(_text.txt() == text)
+        if(_text.text() == text)
             return;
         
         _text.set_txt(text);

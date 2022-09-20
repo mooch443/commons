@@ -15,7 +15,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
     _graph(std::make_unique<DrawStructure>(1200, 640)),
-    _description(std::make_shared<Text>("Please choose a file in order to continue.", Vec2(10, 10), White, Font(0.75))),
+    _description(std::make_shared<Text>("Please choose a file in order to continue.", Loc(10, 10), Font(0.75))),
     _columns(std::make_shared<HorizontalLayout>()),
     _overall(std::make_shared<VerticalLayout>()),
     _base("Choose file", *_graph, [this](){
@@ -127,7 +127,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     
     //auto overall_width = _list->width() + (_extra ? _extra->width() : 0);
     
-    _button = std::make_shared<Button>("Open", Bounds(_list->pos() + Vec2(0, _list->height() + 40), Size2(100, 30)));
+    _button = Button::MakePtr("Open", Bounds(_list->pos() + Vec2(0, _list->height() + 40), attr::Size(100, 30)));
     
     _textfield = std::make_shared<Dropdown>(Bounds(0, 0, _list->width(), 30));
     //_textfield = std::make_shared
@@ -225,7 +225,7 @@ void FileChooser::set_tabs(const std::vector<Settings>& tabs) {
             tab.extension = _default_tab.extension;
         _tabs[tab.name] = tab;
         
-        auto button = new Button(tab.name, Bounds(0, 0, Base::default_text_bounds(tab.name).width + 20, 40));
+        auto button = new Button(tab.name, attr::Size( Base::default_text_bounds(tab.name).width + 20, 40));
         button->set_fill_clr(Color(100, 100, 100, 255));
         button->set_toggleable(true);
         button->on_click([this, button](auto){
@@ -440,7 +440,7 @@ void FileChooser::file_selected(size_t, file::Path p) {
             
         } else {
             if(!_selected_text)
-                _selected_text = std::make_shared<StaticText>("Selected: "+_selected_file.str(), Vec2(), Vec2(700, 0), Font(0.6f));
+                _selected_text = std::make_shared<StaticText>("Selected: "+_selected_file.str(), SizeLimit(700, 0), Font(0.6f));
             else
                 _selected_text->set_txt("Selected: "+_selected_file.str());
             

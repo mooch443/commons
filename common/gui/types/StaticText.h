@@ -29,18 +29,19 @@ namespace gui {
     };
 
     class StaticText : public Entangled {
-        GETTER(std::string, txt)
-        
         std::vector<std::shared_ptr<Text>> texts;
         std::vector<Vec2> positions;
-        
-        GETTER(Vec2, max_size)
         Vec2 _org_position;
-        Bounds _margins;
         
-        Font _default_font;
-        Color _base_text_color;
-        float _alpha;
+        struct Settings {
+            Vec2 max_size{-1, -1};
+            Margins margins{5, 5};
+            Color text_color = White;
+            Font default_font = Font(0.75);
+            std::string txt;
+            Alpha alpha = 1;
+            
+        } _settings;
         
     public:
         struct RichString {
@@ -57,23 +58,53 @@ namespace gui {
         };
         
     public:
-        StaticText(const std::string& txt = "", const Vec2& pos = Vec2(), const Vec2& max_size = Vec2(-1, -1), const Font& font = Font(0.75));
+        template<typename... Args>
+        StaticText(Args... args) {
+            create(std::forward<Args>(args)...);
+        }
+        
+        template<typename... Args>
+        void create(Args... args) {
+            (set(std::forward<Args>(args)), ...);
+            set_clickable(true);
+        }
+        
+        const auto& text() const { return _settings.txt; }
+        const auto& max_size() const { return _settings.max_size; }
+        
+    private:
+        using Drawable::set;
+        void set(const std::string& str) { set_txt(str); }
+        void set(TextClr clr) { set_text_color(clr); }
+        void set(SizeLimit limit) { set_max_size(limit); }
+        void set(Margins margins) { set_margins(margins); }
+        void set(Alpha alpha) { set_alpha(alpha); }
+        void set(Font font) { set_default_font(font); }
+        
+    public:
         virtual ~StaticText() {
             texts.clear();
         }
         
         void set_txt(const std::string& txt);
         
-        void set_base_text_color(const Color& c) {
-            if(c == _base_text_color)
+        void set_text_color(const Color& c) {
+            if(c == _settings.text_color)
                 return;
             
-            _base_text_color = c;
+            _settings.text_color = c;
             update_text();
         }
-        void set_alpha(float alpha);
         
-        void set_margins(const Bounds& margin);
+        void set_alpha(const Alpha& c) {
+            if(c == _settings.alpha)
+                return;
+            
+            _settings.alpha = c;
+            set_content_changed(true);
+        }
+        
+        void set_margins(const Margins& margin);
         
         void update() override;
         void add_string(std::shared_ptr<RichString> ptr, std::vector<std::shared_ptr<RichString>>& output, Vec2& offset);

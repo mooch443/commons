@@ -159,7 +159,7 @@ void Graph::update() {
         
         add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
         //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
-        return add<Text>(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font);
+        return add<Text>(str, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), fg, x_label_font);
         //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
     };
     
@@ -176,7 +176,7 @@ void Graph::update() {
         std::string str = ss.str();
         
         add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
-        add<Text>(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font);
+        add<Text>(str, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), fg, y_label_font);
         //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
         //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
     };
@@ -294,12 +294,12 @@ void Graph::update() {
                     float y = (1.0f - (pt.y / lengthy + y_offset_percent)) * max_height;
                     
                     auto current = Vec2(x, y) + _margin;
-                    auto ptr = std::make_shared<Circle>(OFFSET(current), 3, f._color);
+                    auto ptr = Circle::MakePtr(attr::Loc(OFFSET(current)), attr::Radius(3), attr::LineClr(f._color));
                     ptr->add_custom_data("graph_point", (void*)new float(pt.x), [](void* ptr) { delete (float*)ptr; });
                     
                     if(f._points->_hover_fn) {
                         ptr->set_clickable(true);
-                        ptr->on_hover([n = f._name, x = pt.x, points = f._points, ptr, color = f._color, this](auto e){
+                        ptr->on_hover([n = f._name, x = pt.x, points = f._points, ptr, this](auto e){
                             if(e.hover.hovered && _last_hovered_circle != ptr) {
                                 points->_hover_fn(n, x);
                                 this->highlight_point(ptr);
@@ -368,7 +368,7 @@ void Graph::update() {
             if(TYPE_IS(POINTS))
             {
                 if(!is_invalid(y0))
-                    add<Circle>(current, 3, org_clr);
+                    add<Circle>(Loc(current), Radius(3), LineClr(org_clr));
             }
             
             if (f._type != Graph::POINTS && ((current.y >= _margin.y && current.y <= height())
@@ -417,12 +417,12 @@ void Graph::update() {
         _title.set_pos(Vec2(20, 15));
         _title.set_color(fg);
         add<Rect>(Bounds(_title.pos() - Vec2(1, 1),
-                                Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
-                         Black.alpha(150));
+                         Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
+                  FillClr{Black.alpha(150)});
         
         add<Rect>(Bounds(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
-                                Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
-                                Black.alpha(150));
+                        Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
+                  FillClr{Black.alpha(150)});
         advance_wrap(_title);
     }
     
@@ -509,7 +509,7 @@ Graph::Graph(const Bounds& bounds,
              const std::string& name,
              const Rangef& x_range,
              const Rangef& y_range)
-    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(name, Vec2(), White, title_font)
+    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(name, title_font)
 {
     set_bounds(bounds);
     set_background(Black.alpha(175), Transparent);
