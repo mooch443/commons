@@ -132,7 +132,8 @@ void Textfield::init() {
         if(_valid) {
             if(stage())
                 stage()->select(NULL);
-            _settings.on_enter();
+            if(_settings.on_enter)
+                _settings.on_enter();
         }
     }
     
@@ -260,7 +261,8 @@ void Textfield::init() {
                             _selection = lrange(-1, -1);
                             if(text() != copy) {
                                 _settings.text = copy;
-                                _settings.on_text_changed();
+                                if(_settings.on_text_changed)
+                                    _settings.on_text_changed();
                             }
                             
                         } else {
@@ -289,7 +291,8 @@ void Textfield::init() {
                     _selection = lrange(-1, -1);
                     if(text() != copy) {
                         _settings.text = copy;
-                        _settings.on_text_changed();
+                        if(_settings.on_text_changed)
+                            _settings.on_text_changed();
                     }
                     
                 } else {
@@ -345,7 +348,8 @@ void Textfield::init() {
                     _cursor_position = before;
                 }
                 
-                _settings.on_text_changed();
+                if(_settings.on_text_changed)
+                    _settings.on_text_changed();
                 set_content_changed(true);
                 
                 break;

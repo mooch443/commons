@@ -1486,7 +1486,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             auto font = _fonts.at(ptr->font().style);
             
-            list->AddText(font, ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)ptr->color(), ptr->txt().c_str());
+            list->AddText(font,
+                          ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x),
+                          bds.pos(),
+                          (ImColor)ptr->color(),
+                          ptr->txt().c_str());
             
             break;
         }

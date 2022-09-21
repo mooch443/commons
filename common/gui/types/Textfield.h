@@ -78,8 +78,8 @@ protected:
     void set(ReadOnly ro) { set_read_only(ro); }
     void set(Font font) { set_font(font); }
     void set(CheckText_t check) { _settings.check_text = check; }
-    void set(OnEnter_t enter) { _settings.on_enter = enter; }
-    void set(OnTextChanged_t change) { _settings.on_text_changed = change; }
+    void set(OnEnter_t enter) { on_enter(enter); }
+    void set(OnTextChanged_t change) { on_text_changed(change); }
     
 public:
     
@@ -120,7 +120,8 @@ public:
     
     virtual void set_filter(const CheckText_t& fn) {
         _settings.check_text = fn;
-        _settings.check_text(_settings.text, 0, 0);
+        if(_settings.check_text)
+            _settings.check_text(_settings.text, 0, 0);
     }
     
     void on_enter(const OnEnter_t& fn) {
@@ -163,6 +164,8 @@ protected:
     }
     
     virtual bool isTextValid(std::string& text, char inserted, size_t at) {
+        if(!_settings.check_text)
+            return true;
         return _settings.check_text(text, inserted, at);
     }
     virtual std::string correctText(const std::string& text) {return text;}
@@ -281,7 +284,9 @@ protected:
         try {
             Meta::fromStr<T>(text);
             
-            if(_settings.check_text(text, inserted, at)) {
+            if(!_settings.check_text
+               || _settings.check_text(text, inserted, at))
+            {
                 set_valid(true);
                 return true;
             }

@@ -58,8 +58,6 @@ namespace gui {
         _text.set_bounds_changed();
         
         set_bounds(Bounds(mp, _text.size() + Vec2(5, 2) * 2));
-        if(_text.background())
-            print("Background: ", _text.background()->fillclr());
     }
     
     void Tooltip::set_text(const std::string& text) {
