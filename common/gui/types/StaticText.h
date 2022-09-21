@@ -39,7 +39,7 @@ namespace gui {
             Color text_color = White;
             Font default_font = Font(0.75);
             std::string txt;
-            Alpha alpha = 1;
+            Alpha alpha{1};
             
         } _settings;
         

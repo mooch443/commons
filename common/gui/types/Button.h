@@ -42,12 +42,12 @@ namespace gui {
         void init();
         
         void set(attr::Font font)   { _settings.font = font; }
-        void set(attr::Loc loc)     { _settings.bounds << loc; Drawable::set(loc); }
+        void set(attr::Loc loc) override    { _settings.bounds << loc; Drawable::set(loc); }
         void set(attr::FillClr clr) { _settings.fill_clr = clr; }
         void set(attr::LineClr clr) { _settings.line_clr = clr; }
         void set(attr::TextClr clr) { _settings.text_clr = clr; }
-        void set(attr::Size size)   { _settings.bounds << size; Drawable::set(size); }
-        void set(Bounds bounds)   { _settings.bounds = bounds; Drawable::set(bounds); }
+        void set(attr::Size size) override   { _settings.bounds << size; Drawable::set(size); }
+        void set(Bounds bounds) override   { _settings.bounds = bounds; Drawable::set(bounds); }
         void set(const std::string& text) { _settings.text = text; }
         void set(std::function<void()> on_click) {
             if(on_click)

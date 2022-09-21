@@ -43,7 +43,85 @@ using Postfix = AttributeAlias<std::string, 2>;
 using Prefix = AttributeAlias<std::string, 3>;
 
 template<typename T, int _arbitrary = 0>
-using NumberAlias = T;
+struct NumberAlias {
+    T value;
+public:
+    using self_type = NumberAlias<T, _arbitrary>;
+    
+public:
+    constexpr self_type& operator++() { ++value; return *this; }
+    constexpr self_type& operator--() { --value; return *this; }
+    constexpr self_type operator++(int) { auto tmp = *this; ++*this; return tmp; }
+    constexpr self_type operator--(int) { auto tmp = *this; --*this; return tmp; }
+    constexpr self_type operator+() const { return *this; }
+    constexpr self_type operator-() const { return self_type{-value}; }
+    
+    constexpr NumberAlias() = default;
+    constexpr NumberAlias(const NumberAlias&) = default;
+    constexpr NumberAlias(NumberAlias&&) = default;
+    template<typename K>
+        requires std::convertible_to<K, T>
+    constexpr NumberAlias(K other) : value(other) {}
+    constexpr self_type& operator=(const NumberAlias& other) = default;
+    constexpr self_type& operator=(T other) { value = other; return *this; }
+    
+    /*
+     With self type
+     
+    constexpr self_type& operator+=(const self_type& other) { value += other.value; return *this; }
+    constexpr self_type& operator-=(const self_type& other) { value -= other.value; return *this; }
+    constexpr self_type& operator*=(const self_type& other) { value *= other.value; return *this; }
+    constexpr self_type& operator/=(const self_type& other) { value /= other.value; return *this; }
+    
+    constexpr self_type operator/(const self_type& other) const { return self_type{value / other.value}; }
+    constexpr self_type operator*(const self_type& other) const { return self_type{value * other.value}; }
+    constexpr self_type operator+(const self_type& other) const { return self_type{value + other.value}; }
+    constexpr self_type operator-(const self_type& other) const { return self_type{value - other.value}; }*/
+    
+    constexpr operator T() const { return value; }
+};
+
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator+(const NumberAlias<T, a>& A, const K& B) {
+    return NumberAlias<T, a>(A.value + B);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator-(const NumberAlias<T, a>& A, const K& B) {
+    return NumberAlias<T, a>(A.value - B);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator/(const NumberAlias<T, a>& A, const K& B) {
+    return NumberAlias<T, a>(A.value / B);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator*(const NumberAlias<T, a>& A, const K& B) {
+    return NumberAlias<T, a>(A.value * B);
+}
+
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator+(const K& A, const NumberAlias<T, a>& B) {
+    return NumberAlias<T, a>(A + B.value);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator-(const K& A, const NumberAlias<T, a>& B) {
+    return NumberAlias<T, a>(A - B.value);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator*(const K& A, const NumberAlias<T, a>& B) {
+    return NumberAlias<T, a>(A * B.value);
+}
+template<typename T, int a, typename K>
+    requires std::integral<K> || std::floating_point<K>
+constexpr NumberAlias<T, a> operator/(const K& A, const NumberAlias<T, a>& B) {
+    return NumberAlias<T, a>(A / B.value);
+}
 
 using Radius = NumberAlias<float, 0>;
 using Rotation = NumberAlias<float, 1>;

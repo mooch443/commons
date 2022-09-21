@@ -273,12 +273,12 @@ namespace gui {
         /**
          * Functions used in variadic construction of GUI elements.
          */
-        void set(Origin origin) { set_origin(origin); }
-        void set(Scale scale) { set_scale(scale); }
-        void set(Loc loc) { set_pos(loc); }
-        void set(Size size) { set_size(size); }
-        void set(Bounds bounds) { set_bounds(bounds); }
-        void set(Rotation r) { set_rotation(r); }
+        virtual void set(Origin origin) { set_origin(origin); }
+        virtual void set(Scale scale) { set_scale(scale); }
+        virtual void set(Loc loc) { set_pos(loc); }
+        virtual void set(Size size) { set_size(size); }
+        virtual void set(Bounds bounds) { set_bounds(bounds); }
+        virtual void set(Rotation r) { set_rotation(r); }
         
     protected:
         /**
@@ -421,8 +421,10 @@ namespace gui {
         
         std::string toString(const Base* base, const std::string& indent = "");
         
-    private:
+    protected:
+        using Drawable::set;
         void set(BgClr clr) { set_background(clr, Transparent); }
+        
     protected:
         friend class Drawable;
         friend class DrawableCollection;

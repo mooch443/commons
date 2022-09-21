@@ -57,7 +57,7 @@ static constexpr unsigned char owl[]{
     "                 *"
 };
 
-static constexpr float radius = 5;
+static constexpr Radius radius{5};
 static float dt = 1;
 static Pixel offset[sizeof(owl)];
 static Vec2 target;
@@ -86,8 +86,8 @@ constexpr void inc_offset() {
     if constexpr (!is_pixel<i>())
         return;
     constexpr auto start = get_start<i>();
-    offset[i].pos += ((target + start - radius * 18) - offset[i].pos) * dt 
-                         * ((start - 18 * radius).length() / 100 + 1);
+    offset[i].pos += ((target + start - (float)radius * 18) - offset[i].pos) * dt
+                         * ((start - 18 * (float)radius).length() / 100 + 1);
 }
 
 template<size_t i>
