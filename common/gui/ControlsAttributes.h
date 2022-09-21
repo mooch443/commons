@@ -37,7 +37,6 @@ using Margins = AttributeAlias<cmn::Vec2, 3>;
 using FillClr = AttributeAlias<gui::Color, 0>;
 using LineClr = AttributeAlias<gui::Color, 1>;
 using TextClr = AttributeAlias<gui::Color, 2>;
-using BgClr = AttributeAlias<gui::Color, 3>;
 using Content = AttributeAlias<std::string, 1>;
 using Postfix = AttributeAlias<std::string, 2>;
 using Prefix = AttributeAlias<std::string, 3>;

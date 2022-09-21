@@ -41,13 +41,14 @@ namespace gui {
     private:
         void init();
         
+        using Entangled::set;
         void set(attr::Font font)   { _settings.font = font; }
-        void set(attr::Loc loc) override    { _settings.bounds << loc; Drawable::set(loc); }
-        void set(attr::FillClr clr) { _settings.fill_clr = clr; }
-        void set(attr::LineClr clr) { _settings.line_clr = clr; }
+        void set(attr::Loc loc) override    { _settings.bounds << loc; Entangled::set(loc); }
+        void set(attr::FillClr clr) override { _settings.fill_clr = clr; }
+        void set(attr::LineClr clr) override { _settings.line_clr = clr; }
         void set(attr::TextClr clr) { _settings.text_clr = clr; }
-        void set(attr::Size size) override   { _settings.bounds << size; Drawable::set(size); }
-        void set(Bounds bounds) override   { _settings.bounds = bounds; Drawable::set(bounds); }
+        void set(attr::Size size) override   { _settings.bounds << size; Entangled::set(size); }
+        void set(Bounds bounds) override   { _settings.bounds = bounds; Entangled::set(bounds); }
         void set(const std::string& text) { _settings.text = text; }
         void set(std::function<void()> on_click) {
             if(on_click)

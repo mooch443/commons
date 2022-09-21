@@ -70,10 +70,10 @@ public:
     void init();
     
 protected:
-    using Drawable::set;
+    using Entangled::set;
     void set(const Content& text) { set_text(text); }
     void set(const Postfix& postfix) { set_postfix(postfix); }
-    void set(FillClr fill) { set_fill_color(fill); }
+    void set(FillClr fill) override { set_fill_color(fill); }
     void set(TextClr clr) { set_text_color(clr); }
     void set(ReadOnly ro) { set_read_only(ro); }
     void set(Font font) { set_font(font); }

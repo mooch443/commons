@@ -384,7 +384,7 @@ void Textfield::set_postfix(const std::string &p) {
         
         static constexpr const Color BrightRed(255,150,150,255);
         Color base_color   = fill_color(),
-              border_color = text_color().alpha(255);
+              border_color = text_color();
         
         if(!valid())
             base_color = BrightRed.alpha(210);

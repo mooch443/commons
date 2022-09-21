@@ -177,7 +177,13 @@ namespace cmn {
                                 
                             } else if(utils::beginsWith(param_name, "http://") || utils::beginsWith(param_name, "https://"))
                             {
-                                text << "`<" << param_name << ">`_";
+                                auto sub = param_name;
+                                if(sub.length() > 50) {
+                                    sub = param_name.substr(0, 25) + "[...]" + param_name.substr(param_name.length() - 15 - 1);
+                                    text << "`" << sub << " <" << param_name << ">`_";
+                                } else
+                                    text << "`<" << param_name << ">`_";
+                                
                                 
                             } else {
                                 print("Cannot find ",param_name," in map.");
@@ -224,8 +230,12 @@ namespace cmn {
             
             if(!see_also.empty()) {
                 ss << "\t" << ".. seealso:: ";
+                size_t i=0;
                 for (auto&n : see_also) {
-                    ss << ":func:`" << n << "`, ";
+                    if(i > 0)
+                        ss << ", ";
+                    ss << ":func:`" << n << "`";
+                    ++i;
                 }
                 ss << std::endl;
             }

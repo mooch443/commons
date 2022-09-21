@@ -3,7 +3,14 @@
 
 namespace gui {
     Tooltip::Tooltip(Drawable* other, float max_width)
-        : _other(other), _text(SizeLimit(max_width > 0 || !_other ? max_width : _other->width(), -1), Font(0.7), BgClr{Black.alpha(150)}), _max_width(max_width)
+          : _other(other),
+            _text(SizeLimit(max_width > 0 || !_other
+                            ? max_width
+                            : _other->width(), -1),
+                Font(0.7),
+                FillClr{Black.alpha(150)}
+            ),
+            _max_width(max_width)
     {
         set_text("");
         set_origin(Vec2(0, 1));
@@ -51,6 +58,8 @@ namespace gui {
         _text.set_bounds_changed();
         
         set_bounds(Bounds(mp, _text.size() + Vec2(5, 2) * 2));
+        if(_text.background())
+            print("Background: ", _text.background()->fillclr());
     }
     
     void Tooltip::set_text(const std::string& text) {

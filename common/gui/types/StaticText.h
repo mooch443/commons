@@ -40,6 +40,7 @@ namespace gui {
             Font default_font = Font(0.75);
             std::string txt;
             Alpha alpha{1};
+            Alpha fill_alpha{0};
             
         } _settings;
         
@@ -65,15 +66,15 @@ namespace gui {
         
         template<typename... Args>
         void create(Args... args) {
-            (set(std::forward<Args>(args)), ...);
             set_clickable(true);
+            (set(std::forward<Args>(args)), ...);
         }
         
         const auto& text() const { return _settings.txt; }
         const auto& max_size() const { return _settings.max_size; }
         
     private:
-        using Drawable::set;
+        using Entangled::set;
         void set(const std::string& str) { set_txt(str); }
         void set(TextClr clr) { set_text_color(clr); }
         void set(SizeLimit limit) { set_max_size(limit); }
@@ -85,6 +86,9 @@ namespace gui {
         virtual ~StaticText() {
             texts.clear();
         }
+        
+        using Entangled::set_background;
+        void set_background(const Color& color, const Color& line) override;
         
         void set_txt(const std::string& txt);
         

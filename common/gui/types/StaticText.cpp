@@ -118,12 +118,21 @@ void StaticText::set_default_font(const Font& font) {
             m = m + _settings.margins;
             set_size(m);
             if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
-                set_background(bg_fill_color() != Transparent ? bg_fill_color().alpha(_settings.alpha * 255) : Transparent,
-                    bg_line_color() != Transparent ? bg_line_color().alpha(_settings.alpha * 255) : Transparent);
+                set_background(bg_fill_color() != Transparent
+                               ? bg_fill_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
+                               : Transparent,
+                    bg_line_color() != Transparent
+                               ? bg_line_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
+                               : Transparent);
             
             end();
         }
     }
+
+void StaticText::set_background(const Color& color, const Color& line) {
+    _settings.fill_alpha = double(color.a) / 255.0;
+    Entangled::set_background(color, line);
+}
 
 StaticText::RichString::RichString(const std::string& str, const Font& font, const Vec2& pos, const Color& clr)
     : str(str), font(font), pos(pos), clr(clr)

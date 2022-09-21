@@ -409,7 +409,7 @@ namespace gui {
         void set_scale(const Vec2& scale) override;
         
         void set_background(const Color& color);
-        void set_background(const Color& color, const Color& line);
+        virtual void set_background(const Color& color, const Color& line);
         
         virtual std::vector<Drawable*>& children() = 0;
         
@@ -423,7 +423,8 @@ namespace gui {
         
     protected:
         using Drawable::set;
-        void set(BgClr clr) { set_background(clr, Transparent); }
+        virtual void set(FillClr clr) { set_background(clr, _bg_line_color); }
+        virtual void set(LineClr clr) { set_background(_bg_fill_color, clr); }
         
     protected:
         friend class Drawable;
