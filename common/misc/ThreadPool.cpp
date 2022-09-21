@@ -10,8 +10,11 @@ namespace cmn {
     }
 
     void GenericThreadPool::force_stop() {
-        stop = true;
-        condition.notify_all();
+        {
+            std::unique_lock<std::mutex> lock(m);
+            stop = true;
+            condition.notify_all();
+        }
         
         for (auto &t : thread_pool) {
             t->join();
@@ -49,7 +52,6 @@ namespace cmn {
 #ifndef NDEBUG
                     set_thread_name(name+"::idle");
 #endif
-                    condition.wait(lock, [&](){ return !q.empty() || stop; });
                     if(!q.empty()) {
                         // set busy!
                         _working++;
@@ -81,10 +83,17 @@ namespace cmn {
                         _working--;
                         finish_condition.notify_one();
                         
-                    } else if(stop || stop_thread.at(idx))
+                    } else if(stop || stop_thread.at(idx)) {
                         break;
+                    } else {
+                        auto status = condition.wait_for(lock, std::chrono::seconds(10));
+                        if(status == std::cv_status::timeout
+                           && q.empty() && stop)
+                        {
+                            FormatWarning("Needed to potentially wait forever on this lock in ", thread_prefix(),"!");
+                        }
+                    }
                 }
-                
             };
             
             while(thread_pool.size() < num_threads) {
