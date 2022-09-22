@@ -156,13 +156,13 @@ void Dialog::set_closed() {
     Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
         _title_bg(Bounds(), FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(text, Loc(250, 135), Size(500, 50), Font(0.8f))),
+        _text(std::make_shared<StaticText>(text, Loc(250, 135), SizeLimit(500, 50), Font(0.8f))),
         _title(title, Font(0.9f, Style::Bold)),
         _okay(Button::MakePtr(okay)),
-        _abort(Button::MakePtr(abort.empty() ? nullptr : abort)),
-        _second(Button::MakePtr(second.empty() ? nullptr : second)),
-        _third(Button::MakePtr(third.empty() ? nullptr : third)),
-        _fourth(Button::MakePtr(fourth.empty() ? nullptr : fourth)),
+        _abort(abort.empty() ? nullptr : Button::MakePtr(abort)),
+        _second(second.empty() ? nullptr : Button::MakePtr(second)),
+        _third(third.empty() ? nullptr : Button::MakePtr(third)),
+        _fourth(fourth.empty() ? nullptr : Button::MakePtr(fourth)),
         _buttons(std::make_shared<HorizontalLayout>()),
         _layout(std::vector<Layout::Ptr>{_text, _buttons}, Vec2()),
         _callback(callback)
