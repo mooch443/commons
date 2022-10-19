@@ -81,6 +81,7 @@ namespace gui {
     void CVBase::paint(gui::DrawStructure &s) {
         std::unique_lock<std::recursive_mutex> lock(s.lock());
         s.before_paint(this);
+        _overlay.copyTo(_window);
         
         auto objects = s.collect();
         
