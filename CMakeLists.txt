@@ -547,7 +547,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.7
+        GIT_TAG 3.3.8
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"
@@ -809,13 +809,13 @@ else()
     
     EXTERNALPROJECT_ADD(Z_LIB
         PREFIX ${zlib_install_dir}
-        GIT_REPOSITORY https://github.com/jeking3/zlib.git
-        GIT_TAG c4a2cd007c1b7edef164b29d5f221f83a78c7507
+        GIT_REPOSITORY https://github.com/mooch443/zlib.git
+        GIT_TAG master
         UPDATE_COMMAND ""
 
         INSTALL_DIR ${zlib_install_dir}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS1} -DCMAKE_DEBUG_POSTFIX=d -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${zlib_install_dir}
-        -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF
     )
     
     target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
@@ -990,10 +990,10 @@ if(${COMMONS_BUILD_PNG})
         DEPENDS Commons::LibZ Commons::LibZIP
         PREFIX ${png_install_dir}
         UPDATE_COMMAND ""
-        PATCH_COMMAND ${PNG_PATCH}
+        #PATCH_COMMAND ${PNG_PATCH}
 
         GIT_REPOSITORY  https://github.com/glennrp/libpng.git
-        GIT_TAG a37d4836519517bdce6cb9d956092321eca3e73b
+        GIT_TAG e56f79c0c6d94f5d727fc147d4487038e188cdf2
 
         INSTALL_DIR ${png_install_dir}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} # to find zlib
