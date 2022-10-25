@@ -799,8 +799,8 @@ else()
     
     if(WIN32)
         link_directories(${zlib_install_dir}/lib/)
-        set(ZLIB_LIBRARY "${zlib_install_dir}/lib/zlib$<IF:$<CONFIG:Debug>,d,>.lib")
-        set(libzip_zlib_lib "${zlib_install_dir}/lib/zlib.lib")
+        set(ZLIB_LIBRARY "${zlib_install_dir}/lib/zlibstatic$<IF:$<CONFIG:Debug>,d,>.lib")
+        set(libzip_zlib_lib "${zlib_install_dir}/lib/zlibstatic.lib")
         set(COMMONS_subproject_CMAKE_ARGS1 ${COMMONS_subproject_CMAKE_ARGS}
             -DCMAKE_STATIC_LINKER_FLAGS_INIT="/LIBPATH:\"${zlib_install_dir}/lib\"")
     else()
@@ -876,9 +876,9 @@ if(COMMONS_BUILD_ZLIB)
     if(WIN32)
         set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
             -DZLIB_INCLUDE_DIR:PATH=${zlib_install_dir}/include
-            -DZLIB_LIBRARY_DEBUG:FILEPATH=${zlib_install_dir}/lib/zlibd.lib
-            -DZLIB_LIBRARY_RELEASE:FILEPATH=${zlib_install_dir}/lib/zlib.lib
-            -DZLIB_LIBRARY_RELWITHDEBINFO:FILEPATH=${zlib_install_dir}/lib/zlib.lib
+            -DZLIB_LIBRARY_DEBUG:FILEPATH=${zlib_install_dir}/lib/zlibstaticd.lib
+            -DZLIB_LIBRARY_RELEASE:FILEPATH=${zlib_install_dir}/lib/zlibstatic.lib
+            -DZLIB_LIBRARY_RELWITHDEBINFO:FILEPATH=${zlib_install_dir}/lib/zlibstatic.lib
         )
         
     else()
