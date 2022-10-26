@@ -483,7 +483,7 @@ void MetalImpl::message(const std::string &msg) const {
                                         "N += 4.0;\n"
                                     "}\n"
                             "    }\n"
-                        "        result_color /= N * 0.95;"
+                        "        result_color /= N;"
                         "        dest.write(half4(result_color), gid);\n"
                         "   }\n";
                         

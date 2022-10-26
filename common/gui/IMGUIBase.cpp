@@ -1337,6 +1337,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         return;
     }
     
+    auto i_ = list->VtxBuffer.Size;
     auto o = order.ptr;
     Vec2 center;
     auto bds = order.bounds;
