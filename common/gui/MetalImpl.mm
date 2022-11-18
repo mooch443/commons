@@ -501,7 +501,7 @@ void MetalImpl::message(const std::string &msg) const {
                     computeState = [commandBuffer.device newComputePipelineStateWithFunction:blurFunction error:nil];
                     
                     [computeEncoder setComputePipelineState:computeState];
-                    id<MTLBuffer> mbuffer = [_data->device newBufferWithBytes:center length:sizeof(center) options:MTLResourceOptionCPUCacheModeDefault];
+                    id<MTLBuffer> mbuffer = [_data->device newBufferWithBytes:center length:sizeof(center) options:MTLResourceCPUCacheModeDefaultCache];
                     [computeEncoder setBuffer:mbuffer offset:0 atIndex:0];
                     [computeEncoder setTexture:_data->maskTexture atIndex:0];
                     

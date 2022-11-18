@@ -31,7 +31,7 @@ public:
         
         GETTER(size_t, index)
         GETTER(std::string, filename)
-        size_t _length;
+        uint32_t _length;
         Video *_video;
         Type _type;
         
@@ -45,7 +45,7 @@ public:
         
     public:
         ~File();
-        size_t length() const { return _length; }
+        auto length() const { return _length; }
         const cv::Size& resolution();
         
         void frame(long_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
@@ -64,7 +64,7 @@ private:
     
     File* _last_file = nullptr;
     cv::Size _size;
-    uint64_t _length = 0;
+    uint32_t _length = 0;
     cv::Mat _average;
     cv::Mat _mask;
     bool _has_timestamps = false;
@@ -90,7 +90,7 @@ public:
 #endif
     void frame(uint64_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) override;
     const cv::Size& size() const override { return _size; }
-    uint64_t length() const override { return _length; }
+    uint32_t length() const override { return _length; }
     const cv::Mat& average() const override { return _average; }
     cv::Mat& average() { return _average; }
     bool supports_multithreads() const override { return type() == File::Type::IMAGE; }

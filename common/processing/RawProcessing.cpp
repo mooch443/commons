@@ -7,6 +7,8 @@
 #include <misc/ranges.h>
 #include <processing/PadImage.h>
 #include <misc/ThreadPool.h>
+#include <gui/colors.h>
+#include <misc/PVBlob.h>
 
 using namespace cmn;
 

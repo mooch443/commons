@@ -4,6 +4,8 @@
 #include <processing/CPULabeling.h>
 #include <processing/LuminanceGrid.h>
 #include <misc/ranges.h>
+#include <misc/Image.h>
+#include <misc/PVBlob.h>
 
 //#define DEBUG_TREE_WALK
 //#define DEBUG_EDGES

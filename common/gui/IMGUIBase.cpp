@@ -1657,6 +1657,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
     }
     
+//#define DEBUG_BOUNDARY
 #ifdef DEBUG_BOUNDARY
     list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(125));
     std::string text;
@@ -1664,7 +1665,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         if(dynamic_cast<Entangled*>(o->parent()))
             text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
         else
-            text = Meta::toStr(*o->parent());
+            text = Meta::toStr(*(Drawable*)o->parent());
     } else
         text = Meta::toStr(*o);
     auto font = _fonts.at(Style::Regular);
@@ -1683,13 +1684,16 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     }
     
 #if false
+    list->AddRectFilled((ImVec2)transform.transformPoint(Vec2()),
+                  (ImVec2)transform.transformPoint(o->size()),
+                  cvtClr(Black.alpha(100)));
     list->AddRect((ImVec2)transform.transformPoint(Vec2()),
                   (ImVec2)transform.transformPoint(o->size()),
                   cvtClr(Red));
     
     auto font = _fonts.at(Style::Regular);
-    auto str = Meta::toStr(o->bounds())+" scale:"+Meta::toStr(o->scale());
-    list->AddText(font, 0.5 * font->FontSize * (1.f / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos() - Vec2(0, 10), (ImColor)Red, str.c_str());
+    auto str = Meta::toStr(o->bounds().pos().map(std::roundf))+ " p:" + Meta::toStr(o->global_bounds().pos().map(std::roundf))+" scale:"+Meta::toStr(o->scale())+" "+Meta::toStr((int*)o->parent());
+    list->AddText(font, 0.5 * font->FontSize * (1.f / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)Green, str.c_str());
 #endif
     
 }

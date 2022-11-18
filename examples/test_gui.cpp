@@ -337,7 +337,7 @@ int main(int argc, char**argv) {
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
         
-        e.update([](Entangled &e) {
+        e.update([](Entangled &) {
            // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });
         graph.wrap_object(e);
@@ -346,7 +346,7 @@ int main(int argc, char**argv) {
         //graph.wrap_object(image);
 
         auto scale = graph.scale().reciprocal();
-        auto dim = ptr->window_dimensions().mul(scale * gui::interface_scale());
+        ptr->window_dimensions().mul(scale * gui::interface_scale());
         graph.draw_log_messages();//Bounds(Vec2(0), dim));
         
         timer.reset();

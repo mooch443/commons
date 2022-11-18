@@ -58,20 +58,20 @@ namespace cmn {
         assert(y < rows);
         assert(x < cols);
         assert(channel < dims);
-        return data()[x * dims + channel + y * cols * dims];
+        return data()[ptr_safe_t(x) * dims + ptr_safe_t(channel) + ptr_safe_t(y) * ptr_safe_t(cols) * dims];
     }
 
     uchar* Image::ptr(uint y, uint x) const {
         assert(y < rows);
         assert(x < cols);
-        return data() + (x * dims + y * cols * dims);
+        return data() + (ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims);
     }
 
     void Image::set_pixel(uint x, uint y, const gui::Color& color) const {
         assert(y < rows);
         assert(x < cols);
         
-        auto ptr = data() + x * dims + y * cols * dims;
+        auto ptr = data() + ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims;
         switch (dims) {
             case 4:
                 *(ptr + 3) = color.a;

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <misc/vec2.h>
-#include <misc/PVBlob.h>
+#include <misc/bid.h>
 #include <misc/ranges.h>
+#include <processing/Background.h>
 
 //#define TREE_WITH_PIXELS
 

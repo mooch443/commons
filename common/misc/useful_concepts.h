@@ -69,6 +69,12 @@ template<typename T, typename U>
 concept _clean_same =
     std::same_as<T, typename std::remove_cv<U>::type>;
 
+template<typename T>
+concept unsigned_number = (std::unsigned_integral<T> && !cmn::_clean_same<T, bool> && !cmn::_clean_same<T, unsigned char>);
+
+template<typename T>
+concept signed_number = (std::signed_integral<T> && !cmn::_clean_same<T, char>);
+
 template <template<class...>class T, class U>
 concept _is_instance = (is_instantiation<T, U>::value);
 
@@ -108,6 +114,9 @@ concept _is_number =
 
 template<typename T>
 concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::integral<T>);
+
+template<typename T>
+concept integral_number = (!_clean_same<bool, T>) && std::integral<T>;
 
 #pragma region basic_concepts
 

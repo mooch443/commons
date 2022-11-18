@@ -24,7 +24,7 @@ public:
     #endif
     
     virtual const cv::Size& size() const = 0;
-    virtual uint64_t length() const = 0;
+    virtual uint32_t length() const = 0;
     virtual bool supports_multithreads() const = 0;
     virtual const cv::Mat& average() const = 0;
     virtual bool has_mask() const = 0;

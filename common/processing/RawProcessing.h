@@ -4,7 +4,7 @@
 #include <types.h>
 #include <misc/Blob.h>
 #include <misc/GlobalSettings.h>
-#include <misc/PVBlob.h>
+#include <misc/bid.h>
 
 namespace cmn {
 	class RawProcessing;

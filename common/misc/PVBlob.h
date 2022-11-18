@@ -8,217 +8,257 @@
 #include <misc/Grid.h>
 #include <misc/ProximityGrid.h>
 #include <misc/vec2.h>
+#include <misc/bid.h>
 
 namespace Output {
     class ResultsFormat;
 }
 
 namespace pv {
-    class Blob;
-    using BlobPtr = std::shared_ptr<pv::Blob>;
-    struct CompressedBlob;
 
-struct bid {
-    static constexpr uint32_t invalid = std::numeric_limits<uint32_t>::max();
-    uint32_t _id = invalid;
-    bid() = default;
-    bid(const bid&) = default;
-    bid& operator=(const bid&) = default;
-    bid& operator=(bid&&) = default;
-    constexpr bid(uint32_t v) : _id(v) {}
+struct Moments {
+    float m[3][3];
+    float mu[3][3];
+    float mu_[3][3];
     
-    explicit constexpr operator uint32_t() const {
-        return _id;
-    }
-    explicit constexpr operator int64_t() const { return static_cast<int64_t>(_id); }
-    explicit constexpr operator uint64_t() const { return static_cast<uint64_t>(_id); }
-    constexpr bool operator==(const bid& other) const {
-        return other._id == _id;
-    }
-    constexpr bool operator!=(const bid& other) const {
-        return other._id != _id;
-    }
-    //constexpr bid(uint32_t b) : _id(b) {}
-    constexpr bool valid() const { return _id != invalid; }
+    bool ready;
     
-    constexpr auto operator<=>(const bid& other) const {
-//#ifndef NDEBUG
-        if(!valid() || !other.valid())
-            throw std::invalid_argument("Comparing to an invalid pv::bid does not produce the desired outcome.");
-//#endif
-        return _id <=> other._id;
-    }
-    
-    std::string toStr() const;
-    static std::string class_name() { return "blob"; }
-    static bid fromStr(const std::string& str);
-
-    static constexpr uint32_t from_data(ushort x0, ushort x1, ushort y0, uint8_t N) {
-        assert((uint32_t)x0 < (uint32_t)4096u);
-        assert((uint32_t)x1 < (uint32_t)4096u);
-        assert((uint32_t)y0 < (uint32_t)4096u);
+    Moments() {
+        ready = false;
         
-        return (uint32_t(x0 + (x1 - x0) / 2) << 20)
-                | ((uint32_t(y0) & 0x00000FFF) << 8)
-                |  (uint32_t(N)  & 0x000000FF);
+        for(int i=0; i<3; i++) {
+            for(int j=0; j<3; j++) {
+                m[i][j] = mu[i][j] = mu_[i][j] = 0;
+            }
+        }
     }
-    
-    constexpr cmn::Vec2 calc_position() const {
-        auto x = (_id >> 20) & 0x00000FFF;
-        auto y = (_id >> 8) & 0x00000FFF;
-        //auto N = id & 0x000000FF;
-        return cmn::Vec2(x, y);
-    }
-    //static uint32_t id_from_position(const cmn::Vec2&);
-    static inline bid from_blob(const pv::Blob& blob);
-    static inline bid from_blob(const pv::CompressedBlob& blob);
 };
 
-}
-
-namespace std
-{
-    template <>
-    struct hash<pv::bid>
-    {
-        size_t operator()(const pv::bid& k) const
-        {
-            return std::hash<uint32_t>{}((uint32_t)k);
-        }
-    };
-}
-
-namespace pv {
+class Blob {
+    struct {
+        float angle{0};
+        cmn::Vec2 center;
+        uint64_t _num_pixels{0};
+        bool ready{false};
+        
+    } _properties;
     
-    class Blob : public cmn::Blob {
-    public:
-        enum class Flags {
-            split = 1,
-            is_tag = 2
-        };
+    cmn::Bounds _bounds;
+    
+    std::unique_ptr<std::vector<cmn::HorizontalLine>> _hor_lines;
+    GETTER(Moments, moments)
+    
+public:
+    const decltype(_properties)& properties() const { return _properties; }
+    static size_t all_blobs();
+    
+    //void add_offset(const cmn::Vec2& off);
+    
+    inline const std::unique_ptr<std::vector<cmn::HorizontalLine>>& lines() const {
+        return _hor_lines;
+    }
+    inline std::unique_ptr<std::vector<cmn::HorizontalLine>>&& steal_lines() {
+        return std::move(_hor_lines);
+    }
+    inline const std::vector<cmn::HorizontalLine>& hor_lines() const {
+        return *_hor_lines;
+    }
+    
+    float orientation() const {
+#ifndef NDEBUG
+        if(!_moments.ready)
+            throw U_EXCEPTION("Moments aren't ready yet.");
+#endif
+        return _properties.angle;
+    }
+    const decltype(_properties.center)& center() const {
+#ifndef NDEBUG
+        if(!_properties.ready)
+            throw U_EXCEPTION("Properties aren't ready yet.");
+#endif
+        return _properties.center;
+    }
+    const decltype(_bounds)& bounds() const {
+#ifndef NDEBUG
+        if(!_properties.ready)
+            throw U_EXCEPTION("Properties have not been calculated yet.");
+#endif
+        return _bounds;
+    }
+    uint64_t num_pixels() const {
+#ifndef NDEBUG
+        if(!_properties.ready)
+            throw U_EXCEPTION("Properties have not been calculated yet.");
+#endif
+        return _properties._num_pixels;
+    }
+    void sort() {
+        std::sort(_hor_lines->begin(), _hor_lines->end(), std::less<cmn::HorizontalLine>());
+    }
+    
+    std::unique_ptr<std::vector<uchar>> calculate_pixels(const cv::Mat& background) const {
+        auto res = std::make_unique<std::vector<uchar>>();
+        res->resize(num_pixels());
+        auto ptr = res->data();
         
-        static void set_flag(uint8_t &flags, Flags flag, bool v) {
-            flags ^= (-uint8_t(v) ^ flags) & (1UL << uint8_t(flag));
+        for(auto &hl : *_hor_lines) {
+            for (ushort x=hl.x0; x<=hl.x1; ++x, ++ptr) {
+                assert(ptr < res->data() + res->size());
+                *ptr = background.at<uchar>(hl.y, x);
+            }
         }
-
-        static bool is_flag(uint8_t flags, Flags flag) {
-            return (flags >> uint8_t(flag)) & 1u;
-        }
-        
-        static constexpr uint8_t flag(Flags flag) {
-            return uint8_t(1UL << uint8_t(flag));
-        }
-        
-    protected:
-        GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels)
-        GETTER_I(uint8_t, flags, 0)
-        GETTER_I(bid, parent_id, pv::bid::invalid)
-        GETTER_I(bid, blob_id, pv::bid::invalid)
-        GETTER_SETTER(bool, tried_to_split)
-        
-        float _recount;
-        int32_t _recount_threshold;
-        uchar _color_percentile_5, _color_percentile_95;
-        
-    public:
-        Blob();
-        Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags);
-        //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
-        Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags);
-        Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
-        Blob(const pv::Blob& other);
-        
-        bool split() const;
-        
-        bool is_tag() const;
-        void set_tag(bool);
-        
-        BlobPtr threshold(int32_t value, const cmn::Background& background);
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
-
-        [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold) const;
-        cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
-
-        [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const;
-        cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
-        std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
-        
-        void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
-        //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
-        
-        static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
-        
-        float recount(int32_t threshold) const;
-        float recount(int32_t threshold, const cmn::Background&);
-        void force_set_recount(int32_t threshold, float value = -1);
-        void transfer_backgrounds(const cmn::Background& from, const cmn::Background& to, const cmn::Vec2& dest_offset = cmn::Vec2());
-        
-        void set_split(bool split, pv::BlobPtr parent);
-        
-        std::string name() const;
-        virtual void add_offset(const cmn::Vec2& off) override;
-        void scale_coordinates(const cmn::Vec2& scale);
-        size_t memory_size() const;
-        
-        template<typename... Args>
-        static pv::BlobPtr make(Args... args) {
-            return std::make_shared<pv::Blob>(std::forward<Args>(args)...);
-        }
-        
-        bool operator!=(const pv::Blob& other) const;
-        bool operator==(const pv::Blob& other) const;
-        bool operator==(const pv::bid& bdx) const {
-            return blob_id() == bdx;
-        }
-        std::string toStr() const override;
-        
-    protected:
-
-        friend class Output::ResultsFormat;
-        friend struct CompressedBlob;
-        
-        void set_split(bool);
-        void set_parent_id(const bid& parent_id);
-        void init();
+        return res;
+    }
+    
+    bool properties_ready() const { return _properties.ready; }
+    
+    std::string toStr() const;
+    static std::string class_name() {
+        return "Blob";
+    }
+    
+    //UTILS_TOSTRING("Blob<pos:" << (cv::Point2f)center() << " size:" << (cv::Size)_bounds.size() << ">");
+    
+public:
+    void calculate_properties();
+    void calculate_moments();
+    
+public:
+    enum class Flags {
+        split = 1,
+        is_tag = 2
     };
+    
+    static void set_flag(uint8_t &flags, Flags flag, bool v) {
+        flags ^= (-uint8_t(v) ^ flags) & (1UL << uint8_t(flag));
+    }
 
-    struct ShortHorizontalLine {
-    private:
-        //! starting and end position on x
-        //  the last bit of _x1 is a flag telling the program
-        //  whether this line is the last line on the current y coordinate.
-        //  the following lines are on current_y + 1.
-        uint16_t _x0, _x1;
-        
-    public:
-        //! compresses an array of HorizontalLines to an array of ShortHorizontalLines
-        static std::vector<ShortHorizontalLine> compress(const std::vector<cmn::HorizontalLine>& lines);
-        //! uncompresses an array of ShortHorizontalLines back to HorizontalLines
-        static cmn::blob::line_ptr_t uncompress(uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed);
-        
-    public:
-        constexpr ShortHorizontalLine() : _x0(0), _x1(0) {}
-        
-        constexpr ShortHorizontalLine(uint16_t x0, uint16_t x1, bool eol = false)
-            : _x0(x0), _x1((x1 & 0x7FFF) | uint16_t(eol << 15))
-        {
-            assert(x1 < 32768); // MAGIC NUMBERZ (uint16_t - 1 bit)
-        }
-        
-        constexpr uint16_t x0() const { return _x0; }
-        constexpr uint16_t x1() const { return _x1 & 0x7FFF; }
-        
-        //! returns true if this is the last element on the current y coordinate
-        //  if true, the following lines are on current_y + 1.
-        //  @note stored in the last bit of _x1
-        constexpr bool eol() const { return (_x1 & 0x8000) != 0; }
-        constexpr void eol(bool v) { _x1 = (_x1 & 0x7FFF) | uint16_t(v << 15); }
-    };
+    static bool is_flag(uint8_t flags, Flags flag) {
+        return (flags >> uint8_t(flag)) & 1u;
+    }
+    
+    static constexpr uint8_t flag(Flags flag) {
+        return uint8_t(1UL << uint8_t(flag));
+    }
+    
+protected:
+    GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels)
+    GETTER_I(uint8_t, flags, 0)
+    GETTER_I(bid, parent_id, pv::bid::invalid)
+    GETTER_I(bid, blob_id, pv::bid::invalid)
+    GETTER_SETTER(bool, tried_to_split)
+    
+    float _recount;
+    int32_t _recount_threshold;
+    uchar _color_percentile_5, _color_percentile_95;
+    
+public:
+    Blob();
+    Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags);
+    //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
+    Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags);
+    //Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
+    Blob(const pv::Blob& other);
+    ~Blob();
+    
+    bool split() const;
+    
+    bool is_tag() const;
+    void set_tag(bool);
+    
+    BlobPtr threshold(int32_t value, const cmn::Background& background);
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
 
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold) const;
+    cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
+
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const;
+    cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
+    
+    void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
+    //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
+    
+    static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
+    
+    float recount(int32_t threshold) const;
+    float recount(int32_t threshold, const cmn::Background&);
+    void force_set_recount(int32_t threshold, float value = -1);
+    void transfer_backgrounds(const cmn::Background& from, const cmn::Background& to, const cmn::Vec2& dest_offset = cmn::Vec2());
+    
+    void set_split(bool split, pv::BlobPtr parent);
+    
+    std::string name() const;
+    void add_offset(const cmn::Vec2& off);
+    void scale_coordinates(const cmn::Vec2& scale);
+    size_t memory_size() const;
+    
+    template<typename... Args>
+    static pv::BlobPtr make(Args... args) {
+        return std::make_shared<pv::Blob>(std::forward<Args>(args)...);
+    }
+    
+    bool operator!=(const pv::Blob& other) const;
+    bool operator==(const pv::Blob& other) const;
+    bool operator==(const pv::bid& bdx) const {
+        return blob_id() == bdx;
+    }
+    
+protected:
+    friend class Output::ResultsFormat;
+    friend struct CompressedBlob;
+    friend class DataFormat;
+    friend class DataPackage;
+    
+    void set_split(bool);
+    void set_parent_id(const bid& parent_id);
+    void init();
+};
+
+//! comparing a blob pointer to a bid should work like this:
+inline bool operator==(const pv::BlobPtr& A, const pv::bid& bdx) {
+    return A->blob_id() == bdx;
+}
+
+struct ShortHorizontalLine {
+private:
+    //! starting and end position on x
+    //  the last bit of _x1 is a flag telling the program
+    //  whether this line is the last line on the current y coordinate.
+    //  the following lines are on current_y + 1.
+    uint16_t _x0, _x1;
+    
+public:
+    //! compresses an array of HorizontalLines to an array of ShortHorizontalLines
+    static std::vector<ShortHorizontalLine> compress(const std::vector<cmn::HorizontalLine>& lines);
+    //! uncompresses an array of ShortHorizontalLines back to HorizontalLines
+    static cmn::blob::line_ptr_t uncompress(uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed);
+    
+public:
+    constexpr ShortHorizontalLine() : _x0(0), _x1(0) {}
+    
+    constexpr ShortHorizontalLine(uint16_t x0, uint16_t x1, bool eol = false)
+        : _x0(x0), _x1((x1 & 0x7FFF) | uint16_t(eol << 15))
+    {
+        assert(x1 < 32768); // MAGIC NUMBERZ (uint16_t - 1 bit)
+    }
+    
+    constexpr uint16_t x0() const { return _x0; }
+    constexpr uint16_t x1() const { return _x1 & 0x7FFF; }
+    
+    //! returns true if this is the last element on the current y coordinate
+    //  if true, the following lines are on current_y + 1.
+    //  @note stored in the last bit of _x1
+    constexpr bool eol() const { return (_x1 & 0x8000) != 0; }
+    constexpr void eol(bool v) { _x1 = (_x1 & 0x7FFF) | uint16_t(v << 15); }
+};
+
+//! Contains all important data from Blobs for storing on-disk or compressing memory.
+//! Less versatile though, and less fast to use.
 struct CompressedBlob {
     //! this represents parent_id (2^1), split (2^0) and tried_to_split (2^2)
     uint8_t status_byte = 0;
@@ -275,31 +315,5 @@ public:
     std::string toStr() const;
     static std::string class_name() { return "CompressedBlob"; }
 };
-
-static_assert(int32_t(-1) == (uint32_t)bid::invalid, "Must be equal to ensure backwards compatibility.");
-
-inline bid bid::from_blob(const pv::Blob &blob) {
-    if(!blob.lines() || blob.lines()->empty())
-        return bid::invalid;
-    
-    return from_data(blob.lines()->front().x0,
-                     blob.lines()->front().x1,
-                     blob.lines()->front().y,
-                     blob.lines()->size());
-}
-
-inline bid bid::from_blob(const pv::CompressedBlob &blob) {
-    if(blob.lines().empty())
-        return bid::invalid;
-    
-    return from_data(blob.lines().front().x0(),
-                     blob.lines().front().x1(),
-                     blob.start_y,
-                     blob.lines().size());
-}
-
-inline bool operator==(const pv::BlobPtr& A, const pv::bid& bdx) {
-    return A->blob_id() == bdx;
-}
 
 }

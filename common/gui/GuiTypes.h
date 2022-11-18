@@ -356,6 +356,8 @@ protected:
         }
         
         template<typename... Args> void create(Args... args) {
+            set(Origin(0, 0));
+            
             (set(std::forward<Args>(args)), ...);
             
             switch(_settings.font.align) {
