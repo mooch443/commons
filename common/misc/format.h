@@ -274,7 +274,7 @@ concept is_explicitly_convertible =
 
 template<typename T>
 concept _has_fmt_color = requires {
-    std::same_as<cmn::remove_cvref_t<decltype(T::color)>, cmn::FormatColor_t>;
+    requires std::same_as<cmn::remove_cvref_t<decltype(T::color)>, cmn::FormatColor_t>;
 };
 
 template<FormatterType colors = FormatterType::UNIX>

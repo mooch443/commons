@@ -619,9 +619,10 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
 endif()
 
 add_library(imgui STATIC ${imgui_sources})
-if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     target_compile_definitions(imgui PUBLIC TREX_ENABLE_EXPERIMENTAL_BLUR=1)
 endif()
+
 include_directories(${imgui_path})
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
