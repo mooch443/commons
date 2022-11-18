@@ -116,7 +116,6 @@ set(CMAKE_DEBUG_POSTFIX -d)
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
-    add_compile_definitions(TREX_ENABLE_EXPERIMENTAL_BLUR=1)
 endif()
 
 
@@ -620,6 +619,9 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
 endif()
 
 add_library(imgui STATIC ${imgui_sources})
+if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
+    target_compile_definitions(imgui PUBLIC TREX_ENABLE_EXPERIMENTAL_BLUR=1)
+endif()
 include_directories(${imgui_path})
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
