@@ -9,6 +9,7 @@
 #include <misc/ProximityGrid.h>
 #include <misc/vec2.h>
 #include <misc/bid.h>
+#include <file/DataFormat.h>
 
 namespace Output {
     class ResultsFormat;
@@ -209,10 +210,10 @@ public:
     }
     
 protected:
-    friend class Output::ResultsFormat;
+    friend class ::Output::ResultsFormat;
     friend struct CompressedBlob;
-    friend class DataFormat;
-    friend class DataPackage;
+    friend class cmn::DataFormat;
+    friend class cmn::DataPackage;
     
     void set_split(bool);
     void set_parent_id(const bid& parent_id);
