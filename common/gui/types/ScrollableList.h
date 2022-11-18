@@ -34,7 +34,7 @@ namespace gui {
     //! Check compatibility with List class
     template<typename T>
     concept list_compatible_item = requires(T t) {
-        std::convertible_to<T, std::string>;
+        requires std::convertible_to<T, std::string>;
         { t != t }; // has != operator
     };
 
