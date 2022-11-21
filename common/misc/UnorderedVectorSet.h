@@ -23,9 +23,11 @@ struct UnorderedVectorSet {
 
     template<typename K>
         requires std::convertible_to<K, T>
-    void insert(const K& value) {
-        if (!this->contains(value))
-            _data.emplace_back(value);
+    std::pair<typename decltype(_data)::const_iterator, bool> insert(const K& value) {
+        auto it = find(value);
+        if (it == end())
+            return std::make_pair(_data.emplace(_data.end(), value), true);
+        return std::make_pair(it, false);
     }
 
     template<typename K>

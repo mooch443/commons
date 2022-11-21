@@ -68,28 +68,28 @@ public:
     float orientation() const {
 #ifndef NDEBUG
         if(!_moments.ready)
-            throw U_EXCEPTION("Moments aren't ready yet.");
+            throw cmn::U_EXCEPTION("Moments aren't ready yet.");
 #endif
         return _properties.angle;
     }
     const decltype(_properties.center)& center() const {
 #ifndef NDEBUG
         if(!_properties.ready)
-            throw U_EXCEPTION("Properties aren't ready yet.");
+            throw cmn::U_EXCEPTION("Properties aren't ready yet.");
 #endif
         return _properties.center;
     }
     const decltype(_bounds)& bounds() const {
 #ifndef NDEBUG
         if(!_properties.ready)
-            throw U_EXCEPTION("Properties have not been calculated yet.");
+            throw cmn::U_EXCEPTION("Properties have not been calculated yet.");
 #endif
         return _bounds;
     }
     uint64_t num_pixels() const {
 #ifndef NDEBUG
         if(!_properties.ready)
-            throw U_EXCEPTION("Properties have not been calculated yet.");
+            throw cmn::U_EXCEPTION("Properties have not been calculated yet.");
 #endif
         return _properties._num_pixels;
     }
