@@ -1,7 +1,7 @@
 #pragma once
 
 #include <misc/Grid.h>
-
+#include <misc/bid.h>
 
 namespace std
 {
@@ -27,7 +27,7 @@ namespace std
 namespace cmn {
 namespace grid {
 
-using fdx_pos = int64_t;
+using fdx_pos = pv::bid;
 static constexpr int proximity_res = 100;
 
 class ProximityGrid : public Grid2D<fdx_pos, std::vector<pixel<fdx_pos>>> {
@@ -40,7 +40,7 @@ public:
     std::string str(fdx_pos dx, Vec2 point, float max_d) const;
     
 private:
-    virtual fdx_pos query(float, float) const override { return -1; }
+    virtual fdx_pos query(float, float) const override;
 };
 
 }

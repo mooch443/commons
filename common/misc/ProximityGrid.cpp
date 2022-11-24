@@ -1,6 +1,7 @@
 #include "ProximityGrid.h"
 #include <misc/metastring.h>
 #include <misc/ranges.h>
+#include <misc/bid.h>
 
 namespace cmn {
 namespace grid {
@@ -122,8 +123,8 @@ namespace grid {
                 assert(git < grid.end());
                 
                 for (auto && [fx,fy,v] : *git) {
-                    if(v == -1 || v == dx) {
-                        ssg << "["<<fx<<", "<<fy<<", "<<v<<" ";
+                    if(!v.valid() || v == dx) {
+                        ssg << "["<<fx<<", "<<fy<<", "<<v.toStr()<<" ";
                         auto d = sqrtf(sqdistance(Vec2(fx,fy), point));
                         ssg << d << "] ";
                     }
@@ -136,6 +137,10 @@ namespace grid {
         
         return ssg.str();
     }
+
+fdx_pos ProximityGrid::query(float, float) const {
+    return pv::bid::invalid;
+}
 
 }
 }
