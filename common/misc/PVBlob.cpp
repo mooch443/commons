@@ -13,7 +13,7 @@ CREATE_STRUCT(PVSettings,
     (bool, correct_illegal_lines)
 )
 
-#define setting(NAME) PVSettings::copy<PVSettings :: NAME>()
+#define setting(NAME) PVSettings::get<PVSettings :: NAME>()
 
 std::string CompressedBlob::toStr() const {
     return "CompressedBlob<"+Meta::toStr(blob_id())+" parent:"+Meta::toStr(parent_id)+" split:"+Meta::toStr(split())+">";
