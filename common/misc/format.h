@@ -708,16 +708,23 @@ public:
         return str + console_color<bracket_color, colors>("]");
     }
 
-    template<bool A, size_t S, typename... Args>
-    static std::string parse_value(const robin_hood::detail::Table<A, S, Args...>& m) {
+    template<bool A, size_t S, typename Key, typename T, typename... Args>
+    static std::string parse_value(const robin_hood::detail::Table<A, S, Key, T, Args...>& m) {
         size_t i = 0, N = m.size();
         std::string str = console_color<bracket_color, colors>("{");
-        for (auto& [k, v] : m) {
-            str += console_color<bracket_color, colors>("[")
+        if constexpr(std::same_as<T, void>) {
+            for (auto& v : m) {
+                str += parse_value(v)
+                        + console_color<bracket_color, colors>(i++ < N-1 ? "," : "");
+            }
+        } else {
+            for (auto& [k, v] : m) {
+                str += console_color<bracket_color, colors>("[")
                 + parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
                 + console_color<bracket_color, colors>(i++ < N-1 ? "]," : "]");
+            }
         }
         return str + console_color<bracket_color, colors>("}");
     }

@@ -343,6 +343,10 @@ pv::BlobPtr CompressedBlob::unpack() const {
         calculate_properties();
         _blob_id = bid::from_blob(*this);
     }
+
+    int32_t Blob::last_recount_threshold() const {
+        return _recount_threshold;
+    }
     
     void Blob::set_split(bool split, pv::BlobPtr parent) {
         set_split(split);
@@ -372,31 +376,37 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _recount_threshold = threshold;
     }
     
-    float Blob::recount(int32_t threshold, const Background& background) {
-        //const float cm_per_pixel = SETTING(cm_per_pixel).value<float>();
+    float Blob::recount(int32_t threshold, const cmn::Background &background, bool dont_cache) {
+        return raw_recount(threshold, background, dont_cache) * SQR(setting(cm_per_pixel));
+    }
+
+    float Blob::raw_recount(int32_t threshold, const Background& background, bool dont_cache) {
         if(threshold == 0) {
+            if(dont_cache && _recount_threshold != -1)
+                return _recount;
+            
             _recount = num_pixels();
             _recount_threshold = 0;
-            return _recount * SQR(setting(cm_per_pixel));
+            return _recount;
         }
         
         if(threshold == -1 && _recount_threshold == -1)
             throw U_EXCEPTION("Did not calculate recount yet.");
         
-        if(_recount_threshold != threshold) {
+        if(threshold >= 0 && _recount_threshold != threshold) {
             //if(_recount_threshold != -1)
             
             if(_pixels == nullptr)
                 throw U_EXCEPTION("Cannot threshold without pixel values.");
             
-            _recount = 0;
+            float recount = 0;
 #ifndef NDEBUG
             size_t local_recount = 0;
             auto local_ptr = _pixels->data();
 #endif
             auto ptr = _pixels->data();
             for (auto &line : hor_lines()) {
-                _recount += background.count_above_threshold(line.x0, line.x1, line.y, ptr, threshold);
+                recount += background.count_above_threshold(line.x0, line.x1, line.y, ptr, threshold);
                 ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
 #ifndef NDEBUG
                 for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
@@ -407,22 +417,29 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #endif
             }
             
-            assert(_recount == local_recount);
-            _recount_threshold = threshold;
+            assert(recount == local_recount);
+            
+            if(!dont_cache || _recount_threshold == -1) {
+                _recount_threshold = threshold;
+                _recount = recount;
+            } else
+                return recount;
         }
         
-        return _recount * SQR(setting(cm_per_pixel));
+        return _recount;
     }
     
-    float Blob::recount(int32_t threshold) const {
-        //if(threshold == 0)
-        //    return num_pixels() * SQR(cm_per_pixel);
+    float Blob::raw_recount(int32_t threshold) const {
         if(threshold != -1 && _recount_threshold != threshold)
             throw U_EXCEPTION("Have to threshold() first.");
         if(threshold == -1 && _recount_threshold == -1)
             throw U_EXCEPTION("Did not calculate recount yet.");
         
-        return _recount * SQR(setting(cm_per_pixel));
+        return _recount;
+    }
+
+    float Blob::recount(int32_t threshold) const {
+        return raw_recount(threshold) * SQR(setting(cm_per_pixel));
     }
     
     BlobPtr Blob::threshold(int32_t value, const Background& background) {

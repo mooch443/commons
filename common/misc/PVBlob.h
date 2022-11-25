@@ -150,7 +150,7 @@ protected:
     GETTER_SETTER(bool, tried_to_split)
     
     float _recount;
-    int32_t _recount_threshold;
+    int32_t _recount_threshold{-1};
     uchar _color_percentile_5, _color_percentile_95;
     
 public:
@@ -186,8 +186,12 @@ public:
     
     static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
     
+    int32_t last_recount_threshold() const;
+    float raw_recount(int32_t threshold) const;
+    float raw_recount(int32_t threshold, const cmn::Background&, bool dont_cache = false);
     float recount(int32_t threshold) const;
-    float recount(int32_t threshold, const cmn::Background&);
+    float recount(int32_t threshold, const cmn::Background&, bool dont_cache = false);
+    
     void force_set_recount(int32_t threshold, float value = -1);
     void transfer_backgrounds(const cmn::Background& from, const cmn::Background& to, const cmn::Vec2& dest_offset = cmn::Vec2());
     
