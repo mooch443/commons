@@ -64,7 +64,7 @@ namespace grid {
         GETTER_CONST(const Size2, resolution)
         GETTER(uint, n)
         GETTER(uint, N)
-        std::unordered_map<T, UnorderedVectorSet<uint>> _value_where;
+        ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
         Grid2D(const Size2& resolution, uint n)
