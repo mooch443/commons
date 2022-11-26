@@ -56,7 +56,7 @@ namespace cmn {
                     return res;
                 }
                     
-                q.push([task](){ (*task)(); });
+                q.push([task = std::move(task)]() { (*task)(); });
             }
             condition.notify_one();
             return res;
