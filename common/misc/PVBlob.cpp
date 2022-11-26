@@ -382,7 +382,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 
     float Blob::raw_recount(int32_t threshold, const Background& background, bool dont_cache) {
         if(threshold == 0) {
-            if(dont_cache && _recount_threshold != -1)
+            if(dont_cache && _recount_threshold == 0)
                 return _recount;
             
             _recount = num_pixels();
