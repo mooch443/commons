@@ -355,7 +355,7 @@ inline constexpr auto infinity()
 }
 
 template <typename T>
-constexpr T next_pow2 (T n)
+__attribute__((optnone)) constexpr T next_pow2 (T n)
 {
     if(n <= T{1}) return 1;
     
