@@ -820,7 +820,7 @@ inline std::string current_time_string() {
 #ifdef _WIN32
         localtime_s(&buf, &t);
 #else
-        localtime_r(&buf, &t);
+        localtime_r(&t, &buf);
 #endif
         struct tm locl;
         memcpy(&locl, &buf, sizeof(struct tm));

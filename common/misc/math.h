@@ -355,14 +355,14 @@ inline constexpr auto infinity()
 }
 
 template <typename T>
-__attribute__((optnone)) constexpr T next_pow2 (T n)
+constexpr T next_pow2 (T n)
 {
     if(n <= T{1}) return 1;
     
     static_assert(sizeof(T) <= 64, "Cannot use this for >64bit.");
     T clz = 0;
     if constexpr (sizeof(T) <= 32)
-        clz = __builtin_clzl(n-1); // unsigned long
+        clz = __builtin_clz(n-1); // unsigned long
     else
         clz = __builtin_clzll(n-1); // unsigned long long
     
