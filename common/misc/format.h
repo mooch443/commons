@@ -816,10 +816,15 @@ inline std::string current_time_string() {
     using namespace std::chrono;
     static const auto tod = ([](){
         time_t t = time(NULL);
-        struct tm* locg = localtime(&t);
+        struct tm buf;
+#ifdef _WIN32
+        localtime_s(&buf, &t);
+#else
+        localtime_r(&buf, &t);
+#endif
         struct tm locl;
-        memcpy(&locl, locg, sizeof(struct tm));
-        return std::chrono::seconds(timegm(locg) - mktime(&locl));
+        memcpy(&locl, &buf, sizeof(struct tm));
+        return std::chrono::seconds(timegm(&buf) - mktime(&locl));
     })();
     auto t = date::floor<seconds>(system_clock::now() + tod);
     return date::format("%H:%M:%S", t);
