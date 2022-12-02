@@ -36,7 +36,7 @@ namespace gui {
     };
 
     //! Securing usage of error_messages
-    static std::recursive_mutex error_message_lock;
+    static auto error_message_lock = new std::recursive_mutex;
 
     //! Saves recent error messages for display
     static std::vector<ErrorMessage> error_messages;
@@ -56,7 +56,7 @@ namespace gui {
         //!TODO: Error log not implemented
         debug_callback = set_debug_callback([](PrefixLiterals::Prefix type, const std::string& msg, bool force_callback)
         {
-            std::lock_guard<std::recursive_mutex> lock(error_message_lock);
+            std::lock_guard lock(*error_message_lock);
             ErrorMessage obj;
             obj.msg = msg;
             switch (type) {
@@ -98,7 +98,7 @@ namespace gui {
         //guard._section->set_scale(scale().reciprocal());
         
         {
-            std::lock_guard<std::recursive_mutex> lock(error_message_lock);
+            std::lock_guard lock(*error_message_lock);
             
             Vec2 pos = screen.pos() + Vec2(screen.width - 10, 0);
             for (size_t i=min(size_t(20), error_messages.size()); i>0; i--) {
