@@ -355,7 +355,7 @@ inline constexpr auto infinity()
 }
 
 template<typename T>
-inline T builtin_clz(T n) {
+inline T builtin_clz(T) {
     static_assert(sizeof(T) == 0, "Unknown type.");
 }
 

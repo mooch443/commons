@@ -13,8 +13,8 @@ extern IMPLEMENT(PrefixLiterals::names) = {
 };
 
 static std::atomic_bool runtime_is_quiet{ false };
-static std::mutex log_file_mutex;
-static file::Path runtime_log_file{ "" };
+static std::mutex* log_file_mutex = new std::mutex();
+static file::Path* runtime_log_file = new file::Path{ "" };
 static FILE* f{ nullptr };
 
 void set_runtime_quiet(bool quiet) {
@@ -67,15 +67,15 @@ bool has_log_callback() {
 }
 
 bool has_log_file() {
-    std::lock_guard guard(log_file_mutex);
-    return !runtime_log_file.empty();
+    std::lock_guard guard(*log_file_mutex);
+    return !runtime_log_file->empty();
 }
 void set_log_file(const std::string& path) {
-    std::lock_guard guard(log_file_mutex);
+    std::lock_guard guard(*log_file_mutex);
     if (f)
         fclose(f);
     f = nullptr;
-    runtime_log_file = file::Path(path);
+    *runtime_log_file = file::Path(path);
 }
 
 void write_log_message(const std::string& str) {
@@ -85,8 +85,8 @@ void write_log_message(const std::string& str) {
 
     static std::once_flag flag;
     std::call_once(flag, []() {
-        std::lock_guard guard(log_file_mutex);
-        f = runtime_log_file.fopen("w");
+        std::lock_guard guard(*log_file_mutex);
+        f = runtime_log_file->fopen("w");
         if (f) {
             static const char head[] =
                 "<style>\n"
@@ -117,7 +117,7 @@ void write_log_message(const std::string& str) {
         }
     });
 
-    std::lock_guard guard(log_file_mutex);
+    std::lock_guard guard(*log_file_mutex);
     if (f) {
         auto r = utils::find_replace(str, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }) + "\n";
         fwrite((void*)r.c_str(), sizeof(char), r.length(), f);
