@@ -26,6 +26,8 @@ template<class T, class Alloc>
 struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
 template<class T, class Alloc>
 struct is_set<robin_hood::unordered_flat_set<T, Alloc>> : public std::true_type {};
+template<class T, class Alloc>
+struct is_set<robin_hood::unordered_node_set<T, Alloc>> : public std::true_type {};
 // template<class T, class Alloc>
 //struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
 

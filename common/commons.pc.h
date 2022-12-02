@@ -462,6 +462,12 @@ inline bool contains(const robin_hood::unordered_flat_set<T>& s, const K& value)
     return s.contains(value);
 }
 
+template<typename T, typename K>
+    requires std::convertible_to<K, T>
+inline bool contains(const robin_hood::unordered_node_set<T>& s, const K& value) {
+    return s.contains(value);
+}
+
 template<typename T>
 inline bool contains(const std::set<T>& v, T obj) {
     //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets
