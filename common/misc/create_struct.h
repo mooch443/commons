@@ -1,5 +1,7 @@
 #pragma once
 
+#include <commons.pc.h>
+
 #ifdef __APPLE__
 #include <Availability.h>
 
