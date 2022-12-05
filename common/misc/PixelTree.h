@@ -124,7 +124,7 @@ namespace pixel {
     
     std::vector<std::shared_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobPtr blob, int threshold);
 
-    pv::BlobPtr threshold_get_biggest_blob(pv::BlobPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2);
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, int threshold, const Background* bg, const Rangel& size_range = Rangel(-1,-1));
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
+    pv::BlobPtr threshold_get_biggest_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2);
+    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range = Rangel(-1,-1));
+    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
 }

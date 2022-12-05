@@ -58,7 +58,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         }
     }
 
-    inline blobs_t _threshold_blob(pv::BlobPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
+    inline blobs_t _threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
         if(!blob->pixels())
             throw U_EXCEPTION("Cannot threshold a blob without pixels.");
         //return blob;
@@ -149,7 +149,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         return CPULabeling::run(*lines, *pixels);
     }
     
-    pv::BlobPtr threshold_get_biggest_blob(pv::BlobPtr blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
+    pv::BlobPtr threshold_get_biggest_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
         auto blobs = _threshold_blob(blob, threshold, bg, use_closing, closing_size);
         
         size_t max_size = 0;
@@ -176,7 +176,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         //return ptr;
     }
     
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
+    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
         auto blobs = _threshold_blob(blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
         for(auto && [lines, pixels, flags] : blobs) {
@@ -186,7 +186,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         return result;
     }
 
-inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& difference_cache, int threshold) {
+inline blobs_t _threshold_blob(const pv::BlobPtr& blob,const std::vector<uchar>& difference_cache, int threshold) {
     //timer.reset();
     auto px = blob->pixels()->data();
     auto dpx = difference_cache.data();
@@ -243,7 +243,7 @@ inline blobs_t _threshold_blob(pv::BlobPtr blob,const std::vector<uchar>& differ
     return CPULabeling::run(*lines, *pixels);
 }
 
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
         auto blobs = _threshold_blob(blob, difference_cache, threshold);
         std::vector<pv::BlobPtr> result;
         for(auto && [lines, pixels, flags] : blobs) {
