@@ -310,11 +310,12 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     # -fsanitize-trap=,signed-integer-overflow
     #set(C_SANITIZE_OPTIONS "-fsanitize=thread,null,alignment,undefined,bounds -fno-sanitize-recover=null,alignment,undefined,bounds,signed-integer-overflow")
 
-    if(TREX_CONDA_PACKAGE_INSTALL)
+    #if(TREX_CONDA_PACKAGE_INSTALL)
         set(M1OPTIONS "")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+    #else
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
         set(M1OPTIONS "-mcpu=apple-m1")
-    else()
+    elseif(NOT TREX_CONDA_PACKAGE_INSTALL)
         set(M1OPTIONS "-march=native")
     endif()
 
