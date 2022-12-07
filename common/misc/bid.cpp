@@ -6,10 +6,14 @@ namespace pv {
 using namespace cmn;
 
 std::string bid::toStr() const {
+    if(!valid())
+        return "null";
     return Meta::toStr<uint32_t>(_id);
 }
 
 bid bid::fromStr(const std::string& str) {
+    if(str == "null")
+        return pv::bid();
     return bid(Meta::fromStr<uint32_t>(str));
 }
 
