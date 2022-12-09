@@ -289,16 +289,22 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPt
     pixels->reserve(blob->pixels()->size());
     lines->reserve(blob->hor_lines().size());
     
-#ifndef NDEBUG
+//#ifndef NDEBUG
     ptr_safe_t count = 0;
-#endif
+//#endif
     
     for (auto &line : blob->hor_lines()) {
         tmp_line.y = line.y;
-        tmp_line.x0 = coord_max_val;
-        tmp_line.x1 = 0;
+        abstract_line([&](coord_t, uchar){
+            return *dpx++;
+        }, line, px, [&](auto){
+            return threshold;
+        }, tmp_line, count, lines, pixels);
         
-        for (auto x=line.x0; x<=line.x1; ++x, ++px, ++dpx) {
+        //tmp_line.x0 = coord_max_val;
+        //tmp_line.x1 = 0;
+        
+        /*for (auto x=line.x0; x<=line.x1; ++x, ++px, ++dpx) {
             if(*dpx >= threshold) {
             //if((!bg && *px >= threshold) || (bg &&  bg->is_different(x, line.y, *px, threshold))) {
                 pixels->push_back(*px);
@@ -324,7 +330,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPt
 #ifndef NDEBUG
             count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
 #endif
-        }
+        }*/
         
         assert(count == pixels->size());
     }
