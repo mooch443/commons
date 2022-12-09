@@ -5,7 +5,7 @@
 
 namespace cmn::CPULabeling {
 
-template<typename Storage = uint32_t, uint8_t BigWord = 12, uint8_t SmallWord = 8>
+template<typename Storage = uint32_t, uint8_t BigWord = 13, uint8_t SmallWord = uint8_t(CHAR_BIT * sizeof(Storage)) - BigWord * 2u>
 struct HLine {
     /**
      * 13bit x0 | 6 bit x1 | 13 bit y
