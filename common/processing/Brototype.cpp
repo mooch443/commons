@@ -16,7 +16,7 @@ Brototype::Brototype() {
 #endif
 }
 
-Brototype::Brototype(const Line& line, const uchar* px)
+Brototype::Brototype(const Line_t& line, const uchar* px)
     : _pixel_starts({px}), _lines({line})
 {
     //print("Allocating.");

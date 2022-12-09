@@ -332,16 +332,16 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
     static std::mutex mutex;
 
     for(auto it = start; it != end; ++it) {
-        if(ptr_safe_t(it->x1) - ptr_safe_t(it->x0) > Line::bit_size_x1) {
+        if(ptr_safe_t(it->x1) - ptr_safe_t(it->x0) > Line_t::bit_size_x1) {
             auto pxcopy = px;
             auto copy = *it;
-            while(ptr_safe_t(copy.x1) - ptr_safe_t(copy.x0) > Line::bit_size_x1) {
-                HLine line(copy.x0, copy.x0 + Line::bit_size_x1, copy.y);
+            while(ptr_safe_t(copy.x1) - ptr_safe_t(copy.x0) > Line_t::bit_size_x1) {
+                Line_t line(copy.x0, copy.x0 + Line_t::bit_size_x1, copy.y);
                 //print("converting ", *it, " to shorter lines: ", line.x0(), ",", line.x1(), ";", line.y());
                 list.source().push_back(line, pxcopy);
 
-                copy.x0 += Line::bit_size_x1 + 1;
-                pxcopy += Line::bit_size_x1 + 1;
+                copy.x0 += Line_t::bit_size_x1 + 1;
+                pxcopy += Line_t::bit_size_x1 + 1;
             }
 
             //print("converting ", *it, " to shorter lines: ", copy);

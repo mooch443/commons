@@ -144,9 +144,9 @@ struct HLine {
 };
 
 using Pixel = const uchar*;
-using Line = HLine<uint32_t>;
+using Line32 = HLine<uint32_t>;
 using Line64 = HLine<uint64_t, 24>;
 
-using Line_t = Line;
+using Line_t = Line64;
 
 }

@@ -9,6 +9,8 @@
 #include <misc/ThreadPool.h>
 #include <gui/colors.h>
 #include <misc/PVBlob.h>
+#include <gui/DrawCVBase.h>
+#include <gui/Graph.h>
 
 using namespace cmn;
 
@@ -391,7 +393,46 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         });
         
         if (use_adaptive_threshold) {
+            //cv::Mat local;
+            //INPUT->copyTo(local);
+            //tf::imshow("INPUT", local);
+            //CALLCV(cv::GaussianBlur(*INPUT, *OUTPUT, Size2(21,21), 0));
+//CALLCV(cv::threshold(*INPUT, *OUTPUT, threshold, 255, cv::THRESH_BINARY | cv::THRESH_OTSU));
+            //cv::imwrite("/Users/tristan/output.png", local);
+            
+            /*cv::Mat local;
+            std::map<int, float> values;
+            float _ma = 0;
+            for(int threshold = 0; threshold < 100; threshold += 2) {
+                cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 23, -threshold);
+                OUTPUT->copyTo(local);
+                auto blobs = CPULabeling::run(local);
+                values[threshold] = blobs.size();
+                if(blobs.size() > _ma)
+                    _ma = blobs.size();
+            }
+            
+            static cv::Mat bg = cv::Mat::zeros(480, 640, CV_8UC3);
+            static gui::CVBase base(bg);
+            static gui::DrawStructure s;
+            static gui::Graph g(Bounds(0, 0, 640,480), "Graph");
+            g.clear();
+            g.add_function(gui::Graph::Function("threshold", gui::Graph::Type::DISCRETE, [values](float x) -> float {
+                if(!values.contains(int(x)))
+                    return gui::Graph::invalid();
+                return values.at(int(x));
+            }));
+            g.set_zero(0);
+            g.set_ranges(Rangef(0, 100), Rangef(0,_ma));
+            s.wrap_object(g);
+            base.paint(s);
+            base.display();*/
+            
+            //CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 25, -threshold));
             CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, adaptive_neighborhood_size, -threshold));
+            
+            //INPUT->copyTo(local);
+            //tf::imshow("OUTPUT "+Meta::toStr(adaptive_neighborhood_size), local);
         }
         else {
             if (threshold_maximum < 255) {
