@@ -39,39 +39,40 @@ namespace cmn {
         coord_t y;
         coord_t x0, x1;
         
-        HorizontalLine() = default;
-        HorizontalLine(coord_t y_, coord_t x0_, coord_t x1_)
-        : y(y_), x0(x0_), x1(x1_) {
+        constexpr HorizontalLine() noexcept = default;
+        constexpr HorizontalLine(coord_t y_, coord_t x0_, coord_t x1_) noexcept
+            : y(y_), x0(x0_), x1(x1_)
+        {
             //assert(x0 <= x1);
         }
         
-        bool inside(coord_t x_, coord_t y_) const {
+        constexpr bool inside(coord_t x_, coord_t y_) const noexcept {
             return y_ == y && x_ >= x0 && x_ <= x1;
         }
         
-        bool overlap_x(const HorizontalLine& other) const {
+        constexpr bool overlap_x(const HorizontalLine& other) const noexcept {
             return other.x1 >= x0-1 && other.x0 <= x1+1;
         }
         
-        bool overlap(const HorizontalLine& other) const {
+        constexpr bool overlap(const HorizontalLine& other) const noexcept {
             return other.y == y && overlap_x(other);
         }
         
-        bool operator==(const HorizontalLine& other) const {
+        constexpr bool operator==(const HorizontalLine& other) const noexcept {
             return other.x0 == x0 && other.y == y && other.x1 == x1;
         }
         
-        bool operator<(const HorizontalLine& other) const {
+        constexpr bool operator<(const HorizontalLine& other) const noexcept {
             //! Compares two HorizontalLines and sorts them by y and x0 coordinates
             //  (top-bottom, left-right)
             return y < other.y || (y == other.y && x0 < other.x0);
         }
         
-        HorizontalLine merge(const HorizontalLine& other) const {
+        constexpr HorizontalLine merge(const HorizontalLine& other) const noexcept {
             //if(other.y != y)
             //    throw U_EXCEPTION("Cannot merge lines from y=",y," and ",other.y,"");
             //assert(overlap(other));
-            return HorizontalLine(y, cmn::min(x0, other.x0), cmn::max(x1, other.x1));
+            return HorizontalLine(y, std::min(x0, other.x0), std::max(x1, other.x1));
         }
         
         std::string str() const {

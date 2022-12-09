@@ -14,8 +14,74 @@ namespace pixel {
     static Image::Ptr debug_greyscale = nullptr;
     static constexpr auto coord_max_val = std::numeric_limits<coord_t>::max();
 
-inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& tmp_line, ptr_safe_t&count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels) {
-    pixels->push_back(px);
+struct Row {
+    std::vector<int> cache;
+#if TREE_WITH_PIXELS
+    std::vector<uchar> pixels;
+#endif
+    std::vector<int> border;
+    
+    Range<int> range;
+    int y;
+    
+    Row(int cols) : range(-1, -1), y(-1) {
+        resize(cols);
+    }
+    
+    void resize(size_t x) {
+        cache.resize(x);
+#if TREE_WITH_PIXELS
+        pixels.resize(x);
+#endif
+        
+        std::fill(cache.begin(), cache.end(), -1);
+        border.reserve(x);
+    }
+    
+    inline int& operator[](size_t x) {
+        return cache[x];
+    }
+    
+    inline int operator[](size_t x) const {
+        return cache[x];
+    }
+    
+#if TREE_WITH_PIXELS
+    inline int pixel(size_t x) const {
+        return pixels[x];
+    }
+    
+    inline void set_pixel(size_t x, int value) {
+        pixels[x] = value;
+    }
+#endif
+    
+    size_t size() const {
+        return cache.size();
+    }
+    
+    void add_border(int index) {
+        if(contains(border, index))
+            return;
+        border.push_back(index);
+    }
+    
+    inline bool valid() const {
+        return y != -1;
+    }
+};
+
+inline void update_tmp_line (coord_t x,
+                             const unsigned char px,
+                             HorizontalLine& tmp_line,
+                             ptr_safe_t&count,
+                             const std::shared_ptr<std::vector<HorizontalLine>> &lines,
+                             const std::shared_ptr<std::vector<uchar>> &pixels)
+    noexcept
+{
+    //if(pixels->capacity() < pixels->size() + 1)
+    //    print("Have to adjust size of container: ", pixels->size());
+    pixels->emplace_back(px);
     
     if(tmp_line.x0 == coord_max_val)
         tmp_line.x0 = tmp_line.x1 = x;
@@ -31,34 +97,69 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
 };
 
 #define _____FN_TYPE (const Background* bg, const HorizontalLine& line, uchar*& px, int threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
+
+template<typename F>
+inline void abstract_line (F&& diff, const HorizontalLine& line, uchar*& px, auto threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
+{
+    bool prev{false};
+    uchar* start;
+    size_t i=0;
     
+    for (auto x=line.x0; x<=line.x1; ++x, ++px, ++i) {
+        if(diff(x, *px) < threshold(x)) {
+            if(prev) {
+                pixels->insert(pixels->end(), start, px);
+                tmp_line.x1 = x - 1;
+                lines->emplace_back(std::move(tmp_line));
+                
+                count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
+                prev = false;
+            }
+            
+        } else if(!prev) {
+            prev = true;
+            start = px;
+            tmp_line.x0 = x;
+        }
+    }
+    
+    if(prev) {
+        pixels->insert(pixels->end(), start, px);
+        tmp_line.x1 = line.x1;
+        lines->emplace_back(std::move(tmp_line));
+        count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
+    }
+}
+
     inline void line_with_grid _____FN_TYPE {
         auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
         
-        for (auto x=line.x0; x<=line.x1; ++x, ++px, ++threshold_ptr) {
-            if(bg->diff(x, line.y, *px) >= (*threshold_ptr) * threshold) {
-                update_tmp_line(x, *px, tmp_line, count, lines, pixels);
-            }
-        }
+        abstract_line([bg, y = line.y](coord_t x, uchar px){
+            return bg->diff(x, y, px);
+        }, line, px, [threshold, &threshold_ptr](auto){
+            return (*threshold_ptr++) * threshold;
+        }, tmp_line, count, lines, pixels);
     }
 
     inline void line_without_grid _____FN_TYPE {
-        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-            if(bg->diff(x, line.y, *px) >= threshold) {
-                update_tmp_line(x, *px, tmp_line, count, lines, pixels);
-            }
-        }
+        abstract_line([&](coord_t x, uchar px){
+            return bg->diff(x, line.y, px);
+        }, line, px, [threshold](auto){
+            return threshold;
+        }, tmp_line, count, lines, pixels);
     }
 
     inline void line_without_bg _____FN_TYPE {
         UNUSED(bg);
-        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-            if(*px >= threshold)
-                update_tmp_line(x, *px, tmp_line, count, lines, pixels);
-        }
+        
+        abstract_line([](coord_t, uchar px){
+            return px;
+        }, line, px, [threshold](auto){
+            return threshold;
+        }, tmp_line, count, lines, pixels);
     }
 
-    inline blobs_t _threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
+    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
         if(!blob->pixels())
             throw U_EXCEPTION("Cannot threshold a blob without pixels.");
         //return blob;
@@ -103,7 +204,7 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
                 mat.copyTo(local, buffer1);
             }
             
-            auto blobs = CPULabeling::run(local);
+            auto blobs = CPULabeling::run(local, cache);
             
             for(auto && [lines, pixels, flags] : blobs) {
                 for(auto &line : *lines) {
@@ -128,29 +229,16 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         
         for (auto &line : blob->hor_lines()) {
             tmp_line.y = line.y;
-            tmp_line.x0 = coord_max_val;
-            tmp_line.x1 = 0;
-            
             (*fn)(bg, line, px, threshold, tmp_line, count, lines, pixels);
-            
-            if(tmp_line.x0 != coord_max_val) {
-                lines->push_back(tmp_line);
-                assert(tmp_line.x1 >= tmp_line.x0);
-                count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-            }
-            
             assert(count == pixels->size());
         }
         
-        //if(blob->pixels()->size() > 1000 * 1000)
-        
-        //static Timing timing("after_threshold", 0.1);
-        //TakeTiming take(timing);
-        return CPULabeling::run(*lines, *pixels);
+        return CPULabeling::run(*lines, *pixels, cache);
     }
     
     pv::BlobPtr threshold_get_biggest_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
-        auto blobs = _threshold_blob(blob, threshold, bg, use_closing, closing_size);
+        CPULabeling::ListCache_t cache;
+        auto blobs = _threshold_blob(cache, blob, threshold, bg, use_closing, closing_size);
         
         size_t max_size = 0;
         blobs_t::value_type *found = nullptr;
@@ -176,17 +264,22 @@ inline void update_tmp_line (coord_t x, const unsigned char px, HorizontalLine& 
         //return ptr;
     }
     
-    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
-        auto blobs = _threshold_blob(blob, threshold, bg);
+    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
+        auto blobs = _threshold_blob(cache, blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
-        for(auto && [lines, pixels, flags] : blobs) {
+        for(auto&& [lines, pixels, flags] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
                 result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
         }
         return result;
     }
 
-inline blobs_t _threshold_blob(const pv::BlobPtr& blob,const std::vector<uchar>& difference_cache, int threshold) {
+    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
+        CPULabeling::ListCache_t cache;
+        return threshold_blob(cache, blob, threshold, bg, size_range);
+    }
+
+inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob,const std::vector<uchar>& difference_cache, int threshold) {
     //timer.reset();
     auto px = blob->pixels()->data();
     auto dpx = difference_cache.data();
@@ -240,75 +333,25 @@ inline blobs_t _threshold_blob(const pv::BlobPtr& blob,const std::vector<uchar>&
     
     //static Timing timing("after_threshold", 0.1);
     //TakeTiming take(timing);
-    return CPULabeling::run(*lines, *pixels);
+    return CPULabeling::run(*lines, *pixels, cache);
+}
+
+std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+    auto blobs = _threshold_blob(cache, blob, difference_cache, threshold);
+    std::vector<pv::BlobPtr> result;
+    for(auto && [lines, pixels, flags] : blobs) {
+        if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
+            result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
+    }
+    return result;
 }
 
     std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
-        auto blobs = _threshold_blob(blob, difference_cache, threshold);
-        std::vector<pv::BlobPtr> result;
-        for(auto && [lines, pixels, flags] : blobs) {
-            if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
-        }
-        return result;
+        CPULabeling::ListCache_t cache;
+        return threshold_blob(cache, blob, difference_cache, threshold, size_range);
     }
     
-    struct Row {
-        std::vector<int> cache;
-#if TREE_WITH_PIXELS
-        std::vector<uchar> pixels;
-#endif
-        std::vector<int> border;
-        
-        Range<int> range;
-        int y;
-        
-        Row(int cols) : range(-1, -1), y(-1) {
-            resize(cols);
-        }
-        
-        void resize(size_t x) {
-            cache.resize(x);
-#if TREE_WITH_PIXELS
-            pixels.resize(x);
-#endif
-            
-            std::fill(cache.begin(), cache.end(), -1);
-            border.reserve(x);
-        }
-        
-        inline int& operator[](size_t x) {
-            return cache[x];
-        }
-        
-        inline int operator[](size_t x) const {
-            return cache[x];
-        }
-        
-#if TREE_WITH_PIXELS
-        inline int pixel(size_t x) const {
-            return pixels[x];
-        }
-        
-        inline void set_pixel(size_t x, int value) {
-            pixels[x] = value;
-        }
-#endif
-        
-        size_t size() const {
-            return cache.size();
-        }
-        
-        void add_border(int index) {
-            if(contains(border, index))
-                return;
-            border.push_back(index);
-        }
-        
-        inline bool valid() const {
-            return y != -1;
-        }
-    };
+    
     
     inline void finalize(int offx, Tree& tree, std::shared_ptr<Row>& previous_row, std::shared_ptr<Row>& current_row, std::shared_ptr<Row>& next_row, int y, int x0, int x1)
     {

@@ -5,972 +5,16 @@
 #include <misc/pretty.h>
 #include <misc/ranges.h>
 #include <misc/ThreadPool.h>
+#include <misc/PVBlob.h>
+#include <processing/Source.h>
+#include <processing/DLList.h>
+#include <processing/Brototype.h>
+#include <processing/ListCache.h>
 
 namespace cmn {
 namespace CPULabeling {
 
 //#define DEBUG_MEM
-
-class Brototype;
-class DLList;
-
-class Node {
-public:
-    DLList *parent = nullptr;
-    
-/*private:
-    size_t _retains = 0;
-    
-public:
-    void retain() {
-        ++_retains;
-    }
-    
-    constexpr bool unique() const {
-        return _retains == 0;
-    }
-    
-    void release() {
-        assert(_retains > 0);
-        --_retains;
-    }
-    
-    struct Ref {
-        Node::Ptr obj = nullptr;
-        
-        Ref(const Ref& other) : obj(other.obj) {
-            if(obj)
-                obj->retain();
-        }
-        
-        Ref(Node::Ptr obj) : obj(obj) {
-            if(obj)
-                obj->retain();
-        }
-        
-        constexpr Ref(Ref&& other) noexcept {
-            obj = other.obj;
-            other.obj = nullptr;
-        }
-
-        Ref() = default;
-        
-        ~Ref() {
-            release_check();
-        }
-        
-        Ref& operator=(const Ref& other) {
-            if(obj != other.obj) {
-                release_check();
-                obj = other.obj;
-                if(obj)
-                    obj->retain();
-            }
-            return *this;
-        }
-        
-        Ref& operator=(Ref&& other) noexcept {
-            if(obj != other.obj) {
-                release_check();
-                obj = other.obj;
-                
-            } else if(obj) {
-                obj->release();
-            }
-            
-            other.obj = nullptr;
-            return *this;
-        }
-        
-        constexpr bool operator==(Node::Ptr other) const { return other == obj; }
-        constexpr bool operator==(const Ref& other) const { return other.obj == obj; }
-        constexpr bool operator!=(Node::Ptr other) const { return other != obj; }
-        constexpr bool operator!=(const Ref& other) const { return other.obj != obj; }
-        
-        constexpr Node& operator*() const { assert(obj != nullptr); return *obj; }
-        constexpr Node::Ptr operator->() const { assert(obj != nullptr); return obj; }
-        constexpr Node::Ptr get() const { return obj; }
-        constexpr operator bool() const { return obj != nullptr; }
-        
-        void release_check();
-    };*/
-    
-public:
-    using Ref = std::unique_ptr<Node>;
-    using Ptr = Node*;
-    Node::Ptr prev = nullptr;
-    Node::Ptr next = nullptr;
-    std::unique_ptr<Brototype> obj;
-    
-    template<class... Args>
-    static Ref make(Args... args) {
-        return std::make_unique<Node>(std::forward<Args>(args)...);
-    }
-    
-    static auto& mutex() {
-        static std::mutex _mutex;
-        return _mutex;
-    }
-    
-#if defined(DEBUG_MEM)
-    static auto& created_nodes() {
-        static std::unordered_set<void*> _created_nodes;
-        return _created_nodes;
-    }
-#endif
-    static std::vector<Node::Ref>& pool() {
-        static std::vector<Node::Ref> p;
-        return p;
-    }
-    
-    static void move_to_cache(Node::Ref& node);
-    static void move_to_cache(Node::Ptr node);
-    
-    Node(std::unique_ptr<Brototype>&& obj, DLList* parent)
-        : parent(parent), obj(std::move(obj))
-    {
-#if defined(DEBUG_MEM)
-        std::lock_guard guard(mutex());
-        created_nodes().insert(this);
-#endif
-    }
-    
-    void init(DLList* parent) {
-        this->parent = parent;
-    }
-    
-    void invalidate();
-    
-    ~Node() {
-        invalidate();
-#if defined(DEBUG_MEM)
-        std::lock_guard guard(mutex());
-        created_nodes().erase(this);
-#endif
-    }
-};
-
-struct Source {
-    using Pixel = const uchar*;
-    using Line = HorizontalLine;
-    
-    std::vector<Pixel> _pixels;
-    std::vector<const Line*> _lines;
-    std::vector<Line> _full_lines;
-    std::vector<typename Node::Ptr> _nodes;
-    
-    std::vector<coord_t> _row_y;
-    std::vector<size_t> _row_offsets;
-    
-    coord_t lw = 0, lh = 0;
-    
-    void reserve(size_t N) {
-        _row_y.reserve(N);
-        _row_offsets.reserve(N);
-        
-        _pixels.reserve(N);
-        _lines.reserve(N);
-        _full_lines.reserve(N);
-        _nodes.reserve(N);
-    }
-    
-    size_t num_rows() const {
-        return _row_offsets.size();
-    }
-    
-    bool empty() const {
-        return _row_offsets.empty();
-    }
-    
-    void clear() {
-        _pixels.clear();
-        _lines.clear();
-        _full_lines.clear();
-        _nodes.clear();
-        _row_y.clear();
-        _row_offsets.clear();
-        lw = lh = 0;
-    }
-    
-    void push_back(const Line& line, const Pixel& px) {
-        if(_row_offsets.empty() || line.y > _row_y.back()) {
-            _row_y.push_back(line.y);
-            _row_offsets.push_back(_lines.size());
-        }
-        
-        _pixels.emplace_back(px);
-        _lines.emplace_back((const Line*)_full_lines.size());
-        _full_lines.emplace_back(line);
-        _nodes.emplace_back(nullptr);
-    }
-    
-    void push_back(const Line& line) {
-        if(_row_offsets.empty() || line.y > _row_y.back()) {
-            _row_y.push_back(line.y);
-            _row_offsets.push_back(_lines.size());
-        }
-        
-        assert(_pixels.empty()); // needs to be consistent! dont add pixels "sometimes"
-        _lines.emplace_back((const Line*)_full_lines.size());
-        _full_lines.emplace_back(line);
-        _nodes.emplace_back(nullptr);
-    }
-    
-    //! assumes external ownership of Line ptr -- needs to stay alive during the process
-    void push_back(const Line* line, const Pixel& px) {
-        if(_row_offsets.empty() || line->y > _row_y.back()) {
-            _row_y.push_back(line->y);
-            _row_offsets.push_back(_lines.size());
-        }
-        
-        _pixels.emplace_back(px);
-        _lines.emplace_back(line);
-        _nodes.emplace_back(nullptr);
-    }
-    
-    void finalize() {
-        if(!_full_lines.empty()) {
-            //const Line* start = _full_lines.data();
-            auto it = _lines.data();
-            for(; it != _lines.data() + _lines.size(); ++it)
-                *it = &_full_lines[(size_t)*it];
-        }
-    }
-    
-    class RowRef {
-    protected:
-        template<typename ValueType>
-        class _iterator {
-        public:
-            typedef _iterator self_type;
-            typedef ValueType value_type;
-            typedef ValueType& reference;
-            typedef ValueType* pointer;
-            typedef std::forward_iterator_tag iterator_category;
-            typedef int difference_type;
-            constexpr _iterator(const value_type& ptr) : ptr_(ptr) { }
-            //_iterator& operator=(const _iterator& it) = default;
-            
-            constexpr self_type operator++() {
-                assert(ptr_.Lit+1 <= ptr_.obj->line_end);
-                ++ptr_.Lit;
-                ++ptr_.Nit;
-                ++ptr_.Pit;
-                return ptr_;
-            }
-            
-            constexpr reference operator*() { assert(ptr_.Lit < ptr_.obj->line_end); return ptr_; }
-            constexpr pointer operator->() { assert(ptr_.Lit < ptr_.obj->line_end); return &ptr_; }
-            constexpr bool operator==(const self_type& rhs) const { return ptr_ == rhs.ptr_; }
-            constexpr bool operator!=(const self_type& rhs) const { return ptr_ != rhs.ptr_; }
-        public:
-            value_type ptr_;
-        };
-        
-    public:
-        struct end_tag {};
-        
-        Source* _source = nullptr;
-        size_t idx;
-        coord_t y;
-        
-        const Pixel* pixel_start = nullptr;
-        const Pixel* pixel_end = nullptr;
-        Node::Ptr* node_start = nullptr;
-        Node::Ptr* node_end = nullptr;
-        const Line**  line_start = nullptr;
-        const Line**  line_end = nullptr;
-        
-    public:
-        struct Combined {
-            const RowRef* obj;
-            decltype(RowRef::line_start) Lit;
-            decltype(RowRef::node_start) Nit;
-            decltype(RowRef::pixel_start) Pit;
-            
-            Combined(const RowRef& obj)
-                : obj(&obj), Lit(obj.line_start),
-                  Nit(obj.node_start),
-                  Pit(obj.pixel_start)
-            {}
-            
-            Combined(const RowRef& obj, end_tag)
-                : obj(&obj), Lit(obj.line_end),
-                  Nit(obj.node_end),
-                  Pit(obj.pixel_end)
-            {}
-            
-            bool operator!=(const Combined& other) const {
-                return Lit != other.Lit; // assume all are the same
-            }
-            bool operator==(const Combined& other) const {
-                return Lit == other.Lit; // assume all are the same
-            }
-        };
-        
-        bool valid() const {
-            return _source != nullptr && line_start != line_end;
-        }
-        
-        typedef _iterator<Combined> iterator;
-        typedef _iterator<const Combined> const_iterator;
-        
-        iterator begin() { return _iterator<Combined>(Combined(*this)); }
-        iterator end() { return _iterator<Combined>(Combined(*this, end_tag{} )); }
-        
-        void inc_row() {
-            if (!valid())
-                return;
-
-            pixel_start = pixel_end;
-            node_start = node_end;
-            line_start = line_end;
-            
-            ++idx;
-            
-            if(idx+1 < _source->_row_y.size()) {
-                size_t idx1 = idx+1 >= _source->_row_offsets.size() ? _source->_lines.size() : _source->_row_offsets.at(idx+1);
-                y = _source->_row_y[idx];
-                
-                line_end  = _source->_lines.data()  + idx1;
-                node_end  = _source->_nodes.data()  + idx1;
-                pixel_end = _source->_pixels.data() + idx1;
-                
-            } else {
-                y = std::numeric_limits<coord_t>::max();
-            }
-        }
-        
-        /**
-         * Constructs a RowRef with a given y-coordinate (or bigger).
-         * @param source Source object that contains the desired row
-         * @param y y-coordinate of the desired row
-         */
-        static RowRef from_index(Source* source, coord_t y) {
-            auto it = std::upper_bound(source->_row_y.begin(), source->_row_y.end(), y);
-            
-            // beyond the value ranges
-            if(it == source->_row_y.end()) {
-                return RowRef(); // return nullptr
-            }
-            
-            // if the found row is bigger than the desired y, then it will either be because the y we sought is the previous element, or because it does not exist.
-            if(it > source->_row_y.begin() && *(it - 1)  == y) {
-                --it;
-            }
-            
-            y = *it;
-            
-            size_t idx = std::distance(source->_row_y.begin(), it);
-            size_t idx0 = source->_row_offsets.at(idx);
-            size_t idx1 = idx0+1 == source->_row_offsets.size() ? source->_lines.size() : source->_row_offsets.at(idx+1);
-            
-            return RowRef{
-                source,
-                
-                idx,
-                y,
-                
-                source->_pixels.data() + idx0,
-                source->_pixels.data() + idx1,
-                source->_nodes.data() + idx0,
-                source->_nodes.data() + idx1,
-                source->_lines.data() + idx0,
-                source->_lines.data() + idx1
-            };
-        }
-    };
-    
-    template<typename F, typename Index, typename Pool>
-        requires std::integral<Index>
-    void distribute_indexes(F&& fn, Pool& pool, Index start, Index end) {
-        const auto threads = Index(min(254u, pool.num_threads()));
-        Index i = 0, N = end - start;
-        uint8_t thread_index = 0;
-        const Index per_thread = max(Index(1), N / threads);
-        Index processed = 0, enqueued = 0;
-        std::mutex mutex;
-        std::condition_variable variable;
-        
-        Index nex = start;
-        
-        for(auto it = start; it != end;) {
-            auto step = i + per_thread < N ? per_thread : (N - i);
-            nex += step;
-            
-            assert(step > 0);
-            if(nex == end) {
-                fn(thread_index, it, nex, step);
-                
-            } else {
-                ++enqueued;
-                
-                pool.enqueue([&](uint8_t thread_index, auto it, auto nex, auto step) {
-                    fn(thread_index, it, nex, step);
-                    
-                    std::unique_lock g(mutex);
-                    ++processed;
-                    variable.notify_one();
-                    
-                }, thread_index, it, nex, step);
-            }
-            
-            it = nex;
-            i += step;
-            ++thread_index;
-        }
-        
-        std::unique_lock g(mutex);
-        while(processed < enqueued)
-            variable.wait(g);
-    }
-    
-    /**
-     * Initialize source entity based on an OpenCV image. All 0 pixels are interpreted as background. This function extracts all horizontal lines from an image and saves them inside, along with information about where which y-coordinate is located.
-     */
-    void init(const cv::Mat& image, bool enable_threads) {
-        // assuming the number of threads allowed is < 255
-        static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()), "extract_lines");
-        
-        assert(image.cols < USHRT_MAX && image.rows < USHRT_MAX);
-        assert(image.type() == CV_8UC1);
-        assert(image.isContinuous());
-        
-        clear();
-        
-        //! local width, height
-        lw = image.cols;
-        lh = image.rows;
-        
-        if(enable_threads
-           && int32_t(image.cols)*int32_t(image.rows) > int32_t(100*100))
-        {
-            /**
-             * FIND HORIZONTAL LINES IN ORIGINAL IMAGE
-             */
-            uint8_t current_index{0};
-            std::mutex m;
-            std::condition_variable variable;
-            
-            distribute_indexes([&](const uint8_t i, int32_t start, int32_t end, auto){
-                Source source{
-                    .lw = lw,
-                    .lh = lh,
-                };
-                
-                //! perform the actual work
-                Source::extract_lines(image, &source, Range<int32_t>(start, end));
-                
-                // now merge lines (partly) in parallel:
-                std::unique_lock guard(m);
-                while(current_index < i) {
-                    variable.wait(guard);
-                }
-                
-                size_t S = _lines.size();
-                _pixels.insert(_pixels.end(), source._pixels.begin(), source._pixels.end());
-                _full_lines.insert(_full_lines.end(), source._full_lines.begin(), source._full_lines.end());
-                for(auto &o : source._lines) {
-                    o = (const HorizontalLine*)((size_t)o + S);
-                }
-                _lines.insert(_lines.end(), std::make_move_iterator(source._lines.begin()), std::make_move_iterator(source._lines.end()));
-                _nodes.insert(_nodes.end(), std::make_move_iterator(source._nodes.begin()), std::make_move_iterator(source._nodes.end()));
-                
-                for(auto &o : source._row_offsets)
-                    o += S;
-                    
-                _row_offsets.insert(_row_offsets.end(), std::make_move_iterator(source._row_offsets.begin()), std::make_move_iterator(source._row_offsets.end()));
-                _row_y.insert(_row_y.end(), std::make_move_iterator(source._row_y.begin()), std::make_move_iterator(source._row_y.end()));
-                
-                ++current_index;
-                variable.notify_all();
-                
-            }, pool, int32_t(0), int32_t(lh));
-            
-        } else {
-            extract_lines(image, this, Range<int32_t>{0, int32_t(lh)});
-        }
-        
-        finalize();
-    }
-    
-    /**
-     * Constructs a RowRef struct for a given y-coordinate (see RowRef::from_index).
-     */
-    RowRef row(const coord_t y) {
-        return RowRef::from_index(this, y);
-    }
-    
-    /**
-     * Finds all HorizontalLines of POIs within rows range.start to range.end.
-     * @param image the source image
-     * @param source this is where the converted input data is written to
-     * @param rows the y-range for this call
-     */
-    static void extract_lines(const cv::Mat& image, Source* source, const Range<int32_t>& rows) {
-        const coord_t rstart = rows.start;
-        const coord_t rend = rows.end;
-        Pixel start, end_ptr;
-
-        static size_t samples = 0, lines = 0;
-
-        static std::shared_mutex mutex;
-        bool prev = false;
-        Line current;
-        size_t RESERVE;
-        {
-            std::shared_lock guard(mutex);
-            if (samples == 0)
-                RESERVE = (rend - rstart + 1);
-            else
-                RESERVE = lines / samples;
-        }
-
-        source->reserve(RESERVE);
-
-        const int64_t step = image.step.p[0];
-        start = image.ptr(rstart);
-        end_ptr = start + image.cols;
-
-        for(coord_t i = rstart; i < rend; ++i, start += step, end_ptr += step) {
-            //start = image.ptr(i);
-            //end_ptr = start + image.cols;
-            auto ptr = start;
-            
-            // walk columns
-            for(; ptr != end_ptr; ++ptr) {
-                if(prev) {
-                    // previous is set, but current is not?
-                    // (the last hline just ended)
-                    if(!*ptr) {
-                        assert(ptr >= start);
-                        assert(coord_t(ptr - start) >= 1);
-                        current.x1 = coord_t(ptr - start) - 1; // -1 because we went past x1 already
-                        source->push_back(current, start + current.x0);
-                        
-                        prev = false;
-                    }
-                    
-                } else if(*ptr) {// !prev && curr (hline starts)
-                    coord_t col = coord_t(ptr - start);
-                    current.y = i;
-                    current.x0 = col;
-                    
-                    prev = true;
-                }
-            }
-            
-            // if prev is set, the last hline ended when the
-            // x-dimension ended, so set x1 accordingly
-            if(prev) {
-                assert(current.x0 <= source->lw - 1);
-                current.x1 = source->lw - 1;
-                source->push_back(current, start + current.x0);
-                prev = false;
-            }
-        }
-
-        std::lock_guard guard(mutex);
-        ++samples;
-        lines += source->_lines.size();
-        if (samples % 1000 == 0) {
-            lines = lines / samples;
-            samples = 1;
-
-        }
-    }
-};
-
-class DLList {
-    template<typename ValueType, typename NodeType>
-    class _iterator
-    {
-    public:
-        typedef _iterator self_type;
-        typedef ValueType value_type;
-        typedef ValueType& reference;
-        typedef ValueType* pointer;
-        typedef std::forward_iterator_tag iterator_category;
-        typedef int difference_type;
-        constexpr _iterator(pointer ptr) : ptr_(ptr), next(ptr_ && ptr_->next ? ptr_->next : nullptr) { }
-        
-        constexpr self_type operator++() {
-            ptr_ = next;
-            next = ptr_ && ptr_->next ? ptr_->next : nullptr;
-            return ptr_;
-        }
-        
-        constexpr pointer& operator*() { return ptr_; }
-        constexpr pointer& operator->() { return ptr_; }
-        constexpr bool operator==(const self_type& rhs) const { return ptr_ == rhs.ptr_; }
-        constexpr bool operator!=(const self_type& rhs) const { return ptr_ != rhs.ptr_; }
-        
-    public:
-        pointer ptr_;
-        pointer next;
-    };
-    
-public:
-    typedef _iterator<Node, Node::Ptr> iterator;
-    typedef _iterator<const Node, const Node::Ptr> const_iterator;
-    
-    Node::Ptr _begin = nullptr;
-    Node::Ptr _end = nullptr;
-    std::vector<Node::Ref> _owned;
-    
-    struct Cache {
-        //std::mutex _mutex;
-        std::vector<typename Node::Ref> _nodes;
-        std::vector<std::unique_ptr<Brototype>> _brotos;
-        
-        std::unique_ptr<Brototype> broto() {
-            //std::lock_guard guard(_mutex);
-            if(_brotos.empty())
-                return nullptr;
-            auto ptr = std::move(_brotos.back());
-            _brotos.pop_back();
-            return ptr;
-        }
-        
-        void node(typename Node::Ref& ptr) {
-            //std::lock_guard guard(_mutex);
-            if(_nodes.empty())
-                return;
-            ptr = std::move(_nodes.back());
-            _nodes.pop_back();
-        }
-        
-        void receive(typename Node::Ref&& ref) {
-            //std::lock_guard guard(_mutex);
-            assert(!ref || ref->next == nullptr);
-            assert(!ref || ref->prev == nullptr);
-            if(ref) ref->parent = nullptr;
-            _nodes.emplace_back(std::move(ref));
-        }
-        void receive(std::unique_ptr<Brototype>&& ptr) {
-            //std::lock_guard guard(_mutex);
-            _brotos.emplace_back(std::move(ptr));
-        }
-    };
-    
-    GETTER_NCONST(Cache, cache)
-    GETTER_NCONST(Source, source)
-    
-public:
-    static auto& cmutex() {
-        static std::mutex _mutex;
-        return _mutex;
-    }
-    
-    static auto& caches() {
-        static std::vector<std::unique_ptr<DLList>> _caches;
-        return _caches;
-    }
-    
-    inline static std::unique_ptr<DLList> from_cache() {
-        std::lock_guard g(cmutex());
-        if(!caches().empty()) {
-            auto ptr = std::move(caches().back());
-            caches().pop_back();
-            return ptr;
-        }
-        return std::make_unique<DLList>();
-    }
-    
-    inline static void to_cache(std::unique_ptr<DLList>&& ptr) {
-        ptr->clear();
-        
-        std::lock_guard g(cmutex());
-        caches().emplace_back(std::move(ptr));
-        //ptr = nullptr;
-    }
-    
-    Node::Ptr insert(Node::Ptr ptr) {
-        assert(!ptr->prev && !ptr->next);
-        
-        if(_end) {
-            assert(!_end->next);
-            assert(_end != ptr);
-            ptr->prev = _end;
-            _end->next = ptr;
-            _end = ptr;
-            
-            assert(!_end->next);
-            
-        } else {
-            _begin = ptr;
-            _end = _begin;
-            assert(!ptr->next);
-            assert(!ptr->prev);
-        }
-        
-        if(!ptr->parent)
-            ptr->init(this);
-        
-        return ptr;
-    }
-    
-public:
-    void insert(Node::Ptr& ptr, std::unique_ptr<Brototype>&& obj) {
-        //ptr.release_check();
-        Node::Ref ref;
-        cache().node(ref);
-        
-        if(!ref) {
-            ref = Node::make(std::move(obj), this);
-        } else {
-            assert(!ref->next);
-            assert(!ref->prev);
-            
-            ref->init(this);
-            ref->obj = std::move(obj);
-        }
-        
-        ptr = ref.get();
-        insert(ptr);
-        _owned.emplace_back(std::move(ref));
-    }
-    
-    ~DLList() {
-        clear();
-    }
-    
-    void clear() {
-        _source.clear();
-        
-        auto ptr = std::move(_begin);
-        while (ptr != nullptr) {
-            auto next = ptr->next;
-            auto p = ptr;
-            Node::move_to_cache(p);
-            ptr = std::move(next);
-        }
-        _end = nullptr;
-    }
-    
-    constexpr iterator begin() { return _iterator<Node, Node::Ptr>(_begin); }
-    constexpr iterator end() { return _iterator<Node, Node::Ptr>(nullptr); }
-};
-
-using List_t = DLList;
-using Node_t = Node;
-
-//! A pair of a blob and a HorizontalLine
-class Brototype {
-private:
-    GETTER_NCONST(std::vector<const uchar*>, pixel_starts)
-    GETTER_NCONST(std::vector<const HorizontalLine*>, lines)
-    
-public:
-    static std::unordered_set<Brototype*> brototypes() {
-        static std::unordered_set<Brototype*> _brototypes;
-        return _brototypes;
-    }
-    
-    Brototype() {
-#if defined(DEBUG_MEM)
-        std::lock_guard guard(mutex());
-        brototypes().insert(this);
-#endif
-    }
-    
-    Brototype(const HorizontalLine* line, const uchar* px)
-        : _pixel_starts({px}), _lines({line})
-    {
-#if defined(DEBUG_MEM)
-        std::lock_guard guard(mutex());
-        brototypes().insert(this);
-#endif
-    }
-    
-    ~Brototype() {
-#if defined(DEBUG_MEM)
-        std::lock_guard guard(mutex());
-        brototypes().erase(this);
-#endif
-    }
-    
-    static std::mutex& mutex() { static std::mutex m; return m; }
-    static void move_to_cache(List_t *list, typename std::unique_ptr<Brototype>& node);
-    
-    inline bool empty() const {
-        return _lines.empty();
-    }
-    
-    inline size_t size() const {
-        return _lines.size();
-    }
-    
-    inline void push_back(const HorizontalLine* line, const uchar* px) {
-        _lines.emplace_back(line);
-        _pixel_starts.emplace_back(px);
-    }
-    
-    void merge_with(const std::unique_ptr<Brototype>& b) {
-        auto&        A = pixel_starts();
-        auto&       AL = lines();
-        
-        const auto&  B = b->pixel_starts();
-        const auto& BL = b->lines();
-        
-        if(A.empty()) {
-            A .insert(A .end(), B .begin(), B .end());
-            AL.insert(AL.end(), BL.begin(), BL.end());
-            return;
-        }
-        
-        A .reserve(A .size()+B .size());
-        AL.reserve(AL.size()+BL.size());
-        
-        // special cases
-        if(AL.back() < BL.front()) {
-            A .insert(A .end(), B .begin(), B .end());
-            AL.insert(AL.end(), BL.begin(), BL.end());
-            return;
-        }
-        
-        auto it0=A .begin();
-        auto Lt0=AL.begin();
-        auto it1=B .begin();
-        auto Lt1=BL.begin();
-        
-        for (; it1!=B.end() && it0!=A.end();) {
-            if((*Lt1) < (*Lt0)) {
-                const auto start = it1;
-                const auto Lstart = Lt1;
-                do {
-                    ++Lt1;
-                    ++it1;
-                }
-                while (Lt1 != BL.end() && it1 != B.end()
-                       && (*Lt1) < (*Lt0));
-                it0 = A .insert(it0, start , it1) + (it1 - start);
-                Lt0 = AL.insert(Lt0, Lstart, Lt1) + (Lt1 - Lstart);
-                
-            } else {
-                ++it0;
-                //++Nt0;
-                ++Lt0;
-            }
-        }
-        
-        if(it1!=B.end()) {
-            A.insert(A.end(), it1, B.end());
-            AL.insert(AL.end(), Lt1, BL.end());
-        }
-    }
-    
-    struct Combined {
-        decltype(Brototype::_lines)::iterator Lit;
-        decltype(Brototype::_pixel_starts)::iterator Pit;
-        
-        Combined(Brototype& obj)
-            : Lit(obj.lines().begin()),
-              Pit(obj._pixel_starts.begin())
-        {}
-        Combined(Brototype& obj, size_t)
-            : Lit(obj.lines().end()),
-              Pit(obj._pixel_starts.end())
-        { }
-        
-        bool operator!=(const Combined& other) const {
-            return Lit != other.Lit; // assume all are the same
-        }
-        bool operator==(const Combined& other) const {
-            return Lit == other.Lit; // assume all are the same
-        }
-    };
-    
-    template<typename ValueType>
-    class _iterator {
-    public:
-        typedef _iterator self_type;
-        typedef ValueType value_type;
-        typedef ValueType& reference;
-        typedef ValueType* pointer;
-        typedef std::forward_iterator_tag iterator_category;
-        typedef int difference_type;
-        constexpr _iterator(const value_type& ptr) : ptr_(ptr) { }
-        _iterator& operator=(const _iterator& it) = default;
-        
-        constexpr self_type operator++() {
-            ++ptr_.Lit;
-            ++ptr_.Pit;
-            return ptr_;
-        }
-        //constexpr self_type operator++(int) { value ++; return *this; }
-        constexpr reference operator*() { return ptr_; }
-        constexpr pointer operator->() { return &ptr_; }
-        constexpr bool operator==(const self_type& rhs) const { return ptr_ == rhs.ptr_; }
-        constexpr bool operator!=(const self_type& rhs) const { return ptr_ != rhs.ptr_; }
-    public:
-        value_type ptr_;
-    };
-    
-    typedef _iterator<Combined> iterator;
-    typedef _iterator<const Combined> const_iterator;
-    
-    iterator begin() { return _iterator<Combined>(Combined(*this)); }
-    iterator end() { return _iterator<Combined>(Combined(*this, size())); }
-};
-
-void Node::invalidate() {
-    Brototype::move_to_cache(parent, obj);
-    
-    auto p = std::move(parent);
-    auto pre = std::move(prev);
-    auto nex = std::move(next);
-    
-    prev = nullptr;
-    next = nullptr;
-    parent = nullptr;
-    
-    assert(!next);
-    assert(!prev);
-    assert(!parent);
-    
-    if(nex) {
-        nex->prev = pre;
-    } else if(p && p->_end && p->_end == this)
-        p->_end = pre;
-    
-    if(pre) {
-        pre->next = nex;
-    } else if(p && p->_begin && p->_begin == this)
-        p->_begin = nex;
-    
-    assert(!next);
-    assert(!prev);
-    //assert(!parent);
-}
-
-void Node::move_to_cache(Node::Ref& node) {
-    move_to_cache(node.get());
-    node = nullptr;
-}
-
-void Node::move_to_cache(Node::Ptr node) {
-    if(!node)
-        return;
-    
-    if(node->parent)
-        node->invalidate();
-}
-
-void Brototype::move_to_cache(List_t* list, typename std::unique_ptr<Brototype>& node) {
-    if(!node) {
-        return;
-    }
-    
-    node->lines().clear();
-    node->pixel_starts().clear();
-    
-    if(list)
-        list->cache().receive(std::move(node));
-    else
-        FormatWarning("No list");
-    node = nullptr;
-}
 
 /*void Node::Ref::release_check() {
     if(!obj)
@@ -1008,8 +52,8 @@ void merge_lines(Source::RowRef &previous_vector,
     
     while (current != current_vector.end()) {
         if(previous == previous_vector.end()
-           || (*current->Lit)->y > (*previous->Lit)->y + 1
-           || (*current->Lit)->x1+1 < (*previous->Lit)->x0)
+           || current->Lit->line.y() > (previous->Lit->line).y() + 1
+           || current->Lit->line.x1()+1 < (previous->Lit->line).x0())
         {
             // case 0: current line ends before previous line starts
             // case 1: lines are more than 1 apart in y direction,
@@ -1018,45 +62,45 @@ void merge_lines(Source::RowRef &previous_vector,
             // -> create new blobs for all elements
             // add new blob, next element in current line
             assert(previous == previous_vector.end()
-                   || (*current->Lit)->y > (*previous->Lit)->y + 1
-                   || !(*current->Lit)->overlap_x(**previous->Lit));
+                   || (current->Lit)->y() > (previous->Lit)->y() + 1
+                   || !(current->Lit)->overlap_x(*previous->Lit));
             
-            if(!*current->Nit
-               || !(*current->Nit)->parent)
+            if(!(current->Lit)->node
+               || !(current->Lit->node)->parent)
             {
                 auto p = blobs.cache().broto();
                 if(p)
-                    p->push_back(*current->Lit, *current->Pit);
+                    p->push_back(current->Lit->line, *current->Pit);
                 else
-                    p = std::make_unique<Brototype>(*current->Lit, *current->Pit);
+                    p = std::make_unique<Brototype>(current->Lit->line, *current->Pit);
                 
-                blobs.insert(*current->Nit, std::move(p));
+                blobs.insert((current->Lit->node), std::move(p));
                 
             }
             
             ++current;
             
-        } else if((*current->Lit)->x0 > (*previous->Lit)->x1+1) {
+        } else if((current->Lit->line).x0() > (previous->Lit->line).x1()+1) {
             // case 3: previous line ends before current
             // next element in previous line
-            assert(!(*current->Lit)->overlap_x(**previous->Lit));
+            assert(!(current->Lit)->overlap_x(*previous->Lit));
             ++previous;
             
         } else {
             // case 4: lines intersect
             // merge elements, next in line that ends first
-            assert((*current->Lit)->overlap_x(**previous->Lit));
+            assert((current->Lit)->overlap_x(*previous->Lit));
             assert(*previous->Nit);
             
-            auto pblob = (*previous->Nit);
+            auto pblob = (previous->Lit->node);
             
-            if(!*current->Nit) {
+            if(!current->Lit->node) {
                 // current line isnt part of a blob yet
                 // nit is null!
-                pblob->obj->push_back((*current->Lit), *current->Pit);
-                *current->Nit = (*previous->Nit);
+                pblob->obj->push_back((current->Lit->line), *current->Pit);
+                current->Lit->node = (previous->Lit->node);
                 
-            } else if(*current->Nit != *previous->Nit) {
+            } else if(current->Lit->node != previous->Lit->node) {
                 // current line is part of a blob
                 // (merge blobs)
                 assert(*current->Nit != *previous->Nit);
@@ -1066,12 +110,12 @@ void merge_lines(Source::RowRef &previous_vector,
                 
                 // copy all lines from the blob in "current"
                 // into the blob in "previous"
-                if((*p->Nit)->obj->size() <= (*c->Nit)->obj->size()) {
+                if((p->Lit->node)->obj->size() <= (c->Lit->node)->obj->size()) {
                     std::swap(p, c);
                 }
                 
-                auto cblob = (*c->Nit);
-                auto pblob = (*p->Nit);
+                auto cblob = (c->Lit->node);
+                auto pblob = (p->Lit->node);
                 
                 assert(cblob != pblob);
                 
@@ -1080,14 +124,14 @@ void merge_lines(Source::RowRef &previous_vector,
                 
                 // replace blob pointers in current_ and previous_vector
                 for(auto cit = current_vector.begin(); cit != current_vector.end(); ++cit) {
-                    if((*cit->Nit) == cblob) {
-                        *cit->Nit = *p->Nit;
+                    if((cit->Lit->node) == cblob) {
+                        cit->Lit->node = p->Lit->node;
                     }
                 }
                 
                 for(auto cit = previous; cit != previous_vector.end(); ++cit) {
-                    if((*cit->Nit) == cblob) {
-                        *cit->Nit = *p->Nit;
+                    if((cit->Lit->node) == cblob) {
+                        cit->Lit->node = p->Lit->node;
                     }
                 }
                 
@@ -1110,7 +154,7 @@ void merge_lines(Source::RowRef &previous_vector,
              * in the following steps it would increase current
              * and then terminate.
              */
-            if((*current->Lit)->x1 <= (*previous->Lit)->x1)
+            if((current->Lit->line).x1() <= (previous->Lit->line).x1())
                 ++current;
             else
                 ++previous;
@@ -1144,14 +188,14 @@ blobs_t run_fast(List_t* blobs)
         auto start = current_row.begin();
         auto end = current_row.end();
         for(auto it = start; it != end; ++it) {
-            auto &[o,l,n,p] = *it;
+            auto &[o,l,p] = *it;
             auto bob = blobs->cache().broto();
             if(!bob)
-                bob = std::make_unique<Brototype>(*l, *p);
+                bob = std::make_unique<Brototype>(l->line, *p);
             else
-                bob->push_back(*l, *p);
+                bob->push_back(l->line, *p);
             
-            blobs->insert(*n, std::move(bob));
+            blobs->insert(l->node, std::move(bob));
         }
     }
     
@@ -1172,43 +216,63 @@ blobs_t run_fast(List_t* blobs)
     result.reserve(std::distance(blobs->begin(), blobs->end()));
 
     for(auto it=blobs->begin(); it != blobs->end(); ++it) {
-        if(it->obj && !it->obj->empty()) {
-            result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), std::make_unique<std::vector<uchar>>());
-            
-            auto &lines = result.back().lines;
-            auto &pixels = result.back().pixels;
-            
-            ptr_safe_t L = 0;
-            for(auto & [l, px] : *it->obj)
-                L += ptr_safe_t((*l)->x1) - ptr_safe_t((*l)->x0) + ptr_safe_t(1);
-            
-            pixels->resize(L);
-            lines->resize(it->obj->lines().size());
-            
+        //! skip empty objects / merged objects
+        if(!it->obj || it->obj->empty())
+            continue;
+        
+        result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), std::make_unique<std::vector<uchar>>());
+        
+        auto &lines = result.back().lines;
+        auto &pixels = result.back().pixels;
+        
+        ptr_safe_t L = 0;
+        for(auto & [l, px] : *it->obj) {
+            assert(l->x1() >= l->x0());
+            L += ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1);
+        }
+        
+        pixels->resize(L);
+        auto LLines = it->obj->lines().size();
+        lines->resize(LLines);
+        
 #ifndef NDEBUG
-            coord_t y = 0;
+        coord_t y = 0;
 #endif
-            auto current = lines->data();
-            auto pixel = pixels->data();
-            for(auto & [l, px] : *it->obj) {
-                assert((*l)->y >= y);
-                *current++ = **l; // assign **l to *current; inc current
+        auto current = lines->data();
+        auto pixel = pixels->data();
+        for(auto & [l, px] : *it->obj) {
+            assert((l)->y() >= y);
+            //if(ptr_safe_t(l->x1()) - ptr_safe_t(l->x0()) >= 63)
+                //print("Line is of suspicious length: ", *l);
                 
-                if(pixels) {
-                    assert(*px);
-                    auto start = *px;
-                    auto end = start + (ptr_safe_t((*l)->x1) - ptr_safe_t((*l)->x0) + ptr_safe_t(1));
-                    
-                    pixel = std::copy(start, end, pixel);
-                }
-                
-#ifndef NDEBUG
-                y = (*l)->y;
-#endif
+            if(current > lines->data()
+               && (current - 1)->x1 + 1 == l->x0()
+               && (current - 1)->y == l->y())
+            {
+                //print("Could merge lines ", *l, " and ", *(current-1));
+                (current-1)->x1 = l->x1();
+                --LLines;
+            } else {
+                *current++ = *l; // assign **l to *current; inc current
             }
             
-            Node_t::move_to_cache(*it);
+            if(pixels) {
+                assert(*px);
+                auto start = *px;
+                auto end = start + (ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1));
+                
+                pixel = std::copy(start, end, pixel);
+            }
+            
+#ifndef NDEBUG
+            y = (l)->y();
+#endif
         }
+        
+        if(LLines != lines->size())
+            lines->resize(LLines);
+        
+        Node_t::move_to_cache(*it);
     }
     
 #if defined(DEBUG_MEM)
@@ -1242,29 +306,66 @@ blobs_t run(const cv::Mat &image, bool enable_threads) {
     return results;
 }
 
+blobs_t run(const cv::Mat &image, ListCache_t& cache, bool enable_threads) {
+    //auto list = List_t::from_cache();
+    //DLList list;
+    cache.obj->source().init(image, enable_threads);
+    return run_fast(cache.obj);
+    //List_t::to_cache(std::move(list));
+    //return results;
+}
+
 // called by user
+blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, ListCache_t& cache)
+{
+    auto px = pixels.data();
+    //list.clear();
+    //List_t list;
+    auto& list = *cache.obj;
+    list.clear();
+    list.source().reserve(lines.size());
+
+    auto start = lines.begin();
+    auto end = lines.end();
+    
+    static std::vector<uint64_t> lengths;
+    static std::mutex mutex;
+
+    for(auto it = start; it != end; ++it) {
+        if(ptr_safe_t(it->x1) - ptr_safe_t(it->x0) > Line::bit_size_x1) {
+            auto pxcopy = px;
+            auto copy = *it;
+            while(ptr_safe_t(copy.x1) - ptr_safe_t(copy.x0) > Line::bit_size_x1) {
+                HLine line(copy.x0, copy.x0 + Line::bit_size_x1, copy.y);
+                //print("converting ", *it, " to shorter lines: ", line.x0(), ",", line.x1(), ";", line.y());
+                list.source().push_back(line, pxcopy);
+
+                copy.x0 += Line::bit_size_x1 + 1;
+                pxcopy += Line::bit_size_x1 + 1;
+            }
+
+            //print("converting ", *it, " to shorter lines: ", copy);
+            list.source().push_back(copy, pxcopy);
+
+        } else
+            list.source().push_back((*it), px);
+
+        if(px)
+            px += ptr_safe_t(it->x1) - ptr_safe_t(it->x0) + ptr_safe_t(1);
+    }
+
+    return run_fast(&list);
+}
+
 blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels)
 {
     if(lines.empty())
         return {};
     
-    auto px = pixels.data();
-    DLList list;//List_t::from_cache();
-    list.source().reserve(lines.size());
-    
-    auto start = lines.begin();
-    auto end = lines.end();
-    
-    for (auto it = start; it != end; ++it) {
-        list.source().push_back(&(*it), px);
-        
-        if(px)
-            px += ptr_safe_t(it->x1) - ptr_safe_t(it->x0) + ptr_safe_t(1);
-    }
-    
-    blobs_t results = run_fast(&list);
+    ListCache_t cache;
+    //auto list = List_t::from_cache();
     //List_t::to_cache(std::move(list));
-    return results;
+    return run(lines, pixels, cache);
 }
 
 }
