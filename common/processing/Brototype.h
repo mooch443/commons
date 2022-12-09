@@ -23,13 +23,13 @@ inline auto& _emplace_back(auto& array, auto&& obj) {
 class Brototype {
 private:
     GETTER_NCONST(std::vector<Pixel>, pixel_starts)
-    GETTER_NCONST(std::vector<Line>, lines)
+    GETTER_NCONST(std::vector<Line_t>, lines)
     
 public:
     static std::unordered_set<Brototype*> brototypes();
     
     Brototype();
-    Brototype(const Line& line, const uchar* px);
+    Brototype(const Line_t& line, const uchar* px);
     ~Brototype();
     
     static std::mutex& mutex();
@@ -43,7 +43,7 @@ public:
         return _lines.size();
     }
     
-    inline void push_back(const Line& line, const uchar* px) {
+    inline void push_back(const Line_t& line, const uchar* px) {
         _emplace_back(_lines, line);
         _emplace_back(_pixel_starts, px);
     }

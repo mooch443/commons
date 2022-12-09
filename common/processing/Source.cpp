@@ -32,7 +32,7 @@ void Source::clear() {
     lw = lh = 0;
 }
 
-void Source::push_back(const Line& line, const Pixel& px) {
+void Source::push_back(const Line_t& line, const Pixel& px) {
     if(_row_offsets.empty() || line.y() > _row_y.back()) {
         _row_y.push_back(line.y());
         _row_offsets.push_back(_ptrs.size());
@@ -48,7 +48,7 @@ void Source::push_back(const Line& line, const Pixel& px) {
     //_nodes.emplace_back(nullptr);
 }
 
-void Source::push_back(const Line& line) {
+void Source::push_back(const Line_t& line) {
     if(_row_offsets.empty() || line.y() > _row_y.back()) {
         _row_y.push_back(line.y());
         _row_offsets.push_back(_ptrs.size());
@@ -161,7 +161,7 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
 
     static std::shared_mutex mutex;
     bool prev = false;
-    Line current;
+    Line_t current;
     size_t RESERVE;
     {
         std::shared_lock guard(mutex);
@@ -188,27 +188,19 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
                 // previous is set, but current is not?
                 // (the last hline just ended)
                 auto lL = ptr_safe_t(ptr - start) - 1 - ptr_safe_t(current.x0());
-                if(!*ptr || lL >= 63) {
+                if(!*ptr || lL >= Line_t::bit_size_x1) {
                     assert(ptr >= start);
                     assert(coord_t(ptr - start) >= 1);
                     
                     current.x1(ptr_safe_t(ptr - start) - 1);
-                    /* if(lL >= 63) {
-                        print("Splitting line ", current, " with length of ", lL);
-                    }*/
-                    //current.x1 = coord_t(ptr - start) - 1; // -1 because we went past x1 already
                     source->push_back(current, start + current.x0());
                     
-                    /*if(lL >= 63) {
-                        print("-> ", current, " with length of ", lL);
-                    }*/
-
                     prev = false;
                 }
                 
             } else if(*ptr) {// !prev && curr (hline starts)
                 coord_t col = coord_t(ptr - start);
-                current = Line(col, col, i);
+                current = Line_t(col, col, i);
                 //current.y(i);
                 //current.x0(col);
                 //current.y = i;

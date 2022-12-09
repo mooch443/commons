@@ -12,7 +12,7 @@ struct Source {
     std::vector<Pixel> _pixels;
     
     struct LinePtr {
-        Line line;
+        Line_t line;
         Node::Ptr node;
     };
     
@@ -32,8 +32,8 @@ struct Source {
     
     void clear();
     
-    void push_back(const Line& line, const Pixel& px);
-    void push_back(const Line& line);
+    void push_back(const Line_t& line, const Pixel& px);
+    void push_back(const Line_t& line);
     
     void finalize() {}
     
@@ -244,6 +244,11 @@ struct Source {
      * @param rows the y-range for this call
      */
     static void extract_lines(const cv::Mat& image, Source* source, const Range<int32_t>& rows);
+};
+
+template<typename Line_t = Line64>
+struct AdaptiveSource : public Source {
+    
 };
 
 }

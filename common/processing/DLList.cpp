@@ -1,5 +1,4 @@
 #include "DLList.h"
-#include <processing/Brototype.h>
 
 namespace cmn::CPULabeling {
 
