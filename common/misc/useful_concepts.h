@@ -48,6 +48,8 @@ struct is_map<robin_hood::detail::Table<T, S, Args...>> : public std::true_type 
 template<class T> struct is_queue : public std::false_type {};
 template<class T, class Container>
 struct is_queue<std::queue<T, Container>> : public std::true_type {};
+template<class T, class Container>
+struct is_queue<std::priority_queue<T, Container>> : public std::true_type {};
 template<class T, class Allocator>
 struct is_queue<std::deque<T, Allocator>> : public std::true_type {};
 

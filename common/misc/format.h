@@ -708,6 +708,23 @@ public:
         return str + console_color<bracket_color, colors>("]");
     }
 
+    template<template <typename...> class T, typename... Args, typename K = cmn::remove_cvref_t<T<Args...>>>
+        requires is_queue<K>::value
+    static std::string parse_value(const T<Args...>&m) {
+        std::string str = console_color<bracket_color, colors>("[");
+        auto copy = m;
+        size_t i=0;
+        while(!copy.empty()) {
+            auto &it = copy.front();
+            if(i > 0)
+                str += console_color<bracket_color, colors>(",");
+            str += parse_value(it);
+            copy.pop();
+            ++i;
+        }
+        return str + console_color<bracket_color, colors>("]");
+    }
+    
     template<bool A, size_t S, typename Key, typename T, typename... Args>
     static std::string parse_value(const robin_hood::detail::Table<A, S, Key, T, Args...>& m) {
         size_t i = 0, N = m.size();
@@ -735,11 +752,11 @@ public:
         std::string str = console_color<bracket_color, colors>("{");
         size_t i = 0, N = m.size();
         for (auto& [k, v] : m) {
-            str += console_color<bracket_color, colors>("[")
-                + parse_value(k)
+            str +=
+                parse_value(k)
                 + console_color<bracket_color, colors>(":")
                 + parse_value(v)
-                + console_color<bracket_color, colors>(i++ < N-1 ? "]," : "]");
+                + (i++ < N-1 ? console_color<bracket_color, colors>(",") : "");
         }
         return str + console_color<bracket_color, colors>("}");
     }

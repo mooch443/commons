@@ -215,6 +215,7 @@ blobs_t run_fast(List_t* blobs)
      */
     result.reserve(std::distance(blobs->begin(), blobs->end()));
 
+    //! TODO: Do not store actual pixels in an object. Only store start pointers per Horizontal Line and delete image information when done with it [OPT]
     for(auto it=blobs->begin(); it != blobs->end(); ++it) {
         //! skip empty objects / merged objects
         if(!it->obj || it->obj->empty())
@@ -261,6 +262,7 @@ blobs_t run_fast(List_t* blobs)
                 auto start = *px;
                 auto end = start + (ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1));
                 
+                //! HOTSPOT
                 pixel = std::copy(start, end, pixel);
             }
             
