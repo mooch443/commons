@@ -62,8 +62,8 @@ void merge_lines(Source::RowRef &previous_vector,
             // -> create new blobs for all elements
             // add new blob, next element in current line
             assert(previous == previous_vector.end()
-                   || (current->Lit)->y() > (previous->Lit)->y() + 1
-                   || !(current->Lit)->overlap_x(*previous->Lit));
+                   || (current->Lit)->line.y() > (previous->Lit)->line.y() + 1
+                   || !(current->Lit->line).overlap_x(previous->Lit->line));
             
             if(!(current->Lit)->node
                || !(current->Lit->node)->parent)
@@ -83,14 +83,14 @@ void merge_lines(Source::RowRef &previous_vector,
         } else if((current->Lit->line).x0() > (previous->Lit->line).x1()+1) {
             // case 3: previous line ends before current
             // next element in previous line
-            assert(!(current->Lit)->overlap_x(*previous->Lit));
+            assert(!(current->Lit->line).overlap_x(previous->Lit->line));
             ++previous;
             
         } else {
             // case 4: lines intersect
             // merge elements, next in line that ends first
-            assert((current->Lit)->overlap_x(*previous->Lit));
-            assert(*previous->Nit);
+            assert((current->Lit->line).overlap_x(previous->Lit->line));
+            assert(previous->Lit->node);
             
             auto pblob = (previous->Lit->node);
             
@@ -103,7 +103,7 @@ void merge_lines(Source::RowRef &previous_vector,
             } else if(current->Lit->node != previous->Lit->node) {
                 // current line is part of a blob
                 // (merge blobs)
-                assert(*current->Nit != *previous->Nit);
+                assert(current->Lit->node != previous->Lit->node);
                 
                 auto p = previous;
                 auto c = current;

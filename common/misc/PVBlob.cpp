@@ -791,7 +791,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto id = blob_id();
         //auto x = id >> 16;
         //auto y = id & 0x0000FFFF;
-        return Meta::toStr(id)+" "+Meta::toStr(center * setting(cm_per_pixel));
+        return Meta::toStr(id)+" ["+dec<2>(center.x).toStr()+","+dec<2>(center.y).toStr()+"]";// * setting(cm_per_pixel));
     }
     
     void Blob::add_offset(const cmn::Vec2 &off) {

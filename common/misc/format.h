@@ -690,9 +690,9 @@ public:
     }
 #endif
     
-    template<template <typename...> class T, typename... Args, typename K = cmn::remove_cvref_t<T<Args...>>>
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_set<K>::value || is_container<K>::value
-    static std::string parse_value(const T<Args...>&m) {
+    static std::string parse_value(const T&m) {
         std::string str = console_color<bracket_color, colors>("[");
         auto it = m.begin(), end = m.end();
         if (it != end) {
