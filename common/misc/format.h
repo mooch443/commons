@@ -736,11 +736,11 @@ public:
             }
         } else {
             for (auto& [k, v] : m) {
-                str += console_color<bracket_color, colors>("[")
-                + parse_value(k)
-                + console_color<bracket_color, colors>(":")
-                + parse_value(v)
-                + console_color<bracket_color, colors>(i++ < N-1 ? "]," : "]");
+                str +=
+                    parse_value(k)
+                    + console_color<bracket_color, colors>(":")
+                    + parse_value(v)
+                    + (i++ < N-1 ? console_color<bracket_color, colors>(",") : "");
             }
         }
         return str + console_color<bracket_color, colors>("}");
