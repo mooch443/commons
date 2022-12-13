@@ -724,6 +724,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
+set(pybind11_version_tag "v2.10.1")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -736,7 +737,7 @@ if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
             ${COMMONS_subproject_CMAKE_ARGS}
 
         GIT_REPOSITORY https://github.com/pybind/pybind11
-        GIT_TAG        v2.10.0 #99ef2b846742e2298b97904e5be43f5ea5d71d8c
+        GIT_TAG        ${pybind11_version_tag}
         UPDATE_COMMAND ""
     )
     ExternalProject_Get_Property(pybind11 INSTALL_DIR)
@@ -752,7 +753,7 @@ elseif(NOT COMMONS_NO_PYTHON)
     FetchContent_Declare(
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11
-        GIT_TAG        v2.10.0
+        GIT_TAG        ${pybind11_version_tag}
     )
 
     FetchContent_GetProperties(pybind11)
