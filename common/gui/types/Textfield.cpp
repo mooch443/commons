@@ -80,7 +80,7 @@ namespace gui {
 
 void Textfield::init() {
     _selection_rect.set_fillclr(DarkCyan.alpha(100));
-    _cursor_position = text().length();
+    _cursor_position = narrow_cast<long_t>(text().length());
     _text_display.create(text(), Black, _settings.font);
     
     set_clickable(true);
@@ -121,7 +121,7 @@ void Textfield::init() {
             return;
         
         _settings.text = text;
-        _cursor_position = text.length();
+        _cursor_position = narrow_cast<long_t>(text.length());
         _text_offset = 0;
         _selection = lrange(-1, -1);
         
@@ -145,7 +145,7 @@ void Textfield::init() {
         switch (e.key.code) {
             case Keyboard::Left:
                 if(_cursor_position > 0) {
-                    size_t before = _cursor_position;
+                    auto before = _cursor_position;
                     
                     if(system)
                         _cursor_position = 0;
@@ -155,7 +155,7 @@ void Textfield::init() {
                         if(k == std::string::npos)
                             k = 0;
                         
-                        _cursor_position = k;
+                        _cursor_position = narrow_cast<long_t>(k);
                     }
                     else
                         _cursor_position--;
@@ -179,11 +179,11 @@ void Textfield::init() {
                 break;
                 
             case Keyboard::Right:
-                if(_cursor_position < text().length()) {
-                    size_t before = _cursor_position;
+                if(sign_cast<size_t>(_cursor_position) < text().length()) {
+                    auto before = _cursor_position;
                     
                     if(system)
-                        _cursor_position = text().length();
+                        _cursor_position = narrow_cast<long_t>(text().length());
                     else if(alt) {
                         // find the first word
                         auto k = utils::lowercase(text()).find_first_of(alphanumeric, before);
@@ -196,7 +196,7 @@ void Textfield::init() {
                         } else
                             k = text().length();
                         
-                        _cursor_position = k;
+                        _cursor_position = narrow_cast<long_t>(k);
                     }
                     else
                         _cursor_position++;
@@ -221,8 +221,8 @@ void Textfield::init() {
                 
             case Keyboard::A:
                 if(system) {
-                    _selection = lrange(0, text().length());
-                    _cursor_position = text().length();
+                    _selection = lrange(0, narrow_cast<long_t>(text().length()));
+                    _cursor_position = _selection.last;
                     set_content_changed(true);
                 }
                 break;
@@ -247,7 +247,7 @@ void Textfield::init() {
                         print("Pasting ", paste);
                         
                         std::string copy = text();
-                        size_t before = _cursor_position;
+                        auto before = _cursor_position;
                         
                         if(!_selection.empty()) {
                             copy.erase(copy.begin() + _selection.first, copy.begin() + _selection.last);
@@ -276,7 +276,7 @@ void Textfield::init() {
                 
             case Keyboard::BackSpace: {
                 std::string copy = text();
-                size_t before = _cursor_position;
+                auto before = _cursor_position;
                 
                 if(!_selection.empty()) {
                     copy.erase(copy.begin() + _selection.first, copy.begin() + _selection.last);
@@ -330,7 +330,7 @@ void Textfield::init() {
                 
             default: {
                 std::string copy = text();
-                size_t before = _cursor_position;
+                auto before = _cursor_position;
                 
                 if(!_selection.empty()) {
                     copy.erase(copy.begin() + _selection.first, copy.begin() + _selection.last);
@@ -414,24 +414,27 @@ void Textfield::set_postfix(const std::string &p) {
             //Vec2 real_scale = Drawable::real_scale();
             auto real_scale = this;
             
-            if(_cursor_position > text().length())
-                _cursor_position = text().length();
+            if(sign_cast<size_t>(_cursor_position) > text().length())
+                _cursor_position = narrow_cast<long_t>(text().length());
             if(_text_offset > text().length())
                 _text_offset = text().length();
             
             auto r = Base::default_text_bounds(text(), real_scale, font());
             const float cursor_y = (height() - Base::default_line_spacing(font()))*0.5;
             
-            if(_text_offset >= _cursor_position)
-                _text_offset = (size_t)max(0, long(_cursor_position)-1);
+            if(_text_offset >= sign_cast<size_t>(_cursor_position))
+                _text_offset = (size_t)max(0, _cursor_position-1);
             std::string before = text().substr(_text_offset, _cursor_position - _text_offset);
             
             r = Base::default_text_bounds(before, real_scale, font());
             
-            if(_display_text_len < _cursor_position)
+            if(_display_text_len < sign_cast<size_t>(_cursor_position))
                 _display_text_len = _cursor_position;
             
-            while(r.width >= max_w && before.length() > 0 && _text_offset < _cursor_position) {
+            while(r.width >= max_w
+                  && before.length() > 0
+                  && _text_offset < sign_cast<size_t>(_cursor_position))
+            {
                 _text_offset++;
                 before = before.substr(1);
                 r = Base::default_text_bounds(before, real_scale, font());
@@ -440,7 +443,7 @@ void Textfield::set_postfix(const std::string &p) {
             // check whether after string is too short
             std::string after = text().substr(_cursor_position, _display_text_len - _cursor_position);
             if(after.length() < 2
-               && _cursor_position < text().length()
+               && sign_cast<size_t>(_cursor_position) < text().length()
                && after.length() < text().length() - _cursor_position)
             {
                 _text_offset++; _display_text_len++;
@@ -571,7 +574,7 @@ void Textfield::set_postfix(const std::string &p) {
             x = r.width + r.x;
         }
         
-        _cursor_position = _text_offset + (size_t)max(0, idx - 1);
+        _cursor_position = narrow_cast<long_t>(_text_offset + max(0, idx - 1));
         
         if(pressed()) {
             if(_cursor_position < _selection_start) {

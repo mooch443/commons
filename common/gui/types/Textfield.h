@@ -25,7 +25,7 @@ public:
     };
 
 private:
-    size_t _cursor_position;
+    long_t _cursor_position;
     Rect _cursor = Rect(Bounds(0,0,2,30));
     Rect _selection_rect = Rect(FillClr{DarkCyan.alpha(100)});
     Text *_placeholder{nullptr};
@@ -33,7 +33,7 @@ private:
     size_t _text_offset{0};
     size_t _display_text_len{0};
     
-    size_t _selection_start;
+    long_t _selection_start;
     lrange _selection{-1, -1};
     
     bool _valid{true};

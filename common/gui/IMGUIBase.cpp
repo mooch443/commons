@@ -1584,7 +1584,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             const auto idx_count = count*6;
             const auto vtx_count = count*4; //! TODO: [OPT] Not sharing edges
-            list->PrimReserve(idx_count, vtx_count);
+            list->PrimReserve((int)idx_count, (int)vtx_count);
             assert(idx_count > 0 && vtx_count > 0);
             
             //Transform transform;

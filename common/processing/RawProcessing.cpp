@@ -36,7 +36,7 @@ public:
 };
 
 template<typename Iterator>
-void process_tags(int64_t index,
+void process_tags(int32_t index,
                   Iterator start,
                   Iterator end,
                   cv::Mat& result,
@@ -153,7 +153,7 @@ void process_tags(int64_t index,
             
             // find the longest side of the shape
             Vec2 prev{ (float)c.back()[0], (float)c.back()[1] };
-            int max_side = 0;
+            size_t max_side = 0;
             float maximum = 0;
             for (size_t j = 0; j < c.size(); ++j) {
                 Vec2 pos{ (float)c[j][0], (float)c[j][1] };
