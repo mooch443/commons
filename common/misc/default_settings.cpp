@@ -91,7 +91,7 @@ namespace cmn {
                     end_word(0, 0);
                     parsed << "<br/>";
                     
-                } else if(c == '\'' || c == '`' || c == '"' || c == '$') {
+                } else if(is_in(c, '\'', '`', '"', '$')) {
                     bool closing = false;
                     if(!in_string.empty() && in_string.back() == c) {
                         in_string.pop_back();

@@ -395,6 +395,12 @@ void foreach(Func callback, T &v, Args... args) {
     return foreach(callback, args...);
 }
 
+template<typename First, typename ... T>
+bool is_in(First &&first, T && ... t)
+{
+    return ((first == t) || ...);
+}
+
 class IndexedDataTransport {
 protected:
     GETTER_SETTER(long_t, index)
