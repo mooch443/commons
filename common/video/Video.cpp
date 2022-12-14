@@ -151,7 +151,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
     {
        static GenericThreadPool pool(cmn::hardware_concurrency(), "extractu8");
 
-       distribute_vector([&](auto, const auto s, const auto e, auto) {
+       distribute_indexes([&](auto, const auto s, const auto e, auto) {
            for (auto ptr = s; ptr != e; ++ptr) {
                *ptr = mat.data[size_t(ptr - start) * channels + channel];
            }

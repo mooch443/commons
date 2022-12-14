@@ -558,7 +558,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             cv::cvtColor(input, result, cv::COLOR_GRAY2BGRA);
 
         // calculate in multiple threads (the contours array)
-        distribute_vector([&](auto index, auto start, auto end, auto){
+        distribute_indexes([&](auto index, auto start, auto end, auto){
             process_tags(index, start, end, result, tag_cache, INPUT, input, _average);
         }, _contour_pool, tag_cache->contours.begin(), tag_cache->contours.end());
 

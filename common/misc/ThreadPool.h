@@ -82,77 +82,32 @@ namespace cmn {
         void wait_one();
     };
 
+
 template<typename F, typename Iterator, typename Pool>
-void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
+void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end) {
     const auto threads = pool.num_threads();
-    int64_t i = 0, N = std::distance(start, end);
+    int64_t i = 0, N;
+    if constexpr(std::integral<Iterator>)
+        N = end - start;
+    else
+        N = std::distance(start, end);
+    
     const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
-#if defined(COMMONS_HAS_LATCH) //&& false
     int64_t enqueued{0};
-    
-    {
-        Iterator nex = start;
-        int64_t i = 0;
-        
-        for(auto it = start; it != end;) {
-            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
-            std::advance(nex, step);
-            if(nex != end) {
-                ++enqueued;
-            }
-            
-            it = nex;
-            i += step;
-        }
-    }
-    
-    std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
     Iterator nex = start;
     std::exception_ptr ex;
     
-    for(auto it = start; it != end;) {
-        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
-        std::advance(nex, step);
-        if(nex != end) {
-            pool.enqueue([&](auto i, auto it, auto nex, auto step) {
-                try {
-                    fn(i, it, nex, step);
-                } catch(...) {
-                    ex = std::current_exception();
-                }
-                work_done.count_down();
-                
-            }, i, it, nex, step);
-            
-        } else {
-            try {
-                // run in local thread
-                fn(i, it, nex, step);
-            } catch(...) {
-                ex = std::current_exception();
-            }
-        }
-        
-        it = nex;
-        i += step;
-    }
-    
-    work_done.wait();
-    if(ex)
-        std::rethrow_exception(ex);
-#else
-    std::atomic<int64_t> processed(0);
-    int64_t enqueued{0};
-    
     {
         Iterator nex = start;
         int64_t i = 0;
         
         for(auto it = start; it != end;) {
             auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
-            assert(step > 0);
+            if constexpr(std::integral<Iterator>)
+                nex += step;
+            else
+                std::advance(nex, step);
             
-            std::advance(nex, step);
             if(nex != end)
                 ++enqueued;
             
@@ -161,28 +116,56 @@ void distribute_vector(F&& fn, Pool& pool, Iterator start, Iterator end) {
         }
     }
     
-    Iterator nex = start;
-    for(auto it = start; it != end;) {
+#if defined(COMMONS_HAS_LATCH)
+    std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
+#else
+    std::atomic<int64_t> processed(0);
+#endif
+    
+    size_t j=0;
+    for(auto it = start; it != end; ++j) {
         auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
-        std::advance(nex, step);
+        
+        if constexpr(std::integral<Iterator>)
+            nex += step;
+        else
+            std::advance(nex, step);
         
         if(nex == end) {
-            fn(i, it, nex, step);
+            try {
+                // run in local thread
+                fn(i, it, nex, j);
+            } catch(...) {
+                ex = std::current_exception();
+            }
             
         } else {
-            pool.enqueue([&](auto i, auto it, auto nex, auto step) {
-                fn(i, it, nex, step);
+            pool.enqueue([&](auto i, auto it, auto nex, auto index) {
+                try {
+                    fn(i, it, nex, index);
+                } catch(...) {
+                    ex = std::current_exception();
+                }
+#if defined(COMMONS_HAS_LATCH)
+                work_done.count_down();
+#else
                 ++processed;
-                
-            }, i, it, nex, step);
+#endif
+            }, i, it, nex, j);
         }
         
         it = nex;
         i += step;
     }
     
+#if defined(COMMONS_HAS_LATCH)
+    work_done.wait();
+#else
     while(processed < enqueued) { }
 #endif
+    
+    if(ex)
+        std::rethrow_exception(ex);
 }
 
     template<typename T>

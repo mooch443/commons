@@ -181,50 +181,6 @@ struct Source {
         }
     };
     
-    template<typename F, typename Index, typename Pool>
-        requires std::integral<Index>
-    void distribute_indexes(F&& fn, Pool& pool, Index start, Index end) {
-        const auto threads = Index(min(254u, pool.num_threads()));
-        Index i = 0, N = end - start;
-        uint8_t thread_index = 0;
-        const Index per_thread = max(Index(1), N / threads);
-        Index processed = 0, enqueued = 0;
-        std::mutex mutex;
-        std::condition_variable variable;
-        
-        Index nex = start;
-        
-        for(auto it = start; it != end;) {
-            auto step = i + per_thread < N ? per_thread : (N - i);
-            nex += step;
-            
-            assert(step > 0);
-            if(nex == end) {
-                fn(thread_index, it, nex, step);
-                
-            } else {
-                ++enqueued;
-                
-                pool.enqueue([&](uint8_t thread_index, auto it, auto nex, auto step) {
-                    fn(thread_index, it, nex, step);
-                    
-                    std::unique_lock g(mutex);
-                    ++processed;
-                    variable.notify_one();
-                    
-                }, thread_index, it, nex, step);
-            }
-            
-            it = nex;
-            i += step;
-            ++thread_index;
-        }
-        
-        std::unique_lock g(mutex);
-        while(processed < enqueued)
-            variable.wait(g);
-    }
-    
     /**
      * Initialize source entity based on an OpenCV image. All 0 pixels are interpreted as background. This function extracts all horizontal lines from an image and saves them inside, along with information about where which y-coordinate is located.
      */
