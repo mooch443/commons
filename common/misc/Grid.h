@@ -195,6 +195,9 @@ namespace grid {
         }
         
         void erase(T v) {
+            if(_value_where.empty())
+                return;
+            
             auto it = _value_where.find(v);
             if(_value_where.end() == it)
                 return;

@@ -176,7 +176,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 
 pv::BlobPtr CompressedBlob::unpack() const {
     auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
-    auto ptr = std::make_shared<pv::Blob>(std::move(flines), nullptr, 0);
+    auto ptr = pv::Blob::Make(std::move(flines), nullptr, 0);
     ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : pv::bid::invalid);
     
     bool tried_to_split = (status_byte & 0x4) != 0;
@@ -265,13 +265,23 @@ pv::BlobPtr CompressedBlob::unpack() const {
     { }
     
     Blob::Blob(const Blob& other)
-        : Blob(std::make_unique<line_ptr_t::element_type>(*other.lines()),
-               other.pixels()
+        : _hor_lines(std::make_unique<line_ptr_t::element_type>(*other.lines())),
+          _pixels(other.pixels()
                    ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels())
-                   : nullptr,
-               other.flags())
+                   : nullptr),
+         _flags(other.flags()),
+        _recount(other._recount),
+        _recount_threshold(other._recount_threshold),
+        _properties(other._properties),
+_color_percentile_5(other._color_percentile_5),
+_color_percentile_95(other._color_percentile_95),
+_parent_id(other._parent_id),
+_blob_id(other._blob_id),
+_tried_to_split(other._tried_to_split),
+_bounds(other._bounds),
+_moments(other._moments)
     {
-        _tried_to_split = other._tried_to_split;
+        
     }
     
     Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t flags)
@@ -348,7 +358,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return _recount_threshold;
     }
     
-    void Blob::set_split(bool split, pv::BlobPtr parent) {
+    void Blob::set_split(bool split, const pv::BlobPtr& parent) {
         set_split(split);
         
         if(parent) {
@@ -478,7 +488,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         }
         
-        return std::make_shared<Blob>(
+        return Blob::Make(
             std::move(lines),
             std::move(tmp_pixels),
             flags()

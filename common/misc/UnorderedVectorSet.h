@@ -23,11 +23,13 @@ struct UnorderedVectorSet {
 
     template<typename K>
         requires std::convertible_to<K, T>
-    std::pair<typename decltype(_data)::const_iterator, bool> insert(const K& value) {
-        auto it = find(value);
+    std::pair<typename decltype(_data)::iterator, bool>
+    insert(K&& value)
+    {
+        auto it = find(std::forward<K>(value));
         if (it == end())
-            return std::make_pair(_data.emplace(_data.end(), value), true);
-        return std::make_pair(it, false);
+            return std::make_pair(_data.emplace(_data.end(), std::forward<K>(value)), true);
+        return std::make_pair(_data.end(), false);
     }
 
     template<typename K>
@@ -38,8 +40,8 @@ struct UnorderedVectorSet {
 
     template<typename K>
         requires std::convertible_to<K, T>
-    auto find(const K& value) const {
-        return std::find(_data.begin(), _data.end(), value);
+    auto find(K&& value) const {
+        return std::find(_data.begin(), _data.end(), std::forward<K>(value));
     }
 
     void clear() {

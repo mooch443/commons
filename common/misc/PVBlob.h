@@ -50,6 +50,10 @@ class Blob {
     GETTER(Moments, moments)
     
 public:
+    static auto Make(auto && ...args) {
+        return std::make_unique<Blob>(std::forward<decltype(args)>(args)...);
+    }
+    
     const decltype(_properties)& properties() const { return _properties; }
     static size_t all_blobs();
     
@@ -195,17 +199,12 @@ public:
     void force_set_recount(int32_t threshold, float value = -1);
     void transfer_backgrounds(const cmn::Background& from, const cmn::Background& to, const cmn::Vec2& dest_offset = cmn::Vec2());
     
-    void set_split(bool split, pv::BlobPtr parent);
+    void set_split(bool split, const pv::BlobPtr& parent);
     
     std::string name() const;
     void add_offset(const cmn::Vec2& off);
     void scale_coordinates(const cmn::Vec2& scale);
     size_t memory_size() const;
-    
-    template<typename... Args>
-    static pv::BlobPtr make(Args... args) {
-        return std::make_shared<pv::Blob>(std::forward<Args>(args)...);
-    }
     
     bool operator!=(const pv::Blob& other) const;
     bool operator==(const pv::Blob& other) const;
@@ -226,7 +225,7 @@ protected:
 
 //! comparing a blob pointer to a bid should work like this:
 inline bool operator==(const pv::BlobPtr& A, const pv::bid& bdx) {
-    return A->blob_id() == bdx;
+    return A && A->blob_id() == bdx;
 }
 
 struct ShortHorizontalLine {

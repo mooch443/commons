@@ -7,7 +7,21 @@ namespace pv {
 
 class Blob;
 struct CompressedBlob;
-using BlobPtr = std::shared_ptr<pv::Blob>;
+using BlobPtr = std::unique_ptr<pv::Blob>;
+
+struct BlobWeakPtr {
+    pv::Blob* ptr;
+    
+    constexpr BlobWeakPtr() = default;
+    constexpr BlobWeakPtr(pv::Blob* p) : ptr(p) {}
+    constexpr operator pv::Blob*() const {
+        return ptr;
+    }
+    constexpr pv::Blob& operator*() {return *ptr;}
+    constexpr const pv::Blob& operator*() const {return *ptr;}
+    constexpr pv::Blob* operator->() {return ptr;}
+    constexpr const pv::Blob* operator->() const {return ptr;}
+};
 
 struct bid {
     static constexpr uint32_t invalid = std::numeric_limits<uint32_t>::max();

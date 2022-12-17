@@ -96,70 +96,118 @@ inline void update_tmp_line (coord_t x,
         tmp_line.x1 = x;
 };
 
-#define _____FN_TYPE (const Background* bg, const HorizontalLine& line, uchar*& px, int threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
+#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 
-template<typename F>
-inline void abstract_line (F&& diff, const HorizontalLine& line, uchar*& px, auto threshold, HorizontalLine& tmp_line, ptr_safe_t &count, const std::shared_ptr<std::vector<HorizontalLine>> &lines, const std::shared_ptr<std::vector<uchar>> &pixels)
+/*template<typename F>
+inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, uchar*& px, auto threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 {
-    bool prev{false};
-    uchar* start;
-    size_t i=0;
-    
-    for (auto x=line.x0; x<=line.x1; ++x, ++px, ++i) {
-        if(diff(x, *px) < threshold(x)) {
-            if(prev) {
-                pixels->insert(pixels->end(), start, px);
-                tmp_line.x1 = x - 1;
-                lines->emplace_back(std::move(tmp_line));
+    for(const auto &line : input) {
+        coord_t x0;
+        uchar* start{nullptr};
+        
+        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            if(diff(x, *px) < threshold(x)) {
+                if(start) {
+                    pixels.insert(pixels.end(), start, px);
+                    lines.emplace_back(line.y, x0, x - 1);
+                    start = nullptr;
+                }
                 
-                count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-                prev = false;
+            } else if(!start) {
+                start = px;
+                x0 = x;
             }
-            
-        } else if(!prev) {
-            prev = true;
-            start = px;
-            tmp_line.x0 = x;
+        }
+    
+        if(start) {
+            pixels.insert(pixels.end(), start, px);
+            lines.emplace_back(line.y, x0, line.x1);
         }
     }
-    
-    if(prev) {
-        pixels->insert(pixels->end(), start, px);
-        tmp_line.x1 = line.x1;
-        lines->emplace_back(std::move(tmp_line));
-        count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-    }
-}
+}*/
 
     inline void line_with_grid _____FN_TYPE {
-        auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
+        for(const auto &line : input) {
+            coord_t x0;
+            uchar* start{nullptr};
+            auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
+            
+            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+                if(bg->diff(x, line.y, *px) < (*threshold_ptr++) * threshold) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        lines.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
         
-        abstract_line([bg, y = line.y](coord_t x, uchar px){
-            return bg->diff(x, y, px);
-        }, line, px, [threshold, &threshold_ptr](auto){
-            return (*threshold_ptr++) * threshold;
-        }, tmp_line, count, lines, pixels);
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                lines.emplace_back(line.y, x0, line.x1);
+            }
+        }
     }
 
     inline void line_without_grid _____FN_TYPE {
-        abstract_line([&](coord_t x, uchar px){
-            return bg->diff(x, line.y, px);
-        }, line, px, [threshold](auto){
-            return threshold;
-        }, tmp_line, count, lines, pixels);
+        for(const auto &line : input) {
+            coord_t x0;
+            uchar* start{nullptr};
+            
+            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+                if(bg->diff(x, line.y, *px) < threshold) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        lines.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+        
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                lines.emplace_back(line.y, x0, line.x1);
+            }
+        }
     }
 
     inline void line_without_bg _____FN_TYPE {
         UNUSED(bg);
         
-        abstract_line([](coord_t, uchar px){
-            return px;
-        }, line, px, [threshold](auto){
-            return threshold;
-        }, tmp_line, count, lines, pixels);
+        for(const auto &line : input) {
+            coord_t x0;
+            uchar* start{nullptr};
+            
+            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+                if(*px < threshold) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        lines.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+        
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                lines.emplace_back(line.y, x0, line.x1);
+            }
+        }
     }
 
-    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
+    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
         if(!blob->pixels())
             throw U_EXCEPTION("Cannot threshold a blob without pixels.");
         //return blob;
@@ -219,24 +267,18 @@ inline void abstract_line (F&& diff, const HorizontalLine& line, uchar*& px, aut
         
         //timer.reset();
         auto px = blob->pixels()->data();
-        HorizontalLine tmp_line;
-        auto lines = std::make_shared<std::vector<HorizontalLine>>();
-        auto pixels = std::make_shared<std::vector<uchar>>();
-        pixels->reserve(blob->pixels()->size());
+        std::vector<HorizontalLine> lines;
+        std::vector<uchar> pixels;
+        lines.reserve(blob->hor_lines().size());
+        pixels.reserve(blob->pixels()->size());
         
-        ptr_safe_t count = 0;
         auto fn = bg ? (bg->grid() ? &line_with_grid : &line_without_grid) : &line_without_bg;
+        (*fn)(bg, blob->hor_lines(), px, threshold, lines, pixels);
         
-        for (auto &line : blob->hor_lines()) {
-            tmp_line.y = line.y;
-            (*fn)(bg, line, px, threshold, tmp_line, count, lines, pixels);
-            assert(count == pixels->size());
-        }
-        
-        return CPULabeling::run(*lines, *pixels, cache);
+        return CPULabeling::run(lines, pixels, cache);
     }
     
-    pv::BlobPtr threshold_get_biggest_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
+    pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
         CPULabeling::ListCache_t cache;
         auto blobs = _threshold_blob(cache, blob, threshold, bg, use_closing, closing_size);
         
@@ -251,108 +293,82 @@ inline void abstract_line (F&& diff, const HorizontalLine& line, uchar*& px, aut
         }
         
         if(found)
-            return std::make_shared<pv::Blob>(
+            return pv::Blob::Make(
                     std::move(found->lines),
                     std::move(found->pixels),
                     found->extra_flags);
         
-        return std::make_shared<pv::Blob>(
+        return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
                 std::make_unique<std::vector<uchar>>(),
                 0);
-        //auto ptr = std::make_shared<pv::Blob>(lines, pixels);
+        //auto ptr = pv::Blob::Make(lines, pixels);
         //return ptr;
     }
     
-    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
+    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
         auto blobs = _threshold_blob(cache, blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
         for(auto&& [lines, pixels, flags] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
+                result.push_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
         }
         return result;
     }
 
-    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, int threshold, const Background* bg, const Rangel& size_range) {
+    std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
         CPULabeling::ListCache_t cache;
         return threshold_blob(cache, blob, threshold, bg, size_range);
     }
 
-inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob,const std::vector<uchar>& difference_cache, int threshold) {
-    //timer.reset();
-    auto px = blob->pixels()->data();
-    auto dpx = difference_cache.data();
-    HorizontalLine tmp_line;
-    auto lines = std::make_shared<std::vector<HorizontalLine>>();
-    auto pixels = std::make_shared<std::vector<uchar>>();
-    pixels->reserve(blob->pixels()->size());
-    lines->reserve(blob->hor_lines().size());
+inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob,const std::vector<uchar>& difference_cache, int threshold) {
+    const uchar* px = blob->pixels()->data();
+    const uchar* dpx = difference_cache.data();
     
-//#ifndef NDEBUG
-    ptr_safe_t count = 0;
-//#endif
+    std::vector<HorizontalLine> lines;
+    std::vector<uchar> pixels;
     
-    for (auto &line : blob->hor_lines()) {
-        tmp_line.y = line.y;
-        abstract_line([&](coord_t, uchar){
-            return *dpx++;
-        }, line, px, [&](auto){
-            return threshold;
-        }, tmp_line, count, lines, pixels);
+    pixels.reserve(blob->pixels()->size());
+    lines.reserve(blob->hor_lines().size());
+    
+    for(const auto &line : blob->hor_lines()) {
+        coord_t x0;
+        const uchar* start{nullptr};
         
-        //tmp_line.x0 = coord_max_val;
-        //tmp_line.x1 = 0;
-        
-        /*for (auto x=line.x0; x<=line.x1; ++x, ++px, ++dpx) {
-            if(*dpx >= threshold) {
-            //if((!bg && *px >= threshold) || (bg &&  bg->is_different(x, line.y, *px, threshold))) {
-                pixels->push_back(*px);
+        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            if(*dpx++ < threshold) {
+                if(start) {
+                    pixels.insert(pixels.end(), start, px);
+                    lines.emplace_back(line.y, x0, x - 1);
+                    start = nullptr;
+                }
                 
-                if(tmp_line.x0 == coord_max_val)
-                    tmp_line.x0 = tmp_line.x1 = x;
-                else if(x > tmp_line.x1+1) {
-                    assert(tmp_line.x0 <= tmp_line.x1);
-                    lines->push_back(tmp_line);
-#ifndef NDEBUG
-                    count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-#endif
-                    
-                    tmp_line.x0 = x;
-                    tmp_line.x1 = x;
-                } else
-                    tmp_line.x1 = x;
+            } else if(!start) {
+                start = px;
+                x0 = x;
             }
         }
-        
-        if(tmp_line.x0 != coord_max_val) {
-            lines->push_back(tmp_line);
-#ifndef NDEBUG
-            count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-#endif
-        }*/
-        
-        assert(count == pixels->size());
+    
+        if(start) {
+            pixels.insert(pixels.end(), start, px);
+            lines.emplace_back(line.y, x0, line.x1);
+        }
     }
     
-    //if(blob->pixels()->size() > 1000 * 1000)
-    
-    //static Timing timing("after_threshold", 0.1);
-    //TakeTiming take(timing);
-    return CPULabeling::run(*lines, *pixels, cache);
+    return CPULabeling::run(lines, pixels, cache);
 }
 
-std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
     auto blobs = _threshold_blob(cache, blob, difference_cache, threshold);
     std::vector<pv::BlobPtr> result;
     for(auto && [lines, pixels, flags] : blobs) {
         if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-            result.push_back(std::make_shared<pv::Blob>(std::move(lines), std::move(pixels), flags));
+            result.push_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
     }
     return result;
 }
 
-    std::vector<pv::BlobPtr> threshold_blob(const pv::BlobPtr& blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+    std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
         CPULabeling::ListCache_t cache;
         return threshold_blob(cache, blob, difference_cache, threshold, size_range);
     }
@@ -472,7 +488,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, const p
         next_row->border.clear();
     }
     
-    std::vector<std::shared_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobPtr blob, int)
+    std::vector<std::shared_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobWeakPtr blob, int)
     {
         int cols = blob->bounds().width + 2;
         int offx = blob->bounds().x;
