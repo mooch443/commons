@@ -125,7 +125,7 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
         }
     }
 }*/
-
+    template<DifferenceMethod method>
     inline void line_with_grid _____FN_TYPE {
         for(const auto &line : input) {
             coord_t x0;
@@ -133,7 +133,7 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
             auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
             
             for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-                if(bg->diff(x, line.y, *px) < (*threshold_ptr++) * threshold) {
+                if(bg->diff<method>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
                         lines.emplace_back(line.y, x0, x - 1);
@@ -153,13 +153,14 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
         }
     }
 
+    template<DifferenceMethod method>
     inline void line_without_grid _____FN_TYPE {
         for(const auto &line : input) {
             coord_t x0;
             uchar* start{nullptr};
             
             for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-                if(bg->diff(x, line.y, *px) < threshold) {
+                if(bg->diff<method>(x, line.y, *px) < threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
                         lines.emplace_back(line.y, x0, x - 1);
@@ -272,8 +273,21 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
         lines.reserve(blob->hor_lines().size());
         pixels.reserve(blob->pixels()->size());
         
-        auto fn = bg ? (bg->grid() ? &line_with_grid : &line_without_grid) : &line_without_bg;
-        (*fn)(bg, blob->hor_lines(), px, threshold, lines, pixels);
+        if(bg) {
+            if(Background::enable_absolute_difference()) {
+                if(bg->grid())
+                    line_with_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+                else
+                    line_without_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            } else {
+                if(bg->grid())
+                    line_with_grid<DifferenceMethod::sign>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+                else
+                    line_without_grid<DifferenceMethod::sign>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            }
+            
+        } else
+            line_without_bg(bg, blob->hor_lines(), px, threshold, lines, pixels);
         
         return CPULabeling::run(lines, pixels, cache);
     }

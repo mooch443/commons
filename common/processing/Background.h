@@ -1,30 +1,69 @@
 #pragma once
 
-#include <misc/defines.h>
-#include <misc/detail.h>
+#include <misc/Image.h>
+#include <processing/LuminanceGrid.h>
 
 namespace cmn {
-    class Image;
-    class Bounds;
-    class LuminanceGrid;
-    
+    enum class DifferenceMethod {
+        absolute,
+        sign
+    };
+
+    template<DifferenceMethod method>
+    struct DifferenceImpl {
+        template<DifferenceMethod M = method>
+            requires (M == DifferenceMethod::absolute)
+        inline int operator()(int source, int value) const {
+            return abs(source - value);
+        }
+        
+        template<DifferenceMethod M = method>
+            requires (M == DifferenceMethod::sign)
+        inline int operator()(int source, int value) const {
+            return max(0, source - value);
+        }
+    };
+
     class Background {
     public:
-        virtual int diff(coord_t x, coord_t y, int value) const = 0;
-        virtual int color(coord_t x, coord_t y) const = 0;
-        virtual const Image& image() const = 0;
+        static bool enable_absolute_difference();
         
-        //! tests the given raw color value for difference to background
-        //  with additional call to diff
-        virtual bool is_different(coord_t x, coord_t y, int value, int threshold) const = 0;
-        virtual coord_t count_above_threshold(coord_t x0, coord_t x1, coord_t y, const uchar* values, int threshold) const = 0;
+    protected:
+        Image::Ptr _image;
+        LuminanceGrid* _grid;
+        Bounds _bounds;
+        //int (*_diff)(int, int);
+        std::string _name;
+        const char* _callback;
         
-        //! tests the given difference(!) value for difference to background, no additional
-        //  call to diff(x,y,..)
-        virtual bool is_value_different(coord_t x, coord_t y, int value, int threshold) const = 0;
-        virtual const LuminanceGrid* grid() const = 0;
+    public:
+        Background(const Image::Ptr& image, LuminanceGrid* grid);
+        ~Background();
         
-        virtual const Bounds& bounds() const = 0;
-        virtual ~Background() {}
+        template<DifferenceMethod method>
+        int diff(coord_t x, coord_t y, int value) const {
+            return DifferenceImpl<method>{}(_image->data()[ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_image->cols)], value);
+        }
+        
+        template<DifferenceMethod method>
+        bool is_different(coord_t x, coord_t y, int value, int threshold) const {
+            return is_value_different(x, y, diff<method>(x, y, value), threshold);
+        }
+        
+        bool is_value_different(coord_t x, coord_t y, int value, int threshold) const {
+            assert(x < _image->cols && y < _image->rows);
+            return value >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
+        }
+        
+        coord_t count_above_threshold(coord_t x0, coord_t x1, coord_t y, const uchar* values, int threshold) const;
+        int color(coord_t x, coord_t y) const;
+        const Image& image() const;
+        const Bounds& bounds() const;
+        const LuminanceGrid* grid() const {
+            return _grid;
+        }
+        
+    private:
+        void update_callback();
     };
 }

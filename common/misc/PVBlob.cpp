@@ -452,28 +452,29 @@ _moments(other._moments)
         return raw_recount(threshold) * SQR(setting(cm_per_pixel));
     }
     
-    BlobPtr Blob::threshold(int32_t value, const Background& background) {
-        if(_pixels == nullptr)
+    template<DifferenceMethod method>
+    BlobPtr _threshold(Blob& blob, int32_t value, const Background& background) {
+        if(blob.pixels() == nullptr)
             throw U_EXCEPTION("Cannot threshold without pixel values.");
         
         auto lines = std::make_unique<std::vector<HorizontalLine>>();
-        lines->reserve(hor_lines().size());
+        lines->reserve(blob.hor_lines().size());
         
-        auto ptr = _pixels->data();
+        auto ptr = blob.pixels()->data();
         HorizontalLine tmp;
         auto tmp_pixels = std::make_unique<std::vector<uchar>>();
-        tmp_pixels->reserve(_pixels->size());
+        tmp_pixels->reserve(blob.pixels()->size());
         
-        for (auto &line : hor_lines()) {
+        for (auto &line : blob.hor_lines()) {
             tmp.x0 = line.x0;
             tmp.y = line.y;
             
             for (auto x=line.x0; x<=line.x1; ++x, ++ptr) {
                 assert(ptr < _pixels->data() + _pixels->size());
-                if(background.is_different(x, line.y, *ptr, value)) {
+                if(background.is_different<method>(x, line.y, *ptr, value)) {
                     tmp.x1 = x;
                     tmp_pixels->push_back(*ptr);
-                    _recount ++;
+                    //blob._recount ++;
                     
                 } else {
                     if(x > tmp.x0) {
@@ -491,8 +492,14 @@ _moments(other._moments)
         return Blob::Make(
             std::move(lines),
             std::move(tmp_pixels),
-            flags()
+            blob.flags()
         );
+    }
+
+    BlobPtr Blob::threshold(int32_t value, const Background& background) {
+        if(Background::enable_absolute_difference())
+            return _threshold<DifferenceMethod::absolute>(*this, value, background);
+        return _threshold<DifferenceMethod::sign>(*this, value, background);
     }
     
     std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
@@ -539,19 +546,28 @@ _moments(other._moments)
         int32_t value;
         float maximum = 0;
         auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            //auto image_ptr = image->data() + ((line.y - _y) * image->cols * image->dims + (line.x0 - _x) * image->dims);
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * image->dims;
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr += image->dims) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                value = background.diff(x, line.y, *ptr);
-                if(background.is_value_different(x, line.y, value, threshold)) {
-                    if(maximum < value)
-                        maximum = value;
-                    *image_ptr = *(image_ptr+1) = *(image_ptr+2) = *ptr;
-                    *(image_ptr+3) = value;
+        
+        auto work = [&]<DifferenceMethod method>() {
+            for (auto &line : hor_lines()) {
+                //auto image_ptr = image->data() + ((line.y - _y) * image->cols * image->dims + (line.x0 - _x) * image->dims);
+                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * image->dims;
+                for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr += image->dims) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    value = background.diff<method>(x, line.y, *ptr);
+                    if(background.is_value_different(x, line.y, value, threshold)) {
+                        if(maximum < value)
+                            maximum = value;
+                        *image_ptr = *(image_ptr+1) = *(image_ptr+2) = *ptr;
+                        *(image_ptr+3) = value;
+                    }
                 }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
         
         if(maximum > 0) {
@@ -578,43 +594,39 @@ _moments(other._moments)
         image.create(b.height, b.width, 2);
         std::fill(image.data(), image.data() + image.size(), uchar(0));
         
-        auto _x = (coord_t)b.x;
-        auto _y = (coord_t)b.y;
-        
-        minimum *= 0.5;
-        
-        /*if constexpr(false) {
-            static Timing timing("equalize_histogram", 0.01);
-            TakeTiming take(timing);
+        auto work = [&]<DifferenceMethod method>(){
+            auto _x = (coord_t)b.x;
+            auto _y = (coord_t)b.y;
             
-            for(auto ptr = _pixels->data(); ptr != _pixels->data() + _pixels->size(); ++ptr) {
-                if(*ptr < minimum) minimum = *ptr;
-                if(*ptr > maximum) maximum = *ptr;
-                
-                if(minimum == 0 && maximum == 255)
-                    break;
-            }
-        }*/
-        
-        float factor = 1;
-        if(maximum > 0 && maximum != minimum)
-            factor = 1.f / ((maximum - minimum) * 0.5) * 255;
-        else
-            minimum = 0;
-        
-        int32_t value;
-        auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * ptr_safe_t(image.cols) * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr+=2) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                value = background.diff(x, line.y, *ptr);
-                if(!threshold || background.is_value_different(x, line.y, value, threshold)) {
-                    *image_ptr = saturate((float(*ptr) - minimum) * factor);
-                    //*image_ptr = *ptr;
-                    *(image_ptr+1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0));
+            minimum *= 0.5;
+            
+            float factor = 1;
+            if(maximum > 0 && maximum != minimum)
+                factor = 1.f / ((maximum - minimum) * 0.5) * 255;
+            else
+                minimum = 0;
+            
+            int32_t value;
+            auto ptr = _pixels->data();
+            
+            for (auto &line : hor_lines()) {
+                auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * ptr_safe_t(image.cols) * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
+                for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr+=2) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    value = background.diff<method>(x, line.y, *ptr);
+                    if(!threshold || background.is_value_different(x, line.y, value, threshold)) {
+                        *image_ptr = saturate((float(*ptr) - minimum) * factor);
+                        //*image_ptr = *ptr;
+                        *(image_ptr+1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0));
+                    }
                 }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
 
         return b.pos();
@@ -627,22 +639,32 @@ _moments(other._moments)
         image.create(b.height, b.width, 2);
         std::fill(image.data(), image.data() + image.size(), uchar(0));
 
-        auto _x = (coord_t)b.x;
-        auto _y = (coord_t)b.y;
-
-        int32_t value;
-        auto ptr = _pixels->data();
-        for (auto& line : hor_lines()) {
-            auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
-            for (auto x = line.x0; x <= line.x1; ++x, ++ptr, image_ptr += 2) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                value = background.diff(x, line.y, *ptr);
-                if (!threshold || background.is_value_different(x, line.y, value, threshold)) {
-                    *image_ptr = *ptr;
-                    *(image_ptr + 1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
+        auto work = [&]<DifferenceMethod method>(){
+            auto _x = (coord_t)b.x;
+            auto _y = (coord_t)b.y;
+            
+            int32_t value;
+            auto ptr = _pixels->data();
+            
+            for (auto& line : hor_lines()) {
+                auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
+                for (auto x = line.x0; x <= line.x1; ++x, ++ptr, image_ptr += 2) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    value = background.diff<method>(x, line.y, *ptr);
+                    if (!threshold || background.is_value_different(x, line.y, value, threshold)) {
+                        *image_ptr = *ptr;
+                        *(image_ptr + 1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
+                    }
                 }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
+        
         return b.pos();
     }
     std::tuple<Vec2, Image::UPtr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
@@ -661,17 +683,28 @@ _moments(other._moments)
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
         
-        int32_t value;
-        auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                value = background.diff(x, line.y, *ptr);
-                if(!threshold || background.is_value_different(x, line.y, value, threshold))
-                    *image_ptr = value;
+        
+        auto work = [&]<DifferenceMethod method>(){
+            int32_t value;
+            auto ptr = _pixels->data();
+            
+            for (auto &line : hor_lines()) {
+                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
+                for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    value = background.diff<method>(x, line.y, *ptr);
+                    if(!threshold || background.is_value_different(x, line.y, value, threshold))
+                        *image_ptr = value;
+                }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
+        
         return {b.pos(), std::move(image)};
     }
     
@@ -717,15 +750,24 @@ _moments(other._moments)
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
         
-        auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                if(background.is_value_different(x, line.y, background.diff(x, line.y, *ptr), threshold))
-                    *image_ptr = *ptr;
+        auto work = [&]<DifferenceMethod method>(){
+            auto ptr = _pixels->data();
+            for (auto &line : hor_lines()) {
+                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
+                for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    if(background.is_value_different(x, line.y, background.diff<method>(x, line.y, *ptr), threshold))
+                        *image_ptr = *ptr;
+                }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
+        
         return {b.pos(), std::move(image)};
     }
     
@@ -742,17 +784,26 @@ _moments(other._moments)
         if(_pixels == nullptr)
             throw U_EXCEPTION("Cannot generate binary image without pixel values.");
         
-        int32_t value;
-        auto ptr = _pixels->data();
-        for (auto &line : hor_lines()) {
-            auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
-            for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
-                assert(ptr < _pixels->data() + _pixels->size());
-                value = background.diff(x, line.y, *ptr);
-                if(background.is_value_different(x, line.y, value, threshold))
-                    *image_ptr = 255;
+        auto work = [&]<DifferenceMethod method>(){
+            int32_t value;
+            auto ptr = _pixels->data();
+            for (auto &line : hor_lines()) {
+                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
+                for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    value = background.diff<method>(x, line.y, *ptr);
+                    if(background.is_value_different(x, line.y, value, threshold))
+                        *image_ptr = 255;
+                }
             }
+        };
+        
+        if(Background::enable_absolute_difference()) {
+            work.operator()<DifferenceMethod::absolute>();
+        } else {
+            work.operator()<DifferenceMethod::sign>();
         }
+        
         return {b.pos(), std::move(image)};
     }
     
