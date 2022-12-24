@@ -84,8 +84,9 @@ namespace cmn {
 
 
 template<typename F, typename Iterator, typename Pool>
-void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end) {
-    const auto threads = pool.num_threads();
+void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end, uint32_t threads = 0) {
+    if(threads == 0)
+        threads = pool.num_threads();
     int64_t i = 0, N;
     if constexpr(std::integral<Iterator>)
         N = end - start;

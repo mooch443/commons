@@ -71,31 +71,6 @@ struct Row {
     }
 };
 
-inline void update_tmp_line (coord_t x,
-                             const unsigned char px,
-                             HorizontalLine& tmp_line,
-                             ptr_safe_t&count,
-                             const std::shared_ptr<std::vector<HorizontalLine>> &lines,
-                             const std::shared_ptr<std::vector<uchar>> &pixels)
-    noexcept
-{
-    //if(pixels->capacity() < pixels->size() + 1)
-    //    print("Have to adjust size of container: ", pixels->size());
-    pixels->emplace_back(px);
-    
-    if(tmp_line.x0 == coord_max_val)
-        tmp_line.x0 = tmp_line.x1 = x;
-    else if(x > tmp_line.x1+1) {
-        assert(tmp_line.x0 <= tmp_line.x1);
-        lines->push_back(tmp_line);
-        count += ptr_safe_t(tmp_line.x1) - ptr_safe_t(tmp_line.x0) + 1;
-        
-        tmp_line.x0 = x;
-        tmp_line.x1 = x;
-    } else
-        tmp_line.x1 = x;
-};
-
 #define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 
 /*template<typename F>
@@ -208,9 +183,53 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
         }
     }
 
-    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2) {
+inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob,const std::vector<uchar>& difference_cache, int threshold) {
+    const uchar* px = blob->pixels()->data();
+    const uchar* dpx = difference_cache.data();
+    
+    std::vector<HorizontalLine> lines;
+    std::vector<uchar> pixels;
+    
+    pixels.reserve(blob->pixels()->size());
+    lines.reserve(blob->hor_lines().size());
+    
+    for(const auto &line : blob->hor_lines()) {
+        coord_t x0;
+        const uchar* start{nullptr};
+        
+        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            if(*dpx++ < threshold) {
+                if(start) {
+                    pixels.insert(pixels.end(), start, px);
+                    lines.emplace_back(line.y, x0, x - 1);
+                    start = nullptr;
+                }
+                
+            } else if(!start) {
+                start = px;
+                x0 = x;
+            }
+        }
+    
+        if(start) {
+            pixels.insert(pixels.end(), start, px);
+            lines.emplace_back(line.y, x0, line.x1);
+        }
+    }
+    
+    return CPULabeling::run(lines, pixels, cache);
+}
+
+
+    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2)
+#ifdef NDEBUG
+        noexcept
+#endif
+    {
+#ifndef NDEBUG
         if(!blob->pixels())
             throw U_EXCEPTION("Cannot threshold a blob without pixels.");
+#endif
         //return blob;
         //blob->threshold(threshold, *bg);
         //Timer timer;
@@ -325,67 +344,30 @@ inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, u
         std::vector<pv::BlobPtr> result;
         for(auto&& [lines, pixels, flags] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.push_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
+                result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
         }
         return result;
     }
 
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
+    /*std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
         CPULabeling::ListCache_t cache;
         return threshold_blob(cache, blob, threshold, bg, size_range);
-    }
-
-inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob,const std::vector<uchar>& difference_cache, int threshold) {
-    const uchar* px = blob->pixels()->data();
-    const uchar* dpx = difference_cache.data();
-    
-    std::vector<HorizontalLine> lines;
-    std::vector<uchar> pixels;
-    
-    pixels.reserve(blob->pixels()->size());
-    lines.reserve(blob->hor_lines().size());
-    
-    for(const auto &line : blob->hor_lines()) {
-        coord_t x0;
-        const uchar* start{nullptr};
-        
-        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-            if(*dpx++ < threshold) {
-                if(start) {
-                    pixels.insert(pixels.end(), start, px);
-                    lines.emplace_back(line.y, x0, x - 1);
-                    start = nullptr;
-                }
-                
-            } else if(!start) {
-                start = px;
-                x0 = x;
-            }
-        }
-    
-        if(start) {
-            pixels.insert(pixels.end(), start, px);
-            lines.emplace_back(line.y, x0, line.x1);
-        }
-    }
-    
-    return CPULabeling::run(lines, pixels, cache);
-}
+    }*/
 
 std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
     auto blobs = _threshold_blob(cache, blob, difference_cache, threshold);
     std::vector<pv::BlobPtr> result;
     for(auto && [lines, pixels, flags] : blobs) {
         if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-            result.push_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
+            result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
     }
     return result;
 }
 
-    std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+    /*std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
         CPULabeling::ListCache_t cache;
         return threshold_blob(cache, blob, difference_cache, threshold, size_range);
-    }
+    }*/
     
     
     

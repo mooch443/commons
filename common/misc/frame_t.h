@@ -2,6 +2,7 @@
 
 #include <misc/defines.h>
 #include <misc/metastring.h>
+#include <misc/checked_casts.h>
 
 namespace cmn {
 
@@ -15,8 +16,16 @@ private:
     
 public:
     Frame_t() = default;
-    explicit constexpr Frame_t(number_t frame)
+    template<typename T>
+        requires _clean_same<T, number_t>
+    explicit constexpr Frame_t(T frame)
         : _frame(frame)
+    { }
+    
+    template<typename T>
+        requires std::is_convertible_v<T, number_t> && (!_clean_same<T, number_t>)
+    explicit constexpr Frame_t(T frame)
+        : _frame(narrow_cast<number_t>(frame))
     { }
     
     constexpr void invalidate() { _frame = invalid; }

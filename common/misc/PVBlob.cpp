@@ -419,9 +419,17 @@ _moments(other._moments)
                 recount += background.count_above_threshold(line.x0, line.x1, line.y, ptr, threshold);
                 ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
 #ifndef NDEBUG
-                for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                    if(background.is_different(x, line.y, *local_ptr, threshold)) {
-                        local_recount++;
+                if(Background::enable_absolute_difference()) {
+                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                        if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
+                            local_recount++;
+                        }
+                    }
+                } else {
+                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                        if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
+                            local_recount++;
+                        }
                     }
                 }
 #endif
@@ -470,7 +478,7 @@ _moments(other._moments)
             tmp.y = line.y;
             
             for (auto x=line.x0; x<=line.x1; ++x, ++ptr) {
-                assert(ptr < _pixels->data() + _pixels->size());
+                assert(ptr < blob.pixels()->data() + blob.pixels()->size());
                 if(background.is_different<method>(x, line.y, *ptr, value)) {
                     tmp.x1 = x;
                     tmp_pixels->push_back(*ptr);
