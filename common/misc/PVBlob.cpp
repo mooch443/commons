@@ -415,21 +415,27 @@ _moments(other._moments)
             auto local_ptr = _pixels->data();
 #endif
             auto ptr = _pixels->data();
-            for (auto &line : hor_lines()) {
-                recount += background.count_above_threshold(line.x0, line.x1, line.y, ptr, threshold);
-                ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
+            if(Background::enable_absolute_difference()) {
+                for (auto &line : hor_lines()) {
+                    recount += background.count_above_threshold<DifferenceMethod::absolute>(line.x0, line.x1, line.y, ptr, threshold);
+                    ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
+                }
 #ifndef NDEBUG
-                if(Background::enable_absolute_difference()) {
-                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                        if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
-                            local_recount++;
-                        }
+                for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                    if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
+                        local_recount++;
                     }
-                } else {
-                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                        if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
-                            local_recount++;
-                        }
+                }
+#endif
+            } else {
+                for (auto &line : hor_lines()) {
+                    recount += background.count_above_threshold<DifferenceMethod::sign>(line.x0, line.x1, line.y, ptr, threshold);
+                    ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
+                }
+#ifndef NDEBUG
+                for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                    if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
+                        local_recount++;
                     }
                 }
 #endif

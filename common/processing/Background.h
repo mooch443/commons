@@ -55,7 +55,39 @@ namespace cmn {
             return value >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
         }
         
-        coord_t count_above_threshold(coord_t x0, coord_t x1, coord_t y, const uchar* values, int threshold) const;
+        template<DifferenceMethod method>
+        coord_t count_above_threshold(coord_t x0, coord_t x1, coord_t y, const uchar* values, int threshold) const
+        {
+            auto ptr_grid = _grid
+                ? (_grid->thresholds().data()
+                    + ptr_safe_t(x0) + ptr_safe_t(y) * (ptr_safe_t)_grid->bounds().width)
+                : NULL;
+            auto ptr_image = _image->data() + ptr_safe_t(x0) + ptr_safe_t(y) * ptr_safe_t(_image->cols);
+            auto end = values + ptr_safe_t(x1) - ptr_safe_t(x0) + 1;
+            ptr_safe_t count = 0;
+            
+            if constexpr (method == DifferenceMethod::sign) {
+                if(ptr_grid) {
+                    for (; values != end; ++ptr_grid, ++ptr_image, ++values)
+                        count += int32_t(*ptr_image) - int32_t(*values) >= int32_t(*ptr_grid) * threshold;
+                } else {
+                    for (; values != end; ++ptr_image, ++values)
+                        count += int32_t(*ptr_image) - int32_t(*values) >= int32_t(threshold);
+                }
+                
+            } else {
+                if(ptr_grid) {
+                    for (; values != end; ++ptr_grid, ++ptr_image, ++values)
+                        count += std::abs(int32_t(*ptr_image) - int32_t(*values)) >= int32_t(*ptr_grid) * threshold;
+                } else {
+                    for (; values != end; ++ptr_image, ++values)
+                        count += std::abs(int32_t(*ptr_image) - int32_t(*values)) >= int32_t(threshold);
+                }
+            }
+            
+            return count;
+        }
+        
         int color(coord_t x, coord_t y) const;
         const Image& image() const;
         const Bounds& bounds() const;

@@ -104,7 +104,7 @@ void Source::init(const cv::Mat& image, bool enable_threads) {
         std::mutex m;
         std::condition_variable variable;
         
-        distribute_indexes([&](const uint8_t i, int32_t start, int32_t end, auto){
+        distribute_indexes([&](const uint8_t, int32_t start, int32_t end, const uint8_t i){
             Source source{
                 .lw = lw,
                 .lh = lh,
