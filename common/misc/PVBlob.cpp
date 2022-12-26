@@ -263,6 +263,11 @@ pv::BlobPtr CompressedBlob::unpack() const {
                std::make_unique<pixel_ptr_t::element_type>(pixels),
                flags)
     { }
+
+    Blob::Blob(const line_ptr_t::element_type& lines,
+               uint8_t flags)
+        : Blob(std::make_unique<line_ptr_t::element_type>(lines), nullptr, flags)
+    { }
     
     Blob::Blob(const Blob& other)
         : _hor_lines(std::make_unique<line_ptr_t::element_type>(*other.lines())),
@@ -419,26 +424,26 @@ _moments(other._moments)
                 for (auto &line : hor_lines()) {
                     recount += background.count_above_threshold<DifferenceMethod::absolute>(line.x0, line.x1, line.y, ptr, threshold);
                     ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
-                }
 #ifndef NDEBUG
-                for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                    if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
-                        local_recount++;
+                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                        if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
+                            local_recount++;
+                        }
                     }
-                }
 #endif
+                }
             } else {
                 for (auto &line : hor_lines()) {
                     recount += background.count_above_threshold<DifferenceMethod::sign>(line.x0, line.x1, line.y, ptr, threshold);
                     ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
-                }
 #ifndef NDEBUG
-                for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                    if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
-                        local_recount++;
+                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                        if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
+                            local_recount++;
+                        }
                     }
-                }
 #endif
+                }
             }
             
             assert(recount == local_recount);

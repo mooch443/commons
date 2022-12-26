@@ -162,6 +162,7 @@ public:
     Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags);
     //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
     Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags);
+    Blob(const cmn::blob::line_ptr_t::element_type& lines, uint8_t flags);
     //Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
     Blob(const pv::Blob& other);
     ~Blob();
