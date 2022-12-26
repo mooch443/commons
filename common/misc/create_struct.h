@@ -82,7 +82,7 @@ template<> struct NAM :: AccessEnum<NAM :: Variables:: EVERY_PLAIN_GET_B_NO_COMM
 };
 
 #define EVERY_PAIR_UPDATE_CONDITION(a, b) else if ( key == #b )
-#define UPDATE_MEMBERS(NAM, a) EVERY_PAIR_UPDATE_CONDITION a { assert( printf( "Updating %s::%s of type %s\n", #NAM , EVERY_PAIR_GET_B a , EVERY_PAIR_GET_A a ) ); NAM :: update< NAM :: EVERY_PLAIN_GET_B_NO_COMMA a > ( key, value ); NAM :: set < NAM :: EVERY_PLAIN_GET_B_NO_COMMA a > ( value.template value < EVERY_PLAIN_GET_A_NO_COMMA a >() ) ; }
+#define UPDATE_MEMBERS(NAM, a) EVERY_PAIR_UPDATE_CONDITION a { /*assert( printf( "Updating %s::%s of type %s\n", #NAM , EVERY_PAIR_GET_B a , EVERY_PAIR_GET_A a ) );*/ NAM :: update< NAM :: EVERY_PLAIN_GET_B_NO_COMMA a > ( key, value ); NAM :: set < NAM :: EVERY_PLAIN_GET_B_NO_COMMA a > ( value.template value < EVERY_PLAIN_GET_A_NO_COMMA a >() ) ; }
 
 #define EVERY_PLAIN_GET_B(a, b) b,
 #define PLAIN_MEMBERS(NAM, a) EVERY_PLAIN_GET_B a

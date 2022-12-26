@@ -231,7 +231,7 @@ namespace cmn {
         virtual void stop_writing();
         void close();
         
-        bool open() const { return f != NULL || _mmapped; }
+        [[nodiscard("This method tells you whether the file is open.")]] bool open() const { return f != NULL || _mmapped; }
         
         const file::Path& filename() const { return _filename; }
         const std::string& project_name() const { return _project_name; }
