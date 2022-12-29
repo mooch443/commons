@@ -51,24 +51,6 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) const {
 void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask) const {
     static Timing timing("processImage");
     timing.start_measure();
-    //gpuMat display = disp;
-    //undistort(disp, display);
-    
-    /*
-    //cv::resize(display, display, cv::Size(display.cols/2, display.rows/2));
-    
-    cv::Rect rect(offsets.x, offsets.y,
-                  display.cols-offsets.width-offsets.x,
-                  display.rows-offsets.height-offsets.y);*/
-    
-    /*float angle = -1;
-     cv::Mat rot_mat = getRotationMatrix2D(cv::Point(processed.cols/2, processed.rows/2), angle, 1.0);
-     cv::Rect bbox = cv::RotatedRect(cv::Point(processed.cols/2, processed.rows/2), cv::Size(processed.size[1], processed.size[0]), angle).boundingRect();
-     
-     rot_mat.at<double>(0,2) += bbox.width/2.0 - processed.cols/2;
-     rot_mat.at<double>(1,2) += bbox.height/2.0 - processed.rows/2;
-     
-     cv::warpAffine(processed, processed, rot_mat, bbox.size(), cv::INTER_LINEAR);*/
     
     gpuMat use;
     assert(display.channels() == 1);

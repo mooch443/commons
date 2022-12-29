@@ -225,13 +225,13 @@ namespace cmn {
         //void read_file();
         //void write_file(bool overwrite = false);
         
-        void start_reading();
-        void start_modifying();
-        void start_writing(bool overwrite = false);
+        virtual void start_reading();
+        virtual void start_modifying();
+        virtual void start_writing(bool overwrite = false);
         virtual void stop_writing();
-        void close();
+        virtual void close();
         
-        [[nodiscard("This method tells you whether the file is open.")]] bool open() const { return f != NULL || _mmapped; }
+        [[nodiscard("This method tells you whether the file is open.")]] bool is_open() const { return f != NULL || _mmapped; }
         
         const file::Path& filename() const { return _filename; }
         const std::string& project_name() const { return _project_name; }

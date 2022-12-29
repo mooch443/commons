@@ -156,7 +156,7 @@ void DataFormat::close() {
 }
 
 void DataFormat::start_modifying() {
-    if(open())
+    if(is_open())
         close();
     
     f = _filename.fopen("r+");
@@ -177,7 +177,7 @@ uint64_t DataFormat::tell() const {
 }
 
 void DataFormat::start_reading() {
-    if (open())
+    if (is_open())
         close();
 
 #if defined(__EMSCRIPTEN__)
@@ -229,7 +229,7 @@ void DataFormat::start_reading() {
 }
 
 void DataFormat::start_writing(bool overwrite) {
-    if (open())
+    if (is_open())
         close();
     
     if (_filename.exists() && !overwrite)
