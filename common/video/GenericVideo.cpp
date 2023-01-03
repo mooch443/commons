@@ -71,7 +71,7 @@ void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask)
 }
 
 void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::function<void(float)>&& callback) {
-    if(length() < 10) {
+    if(length() < 10_f) {
         gpuMat average;
         av.copyTo(average);
         this->processImage(average, average);
@@ -81,23 +81,23 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     
     print("Generating average for frame ", frameIndex," (method='",accumulator.mode().name(),"')...");
     
-    float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length() * 0.1f);
-    const auto step = narrow_cast<uint>(max(1, length() / samples));
+    float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.1f);
+    const Frame_t step = Frame_t(narrow_cast<uint>(max(1, length().get() / samples)));
     
     cv::Mat f;
-    uint64_t counted = 0;
-    for(long_t i=length() ? length()-1 : 0; i>=0; i-=step) {
-        frame((uint64_t)i, f);
+    Frame_t counted = 0_f;
+    for(Frame_t i=length() > 0_f ? length()-1_f : 0_f; i>=0_f; i-=step) {
+        frame(i, f);
         
         assert(f.channels() == 1);
         accumulator.add(f);
         counted += step;
         
-        if(counted > float(length()) * 0.1) {
+        if(counted.get() > float(length().get()) * 0.1) {
             if(callback)
-                callback(float(samples - i) / float(step));
-            print("generating average: ", (samples - i) / step,"/", int(samples)," step:", step," (frame ", i,")");
-            counted = 0;
+                callback(float(samples - i.get()) / float(step.get()));
+            print("generating average: ", (samples - i.get()) / step.get(),"/", int(samples)," step:", step," (frame ", i,")");
+            counted = 0_f;
         }
         
         if(GlobalSettings::has("terminate") && SETTING(terminate))

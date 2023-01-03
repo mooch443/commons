@@ -4,13 +4,14 @@
 #include <types.h>
 #include <misc/CropOffsets.h>
 #include <misc/GlobalSettings.h>
+#include <misc/frame_t.h>
 
 namespace cmn {
 
 //! Interface for things that can load Videos
 class GenericVideo {
 public:
-    virtual cv::Mat frame(uint64_t frameIndex, cmn::source_location loc = cmn::source_location::current()) {
+    virtual cv::Mat frame(Frame_t frameIndex, cmn::source_location loc = cmn::source_location::current()) {
         gpuMat image;
         frame(frameIndex, image, loc);
         cv::Mat dl;
@@ -18,19 +19,19 @@ public:
         return dl;
     }
     
-    virtual void frame(uint64_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) = 0;
+    virtual void frame(Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) = 0;
     #ifdef USE_GPU_MAT
-    virtual void frame(uint64_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) = 0;
+    virtual void frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) = 0;
     #endif
     
     virtual const cv::Size& size() const = 0;
-    virtual uint32_t length() const = 0;
+    virtual Frame_t length() const = 0;
     virtual bool supports_multithreads() const = 0;
     virtual const cv::Mat& average() const = 0;
     virtual bool has_mask() const = 0;
     virtual const cv::Mat& mask() const = 0;
     virtual bool has_timestamps() const = 0;
-    virtual timestamp_t timestamp(uint64_t, cmn::source_location loc = cmn::source_location::current()) const {
+    virtual timestamp_t timestamp(Frame_t, cmn::source_location loc = cmn::source_location::current()) const {
         throw U_EXCEPTION<FormatterType::UNIX, const char*>("Not implemented.", loc);
     }
     virtual timestamp_t start_timestamp() const {

@@ -2,6 +2,7 @@
 #define _VIDEO_H
 
 #include "types.h"
+#include <misc/frame_t.h>
 
 /*#if CV_MAJOR_VERSION >= 3
     #include <opencv2/opencv_modules.hpp>
@@ -56,7 +57,7 @@ public:
     /**
      * Length (in frames) of the current video.
      */
-    int64_t length() const;
+    Frame_t length() const;
     
     /**
      * True if a video is loaded.
@@ -78,7 +79,7 @@ public:
      * will be set instead
      */
     //void frame(long_t index, cv::Mat& output, bool lazy = false);
-    void frame(int64_t index, cv::Mat& output, bool lazy = false, cmn::source_location loc = cmn::source_location::current());
+    void frame(Frame_t index, cv::Mat& output, bool lazy = false, cmn::source_location loc = cmn::source_location::current());
     
     /**
      * Sets a callback function for video playback. If a new frame is ready, this
@@ -106,7 +107,7 @@ public:
      * Returns the undistorted version of the frame at given index.
      * @param index
      */
-    const cv::Mat& undistorted_frame(int index);
+    const cv::Mat& undistorted_frame(Frame_t index);
     
     /**
      * Returns the camera matrix (skew, focal length, etc. parameters combined).
@@ -143,7 +144,7 @@ public:
     void clear();
     
 private:
-    int64_t _last_index;
+    Frame_t _last_index;
     
     /**
      * The intrinsic parameters of the camera the video was recorded with.
@@ -168,12 +169,12 @@ private:
     /**
      * Cached, undistorted versions of frames, retrieved from the video file.
      */
-    std::map<size_t, cv::Mat> _undistorted_frames;
+    std::map<Frame_t, cv::Mat> _undistorted_frames;
     
     /**
      * Cached frames retrieved from the video file.
      */
-    std::map<size_t, cv::Mat> _frames;
+    std::map<Frame_t, cv::Mat> _frames;
     
     /**
      * A callback function that is called for every frame during playback.

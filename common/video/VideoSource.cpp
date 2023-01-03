@@ -121,7 +121,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                     _timestamps = cnpy::npz_load(npz.str(), "frame_time").as_vec<double>();
                     auto res = cnpy::npz_load(npz.str(), "imgshape").as_vec<int64_t>();
                     _size = cv::Size( (int)res[1], (int)res[0] );
-                    _length = _timestamps.size();
+                    _length = Frame_t(_timestamps.size());
                 } catch(...) {
                     FormatExcept("Failed opening NPZ archive ",npz.str()," with (presumably) timestamps in them for video ",_filename,". Proceeding without.");
                     
@@ -141,7 +141,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
         }
             
         case IMAGE:
-            _length = 1u;
+            _length = 1_f;
             break;
             
         default:
@@ -149,7 +149,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(long_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
+void VideoSource::File::frame(Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened())
@@ -217,14 +217,17 @@ short VideoSource::File::framerate() {
     }
 }
 
-timestamp_t VideoSource::File::timestamp(uint64_t frameIndex, cmn::source_location loc) const {
+timestamp_t VideoSource::File::timestamp(Frame_t frameIndex, cmn::source_location loc) const {
     if(_type != VIDEO)
         throw U_EXCEPTION<FormatterType::UNIX, const char*>("Cannot retrieve timestamps from anything else other than videos.", loc);
     
     if(!has_timestamps())
         throw U_EXCEPTION("No timestamps available for ",_filename,".");
     
-    auto times = _timestamps[frameIndex];
+    if(not frameIndex.valid())
+        throw U_EXCEPTION("Frame index in timestamp() is invalid.");
+    
+    auto times = _timestamps[frameIndex.get()];
     auto point = std::chrono::duration<double>(times);
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(point);
     //uint64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
@@ -443,7 +446,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             // fallback to less elegant method, try to find out what happened
             auto first = _files_in_seq.front();
             cv::Mat image;
-            first->frame(0, image);
+            first->frame(0_f, image);
             if(image.cols != _size.width || image.rows != _size.height) {
                 FormatWarning("VideoSource ", prefix + (suffix.empty() ? "" : "%d") + suffix," reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
                 _size = cv::Size(image.cols, image.rows);
@@ -460,24 +463,25 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
 }
 
 #ifdef USE_GPU_MAT
-void VideoSource::frame(uint64_t globalIndex, gpuMat& output, cmn::source_location loc) {
+void VideoSource::frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc) {
     cv::Mat m(size().height, size().width, CV_8UC1);
     frame(globalIndex, m, loc);
     m.copyTo(output);
 }
 #endif
 
-void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_location loc) {
-    if (/*globalIndex < 0 ||*/ globalIndex >= _length)
+void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_location loc) {
+    if (!globalIndex.valid()
+        || globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
     if(type() == File::Type::IMAGE) {
-        auto f = _files_in_seq.at(globalIndex);
+        auto f = _files_in_seq.at(globalIndex.get());
         if(_last_file && _last_file != f)
             _last_file->close();
         
         _last_file = f;
-        f->frame(0, output);
+        f->frame(0_f, output);
         
         if(output.empty())
             throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
@@ -485,7 +489,7 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_locat
         return;
         
     } else {
-        uint64_t index = 0;
+        Frame_t index = 0_f;
         
         for (auto f : _files_in_seq) {
             if (index + f->length() > globalIndex) {
@@ -494,7 +498,7 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_locat
                 }
                 
                 _last_file = f;
-                f->frame(globalIndex-index, output);
+                f->frame(globalIndex - index, output);
                 
                 if(output.empty())
                     throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
@@ -509,11 +513,11 @@ void VideoSource::frame(uint64_t globalIndex, cv::Mat& output, cmn::source_locat
     }
 }
 
-timestamp_t VideoSource::timestamp(uint64_t globalIndex, cmn::source_location loc) const {
-    if (/*globalIndex < 0 ||*/ globalIndex >= _length)
+timestamp_t VideoSource::timestamp(Frame_t globalIndex, cmn::source_location loc) const {
+    if (globalIndex.valid() && globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
     
-    uint64_t index = 0;
+    Frame_t index = 0_f;
     
     for (auto f : _files_in_seq) {
         if (index + f->length() > globalIndex) {
@@ -529,7 +533,7 @@ timestamp_t VideoSource::timestamp(uint64_t globalIndex, cmn::source_location lo
 #include <locale>
 
 timestamp_t VideoSource::start_timestamp() const {
-    return _files_in_seq.front()->timestamp(0);
+    return _files_in_seq.front()->timestamp(0_f);
 }
 
 bool VideoSource::has_timestamps() const {
@@ -561,20 +565,20 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
         method = SETTING(averaging_method).value<averaging_method_t::Class>();
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
     print("Use averaging method: '", method.name(),"'");
-    if (length() < 10) {
+    if (length() < 10_f) {
         processImage(average, average);
         return;
     }
     
     AveragingAccumulator acc;
     
-    float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length() * 0.01f);
+    float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.01f);
     uint64_t step = max(1u, _files_in_seq.size() < samples ? 1u : (uint64_t)ceil(_files_in_seq.size() / samples));
-    uint64_t frames_per_file = max(1, _files_in_seq.size() < samples ? (length() / _files_in_seq.size()) / (length() / samples) : 1);
+    auto frames_per_file = Frame_t(max(1, _files_in_seq.size() < samples ? (length().get() / _files_in_seq.size()) / (length().get() / samples) : 1));
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");
-    std::map<File*, std::set<uint64_t>> file_indexes;
+    std::map<File*, std::set<Frame_t>> file_indexes;
     
     print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
     
@@ -582,17 +586,17 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
     for(uint64_t i=0; i<_files_in_seq.size(); i+=step) {
         auto file = _files_in_seq.at(i);
-        file_indexes[file].insert(0);
-        if(frames_per_file > 1) {
-            auto step = max(1u, (uint64_t)ceil((uint64_t)file->length() / frames_per_file));
-            for(uint64_t i=step; i<(uint64_t)file->length(); i+= step) {
+        file_indexes[file].insert(0_f);
+        if(frames_per_file > 1_f) {
+            const auto step = max(1_f, file->length() / frames_per_file);
+            for(Frame_t i=step; i<file->length(); i+=step) {
                 file_indexes[file].insert(i);
             }
         }
     }
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [&acc, &callback, samples](File* file, const std::set<uint64_t>& indexes)
+        auto fn = [&acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
         {
             cv::Mat f;
             double count = 0;

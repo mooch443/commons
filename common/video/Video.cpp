@@ -73,7 +73,7 @@ bool Video::open(const std::string& filename) {
     _size = cv::Size(_cap->get(cv::CAP_PROP_FRAME_WIDTH), _cap->get(cv::CAP_PROP_FRAME_HEIGHT));
 #endif
 
-    _last_index = -1;
+    _last_index = Frame_t{};
     _filename = filename;
     
     return true;
@@ -93,7 +93,7 @@ void Video::close() {
     if(_cap)
         delete _cap;
     _cap = NULL;
-    _last_index = -1;
+    _last_index = Frame_t{};
 }
 
 /**
@@ -108,8 +108,8 @@ int Video::framerate() const {
  * Length (in frames) of the current video.
  * @return int
  */
-int64_t Video::length() const {
-    return (int64_t)_cap->get(cv::CAP_PROP_FRAME_COUNT);
+Frame_t Video::length() const {
+    return Frame_t(_cap->get(cv::CAP_PROP_FRAME_COUNT));
 }
 
 /**
@@ -173,7 +173,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
  * @param index
  * @return cv::Mat
  */
-void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
+void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
     /*if(_frames.count(index)) {
         return _frames.at(index);
     }*/
@@ -201,19 +201,22 @@ void Video::frame(int64_t index, cv::Mat& frame, bool lazy, cmn::source_location
         throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
     // Set position to requested frame
-    if(index > _last_index + 1000)
+    if(!_last_index.valid() || index > _last_index + 1000_f)
         lazy = true;
     
-    if(index <= _last_index || (lazy && index != _last_index+1)) {
+    if(!_last_index.valid()
+       || index <= _last_index
+       || (lazy && index != _last_index+1_f))
+    {
         //FormatWarning("Have to reset video index from ", _last_index," to ", index," (",_filename.c_str(),")");
-        _cap->set(cv::CAP_PROP_POS_FRAMES, index);
-    } else if(index > _last_index+1) {
+        _cap->set(cv::CAP_PROP_POS_FRAMES, index.get());
+    } else if(index > _last_index+1_f) {
 #ifndef NDEBUG
-        FormatWarning("Have to skip from video index from ", _last_index," to ", index-1," (",_filename.c_str(),")");
+        FormatWarning("Have to skip from video index from ", _last_index," to ", index-1_f," (",_filename.c_str(),")");
 #endif
-        for(; _last_index+1 < index; _last_index++) {
+        for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            if(_last_index - index > 1000 && _last_index % 1000 == 0) {
+            if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
                 print("... ", _last_index, " / ", index);
             }
         }
@@ -294,7 +297,7 @@ const Mat51& Video::set_distortion(const Mat51& distortion) {
  * @param index
  * @return cv::Mat
  */
-const cv::Mat& Video::undistorted_frame(int index) {
+const cv::Mat& Video::undistorted_frame(Frame_t index) {
     if(_undistorted_frames.count(index)) {
         return _undistorted_frames[index];
     }
