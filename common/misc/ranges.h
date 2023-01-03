@@ -79,9 +79,6 @@ public:
         reference operator*() {
             return value_type(ptr_->first + value_type(value) * value_type(ptr_->step));
         }
-        pointer operator->() {
-            return *ptr_;
-        }
 
         _iterator& operator++() {
             ++value;
