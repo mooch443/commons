@@ -482,6 +482,11 @@ inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
     return s.count(value) > 0;
 }
 
+template<bool IsFlat, size_t MaxLoadFactor100, typename Key, typename T, typename Hash, typename KeyEqual>
+inline bool contains(const robin_hood::detail::Table<IsFlat, MaxLoadFactor100, Key, T, Hash, KeyEqual>& v, auto&& obj) {
+    return v.contains(std::forward<decltype(obj)>(obj));
+}
+
 template<typename T, typename... Args, template <typename...> class K>
     requires (is_set< std::remove_cvref_t<K<Args...>> >::value
               || is_map< std::remove_cvref_t<K<Args...>> >::value)
