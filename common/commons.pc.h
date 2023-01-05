@@ -240,10 +240,27 @@ public:
 static_assert(false, "OpenCV version insufficient.");
 #endif
 
+#include <misc/expected.h>
 #include <misc/useful_concepts.h>
 #include <misc/UnorderedVectorSet.h>
 
 namespace cmn {
+
+inline consteval bool is_debug_mode() {
+#ifndef NDEBUG
+    return true;
+#else
+    return false;
+#endif
+}
+
+inline consteval std::string_view compile_mode_name() {
+#ifndef NDEBUG
+    return std::string_view("debug");
+#else
+    return std::string_view("release");
+#endif
+}
 
 #ifndef __cpp_lib_remove_cvref
 template< class T >
@@ -465,35 +482,14 @@ inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
     return s.count(value) > 0;
 }
 
-template<typename T, typename K>
-    requires std::convertible_to<K, T>
-inline bool contains(const robin_hood::unordered_flat_set<T>& s, const K& value) {
-    return s.contains(value);
-}
-
-template<typename T, typename K>
-    requires std::convertible_to<K, T>
-inline bool contains(const robin_hood::unordered_node_set<T>& s, const K& value) {
-    return s.contains(value);
-}
-
-template<typename T>
-inline bool contains(const std::set<T>& v, T obj) {
-    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets
+template<typename T, typename... Args, template <typename...> class K>
+    requires (is_set< std::remove_cvref_t<K<Args...>> >::value
+              || is_map< std::remove_cvref_t<K<Args...>> >::value)
+inline bool contains(const K<Args...>& v, T&& obj) {
 #if __cplusplus >= 202002L
-    return v.contains(obj);
+    return v.contains(std::forward<T>(obj));
 #else
-    return v.find(obj) != v.end();
-#endif
-}
-
-template<typename T, typename V>
-inline bool contains(const std::map<T, V>& v, T key) {
-    //static_assert(!std::is_same<T, typename decltype(v)::value_type>::value, "We should not use this for sets.");
-#if __cplusplus >= 202002L
-    return v.contains(key);
-#else
-    return v.find(key) != v.end();
+    return v.find(std::forward<T>(obj)) != v.end();
 #endif
 }
 

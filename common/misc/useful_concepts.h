@@ -42,8 +42,12 @@ struct is_map<ska::bytell_hash_map<T, Compare, Alloc>> : public std::true_type {
 //struct is_map<robin_hood::unordered_node_map<T, Compare, Alloc>> : public std::true_type {};
 //template<class T, class Compare, class Alloc>
 //struct is_map<robin_hood::unordered_flat_map<T, Compare, Alloc>> : public std::true_type {};
-template<bool T, size_t S, class... Args>
-struct is_map<robin_hood::detail::Table<T, S, Args...>> : public std::true_type {};
+template<bool T, size_t S, typename K, typename V, class... Args>
+    requires (not std::is_same<V, void>::value)
+struct is_map<robin_hood::detail::Table<T, S, K, V, Args...>> : public std::true_type {};
+template<bool T, size_t S, typename K, typename V, class... Args>
+    requires (std::is_same<V, void>::value)
+struct is_set<robin_hood::detail::Table<T, S, K, V, Args...>> : public std::true_type {};
 
 template<class T> struct is_queue : public std::false_type {};
 template<class T, class Container>

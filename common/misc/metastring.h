@@ -397,7 +397,7 @@ std::string name() {
     */
         
 template<class Q>
-    requires (is_container<Q>::value || is_set<Q>::value || is_deque<Q>::value)
+    requires (not is_map<Q>::value && (is_container<Q>::value || is_set<Q>::value || is_deque<Q>::value))
 std::string toStr(const Q& obj) {
     std::stringstream ss;
     auto start = obj.begin(), end = obj.end();
