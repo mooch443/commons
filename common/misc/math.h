@@ -146,18 +146,6 @@ namespace cmn {
         return x;
     }
 
-    namespace check_abs_detail {
-        template<typename T>
-        concept has_coordinates = requires(T t) {
-            { t.x } -> std::convertible_to<float>;
-        };
-
-        template<typename T>
-        concept has_get = requires(T t) {
-            { t.get() } -> std::convertible_to<float>;
-        };
-    }
-
 
     template<typename T>
         requires check_abs_detail::has_coordinates<T>

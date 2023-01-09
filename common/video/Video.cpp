@@ -109,7 +109,7 @@ int Video::framerate() const {
  * @return int
  */
 Frame_t Video::length() const {
-    return Frame_t(_cap->get(cv::CAP_PROP_FRAME_COUNT));
+    return Frame_t(sign_cast<Frame_t::number_t>(_cap->get(cv::CAP_PROP_FRAME_COUNT)));
 }
 
 /**

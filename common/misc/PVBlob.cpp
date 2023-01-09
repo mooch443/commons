@@ -270,21 +270,21 @@ pv::BlobPtr CompressedBlob::unpack() const {
     { }
     
     Blob::Blob(const Blob& other)
-        : _hor_lines(std::make_unique<line_ptr_t::element_type>(*other.lines())),
-          _pixels(other.pixels()
-                   ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels())
-                   : nullptr),
-         _flags(other.flags()),
+      : _properties(other._properties),
+        _bounds(other._bounds),
+        _hor_lines(std::make_unique<line_ptr_t::element_type>(*other.lines())),
+        _moments(other._moments),
+        _pixels(other.pixels()
+                ? std::make_unique<pixel_ptr_t::element_type>(*other.pixels())
+                : nullptr),
+        _flags(other.flags()),
+        _parent_id(other._parent_id),
+        _blob_id(other._blob_id),
+        _tried_to_split(other._tried_to_split),
         _recount(other._recount),
         _recount_threshold(other._recount_threshold),
-        _properties(other._properties),
-_color_percentile_5(other._color_percentile_5),
-_color_percentile_95(other._color_percentile_95),
-_parent_id(other._parent_id),
-_blob_id(other._blob_id),
-_tried_to_split(other._tried_to_split),
-_bounds(other._bounds),
-_moments(other._moments)
+        _color_percentile_5(other._color_percentile_5),
+        _color_percentile_95(other._color_percentile_95)
     {
         
     }

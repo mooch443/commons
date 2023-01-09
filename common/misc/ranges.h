@@ -16,20 +16,21 @@ class arange {
 public:
     T first; T last; T step;
 
-    constexpr arange(T first = T(0), T last = T(0), T step = T(1)) : first(first), last(last), step(step)
+    constexpr arange(T first = T(0), T last = T(0), T step = T(1))
+        : first(first), last(last), step(step)
     { }
 
 private:
     template<typename K = T>
         requires (!range_type_needs_get_method<K>)
     constexpr size_t num_steps() const {
-        return size_t((last - first) / step + K(1));
+        return size_t((last - first) / step);
     }
     
     template<typename K = T>
         requires range_type_needs_get_method<K>
     constexpr size_t num_steps() const {
-        return (size_t)((last - first) / step + K(1)).get();
+        return (size_t)((last - first) / step).get();
     }
 
 public:
@@ -141,7 +142,7 @@ public:
     constexpr const_iterator begin() const { return const_iterator(0, this); }
     constexpr const_iterator end() const { return const_iterator(num_steps(), this); }
 
-    constexpr bool contains(T value) const { return value >= first && value <= last; }
+    constexpr bool contains(T value) const { return value >= first && value < last; }
     constexpr bool empty() const { return first == last; }
     constexpr size_t size() const { return num_steps(); }
 };
@@ -158,6 +159,10 @@ struct Range {
     explicit constexpr Range(T s, T e = T()) noexcept : start(s), end(e) { assert(s <= e); }
     constexpr bool empty() const { return start == end; }
     constexpr bool contains(T v) const {
+        if constexpr(check_abs_detail::has_get<T>) {
+            if(not start.valid())
+                return false;
+        }
         return v >= start && v < end;
     }
     constexpr bool overlaps(const Range<T>& v) const {
@@ -170,12 +175,22 @@ struct Range {
         return start < other.start || (start == other.start && end < other.end);
     }
 
-    constexpr T length() const { return T(1) + end - start; }
+    constexpr T length() const { return end - start; }
     constexpr arange<T> iterable() const { return arange<T>(start, end); }
     constexpr bool operator==(const Range<T>& other) const {
+        if constexpr(check_abs_detail::has_get<T>) {
+            if(start.valid() != other.start.valid()
+               || end.valid() != other.end.valid())
+                return false;
+        }
         return other.start == start && other.end == end;
     }
     constexpr bool operator!=(const Range<T>& other) const {
+        if constexpr(check_abs_detail::has_get<T>) {
+            if(start.valid() != other.start.valid()
+               || end.valid() != other.end.valid())
+                return true;
+        }
         return other.start != start || other.end != end;
     }
 
@@ -230,8 +245,8 @@ struct FrameRange {
             return 0;
 
         if (usable_only)
-            return (first_usable >= range.start ? (range.end - first_usable) : range.length()).get();
-        return range.length().get();
+            return (first_usable >= range.start ? (range.end - first_usable) : range.length()).get() + 1u;
+        return range.length().get() + 1u;
     }
 
     constexpr Frame_t start() const {

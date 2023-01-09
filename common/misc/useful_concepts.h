@@ -126,6 +126,18 @@ concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::
 template<typename T>
 concept integral_number = (!_clean_same<bool, T>) && std::integral<T>;
 
+namespace check_abs_detail {
+    template<typename T>
+    concept has_coordinates = requires(T t) {
+        { t.x } -> std::convertible_to<float>;
+    };
+
+    template<typename T>
+    concept has_get = requires(T t) {
+        { t.get() } -> std::convertible_to<float>;
+    };
+}
+
 #pragma region basic_concepts
 
 //! Pretty useful to find out
@@ -221,7 +233,7 @@ constexpr auto index_apply(F&& f) {
 template <class Tuple, class F>
 constexpr auto apply_to_tuple(Tuple&& t, F&& f) {
     return detail::index_apply<std::tuple_size<std::remove_cvref_t<Tuple>>{}>(
-        [&](auto... Is) { return f(get<Is>(t)...); });
+        [&](auto... Is) { return f(get<Is>(std::forward<Tuple>(t))...); });
 }
 
 }

@@ -59,7 +59,7 @@ void Graph::update() {
         return;
     
 #ifndef _MSC_VER
-    std::vector<size_t> indices(arange<size_t>(0, functions().size()-1));
+    std::vector<size_t> indices(arange<size_t>(0, functions().size()));
 #else
     // visual studio 2017
     std::vector<size_t> indices(functions().size());

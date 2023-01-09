@@ -6,84 +6,158 @@
 
 namespace cmn {
 
-class Frame_t {
+template<typename Base>
+class BFrame_t {
 public:
-    using number_t = int32_t;
-    static constexpr number_t invalid = -1;
+    using number_t = uint32_t;
+    //static constexpr number_t invalid = -1;
 
 private:
-    number_t _frame = invalid;
+    Base _frame;
     
 public:
-    Frame_t() = default;
+    BFrame_t() = default;
     template<typename T>
-        requires _clean_same<T, number_t>
-    explicit constexpr Frame_t(T frame)
+        requires std::unsigned_integral<T>
+    explicit constexpr BFrame_t(T frame)
         : _frame(frame)
     { }
+    template<typename T>
+        requires _clean_same<T, number_t> && std::signed_integral<T>
+    explicit consteval BFrame_t(T frame)
+    {
+        if (frame >= 0)
+            _frame = frame;
+        else
+            throw std::invalid_argument("Do not initialize with negative numbers.");
+    }
     
     template<typename T>
-        requires std::is_convertible_v<T, number_t> && (!_clean_same<T, number_t>)
-    explicit constexpr Frame_t(T frame)
-        : _frame(narrow_cast<number_t>(frame))
-    { }
-    
-    constexpr void invalidate() { _frame = invalid; }
-    
-    constexpr number_t get() const { return _frame; }
-    constexpr bool valid() const { return _frame >= 0; }
-    
-    constexpr auto operator<=>(const Frame_t& other) const = default;
-    
-    constexpr Frame_t operator-() const {
-        return Frame_t(-get());
+        requires std::signed_integral<T> && (!_clean_same<T, number_t>)
+    explicit constexpr BFrame_t(T frame)
+    {
+        if (frame >= 0)
+            _frame = narrow_cast<number_t>(frame);
+        else
+            throw std::invalid_argument("Do not initialize with negative numbers.");
     }
     
-    constexpr Frame_t& operator+=(const Frame_t& other) {
-        _frame += other._frame;
-        return *this;
-    }
-    constexpr Frame_t& operator-=(const Frame_t& other) {
-        _frame -= other._frame;
-        return *this;
-    }
-    
-    constexpr Frame_t& operator--() {
-        --_frame;
-        return *this;
-    }
-    constexpr Frame_t& operator++() {
-        ++_frame;
-        return *this;
+    constexpr void invalidate() {
+        /*if constexpr(std::same_as<int32_t, Base>) {
+            _frame = invalid;
+        } else*/
+        _frame.reset();
+        
     }
     
-    constexpr Frame_t operator-(const Frame_t& other) const {
-        return Frame_t(get() - other.get());
+    constexpr auto get() const {
+        if constexpr(std::same_as<Base, int32_t>)
+            return _frame;
+        else
+            return (uint32_t)_frame.value();
     }
-    constexpr Frame_t operator+(const Frame_t& other) const {
-        return Frame_t(get() + other.get());
-    }
-    constexpr Frame_t operator/(const Frame_t& other) const {
-        return Frame_t(get() / other.get());
-    }
-    constexpr Frame_t operator*(const Frame_t& other) const {
-        return Frame_t(get() * other.get());
+    [[nodiscard]] constexpr bool valid() const noexcept {
+        /*if constexpr(std::same_as<Base, int32_t>)
+            return _frame != invalid;
+        else*/
+            return (bool)_frame;
     }
 
-    std::string toStr() const {
-        return Meta::toStr<number_t>(_frame);
+    constexpr auto operator<=>(const BFrame_t& other) const {
+        if(not valid() && not other.valid())
+            return std::strong_ordering::equal;
+       return get() <=> other.get();
     }
-    static std::string class_name() {
+    constexpr bool operator==(const BFrame_t& other) const {
+        if(valid() != other.valid())
+            return false;
+        else if(not valid() && not other.valid())
+            return true;
+       return get() == other.get();
+    }
+    constexpr inline bool operator!=(const BFrame_t& other) const {
+        return not operator==(other);
+    }
+    
+    constexpr BFrame_t operator-() const {
+        return BFrame_t(-get());
+    }
+    
+    constexpr BFrame_t& operator+=(const BFrame_t& other) {
+        if constexpr(std::same_as<Base, int32_t>)
+            _frame += other._frame;
+        else
+            _frame.value() += other._frame.value();
+        return *this;
+    }
+    constexpr BFrame_t& operator-=(const BFrame_t& other) {
+        if constexpr(std::same_as<Base, int32_t>)
+            _frame -= other._frame;
+        else {
+            if(_frame.value() >= other._frame.value())
+                _frame.value() -= other._frame.value();
+            else
+                invalidate();
+        }
+        return *this;
+    }
+    
+    constexpr BFrame_t& operator--() {
+        if constexpr(std::same_as<Base, int32_t>)
+            --_frame;
+        else {
+            if(_frame.value() == 0)
+                invalidate();
+            else
+                --_frame.value();
+        }
+        return *this;
+    }
+    constexpr BFrame_t& operator++() {
+        if constexpr(std::same_as<Base, int32_t>)
+            ++_frame;
+        else
+            ++_frame.value();
+        return *this;
+    }
+    
+    constexpr BFrame_t operator-(const BFrame_t& other) const {
+        if(other.get() > get())
+            return BFrame_t();
+        return BFrame_t(get() - other.get());
+    }
+    constexpr BFrame_t operator+(const BFrame_t& other) const {
+        return BFrame_t(get() + other.get());
+    }
+    constexpr BFrame_t operator/(const BFrame_t& other) const {
+        return BFrame_t(get() / other.get());
+    }
+    constexpr BFrame_t operator*(const BFrame_t& other) const {
+        return BFrame_t(get() * other.get());
+    }
+    
+    [[nodiscard]] constexpr BFrame_t try_sub(BFrame_t other) const {
+        return *this >= other
+                    ? *this - other
+                    : BFrame_t(0u);
+    }
+
+    [[nodiscard]] std::string toStr() const {
+        return valid() ? Meta::toStr<number_t>(get()) : "null";
+    }
+    [[nodiscard]] static std::string class_name() {
         return "frame";
     }
-    static Frame_t fromStr(const std::string& str) {
-        return Frame_t(cmn::Meta::fromStr<number_t>(str));
+    [[nodiscard]] static BFrame_t fromStr(const std::string& str) {
+        return str == "null" || str == "-1" ? BFrame_t() : BFrame_t(cmn::Meta::fromStr<uint32_t>(str));
     }
 };
 
+using Frame_t = BFrame_t<std::optional<uint32_t>>;
+
 constexpr Frame_t operator""_f(const unsigned long long int value) {
     // intentional static cast, but probably unsafe.
-    return Frame_t(static_cast<Frame_t::number_t>(value));
+    return Frame_t(value);
 }
 
 constexpr inline Frame_t min(Frame_t A, Frame_t B) {
@@ -92,6 +166,14 @@ constexpr inline Frame_t min(Frame_t A, Frame_t B) {
 
 constexpr inline Frame_t max(Frame_t A, Frame_t B) {
     return std::max(A, B);
+}
+
+constexpr inline Frame_t saturate(Frame_t value, Frame_t from, Frame_t to) {
+    return std::clamp(value, from, to);
+}
+
+constexpr inline Frame_t abs(Frame_t A) noexcept {
+    return A;
 }
 
 }
