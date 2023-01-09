@@ -143,4 +143,85 @@ struct has_similar_args<F, R(Args...)> {
 template<class F, class sig>
 concept similar_args = has_similar_args<F, sig>::value;
 
+namespace detail {
+
+template <typename T>
+struct return_type : return_type<decltype(&T::operator())>
+{ };
+
+template <typename ClassType, typename ReturnType, typename... Args>
+struct return_type<ReturnType(ClassType::*)(Args...) const>
+{
+    using type = ReturnType;
+};
+
+template <typename T>
+struct arg_type : arg_type<decltype(&T::operator())>
+{ };
+
+template <typename ClassType, typename ReturnType, typename Args>
+struct arg_type<ReturnType(ClassType::*)(Args) const>
+{
+    using type = Args;
+};
+
+}
+
+//! Finds the first argument (...T) that matches the single(!) argument
+//! type of the given function object, applies it and returns
+//! what the given function returns.
+template<typename F,
+         typename SearchFor = typename detail::arg_type<F>::type,
+         typename R = typename detail::return_type<F>::type,
+         typename... T>
+R find_argtype_apply(F&& fn, T&&... args) {
+    // helper function that finds the correct part of the
+    // argument list to call fn with, with exactly the
+    // parameter type:
+    auto f_impl = [&fn](auto& self, auto&& h, auto&&... t) -> R {
+        if constexpr ( not std::same_as<std::remove_cvref_t<SearchFor>, std::remove_cvref_t<decltype(h)>> )
+        {
+            // have not found the correct type yet, search
+            // next argument...
+            if constexpr(std::same_as<R, void>) {
+                self(self,std::forward<decltype(t)>(t)...);
+            } else
+                return self(self,std::forward<decltype(t)>(t)...);
+        } else {
+            // function is callable with h, call it and return
+            // recursively:
+            if constexpr(std::same_as<R, void>) {
+                fn(std::forward<decltype(h)>(h));
+            } else
+                return fn(std::forward<decltype(h)>(h));
+        }
+    };
+
+    if constexpr(std::same_as<R, void>) {
+        f_impl(f_impl, std::forward<T>(args)...);
+    } else {
+        return f_impl(f_impl, std::forward<T>(args)...);
+    }
+}
+
+namespace detail {
+
+template <typename F, size_t... Is>
+constexpr auto index_apply_impl(F&& f, std::index_sequence<Is...>) {
+    return f(std::integral_constant<size_t, Is> {}...);
+}
+
+template <size_t N, typename F>
+constexpr auto index_apply(F&& f) {
+    return index_apply_impl(std::forward<F>(f), std::make_index_sequence<N>{});
+}
+
+}
+
+template <class Tuple, class F>
+constexpr auto apply_to_tuple(Tuple&& t, F&& f) {
+    return detail::index_apply<std::tuple_size<std::remove_cvref_t<Tuple>>{}>(
+        [&](auto... Is) { return f(get<Is>(t)...); });
+}
+
 }
