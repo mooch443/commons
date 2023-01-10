@@ -236,4 +236,49 @@ constexpr auto apply_to_tuple(Tuple&& t, F&& f) {
         [&](auto... Is) { return f(get<Is>(std::forward<Tuple>(t))...); });
 }
 
+template<typename T>
+concept set_type = is_set<T>::value;
+
+template<typename T>
+concept container_type = is_container<T>::value;
+
+template<typename T>
+concept map_type = is_map<T>::value;
+
+template<class T> struct is_bytell : public std::false_type {};
+template<class T, class Compare, class Alloc>
+struct is_bytell<ska::bytell_hash_map<T, Compare, Alloc>> : public std::true_type {};
+
+template<class T> struct is_robin_hood_map : public std::false_type {};
+template<bool T, size_t S, typename K, typename V, class... Args>
+    requires (not std::is_same<V, void>::value)
+struct is_robin_hood_map<robin_hood::detail::Table<T, S, K, V, Args...>> : public std::true_type {};
+
+template<class T> struct is_robin_hood_set : public std::false_type {};
+template<bool T, size_t S, typename K, typename V, class... Args>
+    requires (std::is_same<V, void>::value)
+struct is_robin_hood_set<robin_hood::detail::Table<T, S, K, V, Args...>> : public std::true_type {};
+
+template<typename T>
+concept robin_hood_type = is_robin_hood_map<T>::value || is_robin_hood_set<T>::value;
+
+
+template<typename T>
+concept set_or_container = container_type<T> || set_type<T>;
+
+template <typename T>
+struct is_tuple final {
+    using type = std::false_type;
+};
+template <typename... Ts>
+struct is_tuple<std::tuple<Ts...>> final {
+using type = std::true_type;
+};
+
+template <typename T>
+using is_tuple_t = typename is_tuple<T>::type;
+
+template <typename T>
+constexpr auto is_tuple_v = is_tuple_t<T>{};
+
 }
