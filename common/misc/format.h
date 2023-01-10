@@ -812,6 +812,10 @@ template<FormatterType type, typename... Args>
 std::string format(const Args& ... args) {
     return (... + (ParseValue<type>::parse_value(args)));
 }
+template<FormatterType type>
+std::string format() {
+    return ParseValue<type>::parse_value("");
+}
 
 #if COMMONS_FORMAT_LOG_TO_FILE
 void write_log_message(const std::string&);

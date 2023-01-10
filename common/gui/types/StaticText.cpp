@@ -463,7 +463,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 auto sub = *tag.subranges.begin();
                 tag.subranges.erase(tag.subranges.begin());
                 
-                assert(tag.text.length() == tag.range.length()-1);
+                assert(tag.text.length() == tag.range.length());
                 
                 auto bt = tag.text.substr(0, sub.before - tag.range.start);
                 auto array = utils::split(bt, '\n');
@@ -481,7 +481,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 sub.font = tag.font;
                 sub.color = tag.color;
                 
-                assert(tag.text.length() == tag.range.length()-1);
+                assert(tag.text.length() == tag.range.length());
                 
                 queue.push_front(tag);
                 queue.push_front(sub);
