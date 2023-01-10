@@ -79,9 +79,9 @@ public:
         return not operator==(other);
     }
     
-    constexpr BFrame_t operator-() const {
+    /*constexpr BFrame_t operator-() const {
         return BFrame_t(-get());
-    }
+    }*/
     
     constexpr BFrame_t& operator+=(const BFrame_t& other) {
         if constexpr(std::same_as<Base, int32_t>)

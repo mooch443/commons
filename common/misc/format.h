@@ -775,7 +775,11 @@ public:
         //    return str + parse_value(*ptr);
 
         std::stringstream stream;
-        stream << "0x" << std::hex << (uint64_t)ptr;
+        if constexpr(_has_tostr_method<std::remove_pointer_t<T>>) {
+            stream << ptr->toStr();
+        } else {
+            stream << "0x" << std::hex << (uint64_t)ptr;
+        }
         return str + console_color<FormatColor::PURPLE, colors>(stream.str());
     }
 };

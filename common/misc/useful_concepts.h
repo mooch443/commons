@@ -266,19 +266,10 @@ concept robin_hood_type = is_robin_hood_map<T>::value || is_robin_hood_set<T>::v
 template<typename T>
 concept set_or_container = container_type<T> || set_type<T>;
 
-template <typename T>
-struct is_tuple final {
-    using type = std::false_type;
-};
-template <typename... Ts>
-struct is_tuple<std::tuple<Ts...>> final {
-using type = std::true_type;
-};
+template <typename T> struct is_tuple : std::false_type {};
+template <typename... Ts> struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 
-template <typename T>
-using is_tuple_t = typename is_tuple<T>::type;
-
-template <typename T>
-constexpr auto is_tuple_v = is_tuple_t<T>{};
+template< typename T >
+inline constexpr bool is_tuple_v = is_tuple<T>::value;
 
 }
