@@ -573,8 +573,15 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     AveragingAccumulator acc;
     
     Frame_t::number_t samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.01f);
-    uint64_t step = max(1u, _files_in_seq.size() < samples ? 1u : (uint64_t)ceil(_files_in_seq.size() / samples));
-    auto frames_per_file = Frame_t(max(Frame_t::number_t(1), _files_in_seq.size() < samples ? (length().get() / _files_in_seq.size()) / (length().get() / samples) : Frame_t::number_t(1)));
+    uint64_t step = max(1u, Frame_t::number_t(_files_in_seq.size()) < samples
+                                ? 1u
+                                : (uint64_t)ceil(_files_in_seq.size() / samples));
+    auto frames_per_file =
+        max(1_f,
+            Frame_t::number_t(_files_in_seq.size()) < samples
+                ? (length() / Frame_t{_files_in_seq.size()}
+                    / (length() / Frame_t{samples}))
+                : 1_f);
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");

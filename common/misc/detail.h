@@ -636,16 +636,14 @@ namespace cmn {
         }
     }
     
-    inline uint8_t hardware_concurrency() {
+    inline uint8_t hardware_concurrency() noexcept {
 #if  defined(__EMSCRIPTEN__)
-        return 1;
+        return 1u;
 #else
 #if TRACKER_GLOBAL_THREADS
         return TRACKER_GLOBAL_THREADS;
 #else
-        auto c = (uint8_t)saturate(std::thread::hardware_concurrency());
-        if(!c)
-            return 1;
+        static const auto c = (uint8_t)saturate(std::thread::hardware_concurrency(), 1u, 255u);
         return c;
 #endif
 #endif

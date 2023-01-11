@@ -9,22 +9,22 @@ namespace cmn {
 template<typename Base>
 class BFrame_t {
 public:
-    using number_t = uint32_t;
+    using number_t = typename Base::value_type;
     //static constexpr number_t invalid = -1;
 
 private:
     Base _frame;
     
 public:
-    BFrame_t() = default;
+    constexpr BFrame_t() = default;
     template<typename T>
         requires std::unsigned_integral<T>
     explicit constexpr BFrame_t(T frame)
-        : _frame(frame)
+        : _frame(static_cast<number_t>(frame))
     { }
     template<typename T>
         requires _clean_same<T, number_t> && std::signed_integral<T>
-    explicit consteval BFrame_t(T frame)
+    explicit constexpr BFrame_t(T frame)
     {
         if (frame >= 0)
             _frame = frame;
@@ -42,19 +42,12 @@ public:
             throw std::invalid_argument("Do not initialize with negative numbers.");
     }
     
-    constexpr void invalidate() {
-        /*if constexpr(std::same_as<int32_t, Base>) {
-            _frame = invalid;
-        } else*/
+    constexpr void invalidate() noexcept {
         _frame.reset();
-        
     }
     
     constexpr auto get() const {
-        if constexpr(std::same_as<Base, int32_t>)
-            return _frame;
-        else
-            return (uint32_t)_frame.value();
+        return (number_t)_frame.value();
     }
     [[nodiscard]] constexpr bool valid() const noexcept {
         /*if constexpr(std::same_as<Base, int32_t>)
@@ -84,40 +77,26 @@ public:
     }*/
     
     constexpr BFrame_t& operator+=(const BFrame_t& other) {
-        if constexpr(std::same_as<Base, int32_t>)
-            _frame += other._frame;
-        else
-            _frame.value() += other._frame.value();
+        _frame.value() += other._frame.value();
         return *this;
     }
     constexpr BFrame_t& operator-=(const BFrame_t& other) {
-        if constexpr(std::same_as<Base, int32_t>)
-            _frame -= other._frame;
-        else {
-            if(_frame.value() >= other._frame.value())
-                _frame.value() -= other._frame.value();
-            else
-                invalidate();
-        }
+        if(_frame.value() >= other._frame.value())
+            _frame.value() -= other._frame.value();
+        else
+            invalidate();
         return *this;
     }
     
     constexpr BFrame_t& operator--() {
-        if constexpr(std::same_as<Base, int32_t>)
-            --_frame;
-        else {
-            if(_frame.value() == 0)
-                invalidate();
-            else
-                --_frame.value();
-        }
+        if(_frame.value() == 0)
+            invalidate();
+        else
+            --_frame.value();
         return *this;
     }
     constexpr BFrame_t& operator++() {
-        if constexpr(std::same_as<Base, int32_t>)
-            ++_frame;
-        else
-            ++_frame.value();
+        ++_frame.value();
         return *this;
     }
     
@@ -149,11 +128,13 @@ public:
         return "frame";
     }
     [[nodiscard]] static BFrame_t fromStr(const std::string& str) {
-        return str == "null" || str == "-1" ? BFrame_t() : BFrame_t(cmn::Meta::fromStr<uint32_t>(str));
+        return (str == "null" || str == "-1")
+                    ? BFrame_t()
+                    : BFrame_t(cmn::Meta::fromStr<number_t>(str));
     }
 };
 
-using Frame_t = BFrame_t<std::optional<uint32_t>>;
+using Frame_t = BFrame_t<std::optional<int32_t>>;
 
 constexpr Frame_t operator""_f(const unsigned long long int value) {
     // intentional static cast, but probably unsafe.
