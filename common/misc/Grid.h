@@ -188,6 +188,10 @@ namespace grid {
             }
         }
         
+        bool empty() const noexcept {
+            return _value_where.empty();
+        }
+        
         void clear() {
             for(auto &g : grid)
                 g.clear();
