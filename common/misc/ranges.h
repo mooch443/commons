@@ -240,13 +240,18 @@ struct FrameRange {
         }, A.first_usable.valid() ? (B.first_usable.valid() ? min(A.first_usable, B.first_usable) : A.first_usable) : B.first_usable };
     }
     
-    constexpr Frame_t::number_t length(bool usable_only = false) const {
+    constexpr Frame_t length(bool usable_only = false) const {
         if (!range.start.valid())
-            return 0;
+            return 0_f;
 
         if (usable_only)
-            return (first_usable >= range.start ? (range.end - first_usable) : range.length()).get() + 1u;
-        return range.length().get() + 1u;
+            return not first_usable.valid()
+                    ? Frame_t() 
+                    : ((first_usable >= range.start 
+                                        ? (range.end - first_usable) 
+                                        : range.length()) 
+                        + 1_f);
+        return range.length() + 1_f;
     }
 
     constexpr Frame_t start() const {
