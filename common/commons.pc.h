@@ -470,12 +470,6 @@ inline bool contains(const T& s, const Q& value) {
     return std::find(s.begin(), s.end(), value) != s.end();
 }
 
-template<typename T, typename Q>
-    requires is_instantiation<UnorderedVectorSet, T>::value
-inline bool contains(const T& s, const Q& value) {
-    return s.contains(value);
-}
-
 template<typename T, typename K>
     requires std::convertible_to<K, T>
 inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
@@ -491,11 +485,15 @@ template<typename T, typename... Args, template <typename...> class K>
     requires (is_set< std::remove_cvref_t<K<Args...>> >::value
               || is_map< std::remove_cvref_t<K<Args...>> >::value)
 inline bool contains(const K<Args...>& v, T&& obj) {
+    if constexpr(is_instantiation<UnorderedVectorSet, T>::value) {
+        return v.contains(std::forward<T>(obj));
+    } else {
 #if __cplusplus >= 202002L
-    return v.contains(std::forward<T>(obj));
+        return v.contains(std::forward<T>(obj));
 #else
-    return v.find(std::forward<T>(obj)) != v.end();
+        return v.find(std::forward<T>(obj)) != v.end();
 #endif
+    }
 }
 
 template<class T>
