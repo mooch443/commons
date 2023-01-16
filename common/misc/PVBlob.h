@@ -281,16 +281,16 @@ protected:
 
 public:
     CompressedBlob() = default;
-    CompressedBlob(const pv::BlobPtr& val) :
-        parent_id(val->parent_id()),
-        own_id(val->blob_id())
+    CompressedBlob(const pv::Blob& val) :
+        parent_id(val.parent_id()),
+        own_id(val.blob_id())
     {
-        status_byte = (uint8_t(val->split())             << 0)
-                    | (uint8_t(val->parent_id().valid()) << 1)
-                    | (uint8_t(val->tried_to_split())    << 2)
-                    | (uint8_t(val->is_tag())            << 3);
-        _lines = ShortHorizontalLine::compress(val->hor_lines());
-        start_y = val->lines()->empty() ? 0 : val->lines()->front().y;
+        status_byte = (uint8_t(val.split())             << 0)
+                    | (uint8_t(val.parent_id().valid()) << 1)
+                    | (uint8_t(val.tried_to_split())    << 2)
+                    | (uint8_t(val.is_tag())            << 3);
+        _lines = ShortHorizontalLine::compress(val.hor_lines());
+        start_y = val.lines()->empty() ? 0 : val.lines()->front().y;
     }
         
     bool split() const { return status_byte & 0x1; }
