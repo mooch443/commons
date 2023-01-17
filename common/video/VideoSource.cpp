@@ -90,6 +90,21 @@ VideoSource::File * VideoSource::File::open(size_t index, const std::string& bas
     return NULL;
 }
 
+VideoSource::File::File(File&& other)
+: _index(other._index),
+  _filename(other._filename),
+  _length(other._length),
+  _video(other._video ? new Video(*other._video) : nullptr),
+  _type(other._type),
+  _format(std::move(other._format)),
+  _timestamps(std::move(other._timestamps)),
+  _size(other._size)
+{
+    if(other._video)
+        delete other._video;
+    other._video = nullptr;
+}
+
 VideoSource::File::File(size_t index, const std::string& basename, const std::string& extension) : _index(index), _video(NULL), _size(0, 0) {
     _filename = complete_name(basename, extension);
     
@@ -149,11 +164,13 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
+void VideoSource::File::frame(VideoSource::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
         case VIDEO:
-            if (!_video->isOpened())
+            if (!_video->isOpened()) {
                 _video->open(_filename);
+                _video->set_colored(color != ImageMode::GRAY);
+            }
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
 
@@ -164,7 +181,10 @@ void VideoSource::File::frame(Frame_t frameIndex, cv::Mat& output, bool lazy_vid
             break;
             
         case IMAGE:
-            cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
+            if(color == ImageMode::GRAY)
+                cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
+            else
+                cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output);
             break;
             
         default:
@@ -276,7 +296,29 @@ VideoSource::~VideoSource() {
     }
 }
 
-VideoSource::VideoSource(const std::string& source) {
+std::string VideoSource::toStr() const {
+    return "VideoSource<'" + _source + "' " + Meta::toStr(length()) + " frames>";
+}
+
+VideoSource::VideoSource(VideoSource&& other)
+    : _source(other._source),
+      _size(other._size),
+      _length(other._length),
+      _average(std::move(other._average)),
+      _mask(std::move(other._mask)),
+      _has_timestamps(other._has_timestamps),
+      _framerate(other._framerate),
+      _colors(other._colors)
+{
+    for(auto& f : other._files_in_seq) {
+        _files_in_seq.push_back(new File(std::move(*f)));
+        if(other._last_file == f)
+            _last_file = _files_in_seq.back();
+    }
+    
+}
+
+VideoSource::VideoSource(const std::string& source) : _source(source) {
     std::smatch m;
     std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
     std::regex rext (".*(\\..+)$");
@@ -446,7 +488,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             // fallback to less elegant method, try to find out what happened
             auto first = _files_in_seq.front();
             cv::Mat image;
-            first->frame(0_f, image);
+            first->frame(_colors, 0_f, image);
             if(image.cols != _size.width || image.rows != _size.height) {
                 FormatWarning("VideoSource ", prefix + (suffix.empty() ? "" : "%d") + suffix," reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
                 _size = cv::Size(image.cols, image.rows);
@@ -481,7 +523,7 @@ void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
             _last_file->close();
         
         _last_file = f;
-        f->frame(0_f, output);
+        f->frame(_colors, 0_f, output);
         
         if(output.empty())
             throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
@@ -498,7 +540,7 @@ void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
                 }
                 
                 _last_file = f;
-                f->frame(globalIndex - index, output);
+                f->frame(_colors, globalIndex - index, output);
                 
                 if(output.empty())
                     throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
@@ -603,14 +645,14 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     }
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [&acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
+        auto fn = [this, &acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
         {
             cv::Mat f;
             double count = 0;
             
             for(auto index : indexes) {
                 try {
-                    file->frame(index, f, true);
+                    file->frame(_colors, index, f, true);
                     assert(f.channels() == 1);
                     acc.add_threaded(f);
                     ++count;

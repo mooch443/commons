@@ -25,6 +25,8 @@ namespace cmn { class Video; }
  * @class Video
  */
 class cmn::Video {
+    bool _colored{false};
+    
 public:
     typedef std::function<void(const cv::Mat &, int)> frame_callback;
     
@@ -87,6 +89,8 @@ public:
      * @param f
      */
     void onFrame(const Video::frame_callback& f);
+    
+    void set_colored(bool);
     
     /**
      * Sets the intrinsic parameters (focal length, skew, etc.) for this video. They

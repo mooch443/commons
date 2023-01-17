@@ -615,9 +615,10 @@ void ExternalImage::set_source(Ptr&& source) {
         throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
     //if(_source && source && _source->array_size() >= source->array_size()) {
-    if(_source && source)
+    if(_source && source) {
         _source->set(std::move(*source));
-    else
+        source = nullptr;
+    } else
         _source = std::move(source);
     //} else
     //    _source = std::move(source);

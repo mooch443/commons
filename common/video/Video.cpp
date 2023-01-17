@@ -79,6 +79,10 @@ bool Video::open(const std::string& filename) {
     return true;
 }
 
+void Video::set_colored(bool c) {
+    _colored = c;
+}
+
 /**
  * Closes the file if opened.
  */
@@ -229,24 +233,33 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
 #endif
     
-    if(read.channels() > 1) {
-        static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
-        if(color_channel >= 3) {
-            // turn into HUE
-            if(read.channels() == 3) {
-                cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
-                extractu8(read, frame, color_channel % 3);
+    if(not _colored) {
+        if(read.channels() > 1) {
+            static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
+            if(color_channel >= 3) {
+                // turn into HUE
+                if(read.channels() == 3) {
+                    cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
+                    extractu8(read, frame, color_channel % 3);
+                    
+                } else print("Cannot copy to read frame with ",read.channels()," channels.");
+            } else {
+                if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
+                    frame = cv::Mat(read.rows, read.cols, CV_8UC1);
+                }
                 
-            } else print("Cannot copy to read frame with ",read.channels()," channels.");
-        } else {
-            if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
-                frame = cv::Mat(read.rows, read.cols, CV_8UC1);
+                extractu8(read, frame, color_channel);
             }
-            
-            extractu8(read, frame, color_channel);
-        }
-    } else
-        read.copyTo(frame);
+        } else
+            read.copyTo(frame);
+    } else {
+        if(read.channels() == 3) {
+            read.copyTo(frame);
+        } else if(read.channels() == 1) {
+            cv::cvtColor(read, frame, cv::COLOR_GRAY2BGR);
+        } else
+            throw U_EXCEPTION("Unknown color mode.");
+    }
     //_frames[index] = frame;
     //return _frames[index];
 }

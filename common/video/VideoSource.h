@@ -15,6 +15,12 @@ namespace cmn {
 
 class cmn::VideoSource : public cmn::GenericVideo {
 public:
+    enum class ImageMode {
+        GRAY,
+        RGB
+    };
+    
+public:
     class File {
     public:
         enum Type {
@@ -42,13 +48,16 @@ public:
         
     private:
         File(size_t index, const std::string& basename, const std::string& extension);
+        File(const File&) = delete;
+    public:
+        File(File&&);
         
     public:
         ~File();
         auto length() const { return _length; }
         const cv::Size& resolution();
         
-        void frame(Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+        void frame(VideoSource::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
         void close() const;
         Type type() const { return _type; }
         bool has_timestamps() const;
@@ -62,6 +71,7 @@ private:
      */
     std::vector<File*> _files_in_seq;
     
+    std::string _source;
     File* _last_file = nullptr;
     cv::Size _size;
     Frame_t _length = 0_f;
@@ -70,12 +80,20 @@ private:
     bool _has_timestamps = false;
     short _framerate = -1;
     
+private:
+    GETTER_SETTER_I(ImageMode, colors, ImageMode::GRAY)
+    
 public:
     /**
      * Automatically load a range of files with a certain extension called
      * {basename}{seq_start<=number<=seq_end}.{extension}
      */
     VideoSource();
+    VideoSource(VideoSource&&);
+    VideoSource(const VideoSource&) = delete;
+    VideoSource& operator=(VideoSource&&) = default;
+    VideoSource& operator=(const VideoSource&) = delete;
+    
     VideoSource(const std::string& source);
     VideoSource(const std::vector<file::Path>& files);
     void open(const std::string& prefix, const std::string& suffix, const std::string& extension, int seq_start = VIDEO_SEQUENCE_INVALID_VALUE, int seq_end = VIDEO_SEQUENCE_INVALID_VALUE, int padding = 4);
@@ -107,6 +125,8 @@ public:
     virtual const cv::Mat& mask() const override { return _mask; }
     
     virtual void generate_average(cv::Mat &average, uint64_t frameIndex, std::function<void(float)>&& callback = nullptr) override;
+    
+    virtual std::string toStr() const;
 };
 
 #endif

@@ -175,15 +175,22 @@ namespace cmn {
     }
     
     void Image::set(Image&& other) {
-        std::swap(other._index, _index);
-        std::swap(other._timestamp, _timestamp);
-        std::swap(other._custom_data, _custom_data);
-        std::swap(other._data, _data);
-        std::swap(other.cols, cols);
-        std::swap(other.rows, rows);
-        std::swap(other.dims, dims);
-        std::swap(other._size, _size);
-        std::swap(other._array_size, _array_size);
+        clear();
+        
+        _index = other._index;
+        _timestamp = other._timestamp;
+        _custom_data = other._custom_data;
+        _data = other._data;
+        cols = other.cols;
+        rows = other.rows;
+        dims = other.dims;
+        _size = other._size;
+        _array_size = other._array_size;
+        
+        other._data = nullptr;
+        other._custom_data = nullptr;
+        other._size = other._array_size = 0;
+        other.cols = other.rows = other.dims = 0;
     }
     
     /*Image& Image::operator=(const Image& other) {
