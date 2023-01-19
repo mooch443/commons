@@ -100,7 +100,9 @@ public:
         return *this;
     }
     constexpr BFrame_t operator++(int) & {
-        return *this + BFrame_t{1u};
+        BFrame_t temp = *this;
+        ++*this;
+        return temp;
     }
     
     constexpr BFrame_t operator-(const BFrame_t& other) const {

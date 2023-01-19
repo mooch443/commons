@@ -392,6 +392,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
     
     float Blob::recount(int32_t threshold, const cmn::Background &background, bool dont_cache) {
+        if(setting(cm_per_pixel) == 0) {
+            throw U_EXCEPTION("cm_per_pixel is set to 0, which will result in all object sizes being 0 as well. Please set it before tracking.");
+        }
         return raw_recount(threshold, background, dont_cache) * SQR(setting(cm_per_pixel));
     }
 
