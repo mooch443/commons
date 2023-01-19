@@ -242,9 +242,9 @@ void DataFormat::start_writing(bool overwrite) {
     _file_offset = 0;
     _open_for_writing = true;
     _open_for_modifying = false;
-    _header_written = true;
     
     _write_header();
+    _header_written = true;
 }
 
 void DataFormat::stop_writing() {

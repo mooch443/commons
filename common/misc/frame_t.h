@@ -95,9 +95,12 @@ public:
             --_frame.value();
         return *this;
     }
-    constexpr BFrame_t& operator++() {
+    constexpr BFrame_t& operator++() & {
         ++_frame.value();
         return *this;
+    }
+    constexpr BFrame_t operator++(int) & {
+        return *this + BFrame_t{1u};
     }
     
     constexpr BFrame_t operator-(const BFrame_t& other) const {
