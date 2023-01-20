@@ -232,7 +232,7 @@ namespace gui {
         }
         
         Line* line(const Vec2& pos0, const Vec2& pos1, float thickness, const Color& color = White);
-        Line* line(const std::vector<Vec2>& points, float thickness, const Color& color = White);
+        Line* line(const std::vector<Vec2>& points, float thickness, const Color& color = White, const Vec2& scale = Vec2(1));
         Line* line(const std::vector<Vertex>& points, float thickness);
         Line* line(const Vec2& pos0, const Vec2& pos1, const Color& color = White, const Vec2& scale = Vec2(1));
         

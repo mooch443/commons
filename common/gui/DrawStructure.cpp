@@ -393,15 +393,15 @@ void DrawStructure::close_dialogs() {
         }, 1, Vertices::MEMORY::COPY, scale);
     }
     
-    Line* DrawStructure::line(const std::vector<Vec2>& points, float thickness, const Color& color) {
+    Line* DrawStructure::line(const std::vector<Vec2>& points, float thickness, const Color& color, const Vec2& scale) {
         std::vector<Vertex> array;
         array.resize(points.size());
-        for(size_t i=0; i<points.size(); i++)
+        for (size_t i = 0; i < points.size(); i++)
             array[i] = Vertex(points[i], color);
-        
+
         return create<Type::data::values::VERTICES, Line>(
-            array, thickness
-        );
+            array, thickness, Vertices::MEMORY::TRANSPORT, scale
+            );
     }
     
     Line* DrawStructure::line(const std::vector<Vertex>& points, float thickness) {
