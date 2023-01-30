@@ -302,6 +302,7 @@ std::string VideoSource::toStr() const {
 
 VideoSource::VideoSource(VideoSource&& other)
     : _source(other._source),
+      _base(other._base),
       _size(other._size),
       _length(other._length),
       _average(std::move(other._average)),
@@ -318,7 +319,9 @@ VideoSource::VideoSource(VideoSource&& other)
     
 }
 
-VideoSource::VideoSource(const std::string& source) : _source(source) {
+VideoSource::VideoSource(const std::string& source)
+    : _source(source)
+{
     std::smatch m;
     std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
     std::regex rext (".*(\\..+)$");
@@ -338,6 +341,8 @@ VideoSource::VideoSource(const std::string& source) : _source(source) {
     }
     
     print("Searching for ",prefix);
+    _base = prefix;
+    
     if(std::regex_search (prefix,m,rplaceholder)) {
         auto x = m[0];
         auto s = x.str();
@@ -372,6 +377,7 @@ VideoSource::VideoSource(const std::string& source) : _source(source) {
 
 VideoSource::VideoSource(const std::vector<file::Path>& files)
 {
+    _base = "array";
     for(auto &path : files) {
         auto extension = std::string(path.extension());
         auto basename = path.remove_extension().str();
@@ -391,7 +397,6 @@ VideoSource::VideoSource(const std::vector<file::Path>& files)
     _has_timestamps = _files_in_seq.front()->has_timestamps();
 }
 
-VideoSource::VideoSource() {}
 void VideoSource::open(const std::string& prefix, const std::string& suffix, const std::string& extension, int seq_start, int seq_end, int padding)
 {
     if (seq_start == VIDEO_SEQUENCE_INVALID_VALUE || seq_end == VIDEO_SEQUENCE_INVALID_VALUE) {

@@ -71,7 +71,8 @@ private:
      */
     std::vector<File*> _files_in_seq;
     
-    std::string _source;
+    GETTER(std::string, source)
+    GETTER(file::Path, base)
     File* _last_file = nullptr;
     cv::Size _size;
     Frame_t _length = 0_f;
@@ -88,7 +89,7 @@ public:
      * Automatically load a range of files with a certain extension called
      * {basename}{seq_start<=number<=seq_end}.{extension}
      */
-    VideoSource();
+    VideoSource() = default;
     VideoSource(VideoSource&&);
     VideoSource(const VideoSource&) = delete;
     VideoSource& operator=(VideoSource&&) = default;
