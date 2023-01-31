@@ -48,7 +48,9 @@ namespace cmn {
 
         Image(uint rows, uint cols, uint dims, int index, timestamp_t timestamp);
         explicit Image(const cv::Mat& mat, int index = -1);
+        explicit Image(const gpuMat& mat, int index = -1);
         explicit Image(const cv::Mat& mat, int index, timestamp_t timestamp);
+        explicit Image(const gpuMat& mat, int index, timestamp_t timestamp);
 
         Image();
         ~Image();
@@ -62,6 +64,9 @@ namespace cmn {
 
         void create(const cv::Mat& mat, long_t index = -1);
         void create(const cv::Mat& mat, long_t index, timestamp_t stamp);
+        
+        void create(const gpuMat& mat, long_t index = -1);
+        void create(const gpuMat& mat, long_t index, timestamp_t stamp);
 
         void create(const Image& other, long_t index = -1);
         void create(const Image& other, long_t index, timestamp_t stamp);

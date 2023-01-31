@@ -23,6 +23,12 @@ namespace cmn {
         create(mat, index, timestamp);
     }
 
+    Image::Image(const gpuMat& mat, int index) : Image(mat, index, now()) {}
+    Image::Image(const gpuMat& mat, int index, timestamp_t timestamp)
+    {
+        create(mat, index, timestamp);
+    }
+
     Image::Image(uint rows, uint cols, uint dims, int index) : Image(rows, cols, dims, index, now()) { }
     Image::Image(uint rows, uint cols, uint dims, int index, timestamp_t timestamp) {
         create(rows, cols, dims, index, timestamp);
@@ -165,6 +171,19 @@ namespace cmn {
     void Image::create(const cv::Mat& mat, long_t index, timestamp_t stamp) {
         assert(mat.isContinuous());
         create(mat.rows, mat.cols, mat.channels(), mat.data, index, stamp);
+    }
+
+    void Image::create(const gpuMat& mat, long_t index) {
+        create(mat, index, now());
+    }
+    void Image::create(const gpuMat& mat, long_t index, timestamp_t stamp) {
+        assert(mat.isContinuous());
+        if(not (mat.type() == CV_8UC(mat.channels())))
+            throw U_EXCEPTION("Can only use uint8_t images.");
+        create(mat.rows, mat.cols, mat.channels());
+        mat.copyTo(get());
+        set_index(index);
+        set_timestamp(stamp);
     }
 
     void Image::create(const Image& mat, long_t index) {
