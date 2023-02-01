@@ -169,6 +169,14 @@ void DataFormat::start_modifying() {
     _read_header();
 }
 
+bool DataFormat::is_read_mode() const {
+    return not _open_for_writing;
+}
+
+bool DataFormat::is_write_mode() const {
+    return _open_for_writing;
+}
+
 uint64_t DataFormat::current_offset() const {
 	return _file_offset; 
 }

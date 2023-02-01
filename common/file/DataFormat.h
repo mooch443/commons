@@ -220,6 +220,10 @@ namespace cmn {
         bool _open_for_writing, _open_for_modifying, _header_written;
         
     public:
+        virtual bool is_read_mode() const;
+        virtual bool is_write_mode() const;
+        
+    public:
         virtual ~DataFormat();
         
         //void read_file();
