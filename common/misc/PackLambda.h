@@ -18,7 +18,7 @@ namespace package {
 template<class _Rp, class ..._ArgTypes> struct _F_base;
 template<class _Rp, class ..._ArgTypes>
 struct _F_base<_Rp(_ArgTypes...)> {
-    virtual _Rp operator()(_ArgTypes&& ...) = 0;
+    virtual _Rp operator()(_ArgTypes ...) = 0;
     virtual ~_F_base() {}
 };
 
@@ -37,7 +37,7 @@ struct _F_func<_Fp, _Rp(_ArgTypes...)>
 
     //! Define virtual method to execute the saved generic lambda.
     //! With a special case for void, which returns no value.
-    virtual _Rp operator()(_ArgTypes&& ... args) override {
+    virtual _Rp operator()(_ArgTypes ... args) override {
         if constexpr(std::same_as<_Rp, void>)
             func(std::forward<_ArgTypes>(args)...);
         else
@@ -82,7 +82,7 @@ struct F<_Rp(_ArgTypes...)>
     //! Execute the function with parameters.
     //! Simply use the __base_t class' operator().
     template<typename ... _Args>
-    _Rp operator()(_Args ... args)
+    _Rp operator()(_Args&& ... args)
     {
         assert(_fn != nullptr);
         return (*_fn)(std::forward<_Args>(args)...);
