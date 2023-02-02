@@ -596,11 +596,15 @@ void MetalImpl::message(const std::string &msg) const {
         uint width = narrow_cast<uint>(next_pow2(sign_cast<uint64_t>(ptr->cols)));
         uint height = narrow_cast<uint>(next_pow2(sign_cast<uint64_t>(ptr->rows)));
         
-        auto input_format = MTLPixelFormatRGBA8Unorm;
-        if(ptr->dims == 1) {
+        MTLPixelFormat input_format;
+        if(ptr->dims == 4) {
+            input_format = MTLPixelFormatRGBA8Unorm;
+        } else if(ptr->dims == 1) {
             input_format = MTLPixelFormatR8Unorm;
         } else if(ptr->dims == 2) {
             input_format = MTLPixelFormatRG8Unorm;
+        } else {
+            throw U_EXCEPTION("Unsupported number of dimensions: ", ptr->dims, " in image ", *ptr);
         }
         
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input_format width:width height:height mipmapped:NO];
