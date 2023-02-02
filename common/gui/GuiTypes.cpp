@@ -611,8 +611,8 @@ void ExternalImage::set_source(Ptr&& source) {
     if(_source == source)
         return;
     
-    if(source && source->dims > 0 && source->dims != 4 && source->dims != 1 && source->dims != 2)
-        throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
+    if(source && source->dims > 0 && source->dims != 4 && source->dims != 1 && source->dims != 2 && source->dims != 3)
+        throw U_EXCEPTION("Only support greyscale, RG, RGB, or RGBA images.");
     
     //if(_source && source && _source->array_size() >= source->array_size()) {
     if(_source && source) {

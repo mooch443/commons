@@ -543,6 +543,14 @@ TexturePtr GLImpl::texture(const Image * ptr) {
             // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
             // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
          }
+        if (ptr->dims == 3) {
+            //output_type = GL_RG8;
+            input_type = GL_RGB;
+            output_type = GL_RGBA;
+
+            // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
+            // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+        }
 
     } else {
         output_type = GL_RGBA;
@@ -554,6 +562,10 @@ TexturePtr GLImpl::texture(const Image * ptr) {
         if(ptr->dims == 2) {
             output_type = GL_LUMINANCE_ALPHA;
             input_type = GL_LUMINANCE_ALPHA;
+        }
+        if (ptr->dims == 3) {
+            output_type = GL_RGBA;
+            input_type = GL_RGB;
         }
     }
 #endif
@@ -678,6 +690,13 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
             // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
             // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
          }
+        if (ptr->dims == 3) {
+            //output_type = GL_RG8;
+            input_type = GL_RGB;
+
+            // GLint swizzleMask[] = {GL_RED, GL_ZERO, GL_ZERO, GL_GREEN};
+            // glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+        }
 
     } else {
         output_type = GL_RGBA;
@@ -689,6 +708,10 @@ void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
         if(ptr->dims == 2) {
             output_type = GL_LUMINANCE_ALPHA;
             input_type = GL_LUMINANCE_ALPHA;
+        }
+        if (ptr->dims == 3) {
+            output_type = GL_RGBA;
+            input_type = GL_RGB;
         }
     }
 #endif
