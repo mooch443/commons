@@ -528,7 +528,7 @@ void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
             _last_file->close();
         
         _last_file = f;
-        f->frame(_colors, 0_f, output);
+        f->frame(_colors, 0_f, output, false);
         
         if(output.empty())
             throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
@@ -545,7 +545,7 @@ void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
                 }
                 
                 _last_file = f;
-                f->frame(_colors, globalIndex - index, output);
+                f->frame(_colors, globalIndex - index, output, _lazy_loader);
                 
                 if(output.empty())
                     throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
