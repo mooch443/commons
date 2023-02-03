@@ -530,6 +530,8 @@ protected:
         void update_with(const gpuMat&);
         void update_with(const Image&);
         void update_with(Image::UPtr&&);
+        Ptr exchange_with(Ptr&&);
+        
         void updated_source();
         bool empty() const { return !_source || _source->size() == 0; }
         

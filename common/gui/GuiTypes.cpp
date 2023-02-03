@@ -561,13 +561,10 @@ void ExternalImage::update_with(const gpuMat& mat) {
     if(mat.channels() > 0 && mat.channels() != 4 && mat.channels() != 1 && mat.channels() != 2)
         throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
 
-    cv::Mat local;
-    mat.copyTo(local);
-
     if(!_source) {
-        _source = Image::Make(local, _source->index());
+        _source = Image::Make(mat, _source->index());
     } else {
-        _source->create(local, _source->index(), Image::now());
+        _source->create(mat, _source->index(), Image::now());
     }
     
     updated_source();
@@ -624,6 +621,13 @@ void ExternalImage::set_source(Ptr&& source) {
     //    _source = std::move(source);
     
     updated_source();
+}
+
+ExternalImage::Ptr ExternalImage::exchange_with(Ptr && other) {
+    Ptr tmp{std::move(_source)};
+    _source = std::move(other);
+    updated_source();
+    return tmp;
 }
 
 /*void ExternalImage::set_source(const Image& source) {
