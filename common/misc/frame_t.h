@@ -77,7 +77,10 @@ public:
     }*/
     
     constexpr BFrame_t& operator+=(const BFrame_t& other) {
-        _frame.value() += other._frame.value();
+        if(not valid())
+            _frame = other._frame;
+        else
+            _frame.value() += other._frame.value();
         return *this;
     }
     constexpr BFrame_t& operator-=(const BFrame_t& other) {

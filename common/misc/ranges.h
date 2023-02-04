@@ -286,9 +286,17 @@ struct FrameRange {
     }
 
     constexpr bool operator<(const FrameRange& other) const {
+        if(range.start.valid() && not other.range.start.valid())
+            return false;
+        if(not range.start.valid() and other.range.start.valid())
+            return true;
+        if(not range.start.valid() and not other.range.start.valid())
+            return false;
         return range < other.range;
     }
     constexpr bool operator==(const FrameRange& other) const {
+        if(not range.start.valid() && not other.range.start.valid())
+            return true;
         return range == other.range;
     }
 
