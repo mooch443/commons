@@ -381,7 +381,7 @@ void MetalImpl::message(const std::string &msg) const {
                 
                 [renderEncoder pushDebugGroup:@"TRex"];
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                uint8_t buffer = SETTING(gui_blur_enabled).value<bool>();
+                uint8_t buffer = SETTING(gui_macos_blur).value<bool>();
                 [renderEncoder setVertexBytes:&buffer length:sizeof(buffer) atIndex:2];
 #endif
                 
@@ -422,7 +422,7 @@ void MetalImpl::message(const std::string &msg) const {
                 [renderEncoder endEncoding];
                 
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                if(SETTING(gui_blur_enabled)) {
+                if(SETTING(gui_macos_blur)) {
                     static id<MTLLibrary> library;
                     
                     //static MPSImageGaussianBlur* kernel = [[MPSImageGaussianBlur alloc] initWithDevice:_data->device sigma:7.0];

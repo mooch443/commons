@@ -1632,7 +1632,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     }
     
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-    if(SETTING(gui_blur_enabled)) {
+    if(SETTING(gui_macos_blur)) {
         bool blur = false;
         auto p = o;
         while(p) {
