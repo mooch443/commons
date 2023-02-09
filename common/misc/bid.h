@@ -9,6 +9,18 @@ class Blob;
 struct CompressedBlob;
 using BlobPtr = std::unique_ptr<pv::Blob>;
 
+enum class FilterReason {
+    DontTrackTags,
+    OutsideRange,
+    InsideIgnore,
+    OutsideInclude,
+    SecondThreshold,
+    Category,
+    SplitFailed,
+    
+    Unknown
+};
+
 struct BlobWeakPtr {
     pv::Blob* ptr;
     

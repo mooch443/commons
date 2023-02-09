@@ -152,6 +152,7 @@ protected:
     GETTER_I(bid, parent_id, pv::bid::invalid)
     GETTER_I(bid, blob_id, pv::bid::invalid)
     GETTER_SETTER(bool, tried_to_split)
+    GETTER_SETTER_I(FilterReason, reason, FilterReason::Unknown)
     
     float _recount;
     int32_t _recount_threshold{-1};
@@ -165,6 +166,11 @@ public:
     Blob(const cmn::blob::line_ptr_t::element_type& lines, uint8_t flags);
     //Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
     Blob(const pv::Blob& other);
+    Blob(Blob&&) = default;
+    
+    Blob& operator=(Blob&&) = default;
+    Blob& operator=(const Blob&) = delete;
+    
     ~Blob();
     
     bool split() const;

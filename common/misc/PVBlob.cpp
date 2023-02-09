@@ -281,6 +281,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _parent_id(other._parent_id),
         _blob_id(other._blob_id),
         _tried_to_split(other._tried_to_split),
+        _reason(other._reason),
         _recount(other._recount),
         _recount_threshold(other._recount_threshold),
         _color_percentile_5(other._color_percentile_5),

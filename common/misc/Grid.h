@@ -67,6 +67,8 @@ namespace grid {
         ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
+        const decltype(_value_where)& value_where() const { return _value_where; }
+        
         Grid2D(const Size2& resolution, uint n)
             :
             _scale(ceilf(resolution.max() / float(n))/*ceilf(resolution.width / float(n)), ceilf(resolution.height / float(n))*/),

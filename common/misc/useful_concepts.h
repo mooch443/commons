@@ -22,12 +22,8 @@ template<class T, class Alloc>
 struct is_set<std::unordered_set<T, Alloc>> : public std::true_type {};
 template<class T>
 struct is_set<ska::bytell_hash_set<T>> : public std::true_type {};
-template<class T, class Alloc>
-struct is_set<robin_hood::unordered_set<T, Alloc>> : public std::true_type {};
-template<class T, class Alloc>
-struct is_set<robin_hood::unordered_flat_set<T, Alloc>> : public std::true_type {};
-template<class T, class Alloc>
-struct is_set<robin_hood::unordered_node_set<T, Alloc>> : public std::true_type {};
+template<bool isFlat, typename Key, typename Hash, typename KeyEqual, size_t MaxLoadFactor100>
+struct is_set<robin_hood::detail::Table<isFlat, MaxLoadFactor100, Key, void, Hash, KeyEqual>> : public std::true_type {};
 // template<class T, class Alloc>
 //struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
 
