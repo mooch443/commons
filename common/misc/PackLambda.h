@@ -110,8 +110,8 @@ struct F<_Rp(_ArgTypes...)>
 template<typename R, typename... Args>
 struct promised {
     using signature = R(Args...);
-    package::F<signature> package;
-    std::promise<R> promise;
+    mutable package::F<signature> package;
+    mutable std::promise<R> promise;
 
     template<typename K>
     promised(K&& fn) : package(std::move(fn)) { }
@@ -122,7 +122,7 @@ struct promised {
     promised(promised&& other) = default;
     promised(const promised& other) = delete;
 
-    R operator()(Args... args) {
+    R operator()(Args... args) const {
         try {
             if constexpr (!std::same_as<void, R>) {
                 promise.set_value(package(std::forward<Args>(args)...));

@@ -3,10 +3,11 @@
 #include <types.h>
 #include <misc/metastring.h>
 #include <misc/Timer.h>
+#include <misc/PackLambda.h>
 
 namespace cmn {
     class GenericThreadPool {
-        std::queue< std::function<void()> > q;
+        std::queue< package::F<void()> > q;
         std::mutex m;
         
         std::condition_variable condition;
@@ -40,35 +41,42 @@ namespace cmn {
         }
         
         template<class F, class... Args>
-        auto enqueue(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>
+        auto enqueue(F f, Args... args) -> std::future<typename std::invoke_result_t<F, Args...>>
         {
             using return_type = typename std::invoke_result_t<F, Args...>;
+            //auto task = cmn::package::promised<return_type, Args...>(std::forward<F>(f));
+            //auto task = std::make_shared< std::packaged_task<return_type()> >(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+            std::promise<return_type> promise;
+            std::future<return_type> res = promise.get_future();
+            auto bound = std::bind(std::forward<F>(f), std::forward<Args>(args)...);
             
-            auto task = std::make_shared< std::packaged_task<return_type()> >(std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-            
-            std::future<return_type> res = task->get_future();
             {
-                std::unique_lock<std::mutex> lock(m);
+                std::unique_lock lock(m);
                 
                 // don't allow enqueueing after stopping the pool
                 if(stop) {
-                    FormatExcept("enqueue on stopped ThreadPool");
-                    return res;
+                    throw U_EXCEPTION("enqueue on stopped ThreadPool");
                 }
-                    
-                q.push([task = std::move(task)]() { (*task)(); });
+                
+                q.push(package::F<void()>([bound = std::move(bound), f = std::move(f), promise = std::move(promise)]() mutable {
+                    try {
+                        if constexpr(std::same_as<return_type, void>) {
+                            //f(std::forward<Args>(args)...);
+                            bound();
+                            promise.set_value();
+                        } else {
+                            promise.set_value(bound());
+                            //promise.set_value(f(std::forward<Args>(args)...));
+                        }
+                    } catch(...) {
+                        promise.set_exception(std::current_exception());
+                    }
+                }));
             }
+            
             condition.notify_one();
             return res;
         }
-        /*void enqueue(const std::function<void()>& fn) {
-            {
-                std::unique_lock<std::mutex> lock(m);
-                q.push(fn);
-            }
-         
-            condition.notify_one();
-        }*/
         
         void force_stop();
         

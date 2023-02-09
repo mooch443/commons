@@ -150,6 +150,9 @@ void Graph::update() {
         if(lengthx > 5)
             value = roundf(value * 100) / 100;
         
+        if(std::isnan(x))
+            return (Text*)nullptr;
+        
         Vec2 pt(x, (1.0f - y_offset_percent) * max_height);
         pt += _margin;
         
@@ -344,6 +347,9 @@ void Graph::update() {
             if(idx == highlighted)
                 clr = clr.exposure(1.5);
             auto org_clr = clr;
+            
+            if(lengthx == 0 || lengthy == 0)
+                continue;
             
             float percentx = (x0-rx.start) / lengthx + x_offset_percent;
             float x = percentx * max_width - y_axis_offset;
