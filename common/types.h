@@ -44,16 +44,28 @@ namespace blob {
 using line_ptr_t = std::unique_ptr<std::vector<HorizontalLine>>;
 using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
 
+struct Prediction {
+    uint8_t clid; // up to 255 classes
+    uint8_t p{0u}; // [0,255] -> [0,1]
+    uint8_t _reserved0, _reserved1;
+    
+    bool valid() const { return p > 0; }
+    std::string toStr() const;
+    static std::string class_name() { return "Prediction"; }
+};
+
 struct Pair {
     blob::line_ptr_t lines;
     blob::pixel_ptr_t pixels;
     uint8_t extra_flags;
+    Prediction pred;
     
     Pair() = default;
-    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0)
+    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0, Prediction&& pred = {})
         : lines(std::move(lines)),
           pixels(std::move(pixels)),
-          extra_flags(extra_flags)
+          extra_flags(extra_flags),
+          pred(std::move(pred))
     {}
     /*Pair& operator=(Pair&& other) {
         if(!lines) {

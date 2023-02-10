@@ -141,20 +141,24 @@ void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end, uint32
             std::advance(nex, step);
         
         if(nex == end) {
-            try {
+            //try
+            {
                 // run in local thread
                 fn(i, it, nex, j);
-            } catch(...) {
+            } /*catch(...) {
                 ex = std::current_exception();
-            }
+                throw;
+            }*/
             
         } else {
             pool.enqueue([&](auto i, auto it, auto nex, auto index) {
-                try {
+                //try
+                {
                     fn(i, it, nex, index);
-                } catch(...) {
+                } /*catch(...) {
                     ex = std::current_exception();
-                }
+                    throw;
+                }*/
 #if defined(COMMONS_HAS_LATCH)
                 work_done.count_down();
 #else

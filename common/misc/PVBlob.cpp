@@ -176,7 +176,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 
 pv::BlobPtr CompressedBlob::unpack() const {
     auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
-    auto ptr = pv::Blob::Make(std::move(flines), nullptr, 0);
+    auto ptr = pv::Blob::Make(std::move(flines), nullptr, 0, blob::Prediction{pred});
     ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : pv::bid::invalid);
     
     bool tried_to_split = (status_byte & 0x4) != 0;
@@ -253,20 +253,22 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
     
     Blob::Blob()
-        : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr, 0)
+        : Blob(std::make_unique<std::vector<HorizontalLine>>(), nullptr, 0, {})
     { }
 
     Blob::Blob(const line_ptr_t::element_type& lines,
                const pixel_ptr_t::element_type& pixels,
-               uint8_t flags)
+               uint8_t flags,
+               Prediction pred)
         : Blob(std::make_unique<line_ptr_t::element_type>(lines),
                std::make_unique<pixel_ptr_t::element_type>(pixels),
-               flags)
+               flags,
+               std::move(pred))
     { }
 
     Blob::Blob(const line_ptr_t::element_type& lines,
                uint8_t flags)
-        : Blob(std::make_unique<line_ptr_t::element_type>(lines), nullptr, flags)
+        : Blob(std::make_unique<line_ptr_t::element_type>(lines), nullptr, flags, {})
     { }
     
     Blob::Blob(const Blob& other)
@@ -282,6 +284,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _blob_id(other._blob_id),
         _tried_to_split(other._tried_to_split),
         _reason(other._reason),
+        _prediction(other._prediction),
         _recount(other._recount),
         _recount_threshold(other._recount_threshold),
         _color_percentile_5(other._color_percentile_5),
@@ -290,8 +293,8 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
     }
     
-    Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t flags)
-        : _hor_lines(std::move(lines)), _pixels(std::move(pixels))
+    Blob::Blob(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t flags, Prediction&& pred)
+        : _hor_lines(std::move(lines)), _pixels(std::move(pixels)), _prediction(std::move(pred))
     {
     #ifdef _DEBUG_MEMORY
         std::lock_guard<std::mutex> guard(all_mutex_blob);
@@ -515,7 +518,8 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return Blob::Make(
             std::move(lines),
             std::move(tmp_pixels),
-            blob.flags()
+            blob.flags(),
+            blob::Prediction{blob.prediction()}
         );
     }
 

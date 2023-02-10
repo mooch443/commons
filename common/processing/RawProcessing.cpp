@@ -229,7 +229,8 @@ void process_tags(int32_t index,
                 return std::make_unique<pv::Blob>(
                         std::move(lines),
                         std::move(pixels),
-                        pv::Blob::flag(pv::Blob::Flags::is_tag));
+                        pv::Blob::flag(pv::Blob::Flags::is_tag),
+                        blob::Prediction{});
             };
             
             auto idx = (max_side == 0 ? c.size() : max_side) - 1;

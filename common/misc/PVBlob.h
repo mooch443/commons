@@ -1,6 +1,6 @@
 #pragma once
 
-#include <misc/defines.h>
+#include <commons.pc.h>
 #include <misc/vec2.h>
 #include <misc/Blob.h>
 #include <processing/Background.h>
@@ -153,6 +153,7 @@ protected:
     GETTER_I(bid, blob_id, pv::bid::invalid)
     GETTER_SETTER(bool, tried_to_split)
     GETTER_SETTER_I(FilterReason, reason, FilterReason::Unknown)
+    GETTER_SETTER(cmn::blob::Prediction, prediction)
     
     float _recount;
     int32_t _recount_threshold{-1};
@@ -160,9 +161,9 @@ protected:
     
 public:
     Blob();
-    Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags);
+    Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags, cmn::blob::Prediction&& pred);
     //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
-    Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags);
+    Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags, cmn::blob::Prediction pred);
     Blob(const cmn::blob::line_ptr_t::element_type& lines, uint8_t flags);
     //Blob(const cmn::Blob* blob, cmn::blob::pixel_ptr_t&& pixels);
     Blob(const pv::Blob& other);
@@ -279,6 +280,8 @@ struct CompressedBlob {
     //! y of first position (everything is relative to this)
     uint16_t start_y{0};
     
+    cmn::blob::Prediction pred;
+    
 protected:
     GETTER(std::vector<ShortHorizontalLine>, lines)
     
@@ -289,7 +292,8 @@ public:
     CompressedBlob() = default;
     CompressedBlob(const pv::Blob& val) :
         parent_id(val.parent_id()),
-        own_id(val.blob_id())
+        own_id(val.blob_id()),
+        pred(val.prediction())
     {
         status_byte = (uint8_t(val.split())             << 0)
                     | (uint8_t(val.parent_id().valid()) << 1)

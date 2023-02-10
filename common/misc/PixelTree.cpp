@@ -274,12 +274,13 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             
             auto blobs = CPULabeling::run(local, cache);
             
-            for(auto && [lines, pixels, flags] : blobs) {
+            for(auto && [lines, pixels, flags, pred] : blobs) {
                 for(auto &line : *lines) {
                     line.y += pos.y;
                     line.x0 += pos.x;
                     line.x1 += pos.x;
                 }
+                pred = blob->prediction();
             }
             
             return blobs;
@@ -308,7 +309,11 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         } else
             line_without_bg(bg, blob->hor_lines(), px, threshold, lines, pixels);
         
-        return CPULabeling::run(lines, pixels, cache);
+        auto blobs = CPULabeling::run(lines, pixels, cache);
+        for(auto &pair : blobs) {
+            pair.pred = blob->prediction();
+        }
+        return blobs;
     }
     
     pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
@@ -317,11 +322,13 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         
         size_t max_size = 0;
         blobs_t::value_type *found = nullptr;
+        blob::Prediction* found_pred = nullptr;
         for(auto &tup : blobs) {
-            auto && [lines, pixels, flags] = tup;
+            auto && [lines, pixels, flags, pred] = tup;
             if(pixels->size() > max_size) {
                 found = &tup;
                 max_size = pixels->size();
+                found_pred = &pred;
             }
         }
         
@@ -329,12 +336,14 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             return pv::Blob::Make(
                     std::move(found->lines),
                     std::move(found->pixels),
-                    found->extra_flags);
+                    found->extra_flags,
+                    std::move(*found_pred));
         
         return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
                 std::make_unique<std::vector<uchar>>(),
-                0);
+                0,
+                std::move(*found_pred));
         //auto ptr = pv::Blob::Make(lines, pixels);
         //return ptr;
     }
@@ -342,9 +351,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
         auto blobs = _threshold_blob(cache, blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
-        for(auto&& [lines, pixels, flags] : blobs) {
+        for(auto&& [lines, pixels, flags, pred] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
+                result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
         }
         return result;
     }
@@ -357,9 +366,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
 std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
     auto blobs = _threshold_blob(cache, blob, difference_cache, threshold);
     std::vector<pv::BlobPtr> result;
-    for(auto && [lines, pixels, flags] : blobs) {
+    for(auto && [lines, pixels, flags, pred] : blobs) {
         if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-            result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags));
+            result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
     }
     return result;
 }

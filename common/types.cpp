@@ -3,6 +3,20 @@
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>
 
+namespace cmn {
+std::string blob::Prediction::toStr() const {
+    std::vector<std::string> meta_classes;
+    if(GlobalSettings::has("meta_classes")) {
+        meta_classes = SETTING(meta_classes).value<std::vector<std::string>>();
+    }
+    
+    if(valid())
+        return (clid < meta_classes.size() ? meta_classes.at(clid) : "unknown<"+Meta::toStr(clid)+">")+"["+dec<2>( p / 255.f * 100.f).toStr()+"%]";
+    return "pred<null>";
+}
+
+}
+
 namespace tf {
     using namespace cmn;
     
