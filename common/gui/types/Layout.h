@@ -16,6 +16,9 @@ namespace gui {
         Base* get() const { return ptr ? ptr.get() : raw_ptr; }
         template<typename T> T* to() const { auto ptr = dynamic_cast<T*>(get()); if(!ptr) throw U_EXCEPTION("Cannot cast object to specified type."); return ptr; }
         
+        template<typename T>
+        constexpr bool is() const { return dynamic_cast<T*>(get()); }
+        
         bool operator==(Base* raw) const { return get() == raw; }
         //bool operator==(decltype(ptr) other) const { return ptr == other; }
         bool operator==(derived_ptr<Base> other) const { return get() == other.get(); }
@@ -38,7 +41,7 @@ namespace gui {
         typedef derived_ptr<Drawable> Ptr;
         
     private:
-        std::vector<Ptr> _objects;
+        GETTER(std::vector<Ptr>, objects)
         
     public:
         template<typename T, typename... Args>

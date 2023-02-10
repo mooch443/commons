@@ -215,26 +215,26 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         //FormatWarning("Have to reset video index from ", _last_index," to ", index," (",_filename.c_str(),")");
         _cap->set(cv::CAP_PROP_POS_FRAMES, max(index.get() - 1, 0));
         auto currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-        print("Retrieving ", index, " and get ", currentPos);
+        //print("Retrieving ", index, " and get ", currentPos);
         
         auto start = index.get();
         while(currentPos >= index.get() && start > 0) {
             start = max(0, start - framerate());
             _cap->set(cv::CAP_PROP_POS_FRAMES, start);
             currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-            print("Retrieving ", start, " and get ", currentPos);
+            //print("Retrieving ", start, " and get ", currentPos);
         }
         
         _last_index = Frame_t((int)currentPos);
         
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
+            /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
                 print("... ", _last_index, " / ", index);
-            }
+            }*/
         }
         
-        print("Index: ", _last_index);
+        //print("Index: ", _last_index);
         
     } else if(index > _last_index+1_f) {
 #ifndef NDEBUG
@@ -242,9 +242,9 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
 #endif
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
+            /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
                 print("... ", _last_index, " / ", index);
-            }
+            }*/
         }
     }
     

@@ -8,7 +8,10 @@
 #include <gui/ControlsAttributes.h>
 #include <gui/types/Button.h>
 
+#include <gui/DynamicGUI.h>
+
 using namespace gui;
+using namespace gui::dyn;
 
 namespace cexpression
 {
@@ -214,7 +217,7 @@ int main(int argc, char**argv) {
     {
         Timer timer;
         for (size_t i=0; i<count; ++i) {
-            print("Test ",i,"/",count);
+            printf("Test %lu/%lu\n",i, count);
         }
         
         auto seconds = timer.elapsed();
@@ -273,9 +276,37 @@ int main(int argc, char**argv) {
     });*/
     
     using namespace attr;
+    bool terminate = false;
+    
     Button button("Text",
                   Loc(100, 100),
                   TextClr{Cyan});
+    
+    Context context{
+        .actions = {
+            {
+                "QUIT", [&](auto) {
+                    terminate = true;
+                }
+            }
+        },
+        .variables = {
+            {
+                "fps", [](auto&)->std::string{
+                    return "0";
+                }
+            }
+        },
+        .color_variables = {
+            {
+                "id", []() {
+                    return White;
+                }
+            }
+        }
+    };
+    State state;
+    std::vector<Layout::Ptr> objects;
 
     /*
         // Theoretical optimum:
@@ -292,9 +323,10 @@ int main(int argc, char**argv) {
      */
     
     //! open window and start looping
-    bool terminate = false;
     IMGUIBase* ptr = nullptr;
     IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
+        update_layout("/Users/tristan/trex/Application/src/tracker/alter_layout.json", context, state, objects);
+        
         //! set dt and target position for the constexpr functions to exploit
         if (last_mouse_pos != graph.mouse_position()) {
             action_timer.reset();
@@ -341,6 +373,11 @@ int main(int argc, char**argv) {
            // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });
         graph.wrap_object(e);
+        
+        for(auto &o : objects) {
+            update_objects(o, context, state);
+            graph.wrap_object(*o);
+        }
 
         //image.set_pos(last_mouse_pos);
         //graph.wrap_object(image);

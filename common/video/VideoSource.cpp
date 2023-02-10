@@ -174,10 +174,11 @@ void VideoSource::File::frame(VideoSource::ImageMode color, Frame_t frameIndex, 
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
 
+            _video->frame(frameIndex, output, lazy_video, loc);
+            
             assert(output.cols == _video->size().width
                 && output.rows == _video->size().height);
 
-            _video->frame(frameIndex, output, lazy_video, loc);
             break;
             
         case IMAGE:
