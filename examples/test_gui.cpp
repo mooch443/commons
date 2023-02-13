@@ -292,6 +292,27 @@ int main(int argc, char**argv) {
         return fish;
     }();
     
+    static std::vector<std::shared_ptr<VarBase_t>> fishes {
+        
+    };
+    
+    std::vector<sprite::Map> _data;
+    
+    for(size_t i = 0; i<3; ++i) {
+        sprite::Map tmp;
+        tmp["name"] = std::string("fish"+Meta::toStr(i));
+        tmp["color"] = Red;
+        tmp["pos"] = Vec2(100, 150+i*50);
+        tmp["size"] = Size2(25, 25);
+        tmp["id"] = i;
+        tmp["p"] = float(i) / float(3);
+        _data.push_back(std::move(tmp));
+        
+        fishes.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
+            return _data[i];
+        }));
+    }
+    
     fish.set_do_print(false);
     
     Context context{
@@ -307,6 +328,12 @@ int main(int argc, char**argv) {
                 "fish",
                 std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
                     return fish;
+                }))
+            },
+            {
+                "fishes",
+                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                    return fishes;
                 }))
             }
         },

@@ -216,6 +216,22 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             break;
         }
             
+        case LayoutType::each: {
+            if(obj.count("do")) {
+                auto child = obj["do"];
+                if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
+                    print("collection: ", child.dump());
+                    // all successfull, add collection:
+                    ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
+                    state.loops[index] = {
+                        .variable = obj["var"].get<std::string>(),
+                        .child = child
+                    };
+                }
+            }
+            break;
+        }
+            
         default:
             std::cout << obj << std::endl;
             break;
@@ -286,13 +302,50 @@ std::string parse_text(const std::string& pattern, const Context& context) {
     return output;
 }
 
-void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, const State& state) {
+void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
     auto index = (size_t)o->custom_data("object_index");
     
+    //! something that needs to be executed before everything runs
     if(state.display_fns.contains(index)) {
         state.display_fns.at(index)(g);
     }
     
+    //! for-each loops below
+    if(auto it = state.loops.find(index); it != state.loops.end()) {
+        auto &obj = it->second;
+        if(context.variables.contains(obj.variable)) {
+            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+                
+                std::vector<Layout::Ptr> ptrs;
+                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
+                State _s;
+                
+                if(vector != obj.cache) {
+                    obj.cache = vector;
+                    
+                    for(auto &v : vector) {
+                        Context tmp = context;
+                        tmp.variables["i"] = v;
+                        auto ptr = parse_object(obj.child, tmp, _s);
+                        update_objects(g, ptr, tmp, _s);
+                        ptrs.push_back(ptr);
+                    }
+                    
+                    o.to<Layout>()->set_children(ptrs);
+                    
+                } else {
+                    for(size_t i=0; i<obj.cache.size(); ++i) {
+                        Context tmp = context;
+                        tmp.variables["i"] = obj.cache[i];
+                        update_objects(g, o.to<Layout>()->children()[i], tmp, _s);
+                    }
+                }
+            }
+        }
+        return;
+    }
+    
+    //! fill default fields like fill, line, pos, etc.
     auto it = state.patterns.find(index);
     if(it != state.patterns.end()) {
         auto pattern = it->second;
@@ -341,12 +394,14 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
         }
     }
     
+    //! if this is a Layout type, need to iterate all children as well:
     if(o.is<Layout>()) {
         for(auto &child : o.to<Layout>()->objects()) {
             update_objects(g, child, context, state);
         }
     }
     
+    //! fill other properties specific to type:
     if(it != state.patterns.end()) {
         auto pattern = it->second;
         
