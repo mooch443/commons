@@ -63,7 +63,7 @@ namespace gui {
         void clear_children() override;
         
         
-        virtual void update_layout() {}
+        virtual void update_layout();
         virtual void auto_size(Margin margins) override;
     };
     

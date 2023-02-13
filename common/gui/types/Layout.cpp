@@ -19,6 +19,7 @@ namespace gui {
         end();
         
         update_layout();
+        set_content_changed(false);
     }
     
     void Layout::add_child(size_t pos, Layout::Ptr ptr) {
@@ -52,6 +53,10 @@ namespace gui {
 
         set_content_changed(true);
         update();
+    }
+
+    void Layout::update_layout() {
+        auto_size({});
     }
 
     void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
@@ -191,7 +196,7 @@ namespace gui {
             x += local.width + _margins.width;
         }
         
-        if(Size2(x, max(0, max_height)) != size()) {
+        if(not Size2(x, max(0, max_height)).Equals(size())) {
             set_size(Size2(x, max(0, max_height)));
             set_content_changed(true);
         }

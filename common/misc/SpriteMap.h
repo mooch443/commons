@@ -362,7 +362,9 @@ namespace sprite {
             return tmp->value();
         }
         
-        std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +".";
+        std::string e = _type.valid()
+            ? "Cannot find variable '" + _name + "' of type " + Meta::name<T>() + " in map."
+            : "Cannot cast '" + _name + "' of type " + (_type.valid() ? _type.type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }

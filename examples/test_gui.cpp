@@ -282,6 +282,16 @@ int main(int argc, char**argv) {
                   Loc(100, 100),
                   TextClr{Cyan});
     
+    static sprite::Map fish =  [](){
+        sprite::Map fish;
+        fish["name"] = std::string("fish0");
+        fish["color"] = Red;
+        fish["pos"] = Vec2(100, 150);
+        fish["size"] = Size2(200, 300);
+        //fish["id"] = 0;
+        return fish;
+    }();
+    
     Context context{
         .actions = {
             {
@@ -292,9 +302,10 @@ int main(int argc, char**argv) {
         },
         .variables = {
             {
-                "fps", [](auto&)->std::string{
-                    return "0";
-                }
+                "fish",
+                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
+                    return fish;
+                }))
             }
         },
         .color_variables = {
@@ -305,6 +316,7 @@ int main(int argc, char**argv) {
             }
         }
     };
+    
     State state;
     std::vector<Layout::Ptr> objects;
 
@@ -374,8 +386,11 @@ int main(int argc, char**argv) {
         });
         graph.wrap_object(e);
         
+        fish["pos"] = graph.mouse_position();
+        //fish["id"] = 0;
+        
         for(auto &o : objects) {
-            update_objects(o, context, state);
+            update_objects(graph, o, context, state);
             graph.wrap_object(*o);
         }
 
