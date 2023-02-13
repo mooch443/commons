@@ -292,6 +292,8 @@ int main(int argc, char**argv) {
         return fish;
     }();
     
+    fish.set_do_print(false);
+    
     Context context{
         .actions = {
             {

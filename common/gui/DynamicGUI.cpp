@@ -275,7 +275,6 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                         return optional ? "" : "null";
                     }
                 }, [word](bool optional) -> std::string {
-                    print("word=",word," ","optional=",optional);
                     return optional ? "" : "null";
                 });
                 
