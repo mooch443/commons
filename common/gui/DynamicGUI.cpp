@@ -212,6 +212,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             
             if(fill != Transparent)
                 ptr.to<Rect>()->set_fillclr(fill);
+            if(line != Transparent)
+                ptr.to<Rect>()->set_lineclr(line);
             
             break;
         }
@@ -236,11 +238,20 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             if(obj.count("then")) {
                 auto child = obj["then"];
                 if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
-                    ptr = parse_object(child, context, state);
-                    ptr->set_is_displayed(false);
-                    state.ifs[index] = {
+                    ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
+                    
+                    auto c = parse_object(child, context, state);
+                    c->set_is_displayed(false);
+                    
+                    Layout::Ptr _else;
+                    if(obj.count("else") && obj["else"].is_object()) {
+                        _else = parse_object(obj["else"], context, state);
+                    }
+                    
+                    state.ifs[index] = IfBody{
                         .variable = obj["var"].get<std::string>(),
-                        .ptr = ptr
+                        ._if = c,
+                        ._else = _else
                     };
                 }
             }
@@ -333,15 +344,35 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
         try {
             auto res = resolve_variable_type<bool>(obj.variable, context);
             if(not res) {
-                o->set_is_displayed(false);
+                if(obj._else) {
+                    auto last_condition = (uint64_t)o->custom_data("last_condition");
+                    if(last_condition != 1) {
+                        o->add_custom_data("last_condition", (void*)1);
+                        o.to<Layout>()->set_children({obj._else});
+                    }
+                    update_objects(g, obj._else, context, state);
+                    
+                } else {
+                    if(o->is_displayed()) {
+                        o->set_is_displayed(false);
+                        o.to<Layout>()->clear_children();
+                    }
+                }
+                
                 return;
             }
             
-            o->set_is_displayed(true);
+            auto last_condition = (uint64_t)o->custom_data("last_condition");
+            if(last_condition != 2) {
+                o->set_is_displayed(true);
+                o->add_custom_data("last_condition", (void*)2);
+                o.to<Layout>()->set_children({obj._if});
+            }
+            update_objects(g, obj._if, context, state);
             
-        } catch(...) {
-            return;
-        }
+        } catch(...) { }
+        
+        return;
     }
     
     //! for-each loops below
@@ -386,24 +417,27 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
         auto pattern = it->second;
         
         if(it->second.contains("fill")) {
-            auto pattern = utils::lowercase(it->second.at("fill"));
-            if(context.variables.contains(pattern)) {
-                parse_text(pattern, context);
-            }
-            if(context.color_variables.contains(pattern)) {
+            try {
+                auto fill = resolve_variable_type<Color>(pattern.at("fill"), context);
                 if(o.is<Rect>())
-                    o.to<Rect>()->set_fillclr(context.color_variables.at(pattern)());
+                    o.to<Rect>()->set_fillclr(fill);
                 else if(o.is<SectionInterface>())
-                    o.to<SectionInterface>()->set_background(context.color_variables.at(pattern)(), o.to<SectionInterface>()->background()->lineclr());
+                    o.to<SectionInterface>()->set_background(fill, o.to<SectionInterface>()->background()->lineclr());
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
         }
         if(it->second.contains("line")) {
-            auto pattern = utils::lowercase(it->second.at("line"));
-            if(context.color_variables.contains(pattern)) {
+            try {
+                auto line = resolve_variable_type<Color>(pattern.at("line"), context);
                 if(o.is<Rect>())
-                    o.to<Rect>()->set_lineclr(context.color_variables.at(pattern)());
+                    o.to<Rect>()->set_lineclr(line);
                 else if(o.is<SectionInterface>())
-                    o.to<SectionInterface>()->set_background(o.to<SectionInterface>()->background()->fillclr(), context.color_variables.at(pattern)());
+                    o.to<SectionInterface>()->set_background(o.to<SectionInterface>()->background()->fillclr(), line);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
         }
         

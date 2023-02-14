@@ -355,13 +355,6 @@ int main(int argc, char**argv) {
                     return GlobalSettings::map();
                 }))
             }
-        },
-        .color_variables = {
-            {
-                "id", []() {
-                    return White;
-                }
-            }
         }
     };
     

@@ -217,7 +217,6 @@ using VarReturn_t = sprite::Reference;
 struct Context {
     std::unordered_map<std::string, std::function<void(Event)>> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
-    std::unordered_map<std::string, std::function<Color()>> color_variables;
 };
 
 struct LoopBody;
@@ -240,7 +239,8 @@ struct LoopBody {
 
 struct IfBody {
     std::string variable;
-    Layout::Ptr ptr;
+    Layout::Ptr _if;
+    Layout::Ptr _else;
 };
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
