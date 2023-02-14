@@ -144,7 +144,10 @@ namespace gui {
         Bounds _bounds;
         
         //! If this object has been rendered in the last renderpass, this will be set to true.
-        GETTER_SETTER(bool, visible)
+        GETTER_SETTER_I(bool, was_visible, false)
+        
+        //! If the object is disabled, it will not be displayed.
+        GETTER_SETTER_I(bool, is_displayed, true)
         
     protected:
         //! If this is set to true, the next bounds(), rect()

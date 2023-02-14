@@ -47,6 +47,9 @@ namespace gui {
     }
     
     void Section::collect(std::vector<Drawable*>& ret) {
+        if(not is_displayed())
+            return;
+        
         Drawable *d;
         
         if(_background) {
@@ -66,15 +69,15 @@ namespace gui {
                 /*if(ptr->background()) {
                     ret.push_back(ptr->background());
                 }*/
-                
-                ret.push_back(ptr);
+                if(ptr->is_displayed())
+                    ret.push_back(ptr);
                 
             } else if(d->type() == Type::SECTION) {
                 auto ptr = static_cast<Section*>(d);
-                if(ptr->enabled())
+                if(ptr->enabled() && ptr->is_displayed())
                     ptr->collect(ret);
                 
-            } else
+            } else if(c->is_displayed())
                 ret.push_back(c);
         }
         

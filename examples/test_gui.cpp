@@ -9,6 +9,7 @@
 #include <gui/types/Button.h>
 
 #include <gui/DynamicGUI.h>
+#include <misc/GlobalSettings.h>
 
 using namespace gui;
 using namespace gui::dyn;
@@ -335,6 +336,24 @@ int main(int argc, char**argv) {
                 std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
                     return fishes;
                 }))
+            },
+            {
+                "invalid",
+                std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                    return false;
+                }))
+            },
+            {
+                "valid",
+                std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                    return true;
+                }))
+            },
+            {
+                "global",
+                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
+                    return GlobalSettings::map();
+                }))
             }
         },
         .color_variables = {
@@ -366,7 +385,6 @@ int main(int argc, char**argv) {
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
     IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
-        update_layout("/Users/tristan/trex/Application/src/tracker/alter_layout.json", context, state, objects);
         
         //! set dt and target position for the constexpr functions to exploit
         if (last_mouse_pos != graph.mouse_position()) {
@@ -399,27 +417,31 @@ int main(int argc, char**argv) {
         }
 
         //! update positions based on the two gvars
-        owl_update(owl_indexes);
+        //owl_update(owl_indexes);
 
         //! iterate the array in constexpr way (only the ones that are set)
-        [&] <std::size_t... Is> (std::index_sequence<Is...>) {
+        /*[&] <std::size_t... Is> (std::index_sequence<Is...>) {
             ( action<Is>( graph ), ...);
-        }(owl_indexes);
+        }(owl_indexes);*/
         
         
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
         
-        e.update([](Entangled &) {
+        /*e.update([](Entangled &) {
            // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
         });
-        graph.wrap_object(e);
+        graph.wrap_object(e);*/
         
         fish["pos"] = graph.mouse_position();
         //fish["id"] = 0;
         
+        update_layout("/Users/tristan/trex/Application/src/tracker/alter_layout.json", context, state, objects);
+        
         for(auto &o : objects) {
             update_objects(graph, o, context, state);
+            //if(o.is<Layout>())
+            //    print(o.to<Layout>()->toString(nullptr));
             graph.wrap_object(*o);
         }
 

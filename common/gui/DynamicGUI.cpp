@@ -47,8 +47,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                 // is it a color variable?
                 if(obj[name].is_string()) {
                     state.patterns[index][name] = obj[name].template get<std::string>();
-                    print("pattern for ", name, " at object ", obj[name].template get<std::string>());
-                    std::cout << obj << std::endl;
+                    //print("pattern for ", name, " at object ", obj[name].template get<std::string>());
+                    //std::cout << obj << std::endl;
                     return de;
                 }
             }
@@ -121,7 +121,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             
             if(obj.count("children")) {
                 for(auto &child : obj["children"]) {
-                    print("collection: ", child.dump());
+                    //print("collection: ", child.dump());
                     auto ptr = parse_object(child, context, state);
                     if(ptr) {
                         children.push_back(ptr);
@@ -220,12 +220,27 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             if(obj.count("do")) {
                 auto child = obj["do"];
                 if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
-                    print("collection: ", child.dump());
+                    //print("collection: ", child.dump());
                     // all successfull, add collection:
                     ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
                     state.loops[index] = {
                         .variable = obj["var"].get<std::string>(),
                         .child = child
+                    };
+                }
+            }
+            break;
+        }
+            
+        case LayoutType::condition: {
+            if(obj.count("then")) {
+                auto child = obj["then"];
+                if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
+                    ptr = parse_object(child, context, state);
+                    ptr->set_is_displayed(false);
+                    state.ifs[index] = {
+                        .variable = obj["var"].get<std::string>(),
+                        .ptr = ptr
                     };
                 }
             }
@@ -284,9 +299,11 @@ std::string parse_text(const std::string& pattern, const Context& context) {
             
         } else {
             if(pattern[i] == '}') {
-                output += resolve_variable(word, context, [](const VarBase_t& variable, const std::string& modifiers, bool optional) -> std::string {
+                output += resolve_variable(word, context, [word](const VarBase_t& variable, const std::string& modifiers, bool optional) -> std::string {
                     try {
-                        return variable.value_string(modifiers);
+                        auto ret = variable.value_string(modifiers);
+                        //print(word, " resolves to ", ret);
+                        return ret;
                     } catch(...) {
                         return optional ? "" : "null";
                     }
@@ -310,34 +327,52 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
         state.display_fns.at(index)(g);
     }
     
+    //! if statements below
+    if(auto it = state.ifs.find(index); it != state.ifs.end()) {
+        auto &obj = it->second;
+        try {
+            auto res = resolve_variable_type<bool>(obj.variable, context);
+            if(not res) {
+                o->set_is_displayed(false);
+                return;
+            }
+            
+            o->set_is_displayed(true);
+            
+        } catch(...) {
+            return;
+        }
+    }
+    
     //! for-each loops below
     if(auto it = state.loops.find(index); it != state.loops.end()) {
         auto &obj = it->second;
         if(context.variables.contains(obj.variable)) {
             if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
                 
-                std::vector<Layout::Ptr> ptrs;
                 auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
-                State _s;
                 
                 if(vector != obj.cache) {
+                    std::vector<Layout::Ptr> ptrs;
                     obj.cache = vector;
+                    obj.state = state;
+                    Context tmp = context;
                     
                     for(auto &v : vector) {
-                        Context tmp = context;
                         tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, _s);
-                        update_objects(g, ptr, tmp, _s);
+                        auto ptr = parse_object(obj.child, tmp, obj.state);
+                        update_objects(g, ptr, tmp, obj.state);
                         ptrs.push_back(ptr);
                     }
                     
                     o.to<Layout>()->set_children(ptrs);
                     
                 } else {
+                    Context tmp = context;
                     for(size_t i=0; i<obj.cache.size(); ++i) {
-                        Context tmp = context;
                         tmp.variables["i"] = obj.cache[i];
-                        update_objects(g, o.to<Layout>()->children()[i], tmp, _s);
+                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]);
+                        update_objects(g, o.to<Layout>()->children()[i], tmp, obj.state);
                     }
                 }
             }
@@ -377,6 +412,7 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
             try {
                 auto pos = resolve_variable_type<Vec2>(pattern.at("pos"), context);
                 o->set_pos(pos);
+                //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), ")");
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());

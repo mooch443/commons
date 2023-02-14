@@ -1369,7 +1369,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         return;
     }
     
-    if(!o->visible())
+    if(!o->was_visible())
         return;
     
     ++_objects_drawn;
@@ -1663,7 +1663,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     std::string text;
     if(o->parent() && o->parent()->background() == o) {
         if(dynamic_cast<Entangled*>(o->parent()))
-            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
+            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->global_bounds());
         else
             text = Meta::toStr(*(Drawable*)o->parent());
     } else
@@ -1671,7 +1671,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     auto font = _fonts.at(Style::Regular);
     auto _font = Font(0.3, Style::Regular);
     
-    list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(125), text.c_str());
+    list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
 #endif
     
     if(o->type() != Type::ENTANGLED && o->has_global_rotation()) {
@@ -1713,7 +1713,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         
         if(o->type() == Type::SINGLETON)
             o = static_cast<SingletonObject*>(o)->ptr();
-        o->set_visible(false);
+        o->set_was_visible(false);
         
         auto &io = ImGui::GetIO();
         Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale) .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
@@ -1740,7 +1740,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             return;
         }
         
-        o->set_visible(true);
+        o->set_was_visible(true);
         ++_type_counts[o->type()];
         
         switch (o->type()) {

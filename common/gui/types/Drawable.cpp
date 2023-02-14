@@ -13,7 +13,7 @@ namespace gui {
     const char *callback = NULL;
 
     std::string Drawable::toStr() const {
-        return std::string(type().name()) + " " + Meta::toStr(_bounds);
+        return std::string(type().name()) + " " + Meta::toStr(_global_bounds);
     }
     
 #ifdef _DEBUG_MEMORY
@@ -97,7 +97,6 @@ namespace gui {
         _origin(0),
         _rotation(0),
         _has_global_rotation(false),
-        _visible(false),
         _bounds_changed(true),
         _global_text_scale(1),
         _scale(1),
@@ -1049,9 +1048,9 @@ void SectionInterface::set_z_index(int index) {
         }
     
         if(section)
-            ss << "('"<<section->HasName::name()<<"',"<<children().size()<<"," <<pos() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
+            ss << "('"<<section->HasName::name()<<"',"<<children().size()<<"," <<pos().toStr() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
         else
-            ss << "(" << (type() == Type::ENTANGLED && dynamic_cast<Entangled*>(this)->scroll_enabled() ? "scroll," : "") << children().size() << "," << pos()<< " " << size().width << "x" << size().height << " " << scale().x << (clickable()?",clickable":"") << ")";
+            ss << "(" << (type() == Type::ENTANGLED && dynamic_cast<Entangled*>(this)->scroll_enabled() ? "scroll," : "") << children().size() << "," << pos().toStr() << " " << size().width << "x" << size().height << " " << scale().x << (clickable()?",clickable":"") << ")";
             
         if(_bounds_changed)
             ss << "~";

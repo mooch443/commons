@@ -193,7 +193,7 @@ public:
     constexpr auto class_name() const { return type; }
 };
 
-ENUM_CLASS(LayoutType, each, vlayout, hlayout, collection, button, text, stext, rect);
+ENUM_CLASS(LayoutType, each, condition, vlayout, hlayout, collection, button, text, stext, rect);
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())
@@ -220,17 +220,27 @@ struct Context {
     std::unordered_map<std::string, std::function<Color()>> color_variables;
 };
 
-struct LoopBody {
-    std::string variable;
-    nlohmann::json child;
-    std::vector<std::shared_ptr<VarBase_t>> cache;
-};
+struct LoopBody;
+struct IfBody;
 
 struct State {
     size_t object_index{0};
     std::unordered_map<size_t, std::unordered_map<std::string, std::string>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
+    std::unordered_map<size_t, IfBody> ifs;
+};
+
+struct LoopBody {
+    std::string variable;
+    nlohmann::json child;
+    State state;
+    std::vector<std::shared_ptr<VarBase_t>> cache;
+};
+
+struct IfBody {
+    std::string variable;
+    Layout::Ptr ptr;
 };
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
