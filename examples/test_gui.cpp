@@ -283,29 +283,34 @@ int main(int argc, char**argv) {
                   Loc(100, 100),
                   TextClr{Cyan});
     
-    static sprite::Map fish =  [](){
-        sprite::Map fish;
-        fish["name"] = std::string("fish0");
-        fish["color"] = Red;
-        fish["pos"] = Vec2(100, 150);
-        fish["size"] = Size2(200, 300);
-        //fish["id"] = 0;
-        return fish;
-    }();
+    dyn::Modules::add(Modules::Module{
+        ._name = "draggable",
+        ._apply = [](size_t, State&, const Layout::Ptr& o) {
+            o->set_draggable();
+        }
+    });
     
-    static std::vector<std::shared_ptr<VarBase_t>> fishes {
-        
-    };
+    dyn::Modules::add(Modules::Module{
+        ._name = "follow",
+        ._apply = [](size_t index, State& state, const Layout::Ptr& o) {
+            state.display_fns[index] = [o = o.get()](DrawStructure& g){
+                o->set_pos(g.mouse_position() + Vec2(5));
+            };
+        }
+    });
     
+    static std::vector<std::shared_ptr<VarBase_t>> fishes;
     std::vector<sprite::Map> _data;
     
     for(size_t i = 0; i<3; ++i) {
         sprite::Map tmp;
         tmp["name"] = std::string("fish"+Meta::toStr(i));
-        tmp["color"] = Red;
+        tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
         tmp["pos"] = Vec2(100, 150+i*50);
         tmp["size"] = Size2(25, 25);
+        tmp["blob_id"] = pv::bid(i * 1000);
         tmp["id"] = i;
+        tmp["tracked"] = bool(i % 2 == 0);
         tmp["p"] = float(i) / float(3);
         _data.push_back(std::move(tmp));
         
@@ -313,8 +318,6 @@ int main(int argc, char**argv) {
             return _data[i];
         }));
     }
-    
-    fish.set_do_print(false);
     
     Context context{
         .actions = {
@@ -325,12 +328,6 @@ int main(int argc, char**argv) {
             }
         },
         .variables = {
-            {
-                "fish",
-                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
-                    return fish;
-                }))
-            },
             {
                 "fishes",
                 std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
@@ -410,24 +407,15 @@ int main(int argc, char**argv) {
         }
 
         //! update positions based on the two gvars
-        //owl_update(owl_indexes);
+        owl_update(owl_indexes);
 
         //! iterate the array in constexpr way (only the ones that are set)
-        /*[&] <std::size_t... Is> (std::index_sequence<Is...>) {
+        [&] <std::size_t... Is> (std::index_sequence<Is...>) {
             ( action<Is>( graph ), ...);
-        }(owl_indexes);*/
-        
+        }(owl_indexes);
         
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
-        
-        /*e.update([](Entangled &) {
-           // e.add<Rect>(Bounds(100, 100, 100, 25), White, Red);
-        });
-        graph.wrap_object(e);*/
-        
-        fish["pos"] = graph.mouse_position();
-        //fish["id"] = 0;
         
         update_layout("/Users/tristan/trex/Application/src/tracker/alter_layout.json", context, state, objects);
         

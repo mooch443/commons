@@ -230,6 +230,16 @@ struct State {
     std::unordered_map<size_t, IfBody> ifs;
 };
 
+namespace Modules {
+struct Module {
+    std::string _name;
+    std::function<void(size_t, State&, const Layout::Ptr&)> _apply;
+};
+
+void add(Module&&);
+Module* exists(const std::string& name);
+}
+
 struct LoopBody {
     std::string variable;
     nlohmann::json child;
@@ -316,14 +326,14 @@ T resolve_variable_type(std::string word, const Context& context) {
 
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
-inline auto load(const file::Path& path){
+inline tl::expected<nlohmann::json, const char*> load(const file::Path& path){
     auto text = path.read_file();
     static std::string previous;
     if(previous != text) {
         previous = text;
         return nlohmann::json::parse(text)["objects"];
     } else
-        throw std::invalid_argument("Nothing changed.");
+        return tl::unexpected("Nothing changed.");
 }
 
 void update_layout(const file::Path&, Context&, State&, std::vector<Layout::Ptr>&);

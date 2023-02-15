@@ -14,31 +14,30 @@ void foo() {
     var.value_string(5);
 }
 
+namespace Modules {
+std::unordered_map<std::string, Module> mods;
+
+void add(Module&& m) {
+    auto name = m._name;
+    mods.emplace(name, std::move(m));
+}
+
+Module* exists(const std::string& name) {
+    auto it = mods.find(name);
+    if(it != mods.end()) {
+        return &it->second;
+    }
+    return nullptr;
+}
+
+}
+
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
                          State& state)
 {
     auto index = state.object_index++;
     auto type = LayoutType::get(utils::lowercase(obj["type"].get<std::string>()));
-    
-    
-    struct Module {
-        const std::string name;
-        void apply(size_t index, State& state, const Layout::Ptr& obj) {
-            if(name == "follow") {
-                state.display_fns[index] = [o = obj.get()](DrawStructure& g){
-                    o->set_pos(g.mouse_position() + Vec2(5));
-                };
-            } else if(name == "infocard") {
-                if(obj.is<Layout>()) {
-                    auto layout = obj.to<Layout>();
-                    layout->set_children({
-                        Layout::Make<Text>("Text")
-                    });
-                }
-            }
-        }
-    };
     
     auto get = [&]<typename T>(T de, auto name)->T {
         if(obj.count(name)) {
@@ -279,11 +278,9 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     if(obj.count("modules")) {
         if(obj["modules"].is_array()) {
             for(auto mod : obj["modules"]) {
-                if(mod == "draggable") {
-                    ptr->set_draggable();
-                } else {
-                    Module{mod}.apply(index, state, ptr);
-                }
+                auto m = Modules::exists(mod);
+                if(m)
+                    m->_apply(index, state, ptr);
             }
         }
     }
@@ -297,32 +294,44 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 }
 
 std::string parse_text(const std::string& pattern, const Context& context) {
-    bool inside = false;
+    int inside = 0;
+    bool comment_out = false;
     std::string word, output;
     for(size_t i = 0; i<pattern.length(); ++i) {
-        if(not inside) {
-            if(pattern[i] == '{') {
+        if(inside == 0) {
+            if(pattern[i] == '\\') {
+                if(not comment_out)
+                    comment_out = true;
+            } else if(comment_out) {
+                output += pattern[i];
+                comment_out = false;
+                
+            } else if(pattern[i] == '{') {
                 word = "";
-                inside = true;
+                inside++;
+                
             } else {
                 output += pattern[i];
             }
             
         } else {
             if(pattern[i] == '}') {
-                output += resolve_variable(word, context, [word](const VarBase_t& variable, const std::string& modifiers, bool optional) -> std::string {
-                    try {
-                        auto ret = variable.value_string(modifiers);
-                        //print(word, " resolves to ", ret);
-                        return ret;
-                    } catch(...) {
-                        return optional ? "" : "null";
-                    }
-                }, [word](bool optional) -> std::string {
-                    return optional ? "" : "null";
-                });
+                inside--;
                 
-                inside = false;
+                if(inside == 0) {
+                    output += resolve_variable(word, context, [word](const VarBase_t& variable, const std::string& modifiers, bool optional) -> std::string {
+                        try {
+                            auto ret = variable.value_string(modifiers);
+                            //print(word, " resolves to ", ret);
+                            return ret;
+                        } catch(...) {
+                            return optional ? "" : "null";
+                        }
+                    }, [word](bool optional) -> std::string {
+                        return optional ? "" : "null";
+                    });
+                }
+                
             } else
                 word += pattern[i];
         }
@@ -495,27 +504,27 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
                 auto output = parse_text(pattern.at("text"), context);
                 button->set_txt(output);
             }
-        } else if(o.is<Rect>()) {
-            auto rect = o.to<Rect>();
         }
     }
 }
 
 void update_layout(const file::Path& path, Context& context, State& state, std::vector<Layout::Ptr>& objects) {
     try {
-        auto layout = load(path);
-        
-        std::vector<Layout::Ptr> objs;
-        State tmp;
-        for(auto &obj : layout) {
-            auto ptr = parse_object(obj, context, tmp);
-            if(ptr) {
-                objs.push_back(ptr);
+        auto result = load(path);
+        if(result) {
+            auto layout = result.value();
+            std::vector<Layout::Ptr> objs;
+            State tmp;
+            for(auto &obj : layout) {
+                auto ptr = parse_object(obj, context, tmp);
+                if(ptr) {
+                    objs.push_back(ptr);
+                }
             }
+            
+            state = std::move(tmp);
+            objects = std::move(objs);
         }
-        
-        state = std::move(tmp);
-        objects = std::move(objs);
         
     } catch(const std::invalid_argument&) {
     } catch(const std::exception& e) {
