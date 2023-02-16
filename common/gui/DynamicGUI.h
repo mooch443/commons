@@ -260,7 +260,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 
 std::string parse_text(const std::string& pattern, const Context& context);
 
-inline auto resolve_variable(const std::string& word, const Context& context, auto&& apply, auto&& error) -> typename cmn::detail::return_type<std::remove_cvref_t<decltype(apply)>>::type {
+template<typename ApplyF, typename ErrorF>
+inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
     auto parts = utils::split(word, ':');
     auto variable = utils::lowercase(parts.front());
     bool optional = false;
@@ -275,15 +276,15 @@ inline auto resolve_variable(const std::string& word, const Context& context, au
         modifiers = parts.back();
     
     if(context.variables.contains(variable)) {
-        if constexpr(std::invocable<decltype(apply), VarBase_t&, const std::string&>)
+        if constexpr(std::invocable<ApplyF, VarBase_t&, const std::string&>)
             return apply(*context.variables.at(variable), modifiers);
-        else if constexpr(std::invocable<decltype(apply), VarBase_t&, const std::string&, bool>)
+        else if constexpr(std::invocable<ApplyF, VarBase_t&, const std::string&, bool>)
             return apply(*context.variables.at(variable), modifiers, optional);
         else
-            static_assert(std::invocable<decltype(apply), VarBase_t&, const std::string&, bool>);
+            static_assert(std::invocable<ApplyF, VarBase_t&, const std::string&, bool>);
     }
     
-    if constexpr(std::invocable<decltype(error), bool>)
+    if constexpr(std::invocable<ErrorF, bool>)
         return error(optional);
     else
         return error();
