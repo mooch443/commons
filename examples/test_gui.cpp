@@ -283,6 +283,9 @@ int main(int argc, char**argv) {
                   Loc(100, 100),
                   TextClr{Cyan});
     
+    SETTING(blob_size_ranges) = std::vector<float>{};
+    SETTING(image_width) = int(1024);
+    
     dyn::Modules::add(Modules::Module{
         ._name = "draggable",
         ._apply = [](size_t, State&, const Layout::Ptr& o) {
@@ -310,6 +313,7 @@ int main(int argc, char**argv) {
         tmp["size"] = Size2(25, 25);
         tmp["blob_id"] = pv::bid(i * 1000);
         tmp["id"] = i;
+        tmp["type"] = "ocelot";
         tmp["tracked"] = bool(i % 2 == 0);
         tmp["p"] = float(i) / float(3);
         _data.push_back(std::move(tmp));

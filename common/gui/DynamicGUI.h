@@ -7,6 +7,7 @@
 #include <gui/types/Layout.h>
 #include <misc/PackLambda.h>
 #include <misc/SpriteMap.h>
+#include <misc/Timer.h>
 
 namespace gui {
 namespace dyn {
@@ -327,6 +328,12 @@ T resolve_variable_type(std::string word, const Context& context) {
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
 inline tl::expected<nlohmann::json, const char*> load(const file::Path& path){
+    static Timer timer;
+    if(timer.elapsed() < 0.15) {
+        return tl::unexpected("Have to wait longer to reload.");
+    }
+    timer.reset();
+    
     auto text = path.read_file();
     static std::string previous;
     if(previous != text) {

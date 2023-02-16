@@ -1632,21 +1632,23 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     }
     
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-    if(SETTING(gui_macos_blur)) {
-        bool blur = false;
-        auto p = o;
-        while(p) {
-            if(p->tagged(Effects::blur)) {
-                blur = true;
-                break;
+    if constexpr(std::same_as<default_impl_t, MetalImpl>) {
+        if(static_cast<const MetalImpl*>(_platform.get())->gui_macos_blur()) {
+            bool blur = false;
+            auto p = o;
+            while(p) {
+                if(p->tagged(Effects::blur)) {
+                    blur = true;
+                    break;
+                }
+                
+                p = p->parent();
             }
             
-            p = p->parent();
-        }
-        
-        auto e = list->VtxBuffer.Size;
-        for(auto i=i_; i<e; ++i) {
-            list->VtxBuffer[i].mask = blur;
+            auto e = list->VtxBuffer.Size;
+            for(auto i=i_; i<e; ++i) {
+                list->VtxBuffer[i].mask = blur;
+            }
         }
     }
 #endif

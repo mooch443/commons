@@ -25,6 +25,8 @@ namespace gui {
         std::atomic<size_t> frame_index;
         std::thread::id _update_thread;
         
+        GETTER_I(bool, gui_macos_blur, false)
+        
     public:
         MetalImpl(std::function<void()> draw, std::function<bool()> new_frame_fn);
         float center[2] = {0.5f, 0.5f};

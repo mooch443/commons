@@ -182,6 +182,11 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
     {
         gui::metal::current_instance = this;
         _frameBoundarySemaphore = dispatch_semaphore_create(1);
+        _gui_macos_blur = SETTING(gui_macos_blur).value<bool>();
+        GlobalSettings::map().register_callback("MetalImpl", [this](auto, auto&, auto& name, const sprite::PropertyType& value) {
+            if(name == "gui_macos_blur")
+                _gui_macos_blur = value.value<bool>();
+        });
         //dispatch_semaphore_signal(_frameBoundarySemaphore);
     }
 
@@ -381,7 +386,7 @@ void MetalImpl::message(const std::string &msg) const {
                 
                 [renderEncoder pushDebugGroup:@"TRex"];
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                uint8_t buffer = SETTING(gui_macos_blur).value<bool>();
+                uint8_t buffer = _gui_macos_blur;
                 [renderEncoder setVertexBytes:&buffer length:sizeof(buffer) atIndex:2];
 #endif
                 

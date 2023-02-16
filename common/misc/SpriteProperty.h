@@ -150,7 +150,7 @@ namespace cmn {
             constexpr static const bool value = !std::is_same<decltype(*(T*)(0) == *(Arg*)(0)), detail::No>::value;
         };
 
-        template<typename ValueType>
+        template<class ValueType>
         class Property : public PropertyType {
         public:
             static Property<ValueType> InvalidProp;
@@ -247,6 +247,8 @@ namespace cmn {
                 
         template<typename T>
         Property<T> Property<T>::InvalidProp(NULL);
+    
+    Property(const char*) -> Property<std::string>;
     }
 }
             

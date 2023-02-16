@@ -107,10 +107,16 @@ namespace sprite {
 		Reference& speed(double s);
         
         template<typename T>
+            requires (not std::convertible_to<T, const char*>)
+        void operator=(const T& value);
+        
+        template<typename T>
+            requires (std::convertible_to<T, const char*>)
         void operator=(const T& value);
         
         std::string toStr() const;
     };
+
 }
 }
 
@@ -374,17 +380,30 @@ namespace sprite {
         return _type.toProperty<T>().valid();
     }
     
-    template<typename T>
-    void Reference::operator=(const T& value) {
-        if (_type.valid()) {
-            _type.operator=(value);
-            
-        }
-        else {
-            _container.insert(_name, value);
-        }
+template<typename T>
+    requires (not std::convertible_to<T, const char*>)
+void Reference::operator=(const T& value) {
+    if (_type.valid()) {
+        _type.operator=(value);
+        
     }
-    
+    else {
+        _container.insert(_name, value);
+    }
+}
+
+template<typename T>
+    requires (std::convertible_to<T, const char*>)
+void Reference::operator=(const T& value) {
+    if (_type.valid()) {
+        _type.operator=(std::string(value));
+        
+    }
+    else {
+        _container.insert(_name, std::string(value));
+    }
+}
+
     template<typename T>
     const Property<T>& ConstReference::toProperty() const {
         return _type.toProperty<T>();
