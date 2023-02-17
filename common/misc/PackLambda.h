@@ -82,7 +82,7 @@ struct F<_Rp(_ArgTypes...)>
     //! Execute the function with parameters.
     //! Simply use the __base_t class' operator().
     template<typename ... _Args>
-    _Rp operator()(_Args&& ... args) const
+    _Rp operator()(_Args ... args) const
     {
         assert(_fn != nullptr);
         return (*_fn)(std::forward<_Args>(args)...);
