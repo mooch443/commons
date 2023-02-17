@@ -226,7 +226,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                     ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
                     state.loops[index] = {
                         .variable = obj["var"].get<std::string>(),
-                        .child = child
+                        .child = child,
+                        .state = std::make_unique<State>()
                     };
                 }
             }
@@ -395,13 +396,13 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
                 if(vector != obj.cache) {
                     std::vector<Layout::Ptr> ptrs;
                     obj.cache = vector;
-                    obj.state = state;
+                    obj.state = std::make_unique<State>(state);
                     Context tmp = context;
                     
                     for(auto &v : vector) {
                         tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, obj.state);
-                        update_objects(g, ptr, tmp, obj.state);
+                        auto ptr = parse_object(obj.child, tmp, *obj.state);
+                        update_objects(g, ptr, tmp, *obj.state);
                         ptrs.push_back(ptr);
                     }
                     
@@ -412,7 +413,7 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
                     for(size_t i=0; i<obj.cache.size(); ++i) {
                         tmp.variables["i"] = obj.cache[i];
                         //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]);
-                        update_objects(g, o.to<Layout>()->children()[i], tmp, obj.state);
+                        update_objects(g, o.to<Layout>()->children()[i], tmp, *obj.state);
                     }
                 }
             }

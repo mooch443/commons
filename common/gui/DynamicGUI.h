@@ -220,8 +220,20 @@ struct Context {
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
 };
 
-struct LoopBody;
-struct IfBody;
+struct State;
+
+struct LoopBody {
+    std::string variable;
+    nlohmann::json child;
+    std::unique_ptr<State> state;
+    std::vector<std::shared_ptr<VarBase_t>> cache;
+};
+
+struct IfBody {
+    std::string variable;
+    Layout::Ptr _if;
+    Layout::Ptr _else;
+};
 
 struct State {
     size_t object_index{0};
@@ -229,6 +241,27 @@ struct State {
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
     std::unordered_map<size_t, IfBody> ifs;
+    
+    State() = default;
+    State(State&&) = default;
+    State(const State& other)
+        : object_index(other.object_index),
+          patterns(other.patterns),
+          display_fns(other.display_fns),
+          ifs(other.ifs)
+    {
+        for(auto &[k, body] : other.loops) {
+            loops[k] = {
+                .variable = body.variable,
+                .child = body.child,
+                .state = std::make_unique<State>(),//*body.state),
+                .cache = body.cache
+            };
+        }
+    }
+    
+    State& operator=(const State& other) = default;
+    State& operator=(State&& other) = default;
 };
 
 namespace Modules {
@@ -240,19 +273,6 @@ struct Module {
 void add(Module&&);
 Module* exists(const std::string& name);
 }
-
-struct LoopBody {
-    std::string variable;
-    nlohmann::json child;
-    State state;
-    std::vector<std::shared_ptr<VarBase_t>> cache;
-};
-
-struct IfBody {
-    std::string variable;
-    Layout::Ptr _if;
-    Layout::Ptr _else;
-};
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
