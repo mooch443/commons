@@ -179,14 +179,14 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
  */
 void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
     /*if(_frames.count(index)) {
-        return _frames.at(index);
-    }*/
+     return _frames.at(index);
+     }*/
     //static Timing timing("Video::frame", 1);
     //TakeTiming take(timing);
     
-	if (index >= length())
+    if (index >= length())
         throw U_EXCEPTION("Read out of bounds ",index,"/",length(),". (caller ", loc.file_name(), ":", loc.line(),")");
-
+    
 #if defined(VIDEOS_USE_CUDA)
     if(index != _last_index+1) {
         throw U_EXCEPTION("Cannot jump with gpu Video (to ",index," from ",_last_index,").");
@@ -201,7 +201,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     _last_index++;
     
 #else
-	if (!_cap)
+    if (!_cap)
         throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
     // Set position to requested frame
@@ -230,8 +230,8 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
             /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
-                print("... ", _last_index, " / ", index);
-            }*/
+             print("... ", _last_index, " / ", index);
+             }*/
         }
         
         //print("Index: ", _last_index);
@@ -243,20 +243,38 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
             /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
-                print("... ", _last_index, " / ", index);
-            }*/
+             print("... ", _last_index, " / ", index);
+             }*/
         }
     }
     
     _last_index = index;
     
-    // Read requested frame
-    if(!_cap->read(read))
+    //! Read requested frame
+    // check whether we already have information on the color
+    // channels and dimensions:
+    const uint8_t _required_channels = _colored ? 3 : 1;
+    
+    if(_channels == 0) {
+        if(not _cap->read(read))
+            throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
+        
+        _channels = read.channels();
+        if(_channels == _required_channels) {
+            read.copyTo(frame);
+        }
+        
+    } else if(_channels == _required_channels && not _cap->read(frame)) {
+        throw U_EXCEPTION("Cannot read (1:1) frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
+    } else if(not _cap->read(read))
         throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
 #endif
     
     if(not _colored) {
-        if(read.channels() > 1) {
+        if(_channels == _required_channels) {
+            // already downloaded
+        }
+        else if(read.channels() > 1) {
             static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
             if(color_channel >= 3) {
                 // turn into HUE
@@ -274,6 +292,8 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
             }
         } else
             read.copyTo(frame);
+    } else if(_channels == _required_channels) {
+        // already in the correct image
     } else {
         if(read.channels() == 3) {
             read.copyTo(frame);

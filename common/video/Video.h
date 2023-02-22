@@ -213,6 +213,7 @@ private:
     
     //! Temporary read cache
     cv::Mat read;
+    uint8_t _channels{0};
     
     /**
      * Calculates maps using OpenCVs initUndistortRectifyMap method, which are later
