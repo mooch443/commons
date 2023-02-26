@@ -37,10 +37,10 @@ class Timing {
     long sample_count;
     
     struct Info {
-        Timer timer;
-        double averageTime;
+        Timer timer, timer_since;
+        double averageTime, averageTimeSince{0.0};
         double elapsed;
-        long timingCount;
+        long timingCount, stimingCount{0};
         std::atomic_bool initial_frame;
         
         Info() : averageTime(0.0), elapsed(0.0), timingCount(0), initial_frame(false) {}
@@ -52,9 +52,12 @@ class Timing {
 public:
     Timing(const std::string& name, double print_threshold = 1.0)
         : _name(name), _print_threshold(print_threshold), sample_count(0)
-    { }
+    {
+        
+    }
     
     void start_measure();
+    void start_();
     double conclude_measure();
     double conclude_measure(double elapsed);
 };
@@ -64,10 +67,7 @@ class TakeTiming {
     Timer timer;
     
 public:
-    TakeTiming(Timing& t) : timing(t) {
-        //timing.start_measure();
-        timer.reset();
-    }
+    TakeTiming(Timing& t);
     
     ~TakeTiming() {
         timing.conclude_measure(timer.elapsed());

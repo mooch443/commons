@@ -9,6 +9,31 @@ std::string Timer::toStr() const {
     return "Timer<"+cmn::Meta::toStr(duration)+">";
 }
 
+TakeTiming::TakeTiming(Timing& t) : timing(t) {
+    //timing.start_measure();
+    timing.start_();
+    timer.reset();
+}
+
+void Timing::start_() {
+#ifndef NDEBUG
+    std::lock_guard<std::mutex> guard(_mutex);
+    auto id = std::this_thread::get_id();
+    Info& t = _threads[id];
+    t.averageTimeSince += t.timer_since.elapsed();
+    t.stimingCount++;
+    
+    for(auto it = _threads.begin(); it != _threads.end();) {
+        auto && [tid, info] = *it;
+        if (info.timer_since.elapsed() > 10) {
+            cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
+            it = _threads.erase(it);
+        } else
+            ++it;
+    }
+#endif
+}
+
 void Timing::start_measure() {
 #ifndef NDEBUG
     std::lock_guard<std::mutex> guard(_mutex);
@@ -63,7 +88,7 @@ double Timing::conclude_measure(double elapsed) {
     }
     
     if (all_elapsed / _threads.size() >= _print_threshold) {
-        cmn::print("-- (", sample_count,") ", _name.c_str()," took ", info.averageTime / (double)info.timingCount * 1000,"ms");
+        cmn::print("-- (", sample_count,") ", _name.c_str()," took ", info.averageTime / (double)info.timingCount * 1000,"ms and ",info.averageTimeSince / (double)info.stimingCount*1000,"ms between");
         
         for(auto && [id, inf] : _threads) {
             if(inf.timingCount > 0) {
@@ -73,6 +98,9 @@ double Timing::conclude_measure(double elapsed) {
             }
         }
     }
+    
+    info.timer_since.reset();
+    
     return elapsed * 1000;
 #else
     UNUSED(elapsed)
