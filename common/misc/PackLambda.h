@@ -142,6 +142,26 @@ struct promised {
     }
 };
 
+template<typename R, typename... Args>
+struct packaged_func {
+    using signature = R(Args...);
+    package::F<signature> package;
+    
+    template<typename K>
+    packaged_func(K&& fn) : package(package::F<signature>{std::move(fn)}) { }
+    
+    packaged_func& operator=(packaged_func&& other) = default;
+    packaged_func& operator=(const packaged_func& other) = delete;
+    
+    packaged_func(packaged_func&& other) = default;
+    packaged_func(const packaged_func& other) = delete;
+    
+    template<typename... _Args>
+    R operator()(_Args... args) const {
+        return package(std::forward<_Args>(args)...);
+    }
+};
+
 }
 
 template<typename R>
