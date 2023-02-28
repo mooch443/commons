@@ -196,7 +196,7 @@ public:
     void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
     //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
     
-    static decltype(_pixels) calculate_pixels(const cmn::Image::UPtr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
+    static decltype(_pixels) calculate_pixels(const cmn::Image::Ptr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
     
     int32_t last_recount_threshold() const;
     float raw_recount(int32_t threshold) const;

@@ -576,7 +576,7 @@ void MetalImpl::message(const std::string &msg) const {
         return status;
     }
 
-    const Image::UPtr& MetalImpl::current_frame_buffer() {
+    const Image::Ptr& MetalImpl::current_frame_buffer() {
         return _current_framebuffer;
     }
     

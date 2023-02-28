@@ -473,7 +473,7 @@ protected:
     class ExternalImage : public Drawable {
     public:
         static constexpr auto Class = Type::data::values::IMAGE;
-        using Ptr = Image::UPtr;
+        using Ptr = Image::Ptr;
 /*#ifdef NDEBUG
         struct ReturnRef {
         private:
@@ -489,7 +489,7 @@ protected:
             }
         };
 #else*/
-        using ReturnRef = Image::UPtr&;
+        using ReturnRef = Image::Ptr&;
 //#endif
 
     private:
@@ -529,7 +529,7 @@ protected:
         std::ostream &operator <<(std::ostream &os) override;
         void update_with(const gpuMat&);
         void update_with(const Image&);
-        void update_with(Image::UPtr&&);
+        void update_with(Image::Ptr&&);
         Ptr exchange_with(Ptr&&);
         
         void updated_source();

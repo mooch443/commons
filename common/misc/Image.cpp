@@ -352,7 +352,7 @@ namespace cmn {
         if(_input.dims < 4 && _input.dims != 1 && _input.dims != 2)
             throw U_EXCEPTION("Currently, only RGBA and GRAY is supported.");
         
-        Image::UPtr tmp;
+        Image::Ptr tmp;
         const Image *input = &_input;
         if (_input.dims == 2) {
             std::vector<cv::Mat> vector;
@@ -392,7 +392,7 @@ namespace cmn {
         png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
     }
     
-    Image::UPtr from_png(const file::Path& path) {
+    Image::Ptr from_png(const file::Path& path) {
         int width, height;
         png_byte color_type;
         png_byte bit_depth;

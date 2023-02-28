@@ -130,7 +130,7 @@ void GLImpl::post_init() {
 
 void GLImpl::set_icons(const std::vector<file::Path>& icons) {
     std::vector<GLFWimage> images;
-    std::vector<Image::UPtr> data;
+    std::vector<Image::Ptr> data;
 
     for (auto& path : icons) {
         if (!path.exists()) {
@@ -427,7 +427,7 @@ void GLImpl::disable_readback() {
     
 }
 
-const Image::UPtr& GLImpl::current_frame_buffer() {
+const Image::Ptr& GLImpl::current_frame_buffer() {
     return pboOutput;
 }
 

@@ -983,7 +983,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _platform->set_frame_capture_enabled(false);
     }
 
-    const Image::UPtr& IMGUIBase::current_frame_buffer() {
+    const Image::Ptr& IMGUIBase::current_frame_buffer() {
         return _platform->current_frame_buffer();
     }
 

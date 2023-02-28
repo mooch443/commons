@@ -37,7 +37,7 @@ namespace cmn {
         const char* _callback;
         
     public:
-        Background(const Image::Ptr& image, LuminanceGrid* grid);
+        Background(Image::Ptr&& image, LuminanceGrid* grid);
         ~Background();
         
         template<DifferenceMethod method>

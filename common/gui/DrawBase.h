@@ -34,8 +34,8 @@ namespace gui {
             _frame_recording = v;
         }
         
-        virtual const Image::UPtr& current_frame_buffer() {
-            static Image::UPtr _empty(nullptr);
+        virtual const Image::Ptr& current_frame_buffer() {
+            static Image::Ptr _empty(nullptr);
             return _empty;
         }
         

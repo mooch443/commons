@@ -7,8 +7,8 @@ namespace cmn {
         return cmn::enable_absolute_difference;
     }
 
-    Background::Background(const Image::Ptr& image, LuminanceGrid *grid)
-        : _image(image), _grid(grid), _bounds(image->bounds())
+    Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
+        : _image(std::move(image)), _grid(grid), _bounds(image->bounds())
     {
         _name = "Background"+Meta::toStr((uint64_t)this);
         _callback = _name.c_str();

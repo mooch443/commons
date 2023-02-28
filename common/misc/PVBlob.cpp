@@ -529,7 +529,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return _threshold<DifferenceMethod::sign>(*this, value, background);
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
+    std::tuple<Vec2, Image::Ptr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
         Bounds b(bounds().pos() - float(padding), bounds().size() + float(padding) * 2);
         if(background)
             b.restrict_to(background->bounds());
@@ -560,7 +560,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::alpha_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::alpha_image(const cmn::Background& background, int32_t threshold) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
@@ -609,7 +609,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
 
-    std::tuple<Vec2, Image::UPtr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const {
+    std::tuple<Vec2, Image::Ptr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const {
         auto image = Image::Make();
         auto pos = equalized_luminance_alpha_image(background, threshold, minimum, maximum, *image);
         return { pos, std::move(image) };
@@ -694,13 +694,13 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         return b.pos();
     }
-    std::tuple<Vec2, Image::UPtr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
         auto image = Image::Make();
         Vec2 pos = luminance_alpha_image(background, threshold, *image);
         return { pos, std::move(image) };
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::difference_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::difference_image(const cmn::Background& background, int32_t threshold) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
@@ -746,7 +746,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         }
     }
     
-    decltype(Blob::_pixels) Blob::calculate_pixels(const Image::UPtr& image, const decltype(_hor_lines) &lines, const Vec2& offset) {
+    decltype(Blob::_pixels) Blob::calculate_pixels(const Image::Ptr& image, const decltype(_hor_lines) &lines, const Vec2& offset) {
         auto pixels = std::make_unique<std::vector<uchar>>();
         for(auto &line : *lines) {
             auto start = image->ptr(uint(int64_t(line.y) + int64_t(offset.y)), uint(int64_t(line.x0) + int64_t(offset.x)));
@@ -767,7 +767,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return pixels;
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::thresholded_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::thresholded_image(const cmn::Background& background, int32_t threshold) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
@@ -798,7 +798,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::binary_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::binary_image(const cmn::Background& background, int32_t threshold) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
@@ -834,7 +834,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
     
-    std::tuple<Vec2, Image::UPtr> Blob::binary_image() const {
+    std::tuple<Vec2, Image::Ptr> Blob::binary_image() const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         if(b.x < 0) {b.x = 0;--b.width;}
         if(b.y < 0) {b.y = 0;--b.height;}
