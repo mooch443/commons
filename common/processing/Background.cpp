@@ -8,7 +8,7 @@ namespace cmn {
     }
 
     Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
-        : _image(std::move(image)), _grid(grid), _bounds(image->bounds())
+        : _image(std::move(image)), _grid(grid), _bounds(_image->bounds())
     {
         _name = "Background"+Meta::toStr((uint64_t)this);
         _callback = _name.c_str();
