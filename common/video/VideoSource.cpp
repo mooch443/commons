@@ -341,7 +341,7 @@ VideoSource::VideoSource(const std::string& source)
         throw U_EXCEPTION("File extension not found in ",source);
     }
     
-    print("Searching for ",prefix);
+    print("Searching for ",prefix,".",extension);
     _base = prefix;
     
     if(std::regex_search (prefix,m,rplaceholder)) {
@@ -400,7 +400,9 @@ VideoSource::VideoSource(const std::vector<file::Path>& files)
 
 void VideoSource::open(const std::string& prefix, const std::string& suffix, const std::string& extension, int seq_start, int seq_end, int padding)
 {
-    if (seq_start == VIDEO_SEQUENCE_INVALID_VALUE || seq_end == VIDEO_SEQUENCE_INVALID_VALUE) {
+    if (   seq_start == VIDEO_SEQUENCE_INVALID_VALUE
+        || seq_end   == VIDEO_SEQUENCE_INVALID_VALUE)
+    {
         File *f = File::open(0, prefix + suffix, extension);
 
         if(f && f->type() != File::VIDEO)

@@ -879,6 +879,42 @@ void print(const Args & ... args) {
         log_to_callback(format<FormatterType::NONE>(args...));
 }
 
+template<typename... Args>
+void thread_print(const Args & ... args) {
+    static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+    static const auto get_thread_name = [](){
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
+        char buffer[1024];
+        pthread_getname_np(pthread_self(), buffer, sizeof(buffer));
+        return std::string(buffer);
+#else
+        return "thread";
+#endif
+    };
+    
+    auto str =
+        console_color<bracket_color, FormatterType::UNIX>( "[" )
+        + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
+        + " "
+        + console_color<FormatColor::YELLOW, FormatterType::UNIX>( get_thread_name() )
+        + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
+        + format<FormatterType::UNIX>(args...);
+    
+    log_to_terminal(str);
+
+#if COMMONS_FORMAT_LOG_TO_FILE
+    if (has_log_file()) {
+        str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
+            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>";
+        write_log_message(str);
+    }
+#endif
+    if (has_log_callback())
+        log_to_callback(format<FormatterType::NONE>(args...));
+}
+
+
 }
 
 #include <misc/utilsexception.h>
