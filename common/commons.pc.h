@@ -247,6 +247,61 @@ static_assert(false, "OpenCV version insufficient.");
 
 namespace cmn {
 
+
+inline void set_thread_name(const std::string& name) {
+#if __APPLE__
+    pthread_setname_np(name.c_str());
+#elif __linux__
+    pthread_setname_np(pthread_self(), name.c_str());
+#elif defined(WIN32)
+    int convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), NULL, 0);
+    if (convertResult <= 0)
+    {
+        throw std::invalid_argument("Cannot convert string "+name+" to wide char.");
+    }
+    else
+    {
+        ::std::wstring wide;
+        wide.resize(convertResult + 10);
+        convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), wide.data(), (int)wide.size());
+        if (convertResult > 0) {
+            SetThreadDescription(
+                GetCurrentThread(),
+                wide.c_str()
+            );
+        }
+    }
+#endif
+}
+
+inline std::string WStringToString(const std::wstring& wstr)
+{
+    std::string str;
+    size_t size;
+    str.resize(wstr.length());
+    wcstombs_s(&size, &str[0], str.size() + 1, wstr.c_str(), wstr.size());
+    return str;
+}
+
+inline std::string get_thread_name() {
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
+    char buffer[1024];
+    pthread_getname_np(pthread_self(), buffer, sizeof(buffer));
+    return std::string(buffer);
+#else
+    PWSTR data;
+    HRESULT hr = GetThreadDescription(GetCurrentThread(), &data);
+    if (SUCCEEDED(hr))
+    {
+        ::std::wstring thread_name(data);
+        LocalFree(data);
+
+        return WStringToString(thread_name);
+    }
+    return "<unnamed>";
+#endif
+}
+
 inline consteval bool is_debug_mode() {
 #ifndef NDEBUG
     return true;

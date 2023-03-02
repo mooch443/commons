@@ -718,42 +718,6 @@ namespace cmn {
         }
     }
     
-    void set_thread_name(const std::string& name) {
-#if __APPLE__
-        pthread_setname_np(name.c_str());
-#elif __linux__
-        pthread_setname_np(pthread_self(), name.c_str());
-#elif defined(WIN32)
-        int convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), NULL, 0);
-        if (convertResult <= 0)
-        {
-            FormatError("Cannot convert string ", name, " to wide char.");
-        }
-        else
-        {
-            ::std::wstring wide;
-            wide.resize(convertResult + 10);
-            convertResult = MultiByteToWideChar(CP_UTF8, 0, name.c_str(), (int)name.length(), wide.data(), (int)wide.size());
-            if (convertResult > 0) {
-                SetThreadDescription(
-                    GetCurrentThread(),
-                    wide.c_str()
-                );
-            }
-        }
-#endif
-    }
-
-    std::string get_thread_name() {
-#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
-        char buffer[1024];
-        pthread_getname_np(pthread_self(), buffer, sizeof(buffer));
-        return std::string(buffer);
-#else
-        return "thread";
-#endif
-    }
-    
     IMPLEMENT(Viridis::data_bgr){{
         Viridis::value_t {0.26700401,  0.00487433,  0.32941519},
         Viridis::value_t {0.26851048,  0.00960483,  0.33542652},

@@ -882,15 +882,6 @@ void print(const Args & ... args) {
 template<typename... Args>
 void thread_print(const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
-    static const auto get_thread_name = [](){
-#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
-        char buffer[1024];
-        pthread_getname_np(pthread_self(), buffer, sizeof(buffer));
-        return std::string(buffer);
-#else
-        return "thread";
-#endif
-    };
     
     auto str =
         console_color<bracket_color, FormatterType::UNIX>( "[" )
