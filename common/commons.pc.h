@@ -274,6 +274,7 @@ inline void set_thread_name(const std::string& name) {
 #endif
 }
 
+#if defined(WIN32)
 inline std::string WStringToString(const std::wstring& wstr)
 {
     std::string str;
@@ -282,6 +283,7 @@ inline std::string WStringToString(const std::wstring& wstr)
     wcstombs_s(&size, &str[0], str.size() + 1, wstr.c_str(), wstr.size());
     return str;
 }
+#endif
 
 inline std::string get_thread_name() {
 #if !defined(WIN32) && !defined(__EMSCRIPTEN__)
