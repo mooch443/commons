@@ -724,7 +724,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v2.10.1")
+set(pybind11_version_tag "v2.10.3")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -1308,14 +1308,14 @@ endif()
                 -DCMAKE_DEBUG_POSTFIX=
                 ${OPENCV_EXTRA_FLAGS})
 
-    set(COMMONS_OPENCV_VERSION "4.6.0")
+    set(COMMONS_OPENCV_VERSION "4.7.0")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
         if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
             message(STATUS "ARM?")
         else()
             message(STATUS "x86_64 macos")
-            set(COMMONS_OPENCV_VERSION "4.6.0")
+            set(COMMONS_OPENCV_VERSION "4.7.0")
         endif()
     endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})
