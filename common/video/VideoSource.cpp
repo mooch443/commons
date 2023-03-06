@@ -412,7 +412,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             _files_in_seq.push_back(f);
             _length += f->length();
         } else {
-            throw U_EXCEPTION("Input source '",prefix,"",suffix,"",suffix.empty() ? "" : "","' not found.","");
+            throw U_EXCEPTION("Input source '",prefix.c_str(),"",suffix.c_str(),"",suffix.empty() ? "" : "","' not found.","");
         }
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
