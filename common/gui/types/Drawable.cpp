@@ -669,7 +669,7 @@ namespace gui {
         _bounds_changed = true;
         
         if(parent() && parent()->type() == Type::ENTANGLED) {
-            //static_cast<Entangled*>(parent())->set_content_changed(true);
+            static_cast<Entangled*>(parent())->set_content_changed(true);
         }
     }
     

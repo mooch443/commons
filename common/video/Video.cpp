@@ -186,69 +186,39 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     
     if (index >= length())
         throw U_EXCEPTION("Read out of bounds ",index,"/",length(),". (caller ", loc.file_name(), ":", loc.line(),")");
-    
-#if defined(VIDEOS_USE_CUDA)
-    if(index != _last_index+1) {
-        throw U_EXCEPTION("Cannot jump with gpu Video (to ",index," from ",_last_index,").");
-    }
-    
-    cv::cuda::GpuMat d_frame;
-    if(!d_reader->nextFrame(d_frame)) {
-        throw U_EXCEPTION("Reading frame ",index," failed.");
-    }
-    d_frame.download(frame);
-    
-    _last_index++;
-    
-#else
     if (!_cap)
         throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
     // Set position to requested frame
-    if(!_last_index.valid() || index > _last_index + 1000_f)
-        lazy = true;
+    //if(!_last_index.valid() || index > _last_index + 1000_f)
+    //    lazy = true;
     
-    if(!_last_index.valid()
-       || index <= _last_index
-       || (lazy && index != _last_index+1_f))
-    {
+    auto next_index = _last_index.valid() ? _last_index + 1_f : 0_f;
+    if(index != next_index) {
         //FormatWarning("Have to reset video index from ", _last_index," to ", index," (",_filename.c_str(),")");
-        _cap->set(cv::CAP_PROP_POS_FRAMES, max(index.get() - 1, 0));
-        auto currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-        //print("Retrieving ", index, " and get ", currentPos);
+        int32_t start = index.try_sub(1_f).get();
+        _cap->set(cv::CAP_PROP_POS_FRAMES, start);
+        int32_t currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
+        print("Set to ", start, " and get ", currentPos);
         
-        auto start = index.get();
-        while(currentPos >= index.get() && start > 0) {
-            start = max(0, start - framerate());
+        while(start > 0 && currentPos + 1 > index.get()) {
+            start = max(0, start - int32_t(currentPos) + int32_t(index.get()) - 1);
             _cap->set(cv::CAP_PROP_POS_FRAMES, start);
             currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-            //print("Retrieving ", start, " and get ", currentPos);
+            print("Retrieving ", start, " and get ", currentPos, " (",index,"): ", int32_t(currentPos) - int32_t(index.get()));
         }
+        /*if(_cap)
+            delete _cap;
+        _cap = new cv::VideoCapture(_filename);
         
-        _last_index = Frame_t((int)currentPos);
+        int32_t currentPos = 0;*/
+        _last_index = Frame_t(currentPos);
         
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
-             print("... ", _last_index, " / ", index);
-             }*/
-        }
-        
-        //print("Index: ", _last_index);
-        
-    } else if(index > _last_index+1_f) {
-#ifndef NDEBUG
-        FormatWarning("Have to skip from video index from ", _last_index," to ", index-1_f," (",_filename.c_str(),")");
-#endif
-        for(; _last_index+1_f < index; ++_last_index) {
-            _cap->grab();
-            /*if(_last_index.get() - index.get() > 1000 && _last_index.get() % 1000 == 0) {
-             print("... ", _last_index, " / ", index);
-             }*/
+            print("* #Skipping ", _last_index, " (",index,")");
         }
     }
-    
-    _last_index = index;
     
     //! Read requested frame
     // check whether we already have information on the color
@@ -264,11 +234,12 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
             read.copyTo(frame);
         }
         
-    } else if(_channels == _required_channels && not _cap->read(frame)) {
-        throw U_EXCEPTION("Cannot read (1:1) frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
+    } else if(_channels == _required_channels) {
+        if(not _cap->read(frame))
+            throw U_EXCEPTION("Cannot read (1:1) frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
+        
     } else if(not _cap->read(read))
         throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
-#endif
     
     if(not _colored) {
         if(_channels == _required_channels) {
@@ -304,6 +275,16 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     }
     //_frames[index] = frame;
     //return _frames[index];
+    
+    /*if(not _last_index.valid()) {
+        _last_index = index;
+    } else _last_index = _last_index + 1_f;*/
+    _last_index = index;
+    
+    cv::putText(frame, Meta::toStr(_last_index), Vec2(10,20), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
+    cv::putText(frame, Meta::toStr(_cap->get(cv::CAP_PROP_POS_FRAMES)), Vec2(10,40), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
+    
+    print("_last_index == ", _last_index, " for index ", index, " reading ", _cap->get(cv::CAP_PROP_POS_FRAMES));
 }
 
 /**
