@@ -509,6 +509,9 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     
     if(type() == File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();
+    } else {
+        //! TODO: Frame rate not being set for image sequences...
+        //! needs check!
     }
 }
 
@@ -592,6 +595,9 @@ bool VideoSource::has_timestamps() const {
 }
 
 short VideoSource::framerate() const {
+    if(_framerate == -1) {
+        throw U_EXCEPTION("Frame rate not set properly in ", *this);
+    }
     return _framerate;
 }
 
