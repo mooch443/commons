@@ -647,6 +647,21 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
         _work_area = Bounds(mx, my, mw, mh);
         
+        const float min_size = 250;
+        if(width < min_size) {
+            FormatWarning("Window created smaller than is healthy (<",min_size,"): ", width, "x", height);
+            float ratio = float(height) / float(width);
+            width = min_size;
+            height = int(width * ratio);
+        }
+        
+        if(height < min_size) {
+            FormatWarning("Window created smaller than is healthy (<",min_size,"): ", width, "x", height);
+            float ratio = float(width) / float(height);
+            height = min_size;
+            width = int(ratio * height);
+        }
+        
         if(width / float(mw) >= height / float(mh)) {
             if(width > mw) {
                 float ratio = float(height) / float(width);
