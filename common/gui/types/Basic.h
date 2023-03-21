@@ -63,7 +63,8 @@ namespace gui {
         Bold          = 1 << 0, //! Bold characters
         Italic        = 1 << 1, //! Italic characters
         Underlined    = 1 << 2, //! Underlined characters
-        StrikeThrough = 1 << 3  //! Strike through characters
+        StrikeThrough = 1 << 3,  //! Strike through characters
+        Monospace     = 1 << 4   //! Code style
     };
     
     enum Align {

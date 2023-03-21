@@ -494,7 +494,7 @@ void DrawStructure::close_dialogs() {
     
     std::vector<Drawable*> DrawStructure::collect() {
         _root.update_bounds();
-        update_hover();
+        //update_hover();
         return _root.collect();
     }
     
@@ -572,7 +572,7 @@ void DrawStructure::close_dialogs() {
     
     Drawable* DrawStructure::find(float x, float y) {
         _root.update_bounds();
-        std::vector<Drawable*> results;
+        results.clear();
         _root.find(x, y, results);
         
         int64_t Z = -1;
@@ -594,6 +594,7 @@ void DrawStructure::close_dialogs() {
         Event e(HOVER);
         e.hover.x = x;
         e.hover.y = y;
+        e.hover.hovered = d != nullptr;
         
         do_hover(d, e);
         

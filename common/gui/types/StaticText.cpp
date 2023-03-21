@@ -300,7 +300,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     std::stringstream tag; // holds current tag when inside one
     
     std::unordered_set<std::string> commands {
-        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","b","string","number","str","nr","keyword","key","ref","a"
+        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a"
     };
     
     for(size_t i=0; i<_txt.size(); ++i) {
@@ -431,6 +431,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 tag.font.style |= Style::Bold;
             else if(tag.name == "i")
                 tag.font.style |= Style::Italic;
+            else if(tag.name == "c")
+                tag.font.style = Style::Monospace;
             else if(tag.name == "key" || tag.name == "keyword") {
                 tag.color = mix_colors(tag.color, Color(232, 85, 232, 255));
             }

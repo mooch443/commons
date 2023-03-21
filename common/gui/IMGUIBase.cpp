@@ -712,7 +712,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             return false;
         });
 
-        file::Path path("fonts/Quicksand-");
+        file::Path path("fonts/Quicksand");
         if(file::DataLocation::is_registered("app")) {
             path = file::DataLocation::parse("app", path);
         }
@@ -755,32 +755,41 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             config.OversampleH = 5;
             config.OversampleV = 5;
 
-            auto load_font = [&](int no, std::string suffix) {
+            auto load_font = [&](int no, std::string suffix, const file::Path& path, float scale = 1.0) {
                 config.FontNo = no;
                 if (no > 0)
                     config.MergeMode = false;
-
                 auto full = path.str() + suffix + ".ttf";
 #if defined(__EMSCRIPTEN__)
                 print("Loading font...");
-                auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale, &config);
+                auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale * scale, &config);
 #else
-                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale, &config);
+                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config);
 #endif
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
                     ptr = io.Fonts->AddFontDefault();
                     im_font_scale = max(1, dpi_scale) * 0.5f;
                 }
-                ptr->FontSize = base_scale * im_font_scale;
+                //ptr->ConfigData->GlyphOffset = ImVec2(1,0);
+                ptr->FontSize = base_scale * im_font_scale * scale;
 
                 return ptr;
             };
 
-            _fonts[Style::Regular] = load_font(0, "");
-            _fonts[Style::Italic] = load_font(0, "i");
-            _fonts[Style::Bold] = load_font(0, "b");
-            _fonts[Style::Bold | Style::Italic] = load_font(0, "bi");
+            _fonts[Style::Regular] = load_font(0, "", path);
+            _fonts[Style::Italic] = load_font(0, "-i", path);
+            _fonts[Style::Bold] = load_font(0, "-b", path);
+            _fonts[Style::Bold | Style::Italic] = load_font(0, "-bi", path);
+            
+            file::Path mono("fonts/PTMono");
+            if(file::DataLocation::is_registered("app")) {
+                path = file::DataLocation::parse("app", path);
+            }
+            if (not path.add_extension("ttf").exists())
+                FormatExcept("Cannot find file ",path.str(),"");
+            
+            _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
         }
 
         _platform->post_init();
@@ -1477,8 +1486,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                         cache->set_changed(false);
                     } else {
                         auto& output = ((PolyCache*)cache)->points();
+                        auto fill = (uint32_t)((ImColor)ptr->fill_clr());
                         for(size_t i=0; i<output.size(); i+=2) {
-                            list->AddLine(output[i], output[i+1], (ImColor)ptr->fill_clr(), 1);
+                            list->AddLine(output[i], output[i+1], fill, 1);
                         }
                     }
                     

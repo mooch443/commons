@@ -111,6 +111,8 @@ namespace gui {
         GETTER_NCONST(std::recursive_mutex, lock)
         std::set<Codes> pressed_keys;
         
+        std::vector<Drawable*> results;
+        
     public:
         DrawStructure(uint16_t width = 0, uint16_t height = 0, Vec2 scale = Vec2(1, 1))
             : _root(this, NULL, "root"),
