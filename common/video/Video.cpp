@@ -79,7 +79,7 @@ bool Video::open(const std::string& filename) {
     return true;
 }
 
-void Video::set_colored(bool c) {
+void Video::set_colored(ImageMode c) {
     _colored = c;
 }
 
@@ -223,7 +223,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     //! Read requested frame
     // check whether we already have information on the color
     // channels and dimensions:
-    const uint8_t _required_channels = _colored ? 3 : 1;
+    const uint8_t _required_channels = _colored == ImageMode::RGB ? 3 : 1;
     
     if(_channels == 0) {
         if(not _cap->read(read))
@@ -241,30 +241,41 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     } else if(not _cap->read(read))
         throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
     
-    if(not _colored) {
+    if(_colored != ImageMode::RGB) {
         if(_channels == _required_channels) {
             // already downloaded
+            if(_colored == ImageMode::R3G3B2) {
+                throw U_EXCEPTION("Cannot generate R3G3B2 from grayscale video.");
+            }
         }
         else if(read.channels() > 1) {
-            static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
-            if(color_channel >= 3) {
-                // turn into HUE
-                if(read.channels() == 3) {
-                    cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
-                    extractu8(read, frame, color_channel % 3);
-                    
-                } else print("Cannot copy to read frame with ",read.channels()," channels.");
+            if(_colored == ImageMode::R3G3B2) {
+                convert_to_r3g3b2(read, frame);
             } else {
-                if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
-                    frame = cv::Mat(read.rows, read.cols, CV_8UC1);
+                static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
+                if(color_channel >= 3) {
+                    // turn into HUE
+                    if(read.channels() == 3) {
+                        cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
+                        extractu8(read, frame, color_channel % 3);
+                        
+                    } else print("Cannot copy to read frame with ",read.channels()," channels.");
+                } else {
+                    if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
+                        frame = cv::Mat(read.rows, read.cols, CV_8UC1);
+                    }
+                    
+                    extractu8(read, frame, color_channel);
                 }
-                
-                extractu8(read, frame, color_channel);
             }
         } else
             read.copyTo(frame);
     } else if(_channels == _required_channels) {
         // already in the correct image
+        if(_colored == ImageMode::R3G3B2) {
+            throw U_EXCEPTION("Cannot generate R3G3B2 from grayscale video.");
+        }
+        
     } else {
         if(read.channels() == 3) {
             read.copyTo(frame);

@@ -19,13 +19,23 @@ namespace cv {
     class Mat;
 }
 
+namespace cmn {
+
+enum class ImageMode {
+    GRAY,
+    RGB,
+    R3G3B2
+};
+
+}
+
 namespace cmn { class Video; }
 
 /**
  * @class Video
  */
 class cmn::Video {
-    bool _colored{false};
+    ImageMode _colored{ImageMode::GRAY};
     
 public:
     typedef std::function<void(const cv::Mat &, int)> frame_callback;
@@ -90,7 +100,7 @@ public:
      */
     void onFrame(const Video::frame_callback& f);
     
-    void set_colored(bool);
+    void set_colored(ImageMode);
     
     /**
      * Sets the intrinsic parameters (focal length, skew, etc.) for this video. They

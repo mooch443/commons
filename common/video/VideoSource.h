@@ -4,6 +4,7 @@
 #include "types.h"
 #include <video/GenericVideo.h>
 #include <file/Path.h>
+#include <video/Video.h>
 
 #define VIDEO_SEQUENCE_INVALID_VALUE (-1)
 #define VIDEO_SEQUENCE_UNSPECIFIED_VALUE (-2)
@@ -15,10 +16,6 @@ namespace cmn {
 
 class cmn::VideoSource : public cmn::GenericVideo {
 public:
-    enum class ImageMode {
-        GRAY,
-        RGB
-    };
     
 public:
     class File {
@@ -57,7 +54,7 @@ public:
         auto length() const { return _length; }
         const cv::Size& resolution();
         
-        void frame(VideoSource::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+        void frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
         void close() const;
         Type type() const { return _type; }
         bool has_timestamps() const;

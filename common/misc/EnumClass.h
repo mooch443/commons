@@ -214,7 +214,7 @@ namespace NAME { \
         UNUSED(names) \
         for(auto &v : values) \
             if(utils::lowercase(v.name()) == utils::lowercase(name)) return v; \
-        throw std::invalid_argument(std::string("Cannot find value ")+name+" in enum '" + NAME :: data :: name + "'." ); \
+        throw std::invalid_argument(std::string("Cannot find value ")+name+" in enum '" + NAME :: data :: name + "' with options "+cmn::Meta::toStr(values)+"." ); \
     } \
     \
 template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\

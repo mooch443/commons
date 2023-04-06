@@ -484,6 +484,23 @@ namespace cmn {
     {
         cv::resize(mat, output, cv::Size(), factor, factor, flags);
     }
+
+
+inline uint8_t vec_to_r3g3b2(const cv::Vec3b& bgr) {
+    return (uint8_t(bgr[0] / 64) << 6)
+         | (uint8_t(bgr[1] / 32) << 3)
+         | (uint8_t(bgr[2] / 32) << 0);
+}
+inline cv::Vec3b r3g3b2_to_vec(const uint8_t& r3g3b2) {
+    return cv::Vec3b{
+        static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
+        static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
+        static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32)
+    };
+}
+
+void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output);
+void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output);
     
     // set all mat values at given channel to given value
     inline void setAlpha(cv::Mat &mat, unsigned char value, cv::Scalar only_this = cv::Scalar(0, 0, 0, -1))

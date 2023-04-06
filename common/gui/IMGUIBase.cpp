@@ -1060,250 +1060,87 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
     }
 
-bool LineSegementsIntersect(const Vec2& p, const Vec2& p2, const Vec2& q, const Vec2& q2, Vec2& intersection)
-{
-    constexpr bool considerCollinearOverlapAsIntersect = false;
-    
-    auto r = p2 - p;
-    auto s = q2 - q;
-    auto rxs = cross(r, s);
-    auto qpxr = cross(q - p, r);
-    
-    // If r x s = 0 and (q - p) x r = 0, then the two lines are collinear.
-    if (rxs == 0 && qpxr == 0)
-    {
-        // 1. If either  0 <= (q - p) * r <= r * r or 0 <= (p - q) * s <= * s
-        // then the two lines are overlapping,
-        if constexpr (considerCollinearOverlapAsIntersect)
-            if ((0 <= (q - p).dot(r) && (q - p).dot(r) <= r.dot(r)) || (0 <= (p - q).dot(s) && (p - q).dot(s) <= s.dot(s)))
-                return true;
-        
-        // 2. If neither 0 <= (q - p) * r = r * r nor 0 <= (p - q) * s <= s * s
-        // then the two lines are collinear but disjoint.
-        // No need to implement this expression, as it follows from the expression above.
-        return false;
+void CalculateBoundingBox(const std::vector<ImVec2>& poly, ImVec2& min, ImVec2& max) {
+    min.x = min.y = FLT_MAX;
+    max.x = max.y = -FLT_MAX;
+    for (const auto& p : poly) {
+        if (p.x < min.x) min.x = p.x;
+        if (p.y < min.y) min.y = p.y;
+        if (p.x > max.x) max.x = p.x;
+        if (p.y > max.y) max.y = p.y;
     }
-    
-    // 3. If r x s = 0 and (q - p) x r != 0, then the two lines are parallel and non-intersecting.
-    if (rxs == 0 && qpxr != 0)
-        return false;
-    
-    // t = (q - p) x s / (r x s)
-    auto t = cross(q - p,s)/rxs;
-    
-    // u = (q - p) x r / (r x s)
-    
-    auto u = cross(q - p, r)/rxs;
-    
-    // 4. If r x s != 0 and 0 <= t <= 1 and 0 <= u <= 1
-    // the two line segments meet at the point p + t r = q + u s.
-    if (rxs != 0 && (0 <= t && t < 1) && (0 <= u && u < 1))
-    {
-        // We can calculate the intersection point using either t or u.
-        intersection = p + t*r;
-        
-        // An intersection was found.
-        return true;
-    }
-    
-    // 5. Otherwise, the two line segments are not parallel but do not intersect.
-    return false;
 }
 
-/**
- Source: https://github.com/ocornut/imgui/issues/760
- */
-void PolyFillScanFlood(ImDrawList *draw, std::vector<ImVec2> *poly, std::vector<ImVec2>& output, ImColor color, const int gap = 1, const int strokeWidth = 1) {
+void InsertIntersection(std::vector<ImVec2>& scanHits, const ImVec2& intersect) {
+    scanHits.insert(std::lower_bound(scanHits.begin(), scanHits.end(), intersect, [](const ImVec2& a, const ImVec2& b) {
+        return a.x < b.x;
+    }), intersect);
+}
+
+void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::vector<ImVec2>& output, ImColor color, const int gap = 1, const int strokeWidth = 1) {
     using namespace std;
-
-    vector<ImVec2> scanHits;
-    static ImVec2 min, max; // polygon min/max points
-    auto &io = ImGui::GetIO();
-    bool isMinMaxDone = false;
-    const auto polysize = poly->size();
-    if(polysize < 3)
-        return; // smaller shapes (lines and points) cannot be filled
-
-    // find the orthagonal bounding box
-    // probably can put this as a predefined
-    if (!isMinMaxDone) {
-        min.x = min.y = FLT_MAX;
-        max.x = max.y = -FLT_MAX;
-        for (auto p : *poly) {
-            if (p.x < min.x) min.x = p.x;
-            if (p.y < min.y) min.y = p.y;
-            if (p.x > max.x) max.x = p.x;
-            if (p.y > max.y) max.y = p.y;
-        }
-        isMinMaxDone = true;
-    }
     
-    /*struct Edge {
-        int yMin;
-        int yMax;
-        float xHit;
-        float mInv;
-        
-        Edge() {}
-        
-        Edge(int yMin, int yMax, float xHit, float mInv)
-            : yMin(yMin), yMax(yMax), xHit(xHit), mInv(mInv)
-        {}
-        
-        bool operator<(const Edge& other) const {
-            return yMin < other.yMin || (yMin == other.yMin && xHit < other.xHit);
-        }
-    };
-    std::vector<Edge> segments;
-    segments.reserve(poly->size());
+    ImVec2 min, max;
+    CalculateBoundingBox(poly, min, max);
     
-    for (size_t i=0; i<poly->size(); ++i) {
-        auto prev = i ? (i - 1) : (poly->size()-1);
-        
-        auto &A = (*poly)[prev];
-        auto &B = (*poly)[i];
-        
-        if(Vec2(A) == Vec2(B))
-            continue;
-        
-        if(cmn::min(A.x, B.x) > io.DisplaySize.x)
-            continue;
-        
-        if(cmn::max(A.x, B.x) < 0)
-            continue;
-        
-        if(A.y <= B.y) {
-            if(B.y < 0 || A.y > io.DisplaySize.y)
-                continue;
-            else
-                segments.emplace_back(A.y, B.y, A.x, (B.x - A.x) / (B.y - A.y));
-        } else {
-            if(A.y < 0 || B.y > io.DisplaySize.y)
-                continue;
-            else
-                segments.emplace_back(B.y, A.y, B.x, (A.x - B.x) / (A.y - B.y));
-        }
-    }
-    
-    std::sort(segments.begin(), segments.end());*/
+    const auto &io = ImGui::GetIO();
     
     // Vertically clip
     if (min.y < 0) min.y                = 0;
     if (max.y > io.DisplaySize.y) max.y = io.DisplaySize.y;
     
-    // traverse all y-coordinates
-    /*std::vector<Vec2> intersections;
-    int y = min.y;
-    std::vector<Edge> AET;
-    
-    while (!segments.empty()) {
-        AET.clear();
-        
-        for(auto it = segments.begin(); it != segments.end(); ) {
-            if(it->yMin == y) {
-                AET.push_back(*it);
-            }
-            
-            if(it->yMax == y)
-                it = segments.erase(it);
-            else ++it;
-        }
-        
-        std::sort(AET.begin(), AET.end(), [](const Edge&A, const Edge&B){
-            return A.xHit < B.xHit;
-        });
-        
-        bool parity = false;
-        float x;
-        for(auto &edge : AET) {
-            if(parity) {
-                draw->AddLine(Vec2(x,y), Vec2(edge.xHit, y), color, strokeWidth);
-            } else {
-                x = edge.xHit;
-            }
-            parity = !parity;
-        }
-        
-        for(auto &edge : segments) {
-            if(!std::isinf(edge.mInv))
-                edge.xHit = edge.xHit + edge.mInv;
-        }
-        
-        ++y;
-    }
-    
-    return;*/
-
     // Bounds check
     if ((max.x < 0) || (min.x > io.DisplaySize.x) || (max.y < 0) || (min.y > io.DisplaySize.y)) return;
-
-
+    
     // so we know we start on the outside of the object we step out by 1.
     min.x -= 1;
     max.x += 1;
-
+    
     // Initialise our starting conditions
     int y = int(min.y);
-
+    const auto polysize = poly.size();
+    vector<ImVec2> scanHits;
+    scanHits.reserve(polysize / 2);
+    output.reserve(polysize * gap);
+    
     // Go through each scan line iteratively, jumping by 'gap' pixels each time
     while (y < max.y) {
-
-        scanHits.resize(0);
-
-        {
-            int jump = 1;
-            ImVec2 fp = poly->at(0);
-
-            for (size_t i = 0; i < polysize - 1; i++) {
-                ImVec2 pa = (*poly)[i];
-                ImVec2 pb = (*poly)[i+1];
-
-                // jump double/dud points
-                if (pa.x == pb.x && pa.y == pb.y) continue;
-
-                // if we encounter our hull/poly start point, then we've now created the
-                // closed
-                // hull, jump the next segment and reset the first-point
-                if ((!jump) && (fp.x == pb.x) && (fp.y == pb.y)) {
-                    if (i < polysize - 2) {
-                        fp   = (*poly)[i + 2];
-                        jump = 1;
-                        i++;
-                    }
+        scanHits.clear();
+        
+        for (size_t i = 0; i < polysize - 1; i++) {
+            const ImVec2 pa = poly[i];
+            const ImVec2 pb = poly[i + 1];
+            
+            // Skip double/dud points
+            if (pa.x == pb.x && pa.y == pb.y) continue;
+            
+            // Test to see if this segment makes the scan-cut
+            if ((pa.y > pb.y && y < pa.y && y > pb.y) || (pa.y < pb.y && y > pa.y && y < pb.y)) {
+                ImVec2 intersect;
+                intersect.y = y;
+                if (pa.x == pb.x) {
+                    intersect.x = pa.x;
                 } else {
-                    jump = 0;
+                    intersect.x = (pb.x - pa.x) / (pb.y - pa.y) * (y - pa.y) + pa.x;
                 }
-
-                // test to see if this segment makes the scan-cut.
-                if ((pa.y > pb.y && y < pa.y && y > pb.y) || (pa.y < pb.y && y > pa.y && y < pb.y)) {
-                    ImVec2 intersect;
-
-                    intersect.y = y;
-                    if (pa.x == pb.x) {
-                        intersect.x = pa.x;
-                    } else {
-                        intersect.x = (pb.x - pa.x) / (pb.y - pa.y) * (y - pa.y) + pa.x;
-                    }
-                    scanHits.push_back(intersect);
-                }
-            }
-
-            // Sort the scan hits by X, so we have a proper left->right ordering
-            sort(scanHits.begin(), scanHits.end(), [](ImVec2 const &a, ImVec2 const &b) { return a.x < b.x; });
-
-            // generate the line segments.
-            {
-                auto l = scanHits.size(); // we need pairs of points, this prevents segfault.
-                for (size_t i = 0; i+1 < l; i += 2) {
-                    output.push_back(scanHits[i]);
-                    output.push_back(scanHits[i+1]);
-                    draw->AddLine(scanHits[i], scanHits[i + 1], color, strokeWidth);
-                }
+                
+                // Add intersection while keeping scanHits sorted
+                InsertIntersection(scanHits, intersect);
             }
         }
+        
+        // Generate the line segments
+        {
+            auto l = scanHits.size(); // We need pairs of points; this prevents segfault
+            for (size_t i = 0; i + 1 < l; i += 2) {
+                output.push_back(scanHits[i]);
+                output.push_back(scanHits[i + 1]);
+                draw->AddLine(scanHits[i], scanHits[i + 1], color, strokeWidth);
+            }
+        }
+        
         y += gap;
-    } // for each scan line
-    scanHits.clear();
+    } // For each scan line
 }
 
 void ImRotateStart(int& rotation_start_index, ImDrawList* list)
@@ -1481,7 +1318,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     }
                     
                     if(cache->changed()) {
-                        PolyFillScanFlood(list, &points, output, ptr->fill_clr());
+                        PolyFillScanFlood(list, points, output, ptr->fill_clr());
                         ((PolyCache*)cache)->points() = output;
                         cache->set_changed(false);
                     } else {

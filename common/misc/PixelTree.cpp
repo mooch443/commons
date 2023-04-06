@@ -294,7 +294,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         pixels.reserve(blob->pixels()->size());
         
         if(bg) {
-            if(Background::enable_absolute_difference()) {
+            if(Background::track_absolute_difference()) {
                 if(bg->grid())
                     line_with_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
                 else

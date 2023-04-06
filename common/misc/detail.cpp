@@ -4,6 +4,7 @@
 #include <misc/Image.h>
 #include <gui/colors.h>
 #include <misc/metastring.h>
+#include <misc/Timer.h>
 
 namespace cmn {
     IMPLEMENT(CrashProgram::do_crash) = false;
@@ -987,4 +988,64 @@ namespace cmn {
     std::string HorizontalLine::toStr() const {
         return "HorizontalLine("+std::to_string(y)+","+std::to_string(x0)+","+std::to_string(x1)+")";
     }
+
+void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
+    if(output.rows != input.rows
+       || output.cols != input.cols
+       || output.type() != CV_8UC1)
+    {
+        output = cv::Mat::zeros(input.rows, input.cols, CV_8UC1);
+    }
+    
+    for(int y=0; y < input.rows; ++y) {
+        for(int x=0; x < input.cols; ++x) {
+            output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
+        }
+    }
+}
+
+void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
+    if(output.rows != input.rows
+       || output.cols != input.cols
+       || output.type() != CV_8UC3)
+    {
+        output = cv::Mat::zeros(input.rows, input.cols, CV_8UC3);
+    }
+    
+    static Timing parallel("parallel");
+    {
+        TakeTiming take(parallel);
+        const std::ptrdiff_t num_pixels = input.total();
+        const auto input_data = input.ptr<uint8_t>();
+        const std::ptrdiff_t num_threads = std::thread::hardware_concurrency();
+        std::vector<std::thread> threads(num_threads);
+        const std::ptrdiff_t block_size = num_pixels / num_threads;
+        
+        for (std::ptrdiff_t i = 0; i < num_threads; ++i) {
+            const std::ptrdiff_t start_index = i * block_size;
+            const std::ptrdiff_t end_index = (i == num_threads - 1) ? num_pixels : (i + 1) * block_size;
+            
+            threads[i] = std::thread([&input_data, output = output.ptr<cv::Vec3b>(), start_index, end_index]()
+                                     {
+                for (std::ptrdiff_t j = start_index; j < end_index; ++j) {
+                    output[j] = r3g3b2_to_vec(input_data[j]);
+                }
+            });
+        }
+        
+        for (auto& thread : threads) {
+            thread.join();
+        }
+    }
+    
+    static Timing linear("linear");
+    {
+        TakeTiming take(linear);
+        for(int y=0; y < input.rows; ++y) {
+            for(int x=0; x < input.cols; ++x) {
+                output.at<cv::Vec3b>(y, x) = r3g3b2_to_vec(input.at<uchar>(y, x));
+            }
+        }
+    }
+}
 }

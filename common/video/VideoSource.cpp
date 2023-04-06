@@ -164,12 +164,12 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-void VideoSource::File::frame(VideoSource::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
+void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
         case VIDEO:
             if (!_video->isOpened()) {
                 _video->open(_filename);
-                _video->set_colored(color != ImageMode::GRAY);
+                _video->set_colored(color);
             }
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
@@ -512,6 +512,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     } else {
         //! TODO: Frame rate not being set for image sequences...
         //! needs check!
+        FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
     }
 }
 
@@ -596,7 +597,9 @@ bool VideoSource::has_timestamps() const {
 
 short VideoSource::framerate() const {
     if(_framerate == -1) {
-        throw U_EXCEPTION("Frame rate not set properly in ", *this);
+        if(GlobalSettings::has("frame_rate"))
+            return SETTING(frame_rate).value<uint32_t>();
+        throw U_EXCEPTION("Frame rate not set properly in ", *this, " nor in GlobalSettings.");
     }
     return _framerate;
 }

@@ -26,7 +26,7 @@ namespace cmn {
 
     class Background {
     public:
-        static bool enable_absolute_difference();
+        static bool track_absolute_difference();
         
     protected:
         Image::Ptr _image;

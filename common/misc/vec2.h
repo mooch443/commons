@@ -634,4 +634,40 @@ public:
         
         return nullptr;
     }
+
+//! LineSegementsIntersect (modified a bunch) from https://www.codeproject.com/Tips/862988/Find-the-Intersection-Point-of-Two-Line-Segments under CPOL (https://www.codeproject.com/info/cpol10.aspx)
+inline std::optional<Vec2> LineSegmentsIntersect(const Vec2& p1, const Vec2& p2, const Vec2& q1, const Vec2& q2)
+{
+    constexpr bool considerCollinearOverlapAsIntersect = false;
+
+    const auto r = p2 - p1;
+    const auto s = q2 - q1;
+    const auto r_cross_s = cross(r, s);
+    const auto q1_minus_p1 = q1 - p1;
+    const auto qp_cross_r = cross(q1_minus_p1, r);
+
+    if (r_cross_s == 0 && qp_cross_r == 0)
+    {
+        if constexpr (considerCollinearOverlapAsIntersect)
+        {
+            const auto q_minus_p_dot_r = q1_minus_p1.dot(r);
+            const auto p_minus_q_dot_s = (p1 - q1).dot(s);
+            const auto t = q_minus_p_dot_r / r.dot(r);
+            if ((0 <= q_minus_p_dot_r && q_minus_p_dot_r <= r.dot(r)) || (0 <= p_minus_q_dot_s && p_minus_q_dot_s <= s.dot(s)))
+                return std::optional<Vec2>(p1 + r * std::clamp(t, 0.0f, 1.0f));
+        }
+        return std::nullopt;
+    }
+
+    if (r_cross_s == 0 && qp_cross_r != 0)
+        return std::nullopt;
+
+    const auto t = cross(q1_minus_p1, s) / r_cross_s;
+    const auto u = cross(q1_minus_p1, r) / r_cross_s;
+
+    if ((0 <= t && t < 1) && (0 <= u && u < 1))
+        return std::optional<Vec2>(p1 + t * r);
+
+    return std::nullopt;
+}
 }
