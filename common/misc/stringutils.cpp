@@ -222,3 +222,97 @@ namespace utils {
         return file::Path(filename).read_file();
     }
 }
+
+static inline constexpr std::size_t InvalidMultibyteSequence = static_cast<std::size_t>(-1);
+static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<std::size_t>(-2);
+
+[[nodiscard]] std::wstring s2ws(const std::string& str)
+{
+    std::wstring result;
+    std::mbstate_t state = std::mbstate_t();
+
+    for (const auto& ch : str)
+    {
+        wchar_t wc;
+        std::size_t res = std::mbrtowc(&wc, &ch, 1, &state);
+
+        if (res == InvalidMultibyteSequence
+            || res == IncompleteMultibyteSequence)
+        {
+            throw std::runtime_error("Invalid or incomplete multibyte sequence");
+        }
+
+        result += wc;
+    }
+
+    return result;
+}
+
+[[nodiscard]] std::string ws2s(const std::wstring& wstr)
+{
+    std::string result;
+    std::mbstate_t state = std::mbstate_t();
+
+    for (const auto& wc : wstr)
+    {
+        std::array<char, 4> mb;
+        std::size_t res = std::wcrtomb(mb.data(), wc, &state);
+
+        if (res == InvalidMultibyteSequence) {
+            throw std::runtime_error("Invalid wide character");
+        }
+
+        result.append(mb.data(), res);
+    }
+
+    return result;
+}
+
+[[nodiscard]] std::wstring utf8ToWide(const std::u8string_view& utf8Str)
+{
+    std::wstring result;
+    result.reserve(utf8Str.length());
+
+    std::mbstate_t state = std::mbstate_t();
+    const char8_t* in_next = utf8Str.data();
+    const char8_t* in_end = utf8Str.data() + utf8Str.length();
+
+    while (in_next < in_end)
+    {
+        wchar_t wc;
+        std::size_t res = std::mbrtowc(&wc, reinterpret_cast<const char*>(in_next), in_end - in_next, &state);
+
+        if (res == InvalidMultibyteSequence
+            || res == IncompleteMultibyteSequence)
+        {
+            throw std::runtime_error("Invalid or incomplete multibyte sequence");
+        }
+
+        result.push_back(wc);
+        in_next += res;
+    }
+
+    return result;
+}
+
+[[nodiscard]] std::u8string wideToUtf8(const std::wstring_view& wideStr)
+{
+    std::u8string result;
+    result.reserve(wideStr.length() * 4);
+
+    std::mbstate_t state = std::mbstate_t();
+    for (const auto& wc : wideStr)
+    {
+        std::array<char, 4> mb;
+        std::size_t res = std::wcrtomb(mb.data(), wc, &state);
+
+        if (res == InvalidMultibyteSequence) {
+            throw std::runtime_error("Invalid wide character");
+        }
+
+
+        result.append(reinterpret_cast<const char8_t*>(mb.data()), res);
+    }
+
+    return result;
+}

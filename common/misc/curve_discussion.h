@@ -2,7 +2,7 @@
 #include <types.h>
 
 namespace cmn {
-    namespace curves {  
+    namespace curves {
         struct Extrema {
             std::vector<float> minima;
             std::vector<float> maxima;

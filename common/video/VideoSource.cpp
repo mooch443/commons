@@ -412,7 +412,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             _files_in_seq.push_back(f);
             _length += f->length();
         } else {
-            throw U_EXCEPTION("Input source '",prefix.c_str(),"",suffix.c_str(),"",suffix.empty() ? "" : "","' not found.","");
+            throw U_EXCEPTION("Input source ",prefix+suffix+(suffix.empty() ? "" : "")," not found.","");
         }
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
@@ -597,8 +597,13 @@ bool VideoSource::has_timestamps() const {
 
 short VideoSource::framerate() const {
     if(_framerate == -1) {
-        if(GlobalSettings::has("frame_rate"))
-            return SETTING(frame_rate).value<uint32_t>();
+        if(GlobalSettings::has("frame_rate")) {
+            auto frame_rate = SETTING(frame_rate).value<uint32_t>();
+            if(frame_rate > 0)
+                return frame_rate;
+            FormatWarning("frame_rate not set properly for an image sequence. Assuming a default value of 25.");
+            return 25;
+        }
         throw U_EXCEPTION("Frame rate not set properly in ", *this, " nor in GlobalSettings.");
     }
     return _framerate;

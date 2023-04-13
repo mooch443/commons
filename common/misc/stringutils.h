@@ -176,35 +176,42 @@ inline std::string uppercase(const char* original) {
     std::vector<std::wstring> split(std::wstring const& s, char c);
 }
 
-inline std::wstring s2ws(const std::string& str)
-{
-    using convert_typeX = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_typeX, wchar_t> converterX;
+/**
+ * @brief Converts a narrow string to a wide string.
+ *
+ * @param str The input narrow string.
+ * @return A wide string representation of the input string.
+ * @throws std::runtime_error If an invalid or incomplete multibyte sequence is encountered.
+ */
+[[nodiscard]] std::wstring s2ws(const std::string& str);
 
-    return converterX.from_bytes(str);
-}
+/**
+ * @brief Converts a wide string to a narrow string.
+ *
+ * @param wstr The input wide string.
+ * @return A narrow string representation of the input wide string.
+ * @throws std::runtime_error If an invalid wide character is encountered.
+ */
+[[nodiscard]] std::string ws2s(const std::wstring& wstr);
 
-inline std::string ws2s(const std::wstring& wstr)
-{
-    using convert_typeX = std::codecvt_utf8<wchar_t>;
-    std::wstring_convert<convert_typeX, wchar_t> converterX;
+/**
+ * @brief Converts a UTF-8 encoded string to a wide string.
+ *
+ * @param utf8Str The input UTF-8 encoded string.
+ * @return A wide string representation of the input UTF-8 string.
+ * @throws std::runtime_error If an invalid or incomplete multibyte sequence is encountered.
+ */
+[[nodiscard]] std::wstring utf8ToWide(const std::u8string_view& utf8Str);
 
-    return converterX.to_bytes(wstr);
-}
+/**
+ * @brief Converts a wide string to a UTF-8 encoded string.
+ *
+ * @param wideStr The input wide string.
+ * @return A UTF-8 encoded string representation of the input wide string.
+ * @throws std::runtime_error If an invalid wide character is encountered.
+ */
+[[nodiscard]] std::u8string wideToUtf8(const std::wstring_view& wideStr);
 
-// convert UTF-8 string to wstring
-inline std::wstring utf82ws (const std::string& str)
-{
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.from_bytes(str);
-}
-
-// convert wstring to UTF-8 string
-inline std::string ws2utf8 (const std::wstring& str)
-{
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-    return myconv.to_bytes(str);
-}
 
 namespace utils {
 

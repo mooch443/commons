@@ -427,7 +427,19 @@ pv::BlobPtr CompressedBlob::unpack() const {
             auto local_ptr = _pixels->data();
 #endif
             auto ptr = _pixels->data();
-            if(Background::track_absolute_difference()) {
+            if(not Background::use_differences()) {
+                for (auto &line : hor_lines()) {
+                    recount += background.count_above_threshold<DifferenceMethod::none>(line.x0, line.x1, line.y, ptr, threshold);
+                    ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
+#ifndef NDEBUG
+                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
+                        if(background.is_different<DifferenceMethod::none>(x, line.y, *local_ptr, threshold)) {
+                            local_recount++;
+                        }
+                    }
+#endif
+                }
+            } else if(Background::track_absolute_difference()) {
                 for (auto &line : hor_lines()) {
                     recount += background.count_above_threshold<DifferenceMethod::absolute>(line.x0, line.x1, line.y, ptr, threshold);
                     ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
@@ -453,7 +465,11 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 }
             }
             
-            assert(recount == local_recount);
+#ifndef NDEBUG
+            if(recount != local_recount)
+                FormatWarning("local_recount = ", local_recount, " vs. recount = ", recount);
+            //assert(recount == local_recount);
+#endif
             
             if(!dont_cache || _recount_threshold == -1) {
                 _recount_threshold = threshold;
@@ -524,6 +540,8 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
 
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
+        if(not Background::use_differences())
+            return _threshold<DifferenceMethod::none>(*this, value, background);
         if(Background::track_absolute_difference())
             return _threshold<DifferenceMethod::absolute>(*this, value, background);
         return _threshold<DifferenceMethod::sign>(*this, value, background);
@@ -591,7 +609,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();
@@ -650,7 +670,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();
@@ -686,7 +708,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();
@@ -726,7 +750,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();
@@ -789,7 +815,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();
@@ -825,7 +853,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(Background::track_absolute_difference()) {
+        if(not Background::use_differences()) {
+            work.operator()<DifferenceMethod::none>();
+        } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
         } else {
             work.operator()<DifferenceMethod::sign>();

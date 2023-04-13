@@ -2,9 +2,13 @@
 #include <misc/GlobalSettings.h>
 
 namespace cmn {
-    static std::atomic<bool> track_absolute_difference = true;
+    static std::atomic<bool> track_absolute_difference = true,
+                             use_differences = true;
     bool Background::track_absolute_difference() {
         return cmn::track_absolute_difference;
+    }
+    bool Background::use_differences() {
+        return cmn::use_differences;
     }
 
     Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
@@ -22,6 +26,9 @@ namespace cmn {
             
             if(name == "track_absolute_difference") {
                 cmn::track_absolute_difference = v.template value<bool>();
+                this->update_callback();
+            } else if(name == "use_differences") {
+                cmn::use_differences = v.template value<bool>();
                 this->update_callback();
             }
         });

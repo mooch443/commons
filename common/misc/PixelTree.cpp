@@ -294,7 +294,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         pixels.reserve(blob->pixels()->size());
         
         if(bg) {
-            if(Background::track_absolute_difference()) {
+            if(not Background::use_differences()) {
+                line_without_grid<DifferenceMethod::none>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            } else if(Background::track_absolute_difference()) {
                 if(bg->grid())
                     line_with_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
                 else
@@ -322,13 +324,11 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         
         size_t max_size = 0;
         blobs_t::value_type *found = nullptr;
-        blob::Prediction* found_pred = nullptr;
         for(auto &tup : blobs) {
             auto && [lines, pixels, flags, pred] = tup;
             if(pixels->size() > max_size) {
                 found = &tup;
                 max_size = pixels->size();
-                found_pred = &pred;
             }
         }
         
@@ -337,13 +337,13 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                     std::move(found->lines),
                     std::move(found->pixels),
                     found->extra_flags,
-                    std::move(*found_pred));
+                    blob::Prediction{blob->prediction()});
         
         return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
                 std::make_unique<std::vector<uchar>>(),
                 0,
-                std::move(*found_pred));
+                blob::Prediction{blob->prediction()});
         //auto ptr = pv::Blob::Make(lines, pixels);
         //return ptr;
     }

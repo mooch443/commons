@@ -6,7 +6,8 @@
 namespace cmn {
     enum class DifferenceMethod {
         absolute,
-        sign
+        sign,
+        none
     };
 
     template<DifferenceMethod method>
@@ -22,11 +23,18 @@ namespace cmn {
         inline int operator()(int source, int value) const {
             return max(0, source - value);
         }
+        
+        template<DifferenceMethod M = method>
+            requires (M == DifferenceMethod::none)
+        inline int operator()(int, int value) const {
+            return value;
+        }
     };
 
     class Background {
     public:
         static bool track_absolute_difference();
+        static bool use_differences();
         
     protected:
         Image::Ptr _image;

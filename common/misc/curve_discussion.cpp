@@ -2,25 +2,27 @@
 #include <misc/vec2.h>
 
 namespace cmn {
-    namespace curves {
+namespace curves {
         float interpolate(const std::vector<float>& values, float index) {
-            long first = index;
-            const long N = values.size();
-            float p = index - first;
-            
-            if(first < 0) {
-                first = N - (fabs(first) - N * floorf(fabs(first) / float(N)));
-            }
-            //while(first < 0)
-            //    first = first + long(values.size());
-            
-            long next = first + 1;
-            while(next >= N)
-                next = next - N;
-            
-            float v0 = values[first];
-            float v1 = values[next];
-            
+            const auto N = values.size();
+            // Compute the index of the first value to interpolate
+            const auto first = static_cast<std::vector<float>::size_type>(index);
+            // Compute the interpolation factor
+            const auto p = index - first;
+
+            // calculate the wrapped index and return the value
+            auto get_value = [&](std::vector<float>::size_type i) {
+                // Compute the wrapped index
+                i = i - (i >= N) * N;
+                // Retrieve the value from the input vector
+                return values[i];
+            };
+
+            // Compute the values to interpolate using the wrapped indices
+            float v0 = get_value(first);
+            float v1 = get_value(first + 1);
+
+            // Compute and return the interpolated value
             return v0 * (1 - p) + v1 * p;
         }
         
