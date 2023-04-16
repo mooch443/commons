@@ -629,23 +629,55 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
         method = SETTING(averaging_method).value<averaging_method_t::Class>();
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
     print("Use averaging method: '", method.name(),"'");
-    if (length() < 10_f) {
+    
+    auto [start, end] = [this]() -> std::tuple<Frame_t, Frame_t>{
+        if(GlobalSettings::has("video_conversion_range")) {
+            auto video_conversion_range = SETTING(video_conversion_range).value<std::pair<long_t, long_t>>();
+            return {
+                video_conversion_range.first > -1 ? min(Frame_t(video_conversion_range.first), length()) : 0_f,
+                video_conversion_range.second > -1 ? min(Frame_t(video_conversion_range.second), length()) : length()
+            };
+        }
+        return {0_f, length()};
+    }();
+    const auto L = max(start, end) - start;
+    if (L < 10_f) {
         processImage(average, average);
         return;
     }
     
-    AveragingAccumulator acc;
+    auto [start_index, end_index] = [&, start=start, end=end]() -> std::tuple<size_t, size_t> {
+        Frame_t index = 0_f;
+        size_t start_index{0}, end_index{0};
+        for(uint64_t i=0; i<_files_in_seq.size(); i++) {
+            auto l = _files_in_seq.at(i)->length();
+            if(index + l >= start) {
+                start_index = i;
+            }
+            if(index + l > end) {
+                end_index = i;
+                break;
+            }
+            index += l;
+        }
+        return {start_index, end_index};
+    }();
     
-    Frame_t::number_t samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.01f);
-    uint64_t step = max(1u, Frame_t::number_t(_files_in_seq.size()) < samples
+    AveragingAccumulator acc;
+    const Frame_t::number_t N_indexes = end_index - start_index + 1;
+    
+    Frame_t::number_t samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (L.get() * 0.01f);
+    uint64_t step = max(1u, N_indexes < samples
                                 ? 1u
-                                : (uint64_t)ceil(_files_in_seq.size() / samples));
+                                : (uint64_t)ceil(N_indexes / samples));
     auto frames_per_file =
         max(1_f,
-            Frame_t::number_t(_files_in_seq.size()) < samples
-                ? (length() / Frame_t{_files_in_seq.size()}
-                    / (length() / Frame_t{samples}))
+            N_indexes < samples
+                ? (L / Frame_t(N_indexes)
+                    / (L / Frame_t{samples}))
                 : 1_f);
+    
+    print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");
@@ -655,16 +687,22 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     
     std::mutex mutex;
     GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
-    for(uint64_t i=0; i<_files_in_seq.size(); i+=step) {
+    Frame_t index = 0_f;
+    for(uint64_t i=start_index; i<=end_index; i+=step) {
         auto file = _files_in_seq.at(i);
-        file_indexes[file].insert(0_f);
-        if(frames_per_file > 1_f) {
-            const auto step = max(1_f, file->length() / frames_per_file);
-            for(Frame_t i=step; i<file->length(); i+=step) {
-                file_indexes[file].insert(i);
+        //file_indexes[file].insert(0_f);
+        const auto step = max(1_f, file->length() / frames_per_file);
+        for(Frame_t j=start.try_sub(index); j <file->length() && j + index < end; j+=step) {
+            if(j + index >= start) {
+                file_indexes[file].insert(j);
             }
         }
+        
+        
+        index += file->length();
     }
+    
+    print("file_indexes = ", file_indexes);
     
     for(auto && [file, indexes] : file_indexes) {
         auto fn = [this, &acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
