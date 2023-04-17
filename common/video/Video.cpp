@@ -199,13 +199,13 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         int32_t start = index.try_sub(1_f).get();
         _cap->set(cv::CAP_PROP_POS_FRAMES, start);
         int32_t currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-        print("Set to ", start, " and get ", currentPos);
+        //print("Set to ", start, " and get ", currentPos);
         
         while(start > 0 && currentPos + 1 > index.get()) {
             start = max(0, start - int32_t(currentPos) + int32_t(index.get()) - 1);
             _cap->set(cv::CAP_PROP_POS_FRAMES, start);
             currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-            print("Retrieving ", start, " and get ", currentPos, " (",index,"): ", int32_t(currentPos) - int32_t(index.get()));
+            //print("Retrieving ", start, " and get ", currentPos, " (",index,"): ", int32_t(currentPos) - int32_t(index.get()));
         }
         /*if(_cap)
             delete _cap;
@@ -216,7 +216,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            print("* #Skipping ", _last_index, " (",index,")");
+            //print("* #Skipping ", _last_index, " (",index,")");
         }
     }
     
