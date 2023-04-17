@@ -33,6 +33,8 @@ namespace cmn {
             }
         });
         
+        cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
+        cmn::use_differences = SETTING(use_differences).value<bool>();
         update_callback();
     }
     
