@@ -491,16 +491,49 @@ inline uint8_t vec_to_r3g3b2(const cv::Vec3b& bgr) {
          | (uint8_t(bgr[1] / 32) << 3)
          | (uint8_t(bgr[2] / 32) << 0);
 }
-inline cv::Vec3b r3g3b2_to_vec(const uint8_t& r3g3b2) {
-    return cv::Vec3b{
-        static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
-        static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
-        static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32)
-    };
+
+template<uint8_t channels = 3>
+inline auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
+    if constexpr(channels == 3) {
+        return cv::Vec3b{
+            static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
+            static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
+            static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32)
+        };
+    } else if constexpr(channels == 4) {
+        return cv::Vec4b{
+            static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
+            static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
+            static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32),
+            alpha
+        };
+    }
 }
 
 void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output);
-void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output);
+
+template<uint8_t channels = 3, uint8_t input_channels = 1>
+void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
+    using input_t = cv::Vec<uchar, input_channels>;
+    using output_t = cv::Vec<uchar, channels>;
+    
+    if(output.rows != input.rows
+       || output.cols != input.cols
+       || output.type() != CV_8UC(channels))
+    {
+        output = cv::Mat::zeros(input.rows, input.cols, CV_8UC(channels));
+    }
+    
+    for(int y=0; y < input.rows; ++y) {
+        for(int x=0; x < input.cols; ++x) {
+            auto &i = input.at<input_t>(y, x);
+            if constexpr(input_channels == 2)
+                output.at<output_t>(y, x) = r3g3b2_to_vec<channels>(i[0], i[1]);
+            else
+                output.at<output_t>(y, x) = r3g3b2_to_vec<channels>(i[0]);
+        }
+    }
+}
     
     // set all mat values at given channel to given value
     inline void setAlpha(cv::Mat &mat, unsigned char value, cv::Scalar only_this = cv::Scalar(0, 0, 0, -1))
