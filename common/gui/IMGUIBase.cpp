@@ -784,10 +784,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             file::Path mono("fonts/PTMono");
             if(file::DataLocation::is_registered("app")) {
-                path = file::DataLocation::parse("app", path);
+                mono = file::DataLocation::parse("app", mono);
             }
-            if (not path.add_extension("ttf").exists())
-                FormatExcept("Cannot find file ",path.str(),"");
+            if (not mono.add_extension("ttf").exists())
+                FormatExcept("Cannot find file ",mono.str(),"");
             
             _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
         }
