@@ -102,120 +102,115 @@ namespace utils {
         return _find_replace<std::wstring>(str, oldStr, newStr);
     }
 
-    std::string find_replace(const std::string& str, std::vector<std::tuple<std::string, std::string>> search_strings)
-    {
-        if(str.empty())
-            return "";
-        
-        std::string result = str;
-        
-        // sort array so that the longest sequences come first, and we can abort early in the following loop
-        std::sort(search_strings.begin(), search_strings.end(), [](auto& A, auto &B){
-            return std::get<0>(A).length() > std::get<0>(B).length();
-        });
-        
-        using map_t = std::unordered_map<int, std::vector<size_t>, std::hash<int>, std::equal_to<const int>, std::allocator<std::pair<const int, std::vector<size_t>>>>;
-        std::vector<map_t> viable;
-        std::unordered_set<size_t> _still;
-        for (size_t j=0; j<search_strings.size(); ++j) {
-            _still.insert(j);
-        }
-        
-        size_t max_L = std::get<0>(search_strings.front()).length();
-        viable.resize(max_L);
-        
-        // search for possible combinations of chars from multiple search strings at the same distance from 0
-        // we will use this to determine the following things:
-        //      - are we encountering a char that does not exist in search patterns at the current offset
-        //      - can we thus break out of the search loop
-        //      - did we reach the end of a certain search string (and thus found a match)
-        for(size_t i=0; i<max_L; ++i) {
-            for(size_t j=0; j<search_strings.size(); ++j) {
-                auto & [from, to] = search_strings[j];
-                if(from.length() > i) {
-                    // still long enough for given offset
-                    viable[i][from.at(i)].push_back(j);
-                    
-                } else
-                    break;
+    class Trie {
+    public:
+        void insert(const std::string& word, size_t index) {
+            Trie* node = this;
+            for (const auto& ch : word) {
+                if (node->children.find(ch) == node->children.end()) {
+                    node->children[ch] = std::make_unique<Trie>();
+                }
+                node = node->children[ch].get();
             }
+            node->indices.insert(index);
         }
-        
-        for (size_t i=0; i <result.size(); ) {
-            int64_t match = -1;
-            
-            for (size_t offset=0; offset<max_L && offset+i < result.size(); ++offset)
-            {
-                auto c = result.at(i+offset);
-                auto &map = viable.at(offset);
-                auto it = map.find(c);
-                
-                if(it != map.end()) {
-                    for(auto idx : it->second) {
-                        auto &mot = std::get<0>(search_strings.at(idx));
-                        if(mot.at(offset) == c) {
-                            if(offset+1 == mot.length() && result.substr(i, offset + 1) == mot)
-                            {
-                                match = idx;
-                                break;
-                            }
-                        }
-                    }
-                    
-                } else
-                    break;
+
+        Trie* get_child(char ch) {
+            return children.find(ch) != children.end() ? children[ch].get() : nullptr;
+        }
+
+        const std::set<size_t>& get_indices() const {
+            return indices;
+        }
+
+    private:
+        std::map<char, std::unique_ptr<Trie>> children;
+        std::set<size_t> indices;
+    };
+
+    std::string find_replace(const std::string& str, std::vector<std::tuple<std::string, std::string>> search_strings) {
+        if (str.empty() || search_strings.empty()) {
+            return str;
+        }
+
+        Trie trie;
+        for (size_t i = 0; i < search_strings.size(); ++i) {
+            trie.insert(std::get<0>(search_strings[i]), i);
+        }
+
+        std::string result;
+        result.reserve(str.size());
+        size_t i = 0;
+
+        while (i < str.size()) {
+            Trie* node = &trie;
+            size_t j = i;
+            std::set<size_t> matches;
+
+            while (j < str.size() && (node = node->get_child(str[j]))) {
+                matches.insert(node->get_indices().begin(), node->get_indices().end());
+                ++j;
             }
-            
-            if(match == -1) {
-                // if there was no match, just skip one
-                ++i;
-                
+
+            if (!matches.empty()) {
+                size_t match = *matches.begin();
+                result += std::get<1>(search_strings[match]);
+                i += std::get<0>(search_strings[match]).size();
             } else {
-                // otherwise, do the replacement and skip the replaced letters (possibly also just next)
-                auto &[from, to] = search_strings.at(match);
-                result.replace(i, from.length(), to);
-                i+=to.length();
+                result += str[i++];
             }
         }
-        
+
         return result;
     }
-    
+
     std::string repeat(const std::string& s, size_t N) {
         std::string output;
-        for(size_t i=0; i<N; i++)
+        output.reserve(s.size() * N);
+        for (size_t i = 0; i < N; ++i) {
             output += s;
+        }
         return output;
     }
 
-    // split string using delimiter
-    template<typename Str>
-    std::vector<Str> _split(Str const& s, char c) {
-        const size_t len = s.length();
-        using Char = typename Str::value_type;
-        
+    template <typename Str>
+    std::vector<Str> _split(Str const& s, char c, bool skip_empty = false, bool trim = false) {
         std::vector<Str> ret;
-        Char *tmp = new Char[len+1];
-        
-        for (size_t i = 0, j = 0; i <= len; i++) {
-            if(i == len || s[i] == c) {
-                tmp[j] = 0;
-                ret.push_back(tmp);
-                j = 0;
-                
-            } else {
-                tmp[j++] = s[i];
+        std::basic_string_view<typename Str::value_type> sv(s);
+        auto start = sv.begin();
+        auto end = sv.end();
+        while (start != end) {
+            auto pos = std::find(start, end, c);
+            auto len = pos - start;
+            if (trim) {
+                while (len > 0 && std::isspace(*(start + len - 1))) {
+                    len--;
+                }
+                while (len > 0 && std::isspace(*start)) {
+                    start++;
+                    len--;
+                }
+            }
+            if (len > 0 || !skip_empty) {
+                ret.emplace_back(start, len);
+            }
+            start = pos;
+            if (start != end) {
+                start++;
             }
         }
-        
-		delete[] tmp;
+        if (!skip_empty && (end == sv.begin() || *(end - 1) == c)) {
+            ret.emplace_back();
+        }
         return ret;
     }
-    std::vector<std::string> split(std::string const& s, char c) {
-        return _split(s, c);
+
+    std::vector<std::string> split(std::string const& s, char c, bool skip_empty, bool trim) {
+        return _split<std::string>(s, c, skip_empty, trim);
     }
-    std::vector<std::wstring> split(std::wstring const& s, char c) {
-        return _split(s, c);
+
+    std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty, bool trim) {
+        return _split<std::wstring>(s, c, skip_empty, trim);
     }
 
     std::string read_file(const std::string& filename) {

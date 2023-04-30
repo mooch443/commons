@@ -171,9 +171,34 @@ inline std::string uppercase(const char* original) {
     // repeats a string N times
     std::string repeat(const std::string& s, size_t N);
 
-    // split string using delimiter
-    std::vector<std::string> split(std::string const& s, char c);
-    std::vector<std::wstring> split(std::wstring const& s, char c);
+/**
+ * Splits a string into substrings using a delimiter character.
+ *
+ * @param s The input string to split.
+ * @param c The delimiter character to split on.
+ * @param skip_empty Whether to skip empty substrings.
+ *                   If true, consecutive delimiters will be skipped and no empty substrings will be added to the result vector.
+ *                   If false, empty substrings will be added to the result vector for each consecutive delimiter.
+ * @param trim Whether to remove whitespace characters from each substring.
+ *
+ * @return A vector of substrings, with each substring being an element of the vector.
+ */
+std::vector<std::string> split(std::string const& s, char c, bool skip_empty = false, bool trim = false);
+
+/**
+ * Splits a wide string into substrings using a delimiter character.
+ *
+ * @param s The input wide string to split.
+ * @param c The delimiter character to split on.
+ * @param skip_empty Whether to skip empty substrings.
+ *                   If true, consecutive delimiters will be skipped and no empty substrings will be added to the result vector.
+ *                   If false, empty substrings will be added to the result vector for each consecutive delimiter.
+ * @param trim Whether to remove whitespace characters from each substring.
+ *
+ * @return A vector of substrings, with each substring being an element of the vector.
+ */
+std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty = false, bool trim = false);
+
 }
 
 /**
