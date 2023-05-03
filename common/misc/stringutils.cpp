@@ -195,7 +195,7 @@ namespace utils {
                 }
             }
             if (len > 0 || !skip_empty) {
-                ret.emplace_back(start, len);
+                ret.emplace_back(start, start + len);
             }
             start = pos;
             if (start != end) {
@@ -315,7 +315,7 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
     return result;
 }
 
-std::vector<std::string> split(const std::string &input) {
+std::vector<std::string> split_words(const std::string &input) {
     std::regex word_regex(R"([^\s\W_]+)");
     std::sregex_token_iterator begin(input.begin(), input.end(), word_regex);
     std::sregex_token_iterator end;
@@ -337,7 +337,7 @@ PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus)
             data.repertoire_vectors[i][j] = corpus[i][j] - 'a';
         }
         
-        std::vector<std::string> words = split(corpus[i]);
+        std::vector<std::string> words = split_words(corpus[i]);
         for (const std::string& word : words) {
             data.word_to_doc_indices[word].insert(cmn::narrow_cast<int>(i));
         }
@@ -431,7 +431,7 @@ std::vector<int> text_search(const std::string &search_text, const std::vector<s
     const auto&[preprocessed_corpus, repertoire_distances] = data;//preprocess_corpus(corpus);
 
     // Split the search text into words
-    std::vector<std::string> search_words = split(search_text);
+    std::vector<std::string> search_words = split_words(search_text);
 
     // Initialize the result set with the first word's results
     std::map<int, std::tuple<int, int, int>> index_distance_overlap_map;
