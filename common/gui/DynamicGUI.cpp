@@ -2,6 +2,7 @@
 #include <gui/types/Button.h>
 #include <gui/types/StaticText.h>
 #include <misc/SpriteMap.h>
+#include <file/DataLocation.h>
 
 namespace gui {
 namespace dyn {
@@ -511,6 +512,10 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
 
 void update_layout(const file::Path& path, Context& context, State& state, std::vector<Layout::Ptr>& objects) {
     try {
+        print("update_layout:CWD: ", file::cwd());
+        file::cd(file::DataLocation::parse("app"));
+        print("update_layout_:CWD: ", file::cwd());
+        
         auto result = load(path);
         if(result) {
             auto layout = result.value();
