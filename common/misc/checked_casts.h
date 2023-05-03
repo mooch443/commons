@@ -32,7 +32,7 @@ void fail_type(From&&
 #ifndef NDEBUG
                value
 #endif
-               )
+               ) noexcept
 {
 #ifndef NDEBUG
     using FromType = typename cmn::remove_cvref<From>::type;
@@ -54,7 +54,11 @@ void fail_type(From&&
 }
 
 template<typename To, typename From>
-inline constexpr To sign_cast(From&& value) {
+inline constexpr To sign_cast(From&& value)
+#ifdef NDEBUG
+noexcept
+#endif
+{
 #ifndef NDEBUG
     using FromType = typename cmn::remove_cvref<From>::type;
     using ToType = typename cmn::remove_cvref<To>::type;
@@ -79,25 +83,33 @@ inline constexpr To sign_cast(From&& value) {
 }
 
 template<typename To, typename From>
-constexpr bool check_narrow_cast(const From& value) {
+constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifndef NDEBUG
     using FromType = typename cmn::remove_cvref<From>::type;
     using ToType = typename cmn::remove_cvref<To>::type;
 
     auto str = Meta::toStr(value);
+    
+    // Check if the conversion is between floating-point types or types with the same signedness
     if constexpr (
         std::is_floating_point<ToType>::value
         || (std::is_signed<FromType>::value == std::is_signed<ToType>::value && !std::is_floating_point<FromType>::value)
         )
     {
-        // unsigned to unsigned
+        // Print verbose output if enabled
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
         FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," (same) = ",str.c_str(),".");
 #endif
-        return true;
+        if constexpr(std::is_signed_v<ToType>)
+            return static_cast<int64_t>(value) <= static_cast<int64_t>(std::numeric_limits<ToType>::max())
+            && static_cast<int64_t>(value) >= static_cast<int64_t>(std::numeric_limits<ToType>::min());
+        else
+            // No narrowing issues, return true
+            return true;
     }
+    // Check if the conversion is from floating-point to signed integer type
     else if constexpr (std::is_floating_point<FromType>::value && std::is_signed<ToType>::value) {
         using signed_t = int64_t;
 #ifdef _NARROW_PRINT_VERBOSE
@@ -106,9 +118,11 @@ constexpr bool check_narrow_cast(const From& value) {
         auto tstr2 = Meta::name<signed_t>();
         FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (fs) = ",str.c_str(),".");
 #endif
+        // Check if the value is within the range of the To type after casting
         return static_cast<signed_t>(value) >= static_cast<signed_t>(std::numeric_limits<To>::min())
             && static_cast<signed_t>(value) <= static_cast<signed_t>(std::numeric_limits<To>::max());
     }
+    // Check if the conversion is from floating-point to unsigned integer type
     else if constexpr (std::is_floating_point<FromType>::value && std::is_unsigned<ToType>::value) {
         using unsigned_t = uint64_t;
 #ifdef _NARROW_PRINT_VERBOSE
@@ -117,9 +131,11 @@ constexpr bool check_narrow_cast(const From& value) {
         auto tstr2 = Meta::name<unsigned_t>();
         FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (fs) = ",str.c_str(),".");
 #endif
+        // Check if the value is within the range of the To type after casting
         return value >= FromType(0)
             && static_cast<unsigned_t>(value) <= static_cast<unsigned_t>(std::numeric_limits<To>::max());
     }
+    // Check if the conversion is from unsigned integer to signed integer type
     else if constexpr (std::is_unsigned<FromType>::value && std::is_signed<ToType>::value) {
         // unsigned to signed
         using signed_t = int64_t;
@@ -129,10 +145,12 @@ constexpr bool check_narrow_cast(const From& value) {
         auto tstr2 = Meta::name<signed_t>();
         FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (us) = ",str.c_str(),".");
 #endif
+        // Check if the value is within the range of the To type after casting
         return static_cast<signed_t>(value) < static_cast<signed_t>(std::numeric_limits<To>::max());
 
     }
     else {
+        // Expecting signed integer to unsigned integer type conversion
         static_assert(std::is_signed<FromType>::value && std::is_unsigned<ToType>::value, "Expecting signed to unsigned conversion");
         // signed to unsigned
         using unsigned_t = typename try_make_unsigned<FromType>::type;
@@ -142,16 +160,18 @@ constexpr bool check_narrow_cast(const From& value) {
         auto tstr2 = Meta::name<unsigned_t>();
         FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (su) = ",str.c_str(),".");
 #endif
+        // Check if the value is within the range of the To type after casting
         return value >= 0 && static_cast<unsigned_t>(value) <= static_cast<unsigned_t>(std::numeric_limits<To>::max());
     }
 #else
+    // In release mode, don't perform the checks
     UNUSED(value);
     return true;
 #endif
 }
 
 template<typename To, typename From>
-constexpr To narrow_cast(From&& value, struct tag::warn_on_error) {
+constexpr To narrow_cast(From&& value, struct tag::warn_on_error) noexcept {
 #ifndef NDEBUG
     if (!check_narrow_cast<To, From>(value)) {
         auto vstr = Meta::toStr(value);
@@ -167,7 +187,11 @@ constexpr To narrow_cast(From&& value, struct tag::warn_on_error) {
 }
 
 template<typename To, typename From>
-constexpr To narrow_cast(From&& value, struct tag::fail_on_error) {
+constexpr To narrow_cast(From&& value, struct tag::fail_on_error)
+#ifdef NDEBUG
+noexcept
+#endif
+{
 #ifndef NDEBUG
     if (!check_narrow_cast<To, From>(value)) {
         auto vstr = Meta::toStr(value);
@@ -183,7 +207,7 @@ constexpr To narrow_cast(From&& value, struct tag::fail_on_error) {
 }
 
 template<typename To, typename From>
-constexpr To narrow_cast(From&& value) {
+constexpr To narrow_cast(From&& value) noexcept {
     return narrow_cast<To, From>(std::forward<From>(value), tag::warn_on_error{});
 }
 }

@@ -1,3 +1,4 @@
+#include <commons.pc.h>
 #include "stringutils.h"
 #include <regex>
 #include <iomanip>
@@ -9,6 +10,7 @@
 #include <map>
 #include <misc/format.h>
 #include <file/Path.h>
+#include <misc/checked_casts.h>
 
 namespace utils {
     /*
@@ -323,23 +325,24 @@ std::vector<std::string> split(const std::string &input) {
 }
 
 // Preprocess the corpus by creating a map of words to their corresponding document indices
-std::tuple<std::map<std::string, std::set<int>>, std::vector<std::vector<double>>> preprocess_corpus(const std::vector<std::string>& corpus)
+// and a vector of repertoire vectors for each document
+PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus)
 {
-    std::vector<std::vector<double>> vectors;
-    std::map<std::string, std::set<int>> word_to_doc_indices;
+    PreprocessedData data;
+    data.repertoire_vectors.resize(corpus.size());
+    
     for (size_t i = 0; i < corpus.size(); ++i) {
-        std::vector<double> repertoire_vector;
-        for (char c : corpus.at(i)) {
-            repertoire_vector.push_back(c - 'a');
+        data.repertoire_vectors[i].resize(corpus[i].size());
+        for (size_t j = 0; j < corpus[i].size(); j++) {
+            data.repertoire_vectors[i][j] = corpus[i][j] - 'a';
         }
-        vectors.emplace_back(std::move(repertoire_vector));
         
         std::vector<std::string> words = split(corpus[i]);
         for (const std::string& word : words) {
-            word_to_doc_indices[word].insert(i);
+            data.word_to_doc_indices[word].insert(cmn::narrow_cast<int>(i));
         }
     }
-    return std::make_tuple(std::move(word_to_doc_indices), std::move(vectors));
+    return data;
 }
 
 // Compute the Levenshtein distance between two strings
@@ -417,12 +420,15 @@ double jaccard_similarity(const std::string &str1, const std::string &str2, int 
     return static_cast<double>(intersection.size()) / static_cast<double>(uni.size());
 }
 
-
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus) {
+    auto data = preprocess_corpus(corpus);
+    return text_search(search_text, corpus, data);
+}
+std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData& data) {
     const int max_levenshtein_distance = 5;
 
     // Preprocess the search corpus
-    auto[preprocessed_corpus, repertoire_distances] = preprocess_corpus(corpus);
+    const auto&[preprocessed_corpus, repertoire_distances] = data;//preprocess_corpus(corpus);
 
     // Split the search text into words
     std::vector<std::string> search_words = split(search_text);

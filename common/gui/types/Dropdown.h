@@ -7,6 +7,9 @@
 
 namespace gui {
     class Dropdown : public Entangled {
+        std::vector<std::string> _corpus;
+        PreprocessedData _preprocessed;
+        
     public:
         enum Type {
             SEARCH,

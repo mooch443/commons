@@ -237,7 +237,16 @@ std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty =
  */
 [[nodiscard]] std::u8string wideToUtf8(const std::wstring_view& wideStr);
 
+// Define a struct to store the preprocessed data
+struct PreprocessedData {
+    std::map<std::string, std::set<int>> word_to_doc_indices;
+    std::vector<std::vector<double>> repertoire_vectors;
+    bool empty() const { return repertoire_vectors.empty(); }
+};
+
+PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus);
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus);
+std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData&);
 
 namespace utils {
 

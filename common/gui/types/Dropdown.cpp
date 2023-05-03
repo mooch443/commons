@@ -16,134 +16,6 @@ namespace gui {
     Dropdown::Dropdown(const Bounds& bounds, const std::vector<std::string>& options, Type type) : Dropdown(bounds, std::vector<TextItem>(options.begin(), options.end()), type)
     { }
 
-using TextItem = Dropdown::TextItem;
-
-class TrieNode {
-public:
-    TrieNode() : is_end_of_word(false), index(-1) {
-        std::fill(children.begin(), children.end(), nullptr);
-    }
-
-    void insert(const std::string& key, int idx) {
-        TrieNode* node = this;
-        for (char c : key) {
-            c = std::tolower(c);
-            int index = c;
-            assert(index < 256 && index >= 0);
-            if (!node->children[index]) {
-                node->children[index] = std::make_unique<TrieNode>();
-            }
-            node = node->children[index].get();
-        }
-        node->is_end_of_word = true;
-        node->index = idx;
-    }
-
-    std::vector<int> search_by_prefix(const std::string& prefix) const {
-        const TrieNode* node = this;
-        for (char c : prefix) {
-            c = std::tolower(c);
-            int index = c;
-            if (!node->children[index]) {
-                return {};
-            }
-            node = node->children[index].get();
-        }
-        std::vector<int> indices;
-        collect_indices(node, indices);
-        return indices;
-    }
-
-private:
-    std::array<std::unique_ptr<TrieNode>, 256> children;
-    bool is_end_of_word;
-    int index;
-
-    void collect_indices(const TrieNode* node, std::vector<int>& indices) const {
-        if (node->is_end_of_word) {
-            indices.push_back(node->index);
-        }
-        for (const auto& child : node->children) {
-            if (child) {
-                collect_indices(child.get(), indices);
-            }
-        }
-    }
-};
-
-class Trie {
-public:
-    Trie() : root(std::make_unique<TrieNode>()) {}
-
-    void insert(const std::string& key, int idx) {
-        root->insert(key, idx);
-    }
-
-    std::vector<int> search_by_prefix(const std::string& prefix) const {
-        return root->search_by_prefix(prefix);
-    }
-
-private:
-    std::unique_ptr<TrieNode> root;
-};
-
-
-
-int levenshtein_distance(const std::string &s1, const std::string &s2) {
-    size_t len1 = s1.size();
-    size_t len2 = s2.size();
-    
-    std::vector<std::vector<int>> dp(len1 + 1, std::vector<int>(len2 + 1));
-
-    for (size_t i = 0; i <= len1; i++) {
-        dp[i][0] = i;
-    }
-    for (size_t j = 0; j <= len2; j++) {
-        dp[0][j] = j;
-    }
-
-    for (size_t i = 1; i <= len1; i++) {
-        for (size_t j = 1; j <= len2; j++) {
-            int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-            dp[i][j] = std::min({dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost});
-        }
-    }
-
-    return dp[len1][len2];
-}
-
-std::vector<TextItem> filter_items(const Trie& trie, const std::string& search_text, const std::vector<TextItem>& items) {
-    // Convert the search text to lowercase
-    std::string search_text_lower = search_text;
-    std::transform(search_text_lower.begin(), search_text_lower.end(), search_text_lower.begin(), ::tolower);
-
-    // Search for items with matching prefixes
-    std::vector<int> matching_indices = trie.search_by_prefix(search_text_lower);
-
-    // Create a priority queue to store the items and their Levenshtein distances
-    auto comp = [](const std::pair<int, TextItem>& a, const std::pair<int, TextItem>& b) { return a.first > b.first; };
-    std::priority_queue<std::pair<int, TextItem>, std::vector<std::pair<int, TextItem>>, decltype(comp)> pq(comp);
-
-    // Calculate Levenshtein distance for each matching item and store it in the priority queue
-    for (int index : matching_indices) {
-        const TextItem& item = items[index];
-        std::string item_name_lower = item.search_name();
-        std::transform(item_name_lower.begin(), item_name_lower.end(), item_name_lower.begin(), ::tolower);
-
-        int distance = levenshtein_distance(search_text_lower, item_name_lower);
-        pq.push(std::make_pair(distance, item));
-    }
-
-    // Retrieve the items from the priority queue in the order of their relevance
-    std::vector<TextItem> filtered_items;
-    while (!pq.empty()) {
-        filtered_items.push_back(pq.top().second);
-        pq.pop();
-    }
-
-    return filtered_items;
-}
-
     Dropdown::Dropdown(const Bounds& bounds, const std::vector<TextItem>& options, Type type)
     : _list(Bounds(0, bounds.height, bounds.width, 230), options, Font(0.6f, Align::Left), [this](size_t s) { _selected_item = s; }),
           _on_select([](auto, auto&){}),
@@ -192,14 +64,19 @@ std::vector<TextItem> filter_items(const Trie& trie, const std::string& search_t
                 filtered_items.clear();
 
                 if (!_textfield->text().empty()) {
-                    // Filter items using the search text
-                    std::vector<std::string> corpus;
-                    for (const auto &item : _items) {
-                        corpus.push_back(item.search_name());
+                    if(_corpus.empty()) {
+                        _corpus.reserve(items().size());
+                        for (const auto &item : _items) {
+                            _corpus.push_back(item.search_name());
+                        }
                     }
-
+                    
+                    if(_preprocessed.empty())
+                        _preprocessed = preprocess_corpus(_corpus);
+                    
+                    // Filter items using the search text
                     // Get the search result indexes
-                    auto search_result_indexes = text_search(_textfield->text(), corpus);
+                    auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
 
                     // Create a filtered vector of TextItems
                     std::vector<TextItem> filtered;
@@ -354,6 +231,8 @@ std::vector<TextItem> filter_items(const Trie& trie, const std::string& search_t
             _list.set_items(options);
             _items = options;
             _selected_id = _selected_item = -1;
+            _preprocessed = {};
+            _corpus.clear();
             _on_text_changed();
             set_dirty();
         }
