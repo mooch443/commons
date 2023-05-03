@@ -237,6 +237,7 @@ std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty =
  */
 [[nodiscard]] std::u8string wideToUtf8(const std::wstring_view& wideStr);
 
+std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus);
 
 namespace utils {
 

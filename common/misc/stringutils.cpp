@@ -1,4 +1,5 @@
 #include "stringutils.h"
+#include <regex>
 #include <iomanip>
 #include <algorithm>
 #include <locale>
@@ -310,4 +311,180 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
     }
 
     return result;
+}
+
+std::vector<std::string> split(const std::string &input) {
+    std::regex word_regex(R"([^\s\W_]+)");
+    std::sregex_token_iterator begin(input.begin(), input.end(), word_regex);
+    std::sregex_token_iterator end;
+
+    std::vector<std::string> words(begin, end);
+    return words;
+}
+
+// Preprocess the corpus by creating a map of words to their corresponding document indices
+std::tuple<std::map<std::string, std::set<int>>, std::vector<std::vector<double>>> preprocess_corpus(const std::vector<std::string>& corpus)
+{
+    std::vector<std::vector<double>> vectors;
+    std::map<std::string, std::set<int>> word_to_doc_indices;
+    for (size_t i = 0; i < corpus.size(); ++i) {
+        std::vector<double> repertoire_vector;
+        for (char c : corpus.at(i)) {
+            repertoire_vector.push_back(c - 'a');
+        }
+        vectors.emplace_back(std::move(repertoire_vector));
+        
+        std::vector<std::string> words = split(corpus[i]);
+        for (const std::string& word : words) {
+            word_to_doc_indices[word].insert(i);
+        }
+    }
+    return std::make_tuple(std::move(word_to_doc_indices), std::move(vectors));
+}
+
+// Compute the Levenshtein distance between two strings
+int levenshtein_distance(const std::string &s1, const std::string &s2) {
+    size_t len1 = s1.size();
+    size_t len2 = s2.size();
+
+    if (len1 < len2) {
+        return levenshtein_distance(s2, s1);
+    }
+
+    std::vector<int> prev_row(len2 + 1);
+    std::vector<int> curr_row(len2 + 1);
+
+    for (size_t j = 0; j <= len2; j++) {
+        prev_row[j] = j;
+    }
+
+    for (size_t i = 1; i <= len1; i++) {
+        curr_row[0] = i;
+        for (size_t j = 1; j <= len2; j++) {
+            int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
+            curr_row[j] = std::min({prev_row[j] + 1, curr_row[j - 1] + 1, prev_row[j - 1] + cost});
+        }
+        prev_row.swap(curr_row);
+    }
+
+    return prev_row[len2];
+}
+
+// Generate all possible substrings of length n from a given string
+std::set<std::string> generate_substrings(const std::string &str, int n) {
+    std::set<std::string> substrings;
+    for (int i = 0; i + n <= str.length(); i++) {
+        substrings.insert(str.substr(i, n));
+    }
+    return substrings;
+}
+
+// Computes the cosine similarity between two vectors
+double cosine_similarity(const std::vector<double>& v1, const std::vector<double>& v2) {
+    double dot_product = 0.0;
+    double norm_v1 = 0.0;
+    double norm_v2 = 0.0;
+    bool zero_similarity = true;
+
+    for (size_t i = 0; i < std::min(v2.size(), v1.size()); i++) {
+        dot_product += v1[i] * v2[i];
+        norm_v1 += v1[i] * v1[i];
+        norm_v2 += v2[i] * v2[i];
+
+        if (v1[i] != 0 && v2[i] != 0) {
+            zero_similarity = false;
+        }
+    }
+
+    if (zero_similarity) {
+        return 0.0;
+    }
+
+    return dot_product / (sqrt(norm_v1) * sqrt(norm_v2));
+}
+
+// Compute the Jaccard similarity coefficient between two strings using substrings of length n
+double jaccard_similarity(const std::string &str1, const std::string &str2, int n = 3) {
+    std::set<std::string> substrings1 = generate_substrings(str1, n);
+    std::set<std::string> substrings2 = generate_substrings(str2, n);
+
+    std::set<std::string> intersection;
+    std::set_intersection(substrings1.begin(), substrings1.end(), substrings2.begin(), substrings2.end(), std::inserter(intersection, intersection.begin()));
+
+    std::set<std::string> uni;
+    std::set_union(substrings1.begin(), substrings1.end(), substrings2.begin(), substrings2.end(), std::inserter(uni, uni.begin()));
+
+    return static_cast<double>(intersection.size()) / static_cast<double>(uni.size());
+}
+
+
+std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus) {
+    const int max_levenshtein_distance = 5;
+
+    // Preprocess the search corpus
+    auto[preprocessed_corpus, repertoire_distances] = preprocess_corpus(corpus);
+
+    // Split the search text into words
+    std::vector<std::string> search_words = split(search_text);
+
+    // Initialize the result set with the first word's results
+    std::map<int, std::tuple<int, int, int>> index_distance_overlap_map;
+
+    // Intersect the result vector with the subsequent words' results
+    for (const auto& word : search_words) {
+        std::vector<std::pair<int, int>> word_result_vector;
+
+        for (const auto &entry : preprocessed_corpus) {
+            int distance = levenshtein_distance(word, entry.first);
+            if (distance <= max_levenshtein_distance || utils::contains(entry.first, word)) {
+                for (int index : entry.second) {
+                    word_result_vector.emplace_back(index, distance);
+                }
+            }
+        }
+
+        for (const auto& [index, distance] : word_result_vector) {
+            auto &[sum, count, maximum] = index_distance_overlap_map[index];
+            sum += distance;
+            count++;
+            maximum = std::max(maximum, distance);
+        }
+    }
+
+    // Calculate the average distance and word overlap score
+    std::vector<std::tuple<double, double, int>> result_vector;
+    std::vector<std::tuple<double, double, std::string>> print_vector;
+    for (const auto& [index, distance_overlap] : index_distance_overlap_map) {
+        auto &[sum, count, maximum] = distance_overlap;
+        double avg_distance = static_cast<double>(sum) / search_words.size();
+        double overlap_score = count;
+        
+        const auto& repertoire_vector = repertoire_distances.at(index);
+        std::vector<double> search_vector;
+        for (char c : search_text) {
+            search_vector.push_back(c - 'a');
+        }
+        
+        overlap_score = cosine_similarity(repertoire_vector, search_vector);
+        avg_distance = jaccard_similarity(corpus.at(index), search_text); //+ avg_distance / search_text.length());
+        
+        //print_vector.emplace_back(double(avg_distance), overlap_score, corpus.at(index));
+        result_vector.emplace_back(double(avg_distance), overlap_score, index);
+    }
+
+    // Sort the result vector by relevance (ascending average levenshtein distance, descending word overlap score)
+    std::sort(result_vector.begin(), result_vector.end(), std::greater<>{});
+    //std::sort(print_vector.begin(), print_vector.end(), std::greater<>{});
+    
+    //cmn::print("print_vector for ", search_words, " is ", print_vector);
+
+    // Convert the result vector to a vector of indexes
+    std::vector<int> result_indexes;
+    result_indexes.reserve(result_vector.size());
+    for (const auto& [similarity, rank, index] : result_vector) {
+        //if(similarity > 0)
+            result_indexes.push_back(index);
+    }
+
+    return result_indexes;
 }

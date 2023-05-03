@@ -34,6 +34,8 @@ namespace gui {
         class TextItem : public Item {
             std::string _name, _search;
             GETTER_PTR(void*, custom)
+            GETTER_SETTER(int, index)
+            
         public:
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
                 : Item(ID), _name(name), _search(search), _custom(custom)
