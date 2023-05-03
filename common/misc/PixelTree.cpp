@@ -73,33 +73,6 @@ struct Row {
 
 #define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 
-/*template<typename F>
-inline void abstract_line (F&& diff, const std::vector<HorizontalLine>& input, uchar*& px, auto threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
-{
-    for(const auto &line : input) {
-        coord_t x0;
-        uchar* start{nullptr};
-        
-        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-            if(diff(x, *px) < threshold(x)) {
-                if(start) {
-                    pixels.insert(pixels.end(), start, px);
-                    lines.emplace_back(line.y, x0, x - 1);
-                    start = nullptr;
-                }
-                
-            } else if(!start) {
-                start = px;
-                x0 = x;
-            }
-        }
-    
-        if(start) {
-            pixels.insert(pixels.end(), start, px);
-            lines.emplace_back(line.y, x0, line.x1);
-        }
-    }
-}*/
     template<DifferenceMethod method>
     inline void line_with_grid _____FN_TYPE {
         for(const auto &line : input) {
@@ -294,7 +267,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         pixels.reserve(blob->pixels()->size());
         
         if(bg) {
-            if(not Background::use_differences()) {
+            if(not Background::track_background_subtraction()) {
                 line_without_grid<DifferenceMethod::none>(bg, blob->hor_lines(), px, threshold, lines, pixels);
             } else if(Background::track_absolute_difference()) {
                 if(bg->grid())

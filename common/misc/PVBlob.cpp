@@ -427,7 +427,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             auto local_ptr = _pixels->data();
 #endif
             auto ptr = _pixels->data();
-            if(not Background::use_differences()) {
+            if(not Background::track_background_subtraction()) {
                 for (auto &line : hor_lines()) {
                     recount += background.count_above_threshold<DifferenceMethod::none>(line.x0, line.x1, line.y, ptr, threshold);
                     ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
@@ -540,7 +540,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
 
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
-        if(not Background::use_differences())
+        if(not Background::track_background_subtraction())
             return _threshold<DifferenceMethod::none>(*this, value, background);
         if(Background::track_absolute_difference())
             return _threshold<DifferenceMethod::absolute>(*this, value, background);
@@ -609,7 +609,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
@@ -670,7 +670,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
@@ -708,7 +708,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
@@ -750,7 +750,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
@@ -815,7 +815,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();
@@ -853,7 +853,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::use_differences()) {
+        if(not Background::track_background_subtraction()) {
             work.operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
             work.operator()<DifferenceMethod::absolute>();

@@ -647,19 +647,24 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     }
     
     auto [start_index, end_index] = [&, start=start, end=end]() -> std::tuple<size_t, size_t> {
-        Frame_t index = 0_f;
-        size_t start_index{0}, end_index{0};
-        for(uint64_t i=0; i<_files_in_seq.size(); i++) {
-            auto l = _files_in_seq.at(i)->length();
-            if(index + l >= start) {
-                start_index = i;
+        size_t start_index{0}, end_index{_files_in_seq.size()-1};
+        try {
+            Frame_t index = 0_f;
+            for(uint64_t i=0; i<_files_in_seq.size(); i++) {
+                auto l = _files_in_seq.at(i)->length();
+                if(index + l >= start && index < start) {
+                    start_index = i;
+                }
+                if(index + l > end) {
+                    end_index = i;
+                    break;
+                }
+                index += l;
             }
-            if(index + l > end) {
-                end_index = i;
-                break;
-            }
-            index += l;
+        } catch(...) {
+            FormatExcept("Failed thread!");
         }
+        end_index = saturate(end_index, start_index, _files_in_seq.size());
         return {start_index, end_index};
     }();
     

@@ -34,7 +34,7 @@ namespace cmn {
     class Background {
     public:
         static bool track_absolute_difference();
-        static bool use_differences();
+        static bool track_background_subtraction();
         
     protected:
         Image::Ptr _image;
@@ -83,13 +83,21 @@ namespace cmn {
                         count += int32_t(*ptr_image) - int32_t(*values) >= int32_t(threshold);
                 }
                 
-            } else {
+            } else if constexpr(method == DifferenceMethod::absolute) {
                 if(ptr_grid) {
                     for (; values != end; ++ptr_grid, ++ptr_image, ++values)
                         count += std::abs(int32_t(*ptr_image) - int32_t(*values)) >= int32_t(*ptr_grid) * threshold;
                 } else {
                     for (; values != end; ++ptr_image, ++values)
                         count += std::abs(int32_t(*ptr_image) - int32_t(*values)) >= int32_t(threshold);
+                }
+            } else {
+                if(ptr_grid) {
+                    for (; values != end; ++ptr_grid, ++values)
+                        count += int32_t(*values) >= int32_t(*ptr_grid) * threshold;
+                } else {
+                    for (; values != end; ++values)
+                        count += int32_t(*values) >= int32_t(threshold);
                 }
             }
             

@@ -3,12 +3,12 @@
 
 namespace cmn {
     static std::atomic<bool> track_absolute_difference = true,
-                             use_differences = true;
+                             track_background_subtraction = true;
     bool Background::track_absolute_difference() {
         return cmn::track_absolute_difference;
     }
-    bool Background::use_differences() {
-        return cmn::use_differences;
+    bool Background::track_background_subtraction() {
+        return cmn::track_background_subtraction;
     }
 
     Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
@@ -27,14 +27,14 @@ namespace cmn {
             if(name == "track_absolute_difference") {
                 cmn::track_absolute_difference = v.template value<bool>();
                 this->update_callback();
-            } else if(name == "use_differences") {
-                cmn::use_differences = v.template value<bool>();
+            } else if(name == "track_background_subtraction") {
+                cmn::track_background_subtraction = v.template value<bool>();
                 this->update_callback();
             }
         });
         
         cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
-        cmn::use_differences = SETTING(use_differences).value<bool>();
+        cmn::track_background_subtraction = SETTING(track_background_subtraction).value<bool>();
         update_callback();
     }
     
