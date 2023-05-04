@@ -512,9 +512,11 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
 
 void update_layout(const file::Path& path, Context& context, State& state, std::vector<Layout::Ptr>& objects) {
     try {
-        if(file::cwd() != file::DataLocation::parse("app")) {
-            print("update_layout:CWD: ", file::cwd());
-            file::cd(file::DataLocation::parse("app"));
+        auto cwd = file::cwd().absolute();
+        auto app = file::DataLocation::parse("app").absolute();
+        if(cwd != app) {
+            print("check_module:CWD: ", cwd);
+            file::cd(app);
         }
         
         auto result = load(path);

@@ -49,6 +49,11 @@
 
 namespace file {
     char Path::os_sep() { return OS_SEP; }
+
+    Path Path::absolute() const {
+        std::filesystem::path path(_str);
+        return std::filesystem::canonical(std::filesystem::absolute(path)).string();
+    }
     
     Path::Path(const std::string& s)
         : _str(s)
@@ -85,7 +90,7 @@ namespace file {
 #endif
     }
 
-std::string_view Path::filename() const {
+    std::string_view Path::filename() const {
         if(empty())
             return _str;
         
@@ -545,9 +550,9 @@ std::string_view Path::filename() const {
 #else
         if (!chdir(path.c_str()))
 #endif
-            print("Changed directory to ", path,".");
+            print("Changed directory to ", path," (", path.absolute(), ").");
         else {
-            FormatError("Cannot change directory to ",path,".");
+            FormatError("Cannot change directory to ",path,". ");
         }
     }
 }

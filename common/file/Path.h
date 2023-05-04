@@ -80,6 +80,8 @@ namespace file {
         bool operator>(const Path& other) const;
         bool operator>=(const Path& other) const;
         
+        file::Path absolute() const;
+        
         explicit operator std::string() const { return str(); }
         std::string toStr() const { return str(); }
         static std::string class_name() { return "path"; }
