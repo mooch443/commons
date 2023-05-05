@@ -58,7 +58,7 @@ namespace cmn {
                     throw U_EXCEPTION("enqueue on stopped ThreadPool");
                 }
                 
-                q.push(package::F<void()>([bound = std::move(bound), f = std::move(f), promise = std::move(promise)]() mutable {
+                q.push(package::F<void()>([bound = std::move(bound), promise = std::move(promise)]() mutable {
                     try {
                         if constexpr(std::same_as<return_type, void>) {
                             //f(std::forward<Args>(args)...);

@@ -31,8 +31,9 @@
 #endif
 #endif
 
-#ifdef __cpp_lib_filesystem
+#if __cplusplus >= 201703L && defined(__has_include) && __has_include(<filesystem>)
 #include <filesystem>
+#define USE_STD_FILESYSTEM
 #endif
 
 #include <misc/checked_casts.h>
@@ -50,10 +51,52 @@
 namespace file {
     char Path::os_sep() { return OS_SEP; }
 
-    Path Path::absolute() const {
-        std::filesystem::path path(_str);
-        return std::filesystem::canonical(std::filesystem::absolute(path)).string();
+#ifdef USE_STD_FILESYSTEM
+Path Path::absolute() const {
+    std::filesystem::path path(_str);
+    return std::filesystem::canonical(std::filesystem::absolute(path)).string();
+}
+#else
+std::string getCanonicalPath(const std::string& filePath) {
+    std::vector<std::string> pathComponents;
+    std::istringstream iss(filePath);
+    std::string component;
+
+    while (std::getline(iss, component, OS_SEP)) {
+        if (component == "..") {
+            if (!pathComponents.empty()) {
+                pathComponents.pop_back();
+            }
+        } else if (!component.empty() && component != ".") {
+            pathComponents.push_back(component);
+        }
     }
+    
+    std::ostringstream oss;
+    if (filePath[0] == '/') {
+       oss << '/';
+    }
+
+    std::copy(pathComponents.begin(), pathComponents.end() - 1, std::ostream_iterator<std::string>(oss, "/"));
+    oss << pathComponents.back();
+
+    return oss.str();
+}
+
+std::string joinPaths(const std::string& basePath, const std::string& relPath) {
+    if (relPath[0] == '/') {
+        return relPath;
+    } else {
+        return basePath + '/' + relPath;
+    }
+}
+
+Path Path::absolute() const {
+    auto currentWorkingDirectory = cwd();
+    std::string fullPath = joinPaths(currentWorkingDirectory.str(), _str);
+    return getCanonicalPath(fullPath);  // Use the previously defined getCanonicalPath function
+}
+#endif
     
     Path::Path(const std::string& s)
         : _str(s)
