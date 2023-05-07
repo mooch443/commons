@@ -34,6 +34,8 @@
 #if __cplusplus >= 201703L && defined(__has_include) && __has_include(<filesystem>)
 #include <filesystem>
 #define USE_STD_FILESYSTEM
+#elif defined(__cpp_lib_filesystem)
+#undef __cpp_lib_filesystem
 #endif
 
 #include <misc/checked_casts.h>
