@@ -317,6 +317,11 @@ namespace cmn {
                     case CV_32FC1:
                         printf("\t%.6f", mat.at<float>(i, j));
                         break;
+                    case CV_32FC3: {
+                        auto v = mat.at<cv::Vec3f>(i, j);
+                        printf("\t%.6f %.6f %.6f", v[0], v[1], v[2]);
+                        break;
+                    }
                     case CV_32SC2:
                         printf("\t(%d,%d)", mat.at<cv::Vec2i>(i, j)(0), mat.at<cv::Vec2i>(i, j)(1));
                         break;
