@@ -19,6 +19,8 @@ enum class FilterReason {
     OutsideInclude,
     SecondThreshold,
     Category,
+    Label,
+    LabelConfidenceThreshold,
     SplitFailed,
     
     Unknown

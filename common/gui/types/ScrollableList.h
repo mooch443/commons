@@ -130,6 +130,10 @@ namespace gui {
             update_items();
         }
         
+        float line_padding() const {
+            return _line_spacing;
+        }
+        
         void set_items(const std::vector<T>& objs) {
             if(_items.size() == objs.size()) {
                 bool okay = true;

@@ -87,6 +87,9 @@ namespace gui {
 
                     // Update the list with the filtered items
                     _list.set_items(filtered);
+                    if(not filtered.empty()) {
+                        select_item(0);
+                    }
 
                 } else {
                     // If the search text is empty, display all items
