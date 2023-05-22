@@ -167,7 +167,7 @@ namespace gui {
         _initial_draw = true;
     }
 
-Size2 HTMLBase::window_dimensions() {
+Size2 HTMLBase::window_dimensions() const {
     return _size / gui::interface_scale(); //* gui::interface_scale() * 2;
 }
 

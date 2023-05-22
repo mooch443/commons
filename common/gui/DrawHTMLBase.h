@@ -29,7 +29,7 @@ namespace gui {
         virtual void paint(DrawStructure& s) override;
         virtual void set_title(std::string title) override { _title = title; }
         const std::string& title() const override { return _title; }
-        virtual Size2 window_dimensions() override;
+        virtual Size2 window_dimensions() const override;
         
         const std::vector<uchar>& to_bytes() const {
             return _vec;

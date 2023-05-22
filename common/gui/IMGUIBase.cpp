@@ -1719,7 +1719,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         });
     }
 
-    Size2 IMGUIBase::window_dimensions() {
+    Size2 IMGUIBase::window_dimensions() const {
         //auto window = _platform->window_handle();
         //int width, height;
         //glfwGetWindowSize(window, &width, &height);
