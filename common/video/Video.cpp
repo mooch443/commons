@@ -292,8 +292,8 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     } else _last_index = _last_index + 1_f;*/
     _last_index = index;
     
-    cv::putText(frame, Meta::toStr(_last_index), Vec2(10,20), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
-    cv::putText(frame, Meta::toStr(_cap->get(cv::CAP_PROP_POS_FRAMES)), Vec2(10,40), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
+    //cv::putText(frame, Meta::toStr(_last_index), Vec2(10,20), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
+    //cv::putText(frame, Meta::toStr(_cap->get(cv::CAP_PROP_POS_FRAMES)), Vec2(10,40), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
     
     //print("_last_index == ", _last_index, " for index ", index, " reading ", _cap->get(cv::CAP_PROP_POS_FRAMES));
 }
