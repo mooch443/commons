@@ -25,7 +25,7 @@ namespace gui {
         HTMLBase();
         ~HTMLBase() {}
         
-        void set_window_size(const Size2& size);
+        void set_window_size(Size2) override;
         virtual void paint(DrawStructure& s) override;
         virtual void set_title(std::string title) override { _title = title; }
         const std::string& title() const override { return _title; }

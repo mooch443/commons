@@ -165,6 +165,7 @@ namespace gui {
         Bounds text_bounds(const std::string& text, Drawable*, const Font& font) override;
         uint32_t line_spacing(const Font& font) override;
         Size2 window_dimensions() const override;
+        void set_window_size(Size2) override;
         Size2 real_dimensions();
         template<class F, class... Args>
         auto exec_main_queue(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>

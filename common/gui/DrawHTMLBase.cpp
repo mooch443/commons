@@ -7,7 +7,7 @@ namespace gui {
     
     HTMLBase::HTMLBase() : _initial_draw(true), _size(1) { }
 
-    void HTMLBase::set_window_size(const Size2 &size) {
+    void HTMLBase::set_window_size(Size2 size) {
         _size = size;
     }
     

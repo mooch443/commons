@@ -188,6 +188,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         ptr->set_split(false);
     
     ptr->set_tag(is_tag());
+    ptr->set_instance_segmentation(is_instance_segmentation());
     
     return ptr;
 }
@@ -204,8 +205,16 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return Blob::is_flag(_flags, Flags::is_tag);
     }
 
+    bool Blob::is_instance_segmentation() const {
+        return Blob::is_flag(_flags, Flags::is_instance_segmentation);
+    }
+
     void Blob::set_tag(bool v) {
         Blob::set_flag(_flags, Flags::is_tag, v);
+    }
+
+    void Blob::set_instance_segmentation(bool v) {
+        Blob::set_flag(_flags, Flags::is_instance_segmentation, v);
     }
 
     std::vector<ShortHorizontalLine>
@@ -373,6 +382,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         if(parent) {
             _parent_id = parent->parent_id().valid() ? parent->parent_id() : parent->blob_id();
             set_tag(parent->is_tag());
+            set_tag(parent->is_instance_segmentation());
         } else
             _parent_id = bid::invalid;
         

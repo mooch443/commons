@@ -131,7 +131,8 @@ public:
 public:
     enum class Flags {
         split = 1,
-        is_tag = 2
+        is_tag = 2,
+        is_instance_segmentation = 4
     };
     
     static void set_flag(uint8_t &flags, Flags flag, bool v) {
@@ -177,7 +178,9 @@ public:
     bool split() const;
     
     bool is_tag() const;
+    bool is_instance_segmentation() const;
     void set_tag(bool);
+    void set_instance_segmentation(bool);
     
     BlobPtr threshold(int32_t value, const cmn::Background& background);
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
@@ -298,13 +301,15 @@ public:
         status_byte = (uint8_t(val.split())             << 0)
                     | (uint8_t(val.parent_id().valid()) << 1)
                     | (uint8_t(val.tried_to_split())    << 2)
-                    | (uint8_t(val.is_tag())            << 3);
+                    | (uint8_t(val.is_tag())            << 3)
+                    | (uint8_t(val.is_instance_segmentation()) << 4);
         _lines = ShortHorizontalLine::compress(val.hor_lines());
         start_y = val.lines()->empty() ? 0 : val.lines()->front().y;
     }
         
     bool split() const { return status_byte & 0x1; }
     bool is_tag() const { return (status_byte >> 3) & 1u; }
+    bool is_instance_segmentation() const { return (status_byte >> 4) & 1u; }
     cmn::Bounds calculate_bounds() const;
         
     pv::BlobPtr unpack() const;

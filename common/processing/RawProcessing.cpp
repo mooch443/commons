@@ -229,7 +229,7 @@ void process_tags(int32_t index,
                 return std::make_unique<pv::Blob>(
                         std::move(lines),
                         std::move(pixels),
-                        pv::Blob::flag(pv::Blob::Flags::is_tag),
+                        pv::Blob::flag(pv::Blob::Flags::is_tag) | pv::Blob::flag(pv::Blob::Flags::is_instance_segmentation),
                         blob::Prediction{});
             };
             

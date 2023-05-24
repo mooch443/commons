@@ -16,7 +16,12 @@ namespace gui {
         
         assert(_window.type() == CV_8UC4);
     }
-    
+
+void CVBase::set_window_size(Size2) {
+    // pass
+    throw std::invalid_argument("Method not implemented.");
+}
+
     void CVBase::draw_image(gui::ExternalImage* ptr) {
         auto mat = ptr->source()->get();
         assert(mat.type() == CV_8UC4);

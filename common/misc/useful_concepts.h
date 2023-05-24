@@ -90,8 +90,8 @@ concept is_unique_ptr
     = _is_instance<std::unique_ptr, T>;
 
 template<typename T>
-concept _has_tostr_method = requires(T t) {
-    { t.toStr() } -> std::convertible_to<std::string>;
+concept _has_tostr_method = requires(const T* t) {
+    { t->toStr() } -> std::convertible_to<std::string>;
 };
 template<typename T>
 concept _has_fromstr_method = requires() {

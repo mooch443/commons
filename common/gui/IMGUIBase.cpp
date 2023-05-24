@@ -448,6 +448,10 @@ Size2 get_frame_buffer_size(GLFWwindow* window, float r) {
     return { float(display_w), float(display_h) };
 }
 
+void IMGUIBase::set_window_size(Size2 size) {
+    ::gui::set_window_size(_platform->window_handle(), size);
+}
+
 Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     // Setup display size (every frame to accommodate for window resizing)
     auto window_size = get_window_size(window, 1);
@@ -580,7 +584,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     if (base->_last_dpi_scale != -1 && base->_last_dpi_scale != dpi_scale && dpi_scale > 0) {
         auto p = base->_last_dpi_scale / dpi_scale;
         base->_last_dpi_scale = dpi_scale;
-        set_window_size(window, { fw * p, fh * p });
+        ::gui::set_window_size(window, { fw * p, fh * p });
         //glfwSetWindowSize(window, fw * p, fh * p);
     }
     else {
@@ -684,7 +688,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
         else {
 #ifndef WIN32
-            set_window_size(_platform->window_handle(), Vec2( width, height ));
+            ::gui::set_window_size(_platform->window_handle(), Vec2( width, height ));
             //glfwSetWindowSize(_platform->window_handle(), width, height);
 #endif
             set_title(title);
@@ -692,7 +696,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         glfwSetWindowPos(_platform->window_handle(), mx + (mw - width) / 2, my + (mh - height) / 2);
 #ifdef WIN32
-        set_window_size(_platform->window_handle(), Vec2( width, height ));
+        ::gui::set_window_size(_platform->window_handle(), Vec2( width, height ));
         //glfwSetWindowSize(_platform->window_handle(), width, height);
 #endif
 
@@ -954,7 +958,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if (width != self->_graph->width() || height != self->_graph->height()) {
                 Event event(WINDOW_RESIZED);
 
-                set_window_size(self->_platform->window_handle(), Vec2( width, height ));
+                ::gui::set_window_size(self->_platform->window_handle(), Vec2( width, height ));
                 //glfwSetWindowSize(self->_platform->window_handle(), width, height );
 
                 event.size.width = width;
