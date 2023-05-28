@@ -45,11 +45,11 @@ using line_ptr_t = std::unique_ptr<std::vector<HorizontalLine>>;
 using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
 
 struct Prediction {
-    uint8_t clid; // up to 255 classes
+    uint8_t clid{255u}; // up to 254 classes
     uint8_t p{0u}; // [0,255] -> [0,1]
     uint8_t _reserved0, _reserved1;
     
-    bool valid() const { return p > 0; }
+    bool valid() const { return clid < 255u; }
     std::string toStr() const;
     static std::string class_name() { return "Prediction"; }
 };
