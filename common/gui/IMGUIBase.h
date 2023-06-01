@@ -54,7 +54,7 @@ namespace gui {
         DrawStructure * _graph;
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area)
-        GETTER(bool, focussed, true)
+        GETTER_I(bool, focussed, true)
         std::function<void(const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
         std::unordered_map<Type::Class, size_t> _type_counts;
