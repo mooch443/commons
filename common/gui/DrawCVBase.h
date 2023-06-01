@@ -18,6 +18,8 @@ namespace gui {
         virtual void paint(DrawStructure& s) override;
         void display();
         void set_window_size(Size2) override;
+        void set_window_bounds(Bounds) override;
+        Bounds get_window_bounds() const override;
         void set_title(std::string title) override { _title = title; }
         const std::string& title() const override { return _title; }
     private:

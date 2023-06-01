@@ -51,6 +51,7 @@ namespace gui {
             return;
         
         Drawable *d;
+        set_rendered(true);
         
         if(_background) {
             ret.push_back(_background);
@@ -69,16 +70,28 @@ namespace gui {
                 /*if(ptr->background()) {
                     ret.push_back(ptr->background());
                 }*/
-                if(ptr->is_displayed())
+                if (ptr->is_displayed()) {
+                    ptr->set_rendered(true);
                     ret.push_back(ptr);
+                }
+                else
+                    ptr->set_rendered(false);
                 
             } else if(d->type() == Type::SECTION) {
                 auto ptr = static_cast<Section*>(d);
-                if(ptr->enabled() && ptr->is_displayed())
+                if (ptr->enabled() && ptr->is_displayed()) {
                     ptr->collect(ret);
+                }
+                else
+                    ptr->set_rendered(false);
                 
-            } else if(c->is_displayed())
+            }
+            else if (c->is_displayed()) {
+                c->set_rendered(true);
                 ret.push_back(c);
+            }
+            else
+                c->set_rendered(false);
         }
         
         if(debug_rects() && clickable() && width() > 0 && height() > 0) {

@@ -42,6 +42,8 @@ namespace gui {
         virtual void paint(DrawStructure& s) = 0;
         virtual void set_title(std::string) = 0;
         virtual void set_window_size(Size2) = 0;
+        virtual void set_window_bounds(Bounds) = 0;
+        virtual Bounds get_window_bounds() const = 0;
         virtual const std::string& title() const = 0;
         virtual Size2 window_dimensions() const { return Size2(-1); }
         virtual Event toggle_fullscreen(DrawStructure&g) { Event e(WINDOW_RESIZED); e.size.width = g.width(); e.size.height = g.height(); return e; }

@@ -54,6 +54,7 @@ namespace gui {
         DrawStructure * _graph;
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area)
+        GETTER(bool, focussed, true)
         std::function<void(const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
         std::unordered_map<Type::Class, size_t> _type_counts;
@@ -164,8 +165,12 @@ namespace gui {
         
         Bounds text_bounds(const std::string& text, Drawable*, const Font& font) override;
         uint32_t line_spacing(const Font& font) override;
+
         Size2 window_dimensions() const override;
         void set_window_size(Size2) override;
+        void set_window_bounds(Bounds) override;
+        Bounds get_window_bounds() const override;
+
         Size2 real_dimensions();
         template<class F, class... Args>
         auto exec_main_queue(F&& f, Args&&... args) -> std::future<typename std::invoke_result_t<F, Args...>>

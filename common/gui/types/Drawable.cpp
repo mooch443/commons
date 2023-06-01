@@ -694,6 +694,23 @@ namespace gui {
                 return true;
         return false;
     }
+
+    void Drawable::on_visibility_change(bool) {
+        // nothing
+    }
+
+    void Drawable::set_is_displayed(bool displayed) {
+        if (_is_displayed != displayed) {
+            _is_displayed = displayed;
+        }
+    }
+
+    void Drawable::set_rendered(bool render) {
+        if (_rendered != render) {
+			_rendered = render;
+            on_visibility_change(render);
+		}
+    }
     
     void Drawable::set_parent(gui::SectionInterface *parent) {
         if(_parent == parent)
@@ -871,6 +888,27 @@ namespace gui {
         }
         
         set_dirty();
+    }
+
+    void SectionInterface::on_visibility_change(bool visible) {
+        print(" visibility of ", this, " changed to ", visible);
+
+        // only propagate to children if the visibility is deactivated
+        // since the children will not necessarily be visible if the parent
+        // is visible, but the other way around is true
+        if (visible)
+            return;
+
+        for (auto c : children()) {
+            if (!c)
+                continue;
+
+            if (c->type() == Type::SINGLETON)
+                c = static_cast<SingletonObject*>(c)->ptr();
+            if (c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
+                static_cast<SectionInterface*>(c)->set_rendered(visible);
+            else c->set_rendered(visible);
+        }
     }
 
 void SectionInterface::set_z_index(int index) {

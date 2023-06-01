@@ -10,6 +10,14 @@ namespace gui {
     void HTMLBase::set_window_size(Size2 size) {
         _size = size;
     }
+
+    Bounds HTMLBase::get_window_bounds() const {
+        return Bounds(0, 0, _size.width, _size.height);
+    }
+
+    void HTMLBase::set_window_bounds(Bounds bounds) {
+		_size = bounds.size();
+	}
     
     void HTMLBase::paint(gui::DrawStructure &s) {
         std::unique_lock<std::recursive_mutex> lock(s.lock());

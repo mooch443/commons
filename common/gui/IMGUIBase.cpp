@@ -452,6 +452,20 @@ void IMGUIBase::set_window_size(Size2 size) {
     ::gui::set_window_size(_platform->window_handle(), size);
 }
 
+void IMGUIBase::set_window_bounds(Bounds bounds) {
+    auto size = bounds.size();
+    auto pos = bounds.pos();
+	glfwSetWindowPos(_platform->window_handle(), pos.x, pos.y);
+	this->set_window_size(size);
+}
+
+Bounds IMGUIBase::get_window_bounds() const {
+    int x, y;
+    glfwGetWindowPos(_platform->window_handle(), &x, &y);
+    auto size = get_window_size(_platform->window_handle(), 1);
+    return Bounds(x, y, size.width, size.height);
+}
+
 Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     // Setup display size (every frame to accommodate for window resizing)
     auto window_size = get_window_size(window, 1);
@@ -800,7 +814,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _platform->set_title(title);
         
         base_pointers[_platform->window_handle()] = this;
-        
+        _focussed = true;
+
+        glfwSetWindowFocusCallback(_platform->window_handle(), [](GLFWwindow* window, int focus) {
+            auto base = base_pointers.at(window);
+            base->_focussed = focus == GLFW_TRUE;
+            print("focussed = ", focus);
+        });
         glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int , int action, int) {
             auto base = base_pointers.at(window);
             
@@ -815,6 +835,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         });
         glfwSetCursorPosCallback(_platform->window_handle(), [](GLFWwindow* window, double xpos, double ypos) {
             auto base = base_pointers.at(window);
+            if (not base->_focussed)
+                return;
             
             Event e(EventType::MMOVE);
             auto &io = ImGui::GetIO();

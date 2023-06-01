@@ -145,9 +145,11 @@ namespace gui {
         
         //! If this object has been rendered in the last renderpass, this will be set to true.
         GETTER_SETTER_I(bool, was_visible, false)
-        
+
         //! If the object is disabled, it will not be displayed.
-        GETTER_SETTER_I(bool, is_displayed, true)
+        GETTER_I(bool, is_displayed, true)
+
+        GETTER_I(bool, rendered, false)
         
     protected:
         //! If this is set to true, the next bounds(), rect()
@@ -262,6 +264,11 @@ namespace gui {
         const CacheObject::Ptr& insert_cache(const Base* base, CacheObject::Ptr&& o);
         void remove_cache(const Base* base);
         void clear_cache();
+
+        //! called when the object is hidden / becomes visible
+        virtual void on_visibility_change(bool visible);
+        void set_is_displayed(bool displayed);
+        void set_rendered(bool render);
         
         //! Returns true if the object has been changed for any base or
         //  the specified one
@@ -410,6 +417,8 @@ namespace gui {
         void set_size(const Size2& size) override;
         void set_bounds(const Bounds& bounds) override;
         void set_scale(const Vec2& scale) override;
+
+        virtual void on_visibility_change(bool visible) override;
         
         void set_background(const Color& color);
         virtual void set_background(const Color& color, const Color& line);

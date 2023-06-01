@@ -22,6 +22,14 @@ void CVBase::set_window_size(Size2) {
     throw std::invalid_argument("Method not implemented.");
 }
 
+Bounds CVBase::get_window_bounds() const {
+    throw std::invalid_argument("Method not implemented.");
+}
+
+void CVBase::set_window_bounds(Bounds bounds) {
+    throw std::invalid_argument("Method not implemented.");
+}
+
     void CVBase::draw_image(gui::ExternalImage* ptr) {
         auto mat = ptr->source()->get();
         assert(mat.type() == CV_8UC4);
