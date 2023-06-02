@@ -94,14 +94,14 @@ VideoSource::File::File(File&& other)
 : _index(other._index),
   _filename(other._filename),
   _length(other._length),
-  _video(other._video ? new Video(*other._video) : nullptr),
+  _video(other._video ? other._video : nullptr),
   _type(other._type),
   _format(std::move(other._format)),
   _timestamps(std::move(other._timestamps)),
   _size(other._size)
 {
-    if(other._video)
-        delete other._video;
+    //if(other._video)
+    //    delete other._video;
     other._video = nullptr;
 }
 

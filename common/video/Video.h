@@ -36,6 +36,7 @@ namespace cmn { class Video; }
  */
 class cmn::Video {
     ImageMode _colored{ImageMode::GRAY};
+    mutable std::mutex _mutex;
     
 public:
     typedef std::function<void(const cv::Mat &, int)> frame_callback;
@@ -44,6 +45,11 @@ public:
      * Constructor of @class Video.
      */
     Video();
+
+    Video(const Video&) = delete;
+    Video(Video&&) = default;
+    Video& operator=(const Video&) = delete;
+    Video& operator=(Video&&) = default;
     
     /**
      * Destructor of @class Video.

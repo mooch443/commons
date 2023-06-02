@@ -57,7 +57,8 @@ Video::~Video() {
  */
 bool Video::open(const std::string& filename) {
     close();
-    
+
+    std::unique_lock guard(_mutex);
 #if defined(VIDEOS_USE_CUDA)
     d_reader = cv::cudacodec::createVideoReader(filename);
     _size = cv::Size(d_reader->format().width, d_reader->format().height);
@@ -80,6 +81,7 @@ bool Video::open(const std::string& filename) {
 }
 
 void Video::set_colored(ImageMode c) {
+    std::unique_lock guard(_mutex);
     _colored = c;
 }
 
@@ -88,7 +90,8 @@ void Video::set_colored(ImageMode c) {
  */
 void Video::close() {
     clear();
-    
+
+    std::unique_lock guard(_mutex);
 #if defined(VIDEOS_USE_CUDA)
     if(!d_reader.empty())
         d_reader.release();
@@ -105,6 +108,7 @@ void Video::close() {
  * @return int
  */
 int Video::framerate() const {
+    std::unique_lock guard(_mutex);
     return (int)_cap->get(cv::CAP_PROP_FPS);
 }
 
@@ -113,6 +117,7 @@ int Video::framerate() const {
  * @return int
  */
 Frame_t Video::length() const {
+    std::unique_lock guard(_mutex);
     return Frame_t(sign_cast<Frame_t::number_t>(_cap->get(cv::CAP_PROP_FRAME_COUNT)));
 }
 
@@ -121,6 +126,7 @@ Frame_t Video::length() const {
  * @return bool
  */
 bool Video::isOpened() const {
+    std::unique_lock guard(_mutex);
     return _cap && _cap->isOpened();
 }
 
@@ -129,6 +135,7 @@ bool Video::isOpened() const {
  * @return cv::Size
  */
 const cv::Size& Video::size() const {
+    std::unique_lock guard(_mutex);
     if(!_cap)
         throw U_EXCEPTION("Trying to retrieve size of a video that has not been opened.");
     return _size;
@@ -186,6 +193,8 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
     
     if (index >= length())
         throw U_EXCEPTION("Read out of bounds ",index,"/",length(),". (caller ", loc.file_name(), ":", loc.line(),")");
+
+    std::unique_lock guard(_mutex);
     if (!_cap)
         throw U_EXCEPTION("Video ",_filename," has not yet been loaded.");
     
@@ -304,6 +313,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
  * @param f
  */
 void Video::onFrame(const frame_callback& f) {
+    std::unique_lock guard(_mutex);
     _frame_callback = f;
 }
 
@@ -316,6 +326,7 @@ void Video::onFrame(const frame_callback& f) {
  * @return Mat33
  */
 const Mat33& Video::set_intrinsics(const Mat21& focal, const ScalarType alpha_c, const Mat21& cc) {
+    std::unique_lock guard(_mutex);
     cv::setIdentity(_camera_matrix);
     
     _camera_matrix(0,0) = focal(0,0);
@@ -335,6 +346,7 @@ const Mat33& Video::set_intrinsics(const Mat21& focal, const ScalarType alpha_c,
  * @return Mat51
  */
 const Mat51& Video::set_distortion(const Mat51& distortion) {
+    std::unique_lock guard(_mutex);
     _distortion = distortion;
     return _distortion;
 }
@@ -345,6 +357,7 @@ const Mat51& Video::set_distortion(const Mat51& distortion) {
  * @return cv::Mat
  */
 const cv::Mat& Video::undistorted_frame(Frame_t index) {
+    std::unique_lock guard(_mutex);
     if(_undistorted_frames.count(index)) {
         return _undistorted_frames[index];
     }
@@ -373,6 +386,7 @@ const cv::Mat& Video::undistorted_frame(Frame_t index) {
  * @return Mat33
  */
 const Mat33& Video::camera_matrix() const {
+    std::unique_lock guard(_mutex);
     return _camera_matrix;
 }
 
@@ -381,6 +395,7 @@ const Mat33& Video::camera_matrix() const {
  * @return Mat51
  */
 const Mat51& Video::distortion() const {
+    std::unique_lock guard(_mutex);
     return _distortion;
 }
 
@@ -392,6 +407,7 @@ const Mat51& Video::distortion() const {
  * @return Mat44
  */
 Mat44 Video::glMatrix() const {
+    std::unique_lock guard(_mutex);
     double zNear = 0.01;
     double zFar = 1000.0;
     
@@ -428,6 +444,7 @@ Mat44 Video::glMatrix() const {
  * @return std::pair<cv::Mat, cv::Mat>
  */
 const std::pair<gpuMat, gpuMat>& Video::calculate_undistort_maps() {
+    std::unique_lock guard(_mutex);
     gpuMat map1, map2;
     cv::initUndistortRectifyMap(_camera_matrix, _distortion, cv::Mat(), _camera_matrix, size(), CV_32FC1, map1, map2);
     
@@ -438,6 +455,7 @@ const std::pair<gpuMat, gpuMat>& Video::calculate_undistort_maps() {
 }
 
 void Video::clear() {
+    std::unique_lock guard(_mutex);
     _undistorted_frames.clear();
     _frames.clear();
 }
