@@ -89,6 +89,9 @@ namespace gui {
         
         using Entangled::set_background;
         void set_background(const Color& color, const Color& line) override;
+        virtual std::string toStr() const override {
+            return std::string(type().name()) + " " + Meta::toStr(_settings.txt);
+        }
         
         void set_txt(const std::string& txt);
         

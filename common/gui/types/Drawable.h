@@ -398,7 +398,7 @@ namespace gui {
         //! updates boundaries / global_transform and clickable (if object is section)
         virtual void update_bounds();
         
-        std::string toStr() const;
+        virtual std::string toStr() const;
         static std::string class_name() { return "Drawable"; }
     };
     
@@ -432,6 +432,7 @@ namespace gui {
         virtual Vec2 stage_scale() const override;
         
         std::string toString(const Base* base, const std::string& indent = "");
+        virtual std::string toStr() const;
         
     protected:
         using Drawable::set;

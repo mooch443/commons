@@ -141,6 +141,14 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
     }
 }
 
+void Entangled::on_visibility_change(bool visible) {
+    SectionInterface::set_rendered(visible);
+    for(auto ptr : children()) {
+        if(ptr)
+            ptr->set_rendered(visible);
+    }
+}
+
     void Entangled::begin() {
         if(_begun) {
             print_stacktrace();

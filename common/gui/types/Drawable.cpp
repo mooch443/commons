@@ -15,6 +15,10 @@ namespace gui {
     std::string Drawable::toStr() const {
         return std::string(type().name()) + " " + Meta::toStr(_global_bounds);
     }
+
+    std::string SectionInterface::toStr() const {
+        return std::string(type().name()) + " " + name();
+    }
     
 #ifdef _DEBUG_MEMORY
     std::mutex all_mutex;
@@ -891,6 +895,8 @@ namespace gui {
     }
 
     void SectionInterface::on_visibility_change(bool visible) {
+        Drawable::on_visibility_change(visible);
+        
         print(" visibility of ", this, " changed to ", visible);
 
         // only propagate to children if the visibility is deactivated

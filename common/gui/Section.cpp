@@ -47,8 +47,10 @@ namespace gui {
     }
     
     void Section::collect(std::vector<Drawable*>& ret) {
-        if(not is_displayed())
+        if(not is_displayed()) {
+            set_rendered(false);
             return;
+        }
         
         Drawable *d;
         set_rendered(true);
@@ -80,11 +82,15 @@ namespace gui {
             } else if(d->type() == Type::SECTION) {
                 auto ptr = static_cast<Section*>(d);
                 if (ptr->enabled() && ptr->is_displayed()) {
+                    ptr->set_rendered(true);
                     ptr->collect(ret);
                 }
                 else
                     ptr->set_rendered(false);
                 
+            }
+            else if(c->type() == Type::ENTANGLED) {
+                c->set_rendered(c->is_displayed());
             }
             else if (c->is_displayed()) {
                 c->set_rendered(true);
