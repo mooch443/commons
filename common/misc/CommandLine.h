@@ -2,6 +2,7 @@
 
 #include <file/Path.h>
 #include <misc/SpriteMap.h>
+#include <misc/GlobalSettings.h>
 
 namespace cmn {
     class CommandLine {
@@ -34,7 +35,7 @@ namespace cmn {
         void cd_home();
         
         //! Loads settings passed as command-line options into GlobalSettings map
-        void load_settings();
+        void load_settings(const SettingsMaps* additional = nullptr);
         
         //! Iterate custom command-line options that havent been processed already
         decltype(_options)::const_iterator begin() const { return _options.begin(); }

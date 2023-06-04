@@ -5,6 +5,7 @@
 #include <gui/colors.h>
 #include <misc/metastring.h>
 #include <misc/Timer.h>
+#include <misc/GlobalSettings.h>
 
 namespace cmn {
     IMPLEMENT(CrashProgram::do_crash) = false;
@@ -635,7 +636,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(Map& map, std::string str) {
+        std::set<std::string> parse_values(Map& map, std::string str, const SettingsMaps* additional) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -660,7 +661,10 @@ namespace cmn {
                 if(map.has(key)) {
                     // try to set with existing type
                     map[key].get().set_value_from_string(value);
-                    
+                } else if(additional && additional->map.has(key)) {
+                    additional->map[key].get().copy_to(&map);
+                    //[key] = additional->docs.at(key);
+                    map[key].get().set_value_from_string(value);
                 } else {
                     // key is not yet present in the map, estimate type
                     auto type = estimate_datatype(value);
@@ -709,12 +713,17 @@ namespace cmn {
                 added.insert(key);
             }
             
+            /*print("Added: ", added);
+            for(auto key : added) {
+                auto c = map[key].get().valueString();
+                print(key.c_str(), " = ", c.c_str());
+            }*/
             return added;
         }
         
-        Map parse_values(std::string str) {
+        Map parse_values(std::string str, const SettingsMaps* additional) {
             Map map;
-            parse_values(map, str);
+            parse_values(map, str, additional);
             return map;
         }
     }

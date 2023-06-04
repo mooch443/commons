@@ -147,6 +147,15 @@ namespace cmn {
         
         extern g_GSettingsSingletonStruct g_GSettingsSingleton;
     }*/
+
+    /**
+     * Combines all required maps into a joint object.
+     */
+    struct SettingsMaps {
+        sprite::Map map;
+        GlobalSettings::docs_map_t docs;
+        GlobalSettings::user_access_map_t access_levels;
+    };
 }
 
 #endif //_GLOBALSETTINGS_H

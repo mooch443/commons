@@ -432,7 +432,7 @@ namespace gui {
         virtual Vec2 stage_scale() const override;
         
         std::string toString(const Base* base, const std::string& indent = "");
-        virtual std::string toStr() const;
+        virtual std::string toStr() const override;
         
     protected:
         using Drawable::set;

@@ -114,7 +114,7 @@ namespace cmn {
             load_settings();
     }
     
-    void CommandLine::load_settings() {
+    void CommandLine::load_settings(const SettingsMaps* additional) {
         for(auto &s : _settings) {
             std::string value = s.value;
             if(value.empty()) {
@@ -130,9 +130,9 @@ namespace cmn {
                   ))
                )
             {
-                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':'"+value+"'}");
+                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':'"+value+"'}", additional);
             } else
-                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':"+value+"}");
+                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':"+value+"}", additional);
             _settings_keys[s.name] = value;
         }
     }

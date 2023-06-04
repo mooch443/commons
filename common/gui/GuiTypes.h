@@ -419,6 +419,7 @@ protected:
         }
         
         std::ostream &operator <<(std::ostream &os) override;
+        virtual std::string toStr() const override;
         
         const Bounds& text_bounds() {
             refresh_dims();

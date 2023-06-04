@@ -54,6 +54,8 @@ namespace cmn {
             
             virtual ~PropertyType() = default;
             
+            virtual void copy_to(Map* other) const;
+            
             void set_value_from_string(const std::string& str) {
                 try {
                     _set_value_from_string(str);
@@ -170,6 +172,8 @@ namespace cmn {
             {
                 init();
             }
+            
+            void copy_to(Map* other) const override;
             
             void init() {
                 _set_value_from_string = [this](const std::string& str) {

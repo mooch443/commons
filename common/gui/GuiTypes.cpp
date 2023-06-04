@@ -512,6 +512,10 @@ std::ostream & Text::operator <<(std::ostream &os) {
     return os;
 }
 
+std::string Text::toStr() const {
+    return "TEXT<'"+_settings.txt+"'>";
+}
+
 /*Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)
 : gui::Drawable(Type::TEXT, Bounds(pos),
                 font.align == Align::Center

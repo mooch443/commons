@@ -339,6 +339,16 @@ namespace sprite {
             return *property_;
         }
         
+        void erase(const std::string& key) {
+            LockGuard guard(this);
+            if(not has(key)) {
+                std::string e = "Map does not have key '"+key+"'.";
+                FormatError(e.c_str());
+                throw PropertyException(e);
+            }
+            _props.erase(key);
+        }
+        
         std::vector<std::string> keys() const {
             std::vector<std::string> result;
             result.reserve(_props.size());
@@ -449,6 +459,13 @@ void Reference::operator=(const T& value) {
         }
         if(_map)
             _map->changed(*this);
+    }
+
+
+
+    template<typename T>
+    void Property<T>::copy_to(Map* other) const {
+        other->insert(_name, _value);
     }
 }
 }
