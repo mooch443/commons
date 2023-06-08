@@ -298,6 +298,9 @@ namespace cmn {
     template<> void Data::read(cv::Rect2i&);
     template<> uint64_t Data::write(const cv::Rect2i& val);
 
+    template<> void Data::read(cmn::timestamp_t&);
+    template<> uint64_t Data::write(const cmn::timestamp_t& val);
+
     template<> void Data::read(CropOffsets&);
     template<> uint64_t Data::write(const CropOffsets& val);
 

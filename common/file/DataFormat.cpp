@@ -527,6 +527,24 @@ void Data::read(cv::Rect2i& r) {
 }
 
 template<>
+uint64_t Data::write(const timestamp_t& val) {
+    if(val.valid())
+        return write<uint64_t>(val.get());
+    else
+        return write<uint64_t>(UINT64_MAX);
+}
+
+template<>
+void Data::read(timestamp_t& r) {
+    uint64_t x;
+    read<uint64_t>(x);
+    if(x == UINT64_MAX)
+        r = {};
+    else
+        r = x;
+}
+
+template<>
 uint64_t Data::write(const CropOffsets& o) {
     auto val = o.toPixels(Size2(8000, 8000));
 

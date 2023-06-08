@@ -586,6 +586,7 @@ struct timestamp_t {
     
     explicit constexpr operator value_type() const { return get(); }
     explicit constexpr operator double() const { return double(get()); }
+    constexpr operator std::chrono::microseconds() const { return std::chrono::microseconds(valid() ? get() : 0); }
 #ifndef NDEBUG
     constexpr value_type get(cmn::source_location loc = cmn::source_location::current()) const {
         if(!valid())
