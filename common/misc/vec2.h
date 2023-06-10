@@ -407,6 +407,31 @@ public:
         width = other.width;
         height = other.height;
     }
+
+    constexpr Bounds operator-(const Vec2& pos) {
+        Bounds copy(*this);
+        copy.x -= pos.x;
+        copy.y -= pos.y;
+        return copy;
+    }
+    constexpr Bounds operator+(const Vec2& pos) {
+        Bounds copy(*this);
+        copy.x += pos.x;
+        copy.y += pos.y;
+        return copy;
+    }
+    constexpr Bounds operator-(const Size2& size) {
+        Bounds copy(*this);
+        copy.width -= size.width;
+        copy.height -= size.height;
+        return copy;
+    }
+    constexpr Bounds operator+(const Size2& size) {
+        Bounds copy(*this);
+        copy.width += size.width;
+        copy.height += size.height;
+        return copy;
+    }
         
     constexpr bool operator<(const Bounds& other) const {
         return pos() < other.pos() || (pos() == other.pos() && size() < other.size());
