@@ -715,7 +715,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v2.10.3")
+set(pybind11_version_tag "v2.10.4")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
