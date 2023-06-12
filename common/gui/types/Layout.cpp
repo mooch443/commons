@@ -245,6 +245,7 @@ namespace gui {
                 continue;
             
             max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
+            assert(not std::isnan(max_width));
         }
         
         for(auto c : children()) {
@@ -291,8 +292,10 @@ namespace gui {
             ma = max(bds.pos() + bds.size(), ma);
         }
         
-        ma += Vec2(max(0.f, margin.right), max(0.f, margin.bottom));
-        set_size(ma - mi);
+        if(mi.x != std::numeric_limits<Float2_t>::max()) {
+            ma += Vec2(max(0.f, margin.right), max(0.f, margin.bottom));
+            set_size(ma - mi);
+        }
     }
     
     void VerticalLayout::set_policy(Policy policy) {

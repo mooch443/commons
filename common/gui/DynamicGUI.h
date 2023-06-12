@@ -321,7 +321,35 @@ T resolve_variable_type(std::string word, const Context& context) {
         word = word.substr(1,word.length()-2);
     }
     
-    return resolve_variable(word, context, [&](const VarBase_t& variable, const std::string& modifiers) -> T {
+    return resolve_variable(word, context, [&](const VarBase_t& variable, const std::string& modifiers) -> T
+    {
+        if constexpr(std::is_same_v<T, bool>) {
+            if(variable.is<bool>()) {
+                return variable.value<T>(modifiers);
+            } else if(variable.is<file::Path>()) {
+                auto tmp = variable.value<file::Path>(modifiers);
+                return not tmp.empty();
+            } else if(variable.is<std::string>()) {
+                auto tmp = variable.value<std::string>(modifiers);
+                return not tmp.empty();
+            } else if(variable.is<sprite::Map&>()) {
+                auto& tmp = variable.value<sprite::Map&>("null");
+                auto ref = tmp[modifiers];
+                if(not ref.get().valid()) {
+                    FormatWarning("Retrieving invalid property (", modifiers, ") from map with keys ", tmp.keys(), ".");
+                    return false;
+                }
+                //print(ref.get().name()," = ", ref.get().valueString(), " with ", ref.get().type_name());
+                if(ref.template is_type<T>()) {
+                    return ref.get().template value<T>();
+                } else if(ref.is_type<std::string>()) {
+                    return not ref.get().value<std::string>().empty();
+                } else if(ref.is_type<file::Path>()) {
+                    return not ref.get().value<file::Path>().empty();
+                }
+            }
+        }
+        
         if(variable.is<T>()) {
             return variable.value<T>(modifiers);
             
