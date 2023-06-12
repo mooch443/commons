@@ -819,7 +819,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         glfwSetWindowFocusCallback(_platform->window_handle(), [](GLFWwindow* window, int focus) {
             auto base = base_pointers.at(window);
             base->_focussed = focus == GLFW_TRUE;
-            print("focussed = ", focus);
         });
         glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int , int action, int) {
             auto base = base_pointers.at(window);
