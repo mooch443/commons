@@ -651,6 +651,8 @@ namespace cmn {
             auto parts = util::parse_array_parts(str);
             for (auto &p : parts) {
                 auto key_value = util::parse_array_parts(p, ':');
+                if(key_value.empty())
+					continue;
                 auto &key = key_value[0];
                 std::string value;
                 if(key_value.size() > 1) value = key_value[1];
