@@ -316,7 +316,7 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
 }
 
 std::vector<std::string> split_words(const std::string &input) {
-    std::regex word_regex(R"([^\s\W_]+)");
+    std::regex word_regex(R"([^\s_]+)");
     std::sregex_token_iterator begin(input.begin(), input.end(), word_regex);
     std::sregex_token_iterator end;
 
