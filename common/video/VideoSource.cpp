@@ -506,6 +506,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     }
     
     print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
+    _base = prefix+(suffix.empty() ? "" : "."+suffix);
     
     if(type() == File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();
