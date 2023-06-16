@@ -80,7 +80,7 @@ void AveragingAccumulator::_add(const Mat &f) {
         assert(spatial_histogram.size() == uint64_t(f.cols) * uint64_t(f.rows));
         if constexpr(threaded) {
             for (; ptr != end; ++ptr, ++array_ptr, ++mutex_ptr) {
-                (*mutex_ptr)->lock();
+                (*mutex_ptr)->lock(); //TODO: this is a performance culprit (locking/unlocking)
                 ++((*array_ptr)[*ptr]);
                 (*mutex_ptr)->unlock();
             }
