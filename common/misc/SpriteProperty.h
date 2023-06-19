@@ -3,10 +3,53 @@
 #include <misc/defines.h>
 #include <misc/metastring.h>
 #include <misc/vec2.h>
+#include <nlohmann/json.hpp>
+#include <file/Path.h>
 
 namespace cmn {
     namespace sprite {
         
+        template<typename VT>
+        auto cvt2json(const VT & v) -> nlohmann::json {
+            if constexpr (is_numeric<VT>)
+                return nlohmann::json(v);
+            if constexpr (_clean_same<VT, bool>)
+                return nlohmann::json((bool)v);
+            if constexpr (_clean_same<VT, file::Path>) {
+                auto i = v.str();
+                return nlohmann::json(i.c_str());
+            }
+            if constexpr (is_map<VT>::value) {
+                auto a = nlohmann::json::object();
+                for (auto& [key, i] : v) {
+                    if constexpr(std::is_same_v<decltype(key), std::string>)
+                        a[key] = cvt2json(i);
+                    else if constexpr(std::is_convertible_v<decltype(key), std::string>)
+                        a[std::string(key)] = cvt2json(i);
+                    else
+                        a[Meta::toStr(key)] = cvt2json(i);
+				}
+                return a;
+            }
+            if constexpr (is_container<VT>::value) {
+                auto a = nlohmann::json::array();
+                for (const auto& i : v) {
+                    a.push_back(cvt2json(i));
+                }
+                return a;
+            }
+            if constexpr (std::is_same_v<VT, std::string>) {
+                std::string str = v;
+				return nlohmann::json(v.c_str());
+			}
+            if constexpr (std::is_convertible_v<VT, std::string>) {
+                std::string str = v;
+                return nlohmann::json(v.c_str());
+            }
+            nlohmann::json json = Meta::toStr(v);
+            return json;
+        }
+
         class PropertyException : public virtual UtilsException {
         public:
             PropertyException(const std::string& str) : UtilsException(str) { }
@@ -28,6 +71,7 @@ namespace cmn {
             
             std::function<void(const std::string&)> _set_value_from_string;
             std::function<std::string()> _type_name;
+            std::function<nlohmann::json()> _to_json;
             GETTER(std::function<std::vector<std::string>()>, enum_values)
             GETTER(std::function<size_t()>, enum_index)
             
@@ -38,6 +82,7 @@ namespace cmn {
                 : _name("<invalid>"), _valid(false), _is_array(false), _is_enum(false),
                 _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
                 _type_name([](){return "unknown";}),
+                _to_json([](){return nlohmann::json();}),
                 _enum_values([]() -> std::vector<std::string> {     throw U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
                 _enum_index([]() -> size_t{ throw U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
                 _map(map)
@@ -76,6 +121,10 @@ namespace cmn {
             
             void valid(bool valid) { _valid = valid; }
             bool valid() const { return _valid; }
+
+            auto to_json() const {
+				return _to_json();
+			}
 
             template<typename T>
             Property<T>& toProperty() {
@@ -182,6 +231,9 @@ namespace cmn {
                 };
                 
                 _type_name = [](){ return Meta::name<ValueType>(); };
+                _to_json = [this]() {
+                    return cvt2json(_value);
+                };
                 
                 _is_enum = cmn::is_enum<ValueType>::value;
                 _is_array = is_container<ValueType>::value;

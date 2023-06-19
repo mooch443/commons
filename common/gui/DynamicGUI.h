@@ -1,7 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <JSON.h>
+#include <nlohmann/json.hpp>
 #include <gui/colors.h>
 #include <file/Path.h>
 #include <gui/types/Layout.h>

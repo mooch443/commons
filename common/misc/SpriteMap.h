@@ -465,6 +465,9 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void Property<T>::copy_to(Map* other) const {
+        if (other->has(_name))
+            other->erase(_name);
+
         other->insert(_name, _value);
     }
 }

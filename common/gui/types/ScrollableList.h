@@ -402,6 +402,8 @@ namespace gui {
 
             Color base_color;
             for (auto rect : _rects) {
+                if (not rect_to_idx.contains(rect))
+                    continue;
                 auto idx = rect_to_idx[rect];
                 _items[idx].set_hovered(rect->hovered());
 
