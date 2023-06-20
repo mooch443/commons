@@ -170,7 +170,7 @@ namespace sprite {
         ska::bytell_hash_map<std::string, bool> _print_key;
         
         GETTER_NCONST(std::mutex, mutex)
-        GETTER_SETTER(bool, do_print)
+        GETTER_SETTER_I(bool, do_print, true)
         
     public:
         //! value of the property name has changed
