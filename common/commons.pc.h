@@ -304,6 +304,25 @@ inline std::string get_thread_name() {
 #endif
 }
 
+inline std::string get_thread_name(auto id) {
+#if !defined(WIN32) && !defined(__EMSCRIPTEN__)
+    char buffer[1024];
+    pthread_getname_np(id, buffer, sizeof(buffer));
+    return std::string(buffer);
+#else
+    PWSTR data;
+    HRESULT hr = GetThreadDescription(id, &data);
+    if (SUCCEEDED(hr))
+    {
+        ::std::wstring thread_name(data);
+        LocalFree(data);
+
+        return WStringToString(thread_name);
+    }
+    return "<unnamed>";
+#endif
+}
+
 inline consteval bool is_debug_mode() {
 #ifndef NDEBUG
     return true;
