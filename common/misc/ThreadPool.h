@@ -23,7 +23,7 @@ namespace cmn {
         GETTER(std::string, thread_prefix)
         
     public:
-        GenericThreadPool(size_t nthreads, const std::string& thread_prefix = "GenericThreadPool", std::function<void(std::exception_ptr)> handle_exceptions = nullptr, std::function<void()> init = [](){});
+        GenericThreadPool(size_t nthreads, const std::string& thread_prefix, std::function<void(std::exception_ptr)> handle_exceptions = nullptr, std::function<void()> init = [](){});
         
         ~GenericThreadPool() {
             force_stop();

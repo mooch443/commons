@@ -4,7 +4,7 @@
 namespace cmn {
     GenericThreadPool::GenericThreadPool(size_t nthreads, const std::string& thread_prefix, std::function<void(std::exception_ptr)> handle_exceptions, std::function<void()> init)
             : _exception_handler(handle_exceptions),
-            nthreads(0), stop(false), _init(init), _working(0), _thread_prefix(thread_prefix)
+            nthreads(0), stop(false), _init(init), _working(0), _thread_prefix(thread_prefix+"("+Meta::toStr(nthreads)+")")
     {
         resize(nthreads);
     }

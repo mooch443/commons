@@ -17,7 +17,7 @@ using namespace cmn;
 gpuMat gpu_dilation_element;
 std::shared_mutex mutex;
 
-GenericThreadPool _contour_pool(5);
+GenericThreadPool _contour_pool(5, "contour_pool");
 
 template<typename Calc = float, typename A = uchar, typename B = uchar>
 class SubtractConvert : public cv::ParallelLoopBody
