@@ -3,6 +3,9 @@ if(POLICY CMP0114)
   cmake_policy(PUSH)
   cmake_policy(SET CMP0114 NEW)
 endif()
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
 
 project(commons)
 
@@ -1248,7 +1251,15 @@ if(${COMMONS_BUILD_OPENCV})
 else()
     set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
     set(OPENCV_C_FLAGS "${OPENCV_C_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
-
+    execute_process(
+    COMMAND "${PYTHON_EXECUTABLE}" -c "if True:
+        from distutils import sysconfig as sc
+        print(sc.get_python_lib(prefix='', plat_specific=True))"
+            OUTPUT_VARIABLE PYTHON_SITE
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    file(TO_CMAKE_PATH "${Python_ROOT_DIR}/${PYTHON_SITE}" PYTHON_SITE)
+    message(STATUS "Python site-packages directory is ${PYTHON_SITE}")
+    
     set(OPENCV_CMAKE_ARGS
             -DBUILD_DOCS:BOOL=FALSE
             -DBUILD_EXAMPLES:BOOL=FALSE
@@ -1308,14 +1319,14 @@ endif()
                 -DCMAKE_DEBUG_POSTFIX=
                 ${OPENCV_EXTRA_FLAGS})
 
-    set(COMMONS_OPENCV_VERSION "4.7.0")
+    set(COMMONS_OPENCV_VERSION "4.8.0")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
         if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
             message(STATUS "ARM?")
         else()
             message(STATUS "x86_64 macos")
-            set(COMMONS_OPENCV_VERSION "4.7.0")
+            set(COMMONS_OPENCV_VERSION "4.8.0")
         endif()
     endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})
