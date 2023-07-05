@@ -12,6 +12,11 @@ Color Color::fromStr(const std::string& str) {
     if (s == "cyan") return gui::Cyan;
     if (s == "white") return gui::White;
     if (s == "black") return gui::Black;
+    if (s == "gray") return gui::Gray;
+    if (s == "darkgray") return gui::DarkGray;
+    if (s == "lightgray") return gui::LightGray;
+    if (s == "transparent") return gui::Transparent;
+    if (s == "purple") return gui::Purple;
 
     auto vec = Meta::fromStr<std::vector<uchar>>(str);
     if (vec.empty())
