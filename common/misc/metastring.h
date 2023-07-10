@@ -329,6 +329,10 @@ template<class Q> std::string name(const typename std::enable_if< std::is_same<s
 template<class Q> std::string name(const typename std::enable_if< std::is_same<bool, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "bool"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<cv::Mat, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "mat"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<cv::Range, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "range"; }
+
+template<typename Q>
+    requires (_is_dumb_pointer<Q> && not std::same_as<Q, const char*>)
+std::string name();
         
 /**
  * chrono:: time objects
@@ -389,6 +393,12 @@ template<class Q>
     requires (is_instantiation<cv::Rect_, Q>::value)
 std::string name() {
     return "rect<"+Meta::name<typename Q::value_type>()+">";
+}
+
+template<typename Q>
+    requires (_is_dumb_pointer<Q> && not std::same_as<Q, const char*>)
+std::string name() {
+    return Meta::name<typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type>() + "*";
 }
         
 /**

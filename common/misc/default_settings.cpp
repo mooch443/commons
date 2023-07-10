@@ -89,7 +89,7 @@ namespace cmn {
                 auto c = doc.at(i);
                 if(c == '\n') {
                     end_word(0, 0);
-                    parsed << "<br/>";
+                    parsed << "<br/>\n";
                     
                 } else if(is_in(c, '\'', '`', '"', '$')) {
                     bool closing = false;
