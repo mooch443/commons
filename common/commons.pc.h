@@ -710,6 +710,33 @@ struct atomic {
     }
 };
 #endif
+
+template <typename T>
+class read_once {
+private:
+    std::optional<T> data;
+    std::mutex mtx;
+
+public:
+    read_once() : data(std::nullopt) {}
+
+    void set(T value) {
+        std::scoped_lock lock(mtx);
+        data = std::move(value);
+    }
+
+    T read() {
+        std::scoped_lock lock(mtx);
+        if (data) {
+            T value = std::move(*data);
+            data.reset();
+            return value;
+        }
+        return T{};
+    }
+};
+
+
 }
 
 #undef isnormal

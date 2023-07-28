@@ -149,7 +149,11 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
             } else {
                 if(!_video->open(_filename))
                     throw U_EXCEPTION("Opening Video ",_filename," failed.");
-                _length = _video->length();
+                try {
+                    _length = _video->length();
+                } catch(const std::exception& e) {
+                    FormatExcept("Exception while retrieving length of video ", _filename,": ", e.what());
+                }
                 _video->close();
             }
             break;
