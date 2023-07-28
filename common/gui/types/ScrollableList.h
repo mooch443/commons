@@ -134,7 +134,7 @@ namespace gui {
             return _line_spacing;
         }
         
-        void set_items(const std::vector<T>& objs) {
+        size_t set_items(const std::vector<T>& objs) {
             if(_items.size() == objs.size()) {
                 bool okay = true;
                 
@@ -146,7 +146,7 @@ namespace gui {
                 }
                 
                 if(okay)
-                    return;
+                    return 0u;
             }
             
             _last_selected_item = -1;
@@ -163,6 +163,7 @@ namespace gui {
             }
             
             set_content_changed(true);
+            return _items.size();
         }
         
         void set_item_color(const Color& item_color) {
