@@ -31,6 +31,11 @@ namespace gui {
         { t.tooltip() } -> std::convertible_to<std::string>;
     };
 
+    template<typename T>
+    concept has_detail = requires(T t) {
+        { t.detail() } -> std::convertible_to<std::string>;
+    };
+
     //! Check compatibility with List class
     template<typename T>
     concept list_compatible_item = requires(T t) {
@@ -55,6 +60,7 @@ namespace gui {
         GETTER(std::vector<Item<T>>, items)
         std::vector<Rect*> _rects;
         std::vector<Text*> _texts;
+        std::vector<Text*> _details;
 
         Tooltip tooltip = Tooltip(nullptr);
         
@@ -118,6 +124,14 @@ namespace gui {
                 delete r;
             for(auto t : _texts)
                 delete t;
+            
+            if constexpr(has_detail<T>) {
+                for(auto d : _details) {
+                    if(d)
+                        delete d;
+                }
+            }
+            
             if (stage())
                 stage()->unregister_end_object(tooltip);
         }
@@ -188,9 +202,25 @@ namespace gui {
             if(_font == font)
                 return;
             
-            _line_spacing = Base::default_line_spacing(font) + item_padding.y * 2;
+            _line_spacing = [this, font] (){
+                if constexpr(has_detail<T>) {
+                    return Base::default_line_spacing(font) * 2 + item_padding.y * 2;
+                }
+                return Base::default_line_spacing(font) + item_padding.y * 2;
+            }();
+            
             for(auto t : _texts)
                 t->set_font(font);
+            
+            if constexpr(has_detail<T>) {
+                auto detail_font = font;
+                detail_font.size *= 0.75;
+                
+                for(auto d : _details) {
+                    if(d)
+                        d->set_font(detail_font);
+                }
+            }
             
             // line spacing may have changed
             if(_font.size != font.size || _font.style != font.style) {
@@ -207,7 +237,12 @@ namespace gui {
                 return;
             
             item_padding = padding;
-            _line_spacing = Base::default_line_spacing(_font) + item_padding.y * 2;
+            _line_spacing = [this] (){
+                if constexpr(has_detail<T>) {
+                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
+                }
+                return Base::default_line_spacing(_font) + item_padding.y * 2;
+            }();
             update_items();
         }
         
@@ -284,15 +319,34 @@ namespace gui {
                     for(size_t i=N; i<_rects.size(); i++) {
                         delete _rects.at(i);
                         delete _texts.at(i);
+                        
+                        if constexpr(has_detail<T>) {
+                            if(_details.size() > i && _details.at(i)) {
+                                delete _details.at(i);
+                                _details.at(i) = nullptr;
+                            }
+                        }
                     }
                     
                     _rects.erase(_rects.begin() + int64_t(N), _rects.end());
                     _texts.erase(_texts.begin() + int64_t(N), _texts.end());
+                    
+                    if constexpr(has_detail<T>) {
+                        if(_details.size() > int64_t(N)) {
+                            _details.erase(_details.begin() + int64_t(N), _details.end());
+                        }
+                    }
                 }
                 
+                Font detail_font = _font;
+                detail_font.size *= 0.75;
                 for(size_t i=0; i<_rects.size(); i++) {
                     _rects.at(i)->set_size(Size2(width(), item_height));
                     _texts.at(i)->set_font(_font);
+                    if constexpr(has_detail<T>) {
+                        if(_details.size() > i)
+                            _details.at(i)->set_font(detail_font);
+                    }
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
@@ -311,6 +365,9 @@ namespace gui {
                     });
                     
                     _texts.push_back(new Text(_font));
+                    if constexpr(has_detail<T>) {
+                        _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
+                    }
                 }
             }
             
@@ -344,58 +401,91 @@ namespace gui {
         
     private:
         void update() override {
-
             if(content_changed()) {
-                const float spacing = Base::default_line_spacing(_font) + item_padding.y * 2;
+                const float spacing = [this] (){
+                    if constexpr(has_detail<T>) {
+                        return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
+                    }
+                    return Base::default_line_spacing(_font) + item_padding.y * 2;
+                }();
+                
                 if(spacing != _line_spacing || width() != _previous_width) {
                     _line_spacing = spacing;
                     _previous_width = width();
                     update_items();
                 }
                 
+                const float item_height = _line_spacing;
                 begin();
                 
-                size_t first_visible = (size_t)floorf(scroll_offset().y / _line_spacing);
-                size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / _line_spacing);
+                size_t first_visible = (size_t)floorf(scroll_offset().y / item_height);
+                size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / item_height);
                                 
                 rect_to_idx.clear();
                 
                 for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
                     auto& item = _items[i];
-                    const float y = i * _line_spacing;
+                    const float y = i * item_height;
                     
                     _rects.at(idx)->set_pos(Vec2(0, y));
                     _texts.at(idx)->set_txt(item.value());
 
+                    if constexpr(has_detail<T>) {
+                        _details.at(idx)->set_txt(item.value().detail());
+                    }
+                    
                     if constexpr (has_color_function<T>) {
                         if (item.value().color() != Transparent)
                             _texts.at(idx)->set_color(item.value().color());
                     }
 
                     if constexpr (has_font_function<T>) {
-                        if (item.value().font().size > 0)
+                        if (item.value().font().size > 0) {
                             _texts.at(idx)->set_font(item.value().font());
+                            if constexpr(has_detail<T>) {
+                                Font detail_font = item.value().font();
+                                detail_font.size *= 0.75;
+                                _details.at(idx)->set_font(detail_font);
+                            }
+                        }
                     }
                     
                     rect_to_idx[_rects.at(idx)] = i;
                     
-                    if(_font.align == Align::Center)
-                        _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + _line_spacing*0.5f));
-                    else if(_font.align == Align::Left)
-                        _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
-                    else
-                        _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                    if constexpr(has_detail<T>) {
+                        if(_font.align == Align::Center) {
+                            _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.25f));
+                            _details.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.75f));
+                        } else if(_font.align == Align::Left) {
+                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding * 0.5);
+                            _details.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                        } else {
+                            _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y * 0.5));
+                            _details.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                        }
+                    } else {
+                        
+                        if(_font.align == Align::Center)
+                            _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
+                        else if(_font.align == Align::Left)
+                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                        else
+                            _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                    }
                     
                     advance_wrap(*_rects.at(idx));
                     advance_wrap(*_texts.at(idx));
+                    if constexpr(has_detail<T>) {
+                        advance_wrap(*_details.at(idx));
+                    }
                 }
                 
                 end();
             
-                const float last_y = _line_spacing * (_items.size()-1);
+                const float last_y = item_height * (_items.size()-1);
                 set_scroll_limits(Rangef(),
                                   Rangef(0,
-                                         (height() < last_y ? last_y + _line_spacing - height() : 0.1f)));
+                                         (height() < last_y ? last_y + item_height - height() : 0.1f)));
                 auto scroll = scroll_offset();
                 set_scroll_offset(Vec2());
                 set_scroll_offset(scroll);

@@ -41,4 +41,18 @@ namespace gui {
             _text = static_cast<const TextItem*>(&other)->_text;
         }
     };
+
+    class DetailItem {
+        GETTER_SETTER(std::string, name)
+        GETTER_SETTER(std::string, detail)
+        
+    public:
+        virtual ~DetailItem(){}
+        virtual operator std::string() const {
+            return _name;
+        }
+        virtual bool operator!=(const DetailItem& other) const {
+            return _name != other._name || _detail != other._detail;
+        }
+    };
 }
