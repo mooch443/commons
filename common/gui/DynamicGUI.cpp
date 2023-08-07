@@ -70,10 +70,10 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     auto line = get(Transparent, "line");
     
     Font font(0.75);
+    if(type == LayoutType::button) {
+        font.align = Align::Center;
+    }
     if(obj.count("font")) {
-        if(type == LayoutType::button) {
-            font.align = Align::Center;
-        }
         auto f = obj["font"];
         if(f.count("size")) font.size = f["size"].get<float>();
         if(f.count("style")) {
