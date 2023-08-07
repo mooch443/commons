@@ -3,6 +3,8 @@
 #include <gui/types/StaticText.h>
 #include <misc/SpriteMap.h>
 #include <file/DataLocation.h>
+#include <gui/types/Textfield.h>
+#include <gui/types/Checkbox.h>
 
 namespace gui {
 namespace dyn {
@@ -80,6 +82,15 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             if(style == "regular")
                 font.style = Style::Regular;
         }
+        if(f.count("align")) {
+            auto align = f["align"].get<std::string>();
+            if(align == "left")
+                font.align = Align::Left;
+            else if(align == "right")
+                font.align = Align::Right;
+            else if(align == "center")
+                font.align = Align::Center;
+        }
     }
     
     Layout::Ptr ptr;
@@ -132,9 +143,12 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             ptr = Layout::Make<Layout>(std::move(children));
             break;
         }
-            
         case LayoutType::button: {
-            auto text = obj["text"].get<std::string>();
+            std::string text;
+            if(obj.contains("text")) {
+                text = obj["text"].get<std::string>();
+            }
+            
             if(utils::contains(text, '{')) {
                 state.patterns[index]["text"] = text;
             }
@@ -162,11 +176,90 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                 }
             }
             
+            if(fill != Transparent)
+                ptr.to<Button>()->set_fill_clr(fill);
+            if(line != Transparent)
+                ptr.to<Button>()->set_line_clr(line);
+            
+            break;
+        }
+        
+        case LayoutType::checkbox: {
+            std::string text;
+            if(obj.contains("text")) {
+                text = obj["text"].get<std::string>();
+            }
+            
+            if(utils::contains(text, '{')) {
+                state.patterns[index]["text"] = text;
+            }
+            
+            bool checked = false;
+            if(obj.contains("checked")) {
+                checked = obj["checked"].get<bool>();
+            }
+            
+            ptr = Layout::Make<Checkbox>(Vec2(), text, checked, font);
+            
+            std::string action;
+            if(obj.count("action")) {
+                action = obj["action"].get<std::string>();
+                ptr.to<Checkbox>()->on_change([action, context](){
+                    if(context.actions.contains(action))
+                        context.actions.at(action)(Event(EventType::KEY));
+                    else
+                        print("Unknown Action: ", action);
+                });
+            }
+            
+            break;
+        }
+            
+        case LayoutType::textfield: {
+            std::string text;
+            if(obj.contains("text")) {
+                text = obj["text"].get<std::string>();
+            }
+            
+            if(utils::contains(text, '{')) {
+                state.patterns[index]["text"] = text;
+            }
+            
+            ptr = Layout::Make<Textfield>(attr::Content(text), attr::Scale(scale), attr::Origin(origin), font);
+            
+            std::string action;
+            if(obj.count("action")) {
+                action = obj["action"].get<std::string>();
+                ptr.to<Textfield>()->on_enter([action, context](){
+                    if(context.actions.contains(action))
+                        context.actions.at(action)(Event(EventType::KEY));
+                    else
+                        print("Unknown Action: ", action);
+                });
+            }
+            
+            Color color{White};
+            if(obj.count("color")) {
+                if(obj["color"].is_string())
+                    state.patterns[index]["color"] = obj["color"].get<std::string>();
+                else {
+                    color = parse_color(obj["color"]);
+                    ptr.to<Textfield>()->set_text_color(color);
+                }
+            }
+            
+            if(fill != Transparent)
+                ptr.to<Textfield>()->set_fill_color(fill);
+            
             break;
         }
             
         case LayoutType::text: {
-            auto text = obj["text"].get<std::string>();
+            std::string text;
+            if(obj.contains("text")) {
+                text = obj["text"].get<std::string>();
+            }
+            
             if(utils::contains(text, '{')) {
                 state.patterns[index]["text"] = text;
             }
@@ -187,7 +280,11 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         }
             
         case LayoutType::stext: {
-            auto text = obj["text"].get<std::string>();
+            std::string text;
+            if(obj.contains("text")) {
+                text = obj["text"].get<std::string>();
+            }
+            
             if(utils::contains(text, '{')) {
                 state.patterns[index]["text"] = text;
             }
@@ -262,6 +359,11 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         default:
             std::cout << obj << std::endl;
             break;
+    }
+    
+    if(not ptr) {
+        FormatExcept("Cannot create object at ",index, " ",obj["type"].get<std::string>());
+        return nullptr;
     }
     
     if(ptr.is<SectionInterface>()) {
@@ -505,6 +607,18 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
             if(pattern.contains("text")) {
                 auto output = parse_text(pattern.at("text"), context);
                 button->set_txt(output);
+            }
+        } else if(o.is<Textfield>()) {
+            auto textfield = o.to<Textfield>();
+            if(pattern.contains("text")) {
+                auto output = parse_text(pattern.at("text"), context);
+                textfield->set_text(output);
+            }
+        } else if(o.is<Checkbox>()) {
+            auto checkbox = o.to<Checkbox>();
+            if(pattern.contains("text")) {
+                auto output = parse_text(pattern.at("text"), context);
+                checkbox->set_text(output);
             }
         }
     }

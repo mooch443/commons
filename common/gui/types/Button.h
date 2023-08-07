@@ -17,7 +17,7 @@ namespace gui {
             Color line_clr = Black.alpha(200);
             Color text_clr = White;
             bool toggleable = false;
-            Font font;
+            Font font = Font(0.75, Align::Center);
         };
         
     protected:

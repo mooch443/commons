@@ -194,7 +194,7 @@ public:
     constexpr auto class_name() const { return type; }
 };
 
-ENUM_CLASS(LayoutType, each, condition, vlayout, hlayout, collection, button, text, stext, rect);
+ENUM_CLASS(LayoutType, each, condition, vlayout, hlayout, collection, button, text, stext, rect, textfield, checkbox);
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())

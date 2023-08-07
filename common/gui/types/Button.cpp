@@ -11,7 +11,7 @@ void Button::init() {
     set_scroll_limits(Rangef(), Rangef());
     _text.set_txt(_settings.text);
     _text.set_color(_settings.text_clr);
-    _text.set_font(Font(0.75, Style::Regular, Align::Center));
+    _text.set_font(_settings.font);//Font(0.75, Style::Regular, Align::Center));
     
     add_event_handler(MBUTTON, [this](Event e) {
         if(!e.mbutton.pressed && _settings.toggleable) {
@@ -50,10 +50,14 @@ void Button::init() {
         
         set_background(clr, _settings.line_clr);
         
-        if(pressed()) {
-            _text.set_pos(size() * 0.5 + Vec2(0.5, 0.5));
-        } else
-            _text.set_pos(size() * 0.5);
+        Vec2 offset = pressed() ? Vec2(0.5) : Vec2(0);
+        if(_settings.font.align == Align::Center) {
+            _text.set_pos(size() * 0.5 + offset);
+        } else if(_settings.font.align == Align::Left) {
+            _text.set_pos(Vec2(10, height() * 0.5 - _text.height() * 0.5) + offset);
+        } else if(_settings.font.align == Align::Right) {
+            _text.set_pos(Vec2(width() - 10, height() * 0.5 - _text.height() * 0.5) + offset);
+        }
         
         if(content_changed()) {
             begin();
