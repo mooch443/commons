@@ -56,9 +56,12 @@ void StaticText::set_txt(const std::string& txt) {
     }
     
     void StaticText::set_size(const Size2& size) {
+        if(not bounds().size().Equals(size)) {
+            if(_origin != Vec2(0))
+                structure_changed(true);
+            set_content_changed(true);
+        }
         Entangled::set_size(size);
-        if(_origin != Vec2(0))
-            structure_changed(true);
     }
 
 void StaticText::set_default_font(const Font& font) {
@@ -84,6 +87,7 @@ void StaticText::set_default_font(const Font& font) {
         
         _settings.margins = margin;
         set_content_changed(true);
+        update_text();
     }
     
     void StaticText::update() {
@@ -93,7 +97,6 @@ void StaticText::set_default_font(const Font& font) {
             begin();
             
             // find enclosing rectangle dimensions
-            Vec2 p(Graph::invalid());
             Vec2 m(0);
             
             for(auto& t : texts) {
@@ -107,16 +110,14 @@ void StaticText::set_default_font(const Font& font) {
                 auto local_pos = t->pos() - t->size().mul(t->origin());
                 auto v = local_pos + t->size(); //+ t->text_bounds().pos();
                 
-                p.x = min(local_pos.x, p.x);
-                p.y = min(local_pos.y, p.y);
-                
                 m.x = max(m.x, v.x);
                 m.y = max(m.y, v.y);
             }
             
             // subtract position, add margins
-            m = m + _settings.margins;
+            m = m + _settings.margins.size();
             set_size(m);
+            
             if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
                 set_background(bg_fill_color() != Transparent
                                ? bg_fill_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
@@ -505,7 +506,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         
         update_vector_elements(texts, strings);
         
-        offset = _settings.margins;
+        offset = _settings.margins.pos();
         float y = 0;
         //float height = Base::default_line_spacing(_default_font);
         Font prev_font = strings.empty() ? _settings.default_font : strings.front()->font;

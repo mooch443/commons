@@ -5,55 +5,120 @@
 
 namespace gui {
 class Checkbox : public Entangled {
-protected:
-    GETTER(std::string, text)
-    GETTER(bool, checked)
+public:
+    struct Settings {
+        std::string text;
+        Bounds bounds = Bounds(0, 0, 100, 33);
+        Color fill_clr = Drawable::accent_color;
+        Color line_clr = Black.alpha(200);
+        Color text_clr = White;
+        bool checked = false;
+        Font font = Font(0.5);
+        std::function<void()> callback = [](){};
+    };
     
-    Font _font;
+protected:
+    Settings _settings;
+    
     static const Size2 box_size;
     static const float margin;
     
     Rect _box;
     Text _description;
     
-    std::function<void()> _callback;
+public:
+    template<typename... Args>
+    Checkbox(Args... args)
+    {
+        create(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    void create(Args... args) {
+        (set(std::forward<Args>(args)), ...);
+        init();
+    }
+    
+private:
+    void init();
     
 public:
-    Checkbox(const Vec2& pos, const std::string& text = "", bool checked = false, const Font& font = Font(0.75));
+    using Entangled::set;
+    void set(attr::Font font)   { set_font(font); }
+    void set(attr::FillClr clr) override {
+        if(clr != _settings.fill_clr) {
+            _settings.fill_clr = clr;
+            _box.set_fillclr(clr);
+            set_content_changed(true);
+        }
+    }
+    void set(attr::LineClr clr) override {
+        if(clr != _settings.line_clr) {
+            _settings.line_clr = clr;
+            _box.set_lineclr(clr);
+            set_content_changed(true);
+        }
+    }
+    void set(attr::TextClr clr) {
+        if(_settings.text_clr != clr) {
+            _settings.text_clr = clr;
+            _description.set_color(clr);
+            set_content_changed(true);
+        }
+    }
+    void set(attr::Checked checked) { set_checked(checked); }
+    void set(const std::string& text) { set_text(text); }
+    void set(std::function<void()> on_change) {
+        if(on_change)
+            this->on_change([on_change]() { on_change(); });
+    }
     
-    void on_change(const decltype(_callback)& callback) {
-        _callback = callback;
+    void on_change(const decltype(Settings::callback)& callback) {
+        _settings.callback = callback;
     }
     
     void set_checked(bool checked) {
-        if(checked == _checked)
+        if(checked == _settings.checked)
             return;
         
-        _checked = checked;
+        _settings.checked = checked;
         set_content_changed(true);
     }
     
+    bool checked() const { return _settings.checked; }
+    
     void set_font(const Font& font) {
-        if(_font == font)
+        if(_settings.font == font)
             return;
         
-        _font = font;
+        _settings.font = font;
+        _description.set_font(font);
         set_content_changed(true);
     }
     
     void set_text(const std::string& text) {
-        if(_text == text)
+        if(_settings.text == text)
             return;
         
-        _text = text;
-        if(!_text.empty()) {
-            _description.set_txt(_text);
-            set_size(Size2(_description.width() + _description.pos().x + margin, Base::default_line_spacing(_font)));
-        } else {
-            set_size(Size2(margin*2 + box_size.width, Base::default_line_spacing(_font)));
-        }
+        _settings.text = text;
+        _description.set_txt(_settings.text);
         
         set_content_changed(true);
+    }
+    
+    void set_size(const Size2& size) override {
+        if(not _settings.bounds.size().Equals(size)) {
+            _settings.bounds << size;
+            set_content_changed(true);
+        }
+        Entangled::set_size(attr::Size(size));
+    }
+    void set_bounds(const Bounds& bounds) override {
+        if(not bounds.Equals(_settings.bounds)) {
+            _settings.bounds = bounds;
+            set_content_changed(true);
+        }
+        Entangled::set_bounds(bounds);
     }
     
 protected:

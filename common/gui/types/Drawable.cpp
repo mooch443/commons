@@ -13,7 +13,7 @@ namespace gui {
     const char *callback = NULL;
 
     std::string Drawable::toStr() const {
-        return std::string(type().name()) + " " + Meta::toStr(_global_bounds);
+        return std::string(type().name()) + " " + Meta::toStr(_bounds);
     }
 
     std::string SectionInterface::toStr() const {

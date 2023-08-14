@@ -105,14 +105,22 @@ void Textfield::init() {
             this->move_cursor(e.mbutton.x);
     });
     
-    add_event_handler(TEXT_ENTERED, [this](Event e) { if(read_only()) return; this->onEnter(e); });
+    add_event_handler(TEXT_ENTERED, [this](Event e) {
+        if(read_only()) return;
+        stage()->do_hover(NULL);
+        if(this->onEnter(e)) {
+        }
+    });
     add_event_handler(SELECT, [this](auto) { this->set_dirty(); });
     
     add_event_handler(KEY, [this](Event e) {
         auto && [system, alt] = this->system_alt();
         if(read_only() && (e.key.code != Keyboard::C || !system)) return;
-        if(e.key.pressed)
-            this->onControlKey(e);
+        if(e.key.pressed) {
+            if(this->onControlKey(e)) {
+                stage()->do_hover(NULL);
+            }
+        }
     });
 }
     
@@ -137,12 +145,60 @@ void Textfield::init() {
         }
     }
     
-    void Textfield::onControlKey(gui::Event e) {
+    bool Textfield::onControlKey(gui::Event e) {
         constexpr const char* alphanumeric = "abcdefghijklmnopqrstuvwxyz0123456789";
         
         auto && [system, alt] = system_alt();
         
         switch (e.key.code) {
+            case Keyboard::Tab:
+                if(parent() && parent()->stage()) {
+                    std::vector<Textfield*> textfields;
+                    std::deque<SectionInterface*> q{
+                        { (SectionInterface*)&parent()->stage()->root() }
+                    };
+                    
+                    std::optional<size_t> index;
+                    while(not q.empty()) {
+                        auto root = q.front();
+                        q.pop_front();
+                        
+                        print("* searching ", (uint64_t)root, " name=", root->name());
+                        
+                        for(auto c : root->children()) {
+                            if(c->type() == Type::SINGLETON)
+                                c = ((SingletonObject*)c)->ptr();
+                            if(c->type() == Type::ENTANGLED
+                               && dynamic_cast<Textfield*>(c))
+                            {
+                                if(c == this) {
+                                    index = textfields.size();
+                                }
+                                textfields.push_back(static_cast<Textfield*>(c));
+                                
+                            } else if(dynamic_cast<SectionInterface*>(c)) {
+                                q.push_front(static_cast<SectionInterface*>(c));
+                            }
+                        }
+                    }
+                    
+                    print("* searching for ", (uint64_t)this);
+                    std::vector<uint64_t> ptrs;
+                    for(auto t : textfields) {
+                        ptrs.push_back((uint64_t)t);
+                    }
+                    print("  all textfields: ", ptrs);
+                    
+                    if(index.has_value()) {
+                        if(textfields.size() >= index.value() && index.value() > 0) {
+                            stage()->select(textfields.at(index.value()-1));
+                        } else if(not textfields.empty()) {
+                            stage()->select(textfields.back());
+                        }
+                    }
+                    
+                }
+                break;
             case Keyboard::Left:
                 if(_cursor_position > 0) {
                     auto before = _cursor_position;
@@ -176,7 +232,7 @@ void Textfield::init() {
                     _selection = lrange(-1, -1);
                     set_content_changed(true);
                 }
-                break;
+                return true;
                 
             case Keyboard::Right:
                 if(sign_cast<size_t>(_cursor_position) < text().length()) {
@@ -217,13 +273,14 @@ void Textfield::init() {
                     _selection = lrange(-1, -1);
                     set_content_changed(true);
                 }
-                break;
+                return true;
                 
             case Keyboard::A:
                 if(system) {
                     _selection = lrange(0, narrow_cast<long_t>(text().length()));
                     _cursor_position = _selection.last;
                     set_content_changed(true);
+                    return true;
                 }
                 break;
                 
@@ -237,6 +294,7 @@ void Textfield::init() {
                         print("Copying ", text());
                         set_clipboard(text());
                     }
+                    return true;
                 }
                 break;
                 
@@ -272,7 +330,7 @@ void Textfield::init() {
                         set_content_changed(true);
                     }
                 }
-                break;
+                return true;
                 
             case Keyboard::BackSpace: {
                 std::string copy = text();
@@ -300,33 +358,36 @@ void Textfield::init() {
                 }
                 
                 set_content_changed(true);
-                
-                break;
+                return true;
             }
                 
             case Keyboard::Return:
                 enter();
-                break;
+                return true;
                 
             default:
                 break;
         }
+        
+        return false;
     }
     
-    void Textfield::onEnter(gui::Event e) {
+    bool Textfield::onEnter(gui::Event e) {
         std::string k = std::string()+e.text.c;
+        if(e.text.c == 8)
+            return true;
         if(e.text.c < 10)
-            return;
+            return false;
         
         switch (e.text.c) {
             case '\n':
             case '\r':
             case 8:
-                break;
+                return true;
             case 27:
                 if(parent() && parent()->stage())
                     parent()->stage()->select(NULL);
-                break;
+                return true;
                 
             default: {
                 std::string copy = text();
@@ -352,9 +413,11 @@ void Textfield::init() {
                     _settings.on_text_changed();
                 set_content_changed(true);
                 
-                break;
+                return true;
             }
         }
+        
+        return false;
     }
 
 void Textfield::set_text_color(const Color &c) {
@@ -375,6 +438,14 @@ void Textfield::set_fill_color(const Color &c) {
     set_content_changed(true);
 }
 
+void Textfield::set_line_color(const Color &c) {
+    if(c == _settings.line_color)
+        return;
+    
+    _settings.line_color = c;
+    set_content_changed(true);
+}
+
 void Textfield::set_postfix(const std::string &p) {
     if(p == _settings.postfix)
         return;
@@ -388,7 +459,7 @@ void Textfield::set_postfix(const std::string &p) {
         
         static constexpr const Color BrightRed(255,150,150,255);
         Color base_color   = fill_color(),
-              border_color = text_color();
+              border_color = line_color();
         
         if(!valid())
             base_color = BrightRed.alpha(210);

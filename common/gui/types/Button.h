@@ -41,6 +41,7 @@ namespace gui {
     private:
         void init();
         
+    public:
         using Entangled::set;
         void set(attr::Font font)   { _settings.font = font; }
         void set(attr::Loc loc) override    { _settings.bounds << loc; Entangled::set(loc); }
@@ -88,6 +89,21 @@ namespace gui {
         void update() override;
         void set_toggleable(bool v);
         void set_toggle(bool v);
+        
+        void set_size(const Size2& size) override {
+            if(not _settings.bounds.size().Equals(size)) {
+                _settings.bounds << size;
+                set_content_changed(true);
+            }
+            Entangled::set_size(attr::Size(size));
+        }
+        void set_bounds(const Bounds& bounds) override {
+            if(not bounds.Equals(_settings.bounds)) {
+                _settings.bounds = bounds;
+                set_content_changed(true);
+            }
+            Entangled::set_bounds(bounds);
+        }
     };
 }
 

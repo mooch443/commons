@@ -290,6 +290,15 @@ namespace gui {
             do_hover(d, e);
         }
         
+        void do_hover(const Vec2 pos) {
+            Event e(HOVER);
+            
+            e.hover.x = pos.x;
+            e.hover.y = pos.y;
+            e.hover.hovered = false;
+            do_hover(NULL, e);
+        }
+        
     protected:
         friend class Drawable;
         friend class Section;

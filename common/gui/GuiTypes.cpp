@@ -513,7 +513,7 @@ std::ostream & Text::operator <<(std::ostream &os) {
 }
 
 std::string Text::toStr() const {
-    return "TEXT<'"+_settings.txt+"'>";
+    return "TEXT<'"+_settings.txt+"' "+Meta::toStr(_bounds.pos())+">";
 }
 
 /*Text::Text(const std::string& txt, const Vec2& pos, const Color& color, const Font& font, const Vec2& scale, const Vec2& origin, float rotation)

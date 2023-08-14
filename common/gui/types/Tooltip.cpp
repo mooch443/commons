@@ -28,7 +28,16 @@ namespace gui {
     }
     
     void Tooltip::update() {
+        if(not stage())
+            return;
+        
         auto mp = stage()->mouse_position();
+        //auto hovered = stage()->hovered_object();
+        /*if(hovered && hovered->type() != Type::ENTANGLED && hovered->parent())
+            hovered = hovered->parent();
+        if(hovered && dynamic_cast<const Dropdown*>(hovered->parent()) != nullptr)
+            hovered = hovered->parent();*/
+        
         if(parent()) {
             auto tf = parent()->global_transform().getInverse();
             mp = tf.transformPoint(mp) + Vec2(5, 0);

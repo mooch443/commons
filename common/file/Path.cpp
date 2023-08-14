@@ -286,6 +286,38 @@ Path Path::absolute() const {
         return narrow_cast<uint64_t>(sbuf.st_size);
 #endif
     }
+        
+    uint64_t Path::last_modified() const {
+    #if defined(WIN32) && !defined(__EMSCRIPTEN__)
+            WIN32_FILE_ATTRIBUTE_DATA fInfo;
+
+            DWORD ftyp = GetFileAttributesEx(c_str(), GetFileExInfoStandard, &fInfo);
+            if (INVALID_FILE_ATTRIBUTES == ftyp || fInfo.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                throw U_EXCEPTION("Cannot stat file ",str(),".");
+            }
+            return (static_cast<ULONGLONG>(fInfo.nFileSizeHigh) << sizeof(fInfo.nFileSizeLow) * 8) | fInfo.nFileSizeLow;
+    #elif defined(__EMSCRIPTEN__)
+            //!TODO: [EMSCRIPTEN] can we do this?
+            throw U_EXCEPTION("Cannot stat file in Emscripten.");
+    #else
+        struct stat sbuf;
+        if (stat(c_str(), &sbuf) == -1)
+            throw U_EXCEPTION("Cannot get file attributes for ", str());
+            
+        #ifdef __APPLE__ // macOS uses st_mtimespec instead of st_mtim
+            return narrow_cast<uint64_t>(sbuf.st_mtimespec.tv_sec);
+        #else
+            #if defined(_BSD_SOURCE) || _XOPEN_SOURCE >= 500 || _POSIX_C_SOURCE >= 200809L
+                // High resolution timestamp
+                return narrow_cast<uint64_t>(sbuf.st_mtim.tv_sec);
+            #else
+                // Traditional timestamp
+                rn narrow_cast<uint64_t>(sbuf.st_mtime);
+            #endif
+        #endif
+    #endif
+        }
 
     std::string_view Path::extension() const {
         if(empty())

@@ -42,6 +42,9 @@ namespace file {
         //! Returns the file size and throws exceptions if it does not exist or is a dir
         uint64_t file_size() const;
         
+        //! Returns the last modified time
+        uint64_t last_modified() const;
+        
         //! Recursively creates the folders for this path
         bool create_folder() const;
         

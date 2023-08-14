@@ -33,7 +33,7 @@ using Size = AttributeAlias<cmn::Size2, 0>;
 using SizeLimit = AttributeAlias<cmn::Size2, 1>;
 using Origin = AttributeAlias<cmn::Vec2, 1>;
 using Scale = AttributeAlias<cmn::Vec2, 2>;
-using Margins = AttributeAlias<cmn::Vec2, 3>;
+using Margins = AttributeAlias<cmn::Bounds, 3>;
 using FillClr = AttributeAlias<gui::Color, 0>;
 using LineClr = AttributeAlias<gui::Color, 1>;
 using TextClr = AttributeAlias<gui::Color, 2>;
@@ -125,6 +125,7 @@ constexpr NumberAlias<T, a> operator/(const K& A, const NumberAlias<T, a>& B) {
 using Radius = NumberAlias<float, 0>;
 using Rotation = NumberAlias<float, 1>;
 using Alpha = NumberAlias<float, 2>;
+using Checked = NumberAlias<bool, 0>;
 using Font = gui::Font;
 
 }

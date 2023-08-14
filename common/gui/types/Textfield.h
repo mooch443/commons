@@ -49,6 +49,7 @@ protected:
         Font font{0.75};
         Color text_color = Black;
         Color fill_color = White.alpha(210);
+        Color line_color = White.alpha(50);
         bool read_only{false};
     } _settings;
     
@@ -69,11 +70,12 @@ public:
     
     void init();
     
-protected:
+public:
     using Entangled::set;
     void set(const Content& text) { set_text(text); }
     void set(const Postfix& postfix) { set_postfix(postfix); }
     void set(FillClr fill) override { set_fill_color(fill); }
+    void set(LineClr line) override { set_line_color(line); }
     void set(TextClr clr) { set_text_color(clr); }
     void set(ReadOnly ro) { set_read_only(ro); }
     void set(Font font) { set_font(font); }
@@ -82,9 +84,9 @@ protected:
     void set(OnTextChanged_t change) { on_text_changed(change); }
     
 public:
-    
     void set_text_color(const Color& c);
     void set_fill_color(const Color& c);
+    void set_line_color(const Color& c);
     void set_postfix(const std::string&);
     
     const auto& text() const { return _settings.text; }
@@ -93,7 +95,21 @@ public:
     auto valid() const { return _valid; }
     const auto& text_color() const { return _settings.text_color; }
     const auto& fill_color() const { return _settings.fill_color; }
+    const auto& line_color() const { return _settings.line_color; }
     const auto& font() const { return _settings.font; }
+    
+    void set_size(const Size2& size) override {
+        if(not bounds().size().Equals(size)) {
+            Entangled::set_size(attr::Size(size));
+            set_content_changed(true);
+        }
+    }
+    void set_bounds(const Bounds& bounds) override {
+        if(not bounds.Equals(this->bounds())) {
+            Entangled::set_bounds(bounds);
+            set_content_changed(true);
+        }
+    }
     
     virtual std::string name() const override { return "Textfield"; }
     
@@ -174,8 +190,8 @@ private:
     void update() override;
     void move_cursor(float mx);
     
-    void onEnter(Event e);
-    void onControlKey(Event e);
+    bool onEnter(Event e);
+    bool onControlKey(Event e);
     
     bool swap_with(Drawable* d) override {
         if(d->type() == Type::ENTANGLED) {

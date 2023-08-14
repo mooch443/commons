@@ -65,6 +65,8 @@ namespace gui {
             else
                 d = c;
             
+            assert(c->parent() == this);
+            
             if(d->type() == Type::ENTANGLED) {
                 auto ptr = static_cast<Entangled*>(d);
                 ptr->before_draw();
@@ -291,7 +293,13 @@ namespace gui {
                     ptr = static_cast<SingletonObject*>(ptr)->ptr();
                 }
                 
-                ptr->set_parent(nullptr);
+                if(ptr->parent()) {
+                    ptr->set_parent(nullptr);
+                    //assert(_children.at(index) == ptr);
+                    //_children.erase(_children.begin() + index);
+                    
+                } else
+                    ++index;
             }
         }
         

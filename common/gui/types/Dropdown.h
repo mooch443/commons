@@ -67,17 +67,17 @@ namespace gui {
     protected:
         GETTER_NCONST(std::shared_ptr<Textfield>, textfield)
         GETTER_NCONST(std::shared_ptr<Button>, button)
-        GETTER_NCONST(ScrollableList<TextItem>, list)
+        GETTER_NCONST(std::unique_ptr<ScrollableList<TextItem>>, list)
         std::function<void(long_t, const TextItem&)> _on_select;
         
         GETTER(std::vector<TextItem>, items)
         
-        GETTER(bool, opened)
-        GETTER(Type, type)
-        GETTER(bool, inverted)
+        GETTER_I(bool, opened, false)
+        GETTER_I(Type, type, SEARCH)
+        GETTER_I(bool, inverted, false)
         
-        long _selected_item;
-        GETTER(long, selected_id)
+        long _selected_item = -1;
+        GETTER_I(long, selected_id, -1)
         
         std::map<size_t, size_t> filtered_items;
         std::function<void()> _on_text_changed;
@@ -85,8 +85,30 @@ namespace gui {
         std::function<void(bool)> _on_open;
         
     public:
-        Dropdown(const Bounds& bounds, const std::vector<TextItem>& options = {}, Type type = SEARCH);
-        Dropdown(const Bounds& bounds, const std::vector<std::string>& options, Type type = SEARCH);
+        using Entangled::set;
+        void set(TextClr clr) { _textfield->set(clr); }
+        void set(LineClr clr) override { _textfield->set(clr); }
+        void set(FillClr clr) override { _textfield->set(clr); }
+        void set(Font font) { _textfield->set(font); }
+        void set(const std::vector<TextItem>& options) { set_items(options); }
+        void set(const std::vector<std::string>& options) { set_items(std::vector<TextItem>(options.begin(), options.end())); }
+        void set(const Type& type) { _type = type; set_content_changed(true); }
+        
+        void set_bounds(const Bounds& bounds) override;
+        
+        template<typename... Args>
+        Dropdown(Args... args) {
+            create(std::forward<Args>(args)...);
+        }
+        
+        template<typename... Args>
+        void create(Args... args) {
+            (set(std::forward<Args>(args)), ...);
+            init();
+        }
+        
+        void init();
+        
         ~Dropdown();
         
         void set_opened(bool opened);

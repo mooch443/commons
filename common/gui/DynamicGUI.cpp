@@ -5,16 +5,273 @@
 #include <file/DataLocation.h>
 #include <gui/types/Textfield.h>
 #include <gui/types/Checkbox.h>
+#include <gui/types/Dropdown.h>
+#include <misc/GlobalSettings.h>
+#include <gui/types/SettingsTooltip.h>
 
 namespace gui {
 namespace dyn {
 
-Variable var([](int) -> int{
-    return 0;
-});
+namespace settings_scene {
+GlobalSettings::docs_map_t& temp_docs = GlobalSettings::docs();
+sprite::Map& temp_settings = GlobalSettings::map();
+constexpr double video_chooser_column_width = 300;
+}
 
-void foo() {
-    var.value_string(5);
+sprite::Map& settings_map() {
+    return settings_scene::temp_settings;
+}
+
+void LabeledCheckbox::set_description(std::string desc) {
+    _checkbox.to<Checkbox>()->set_text(desc);
+}
+void LabeledField::set_description(std::string desc) {
+    _text->set_txt(desc);
+}
+
+std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, std::string desc) {
+    auto ptr = Make(parm);
+    ptr->set_description(desc);
+    return ptr;
+}
+
+std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
+    if(not GlobalSettings::map().has(parm))
+        throw U_EXCEPTION("GlobalSettings has no parameter named ", parm,".");
+    auto ref = GlobalSettings::map()[parm];
+    
+    std::unique_ptr<LabeledField> ptr;
+    if(ref.is_type<bool>()) {
+        ptr = std::make_unique<LabeledCheckbox>(parm);
+        ptr->representative().to<Checkbox>()->set_checked(ref.value<bool>());
+    } else if(ref.is_type<std::string>()) {
+        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr->representative().to<Textfield>()->set_text(ref.value<std::string>());
+    } else if(ref.is_type<int>() || ref.is_type<float>() || ref.is_type<double>()
+              || ref.is_type<uint8_t>() || ref.is_type<uint16_t>()
+              || ref.is_type<uint64_t>()
+              || ref.is_type<timestamp_t>())
+    {
+        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
+    } else if(ref.is_type<file::Path>()) {
+        ptr = std::make_unique<LabeledPath>(ref.value<file::Path>());
+        //ptr->representative().to<Dropdown>()->set_text(ref.value<file::Path>().str());
+    } else if(ref.get().is_enum()) {
+        ptr = std::make_unique<LabeledDropDown>(parm);
+        auto values = ref.get().enum_values()();
+        auto index = ref.get().enum_index()();
+        ptr->representative().to<Dropdown>()->set_items(std::vector<Dropdown::TextItem>(values.begin(), values.end()));
+        ptr->representative().to<Dropdown>()->select_item(index);
+    } else
+        throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
+    return ptr;
+}
+
+LabeledCheckbox::LabeledCheckbox(const std::string& name)
+: LabeledField(name),
+_checkbox(std::make_shared<gui::Checkbox>(attr::Loc(), name)),
+_ref(settings_scene::temp_settings[name])
+{
+    _docs = settings_scene::temp_docs[name];
+    
+    _checkbox->set_checked(_ref.value<bool>());
+    _checkbox->set_font(Font(0.7f));
+    
+    _checkbox->on_change([this](){
+        try {
+            _ref.get() = _checkbox->checked();
+            
+        } catch(...) {}
+    });
+}
+
+void LabeledCheckbox::update() {
+    _checkbox->set_checked(_ref.value<bool>());
+}
+
+LabeledTextField::LabeledTextField(const std::string& name)
+: LabeledField(name),
+_text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
+_ref(settings_scene::temp_settings[name])
+{
+    _text_field->set_placeholder(name);
+    _text_field->set_font(Font(0.7f));
+    
+    _docs = settings_scene::temp_docs[name];
+    
+    update();
+    _text_field->on_text_changed([this](){
+        try {
+            _ref.get().set_value_from_string(_text_field->text());
+            
+        } catch(...) {}
+    });
+}
+
+void LabeledTextField::update() {
+    auto str = _ref.get().valueString();
+    if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
+        str = str.substr(1,str.length()-2);
+    }
+    _text_field->set_text(str);
+}
+
+LabeledDropDown::LabeledDropDown(const std::string& name)
+: LabeledField(name),
+_dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
+_ref(settings_scene::temp_settings[name])
+{
+    _docs = settings_scene::temp_docs[name];
+    
+    _dropdown->textfield()->set_font(Font(0.7f));
+    assert(_ref.get().is_enum());
+    std::vector<Dropdown::TextItem> items;
+    int index = 0;
+    for(auto &name : _ref.get().enum_values()()) {
+        items.push_back(Dropdown::TextItem(name, index++));
+    }
+    _dropdown->set_items(items);
+    _dropdown->select_item(narrow_cast<long>(_ref.get().enum_index()()));
+    _dropdown->textfield()->set_text(_ref.get().valueString());
+    
+    _dropdown->on_select([this](auto index, auto) {
+        if(index < 0)
+            return;
+        
+        try {
+            _ref.get().set_value_from_string(_ref.get().enum_values()().at((size_t)index));
+        } catch(...) {}
+        
+        _dropdown->set_opened(false);
+    });
+}
+
+void LabeledDropDown::update() {
+    _dropdown->select_item(narrow_cast<long>(_ref.get().enum_index()()));
+}
+
+LabeledPath::FileItem::FileItem(const file::Path& path) : _path(path)
+{
+    
+}
+
+LabeledPath::FileItem::operator std::string() const {
+    return std::string(_path.filename());
+}
+
+Color LabeledPath::FileItem::base_color() const {
+    return _path.is_folder() ? Color(80, 80, 80, 200) : Color(100, 100, 100, 200);
+}
+
+Color LabeledPath::FileItem::color() const {
+    return _path.is_folder() ? Color(180, 255, 255, 255) : White;
+}
+
+LabeledPath::LabeledPath(file::Path path)
+    : LabeledField(),
+    _files([](const file::Path& A, const file::Path& B) -> bool {
+        return (A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str()); //A.str() == ".." || (A.str() != ".." && ((A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str())));
+    }), _path(path)
+{
+    _dropdown = std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
+    _dropdown->textfield()->set_text(path.str());
+    change_folder(path);
+    
+    _dropdown->on_select([this](long_t, const Dropdown::TextItem &item) {
+        file::Path path;
+        
+        if(((std::string)item).empty()) {
+            path = _dropdown->textfield()->text();
+        } else
+            path = file::Path((std::string)item);
+        
+        if(!_validity || _validity(path))
+        {
+            //file_selected(0, path.str());
+            if(path.is_folder()) {
+                _dropdown->textfield()->set_text(path.str()+file::Path::os_sep());
+                if(_path != path)
+                    change_folder(path);
+            }
+            _dropdown->select_textfield();
+        } else
+            FormatError("Path ",path.str()," cannot be opened.");
+    });
+    
+    _dropdown->on_text_changed([this](std::string str) {
+        auto path = file::Path(str);
+        auto file = (std::string)path.filename();
+        
+        if(path.empty() || (path == _path || ((!path.exists() || !path.is_folder()) && path.remove_filename() == _path)))
+        {
+            // still in the same folder
+        } else if(utils::endsWith(str, file::Path::os_sep()) && path != _path && path.is_folder())
+        {
+            change_folder(path);
+        } else if(not path.empty() && not path.remove_filename().empty() && path.remove_filename().is_folder() && _path != path.remove_filename()) {
+            change_folder(path.remove_filename());
+        }
+    });
+}
+
+void LabeledPath::change_folder(const file::Path& p) {
+    auto org = _path;
+    auto copy = _files;
+    
+    if(p.str() == "..") {
+        try {
+            _path = _path.remove_filename();
+            auto files = _path.find_files("");
+            _files.clear();
+            _files.insert(files.begin(), files.end());
+            _files.insert("..");
+            
+            //_list->set_scroll_offset(Vec2());
+            if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
+                _dropdown->textfield()->set_text(_path.str());
+            
+        } catch(const UtilsException&) {
+            _path = org;
+            _files = copy;
+        }
+        update_names();
+        
+    } else if(p.is_folder()) {
+        try {
+            _path = p;
+            auto files = _path.find_files("");
+            _files.clear();
+            _files.insert(files.begin(), files.end());
+            _files.insert("..");
+            
+            //_list->set_scroll_offset(Vec2());
+            if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
+                _dropdown->textfield()->set_text(_path.str()+file::Path::os_sep());
+            
+        } catch(const UtilsException&) {
+            _path = org;
+            _files = copy;
+        }
+        update_names();
+    }
+}
+
+void LabeledPath::update_names() {
+    _names.clear();
+    _search_items.clear();
+    for(auto &f : _files) {
+        if(f.str() == ".." || !utils::beginsWith((std::string)f.filename(), '.')) {
+            _names.push_back(FileItem(f));
+            _search_items.push_back(Dropdown::TextItem(f.str()));
+        }
+    }
+    //_list->set_items(_names);
+    _dropdown->set_items(_search_items);
+}
+
+void LabeledPath::update() {
+    
 }
 
 namespace Modules {
@@ -33,6 +290,22 @@ Module* exists(const std::string& name) {
     return nullptr;
 }
 
+}
+
+Image::Ptr load_image(const file::Path& path) {
+    try {
+        auto m = cv::imread(path.str());
+        //auto ptr = ;
+        //size_t hash = std::hash<std::string_view>{}(std::string_view(reinterpret_cast<const char*>(m.data), uint64_t(m.cols) * uint64_t(m.rows) * uint64_t(m.channels())));
+        if(m.channels() != 1 && m.channels() != 4) {
+            if(m.channels() == 3) {
+                cv::cvtColor(m, m, cv::COLOR_RGB2RGBA);
+            }
+        }
+        return Image::Make(m); //std::make_tuple(hash, std::move(ptr));
+    } catch(...) {
+        return nullptr;
+    }
 }
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
@@ -99,6 +372,57 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     Layout::Ptr ptr;
     
     switch (type) {
+        case LayoutType::image: {
+            Image::Ptr img;
+            
+            if(obj.count("path") && obj["path"].is_string()) {
+                std::string raw = obj["path"].get<std::string>();
+                if(utils::contains(raw, "{")) {
+                    state.patterns[index]["path"] = raw;
+                    
+                } else {
+                    auto path = file::Path(raw);
+                    if(path.exists() && not path.is_folder()) {
+                        auto modified = path.last_modified();
+                        
+                        if(state._image_cache.contains(path.str())) {
+                            auto &entry = state._image_cache.at(path.str());
+                            if(std::get<0>(entry) != modified) {
+                                // have to reload since the file changed
+                                img = load_image(path);
+                                if(not img)
+                                    throw U_EXCEPTION("Cannot load image at ", path,".");
+                                
+                                // successfully loaded, refresh entry
+                                std::get<0>(entry) = modified;
+                                std::get<1>(entry) = Image::Make(*img);
+                                
+                            } else {
+                                // no need to reload... already up to date
+                                img = Image::Make(*std::get<1>(entry));
+                            }
+                            
+                        } else {
+                            img = load_image(path);
+                            if(not img)
+                                throw U_EXCEPTION("Cannot load image at ", path,".");
+                            
+                            state._image_cache[path.str()] = {modified, Image::Make(*img)};
+                        }
+                        
+                    } else
+                        throw U_EXCEPTION("Image at ",path," does not exist.");
+                }
+            }
+            
+            if(img) {
+                ptr = Layout::Make<ExternalImage>(std::move(img));
+            } else {
+                ptr = Layout::Make<ExternalImage>();
+            }
+            
+            break;
+        }
         case LayoutType::vlayout: {
             std::vector<Layout::Ptr> children;
             if(obj.count("children")) {
@@ -111,6 +435,18 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             }
             
             ptr = Layout::Make<VerticalLayout>(std::move(children), pos, margins);
+            if(obj.count("align")) {
+                if(obj["align"].is_string()) {
+                    std::string align = obj["align"].get<std::string>();
+                    if(align == "left") {
+                        ptr.to<VerticalLayout>()->set_policy(VerticalLayout::Policy::LEFT);
+                    } else if(align == "center") {
+                        ptr.to<VerticalLayout>()->set_policy(VerticalLayout::Policy::CENTER);
+                    } else if(align == "right") {
+                        ptr.to<VerticalLayout>()->set_policy(VerticalLayout::Policy::RIGHT);
+                    } else FormatWarning("Unknown alignment: ", align);
+                }
+            }
             break;
         }
             
@@ -127,6 +463,18 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             }
             
             ptr = Layout::Make<HorizontalLayout>(std::move(children), pos, margins);
+            if(obj.count("align")) {
+                if(obj["align"].is_string()) {
+                    std::string align = obj["align"].get<std::string>();
+                    if(align == "top") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::TOP);
+                    } else if(align == "center") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::CENTER);
+                    } else if(align == "bottom") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::BOTTOM);
+                    } else FormatWarning("Unknown alignment: ", align);
+                }
+            }
             break;
         }
             
@@ -144,8 +492,52 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             }
             
             ptr = Layout::Make<Layout>(std::move(children));
+            ptr->set_size(size);
+            ptr->set_pos(pos);
             break;
         }
+            
+        case LayoutType::settings: {
+            std::string var;
+            if(obj.contains("var")) {
+                var = obj["var"].get<std::string>();
+            } else
+                throw U_EXCEPTION("settings field should contain a 'var'.");
+            
+            {
+                auto &ref = state._text_fields[var];
+                ref = LabeledField::Make(var);
+                
+                if(obj.contains("desc")) {
+                    ref->set_description(obj["desc"].get<std::string>());
+                }
+                
+                ref->set(font);
+                ref->set(attr::FillClr{fill});
+                ref->set(attr::LineClr{line});
+                if(scale != Vec2(1)) ref->set(attr::Scale{scale});
+                if(pos != Vec2(0)) ref->set(attr::Loc{pos});
+                if(size != Vec2(0)) ref->set(attr::Size{size});
+                if(origin != Vec2(0)) ref->set(attr::Origin{origin});
+                
+                Color color{White};
+                if(obj.count("color")) {
+                    if(obj["color"].is_string())
+                        state.patterns[index]["color"] = obj["color"].get<std::string>();
+                    else {
+                        color = parse_color(obj["color"]);
+                        ref->set(attr::TextClr{color});
+                    }
+                }
+                
+                std::vector<Layout::Ptr> objs;
+                ref->add_to(objs);
+                ptr = Layout::Make<HorizontalLayout>(std::move(objs), Vec2(), Bounds{0, 0, 0, 0});
+            }
+            
+            break;
+        }
+            
         case LayoutType::button: {
             std::string text;
             if(obj.contains("text")) {
@@ -202,7 +594,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                 checked = obj["checked"].get<bool>();
             }
             
-            ptr = Layout::Make<Checkbox>(Vec2(), text, checked, font);
+            ptr = Layout::Make<Checkbox>(attr::Loc(), text, attr::Checked(checked), font);
             
             std::string action;
             if(obj.count("action")) {
@@ -294,6 +686,11 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             
             ptr = Layout::Make<StaticText>(text, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
             
+            //if(margins != Margins{0, 0, 0, 0})
+            {
+                ptr.to<StaticText>()->set(attr::Margins(margins));
+            }
+            
             Color color{White};
             if(obj.count("color")) {
                 if(obj["color"].is_string())
@@ -369,7 +766,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         return nullptr;
     }
     
-    if(ptr.is<SectionInterface>()) {
+    if(type != LayoutType::settings && ptr.is<SectionInterface>()) {
         if(fill != Transparent) {
             if(line != Transparent)
                 ptr.to<SectionInterface>()->set_background(fill, line);
@@ -592,36 +989,54 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
         auto pattern = it->second;
         
         if(o.is<Text>()) {
-            auto text = o.to<Text>();
             if(pattern.contains("text")) {
+                auto text = o.to<Text>();
                 auto output = parse_text(pattern.at("text"), context);
                 text->set_txt(output);
             }
             
         } else if(o.is<StaticText>()) {
-            auto text = o.to<StaticText>();
             if(pattern.contains("text")) {
+                auto text = o.to<StaticText>();
                 auto output = parse_text(pattern.at("text"), context);
                 text->set_txt(output);
             }
             
         } else if(o.is<Button>()) {
-            auto button = o.to<Button>();
             if(pattern.contains("text")) {
+                auto button = o.to<Button>();
                 auto output = parse_text(pattern.at("text"), context);
                 button->set_txt(output);
             }
         } else if(o.is<Textfield>()) {
-            auto textfield = o.to<Textfield>();
             if(pattern.contains("text")) {
+                auto textfield = o.to<Textfield>();
                 auto output = parse_text(pattern.at("text"), context);
                 textfield->set_text(output);
             }
         } else if(o.is<Checkbox>()) {
-            auto checkbox = o.to<Checkbox>();
             if(pattern.contains("text")) {
+                auto checkbox = o.to<Checkbox>();
                 auto output = parse_text(pattern.at("text"), context);
                 checkbox->set_text(output);
+            }
+        } else if(o.is<ExternalImage>()) {
+            if(pattern.contains("path")) {
+                auto img = o.to<ExternalImage>();
+                auto output = file::Path(parse_text(pattern.at("path"), context));
+                if(output.exists() && not output.is_folder()) {
+                    auto modified = output.last_modified();
+                    auto &entry = state._image_cache[output.str()];
+                    Image::Ptr ptr;
+                    if(std::get<0>(entry) != modified) {
+                        ptr = load_image(output);
+                        entry = { modified, Image::Make(*ptr) };
+                    }
+                    
+                    if(ptr) {
+                        img->set_source(std::move(ptr));
+                    }
+                }
             }
         }
     }
@@ -638,6 +1053,8 @@ void update_layout(const file::Path& path, Context& context, State& state, std::
         
         auto result = load(path);
         if(result) {
+            state._text_fields.clear();
+            
             auto layout = result.value();
             std::vector<Layout::Ptr> objs;
             State tmp;
@@ -657,6 +1074,37 @@ void update_layout(const file::Path& path, Context& context, State& state, std::
         FormatExcept("Error loading gui layout from file: ", e.what());
     } catch(...) {
         FormatExcept("Error loading gui layout from file");
+    }
+}
+
+void update_tooltips(DrawStructure& graph, State& state) {
+    if(not state._settings_tooltip) {
+        state._settings_tooltip = Layout::Make<SettingsTooltip>();
+    }
+    
+    Layout::Ptr found = nullptr;
+    std::string name;
+    std::unique_ptr<sprite::Reference> ref;
+    
+    for(auto & [key, ptr] : state._text_fields) {
+        ptr->_text->set_clickable(true);
+        
+        if(ptr->representative()->hovered()) {
+            found = ptr->representative();
+            name = key;
+        }
+    }
+    
+    if(found) {
+        ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
+    }
+
+    if(found && ref) {
+        state._settings_tooltip.to<SettingsTooltip>()->set_parameter(name);
+        state._settings_tooltip.to<SettingsTooltip>()->set_other(found.get());
+        graph.wrap_object(*state._settings_tooltip);
+    } else {
+        state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
     }
 }
 

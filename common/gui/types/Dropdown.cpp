@@ -13,163 +13,173 @@ namespace gui {
         return _automatic_id++;
     }
     
-    Dropdown::Dropdown(const Bounds& bounds, const std::vector<std::string>& options, Type type) : Dropdown(bounds, std::vector<TextItem>(options.begin(), options.end()), type)
-    { }
-
-    Dropdown::Dropdown(const Bounds& bounds, const std::vector<TextItem>& options, Type type)
-    : _list(Bounds(0, bounds.height, bounds.width, 230), options, Font(0.6f, Align::Left), [this](size_t s) { _selected_item = s; }),
-          _on_select([](auto, auto&){}),
-          _items(options),
-          _opened(false),
-          _type(type),
-          _inverted(false),
-          _selected_item(-1),
-          _selected_id(-1),
-          _on_text_changed([](){}),
-          _on_open([](auto){})
-    {
-        _list.set_z_index(1);
-        
-        if(type == BUTTON) {
-            _button = Button::MakePtr("Please select...",  Bounds(Vec2(), bounds.size()));
-            _button->set_toggleable(true);
-            _button->add_event_handler(MBUTTON, [this](Event e){
-                if(!e.mbutton.pressed && e.mbutton.button == 0) {
-                    _opened = !_opened;
-                    this->set_content_changed(true);
-                    _on_open(_opened);
-                }
-            });
-            
-        } else {
-            _textfield = std::make_shared<Textfield>(Bounds(Vec2(), bounds.size()));
-            _textfield->set_placeholder("Please select...");
-            _textfield->add_event_handler(KEY, [this](Event e){
-                if(!e.key.pressed)
-                    return;
-                
-                if(e.key.code == Codes::Down)
-                    _selected_item++;
-                else if(e.key.code == Codes::Up)
-                    _selected_item--;
-                
-                select_item(_selected_item);
-            });
-            
-            _on_text_changed = [this](){
-                if (_custom_on_text_changed) {
-                    _custom_on_text_changed(_textfield->text());
-                }
-
-                filtered_items.clear();
-
-                if (!_textfield->text().empty()) {
-                    if(_corpus.empty()) {
-                        _corpus.reserve(items().size());
-                        for (const auto &item : _items) {
-                            _corpus.push_back(item.search_name());
-                        }
-                    }
-                    
-                    if(_preprocessed.empty())
-                        _preprocessed = preprocess_corpus(_corpus);
-                    
-                    // Filter items using the search text
-                    // Get the search result indexes
-                    auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
-
-                    // Create a filtered vector of TextItems
-                    std::vector<TextItem> filtered;
-                    for (int index : search_result_indexes) {
-                        filtered.push_back(_items[index]);
-                        filtered_items[filtered.size() - 1] = index;
-                    }
-
-                    // Update the list with the filtered items
-                    _list.set_items(filtered);
-                    if(not filtered.empty()) {
-                        select_item(0);
-                    }
-
-                } else {
-                    // If the search text is empty, display all items
-                    _list.set_items(_items);
-                }
-
-                this->select_item(_selected_item);
+void Dropdown::init() {
+    _list = std::make_unique<ScrollableList<TextItem>>(Bounds(0, _bounds.height, _bounds.width, 230), items(), Font(0.6f, Align::Left), [this](size_t s) { _selected_item = s; });
+    _list->set_z_index(1);
+    _selected_item = -1;
+    
+    if(_type == BUTTON) {
+        _button = Button::MakePtr("Please select...",  Bounds(_bounds.size()));
+        _button->set_toggleable(true);
+        _button->add_event_handler(MBUTTON, [this](Event e){
+            if(!e.mbutton.pressed && e.mbutton.button == 0) {
+                _opened = !_opened;
                 this->set_content_changed(true);
-            };
-            
-            _textfield->on_text_changed(_on_text_changed);
-            
-            _textfield->on_enter([this](){
-                if(!_list.items().empty()) {
-                    if (stage())
-                        stage()->select(NULL);
-                    _list.select_highlighted_item();
-                } else {
-                    if(stage())
-                        stage()->select(NULL);
-                    _selected_id = -1;
-                    _on_select(-1, TextItem());
-                }
-                
-                if(stage())
-                    stage()->do_hover(NULL);
-                
-                _list.set_last_hovered_item(-1);
-            });
-        }
-        
-        _list.on_select([this](size_t i, const Dropdown::TextItem& txt){
-            long_t real_id = long_t(i);
-            if(!filtered_items.empty()) {
-                if(filtered_items.find(i) != filtered_items.end()) {
-                    real_id = long_t(filtered_items[i]);
-                } else
-                    throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
+                if(_on_open)
+                    _on_open(_opened);
             }
-            
-            if(_button) {
-                _button->set_toggle(_opened);
-                _button->set_txt(txt);
-                
-            } else if(_textfield) {
-                _textfield->set_text(txt);
-            }
-            
-            _selected_id = real_id;
-            
-            /*if(stage()) {
-                stage()->select(NULL);
-                stage()->do_hover(NULL);
-            }*/
-            
-            _list.set_last_hovered_item(-1);
-            
-            if(this->selected() != _opened) {
-                _opened = this->selected();
-                _on_open(_opened);
-            }
-            
-            this->set_content_changed(true);
-            
-            _on_select(real_id, txt);
         });
         
-        set_bounds(bounds);
-        set_clickable(true);
+    } else {
+        _textfield = std::make_shared<Textfield>(Bounds(_bounds.size()));
+        _textfield->set_placeholder("Please select...");
+        _textfield->add_event_handler(KEY, [this](Event e){
+            if(!e.key.pressed)
+                return;
+            
+            if(e.key.code == Codes::Down) {
+                auto& items = _list->items();
+                if(not items.empty() && _selected_item + 1 < _list->items().size() && _selected_item != -1) {
+                    _selected_item++;
+                } else if(not items.empty()) {
+                    _selected_item = 0;
+                } else
+                    _selected_item = -1;
+                
+                _list->highlight_item(_selected_item);
+            }
+            else if(e.key.code == Codes::Up) {
+                if(_selected_item > 0 && _selected_item < _list->items().size()) {
+                    _selected_item--;
+                } else if(not _list->items().empty()) {
+                    _selected_item = _list->items().size() - 1;
+                } else
+                    _selected_item = -1;
+                
+                _list->highlight_item(_selected_item);
+            }
+            
+            select_item(_selected_item);
+        });
         
-        if(type == SEARCH)
-            add_event_handler(SELECT, [this](Event e) {
-                if(e.select.selected)
-                    this->set_opened(true);
-                else
-                    this->set_opened(false);
-                this->_on_open(this->_opened);
-            });
+        _on_text_changed = [this](){
+            if (_custom_on_text_changed) {
+                auto text = _textfield->text();
+                _custom_on_text_changed(text);
+            }
+
+            filtered_items.clear();
+
+            if (!_textfield->text().empty()) {
+                if(_corpus.empty()) {
+                    _corpus.reserve(items().size());
+                    for (const auto &item : _items) {
+                        _corpus.push_back(item.search_name());
+                    }
+                }
+                
+                if(_preprocessed.empty())
+                    _preprocessed = preprocess_corpus(_corpus);
+                
+                // Filter items using the search text
+                // Get the search result indexes
+                auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
+
+                // Create a filtered vector of TextItems
+                std::vector<TextItem> filtered;
+                for (int index : search_result_indexes) {
+                    filtered.push_back(_items[index]);
+                    filtered_items[filtered.size() - 1] = index;
+                }
+
+                // Update the list with the filtered items
+                if(_list->set_items(filtered)) {
+                //if(not filtered.empty()) {
+                    select_item(-1);
+                }
+
+            } else {
+                // If the search text is empty, display all items
+                _list->set_items(_items);
+            }
+
+            this->select_item(_selected_item);
+            this->set_content_changed(true);
+        };
+        
+        _textfield->on_text_changed(_on_text_changed);
+        
+        _textfield->on_enter([this](){
+            if(!_list->items().empty()) {
+                if (stage())
+                    stage()->select(NULL);
+                _list->select_highlighted_item();
+            } else {
+                if(stage())
+                    stage()->select(NULL);
+                _selected_id = -1;
+                if(_on_select)
+                    _on_select(-1, TextItem());
+            }
+            
+            if(stage())
+                stage()->do_hover(NULL);
+            
+            _list->set_last_hovered_item(-1);
+        });
     }
     
+    _list->on_select([this](size_t i, const Dropdown::TextItem& txt){
+        long_t real_id = long_t(i);
+        if(!filtered_items.empty()) {
+            if(filtered_items.find(i) != filtered_items.end()) {
+                real_id = long_t(filtered_items[i]);
+            } else
+                throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
+        }
+        
+        if(_button) {
+            _button->set_toggle(_opened);
+            _button->set_txt(txt);
+            
+        } else if(_textfield) {
+            _textfield->set_text(txt);
+        }
+        
+        _selected_id = real_id;
+        
+        /*if(stage()) {
+            stage()->select(NULL);
+            stage()->do_hover(NULL);
+        }*/
+        
+        _list->set_last_hovered_item(-1);
+        
+        if(this->selected() != _opened) {
+            _opened = this->selected();
+            if(_on_open)
+                _on_open(_opened);
+        }
+        
+        this->set_content_changed(true);
+        
+        if(_on_select)
+            _on_select(real_id, txt);
+    });
+    
+    set_clickable(true);
+    
+    if(_type == SEARCH)
+        add_event_handler(SELECT, [this](Event e) {
+            if(e.select.selected)
+                this->set_opened(true);
+            else
+                this->set_opened(false);
+            if(this->_on_open)
+                this->_on_open(this->_opened);
+        });
+    }
+
     Dropdown::~Dropdown() {
         _button = nullptr;
         _textfield = nullptr;
@@ -180,6 +190,7 @@ namespace gui {
             return;
         
         _opened = opened;
+        _selected_item = -1;
         set_content_changed(true);
     }
     
@@ -191,7 +202,8 @@ namespace gui {
     void Dropdown::clear_textfield() {
         if(_textfield) {
             _textfield->set_text("");
-            _on_text_changed();
+            if(_on_text_changed)
+                _on_text_changed();
         }
     }
     
@@ -201,7 +213,7 @@ namespace gui {
         
         begin();
         if(_opened)
-            advance_wrap(_list);
+            advance_wrap(*_list);
         if(_button)
             advance_wrap(*_button);
         else
@@ -212,16 +224,14 @@ namespace gui {
     void Dropdown::select_item(long index) {
         _selected_item = index;
         
-        if(index < 0)
-            index = 0;
-        else if((size_t)index+1 > _list.items().size())
-            index = (long)_list.items().size()-1;
+        if(index >= 0 && _list && (size_t)index+1 > _list->items().size())
+            index = (long)_list->items().size()-1;
         
-        if(_list.items().empty())
+        if(not _list || _list->items().empty())
             index = -1;
         
-        if(index > -1)
-            _list.highlight_item(index);
+        //if(index > -1 && _list)
+        //    _list->highlight_item(index);
         
         if(index != _selected_item) {
             _selected_item = index;
@@ -231,12 +241,14 @@ namespace gui {
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
         if(options != _items) {
-            _list.set_items(options);
+            if(_list)
+                _list->set_items(options);
             _items = options;
             _selected_id = _selected_item = -1;
             _preprocessed = {};
             _corpus.clear();
-            _on_text_changed();
+            if(_on_text_changed)
+                _on_text_changed();
             set_dirty();
         }
     }
@@ -249,14 +261,14 @@ namespace gui {
     
     Dropdown::TextItem Dropdown::selected_item() const {
         if(selected_id() != -1)
-            return (size_t)_selected_item < _list.items().size() ?_list.items().at(_selected_item).value() : TextItem();
+            return _list && (size_t)_selected_item < _list->items().size() ?_list->items().at(_selected_item).value() : TextItem();
         
         return TextItem();
     }
     
     Dropdown::TextItem Dropdown::hovered_item() const {
-        if(_list.last_hovered_item() != -1) {
-            return (size_t)_list.last_hovered_item() < _list.items().size() ? _list.items().at(_list.last_hovered_item()).value() : TextItem();
+        if(_list && _list->last_hovered_item() != -1) {
+            return (size_t)_list->last_hovered_item() < _list->items().size() ? _list->items().at(_list->last_hovered_item()).value() : TextItem();
         }
         return TextItem();
     }
@@ -277,7 +289,9 @@ namespace gui {
         
         if(_textfield)
             _textfield->set_size(Size2(width(), height()).div(scale()));
-        _list.set_size(Size2(width() / scale().x, _list.height()));
+        if(_list) {
+            _list->set_bounds(Bounds(0, _inverted ? -_list->height() : height(), width() / scale().x, _list->height()));
+        }
     }
     
     void Dropdown::set_inverted(bool invert) {
@@ -286,10 +300,18 @@ namespace gui {
         
         _inverted = invert;
         if(_inverted)
-            _list.set_pos(-Vec2(0, _list.height()));
+            _list->set_pos(-Vec2(0, _list->height()));
         else
-            _list.set_pos(Vec2(0, height()));
+            _list->set_pos(Vec2(0, height()));
         
         set_content_changed(true);
     }
+
+void Dropdown::set_bounds(const Bounds &bounds) {
+    if(not this->bounds().Equals(bounds)) {
+        Entangled::set_bounds(bounds);
+        set_content_changed(true);
+    }
+}
+
 }

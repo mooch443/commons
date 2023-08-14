@@ -35,8 +35,9 @@ namespace gui {
         
         struct Settings {
             Vec2 max_size{-1, -1};
-            Margins margins{5, 5};
+            Margins margins{5, 5, 5, 5};
             Color text_color = White;
+            Color line_color = Transparent;
             Font default_font = Font(0.75);
             std::string txt;
             Alpha alpha{1};
@@ -66,21 +67,28 @@ namespace gui {
         
         template<typename... Args>
         void create(Args... args) {
-            set_clickable(true);
             (set(std::forward<Args>(args)), ...);
         }
         
         const auto& text() const { return _settings.txt; }
         const auto& max_size() const { return _settings.max_size; }
         
-    private:
+    public:
         using Entangled::set;
         void set(const std::string& str) { set_txt(str); }
         void set(TextClr clr) { set_text_color(clr); }
+        void set(LineClr clr) override { set_line_color(clr); }
+        void set(Font font) { set_default_font(font); }
         void set(SizeLimit limit) { set_max_size(limit); }
         void set(Margins margins) { set_margins(margins); }
         void set(Alpha alpha) { set_alpha(alpha); }
-        void set(Font font) { set_default_font(font); }
+        
+        void set_bounds(const Bounds& bounds) override {
+            if(not this->bounds().Equals(bounds)) {
+                Entangled::set_bounds(bounds);
+                set_content_changed(true);
+            }
+        }
         
     public:
         virtual ~StaticText() {
@@ -101,6 +109,14 @@ namespace gui {
             
             _settings.text_color = c;
             update_text();
+        }
+        
+        void set_line_color(const Color& c) {
+            if(c == _settings.line_color)
+                return;
+            
+            _settings.line_color = c;
+            set_background(Transparent, _settings.line_color);
         }
         
         void set_alpha(const Alpha& c) {

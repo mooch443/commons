@@ -434,7 +434,7 @@ namespace gui {
         std::string toString(const Base* base, const std::string& indent = "");
         virtual std::string toStr() const override;
         
-    protected:
+    public:
         using Drawable::set;
         virtual void set(FillClr clr) { set_background(clr, _bg_line_color); }
         virtual void set(LineClr clr) { set_background(_bg_fill_color, clr); }

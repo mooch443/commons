@@ -378,7 +378,7 @@ protected:
         
         virtual ~Text() {}
         
-    private:
+    public:
         using Drawable::set;
         void set(const std::string& txt) { set_txt(txt); }
         void set(const Color& color) { set_color(color); }
