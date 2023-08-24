@@ -1089,9 +1089,10 @@ void update_tooltips(DrawStructure& graph, State& state) {
     for(auto & [key, ptr] : state._text_fields) {
         ptr->_text->set_clickable(true);
         
-        if(ptr->representative()->hovered()) {
+        if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {
             found = ptr->representative();
             name = key;
+            break;
         }
     }
     
