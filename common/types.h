@@ -52,6 +52,7 @@ struct Prediction {
     bool valid() const { return clid < 255u; }
     std::string toStr() const;
     static std::string class_name() { return "Prediction"; }
+    constexpr float probability() const { return float(p) / 255.f; }
 };
 
 struct Pair {

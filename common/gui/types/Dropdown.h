@@ -95,6 +95,7 @@ namespace gui {
         void set(const Type& type) { _type = type; set_content_changed(true); }
         
         void set_bounds(const Bounds& bounds) override;
+        void set_size(const Size2& size) override;
         
         template<typename... Args>
         Dropdown(Args... args) {

@@ -50,7 +50,7 @@ namespace gui {
         }
         
     public:
-        Layout(const std::vector<Layout::Ptr>&);
+        Layout(const std::vector<Layout::Ptr>& = {});
         virtual ~Layout() { clear_children(); }
         
         void update() override;

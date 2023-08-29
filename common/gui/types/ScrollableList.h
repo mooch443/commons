@@ -198,6 +198,11 @@ namespace gui {
                 t->set_color(text_color);
         }
         
+        using Entangled::set;
+        void set(const Font& font) {
+            set_font(font);
+        }
+        
         void set_font(const Font& font) {
             if(_font == font)
                 return;

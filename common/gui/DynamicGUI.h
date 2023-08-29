@@ -12,6 +12,8 @@
 #include <gui/types/Textfield.h>
 #include <gui/types/Dropdown.h>
 #include <gui/types/Checkbox.h>
+#include <gui/types/List.h>
+#include <regex>
 
 namespace gui {
 namespace dyn {
@@ -47,27 +49,41 @@ struct LabeledField {
     
     template<typename T>
     void set(T attribute) {
-        if constexpr(takes_attribute<Drawable, T>)
+        if constexpr(takes_attribute<Drawable, T>) {
             representative()->set(attribute);
-        else if(representative().is<Button>()) {
+            
+        } else if(representative().is<Button>()) {
             if constexpr(takes_attribute<Button, T>)
             {
                 representative().to<Button>()->set(attribute);
             }
+            
         } else if(representative().is<Textfield>()) {
             if constexpr(takes_attribute<Textfield, T>)
             {
                 representative().to<Textfield>()->set(attribute);
             }
+            
         } else if(representative().is<Dropdown>()) {
             if constexpr(takes_attribute<Dropdown, T>)
             {
                 representative().to<Dropdown>()->set(attribute);
             }
+            
         } else if(representative().is<Checkbox>()) {
             if constexpr(takes_attribute<Checkbox, T>)
             {
                 representative().to<Checkbox>()->set(attribute);
+            }
+        } else if(representative().is<List>()) {
+            if constexpr(takes_attribute<List, T>)
+            {
+                representative().to<List>()->set(attribute);
+            }
+        } else if(representative().is<ScrollableList<>>()) {
+            if constexpr(takes_attribute<ScrollableList<>, T>)
+            {
+                representative().to<ScrollableList<>>()->set(attribute);
             }
         }
     }
@@ -76,6 +92,70 @@ struct LabeledField {
     static std::unique_ptr<LabeledField> Make(std::string parm, std::string desc);
 };
 
+class Combobox : public Entangled {
+public:
+    struct Settings {
+        Bounds bounds = Bounds(0, 0, 100, 33);
+        Color fill_clr = Drawable::accent_color;
+        Color line_clr = Black.alpha(200);
+        Color text_clr = White;
+        Font font = Font(0.75, Align::Center);
+        std::string param;
+    };
+    
+protected:
+    Settings _settings;
+    
+    HorizontalLayout _layout;
+    derived_ptr<Dropdown> _dropdown;
+    std::unique_ptr<LabeledField> _value;
+    
+public:
+    template<typename... Args>
+    Combobox(Args... args)
+    {
+        create(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    void create(Args... args) {
+        (set(std::forward<Args>(args)), ...);
+        init();
+    }
+    
+public:
+    using Entangled::set;
+    
+    void set(attr::Font font);
+    void set(attr::FillClr clr) override;
+    void set(attr::LineClr clr) override;
+    void set(attr::TextClr clr);
+    
+    void set(std::function<void()> on_click) {
+        if(on_click)
+            this->on_click([on_click](auto) { on_click(); });
+    }
+    void set(ParmName name);
+    
+    void set_bounds(const Bounds& bds) override;
+    void set_pos(const Vec2& p) override;
+    void set_size(const Size2& p) override;
+    
+protected:
+    void init();
+    void update() override;
+};
+
+struct LabeledCombobox : public LabeledField {
+    gui::derived_ptr<Combobox> _combo;
+    LabeledCombobox(const std::string& name = "");
+    void add_to(std::vector<Layout::Ptr>& v) override {
+        LabeledField::add_to(v);
+        v.push_back(_combo);
+    }
+    void update() override;
+    Layout::Ptr representative() override { return _combo; }
+};
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
     sprite::Reference _ref;
@@ -98,6 +178,17 @@ struct LabeledDropDown : public LabeledField {
     void update() override;
     Layout::Ptr representative() override { return _dropdown; }
 };
+struct LabeledList : public LabeledField {
+    gui::derived_ptr<gui::ScrollableList<>> _list;
+    sprite::Reference _ref;
+    LabeledList(const std::string& name = "");
+    void add_to(std::vector<Layout::Ptr>& v) override {
+        LabeledField::add_to(v);
+        v.push_back(_list);
+    }
+    void update() override;
+    Layout::Ptr representative() override { return _list; }
+};
 struct LabeledPath : public LabeledField {
     class FileItem {
         GETTER(file::Path, path)
@@ -114,6 +205,7 @@ struct LabeledPath : public LabeledField {
     };
     
     gui::derived_ptr<gui::Dropdown> _dropdown;
+    sprite::Reference _ref;
     
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
@@ -121,7 +213,7 @@ struct LabeledPath : public LabeledField {
     file::Path _path;
     std::function<bool(file::Path)> _validity;
     
-    LabeledPath(file::Path path = "");
+    LabeledPath(std::string name, file::Path path = "");
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
@@ -328,7 +420,21 @@ public:
     constexpr auto class_name() const { return type; }
 };
 
-ENUM_CLASS(LayoutType, each, condition, vlayout, hlayout, collection, button, text, stext, rect, textfield, checkbox, settings, image);
+ENUM_CLASS(LayoutType,
+           each,
+           condition,
+           vlayout,
+           hlayout,
+           collection,
+           button,
+           text,
+           stext,
+           rect,
+           textfield,
+           checkbox,
+           settings,
+           combobox,
+           image);
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())
@@ -371,7 +477,7 @@ struct IfBody {
 
 struct State {
     size_t object_index{0};
-    std::unordered_map<size_t, std::unordered_map<std::string, std::string>> patterns;
+    robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, std::string>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
     std::unordered_map<size_t, IfBody> ifs;
@@ -409,6 +515,7 @@ struct Module {
 };
 
 void add(Module&&);
+void remove(const std::string& name);
 Module* exists(const std::string& name);
 }
 
@@ -418,32 +525,53 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 
 std::string parse_text(const std::string& pattern, const Context& context);
 
+struct VarProps {
+    std::vector<std::string> parts;
+    std::string sub;
+    bool optional{false};
+    bool html{false};
+};
+
 template<typename ApplyF, typename ErrorF>
 inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
-    auto parts = utils::split(word, ':');
-    auto variable = utils::lowercase(parts.front());
-    bool optional = false;
-    if(not variable.empty() && variable.front() == '.') {
-        // optional variable
-        variable = variable.substr(1);
-        optional = true;
+    auto variable = utils::lowercase(word);
+    VarProps props;
+    
+    std::regex rgx("[^a-zA-Z0-9_\\-: ]+");
+    std::smatch match;
+    std::string controls;
+    if (std::regex_search(variable, match, rgx)) {
+        controls = match[0].str();
+        if (controls.find('.') == 0) {
+            // optional variable
+            props.optional = true;
+        }
+        if(controls.find('#') == 0) {
+            props.html = true;
+        }
+        variable = variable.substr(controls.size());
     }
     
+    props.parts = utils::split(variable, ':');
+    variable = props.parts.front();
+    
     std::string modifiers;
-    if(parts.size() > 1)
-        modifiers = parts.back();
+    if(props.parts.size() > 1)
+        modifiers = props.parts.back();
+    props.parts.erase(props.parts.begin());
+    props.sub = modifiers;
     
     if(context.variables.contains(variable)) {
         if constexpr(std::invocable<ApplyF, VarBase_t&, const std::string&>)
             return apply(*context.variables.at(variable), modifiers);
-        else if constexpr(std::invocable<ApplyF, VarBase_t&, const std::string&, bool>)
-            return apply(*context.variables.at(variable), modifiers, optional);
+        else if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
+            return apply(*context.variables.at(variable), props);
         else
-            static_assert(std::invocable<ApplyF, VarBase_t&, const std::string&, bool>);
+            static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
     }
     
     if constexpr(std::invocable<ErrorF, bool>)
-        return error(optional);
+        return error(props.optional);
     else
         return error();
 }

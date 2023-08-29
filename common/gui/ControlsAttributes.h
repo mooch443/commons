@@ -40,6 +40,7 @@ using TextClr = AttributeAlias<gui::Color, 2>;
 using Content = AttributeAlias<std::string, 1>;
 using Postfix = AttributeAlias<std::string, 2>;
 using Prefix = AttributeAlias<std::string, 3>;
+using ParmName = AttributeAlias<std::string, 4>;
 
 template<typename T, int _arbitrary = 0>
 struct NumberAlias {

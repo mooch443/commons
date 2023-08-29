@@ -75,7 +75,7 @@ namespace gui {
         
         //! Objects that contain cached values for the Base* objects
         //  using the Drawables
-        std::unordered_map<const Base*, CacheObject::Ptr> _cache;
+        robin_hood::unordered_map<const Base*, CacheObject::Ptr> _cache;
         
         std::unordered_map<std::string, std::tuple<void*, std::function<void(void*)>>> _custom_data;
         std::unordered_set<uchar> _custom_tags;

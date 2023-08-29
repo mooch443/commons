@@ -8,6 +8,7 @@
 #include <gui/types/Dropdown.h>
 #include <misc/GlobalSettings.h>
 #include <gui/types/SettingsTooltip.h>
+#include <common/misc/default_settings.h>
 
 namespace gui {
 namespace dyn {
@@ -20,6 +21,127 @@ constexpr double video_chooser_column_width = 300;
 
 sprite::Map& settings_map() {
     return settings_scene::temp_settings;
+}
+
+void Combobox::init() {
+    _dropdown = std::make_shared<Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
+    auto keys = settings_map().keys();
+    _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
+    _dropdown->on_select([this](long_t, const Dropdown::TextItem & item){
+        auto name = item.name();
+        if(settings_map().has(name)) {
+            set(ParmName{name});
+        }
+        _dropdown->set_opened(false);
+    });
+    
+    //set_background(_settings.fill_clr, _settings.line_clr);
+    set_bounds(_settings.bounds);
+    set_clickable(true);
+}
+
+void Combobox::update() {
+    if(not content_changed())
+        return;
+    
+    std::vector<Layout::Ptr> objects{
+        _dropdown
+    };
+    
+    if(_value)
+        _value->add_to(objects);
+    _layout.set_children(objects);
+    
+    {
+        begin();
+        advance_wrap(_layout);
+        end();
+    }
+    
+    _layout.update_layout();
+}
+
+void Combobox::set(ParmName name) {
+    if(name != _settings.param) {
+        _settings.param = name;
+        _value = LabeledField::Make(name);
+        if(not dynamic_cast<const LabeledCheckbox*>(_value.get())) {
+            _value->set_description("");
+        }
+        set_content_changed(true);
+    }
+}
+
+void Combobox::set(attr::Font font)   {
+    if(_settings.font != font) {
+        _settings.font = font;
+        if(_value)
+            _value->set(font);
+        _dropdown->set(font);
+        set_content_changed(true);
+    }
+}
+void Combobox::set(attr::FillClr clr) {
+    if(_settings.fill_clr != clr) {
+        _settings.fill_clr = clr;
+        if(_value)
+            _value->set(clr);
+        _dropdown->set(clr);
+        set_content_changed(true);
+    }
+}
+void Combobox::set(attr::LineClr clr) {
+    if(_settings.line_clr != clr) {
+        _settings.line_clr = clr;
+        if(_value)
+            _value->set(clr);
+        _dropdown->set(clr);
+        set_content_changed(true);
+    }
+}
+void Combobox::set(attr::TextClr clr) {
+    if(_settings.text_clr != clr) {
+        _settings.text_clr = clr;
+        if(_value)
+            _value->set(clr);
+        _dropdown->set(clr);
+        set_content_changed(true);
+    }
+}
+
+void Combobox::set_bounds(const Bounds& bds) {
+    if(not _settings.bounds.Equals(bds)) {
+        _settings.bounds = bds;
+        _dropdown->set(attr::Size(_dropdown->width(), bds.height));
+        set_content_changed(true);
+    }
+    Entangled::set_bounds(bds);
+}
+
+void Combobox::set_pos(const Vec2& p) {
+    if(not _settings.bounds.pos().Equals(p)) {
+        _settings.bounds << p;
+        set_content_changed(true);
+    }
+    Entangled::set_pos(p);
+}
+
+void Combobox::set_size(const Size2& p) {
+    if(not _settings.bounds.size().Equals(p)) {
+        _settings.bounds << p;
+        _dropdown->set(attr::Size{_dropdown->width(), p.height});
+        set_content_changed(true);
+    }
+    Entangled::set_size(p);
+}
+
+LabeledCombobox::LabeledCombobox(const std::string& name)
+    : LabeledField(name),
+    _combo(std::make_shared<Combobox>())
+{}
+
+void LabeledCombobox::update() {
+    LabeledField::update();
 }
 
 void LabeledCheckbox::set_description(std::string desc) {
@@ -36,9 +158,14 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, std::string d
 }
 
 std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
-    if(not GlobalSettings::map().has(parm))
+    if(parm.empty()) {
+        auto ptr = std::make_unique<LabeledCombobox>();
+        return ptr;
+    }
+    
+    if(not settings_map().has(parm))
         throw U_EXCEPTION("GlobalSettings has no parameter named ", parm,".");
-    auto ref = GlobalSettings::map()[parm];
+    auto ref = settings_map()[parm];
     
     std::unique_ptr<LabeledField> ptr;
     if(ref.is_type<bool>()) {
@@ -55,16 +182,26 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
         ptr = std::make_unique<LabeledTextField>(parm);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
     } else if(ref.is_type<file::Path>()) {
-        ptr = std::make_unique<LabeledPath>(ref.value<file::Path>());
+        ptr = std::make_unique<LabeledPath>(parm, ref.value<file::Path>());
         //ptr->representative().to<Dropdown>()->set_text(ref.value<file::Path>().str());
     } else if(ref.get().is_enum()) {
-        ptr = std::make_unique<LabeledDropDown>(parm);
+        ptr = std::make_unique<LabeledList>(parm);
+        auto list = ptr->representative().to<ScrollableList<>>();
         auto values = ref.get().enum_values()();
         auto index = ref.get().enum_index()();
-        ptr->representative().to<Dropdown>()->set_items(std::vector<Dropdown::TextItem>(values.begin(), values.end()));
-        ptr->representative().to<Dropdown>()->select_item(index);
-    } else
-        throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
+        
+        list->set_items(values);
+        list->select_item(index);
+        
+        //ptr = std::make_unique<LabeledDropDown>(parm);
+        
+        //ptr->representative().to<Dropdown>()->set_items(std::vector<Dropdown::TextItem>(values.begin(), values.end()));
+        //ptr->representative().to<Dropdown>()->select_item(index);
+    } else {
+        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
+        //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
+    }
     return ptr;
 }
 
@@ -115,6 +252,40 @@ void LabeledTextField::update() {
         str = str.substr(1,str.length()-2);
     }
     _text_field->set_text(str);
+}
+
+LabeledList::LabeledList(const std::string& name)
+: LabeledField(name),
+_list(std::make_shared<gui::ScrollableList<>>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
+_ref(settings_scene::temp_settings[name])
+{
+    _docs = settings_scene::temp_docs[name];
+    
+    //_list->textfield()->set_font(Font(0.7f));
+    _list->set(Font(0.7f));
+    assert(_ref.get().is_enum());
+    std::vector<std::string> items;
+    int index = 0;
+    for(auto &name : _ref.get().enum_values()()) {
+        items.push_back(name);
+    }
+    _list->set_items(items);
+    _list->select_item(narrow_cast<long>(_ref.get().enum_index()()));
+    
+    _list->on_select([this](auto index, auto) {
+        if(index < 0)
+            return;
+        
+        try {
+            _ref.get().set_value_from_string(_ref.get().enum_values()().at((size_t)index));
+        } catch(...) {}
+        
+        //_dropdown->set_opened(false);
+    });
+}
+
+void LabeledList::update() {
+    _list->select_item(narrow_cast<long>(_ref.get().enum_index()()));
 }
 
 LabeledDropDown::LabeledDropDown(const std::string& name)
@@ -168,8 +339,9 @@ Color LabeledPath::FileItem::color() const {
     return _path.is_folder() ? Color(180, 255, 255, 255) : White;
 }
 
-LabeledPath::LabeledPath(file::Path path)
+LabeledPath::LabeledPath(std::string name, file::Path path)
     : LabeledField(),
+    _ref(settings_scene::temp_settings[name]),
     _files([](const file::Path& A, const file::Path& B) -> bool {
         return (A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str()); //A.str() == ".." || (A.str() != ".." && ((A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str())));
     }), _path(path)
@@ -185,6 +357,8 @@ LabeledPath::LabeledPath(file::Path path)
             path = _dropdown->textfield()->text();
         } else
             path = file::Path((std::string)item);
+        
+        _ref.get() = path;
         
         if(!_validity || _validity(path))
         {
@@ -202,6 +376,8 @@ LabeledPath::LabeledPath(file::Path path)
     _dropdown->on_text_changed([this](std::string str) {
         auto path = file::Path(str);
         auto file = (std::string)path.filename();
+        
+        _ref.get() = path;
         
         if(path.empty() || (path == _path || ((!path.exists() || !path.is_folder()) && path.remove_filename() == _path)))
         {
@@ -280,6 +456,10 @@ std::unordered_map<std::string, Module> mods;
 void add(Module&& m) {
     auto name = m._name;
     mods.emplace(name, std::move(m));
+}
+
+void remove(const std::string& name) {
+    
 }
 
 Module* exists(const std::string& name) {
@@ -372,6 +552,10 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     Layout::Ptr ptr;
     
     switch (type) {
+        case LayoutType::combobox: {
+            
+            break;
+        }
         case LayoutType::image: {
             Image::Ptr img;
             
@@ -782,7 +966,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     if(obj.count("modules")) {
         if(obj["modules"].is_array()) {
             for(auto mod : obj["modules"]) {
-                auto m = Modules::exists(mod);
+                print("module ", mod.get<std::string>());
+                auto m = Modules::exists(mod.get<std::string>());
                 if(m)
                     m->_apply(index, state, ptr);
             }
@@ -794,6 +979,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
     ptr->add_custom_data("object_index", (void*)index);
+    print("adding object_index to ",ptr->type()," with index ", index, " and object index ", state.object_index);
     return ptr;
 }
 
@@ -823,13 +1009,15 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 inside--;
                 
                 if(inside == 0) {
-                    output += resolve_variable(word, context, [word](const VarBase_t& variable, const std::string& modifiers, bool optional) -> std::string {
+                    output += resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
-                            auto ret = variable.value_string(modifiers);
+                            auto ret = variable.value_string(modifiers.sub);
                             //print(word, " resolves to ", ret);
+                            if(modifiers.html)
+                                return settings::htmlify(ret);
                             return ret;
                         } catch(...) {
-                            return optional ? "" : "null";
+                            return modifiers.optional ? "" : "null";
                         }
                     }, [word](bool optional) -> std::string {
                         return optional ? "" : "null";
@@ -845,6 +1033,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
 
 void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
     auto index = (size_t)o->custom_data("object_index");
+    print(o->type()," with index ", index, " and object index ", state.object_index);
     
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(index)) {

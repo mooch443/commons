@@ -24,6 +24,11 @@ void Dropdown::init() {
         _button->add_event_handler(MBUTTON, [this](Event e){
             if(!e.mbutton.pressed && e.mbutton.button == 0) {
                 _opened = !_opened;
+                if(_opened) {
+                    _textfield->set_z_index(2);
+                } else {
+                    _textfield->set_z_index(0);
+                }
                 this->set_content_changed(true);
                 if(_on_open)
                     _on_open(_opened);
@@ -157,6 +162,11 @@ void Dropdown::init() {
         
         if(this->selected() != _opened) {
             _opened = this->selected();
+            if(_opened) {
+                _textfield->set_z_index(2);
+            } else {
+                _textfield->set_z_index(0);
+            }
             if(_on_open)
                 _on_open(_opened);
         }
@@ -191,6 +201,11 @@ void Dropdown::init() {
         
         _opened = opened;
         _selected_item = -1;
+        if(_opened) {
+            _textfield->set_z_index(2);
+        } else {
+            _textfield->set_z_index(0);
+        }
         set_content_changed(true);
     }
     
@@ -310,6 +325,13 @@ void Dropdown::init() {
 void Dropdown::set_bounds(const Bounds &bounds) {
     if(not this->bounds().Equals(bounds)) {
         Entangled::set_bounds(bounds);
+        set_content_changed(true);
+    }
+}
+
+void Dropdown::set_size(const Size2 &size) {
+    if(not this->bounds().size().Equals(size)) {
+        Entangled::set_size(size);
         set_content_changed(true);
     }
 }
