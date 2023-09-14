@@ -979,7 +979,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
     ptr->add_custom_data("object_index", (void*)index);
-    print("adding object_index to ",ptr->type()," with index ", index, " and object index ", state.object_index);
+    //print("adding object_index to ",ptr->type()," with index ", index, " and object index ", state.object_index);
     return ptr;
 }
 
@@ -1033,7 +1033,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
 
 void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
     auto index = (size_t)o->custom_data("object_index");
-    print(o->type()," with index ", index, " and object index ", state.object_index);
+    //print(o->type()," with index ", index, " and object index ", state.object_index);
     
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(index)) {
