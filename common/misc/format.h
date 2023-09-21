@@ -10,6 +10,11 @@
 
 namespace cmn {
 
+namespace print_colors {
+    inline static std::once_flag flag;
+    inline static bool dont_print = true;
+}
+
 ENUM_CLASS(FormatColorNames,
     BLACK, 
     DARK_BLUE, 
@@ -227,12 +232,17 @@ struct Formatter {
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
     static auto tint(const std::string& s) noexcept {
-        static std::once_flag flag;
-        static bool dont_print = true;
-        std::call_once(flag, []() {
+        std::call_once(print_colors::flag, []() {
 #if __APPLE__
-            char* xcode_colors = getenv("OS_ACTIVITY_DT_MODE");
-            if (!xcode_colors || (strcmp(xcode_colors, "YES") != 0))
+            auto TERM = getenv("TERM");
+            if(not TERM || strcmp(TERM, "dumb") == 0) {
+                // Terminal doesn't support ANSI color codes
+                //printf("Probably does not support ANSI color codes.\n");
+                return;
+            }
+            
+            char* xcode_colors = getenv("__XCODE_BUILT_PRODUCTS_DIR_PATHS");
+            if (not xcode_colors)
             {
 #endif
 #if !defined(__EMSCRIPTEN__)
@@ -241,14 +251,14 @@ struct Formatter {
 #else
                 if (isatty(fileno(stdout)))
 #endif
-                    dont_print = false;
+                    print_colors::dont_print = false;
 #endif
 #if __APPLE__
             }
 #endif
         });
 
-        if(dont_print)
+        if(print_colors::dont_print)
             return s;
         
         return tag() + s + COLOR<0, 0>;

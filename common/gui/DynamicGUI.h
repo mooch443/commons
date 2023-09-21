@@ -88,7 +88,7 @@ struct LabeledField {
         }
     }
     
-    static std::unique_ptr<LabeledField> Make(std::string parm);
+    static std::unique_ptr<LabeledField> Make(std::string parm, bool invert = false);
     static std::unique_ptr<LabeledField> Make(std::string parm, std::string desc);
 };
 
@@ -225,8 +225,9 @@ struct LabeledPath : public LabeledField {
 };
 struct LabeledCheckbox : public LabeledField {
     gui::derived_ptr<gui::Checkbox> _checkbox;
+    bool _invert{false};
     sprite::Reference _ref;
-    LabeledCheckbox(const std::string& name = "");
+    LabeledCheckbox(const std::string& name = "", bool invert = false);
     void add_to(std::vector<Layout::Ptr>& v) override {
         //LabeledField::add_to(v);
         v.push_back(_checkbox);

@@ -1,6 +1,24 @@
 #include "Dropdown.h"
 
 namespace gui {
+
+auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
+    std::vector<Dropdown::TextItem> result;
+    result.reserve(items.size());
+    for(auto&item : items)
+        result.emplace_back(item.display_name());
+    return result;
+}
+
+std::string Dropdown::TextItem::toStr() const {
+    if(search_name() != name() || display_name() != name())
+        return "Item<name='"+name()+"' search='"+search_name()+"' display='"+display_name()+"'>";
+    return "Item<'"+name()+"'>";
+}
+std::string Dropdown::TextItem::class_name() {
+    return "Dropdown::TextItem";
+}
+
     std::atomic_long _automatic_id = 0;
     Dropdown::Item::Item(long ID) : _ID(ID) {
         if(_ID == Item::INVALID_ID) {
@@ -98,14 +116,15 @@ void Dropdown::init() {
                 }
 
                 // Update the list with the filtered items
-                if(_list->set_items(filtered)) {
+                if(_list->set_items(convert_to_search_name(filtered))) {
                 //if(not filtered.empty()) {
                     select_item(-1);
+                    _list->set_scroll_offset(Vec2());
                 }
 
             } else {
                 // If the search text is empty, display all items
-                _list->set_items(_items);
+                _list->set_items(convert_to_search_name(_items));
             }
 
             this->select_item(_selected_item);
@@ -134,7 +153,7 @@ void Dropdown::init() {
         });
     }
     
-    _list->on_select([this](size_t i, const Dropdown::TextItem& txt){
+    _list->on_select([this](size_t i, Dropdown::TextItem txt){
         long_t real_id = long_t(i);
         if(!filtered_items.empty()) {
             if(filtered_items.find(i) != filtered_items.end()) {
@@ -142,6 +161,8 @@ void Dropdown::init() {
             } else
                 throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
         }
+        
+        txt = _items.at(real_id);
         
         if(_button) {
             _button->set_toggle(_opened);
@@ -256,8 +277,10 @@ void Dropdown::init() {
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
         if(options != _items) {
-            if(_list)
-                _list->set_items(options);
+            if(_list) {
+                _list->set_items(convert_to_search_name(options));
+                print("Setting items = ", items());
+            }
             _items = options;
             _selected_id = _selected_item = -1;
             _preprocessed = {};

@@ -315,33 +315,88 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
     return result;
 }
 
-std::vector<std::string> split_words(const std::string &input) {
-    std::regex word_regex(R"([^\s_]+)");
+std::string PreprocessedData::toStr() const {
+    std::string str = class_name();
+    str += "<";
+    str += "termFrequency=" + cmn::Meta::toStr(termFrequency) + " ";
+    str += "docFrequency=" + cmn::Meta::toStr(docFrequency) + " ";
+    str += "termVectors=" + cmn::Meta::toStr(termVectors) + " ";
+    str += "termImportance=" + cmn::Meta::toStr(termImportance);
+    str += ">";
+    return str;
+}
+
+std::vector<std::string> split_words(const std::string& str) {
+    std::vector<std::string> words;
+    std::string word;
+    for (char ch : str) {
+        ch = std::tolower(ch);
+        if (std::isalnum(ch) || (ch != ' ' && ch != '/' && ch != '\\' && ch != '_' && ch != '.' && ch != ',' && ch != ';' && ch != ':' && ch != '-')) {
+            word.push_back(ch);
+        } else if (!word.empty()) {
+            words.push_back(word);
+            word.clear();
+        }
+    }
+    if (!word.empty()) {
+        words.push_back(word);
+    }
+    return words;
+}
+
+std::vector<std::string> _split_words(std::string input) {
+    // Assuming utils::lowercase is defined to convert the string to lowercase
+    input = utils::lowercase(input);
+    
+    std::regex word_regex(R"([^\s/\\_\.,;:-]+)");
     std::sregex_token_iterator begin(input.begin(), input.end(), word_regex);
     std::sregex_token_iterator end;
-
+    
     std::vector<std::string> words(begin, end);
     return words;
 }
 
 // Preprocess the corpus by creating a map of words to their corresponding document indices
 // and a vector of repertoire vectors for each document
-PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus)
-{
+// Preprocess the corpus
+PreprocessedData preprocess_corpus(const std::vector<std::string> &corpus) {
     PreprocessedData data;
-    data.repertoire_vectors.resize(corpus.size());
-    
-    for (size_t i = 0; i < corpus.size(); ++i) {
-        data.repertoire_vectors[i].resize(corpus[i].size());
-        for (size_t j = 0; j < corpus[i].size(); j++) {
-            data.repertoire_vectors[i][j] = corpus[i][j] - 'a';
-        }
+    int totalDocs = corpus.size();
+
+    for (const auto &phrase : corpus) {
+        std::unordered_map<std::string, int> localTermFreq;
+        auto words = split_words(phrase);
         
-        std::vector<std::string> words = split_words(corpus[i]);
-        for (const std::string& word : words) {
-            data.word_to_doc_indices[word].insert(cmn::narrow_cast<int>(i));
+        // Cache the tokenized document
+        data.tokenizedCorpus.push_back(words);
+        
+        for (const auto &word : words) {
+            ++localTermFreq[word];
+        }
+
+        for (const auto &entry : localTermFreq) {
+            ++data.termFrequency[entry.first];
+            ++data.docFrequency[entry.first];
         }
     }
+
+    // Calculate termImportance
+    for (const auto &termFreqEntry : data.termFrequency) {
+        const std::string &term = termFreqEntry.first;
+        double idf = std::log(static_cast<double>(totalDocs) / data.docFrequency[term]);
+        data.termImportance[term] = idf;
+    }
+
+    // Create term vectors for each document in the corpus
+    for (const auto &phrase : corpus) {
+        std::unordered_map<std::string, double> termVector;
+        auto words = split_words(phrase);
+        for (const auto &word : words) {
+            termVector[word] = data.termImportance[word]; // Use IDF as weight
+        }
+        data.termVectors.push_back(termVector);
+    }
+
     return data;
 }
 
@@ -365,7 +420,8 @@ int levenshtein_distance(const std::string &s1, const std::string &s2) {
         curr_row[0] = i;
         for (size_t j = 1; j <= len2; j++) {
             int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-            curr_row[j] = std::min({prev_row[j] + 1, curr_row[j - 1] + 1, prev_row[j - 1] + cost});
+            curr_row[j] = cmn::min(prev_row[j] + 1, curr_row[j - 1] + 1, prev_row[j - 1] + cost);
+            // 8===D
         }
         prev_row.swap(curr_row);
     }
@@ -373,124 +429,74 @@ int levenshtein_distance(const std::string &s1, const std::string &s2) {
     return prev_row[len2];
 }
 
-// Generate all possible substrings of length n from a given string
-std::set<std::string> generate_substrings(const std::string &str, int n) {
-    std::set<std::string> substrings;
-    for (int i = 0; i + n <= str.length(); i++) {
-        substrings.insert(str.substr(i, n));
+double cosine_similarity(const std::unordered_map<std::string, double>& a,
+                         const std::unordered_map<std::string, double>& b) {
+    double dotProduct = 0.0, normA = 0.0, normB = 0.0;
+    for (const auto &term : a) {
+        dotProduct += term.second * (b.count(term.first) ? b.at(term.first) : 0.0);
+        normA += term.second * term.second;
     }
-    return substrings;
-}
-
-// Computes the cosine similarity between two vectors
-double cosine_similarity(const std::vector<double>& v1, const std::vector<double>& v2) {
-    double dot_product = 0.0;
-    double norm_v1 = 0.0;
-    double norm_v2 = 0.0;
-    bool zero_similarity = true;
-
-    for (size_t i = 0; i < std::min(v2.size(), v1.size()); i++) {
-        dot_product += v1[i] * v2[i];
-        norm_v1 += v1[i] * v1[i];
-        norm_v2 += v2[i] * v2[i];
-
-        if (v1[i] != 0 && v2[i] != 0) {
-            zero_similarity = false;
-        }
+    for (const auto &term : b) {
+        normB += term.second * term.second;
     }
-
-    if (zero_similarity) {
-        return 0.0;
-    }
-
-    return dot_product / (sqrt(norm_v1) * sqrt(norm_v2));
-}
-
-// Compute the Jaccard similarity coefficient between two strings using substrings of length n
-double jaccard_similarity(const std::string &str1, const std::string &str2, int n = 3) {
-    std::set<std::string> substrings1 = generate_substrings(str1, n);
-    std::set<std::string> substrings2 = generate_substrings(str2, n);
-
-    std::set<std::string> intersection;
-    std::set_intersection(substrings1.begin(), substrings1.end(), substrings2.begin(), substrings2.end(), std::inserter(intersection, intersection.begin()));
-
-    std::set<std::string> uni;
-    std::set_union(substrings1.begin(), substrings1.end(), substrings2.begin(), substrings2.end(), std::inserter(uni, uni.begin()));
-
-    return static_cast<double>(intersection.size()) / static_cast<double>(uni.size());
-}
-
-std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus) {
-    auto data = preprocess_corpus(corpus);
-    return text_search(search_text, corpus, data);
-}
-std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData& data) {
-    const int max_levenshtein_distance = 5;
-
-    // Preprocess the search corpus
-    const auto&[preprocessed_corpus, repertoire_distances] = data;//preprocess_corpus(corpus);
-
-    // Split the search text into words
-    std::vector<std::string> search_words = split_words(search_text);
-
-    // Initialize the result set with the first word's results
-    std::map<int, std::tuple<int, int, int>> index_distance_overlap_map;
-
-    // Intersect the result vector with the subsequent words' results
-    for (const auto& word : search_words) {
-        std::vector<std::pair<int, int>> word_result_vector;
-
-        for (const auto &entry : preprocessed_corpus) {
-            int distance = levenshtein_distance(word, entry.first);
-            if (distance <= max_levenshtein_distance || utils::contains(entry.first, word)) {
-                for (int index : entry.second) {
-                    word_result_vector.emplace_back(index, distance);
-                }
-            }
-        }
-
-        for (const auto& [index, distance] : word_result_vector) {
-            auto &[sum, count, maximum] = index_distance_overlap_map[index];
-            sum += distance;
-            count++;
-            maximum = std::max(maximum, distance);
-        }
-    }
-
-    // Calculate the average distance and word overlap score
-    std::vector<std::tuple<double, double, int>> result_vector;
-    std::vector<std::tuple<double, double, std::string>> print_vector;
-    for (const auto& [index, distance_overlap] : index_distance_overlap_map) {
-        auto &[sum, count, maximum] = distance_overlap;
-        double avg_distance = static_cast<double>(sum) / search_words.size();
-        double overlap_score = count;
-        
-        const auto& repertoire_vector = repertoire_distances.at(index);
-        std::vector<double> search_vector;
-        for (char c : search_text) {
-            search_vector.push_back(c - 'a');
-        }
-        
-        overlap_score = cosine_similarity(repertoire_vector, search_vector);
-        avg_distance = jaccard_similarity(corpus.at(index), search_text); //+ avg_distance / search_text.length());
-        
-        //print_vector.emplace_back(double(avg_distance), overlap_score, corpus.at(index));
-        result_vector.emplace_back(double(avg_distance), overlap_score, index);
-    }
-
-    // Sort the result vector by relevance (ascending average levenshtein distance, descending word overlap score)
-    std::sort(result_vector.begin(), result_vector.end(), std::greater<>{});
-    //std::sort(print_vector.begin(), print_vector.end(), std::greater<>{});
     
-    //cmn::print("print_vector for ", search_words, " is ", print_vector);
+    if(normA == 0 || normB == 0)
+        return 0;
+    return dotProduct / (std::sqrt(normA) * std::sqrt(normB));
+}
 
-    // Convert the result vector to a vector of indexes
-    std::vector<int> result_indexes;
-    result_indexes.reserve(result_vector.size());
-    for (const auto& [similarity, rank, index] : result_vector) {
-        //if(similarity > 0)
-            result_indexes.push_back(index);
+std::vector<int> text_search(const std::string &search_text,
+                             const std::vector<std::string> &corpus)
+{
+    return text_search(search_text, corpus, preprocess_corpus(corpus));
+}
+
+std::vector<int> text_search(const std::string &search_text,
+                             const std::vector<std::string> &corpus,
+                             const PreprocessedData& data) 
+{
+    std::vector<std::tuple<double, std::string, int>> relevanceScores;
+    auto search_terms = split_words(search_text);
+    
+    // Build the term vector for the search query
+    std::unordered_map<std::string, double> searchVector;
+    for (const auto &term : search_terms) {
+        searchVector[term] = data.termImportance.count(term) ? data.termImportance.at(term) : 1;
     }
 
-    return result_indexes;
+    for (size_t i = 0; i < corpus.size(); ++i) {
+        double relevance = cosine_similarity(searchVector, data.termVectors[i]);
+        const auto& corpus_terms = data.tokenizedCorpus[i];
+        
+        double avgDistance = 0, samples = 0;
+        
+        for (const auto &search_term : search_terms) {
+            double best_distance = INFINITY;
+            for (const auto &corpus_term : corpus_terms) {
+                double distance = levenshtein_distance(search_term, corpus_term)
+                    / double(std::max(search_term.length(), corpus_term.length()));
+                best_distance = std::min(best_distance, distance);
+                
+                if(best_distance == 0)
+                    break; // cant get better than 0 distance i reckon
+            }
+            
+            avgDistance += best_distance;
+            ++samples;
+        }
+        
+        avgDistance /= samples;
+        relevance -= avgDistance;
+
+        relevanceScores.push_back({relevance, corpus[i], i});
+    }
+
+    std::sort(relevanceScores.begin(), relevanceScores.end(), std::greater<>{});
+
+    std::vector<int> sortedIndices;
+    for (const auto &[relevance, str, index] : relevanceScores) {
+        sortedIndices.push_back(index);
+    }
+
+    return sortedIndices;
 }

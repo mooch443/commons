@@ -13,9 +13,19 @@
 using namespace file;
 
 namespace cmn {
-    CommandLine::CommandLine(int argc, char** argv, bool no_autoload_settings, const std::map<std::string, std::string>& deprecated)
-        : _wd(Path(argv[0]).remove_filename())
+CommandLine& CommandLine::instance() {
+    static CommandLine cmd;
+    return cmd;
+}
+
+void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const std::map<std::string, std::string>& deprecated) {
+    instance()._init(argc, argv, no_autoload_settings, deprecated);
+}
+
+    void CommandLine::_init(int argc, char** argv, bool no_autoload_settings, const std::map<std::string, std::string>& deprecated)
     {
+        _wd = Path(argv[0]).remove_filename();
+        
         const size_t bufSize = PATH_MAX + 1;
         char dirNameBuffer[bufSize];
         
@@ -56,6 +66,11 @@ namespace cmn {
             
             _wd = str;
         }
+            
+#if __APPLE__
+        _wd = _wd / ".."/ "Resources";
+        _wd = _wd.absolute();
+#endif
         
         SETTING(wd) = _wd;
         
@@ -114,25 +129,28 @@ namespace cmn {
             load_settings();
     }
     
-    void CommandLine::load_settings(const SettingsMaps* additional) {
+    void CommandLine::load_settings(const SettingsMaps* additional, sprite::Map* map) {
+        if(not map)
+            map = &GlobalSettings::map();
+            
         for(auto &s : _settings) {
             std::string value = s.value;
             if(value.empty()) {
-                if(GlobalSettings::map().is_type<bool>(s.name))
+                if(map->is_type<bool>(s.name))
                     value = "true"; // by default set option to true if its bool and no value was given
             }
             
-            if((GlobalSettings::map().is_type<file::Path>(s.name)
-               || GlobalSettings::map().is_type<std::string>(s.name))
+            if((map->is_type<file::Path>(s.name)
+               || map->is_type<std::string>(s.name))
                && (value.empty() || !(
                         (value[0] == value[value.length()-1] && value[0] == '\'')
                      || (value[0] == value[value.length()-1] && value[0] == '"')
                   ))
                )
             {
-                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':'"+value+"'}", additional);
+                sprite::parse_values(*map, "{'"+s.name+"':'"+value+"'}", additional);
             } else
-                sprite::parse_values(GlobalSettings::map(), "{'"+s.name+"':"+value+"}", additional);
+                sprite::parse_values(*map, "{'"+s.name+"':"+value+"}", additional);
             _settings_keys[s.name] = value;
         }
     }

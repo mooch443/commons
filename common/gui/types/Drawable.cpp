@@ -1031,6 +1031,10 @@ void SectionInterface::set_z_index(int index) {
     }
     
     void SectionInterface::find(float x, float y, std::vector<Drawable*>& results) {
+        bool cropped = type() == Type::ENTANGLED && ((Entangled*)this)->scroll_enabled() && not ((Entangled*)this)->size().empty();
+        if(cropped && not global_bounds().contains(x, y))
+            return;
+        
         for(auto it = children().rbegin(); it != children().rend(); ++it) {
             auto ptr = *it;
             if (!ptr)

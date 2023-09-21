@@ -11,6 +11,8 @@
 #include <gui/DynamicGUI.h>
 #include <misc/GlobalSettings.h>
 
+#include <file/DataLocation.h>
+
 using namespace gui;
 using namespace gui::dyn;
 
@@ -120,6 +122,13 @@ void print_sequence(std::integer_sequence<T, ints...> int_seq)
 }
 
 int main(int argc, char**argv) {
+    CommandLine::init(argc, argv);
+    CommandLine::instance().cd_home();
+    
+    file::DataLocation::register_path("app", [](file::Path input) {
+        return CommandLine::instance().wd() / input;
+    });
+    
     set_log_file("site.html");
     print("int main() {\n\tprintf();\n}\n");
     gui::init_errorlog();
@@ -160,9 +169,7 @@ int main(int argc, char**argv) {
     print("dec<5>:", dec<5>( 0.523125123 ));
     print("dec<6>:", dec<6>( 0.523125123 ));
     FormatWarning("Something is wrong.");
-
-    CommandLine cmd(argc, argv);
-    cmd.cd_home();
+    
     sprite::Map map;
     map["test"] = 25;
     map["path"] = file::Path("test");
@@ -285,6 +292,9 @@ int main(int argc, char**argv) {
     
     SETTING(blob_size_ranges) = std::vector<float>{};
     SETTING(image_width) = int(1024);
+    SETTING(region_model) = file::Path();
+    
+    GlobalSettings::map().set_do_print(true);
     
     dyn::Modules::add(Modules::Module{
         ._name = "draggable",
@@ -421,7 +431,7 @@ int main(int argc, char**argv) {
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
         
-        update_layout("/Users/tristan/trex/Application/src/tracker/alter_layout.json", context, state, objects);
+        update_layout(file::DataLocation::parse("app", "test_gui.json"), context, state, objects);
         
         for(auto &o : objects) {
             update_objects(graph, o, context, state);
@@ -438,6 +448,8 @@ int main(int argc, char**argv) {
         graph.draw_log_messages();//Bounds(Vec2(0), dim));
         
         timer.reset();
+        
+        graph.root().set_dirty();
         return !terminate;
         
     }, [&](const Event& e) {

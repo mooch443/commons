@@ -237,11 +237,38 @@ std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty =
  */
 [[nodiscard]] std::u8string wideToUtf8(const std::wstring_view& wideStr);
 
-// Define a struct to store the preprocessed data
+// Define a struct to store the preprocessed data.
 struct PreprocessedData {
-    std::map<std::string, std::set<int>> word_to_doc_indices;
-    std::vector<std::vector<double>> repertoire_vectors;
-    bool empty() const { return repertoire_vectors.empty(); }
+    // termFrequency stores the frequency of each term across the entire corpus.
+    // For example, if the word "apple" appears 5 times in the entire corpus,
+    // termFrequency["apple"] would be 5.
+    std::unordered_map<std::string, int> termFrequency;
+    
+    // docFrequency stores the number of documents each term appears in.
+    // For instance, if the term "apple" appears in 3 different documents,
+    // docFrequency["apple"] would be 3.
+    std::unordered_map<std::string, int> docFrequency;
+    
+    // termVectors contains a vector of term-frequency-inverse-document-frequency
+    // (TF-IDF) vectors for each document in the corpus.
+    // Each unordered_map represents the TF-IDF vector for a document,
+    // with the keys being the terms and the values being the TF-IDF scores.
+    std::vector<std::unordered_map<std::string, double>> termVectors;
+    
+    std::unordered_map<std::string, double> termImportance;
+    std::vector<std::vector<std::string>> tokenizedCorpus; // To store tokenized documents
+    
+    // empty is a utility function that checks whether the PreprocessedData
+    // object has any data. It returns true if termFrequency is empty.
+    bool empty() const { return termFrequency.empty(); }
+    
+    // Function to get a string representation of the structure
+    std::string toStr() const;
+
+    // Static function to return the class name as a string
+    static std::string class_name() {
+        return "PreprocessedData";
+    }
 };
 
 PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus);

@@ -31,11 +31,13 @@ namespace gui {
                 return name();
             }
             virtual std::string name() const = 0;
-            virtual std::string search_name() const { return name(); };
+            virtual std::string search_name() const { return name(); }
+            virtual std::string display_name() const { return name(); }
         };
         
         class TextItem : public Item {
             std::string _name, _search;
+            GETTER_SETTER(std::string, display)
             GETTER_PTR(void*, custom)
             GETTER_SETTER(int, index)
             
@@ -52,6 +54,10 @@ namespace gui {
                 return _search.empty() ? name() : _search;
             }
             
+            std::string display_name() const override {
+                return _display.empty() ? name() : _display;
+            }
+            
             bool operator==(const TextItem& other) const {
                 return other.ID() == ID() && other._custom == _custom;
             }
@@ -62,6 +68,9 @@ namespace gui {
             bool operator<(const TextItem& other) const {
                 return ID() < other.ID() || (ID() == other.ID() && other._custom < _custom);
             }
+            
+            std::string toStr() const;
+            static std::string class_name();
         };
         
     protected:

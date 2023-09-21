@@ -4,6 +4,9 @@
 
 namespace cmn {
     namespace settings {
+    ENUM_CLASS(ParameterCategoryType, CONVERTING, TRACKING)
+    using ParameterCategory = ParameterCategoryType::Class;
+    
         class Adding {
             sprite::Map &config;
             GlobalSettings::docs_map_t &docs;
@@ -12,7 +15,7 @@ namespace cmn {
         public:
             Adding(sprite::Map& config, GlobalSettings::docs_map_t& docs, decltype(fn) function) : config(config), docs(docs), fn(function) {}
             
-            template<typename T>
+            template<ParameterCategory category, typename T>
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<is_enum<T>::value && T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)
@@ -42,7 +45,7 @@ namespace cmn {
                 return config.get<T>(name);
             }
             
-            template<typename T>
+            template<ParameterCategory category, typename T>
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<is_enum<T>::value && !T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)
@@ -57,7 +60,7 @@ namespace cmn {
                 return config.get<T>(name);
             }
             
-            template<typename T>
+            template<ParameterCategory category, typename T>
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<!is_enum<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)

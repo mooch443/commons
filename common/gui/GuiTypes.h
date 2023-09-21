@@ -232,7 +232,7 @@ public:
         (set(std::forward<Args>(args)), ...);
     }
     
-private:
+public:
     using Drawable::set;
     void set(LineClr clr) { set_lineclr(clr); }
     void set(FillClr clr) { set_fillclr(clr); }

@@ -1,0 +1,89 @@
+{"objects":[
+	{ 
+		"type":"vlayout",
+		"pos":[20,10],
+		"scale":[1.0,1.0],
+		"margins":[0,0,0,0],
+		"children": [
+			{ 
+				"type":"hlayout", 
+				"children": [
+					{ "type":"button", "text":"Quit", "action":"QUIT" },
+					{ "type":"button", "text":"Filter", "action":"FILTER" },
+					{
+						"type":"condition",
+						"var":"{average_is_generating}",
+						"then":{
+							"type": "collection",
+							"children": [
+								{ "type":"text", "text":"detecting the background...", "font":{"size":0.75,"style":"regular"}, "color":[220,220,220] }
+							]
+						},
+						"else":{
+							"type": "collection",
+							"children": [
+								{ "type":"text", "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[20,20,20] },
+								{ "type":"text", "pos":[1.5,1.5], "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[255,255,255] }
+							]
+						}
+					}
+					
+				]
+			},
+			{
+				"type":"condition",
+				"var":"{global:region_model}",
+				"then": {
+					"type": "collection",
+					"children": [
+						{ "type":"text", "text":"  resolution: {video:resolution} | detection @ {global:detection_resolution}px | region @ {global:region_resolution}px | actual: {actual_frame}/{global:video_length} | written: {video:frame}", "font":{"size":0.55}, "color":[0,0,0] },
+						{ "type":"text", "pos":[1,1], "text":"  resolution: {video:resolution} | detection @ {global:detection_resolution}px | region @ {global:region_resolution}px | actual: {actual_frame}/{global:video_length} | written: {video:frame}", "font":{"size":0.55}, "color":[150,240,255] }
+					]
+				},
+				"else": {
+					"type": "collection",
+					"children": [
+						{ "type":"text", "text":"  resolution: {video:resolution} | detection @ {global:detection_resolution}px | actual: {actual_frame}/{global:video_length} | written: {video:frame}", "font":{"size":0.55}, "color":[0,0,0] },
+						{ "type":"text", "pos":[1,1], "text":"  resolution: {video:resolution} | detection @ {global:detection_resolution}px | actual: {actual_frame}/{global:video_length} | written: {video:frame}", "font":{"size":0.55}, "color":[150,240,255] }
+					]
+				}
+			}
+			
+		]
+	},
+
+	{
+		"type":"each",
+		"var":"fishes",
+		"do": {
+			"type": "collection",
+			"pos":"{i:pos}",
+			"origin":[0,0],
+			"children": [
+				{
+					"type":"condition",
+					"var":"{i:tracked}",
+					"then": {"type":"stext","text":"<b><nr>{i:id}</nr></b>: <c>{i:type}</c> (p=<i>{i:p} s={i:px}</i>)","font":{"size":0.5},"origin":[0,1]},
+					"else": {"type":"stext","text":"<ref><b>{i:id}</b>: <c>{i:type}</c> (p=<i>{i:p} s={i:px}</i>)</ref>","font":{"size":0.5},"origin":[0,1]}
+				},
+				{
+					"type":"condition",
+					"var":"{i:tracked}",
+					"then": {"type":"rect","pos":[0,0],"size":"{i:size}","fill":[0,255,0,30],"line":"{i:color}","origin":[0,0]},
+					"else": {"type":"rect","pos":[0,0],"size":"{i:size}","fill":[50,50,50,30],"line":[200,200,200,150],"origin":[0,0]}
+				}
+			]
+		}
+	},
+
+    {
+        "type":"settings",
+        "var":"region_model",
+        "pos":[100,500],
+        "size":[800,50],
+        "line":[125,125,125],
+        "fill":[25,25,25],
+        "color":[200,200,200],
+        "font":{"size":1,"style":"regular"}
+    }
+]}

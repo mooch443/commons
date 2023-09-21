@@ -144,9 +144,6 @@ void LabeledCombobox::update() {
     LabeledField::update();
 }
 
-void LabeledCheckbox::set_description(std::string desc) {
-    _checkbox.to<Checkbox>()->set_text(desc);
-}
 void LabeledField::set_description(std::string desc) {
     _text->set_txt(desc);
 }
@@ -157,7 +154,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, std::string d
     return ptr;
 }
 
-std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
+std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, bool invert) {
     if(parm.empty()) {
         auto ptr = std::make_unique<LabeledCombobox>();
         return ptr;
@@ -169,8 +166,8 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
     
     std::unique_ptr<LabeledField> ptr;
     if(ref.is_type<bool>()) {
-        ptr = std::make_unique<LabeledCheckbox>(parm);
-        ptr->representative().to<Checkbox>()->set_checked(ref.value<bool>());
+        ptr = std::make_unique<LabeledCheckbox>(parm, invert);
+        
     } else if(ref.is_type<std::string>()) {
         ptr = std::make_unique<LabeledTextField>(parm);
         ptr->representative().to<Textfield>()->set_text(ref.value<std::string>());
@@ -205,26 +202,41 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm) {
     return ptr;
 }
 
-LabeledCheckbox::LabeledCheckbox(const std::string& name)
+LabeledCheckbox::LabeledCheckbox(const std::string& name, bool invert)
 : LabeledField(name),
 _checkbox(std::make_shared<gui::Checkbox>(attr::Loc(), name)),
-_ref(settings_scene::temp_settings[name])
+_invert(invert),
+_ref(settings_map()[name])
 {
     _docs = settings_scene::temp_docs[name];
     
-    _checkbox->set_checked(_ref.value<bool>());
+    _checkbox->set_checked(_invert
+                           ? not _ref.value<bool>()
+                           : _ref.value<bool>());
+    print(name, ": Initially set checkbox to ", _checkbox->checked(), " with invert ", _invert, " for ", _ref.get().valueString());
     _checkbox->set_font(Font(0.7f));
     
     _checkbox->on_change([this](){
         try {
-            _ref.get() = _checkbox->checked();
+            print("Setting ", _ref.toStr(), " before = ", _ref.get().valueString());
+            if(_invert)
+                _ref.get() = not _checkbox->checked();
+            else
+                _ref.get() = _checkbox->checked();
+            
+            print("Setting setting ",_ref.toStr(), " = ",_ref.get().valueString(), " with ",_checkbox->checked()," and invert = ", _invert);
             
         } catch(...) {}
     });
 }
 
 void LabeledCheckbox::update() {
-    _checkbox->set_checked(_ref.value<bool>());
+    _checkbox->set_checked(_invert ? not _ref.value<bool>() : _ref.value<bool>());
+    print("Setting checkbox to ", _checkbox->checked());
+}
+
+void LabeledCheckbox::set_description(std::string desc) {
+    _checkbox.to<Checkbox>()->set_text(desc);
 }
 
 LabeledTextField::LabeledTextField(const std::string& name)
@@ -300,7 +312,7 @@ _ref(settings_scene::temp_settings[name])
     std::vector<Dropdown::TextItem> items;
     int index = 0;
     for(auto &name : _ref.get().enum_values()()) {
-        items.push_back(Dropdown::TextItem(name, index++));
+        items.push_back(Dropdown::TextItem((std::string)file::Path(name).filename(), index++, name));
     }
     _dropdown->set_items(items);
     _dropdown->select_item(narrow_cast<long>(_ref.get().enum_index()()));
@@ -347,16 +359,14 @@ LabeledPath::LabeledPath(std::string name, file::Path path)
     }), _path(path)
 {
     _dropdown = std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
-    _dropdown->textfield()->set_text(path.str());
-    change_folder(path);
     
     _dropdown->on_select([this](long_t, const Dropdown::TextItem &item) {
-        file::Path path;
-        
-        if(((std::string)item).empty()) {
+        file::Path path = item.name();
+        if(path.empty()) {
             path = _dropdown->textfield()->text();
-        } else
-            path = file::Path((std::string)item);
+        }
+        
+        print("Selected ", path, " item.name()=",item.name(), " display_name=", item.display_name());
         
         _ref.get() = path;
         
@@ -364,10 +374,10 @@ LabeledPath::LabeledPath(std::string name, file::Path path)
         {
             //file_selected(0, path.str());
             if(path.is_folder()) {
-                _dropdown->textfield()->set_text(path.str()+file::Path::os_sep());
                 if(_path != path)
                     change_folder(path);
             }
+                
             _dropdown->select_textfield();
         } else
             FormatError("Path ",path.str()," cannot be opened.");
@@ -389,13 +399,16 @@ LabeledPath::LabeledPath(std::string name, file::Path path)
             change_folder(path.remove_filename());
         }
     });
+    
+    _dropdown->textfield()->set_text(path.str());
+    change_folder(path);
 }
 
 void LabeledPath::change_folder(const file::Path& p) {
     auto org = _path;
     auto copy = _files;
     
-    if(p.str() == "..") {
+    /*if(p.str() == "..") {
         try {
             _path = _path.remove_filename();
             auto files = _path.find_files("");
@@ -413,17 +426,24 @@ void LabeledPath::change_folder(const file::Path& p) {
         }
         update_names();
         
-    } else if(p.is_folder()) {
+    } else*/ if(p.is_folder()) {
         try {
-            _path = p;
+            try {
+                _path = p.absolute();
+            } catch (...) {
+                _path = p;
+            }
+            
             auto files = _path.find_files("");
             _files.clear();
             _files.insert(files.begin(), files.end());
-            _files.insert("..");
+            //_files.insert("..");
             
             //_list->set_scroll_offset(Vec2());
-            if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
+            //if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str())) 
+            {
                 _dropdown->textfield()->set_text(_path.str()+file::Path::os_sep());
+            }
             
         } catch(const UtilsException&) {
             _path = org;
@@ -440,6 +460,8 @@ void LabeledPath::update_names() {
         if(f.str() == ".." || !utils::beginsWith((std::string)f.filename(), '.')) {
             _names.push_back(FileItem(f));
             _search_items.push_back(Dropdown::TextItem(f.str()));
+            _search_items.back().set_display(std::string(file::Path(f.str()).filename()));
+            print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
         }
     }
     //_list->set_items(_names);
@@ -688,9 +710,14 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             } else
                 throw U_EXCEPTION("settings field should contain a 'var'.");
             
+            bool invert{false};
+            if(obj.contains("invert") && obj["invert"].is_boolean()) {
+                invert = obj["invert"].get<bool>();
+            }
+            
             {
                 auto &ref = state._text_fields[var];
-                ref = LabeledField::Make(var);
+                ref = LabeledField::Make(var, invert);
                 
                 if(obj.contains("desc")) {
                     ref->set_description(obj["desc"].get<std::string>());
@@ -864,6 +891,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                 text = obj["text"].get<std::string>();
             }
             
+            Size2 max_size = get(Size2(0), "max_size");
             if(utils::contains(text, '{')) {
                 state.patterns[index]["text"] = text;
             }
@@ -873,6 +901,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             //if(margins != Margins{0, 0, 0, 0})
             {
                 ptr.to<StaticText>()->set(attr::Margins(margins));
+                if(not max_size.empty())
+                    ptr.to<StaticText>()->set_max_size(max_size);
             }
             
             Color color{White};
