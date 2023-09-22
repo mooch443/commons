@@ -277,7 +277,6 @@ _ref(settings_scene::temp_settings[name])
     _list->set(Font(0.7f));
     assert(_ref.get().is_enum());
     std::vector<std::string> items;
-    int index = 0;
     for(auto &name : _ref.get().enum_values()()) {
         items.push_back(name);
     }
@@ -426,10 +425,14 @@ void LabeledPath::change_folder(const file::Path& p) {
         }
         update_names();
         
-    } else*/ if(p.is_folder()) {
+    } else*/ 
+    if(p.is_folder()) {
         try {
             try {
-                _path = p.absolute();
+                if(not p.empty())
+                    _path = p.absolute();
+                else
+                    _path = p;
             } catch (...) {
                 _path = p;
             }
@@ -440,8 +443,8 @@ void LabeledPath::change_folder(const file::Path& p) {
             //_files.insert("..");
             
             //_list->set_scroll_offset(Vec2());
-            //if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str())) 
-            {
+            //if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
+            if(not _path.empty()) {
                 _dropdown->textfield()->set_text(_path.str()+file::Path::os_sep());
             }
             
@@ -481,7 +484,8 @@ void add(Module&& m) {
 }
 
 void remove(const std::string& name) {
-    
+    if(mods.contains(name))
+        mods.erase(name);
 }
 
 Module* exists(const std::string& name) {

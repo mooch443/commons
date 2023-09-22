@@ -5,6 +5,7 @@
 #include <video/GenericVideo.h>
 #include <file/Path.h>
 #include <video/Video.h>
+#include <file/PathArray.h>
 
 #define VIDEO_SEQUENCE_INVALID_VALUE (-1)
 #define VIDEO_SEQUENCE_UNSPECIFIED_VALUE (-2)
@@ -93,8 +94,7 @@ public:
     VideoSource& operator=(VideoSource&&) = default;
     VideoSource& operator=(const VideoSource&) = delete;
     
-    VideoSource(const std::string& source);
-    VideoSource(const std::vector<file::Path>& files);
+    VideoSource(const file::PathArray& source);
     void open(const std::string& prefix, const std::string& suffix, const std::string& extension, int seq_start = VIDEO_SEQUENCE_INVALID_VALUE, int seq_end = VIDEO_SEQUENCE_INVALID_VALUE, int padding = 4);
     
     ~VideoSource();

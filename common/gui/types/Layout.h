@@ -117,4 +117,28 @@ namespace gui {
         
         void update_layout() override;
     };
+
+class GridLayout : public Layout {
+public:
+    enum Policy {
+        CENTER, LEFT, RIGHT
+    };
+    
+protected:
+    GETTER(Bounds, margins)
+    GETTER_I(Policy, policy, Policy::CENTER)
+    
+public:
+    GridLayout(const Bounds& margins)
+        : GridLayout({}, margins)
+    {}
+    GridLayout(const std::vector<Layout::Ptr>& objects = {}, const Bounds& margins = {5, 5, 5, 5});
+    
+    void set_policy(Policy);
+    void set_margins(const Bounds&);
+    virtual std::string name() const override { return "GridLayout"; }
+    
+    void update_layout() override;
+};
+
 }

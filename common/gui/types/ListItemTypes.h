@@ -47,6 +47,7 @@ namespace gui {
         GETTER_SETTER(std::string, detail)
         
     public:
+        DetailItem(const std::string& name = "", const std::string& detail = "") : _name(name), _detail(detail) {}
         virtual ~DetailItem(){}
         virtual operator std::string() const {
             return _name;

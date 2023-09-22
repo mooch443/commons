@@ -321,4 +321,124 @@ namespace gui {
         _margins = margins;
         update_layout();
     }
+
+GridLayout::GridLayout(const std::vector<Layout::Ptr>& objects,
+                       const Bounds& margins)
+    : gui::Layout(objects),
+    _margins(margins)
+{
+    update();
+}
+
+void GridLayout::set_margins(const Bounds &) {
+    
+}
+
+void GridLayout::set_policy(Policy) {
+    
+}
+
+void GridLayout::update_layout() {
+    std::vector<float> max_col_widths, max_row_heights;
+
+    // Step 1: Calculate max dimensions for columns and rows
+    for (auto _row : objects()) {
+        if(not _row.is<Layout>())
+            continue;
+
+        Layout* row = _row.to<Layout>();
+        float row_height = 0;
+        size_t col_idx = 0;
+
+        for (auto _cell : row->objects()) {
+            if(not _cell.is<Layout>())
+                continue;
+
+            Layout* cell = _cell.to<Layout>();
+            assert(cell->bounds().x < 1000000);
+            cell->auto_size({});
+            cell->update_layout();  // Recursive update, so it computes its size
+            auto cell_bounds = cell->local_bounds();
+            assert(cell_bounds.x < 1000000);
+            
+            // Update max dimensions for row and column
+            if (col_idx >= max_col_widths.size()) {
+                max_col_widths.push_back(cell_bounds.width);
+            } else {
+                max_col_widths[col_idx] = std::max(max_col_widths[col_idx], cell_bounds.width);
+            }
+
+            row_height = std::max(row_height, cell_bounds.height);
+            ++col_idx;
+        }
+
+        row->auto_size({});
+        max_row_heights.push_back(row_height);
+    }
+    
+    print("max_row_heights = ", max_row_heights);
+    print("max_col_widths = ", max_col_widths);
+
+    // Step 2: Update the position of each row and cell, relative to its parent
+    float y = _margins.y;
+    size_t i = 0;
+
+    for (auto _row : objects()) {
+        if(not _row.is<Layout>())
+            continue;
+        
+        Layout* row = _row.to<Layout>();
+
+        // Reset x-coordinate at the beginning of each new row
+        float x = _margins.x;
+
+        float row_height = max_row_heights[i];
+        size_t col_idx = 0;  // Column index
+
+        for (auto _cell : row->objects()) {
+            if(not _cell.is<Layout>())
+                continue;
+
+            Layout* cell = _cell.to<Layout>();
+            assert(cell->bounds().x < 1000000);
+            cell->auto_size({});
+            assert(cell->bounds().x < 1000000);
+            auto cell_bounds = cell->local_bounds();
+
+            float cell_y = _margins.y + (row_height - cell_bounds.height) * 0.5f;
+
+            // Ensure that cell_x is calculated afresh for each cell based on x and not dependent on old value.
+            float cell_x;
+            if (_policy == CENTER) {
+                cell_x = x + (max_col_widths[col_idx] - cell_bounds.width) * 0.5f;
+            } else if (_policy == LEFT) {
+                cell_x = x;
+            } else if (_policy == RIGHT) {
+                cell_x = x + (max_col_widths[col_idx] - cell_bounds.width);
+            } else
+                cell_x = x;
+            
+            assert(cell->bounds().x < 1000000);
+            std::cout << "Before set_pos - Cell[" << i << "][" << col_idx << "] pos: " << cell->pos().x << ","<< cell->pos().y << "\n";
+            cell->set_pos({cell_x, cell_y});
+            std::cout << "After set_pos - Cell[" << i << "][" << col_idx << "] pos: " << cell->pos().x << ","<< cell->pos().y << "\n";
+            
+            assert(cell->bounds().x < 1000000);
+            x += max_col_widths[col_idx] + _margins.width;
+            ++col_idx;
+        }
+
+        //row->auto_size({});
+        
+        // Update the position of the row itself here if necessary
+        // Corrected this part
+        row->set_pos({0, y});
+        row->set_size({x, row_height + _margins.height + _margins.y});
+        print("row ", i, " is at position ", row->pos());
+        y += row_height + _margins.height + _margins.y; // Updated to row_height from max_row_heights[col_idx]
+        ++i; // Increment row index
+    }
+}
+
+
 }

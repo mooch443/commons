@@ -121,6 +121,90 @@ void print_sequence(std::integer_sequence<T, ints...> int_seq)
     std::cout << '\n';
 }
 
+using Objects = std::vector<Layout::Ptr>;
+using Cell = Layout;
+using Row = Layout;
+
+auto cell = []<typename... T>(T... objects) {
+    auto ptr = Layout::Make<Cell>(std::forward<T>(objects)...);
+    ptr.template to<Cell>()->set(attr::LineClr{Cyan});
+    return ptr;
+};
+auto row = []<typename... T>(T... objects) {
+    Objects rowObjects;
+    // Use a fold expression to expand the parameter pack
+    ([&](auto&& arg) {
+        if constexpr (std::is_same_v<decltype(arg), Objects>) {
+            // If the argument is of type Objects, encapsulate it in a Cell
+            rowObjects.push_back(cell(std::forward<decltype(arg)>(arg)));
+        } else {
+            // Otherwise, place the argument in an Objects and then in a Cell
+            rowObjects.push_back(cell(Objects{std::forward<decltype(arg)>(arg)}));
+        }
+    }(objects), ...);
+    auto ptr = Layout::Make<Row>(rowObjects);
+    ptr.to<Row>()->set(LineClr{Yellow});
+    return ptr;
+};
+auto horizontal = []<typename... T>(T... objects) {
+    auto ptr = Layout::Make<HorizontalLayout>(Objects{std::forward<T>(objects)...});
+    ptr.to<HorizontalLayout>()->set(LineClr{Purple});
+    return ptr;
+};
+auto circle = []<typename... T>(T... objects) {
+    return Layout::Make<Rect>(std::forward<T>(objects)...);
+};
+
+// Overload for `+` to combine objects in a Row
+Objects operator+(const Layout::Ptr& a, const Layout::Ptr& b) {
+    return {a, b};
+}
+
+Objects operator+(const Layout::Ptr& a, const Objects& b) {
+    Objects result = {a};
+    result.insert(result.end(), b.begin(), b.end());
+    return result;
+}
+
+Objects operator+(const Objects& a, const Layout::Ptr& b) {
+    Objects result(a);
+    result.push_back(b);
+    return result;
+}
+
+Objects operator+(const Objects& a, const Objects& b) {
+    Objects result(a);
+    result.insert(result.end(), b.begin(), b.end());
+    return result;
+}
+
+void print_layout_structure(Drawable* layout, int level = 0) {
+    // Generate the indentation based on the level of the layout
+    std::string indent(level * 4, ' ');
+
+    std::cout << indent;
+
+    if (dynamic_cast<GridLayout*>(layout)) {
+        std::cout << "GridLayout\n";
+    } else if (dynamic_cast<Row*>(layout)) {
+        std::cout << "Row\n";
+    } else if (dynamic_cast<Cell*>(layout)) {
+        std::cout << "Cell\n";
+    } else if (layout->type() == Type::CIRCLE) {
+        std::cout << "Circle\n";
+    }
+
+    auto ptr = dynamic_cast<Layout*>(layout);
+    if(ptr) {
+        // Loop through the children and print their layout structure
+        for (const auto& child : ptr->objects()) {
+            if (child && child.is<Drawable>()) {
+                print_layout_structure(child.to<Drawable>(), level + 1);
+            }
+        }
+    }
+}
+
 int main(int argc, char**argv) {
     CommandLine::init(argc, argv);
     CommandLine::instance().cd_home();
@@ -132,7 +216,7 @@ int main(int argc, char**argv) {
     set_log_file("site.html");
     print("int main() {\n\tprintf();\n}\n");
     gui::init_errorlog();
-
+    
     print(fmt::red("Hi in red."));
     
 #if !defined(__EMSCRIPTEN__)
@@ -150,10 +234,10 @@ int main(int argc, char**argv) {
     
     print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
     /*for (int j=0; j<11; ++j) {
-        for(int k=0; k<11; ++k)
-            for(int i=0; i<8; ++i)
-                printf("[%d;%dm \033[%d;%dmtext\033[0;0m\n", j, j + k * 10 + i, j, j + k * 10 + i);
-    }*/
+     for(int k=0; k<11; ++k)
+     for(int i=0; i<8; ++i)
+     printf("[%d;%dm \033[%d;%dmtext\033[0;0m\n", j, j + k * 10 + i, j, j + k * 10 + i);
+     }*/
     
     print("OpenGL1.32");
     print("str.c_str()");
@@ -174,40 +258,40 @@ int main(int argc, char**argv) {
     map["test"] = 25;
     map["path"] = file::Path("test");
     
-
+    
     for (size_t i = 0; i<2; ++i) {
         print("Iteration ", i);
         print(std::vector<file::Path>{"/a/b/c","./d.exe"});
         print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
         print("std::map<std::string,float>{\n\t\"key\":value\n}");
-
+        
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-
+        
         print("Python:\ndef func():\n\tprint(\"Hello world\")\n\nfunc()");
-
+        
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-
+        
         print("<html><head><style>.css-tag { bla; }</style></head><tag style='test'>tag content</tag><int></int></html>");
-
+        
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-
+        
         std::map<pv::bid, std::pair<std::string, float>> mappe;
         mappe[pv::bid::invalid] = { "Test", 0.5f };
         print("pv::bid: ", pv::bid::invalid);
         print("<html><head><style>.css-tag { bla; }</style></head><tag>tag content</tag><int></int></html>");
-
+        
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         print("Map: ", mappe, " ", FileSize{uint64_t(1000 * 1000 * 2123)});
         print(std::set<pv::bid>{pv::bid::invalid});
-
-       // std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-
+        
+        // std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
+        
         pv::bid value;
         print(std::set<pv::bid*>{nullptr, & value});
         print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
         print(std::vector<bool>{true, false, true, false});
-
-       // std::this_thread::sleep_for(std::chrono::seconds(1));
+        
+        // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     //exit(0);
     
@@ -235,11 +319,11 @@ int main(int argc, char**argv) {
     print("Test ",std::string("test"));
     //print("Test",5,6,7.0,std::vector<pv::bid>{pv::bid(1234), pv::bid::invalid},"MicroOwl starting...");
     print("A normal print, hello world.");
-
+    
     constexpr auto owl_indexes = std::make_index_sequence<sizeof(owl)>{};
     constexpr auto owl_update = [] <std::size_t... Is> (std::index_sequence<Is...>) { (inc_offset<Is>(), ...); };
     constexpr auto owl_init = [] <std::size_t... Is> (std::index_sequence<Is...>) { (init_offset<Is>(), ...); };
-
+    
     //! initialize color / position arrays
     owl_init(owl_indexes);
     
@@ -249,22 +333,22 @@ int main(int argc, char**argv) {
     Timer action_timer;
     Vec2 last_mouse_pos;
     /*
-#if defined(__EMSCRIPTEN__)
-    //file::Path image_path("/photomode_21012022_190427.png");
-    file::Path image_path("./trex_screenshot_web.png");
-    print("loading ", image_path);
-#else
-    file::Path image_path("C:/Users/tristan/Pictures/Cyberpunk 2077/photomode_21012022_190427.png");
-#endif
-    auto data = image_path.retrieve_data();
-    if (data.empty())
-        throw U_EXCEPTION("Image is empty.");
-    auto mat = cv::imdecode(data, cv::ImreadModes::IMREAD_UNCHANGED);
-    resize_image(mat, 0.25);
-
-    ExternalImage image;
-    image.set_source(std::make_unique<Image>(mat));
-    image.set_scale(0.55);*/
+     #if defined(__EMSCRIPTEN__)
+     //file::Path image_path("/photomode_21012022_190427.png");
+     file::Path image_path("./trex_screenshot_web.png");
+     print("loading ", image_path);
+     #else
+     file::Path image_path("C:/Users/tristan/Pictures/Cyberpunk 2077/photomode_21012022_190427.png");
+     #endif
+     auto data = image_path.retrieve_data();
+     if (data.empty())
+     throw U_EXCEPTION("Image is empty.");
+     auto mat = cv::imdecode(data, cv::ImreadModes::IMREAD_UNCHANGED);
+     resize_image(mat, 0.25);
+     
+     ExternalImage image;
+     image.set_source(std::make_unique<Image>(mat));
+     image.set_scale(0.55);*/
     
     {
         
@@ -278,10 +362,10 @@ int main(int argc, char**argv) {
     
     // Current state:
     /*Button button({
-        .text = "Test",
-        .bounds = Bounds(100, 100, 100, 33),
-        .text_clr = Cyan
-    });*/
+     .text = "Test",
+     .bounds = Bounds(100, 100, 100, 33),
+     .text_clr = Cyan
+     });*/
     
     using namespace attr;
     bool terminate = false;
@@ -341,50 +425,87 @@ int main(int argc, char**argv) {
                 }
             }
         },
-        .variables = {
-            {
-                "fishes",
-                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
-                    return fishes;
-                }))
-            },
-            {
-                "invalid",
-                std::unique_ptr<VarBase_t>(new Variable([](std::string){
-                    return false;
-                }))
-            },
-            {
-                "valid",
-                std::unique_ptr<VarBase_t>(new Variable([](std::string){
-                    return true;
-                }))
-            },
-            {
-                "global",
-                std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
-                    return GlobalSettings::map();
-                }))
+            .variables = {
+                {
+                    "fishes",
+                    std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                        return fishes;
+                    }))
+                },
+                {
+                    "invalid",
+                    std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                        return false;
+                    }))
+                },
+                {
+                    "valid",
+                    std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                        return true;
+                    }))
+                },
+                {
+                    "global",
+                    std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
+                        return GlobalSettings::map();
+                    }))
+                }
             }
-        }
     };
     
     State state;
     std::vector<Layout::Ptr> objects;
-
+    
     /*
-        // Theoretical optimum:
-        Button("Test",
-               Loc(100, 100),
-               TextClr(Cyan))
+     // Theoretical optimum:
+     Button("Test",
+     Loc(100, 100),
+     TextClr(Cyan))
      
-        // Previous state:
-        Button button(
-             "Test",
-             Bounds(100, 100, 100, 33),
-             Drawable::accent_color,
-             Cyan);
+     // Previous state:
+     Button button(
+     "Test",
+     Bounds(100, 100, 100, 33),
+     Drawable::accent_color,
+     Cyan);
      */
+    
+    ScrollableList<DetailItem> list(Bounds(200,200,300,600));
+    list.set_items(std::vector<DetailItem>{
+        { "Title", "detail" },
+        { "Title2", "detail2" },
+        { "Title3", "detail/to/other/path/very/long/text" },
+        { "Title4", "d3t4il" }
+    });
+    list.set_font(Font(0.75, Align::Center));
+    
+    GridLayout layout;
+    
+    layout.set_children({
+        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}) + circle(attr::Loc{25,25}, attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        
+        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        
+        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        
+        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}) + circle(attr::Loc{25,25}, attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        
+        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
+            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+    });
+    layout.set_pos(Vec2(200,200));
+
+    
+    //print_layout_structure(&layout);
     
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
@@ -440,9 +561,17 @@ int main(int argc, char**argv) {
             graph.wrap_object(*o);
         }
 
+        
+        graph.wrap_object(list);
+        graph.wrap_object(layout);
         //image.set_pos(last_mouse_pos);
         //graph.wrap_object(image);
-
+        
+        layout.set_pos(last_mouse_pos);
+        layout.update_layout();
+        print(layout.toString(nullptr));
+        
+        
         auto scale = graph.scale().reciprocal();
         ptr->window_dimensions().mul(scale * gui::interface_scale());
         graph.draw_log_messages();//Bounds(Vec2(0), dim));

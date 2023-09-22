@@ -324,7 +324,7 @@ VideoSource::VideoSource(VideoSource&& other)
     
 }
 
-VideoSource::VideoSource(const std::string& source)
+/*VideoSource::VideoSource(const std::string& source)
     : _source(source)
 {
     std::smatch m;
@@ -378,12 +378,37 @@ VideoSource::VideoSource(const std::string& source)
     } else {
         open(prefix, suffix, extension);
     }
-}
+}*/
 
-VideoSource::VideoSource(const std::vector<file::Path>& files)
+VideoSource::VideoSource(const file::PathArray& source)
 {
-    _base = "array";
-    for(auto &path : files) {
+    std::smatch m;
+    std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
+    std::regex rext (".*(\\..+)$");
+    
+    std::string prefix, suffix, extension;
+    auto str = source.source();
+    if(std::regex_search(str,m,rext)) {
+        auto x = m[1];
+        extension = x.str().substr(1);
+        prefix = str.substr(0u, (uint64_t)m.position(1));
+        
+        print("Extension ",extension," basename ",prefix);
+        
+    } else {
+        throw U_EXCEPTION("File extension not found in ",source);
+    }
+    
+    if(prefix.empty()) {
+        prefix = "array";
+    }
+    
+    print("Searching for ",prefix,".",extension);
+    _base = file::find_basename(source); //prefix;
+    print("Found _base = ", _base, " for ", source);
+    //_base = source.source();
+    
+    for(auto &path : source) {
         auto extension = std::string(path.extension());
         auto basename = path.remove_extension().str();
         auto f = File::open(_files_in_seq.size(), basename, extension);
@@ -395,7 +420,7 @@ VideoSource::VideoSource(const std::vector<file::Path>& files)
     }
     
     if(_files_in_seq.empty()) {
-        throw U_EXCEPTION("Cannot load video sequence ",files," (it is empty).");
+        throw U_EXCEPTION("Cannot load video sequence ",source," (it is empty).");
     }
     
     _size = _files_in_seq.at(0)->resolution();

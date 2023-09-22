@@ -59,7 +59,7 @@ namespace gui {
         
         GETTER(std::vector<Item<T>>, items)
         std::vector<Rect*> _rects;
-        std::vector<Text*> _texts;
+        std::vector<StaticText*> _texts;
         std::vector<Text*> _details;
 
         Tooltip tooltip = Tooltip(nullptr);
@@ -80,7 +80,7 @@ namespace gui {
     public:
         ScrollableList(const Bounds& bounds,
                        const std::vector<T>& objs = {},
-                       const Font& font = Font(0.75f, Align::Center),
+                       const Font& font = Font(0.75f),
                        const decltype(_on_hovered)& on_hover = [](size_t){})
             : item_padding(5,5),
               _callback([](auto, const auto&){}),
@@ -215,7 +215,7 @@ namespace gui {
             }();
             
             for(auto t : _texts)
-                t->set_font(font);
+                t->set_default_font(font);
             
             if constexpr(has_detail<T>) {
                 auto detail_font = font;
@@ -343,11 +343,11 @@ namespace gui {
                     }
                 }
                 
-                Font detail_font = _font;
-                detail_font.size *= 0.75;
+                auto detail_font = this->detail_font(font());
                 for(size_t i=0; i<_rects.size(); i++) {
                     _rects.at(i)->set_size(Size2(width(), item_height));
-                    _texts.at(i)->set_font(_font);
+                    _rects.at(i)->set(attr::LineClr{Blue});
+                    _texts.at(i)->set_default_font(_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
                             _details.at(i)->set_font(detail_font);
@@ -369,7 +369,7 @@ namespace gui {
                         }
                     });
                     
-                    _texts.push_back(new Text(_font));
+                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0), attr::LineClr{Red}));
                     if constexpr(has_detail<T>) {
                         _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
                     }
@@ -405,6 +405,11 @@ namespace gui {
         }
         
     private:
+        Font detail_font(Font font) const {
+            font.size *= 0.7;
+            return font;
+        }
+        
         void update() override {
             if(content_changed()) {
                 const float spacing = [this] (){
@@ -431,57 +436,67 @@ namespace gui {
                 for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
                     auto& item = _items[i];
                     const float y = i * item_height;
-                    
                     _rects.at(idx)->set_pos(Vec2(0, y));
+                    
                     _texts.at(idx)->set_txt(item.value());
-
                     if constexpr(has_detail<T>) {
                         _details.at(idx)->set_txt(item.value().detail());
                     }
                     
                     if constexpr (has_color_function<T>) {
                         if (item.value().color() != Transparent)
-                            _texts.at(idx)->set_color(item.value().color());
+                            _texts.at(idx)->set_text_color(item.value().color());
                     }
 
                     if constexpr (has_font_function<T>) {
                         if (item.value().font().size > 0) {
-                            _texts.at(idx)->set_font(item.value().font());
+                            _texts.at(idx)->set_default_font(item.value().font());
                             if constexpr(has_detail<T>) {
-                                Font detail_font = item.value().font();
-                                detail_font.size *= 0.75;
-                                _details.at(idx)->set_font(detail_font);
+                                _details.at(idx)->set_font(detail_font(item.value().font()));
                             }
                         }
+                    } else if constexpr(has_detail<T>) {
+                        _details.at(idx)->set_font(detail_font(font()));
                     }
                     
                     rect_to_idx[_rects.at(idx)] = i;
                     
+                    advance_wrap(*_rects.at(idx));
+                    advance_wrap(*_texts.at(idx));
+                    if constexpr(has_detail<T>) {
+                        advance_wrap(*_details.at(idx));
+                    }
+                    
                     if constexpr(has_detail<T>) {
                         if(_font.align == Align::Center) {
-                            _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.25f));
-                            _details.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.75f));
+                            float ycenter = y + item_height * 0.5;
+                            float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
+                            print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
+                            
+                            _texts.at(idx)->set_pos(Vec2{
+                                (width() - _texts.at(idx)->width()) * 0.5f, 
+                                ycenter - _texts.at(idx)->height() + middle
+                            });
+                            
+                            _details.at(idx)->set_pos(Vec2{
+                                roundf(width() * 0.5f),
+                                ycenter + _details.at(idx)->height() - middle
+                            });
+                            
                         } else if(_font.align == Align::Left) {
-                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding * 0.5);
-                            _details.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                            _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + item_padding);
                         } else {
                             _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y * 0.5));
                             _details.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
                         }
                     } else {
-                        
                         if(_font.align == Align::Center)
                             _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
                         else if(_font.align == Align::Left)
                             _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
                         else
                             _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
-                    }
-                    
-                    advance_wrap(*_rects.at(idx));
-                    advance_wrap(*_texts.at(idx));
-                    if constexpr(has_detail<T>) {
-                        advance_wrap(*_details.at(idx));
                     }
                 }
                 
