@@ -127,7 +127,8 @@ using Row = Layout;
 
 auto cell = []<typename... T>(T... objects) {
     auto ptr = Layout::Make<Cell>(std::forward<T>(objects)...);
-    ptr.template to<Cell>()->set(attr::LineClr{Cyan});
+    ptr.template to<Cell>()->set(LineClr{Cyan});
+    ptr.template to<Cell>()->set_name("Cell");
     return ptr;
 };
 auto row = []<typename... T>(T... objects) {
@@ -144,11 +145,13 @@ auto row = []<typename... T>(T... objects) {
     }(objects), ...);
     auto ptr = Layout::Make<Row>(rowObjects);
     ptr.to<Row>()->set(LineClr{Yellow});
+    ptr.to<Row>()->set_name("Row");
     return ptr;
 };
 auto horizontal = []<typename... T>(T... objects) {
     auto ptr = Layout::Make<HorizontalLayout>(Objects{std::forward<T>(objects)...});
     ptr.to<HorizontalLayout>()->set(LineClr{Purple});
+    ptr.to<HorizontalLayout>()->set_name("Horizontal");
     return ptr;
 };
 auto circle = []<typename... T>(T... objects) {
@@ -352,12 +355,12 @@ int main(int argc, char**argv) {
     
     {
         
-        attr::Loc v(2, 3);
+        Loc v(2, 3);
         Vec2 k(3, 2);
         
         auto r = v + k;
         auto r2 = k + v;
-        print("Result ", r, " and ", r2, " ", attr::Loc(2, 3) + attr::Loc(3, 3));
+        print("Result ", r, " and ", r2, " ", Loc(2, 3) + Loc(3, 3));
     }
     
     // Current state:
@@ -410,6 +413,7 @@ int main(int argc, char**argv) {
         tmp["type"] = "ocelot";
         tmp["tracked"] = bool(i % 2 == 0);
         tmp["p"] = float(i) / float(3);
+        tmp["px"] = 100;
         _data.push_back(std::move(tmp));
         
         fishes.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
@@ -480,30 +484,31 @@ int main(int argc, char**argv) {
     list.set_font(Font(0.75, Align::Center));
     
     GridLayout layout;
-    
+    layout.set_name("GridLayout");
+    auto circle0 = circle(Size{25,25}, FillClr{Red.alpha(150)});
     layout.set_children({
-        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}) + circle(attr::Loc{25,25}, attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        row(circle(Size{25,25}, FillClr{Green.alpha(150)}),
+            circle(Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}) + circle(Loc{25,25}, Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle0),
         
-        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        row(circle(Size{25,25}, FillClr{Green.alpha(150)}),
+            circle(Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle(Size{25,25}, FillClr{Red.alpha(150)})),
         
-        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        row(circle(Size{25,25}, FillClr{Green.alpha(150)}),
+            circle(Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle(Size{25,25}, FillClr{Red.alpha(150)})),
         
-        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}) + circle(attr::Loc{25,25}, attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        row(circle(Size{25,25}, FillClr{Green.alpha(150)}) + circle(Loc{25,25}, Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle(Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle(Size{25,25}, FillClr{Red.alpha(150)})),
         
-        row(circle(attr::Size{25,25}, attr::FillClr{Green.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Transparent}, attr::LineClr{Purple.alpha(150)}),
-            circle(attr::Size{25,25}, attr::FillClr{Red.alpha(150)})),
+        row(circle(Size{25,25}, FillClr{Green.alpha(150)}),
+            circle(Size{25,25}, FillClr{Transparent}, LineClr{Purple.alpha(150)}),
+            circle(Size{25,25}, FillClr{Red.alpha(150)})),
     });
-    layout.set_pos(Vec2(200,200));
-
+    layout.set_pos(Vec2(500,200));
+    layout.set_clickable(true);
     
     //print_layout_structure(&layout);
     
@@ -552,7 +557,13 @@ int main(int argc, char**argv) {
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
         
-        update_layout(file::DataLocation::parse("app", "test_gui.json"), context, state, objects);
+        {
+            static Timer timer;
+            if(timer.elapsed() > 1) {
+                update_layout(file::DataLocation::parse("app", "test_gui.json"), context, state, objects);
+                timer.reset();
+            }
+        }
         
         for(auto &o : objects) {
             update_objects(graph, o, context, state);
@@ -561,15 +572,20 @@ int main(int argc, char**argv) {
             graph.wrap_object(*o);
         }
 
+        auto size = circle0->size() + Size2(1);
+        if(size.width > 50) {
+            size = Size2(5);
+        }
+        circle0->set_size(size);
         
         graph.wrap_object(list);
         graph.wrap_object(layout);
         //image.set_pos(last_mouse_pos);
         //graph.wrap_object(image);
         
-        layout.set_pos(last_mouse_pos);
-        layout.update_layout();
-        print(layout.toString(nullptr));
+        //layout.set_pos(last_mouse_pos);
+        //layout.update_layout();
+        //print(layout.toString(nullptr));
         
         
         auto scale = graph.scale().reciprocal();
@@ -578,7 +594,7 @@ int main(int argc, char**argv) {
         
         timer.reset();
         
-        graph.root().set_dirty();
+        //graph.root().set_dirty();
         return !terminate;
         
     }, [&](const Event& e) {
@@ -588,6 +604,9 @@ int main(int argc, char**argv) {
             }
             else if (e.key.code == Codes::Escape)
                 terminate = true;
+            else if(e.key.code == Codes::Return) {
+                print(layout.toString(nullptr));
+            }
         }
     });
 

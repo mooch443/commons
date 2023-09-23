@@ -68,8 +68,9 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
         }
             
 #if __APPLE__
-        _wd = _wd / ".."/ "Resources";
-        _wd = _wd.absolute();
+        auto wd = _wd / ".."/ "Resources";
+        if(wd.exists())
+            _wd = wd.absolute();
 #endif
         
         SETTING(wd) = _wd;

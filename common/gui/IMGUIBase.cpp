@@ -1061,7 +1061,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         auto objects = s.collect();
         _objects_drawn = 0;
         _skipped = 0;
+#ifndef NDEBUG
         _type_counts.clear();
+#endif
         _draw_order.clear();
         _rotation_starts.clear();
         
@@ -1632,7 +1634,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
         
         o->set_was_visible(true);
+#ifndef NDEBUG
         ++_type_counts[o->type()];
+#endif
         
         switch (o->type()) {
             case Type::ENTANGLED: {

@@ -13,7 +13,6 @@
 #include <gui/types/Dropdown.h>
 #include <gui/types/Checkbox.h>
 #include <gui/types/List.h>
-#include <regex>
 
 namespace gui {
 namespace dyn {
@@ -533,24 +532,23 @@ struct VarProps {
     bool html{false};
 };
 
+std::string extractControls(std::string& variable);
+std::string regExtractControls(std::string& variable);
+
 template<typename ApplyF, typename ErrorF>
 inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
     auto variable = utils::lowercase(word);
     VarProps props;
     
-    std::regex rgx("[^a-zA-Z0-9_\\-: ]+");
-    std::smatch match;
-    std::string controls;
-    if (std::regex_search(variable, match, rgx)) {
-        controls = match[0].str();
-        if (controls.find('.') == 0) {
-            // optional variable
-            props.optional = true;
-        }
-        if(controls.find('#') == 0) {
-            props.html = true;
-        }
-        variable = variable.substr(controls.size());
+    // Call to the separated function
+    std::string controls = extractControls(variable);
+
+    if (controls.find('.') == 0) {
+        // optional variable
+        props.optional = true;
+    }
+    if(controls.find('#') == 0) {
+        props.html = true;
     }
     
     props.parts = utils::split(variable, ':');

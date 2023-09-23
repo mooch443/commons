@@ -9,9 +9,40 @@
 #include <misc/GlobalSettings.h>
 #include <gui/types/SettingsTooltip.h>
 #include <common/misc/default_settings.h>
+#include <regex>
 
 namespace gui {
 namespace dyn {
+
+std::string extractControls(std::string& variable) {
+    std::string controls;
+    std::size_t controlsSize = 0;
+    for (char c : variable) {
+        if (std::isalnum(c) || c == '_' || c == '-' || c == ':' || c == ' ') {
+            break;
+        }
+        controls += c;
+        controlsSize++;
+    }
+
+    if (controlsSize > 0) {
+        variable = variable.substr(controlsSize);
+    }
+
+    return controls;
+}
+
+// New function to handle the regex related work
+std::string regExtractControls(std::string& variable) {
+    std::regex rgx("[^a-zA-Z0-9_\\-: ]+");
+    std::smatch match;
+    std::string controls;
+    if (std::regex_search(variable, match, rgx)) {
+        controls = match[0].str();
+        variable = variable.substr(controls.size());
+    }
+    return controls;
+}
 
 namespace settings_scene {
 GlobalSettings::docs_map_t& temp_docs = GlobalSettings::docs();

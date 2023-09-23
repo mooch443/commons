@@ -53,7 +53,7 @@ namespace gui {
         Entangled(std::function<void(Entangled&)>&&);
         void update(const std::function<void(Entangled&)> create);
         
-        virtual std::string name() const { return "Entangled"; }
+        virtual std::string name() const { return SectionInterface::name(); }
         
         virtual ~Entangled();
         

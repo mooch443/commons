@@ -118,6 +118,43 @@ namespace gui {
         void update_layout() override;
     };
 
+class GridInfo {
+public:
+    using GridBounds = std::vector<std::vector<Bounds>>;
+    GridBounds gridBounds;
+    size_t numRows;
+    size_t numCols;
+
+    GridInfo() : numRows(0), numCols(0) {}
+
+    // Initialize with the given grid bounds
+    GridInfo(GridBounds bounds) : gridBounds(bounds) {
+        numRows = bounds.size();
+        numCols = numRows > 0 ? bounds[0].size() : 0;
+    }
+
+    // Safe access to individual cell bounds
+    Bounds getCellBounds(size_t row, size_t col) const {
+        if (row >= numRows || col >= numCols) {
+            throw std::out_of_range("Invalid row or column index");
+        }
+        return gridBounds[row][col];
+    }
+
+    // Returns the number of rows
+    size_t rowCount() const {
+        return numRows;
+    }
+
+    // Returns the number of columns
+    size_t colCount() const {
+        return numCols;
+    }
+    
+    std::string toStr() const;
+    static std::string class_name() { return "GridInfo"; }
+};
+
 class GridLayout : public Layout {
 public:
     enum Policy {
@@ -126,7 +163,13 @@ public:
     
 protected:
     GETTER(Bounds, margins)
-    GETTER_I(Policy, policy, Policy::CENTER)
+    GETTER_I(Policy, policy, Policy::LEFT)
+    GETTER(GridInfo, grid_info)
+    
+    Vec2 _last_hover;
+    
+    std::shared_ptr<Rect> _vertical_rect;
+    std::shared_ptr<Rect> _horizontal_rect;
     
 public:
     GridLayout(const Bounds& margins)
@@ -134,11 +177,18 @@ public:
     {}
     GridLayout(const std::vector<Layout::Ptr>& objects = {}, const Bounds& margins = {5, 5, 5, 5});
     
+    void auto_size(Margin margins) override;
+    void children_rect_changed() override;
+    void update() override;
+    
     void set_policy(Policy);
     void set_margins(const Bounds&);
     virtual std::string name() const override { return "GridLayout"; }
     
     void update_layout() override;
+    
+private:
+    void update_hover();
 };
 
 }

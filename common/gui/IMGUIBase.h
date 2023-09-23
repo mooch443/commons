@@ -57,7 +57,9 @@ namespace gui {
         GETTER_I(bool, focussed, true)
         std::function<void(const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
+#ifndef NDEBUG
         std::unordered_map<Type::Class, size_t> _type_counts;
+#endif
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
         GETTER(float, dpi_scale)

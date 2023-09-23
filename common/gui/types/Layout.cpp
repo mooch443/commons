@@ -295,6 +295,8 @@ namespace gui {
         if(mi.x != std::numeric_limits<Float2_t>::max()) {
             ma += Vec2(max(0.f, margin.right), max(0.f, margin.bottom));
             set_size(ma - mi);
+        } else {
+            set_size(Size2());
         }
     }
     
@@ -322,12 +324,105 @@ namespace gui {
         update_layout();
     }
 
+template<typename Lambda>
+void process_layout(const std::vector<Layout::Ptr> &_objects, Lambda&& lambda) {
+    // Row index
+    std::size_t row_idx = 0;
+    
+    // Iterate through each row in objects
+    for (const Layout::Ptr &_row : _objects) {
+        // Skip if nullptr
+        if (!_row) continue;
+        // Check the type of _row, and continue to the next iteration if it's not Layout
+        if (!_row.is<Layout>()) continue;
+
+        // Convert to confirmed type
+        auto row = _row.to<Layout>();
+
+        // Column index
+        std::size_t col_idx = 0;
+
+        // Iterate through each cell in the row's objects
+        for (const auto &_cell : row->objects()) {
+            // Skip if nullptr
+            if (!_cell) continue;
+
+            // Check the type of _cell, and continue to the next iteration if it's not Layout
+            if (!_cell.is<Layout>()) continue;
+
+            // Convert to confirmed type
+            auto cell = _cell.to<Layout>();
+
+            // Call the provided lambda function for processing
+            lambda(row_idx, col_idx, cell);
+
+            // Increment the column index
+            col_idx++;
+        }
+        // Increment the row index
+        row_idx++;
+    }
+}
+
+// Function to compute the transform between two Drawable objects
+Transform computeRelativeTransform(Drawable* from, Drawable* to) {
+    if (!from || !to) {
+        // Handle null pointers (perhaps return an identity transform or throw an exception)
+        throw std::invalid_argument("Nullptr in computeRelativeTransform");
+    }
+
+    // Get the global transforms of both objects
+    Transform fromGlobal = from->global_transform();
+    Transform toGlobal = to->global_transform();
+
+    // Compute the inverse of the 'from' object's global transform
+    Transform fromGlobalInverse = fromGlobal.getInverse();
+
+    // Compute the relative transform
+    Transform relativeTransform = fromGlobalInverse * toGlobal;
+    return relativeTransform;
+}
+
+std::string GridInfo::toStr() const {
+    return "Grid<" + Meta::toStr(numCols) + "x" + Meta::toStr(numRows) + " bounds=" + Meta::toStr(gridBounds) + ">";
+}
+
 GridLayout::GridLayout(const std::vector<Layout::Ptr>& objects,
                        const Bounds& margins)
     : gui::Layout(objects),
-    _margins(margins)
+    _margins(margins),
+_vertical_rect(std::make_shared<Rect>(Bounds(0, 0, 50, 50), FillClr{DarkCyan.alpha(150)})),
+_horizontal_rect(std::make_shared<Rect>(FillClr{DarkGray.alpha(150)}))
 {
+    on_hover([this](Event e){
+        _last_hover = Vec2(e.hover.x, e.hover.y);
+        update_hover();
+    });
     update();
+}
+
+void GridLayout::update_hover() {
+    for(size_t row = 0; row < _grid_info.numRows; ++row) {
+        for(size_t col = 0; col < _grid_info.numCols; ++col) {
+            auto bds = _grid_info.getCellBounds(row, col);
+            if(bds.contains(_last_hover)) {
+                for(size_t r = 0; r < _grid_info.numRows; ++r) {
+                    if(r != row)
+                        bds.combine(_grid_info.getCellBounds(r, col));
+                }
+                _vertical_rect->set(bds);
+                
+                bds = _grid_info.getCellBounds(row, col);
+                for(size_t c = 0; c < _grid_info.numCols; ++c) {
+                    if(c != col)
+                        bds.combine(_grid_info.getCellBounds(row, c));
+                }
+                _horizontal_rect->set(bds);
+                break;
+            }
+        }
+    }
+    //set_content_changed(true);
 }
 
 void GridLayout::set_margins(const Bounds &) {
@@ -340,6 +435,7 @@ void GridLayout::set_policy(Policy) {
 
 void GridLayout::update_layout() {
     std::vector<float> max_col_widths, max_row_heights;
+    GridInfo::GridBounds gridBounds;
 
     // Step 1: Calculate max dimensions for columns and rows
     for (auto _row : objects()) {
@@ -355,11 +451,7 @@ void GridLayout::update_layout() {
                 continue;
 
             Layout* cell = _cell.to<Layout>();
-            assert(cell->bounds().x < 1000000);
-            cell->auto_size({});
-            cell->update_layout();  // Recursive update, so it computes its size
             auto cell_bounds = cell->local_bounds();
-            assert(cell_bounds.x < 1000000);
             
             // Update max dimensions for row and column
             if (col_idx >= max_col_widths.size()) {
@@ -371,13 +463,9 @@ void GridLayout::update_layout() {
             row_height = std::max(row_height, cell_bounds.height);
             ++col_idx;
         }
-
-        row->auto_size({});
+        
         max_row_heights.push_back(row_height);
     }
-    
-    print("max_row_heights = ", max_row_heights);
-    print("max_col_widths = ", max_col_widths);
 
     // Step 2: Update the position of each row and cell, relative to its parent
     float y = _margins.y;
@@ -387,6 +475,7 @@ void GridLayout::update_layout() {
         if(not _row.is<Layout>())
             continue;
         
+        std::vector<Bounds> rowBounds; // To store the bounds of each cell in the current row
         Layout* row = _row.to<Layout>();
 
         // Reset x-coordinate at the beginning of each new row
@@ -400,9 +489,8 @@ void GridLayout::update_layout() {
                 continue;
 
             Layout* cell = _cell.to<Layout>();
-            assert(cell->bounds().x < 1000000);
             cell->auto_size({});
-            assert(cell->bounds().x < 1000000);
+            
             auto cell_bounds = cell->local_bounds();
 
             float cell_y = _margins.y + (row_height - cell_bounds.height) * 0.5f;
@@ -418,26 +506,77 @@ void GridLayout::update_layout() {
             } else
                 cell_x = x;
             
-            assert(cell->bounds().x < 1000000);
-            std::cout << "Before set_pos - Cell[" << i << "][" << col_idx << "] pos: " << cell->pos().x << ","<< cell->pos().y << "\n";
             cell->set_pos({cell_x, cell_y});
-            std::cout << "After set_pos - Cell[" << i << "][" << col_idx << "] pos: " << cell->pos().x << ","<< cell->pos().y << "\n";
-            
-            assert(cell->bounds().x < 1000000);
+            // Add this cell's bounds to rowBounds
+            rowBounds.push_back({
+                x - _margins.x, y,
+                max_col_widths[col_idx] + _margins.width + _margins.x,
+                row_height + _margins.height + _margins.y
+            });
+
             x += max_col_widths[col_idx] + _margins.width;
             ++col_idx;
         }
 
-        //row->auto_size({});
-        
         // Update the position of the row itself here if necessary
         // Corrected this part
+        row->auto_size({});
         row->set_pos({0, y});
         row->set_size({x, row_height + _margins.height + _margins.y});
-        print("row ", i, " is at position ", row->pos());
+        
+        // Add this row's bounds to gridBounds
+        gridBounds.push_back(rowBounds);
+        
         y += row_height + _margins.height + _margins.y; // Updated to row_height from max_row_heights[col_idx]
         ++i; // Increment row index
     }
+    
+    if(not max_col_widths.empty()) {
+        set_size({
+            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + _margins.width + _margins.x,
+            y
+        });
+    }
+    
+    _grid_info = GridInfo(gridBounds);
+    update_hover();
+}
+
+void GridLayout::update() {
+    if(!content_changed())
+        return;
+    
+    begin();
+    if(hovered()) {
+        //_vertical_rect->set(Bounds(0, 0, 50, height()));
+        
+        process_layout(_objects, [this](size_t row, size_t col, Drawable* ptr) {
+            auto transform = computeRelativeTransform(this, ptr->parent());
+           // auto k = transform.transformPoint(p);
+            //if(ptr->bounds().contains(k))
+            {
+                auto bds = transform.transformRect(ptr->bounds());
+                add<Circle>(Loc{bds.pos()}, Radius{row * col + 1});
+            }
+        });
+        
+        advance_wrap(*_vertical_rect);
+        advance_wrap(*_horizontal_rect);
+    }
+    for(auto o : _objects)
+        advance_wrap(*o);
+    end();
+    
+    update_layout();
+    set_content_changed(false);
+}
+
+void GridLayout::children_rect_changed() {
+    Layout::children_rect_changed();
+}
+
+void GridLayout::auto_size(Margin ) {
+    // nothing?
 }
 
 
