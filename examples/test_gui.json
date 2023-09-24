@@ -25,6 +25,84 @@
 	},
 
 	{
+		"type":"gridlayout",
+		"pos":[550,600],
+		"line": [255,0,0,255],
+		"clickable": true,
+		"children": [
+			[
+				[ { "type": "text",
+					"text":"my first entry",
+					"fill": [255,0,0,100],
+					"line": [255,0,0,255],
+					"radius": 10
+				} ],
+
+				[ { "type": "text",
+				"text":"my second one",
+				"fill": [255,0,0,100],
+				"line": [255,0,0,255],
+				"radius": 10
+				} ],
+
+				[ { "type": "text",
+					"text":"my third",
+					"fill": [255,0,0,100],
+					"line": [255,0,0,255],
+					"radius": 10
+				} ]
+			],
+
+			[
+				[ { "type": "text",
+				"text":"my fourth",
+				"fill": [255,0,0,100],
+				"line": [255,0,0,255],
+				"radius": 10
+			} ],
+
+				[ { "type": "text",
+				"text":"hi",
+				"fill": [255,0,0,100],
+				"line": [255,0,0,255],
+				"radius": 10
+			} ],
+				[ { "type": "text",
+				"text":"42",
+				"fill": [255,0,0,100],
+				"line": [255,0,0,255],
+				"radius": 10
+			} ]
+			],
+
+			[
+				[ { "type": "rect",
+					"fill": [255,0,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"size": [50 ,50],
+					"radius": 10
+				} ],
+
+				[ { "type": "rect",
+					"fill": [255,255,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"size": [50,50],
+					"radius": 10
+				} ],
+				[ { "type": "rect",
+					"fill": [255,255,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"size": [10,10],
+					"radius": 10
+				} ]
+			]
+		]
+	},
+
+	{
 		"type":"each",
 		"var":"fishes",
 		"do": {

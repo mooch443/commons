@@ -7,6 +7,8 @@ namespace gui {
     {
         set_content_changed(true);
         //set_background(Red.alpha(125));
+        if(not _objects.empty())
+            update();
     }
     
     void Layout::update() {
@@ -422,7 +424,7 @@ void GridLayout::update_hover() {
             }
         }
     }
-    //set_content_changed(true);
+    set_content_changed(true);
 }
 
 void GridLayout::set_margins(const Bounds &) {
@@ -533,7 +535,7 @@ void GridLayout::update_layout() {
     
     if(not max_col_widths.empty()) {
         set_size({
-            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + _margins.width + _margins.x,
+            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + _margins.width + _margins.x * max_col_widths.size(),
             y
         });
     }

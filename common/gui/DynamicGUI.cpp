@@ -550,7 +550,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          State& state)
 {
     auto index = state.object_index++;
-    auto type = LayoutType::get(utils::lowercase(obj["type"].get<std::string>()));
+    auto type_name = utils::lowercase(obj["type"].get<std::string>());
+    auto type = LayoutType::get(type_name);
     
     auto get = [&]<typename T>(T de, auto name)->T {
         if(obj.count(name)) {
@@ -578,6 +579,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     
     auto fill = get(Transparent, "fill");
     auto line = get(Transparent, "line");
+    
+    auto clickable = get(false, "clickable");
     
     Font font(0.75);
     if(type == LayoutType::button) {
@@ -716,6 +719,62 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                     } else FormatWarning("Unknown alignment: ", align);
                 }
             }
+            break;
+        }
+            
+        case LayoutType::gridlayout: {
+            std::vector<Layout::Ptr> rows;
+            
+            if(obj.count("children")) {
+                for(auto &row : obj["children"]) {
+                    if(row.is_array()) {
+                        std::vector<Layout::Ptr> cols;
+                        for(auto &cell : row) {
+                            if(cell.is_array()) {
+                                std::vector<Layout::Ptr> objects;
+                                for(auto& obj : cell) {
+                                    std::cout << obj << std::endl;
+                                    auto ptr = parse_object(obj, context, state);
+                                    if(ptr) {
+                                        objects.push_back(ptr);
+                                    }
+                                }
+                                cols.emplace_back(Layout::Make<Layout>(std::move(objects)));
+                                cols.back()->set_name("Col");
+                                cols.back().to<Layout>()->update();
+                                cols.back().to<Layout>()->update_layout();
+                                cols.back().to<Layout>()->auto_size({});
+                            }
+                        }
+                        rows.emplace_back(Layout::Make<Layout>(std::move(cols)));
+                        rows.back()->set_name("Row");
+                        rows.back().to<Layout>()->set(LineClr{Yellow});
+                        rows.back().to<Layout>()->update();
+                        rows.back().to<Layout>()->update_layout();
+                        rows.back().to<Layout>()->auto_size({});
+                    }
+                }
+            }
+            
+            ptr = Layout::Make<GridLayout>();
+            ptr.to<GridLayout>()->set_children(std::move(rows));
+            
+            ptr.to<GridLayout>()->update_layout();
+            auto str = ptr.to<GridLayout>()->toString(nullptr);
+            print(str);
+            print(ptr.to<GridLayout>()->grid_info());
+            /*if(obj.count("align")) {
+                if(obj["align"].is_string()) {
+                    std::string align = obj["align"].get<std::string>();
+                    if(align == "top") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::TOP);
+                    } else if(align == "center") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::CENTER);
+                    } else if(align == "bottom") {
+                        ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::BOTTOM);
+                    } else FormatWarning("Unknown alignment: ", align);
+                }
+            }*/
             break;
         }
             
@@ -964,6 +1023,16 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             break;
         }
             
+        case LayoutType::circle: {
+            float radius = 0;
+            if(obj.count("radius")) {
+                if(obj["radius"].is_number())
+                    radius = obj["radius"].get<float>();
+            }
+            ptr = Layout::Make<Circle>(attr::Scale(scale), attr::Loc(pos), attr::Radius(radius), attr::Origin(origin), attr::FillClr{fill}, attr::LineClr{line});
+            break;
+        }
+            
         case LayoutType::each: {
             if(obj.count("do")) {
                 auto child = obj["do"];
@@ -1024,6 +1093,9 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         } else if(line != Transparent)
             ptr.to<SectionInterface>()->set_background(Transparent, line);
     }
+    
+    if(clickable)
+        ptr->set_clickable(clickable);
     
     if(not name.empty())
         ptr->set_name(name);
