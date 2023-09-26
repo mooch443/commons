@@ -12,15 +12,16 @@
 					{ "type":"button", "text":"Filter", "action":"FILTER" },
 					{
 						"type": "collection",
+						"line": [255,0,0,255],
+						"pos":[300,100],
+						"size":"auto",
 						"children": [
-							{ "type":"text", "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[20,20,20] },
-							{ "type":"text", "pos":[1.5,1.5], "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[255,255,255] }
+							{ "type":"text", "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[20,20,20], "line":[255,0,0,255] },
+							{ "type":"text", "pos":[1.5,1.5], "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[255,255,255], "line":[255,0,0,255] }
 						]
 					}
-					
 				]
 			}
-			
 		]
 	},
 
@@ -28,7 +29,11 @@
 		"type":"gridlayout",
 		"pos":[550,600],
 		"line": [255,0,0,255],
+		"fill": [0,0,0,200],
 		"clickable": true,
+		"modules": ["draggable"],
+		"horizontal_clr": [50,50,150,100],
+		"vertical_clr": [50,150,150,100],
 		"children": [
 			[
 				[ { "type": "text",
@@ -97,6 +102,53 @@
 					"pos": [0,0],
 					"size": [10,10],
 					"radius": 10
+				} ]
+			],
+
+			[
+				[ { "type": "rect",
+					"fill": [255,0,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"size": [50 ,50],
+					"radius": 10
+				} ],
+
+				[ { "type": "rect",
+					"fill": [255,255,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"size": [50,50],
+					"radius": 10
+				} ],
+				[ { "type": "settings",
+					"desc": "",
+					"var": "blob_size_ranges",
+					"fill": [255,255,255,255],
+					"line": [255,0,0,255],
+					"size": [100, 35]
+				} ]
+			],
+
+			[
+				[ { "type": "circle",
+					"fill": [255,0,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"radius": 10
+				} ],
+
+				[ { "type": "circle",
+					"fill": [255,255,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"radius": 50
+				} ],
+				[ { "type": "circle",
+					"fill": [255,255,255,100],
+					"line": [255,0,0,255],
+					"pos": [0,0],
+					"radius": 50
 				} ]
 			]
 		]

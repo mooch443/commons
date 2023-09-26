@@ -58,7 +58,9 @@ namespace gui {
     }
 
     void Layout::update_layout() {
-        auto_size({});
+        //if(name() != "Entangled")
+        //    print(name(), " updating.");
+        //auto_size({});
     }
 
     void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
@@ -389,18 +391,54 @@ std::string GridInfo::toStr() const {
     return "Grid<" + Meta::toStr(numCols) + "x" + Meta::toStr(numRows) + " bounds=" + Meta::toStr(gridBounds) + ">";
 }
 
-GridLayout::GridLayout(const std::vector<Layout::Ptr>& objects,
-                       const Bounds& margins)
-    : gui::Layout(objects),
-    _margins(margins),
-_vertical_rect(std::make_shared<Rect>(Bounds(0, 0, 50, 50), FillClr{DarkCyan.alpha(150)})),
-_horizontal_rect(std::make_shared<Rect>(FillClr{DarkGray.alpha(150)}))
-{
+void GridLayout::init() {
+    _vertical_rect = std::make_shared<Rect>(Bounds(0, 0, 50, 50), FillClr{_settings.verticalClr});
+    _horizontal_rect = std::make_shared<Rect>(FillClr{_settings.horizontalClr});
+    
     on_hover([this](Event e){
         _last_hover = Vec2(e.hover.x, e.hover.y);
+        print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
         update_hover();
+        set_content_changed(true);
     });
+    
     update();
+    update_layout();
+}
+
+void GridLayout::set(GridLayout::Policy policy) {
+    if(policy != _settings.policy) {
+        _settings.policy = policy;
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(attr::Margins margins) {
+    if(margins != _settings.margins) {
+        _settings.margins = margins;
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(attr::VerticalClr verticalClr) {
+    if(verticalClr != _settings.verticalClr) {
+        _settings.verticalClr = verticalClr;
+        _vertical_rect->set(FillClr{verticalClr});
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(attr::HorizontalClr horizontalClr) {
+    if(horizontalClr != _settings.horizontalClr) {
+        _settings.horizontalClr = horizontalClr;
+        _horizontal_rect->set(FillClr{horizontalClr});
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(const std::vector<Layout::Ptr>& objects) {
+    // Assuming _settings.objects is a std::vector<Layout::Ptr>
+    set_children(objects);
 }
 
 void GridLayout::update_hover() {
@@ -424,15 +462,6 @@ void GridLayout::update_hover() {
             }
         }
     }
-    set_content_changed(true);
-}
-
-void GridLayout::set_margins(const Bounds &) {
-    
-}
-
-void GridLayout::set_policy(Policy) {
-    
 }
 
 void GridLayout::update_layout() {
@@ -470,7 +499,7 @@ void GridLayout::update_layout() {
     }
 
     // Step 2: Update the position of each row and cell, relative to its parent
-    float y = _margins.y;
+    float y = margins().y;
     size_t i = 0;
 
     for (auto _row : objects()) {
@@ -481,7 +510,7 @@ void GridLayout::update_layout() {
         Layout* row = _row.to<Layout>();
 
         // Reset x-coordinate at the beginning of each new row
-        float x = _margins.x;
+        float x = margins().x;
 
         float row_height = max_row_heights[i];
         size_t col_idx = 0;  // Column index
@@ -495,15 +524,15 @@ void GridLayout::update_layout() {
             
             auto cell_bounds = cell->local_bounds();
 
-            float cell_y = _margins.y + (row_height - cell_bounds.height) * 0.5f;
+            float cell_y = margins().y + (row_height - cell_bounds.height) * 0.5f;
 
             // Ensure that cell_x is calculated afresh for each cell based on x and not dependent on old value.
             float cell_x;
-            if (_policy == CENTER) {
+            if (_settings.policy == CENTER) {
                 cell_x = x + (max_col_widths[col_idx] - cell_bounds.width) * 0.5f;
-            } else if (_policy == LEFT) {
+            } else if (_settings.policy == LEFT) {
                 cell_x = x;
-            } else if (_policy == RIGHT) {
+            } else if (_settings.policy == RIGHT) {
                 cell_x = x + (max_col_widths[col_idx] - cell_bounds.width);
             } else
                 cell_x = x;
@@ -511,12 +540,12 @@ void GridLayout::update_layout() {
             cell->set_pos({cell_x, cell_y});
             // Add this cell's bounds to rowBounds
             rowBounds.push_back({
-                x - _margins.x, y,
-                max_col_widths[col_idx] + _margins.width + _margins.x,
-                row_height + _margins.height + _margins.y
+                x - margins().x, y,
+                max_col_widths[col_idx] + margins().width + margins().x,
+                row_height + margins().height + margins().y
             });
 
-            x += max_col_widths[col_idx] + _margins.width;
+            x += max_col_widths[col_idx] + margins().width;
             ++col_idx;
         }
 
@@ -524,18 +553,18 @@ void GridLayout::update_layout() {
         // Corrected this part
         row->auto_size({});
         row->set_pos({0, y});
-        row->set_size({x, row_height + _margins.height + _margins.y});
+        row->set_size({x, row_height + margins().height + margins().y});
         
         // Add this row's bounds to gridBounds
         gridBounds.push_back(rowBounds);
         
-        y += row_height + _margins.height + _margins.y; // Updated to row_height from max_row_heights[col_idx]
+        y += row_height + margins().height + margins().y; // Updated to row_height from max_row_heights[col_idx]
         ++i; // Increment row index
     }
     
     if(not max_col_widths.empty()) {
         set_size({
-            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + _margins.width + _margins.x * max_col_widths.size(),
+            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + margins().width + margins().x * max_col_widths.size(),
             y
         });
     }
@@ -550,18 +579,6 @@ void GridLayout::update() {
     
     begin();
     if(hovered()) {
-        //_vertical_rect->set(Bounds(0, 0, 50, height()));
-        
-        process_layout(_objects, [this](size_t row, size_t col, Drawable* ptr) {
-            auto transform = computeRelativeTransform(this, ptr->parent());
-           // auto k = transform.transformPoint(p);
-            //if(ptr->bounds().contains(k))
-            {
-                auto bds = transform.transformRect(ptr->bounds());
-                add<Circle>(Loc{bds.pos()}, Radius{row * col + 1});
-            }
-        });
-        
         advance_wrap(*_vertical_rect);
         advance_wrap(*_horizontal_rect);
     }

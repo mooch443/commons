@@ -162,8 +162,14 @@ public:
     };
     
 protected:
-    GETTER(Bounds, margins)
-    GETTER_I(Policy, policy, Policy::LEFT)
+    struct Settings {
+        attr::VerticalClr verticalClr{DarkGray.alpha(125)};
+        attr::HorizontalClr horizontalClr{DarkCyan.alpha(125)};
+        attr::Margins margins{5,5,5,5};
+        Policy policy{Policy::LEFT};
+        
+    } _settings;
+    
     GETTER(GridInfo, grid_info)
     
     Vec2 _last_hover;
@@ -172,17 +178,37 @@ protected:
     std::shared_ptr<Rect> _horizontal_rect;
     
 public:
-    GridLayout(const Bounds& margins)
-        : GridLayout({}, margins)
-    {}
-    GridLayout(const std::vector<Layout::Ptr>& objects = {}, const Bounds& margins = {5, 5, 5, 5});
+    template<typename... Args>
+    GridLayout(Args... args)
+    {
+        create(std::forward<Args>(args)...);
+    }
     
+    template<typename... Args>
+    void create(Args... args) {
+        (set(std::forward<Args>(args)), ...);
+        init();
+    }
+    
+private:
+    void init();
+    
+public:
     void auto_size(Margin margins) override;
     void children_rect_changed() override;
     void update() override;
     
-    void set_policy(Policy);
-    void set_margins(const Bounds&);
+    auto& margins() const { return _settings.margins; }
+    auto& vertical_clr() const { return _settings.verticalClr; }
+    auto& horizontal_clr() const { return _settings.horizontalClr; }
+    
+    using Layout::set;
+    void set(Policy);
+    void set(attr::Margins);
+    void set(attr::VerticalClr);
+    void set(attr::HorizontalClr);
+    void set(const std::vector<Layout::Ptr>& objects);
+    
     virtual std::string name() const override { return "GridLayout"; }
     
     void update_layout() override;

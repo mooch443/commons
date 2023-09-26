@@ -579,7 +579,7 @@ int main(int argc, char**argv) {
         circle0->set_size(size);
         
         graph.wrap_object(list);
-        graph.wrap_object(layout);
+        //graph.wrap_object(layout);
         //image.set_pos(last_mouse_pos);
         //graph.wrap_object(image);
         

@@ -13,412 +13,11 @@
 #include <gui/types/Dropdown.h>
 #include <gui/types/Checkbox.h>
 #include <gui/types/List.h>
+#include <gui/DynamicVariable.h>
+#include <gui/LabeledField.h>
 
 namespace gui {
 namespace dyn {
-
-template<typename T, typename A>
-concept takes_attribute = requires(T t, A a) {
-    { t.set(a) } -> std::same_as<void>;
-};
-
-sprite::Map& settings_map();
-
-struct LabeledField {
-    gui::derived_ptr<gui::Text> _text;
-    std::string _docs;
-    //gui::derived_ptr<gui::HorizontalLayout> _joint;
-    
-    LabeledField(const std::string& name = "")
-        : _text(std::make_shared<gui::Text>(name))
-          //_joint(std::make_shared<gui::HorizontalLayout>(std::vector<Layout::Ptr>{_text, _text_field}))
-    {
-        _text->set_font(Font(0.6f));
-        _text->set_color(White);
-    }
-    
-    virtual ~LabeledField() {}
-    
-    virtual void add_to(std::vector<Layout::Ptr>& v) {
-        v.push_back(_text);
-    }
-    virtual void update() {}
-    virtual Layout::Ptr representative() { return _text; }
-    virtual void set_description(std::string);
-    
-    template<typename T>
-    void set(T attribute) {
-        if constexpr(takes_attribute<Drawable, T>) {
-            representative()->set(attribute);
-            
-        } else if(representative().is<Button>()) {
-            if constexpr(takes_attribute<Button, T>)
-            {
-                representative().to<Button>()->set(attribute);
-            }
-            
-        } else if(representative().is<Textfield>()) {
-            if constexpr(takes_attribute<Textfield, T>)
-            {
-                representative().to<Textfield>()->set(attribute);
-            }
-            
-        } else if(representative().is<Dropdown>()) {
-            if constexpr(takes_attribute<Dropdown, T>)
-            {
-                representative().to<Dropdown>()->set(attribute);
-            }
-            
-        } else if(representative().is<Checkbox>()) {
-            if constexpr(takes_attribute<Checkbox, T>)
-            {
-                representative().to<Checkbox>()->set(attribute);
-            }
-        } else if(representative().is<List>()) {
-            if constexpr(takes_attribute<List, T>)
-            {
-                representative().to<List>()->set(attribute);
-            }
-        } else if(representative().is<ScrollableList<>>()) {
-            if constexpr(takes_attribute<ScrollableList<>, T>)
-            {
-                representative().to<ScrollableList<>>()->set(attribute);
-            }
-        }
-    }
-    
-    static std::unique_ptr<LabeledField> Make(std::string parm, bool invert = false);
-    static std::unique_ptr<LabeledField> Make(std::string parm, std::string desc);
-};
-
-class Combobox : public Entangled {
-public:
-    struct Settings {
-        Bounds bounds = Bounds(0, 0, 100, 33);
-        Color fill_clr = Drawable::accent_color;
-        Color line_clr = Black.alpha(200);
-        Color text_clr = White;
-        Font font = Font(0.75, Align::Center);
-        std::string param;
-    };
-    
-protected:
-    Settings _settings;
-    
-    HorizontalLayout _layout;
-    derived_ptr<Dropdown> _dropdown;
-    std::unique_ptr<LabeledField> _value;
-    
-public:
-    template<typename... Args>
-    Combobox(Args... args)
-    {
-        create(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    void create(Args... args) {
-        (set(std::forward<Args>(args)), ...);
-        init();
-    }
-    
-public:
-    using Entangled::set;
-    
-    void set(attr::Font font);
-    void set(attr::FillClr clr) override;
-    void set(attr::LineClr clr) override;
-    void set(attr::TextClr clr);
-    
-    void set(std::function<void()> on_click) {
-        if(on_click)
-            this->on_click([on_click](auto) { on_click(); });
-    }
-    void set(ParmName name);
-    
-    void set_bounds(const Bounds& bds) override;
-    void set_pos(const Vec2& p) override;
-    void set_size(const Size2& p) override;
-    
-protected:
-    void init();
-    void update() override;
-};
-
-struct LabeledCombobox : public LabeledField {
-    gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(const std::string& name = "");
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        LabeledField::add_to(v);
-        v.push_back(_combo);
-    }
-    void update() override;
-    Layout::Ptr representative() override { return _combo; }
-};
-struct LabeledTextField : public LabeledField {
-    gui::derived_ptr<gui::Textfield> _text_field;
-    sprite::Reference _ref;
-    LabeledTextField(const std::string& name = "");
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        LabeledField::add_to(v);
-        v.push_back(_text_field);
-    }
-    void update() override;
-    Layout::Ptr representative() override { return _text_field; }
-};
-struct LabeledDropDown : public LabeledField {
-    gui::derived_ptr<gui::Dropdown> _dropdown;
-    sprite::Reference _ref;
-    LabeledDropDown(const std::string& name = "");
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        LabeledField::add_to(v);
-        v.push_back(_dropdown);
-    }
-    void update() override;
-    Layout::Ptr representative() override { return _dropdown; }
-};
-struct LabeledList : public LabeledField {
-    gui::derived_ptr<gui::ScrollableList<>> _list;
-    sprite::Reference _ref;
-    LabeledList(const std::string& name = "");
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        LabeledField::add_to(v);
-        v.push_back(_list);
-    }
-    void update() override;
-    Layout::Ptr representative() override { return _list; }
-};
-struct LabeledPath : public LabeledField {
-    class FileItem {
-        GETTER(file::Path, path)
-        
-    public:
-        FileItem(const file::Path& path = "");
-        
-        Color base_color() const;
-        Color color() const;
-        operator std::string() const;
-        bool operator!=(const FileItem& other) const {
-            return _path != other._path;
-        }
-    };
-    
-    gui::derived_ptr<gui::Dropdown> _dropdown;
-    sprite::Reference _ref;
-    
-    std::vector<FileItem> _names;
-    std::vector<Dropdown::TextItem> _search_items;
-    std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
-    file::Path _path;
-    std::function<bool(file::Path)> _validity;
-    
-    LabeledPath(std::string name, file::Path path = "");
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        LabeledField::add_to(v);
-        v.push_back(_dropdown);
-    }
-    void update() override;
-    void update_names();
-    void change_folder(const file::Path&);
-    Layout::Ptr representative() override { return _dropdown; }
-};
-struct LabeledCheckbox : public LabeledField {
-    gui::derived_ptr<gui::Checkbox> _checkbox;
-    bool _invert{false};
-    sprite::Reference _ref;
-    LabeledCheckbox(const std::string& name = "", bool invert = false);
-    void add_to(std::vector<Layout::Ptr>& v) override {
-        //LabeledField::add_to(v);
-        v.push_back(_checkbox);
-    }
-    void update() override;
-    Layout::Ptr representative() override { return _checkbox; }
-    void set_description(std::string) override;
-};
-
-template <typename T> constexpr std::string_view type_name();
-
-template <>
-constexpr std::string_view type_name<void>()
-{ return "void"; }
-
-namespace detail {
-
-using type_name_prober = void;
-
-template <typename T>
-constexpr std::string_view wrapped_type_name()
-{
-#ifdef __clang__
-    return __PRETTY_FUNCTION__;
-#elif defined(__GNUC__)
-    return __PRETTY_FUNCTION__;
-#elif defined(_MSC_VER)
-    return __FUNCSIG__;
-#else
-#error "Unsupported compiler"
-#endif
-}
-
-constexpr std::size_t wrapped_type_name_prefix_length() {
-    return wrapped_type_name<type_name_prober>().find(type_name<type_name_prober>());
-}
-
-constexpr std::size_t wrapped_type_name_suffix_length() {
-    return wrapped_type_name<type_name_prober>().length()
-        - wrapped_type_name_prefix_length()
-        - type_name<type_name_prober>().length();
-}
-
-} // namespace detail
-
-template <typename T>
-constexpr std::string_view type_name() {
-    constexpr auto wrapped_name = detail::wrapped_type_name<T>();
-    constexpr auto prefix_length = detail::wrapped_type_name_prefix_length();
-    constexpr auto suffix_length = detail::wrapped_type_name_suffix_length();
-    constexpr auto type_name_length = wrapped_name.length() - prefix_length - suffix_length;
-    return wrapped_name.substr(prefix_length, type_name_length);
-}
-
-//template <typename T>
-//struct Variable : Variable<decltype(&T::operator())>
-//{ };
-
-//template<class T> class Variable;
-template<class return_type, typename... arg_types>
-class Variable;
-
-template<class F, typename R = typename cmn::detail::return_type<F>::type, typename arg = typename  cmn::detail::arg_type<F>::type>
-Variable(F&&) -> Variable<R, arg>;
-
-template<typename... _Args>
-class VarBase;
-
-template <typename T>
-struct arg_types : arg_types<decltype(&T::operator())>
-{ };
-
-template <typename ClassType, typename ReturnType, typename Arg, typename... Args>
-struct arg_types<ReturnType(ClassType::*)(Arg, Args...) const>
-{
-    using type = Arg;
-};
-
-template <typename ClassType, typename ReturnType>
-struct arg_types<ReturnType(ClassType::*)() const>
-{
-    using type = void;
-};
-
-template <typename T, typename R>
-struct function_type : function_type<R, decltype(&T::operator())>
-{ };
-
-template <typename ClassType, typename R, typename ReturnType, typename... Args>
-struct function_type<R, ReturnType(ClassType::*)(Args...) const>
-{
-    using type = std::function<R(Args...)>;
-};
-
-
-template<class return_type, typename... arg_types>
-class Variable : public VarBase<arg_types...> {
-public:
-    //using return_type = typename cmn::detail::return_type<F>::type;//typename std::invoke_result_t<F>;
-    //using arg_types = typename dyn::arg_types<F>::type;
-
-private:
-    static constexpr auto refcode = type_name<return_type>();
-
-protected:
-    std::function<return_type(arg_types...)> function;
-    
-public:
-    using VarBase<arg_types...>::value_string;
-    
-public:
-    constexpr Variable(std::function<return_type(arg_types...)> fn) noexcept
-        :   VarBase<arg_types...>(refcode),
-            function(std::move(fn))
-    {
-        value_string = [this](auto... args) -> std::string {
-            if constexpr(std::same_as<std::string, return_type>)
-                return function(std::forward<decltype(args)>(args)...);
-            else if constexpr(_clean_same<sprite::Map&, return_type>) {
-                auto& map = function(args...);
-                
-                auto access = [&map](std::string key) -> std::string {
-                    auto ref = map[key];
-                    if(ref.get().valid()) {
-                        if(ref.template is_type<std::string>()
-                           || ref.template is_type<file::Path>())
-                        {
-                            auto str = ref.get().valueString();
-                            if(str.length() >= 2)
-                                return str.substr(1, str.length()-2);
-                        }
-                        return ref.get().valueString();
-                    }
-                    throw std::invalid_argument("Cannot find given parameter.");
-                };
-                
-                return ( access(args), ... );
-                
-            }
-            else if constexpr(_clean_same<sprite::ConstReference, return_type> || _clean_same<sprite::Reference, return_type>) {
-                auto r = function(std::forward<decltype(args)>(args)...);
-                if(r.get().valid()) {
-                    if constexpr(_clean_same<std::string, return_type>) {
-                        auto str = r.get().valueString();
-                        print("IS STRING: ", str);
-                        return str.length() < 2 ? "" : str.substr(1, str.length()-2);
-                    }
-                    return r.get().valueString();
-                } else
-                    return "null";
-            } else
-                return Meta::toStr( function(std::forward<decltype(args)>(args)...) );
-        };
-    }
-
-    template<typename... Args>
-    constexpr return_type get(Args... args) const noexcept {
-        return function(std::forward<Args>(args)...);
-    }
-};
-
-template<typename... _Args>
-class VarBase {
-protected:
-    const std::string_view type;
-    
-public:
-    std::function<std::string(_Args...)> value_string;
-    
-public:
-    VarBase(std::string_view type) : type(type) {}
-    virtual ~VarBase() {}
-    
-    template<typename T>
-    constexpr bool is() const noexcept {
-        //return dynamic_cast<const Variable<T,  _Args...>*>(this) != nullptr;
-        //
-        
-        return type == type_name<T>();
-    }
-
-    template<typename T>
-    constexpr T value(_Args... args) const noexcept {
-        using Target_t = const Variable<T, _Args...>*;
-        static_assert(std::same_as<const VarBase<_Args...>*, decltype(this)>);
-        
-        assert(dynamic_cast<Target_t>(this) != nullptr);
-        return static_cast<Target_t>(this)->get(std::forward<_Args>(args)...);
-    }
-
-    constexpr auto class_name() const { return type; }
-};
 
 ENUM_CLASS(LayoutType,
            each,
@@ -453,7 +52,6 @@ inline Color parse_color(const auto& obj) {
                  a);
 }
 
-
 using VarBase_t = VarBase<std::string>;
 using VarReturn_t = sprite::Reference;
 
@@ -477,8 +75,61 @@ struct IfBody {
     Layout::Ptr _else;
 };
 
+// Index class manages unique identifiers for objects.
+class Index {
+public:
+    // A chain of unique IDs (uint64_t) representing hierarchical levels.
+    std::vector<uint64_t> id_chain{ 1u };
+
+    // Global atomic counter used for generating unique IDs.
+    inline static std::atomic<uint64_t> _global_id{1u};
+    
+public:
+    // Push a new unique ID to the id_chain, representing a new level.
+    void push_level() {
+        id_chain.push_back(++_global_id);
+    }
+    
+    // Remove the last ID from the id_chain, effectively stepping out of the current level.
+    void pop_level() {
+        if(id_chain.empty()) {
+            throw std::invalid_argument("id_chain is empty.");
+        }
+        id_chain.pop_back();
+    }
+    
+    // Increment the global ID counter and update the last ID in id_chain.
+    void inc() {
+        assert(!id_chain.empty());
+        ++_global_id;
+        id_chain.back() = _global_id;
+    }
+    
+    // Returns the last ID in id_chain as the hash.
+    // This assumes that the last ID is unique across all instances.
+    std::size_t hash() const {
+        return id_chain.back();
+    }
+};
+
+class IndexScopeHandler {
+private:
+    Index& index;
+public:
+    IndexScopeHandler(Index& idx) : index(idx) {
+        index.push_level();
+    }
+
+    ~IndexScopeHandler() {
+        index.pop_level();
+    }
+
+    // Disallow copying and moving
+    IndexScopeHandler(const IndexScopeHandler&) = delete;
+    IndexScopeHandler& operator=(const IndexScopeHandler&) = delete;
+};
+
 struct State {
-    size_t object_index{0};
     robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, std::string>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
@@ -488,11 +139,12 @@ struct State {
     Layout::Ptr _settings_tooltip;
     std::unordered_map<std::string, std::tuple<size_t, Image::Ptr>> _image_cache;
     
+    Index _current_index;
+    
     State() = default;
     State(State&&) = default;
     State(const State& other)
-        : object_index(other.object_index),
-          patterns(other.patterns),
+        : patterns(other.patterns),
           display_fns(other.display_fns),
           ifs(other.ifs)
     {
