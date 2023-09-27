@@ -70,10 +70,11 @@ namespace gui {
         GETTER(Font, font)
         GETTER(Color, item_color)
         GETTER(Color, text_color)
-        float _line_spacing, _previous_width;
-        GETTER_SETTER(long, last_hovered_item)
-        GETTER(long, last_selected_item)
-        GETTER(bool, stays_toggled)
+        float _line_spacing, _previous_width{-1};
+        GETTER_SETTER_I(long, last_hovered_item, -1)
+        GETTER_I(long, last_selected_item, -1)
+        GETTER_I(bool, stays_toggled, false)
+        GETTER_I(bool, alternating_rows, false)
         
         std::map<Drawable*, size_t> rect_to_idx;
         
@@ -88,11 +89,7 @@ namespace gui {
               _font(font),
               _item_color(Color(100, 100, 100, 200)),
               _text_color(White),
-              _line_spacing(Base::default_line_spacing(_font) + item_padding.y * 2),
-              _previous_width(-1),
-              _last_hovered_item(-1),
-              _last_selected_item(-1),
-              _stays_toggled(false)
+              _line_spacing(Base::default_line_spacing(_font) + item_padding.y * 2)
         {
             for(auto &item : objs) {
                 _items.push_back(Item<T>(item));
@@ -196,6 +193,14 @@ namespace gui {
             _text_color = text_color;
             for(auto t : _texts)
                 t->set_color(text_color);
+        }
+        
+        void set_alternating(bool alternate) {
+            if(_alternating_rows == alternate)
+                return;
+            
+            _alternating_rows = alternate;
+            set_content_changed(true);
         }
         
         using Entangled::set;
@@ -346,7 +351,6 @@ namespace gui {
                 auto detail_font = this->detail_font(font());
                 for(size_t i=0; i<_rects.size(); i++) {
                     _rects.at(i)->set_size(Size2(width(), item_height));
-                    _rects.at(i)->set(attr::LineClr{Blue});
                     _texts.at(i)->set_default_font(_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
@@ -355,7 +359,7 @@ namespace gui {
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
-                    _rects.push_back(new Rect(Bounds(0, 0, width(), item_height), FillClr{Transparent}));
+                    _rects.push_back(new Rect(Bounds(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
                     _rects.back()->set_clickable(true);
                     _rects.back()->on_hover([r = _rects.back(), this](Event e) {
                         if(!e.hover.hovered)
@@ -369,7 +373,7 @@ namespace gui {
                         }
                     });
                     
-                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0), attr::LineClr{Red}));
+                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0)));
                     if constexpr(has_detail<T>) {
                         _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
                     }
@@ -471,7 +475,7 @@ namespace gui {
                         if(_font.align == Align::Center) {
                             float ycenter = y + item_height * 0.5;
                             float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
-                            print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
+                            //print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
                             
                             _texts.at(idx)->set_pos(Vec2{
                                 (width() - _texts.at(idx)->width()) * 0.5f, 
@@ -531,6 +535,11 @@ namespace gui {
                     base_color = _items[idx].value().base_color();
                 else
                     base_color = _item_color;
+                
+                if(_alternating_rows) {
+                    if(idx% 2 == 0)
+                        base_color = base_color.exposureHSL(1.5);
+                }
 
                 if (rect->pressed() || (_stays_toggled && (long)rect_to_idx[rect] == _last_selected_item))
                     rect->set_fillclr(base_color.exposure(0.15f));

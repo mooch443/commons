@@ -460,11 +460,17 @@ int main(int argc, char**argv) {
     State state;
     std::vector<Layout::Ptr> objects;
     
-    ScrollableList<DetailItem> list(Bounds(200,200,300,600));
+    ScrollableList<DetailItem> list(Bounds(200,200,300,400));
     list.set_items(std::vector<DetailItem>{
-        { "Title", "detail" },
+        { "<b>Title</b>", "detail" },
         { "Title2", "detail2" },
         { "Title3", "detail/to/other/path/very/long/text" },
+        { "Title4", "d3t4il" },
+        { "Title4", "d3t4il" },
+        { "Title4", "d3t4il" },
+        { "Title4", "d3t4il" },
+        { "Title4", "d3t4il" },
+        { "Title4", "d3t4il" },
         { "Title4", "d3t4il" }
     });
     list.set_font(Font(0.75, Align::Center));

@@ -397,7 +397,7 @@ void GridLayout::init() {
     
     on_hover([this](Event e){
         _last_hover = Vec2(e.hover.x, e.hover.y);
-        print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
+        //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
         update_hover();
         set_content_changed(true);
     });
