@@ -192,7 +192,7 @@ namespace gui {
             
             _text_color = text_color;
             for(auto t : _texts)
-                t->set_color(text_color);
+                t->set_text_color(text_color);
         }
         
         void set_alternating(bool alternate) {
