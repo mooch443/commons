@@ -136,10 +136,8 @@ DataFormat::~DataFormat() {
 }
 
 void DataFormat::close() {
-    if(f) {
-        fclose(f);
-        f = NULL;
-    }
+    if(f)
+        f = nullptr;
     
     if(_mmapped) {
 #if !defined(WIN32)
@@ -268,10 +266,10 @@ uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
         std::lock_guard<std::mutex> guard(_internal_modification);
         if(!f)
             throw U_EXCEPTION("File is not opened yet.");
-        if(feof(f))
+        if(feof(f.get()))
             throw U_EXCEPTION("File is over.");
         
-        uint64_t ret = fread(buffer, sizeof(char), num_bytes, f);
+        uint64_t ret = fread(buffer, sizeof(char), num_bytes, f.get());
         if(ret != num_bytes)
             throw U_EXCEPTION("Read an unexpected number of bytes (",ret," != ",num_bytes,") at position ",_file_offset," / ",_reading_file_size,".");
         
@@ -328,7 +326,7 @@ uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
         throw U_EXCEPTION("File is not opened yet.");
     
     uint64_t written;
-    if((written = fwrite(buffer, sizeof(char), num_bytes, f)) != num_bytes) {
+    if((written = std::fwrite(buffer, sizeof(char), num_bytes, f.get())) != num_bytes) {
 #ifdef __cpp_lib_filesystem
 // code only compiled when targeting Mac OS X and not iPhone
 // note use of 1050 instead of __MAC_10_5

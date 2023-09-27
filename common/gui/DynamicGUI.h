@@ -78,37 +78,27 @@ struct IfBody {
 // Index class manages unique identifiers for objects.
 class Index {
 public:
-    // A chain of unique IDs (uint64_t) representing hierarchical levels.
-    std::vector<uint64_t> id_chain{ 1u };
-
     // Global atomic counter used for generating unique IDs.
-    inline static std::atomic<uint64_t> _global_id{1u};
+    uint64_t _global_id{1u};
     
 public:
     // Push a new unique ID to the id_chain, representing a new level.
     void push_level() {
-        id_chain.push_back(++_global_id);
     }
     
     // Remove the last ID from the id_chain, effectively stepping out of the current level.
     void pop_level() {
-        if(id_chain.empty()) {
-            throw std::invalid_argument("id_chain is empty.");
-        }
-        id_chain.pop_back();
     }
     
     // Increment the global ID counter and update the last ID in id_chain.
     void inc() {
-        assert(!id_chain.empty());
         ++_global_id;
-        id_chain.back() = _global_id;
     }
     
     // Returns the last ID in id_chain as the hash.
     // This assumes that the last ID is unique across all instances.
-    std::size_t hash() const {
-        return id_chain.back();
+    std::size_t hash() {
+        return _global_id++;
     }
 };
 
@@ -146,13 +136,14 @@ struct State {
     State(const State& other)
         : patterns(other.patterns),
           display_fns(other.display_fns),
-          ifs(other.ifs)
+          ifs(other.ifs),
+          _current_index(other._current_index)
     {
         for(auto &[k, body] : other.loops) {
             loops[k] = {
                 .variable = body.variable,
                 .child = body.child,
-                .state = std::make_unique<State>(),//*body.state),
+                .state = std::make_unique<State>(*body.state),
                 .cache = body.cache
             };
         }

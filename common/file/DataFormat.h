@@ -200,7 +200,7 @@ namespace cmn {
     private:
         std::string _project_name;
         const file::Path _filename;
-        FILE *f;
+        file::FilePtr f;
         uint64_t _file_offset;
         bool _mmapped;
         int fd;
@@ -235,7 +235,7 @@ namespace cmn {
         virtual void stop_writing();
         virtual void close();
         
-        [[nodiscard("This method tells you whether the file is open.")]] bool is_open() const { return f != NULL || _mmapped; }
+        [[nodiscard("This method tells you whether the file is open.")]] bool is_open() const { return f || _mmapped; }
         
         const file::Path& filename() const { return _filename; }
         const std::string& project_name() const { return _project_name; }
@@ -246,7 +246,7 @@ namespace cmn {
         
     public:
         DataFormat(const file::Path& filename, const std::string& proj_name = "untitled")
-        : _project_name(proj_name), _filename(filename), f(NULL), _file_offset(0), _mmapped(false), fd(0), _open_for_writing(false), _open_for_modifying(false), _header_written(false)
+        : _project_name(proj_name), _filename(filename), _file_offset(0), _mmapped(false), fd(0), _open_for_writing(false), _open_for_modifying(false), _header_written(false)
         {}
         
         // reading some data from the opened file
@@ -262,9 +262,9 @@ namespace cmn {
                 if(!f)
                     throw U_EXCEPTION("File not open.");
 #ifdef WIN32
-				_fseeki64(f, (int64_t)pos, SEEK_SET);
+				_fseeki64(f.get(), (int64_t)pos, SEEK_SET);
 #else
-                fseeko(f, (off_t)pos, SEEK_SET);
+                fseeko(f.get(), (off_t)pos, SEEK_SET);
 #endif
             }
             _file_offset = pos;

@@ -382,18 +382,18 @@ typedef cv::Matx<ScalarType, 4, 4> Mat44;
 #define RADIANS(degree) ((degree) * (cmn::ScalarType(1.0) / cmn::ScalarType(180) * cmn::ScalarType(M_PI)))
 #define SQR(X) ((X)*(X))
 
-#define GETTER_CONST(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE& VAR() const { return _##VAR; } protected:
-#define GETTER(TYPE, VAR) protected: TYPE _##VAR; public: const TYPE& VAR() const { return _##VAR; } protected:
-#define GETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: const TYPE& VAR() const { return _##VAR; } protected:
-#define GETTER_NCONST(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE& VAR() const { return _##VAR; } inline TYPE& VAR() { return _##VAR; } protected:
-#define GETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE VAR() const { return _##VAR; } inline TYPE & VAR() { return _##VAR; } protected:
-#define GETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline TYPE VAR() const { return _##VAR; } inline TYPE & VAR() { return _##VAR; } protected:
+#define GETTER_CONST(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline TYPE& VAR() const { return _##VAR; } protected:
+#define GETTER(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] const TYPE& VAR() const { return _##VAR; } protected:
+#define GETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: [[nodiscard]] const TYPE& VAR() const { return _##VAR; } protected:
+#define GETTER_NCONST(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline const TYPE& VAR() const { return _##VAR; } [[nodiscard]] inline TYPE& VAR() { return _##VAR; } protected:
+#define GETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline TYPE VAR() const { return _##VAR; } [[nodiscard]] inline TYPE & VAR() { return _##VAR; } protected:
+#define GETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: [[nodiscard]] inline TYPE VAR() const { return _##VAR; } [[nodiscard]] inline TYPE & VAR() { return _##VAR; } protected:
 #define GETTER_CONST_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE VAR() const { return _##VAR; } protected:
-#define GETTER_NREF(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE VAR() const { return _##VAR; } inline TYPE VAR() { return _##VAR; } protected:
-#define GETTER_SETTER(TYPE, VAR) protected: TYPE _##VAR; public: inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
-#define GETTER_SETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
-#define GETTER_SETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
-#define GETTER_SETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
+#define GETTER_NREF(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline const TYPE VAR() const { return _##VAR; } [[nodiscard]] inline TYPE VAR() { return _##VAR; } protected:
+#define GETTER_SETTER(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
+#define GETTER_SETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: [[nodiscard]] inline const TYPE& VAR() const { return _##VAR; } inline void set_##VAR(const TYPE& value) { _##VAR = value; } protected:
+#define GETTER_SETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
+#define GETTER_SETTER_PTR_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: [[nodiscard]] inline TYPE VAR() const { return _##VAR; } inline void set_##VAR(TYPE value) { _##VAR = value; } protected:
 #define IMPLEMENT(VAR) decltype( VAR ) VAR
 
 template<typename T0, typename T1,

@@ -14,7 +14,6 @@
 						"type": "collection",
 						"line": [255,0,0,255],
 						"pos":[300,100],
-						"size":"auto",
 						"children": [
 							{ "type":"text", "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[20,20,20], "line":[255,0,0,255] },
 							{ "type":"text", "pos":[1.5,1.5], "text":"total:{fps:2d}fps net:{net_fps}fps video:{vid_fps}", "font":{"size":0.75,"style":"regular"}, "color":[255,255,255], "line":[255,0,0,255] }

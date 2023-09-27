@@ -51,7 +51,7 @@
 #endif
 
 namespace file {
-    char Path::os_sep() { return OS_SEP; }
+    char Path::os_sep() noexcept { return OS_SEP; }
 
 #ifdef USE_STD_FILESYSTEM
 Path Path::absolute() const {
@@ -127,7 +127,7 @@ Path Path::absolute() const {
         return Path(Meta::fromStr<std::string>(str));
     }
     
-    bool Path::is_absolute() const {
+    bool Path::is_absolute() const noexcept {
 #if WIN32
         return (_str.length() >= 3 && _str[1] == ':');
 #else
@@ -557,32 +557,8 @@ Path Path::absolute() const {
         
         return false;
     }
-    
-    bool Path::operator<(const Path& other) const {
-        return str() < other.str();
-    }
-    
-    bool Path::operator<=(const Path& other) const {
-        return str() <= other.str();
-    }
-    
-    bool Path::operator>(const Path& other) const {
-        return str() > other.str();
-    }
-    
-    bool Path::operator>=(const Path& other) const {
-        return str() >= other.str();
-    }
-    
-    bool operator==(const Path& lhs, const Path& rhs) {
-        return lhs.str() == rhs.str();
-    }
-    
-    bool operator!=(const Path& lhs, const Path& rhs) {
-        return lhs.str() != rhs.str();
-    }
-    
-    FILE* Path::fopen(const std::string &access_rights) const {
+        
+    FilePtr Path::fopen(const std::string& access_rights) const {
 #if WIN32 && !defined(__EMSCRIPTEN__)
         FILE* f = nullptr;
         ::fopen_s(&f, c_str(), access_rights.c_str());
@@ -591,7 +567,7 @@ Path Path::absolute() const {
         FILE* f = nullptr;
         throw U_EXCEPTION("Emscripten cannot open files.");
 #else
-        auto f = ::fopen(c_str(), access_rights.c_str());
+        FilePtr f{std::fopen(c_str(), access_rights.c_str())};
 #endif
         if(!f)
             FormatError("fopen failed (", str(), "), errno = ", errno);

@@ -3,6 +3,7 @@
 //#include <types.h>
 #ifndef NDEBUG
 #include <misc/metastring.h>
+#include <misc/format.h>
 #endif
 
 namespace cmn {

@@ -1,13 +1,88 @@
-#ifndef _PATH_H
-#define _PATH_H
-
-#include <misc/defines.h>
-#include <string_view>
+#pragma once
+#include <commons.pc.h>
 
 namespace file {
     using namespace cmn;
+
+    class FilePtr {
+    public:
+        FilePtr() : file_(nullptr) {}
+        
+        explicit FilePtr(FILE* file)
+            : file_(file)
+        {}
+        
+        ~FilePtr() {
+            if (file_) {
+                std::fclose(file_);
+            }
+        }
+
+        FilePtr(const FilePtr&) = delete;
+        FilePtr& operator=(const FilePtr&) = delete;
+
+        FilePtr(FilePtr&& other) noexcept : file_(other.file_) {
+            other.file_ = nullptr;
+        }
+
+        FilePtr& operator=(FilePtr&& other) noexcept {
+            if (this != &other) {
+                if (file_) {
+                    std::fclose(file_);
+                }
+                file_ = other.file_;
+                other.file_ = nullptr;
+            }
+            return *this;
+        }
+        
+        explicit operator bool() const {
+            return file_ != nullptr;
+        }
+        
+        bool operator==(const FilePtr& other) const {
+            return file_ == other.file_;
+        }
+
+        bool operator!=(const FilePtr& other) const {
+            return !(*this == other);
+        }
+
+        bool operator==(std::nullptr_t) const {
+            return file_ == nullptr;
+        }
+
+        bool operator!=(std::nullptr_t) const {
+            return file_ != nullptr;
+        }
+        
+        // Reset the FilePtr to a new value
+        void reset(FILE* newFile = nullptr) {
+            if (file_) {
+                std::fclose(file_);
+            }
+            file_ = newFile;
+        }
+
+        // Assignment operator for nullptr
+        FilePtr& operator=(std::nullptr_t) {
+            reset();
+            return *this;
+        }
+        
+        FILE* get() const {
+            return file_;
+        }
+
+    private:
+        FILE* file_;
+    };
     
     class Path {
+    public:
+        //using ManagedFile = std::unique_ptr<FILE, decltype(&fclose)>;
+
+    protected:
         //! The full path without any trailing slashes,
         //  but with file extension and filename
         GETTER(std::string, str)
@@ -17,46 +92,52 @@ namespace file {
         Path(const char* c);
         Path(std::string_view sv);
         
-        const char* c_str() const { return _str.c_str(); }
+        // Accessors
+        const char* c_str() const noexcept { return _str.c_str(); }
         
         //! Concatenation
         //  Path p = "Users" / username / "Desktop"
         Path& operator/=(const Path&);
         Path& append(const Path&);
         
-        static char os_sep();
-        bool is_absolute() const;
-        bool empty() const { return _str.empty(); }
+        //! Comparison operators:
+        auto operator<=>(const Path& other) const noexcept = default;
+        bool operator==(const Path& other) const noexcept = default;
+        bool operator!=(const Path& other) const noexcept = default;
+        
+        static char os_sep() noexcept;
+        [[nodiscard]] bool is_absolute() const noexcept;
+        [[nodiscard]] bool empty() const noexcept { return _str.empty(); }
         
         //! Returns the last filename, removes the path
         std::string_view filename() const;
         
         //! Returns path, removes last filename
-        Path remove_filename() const;
+        [[nodiscard]] Path remove_filename() const;
         
         std::pair<Path, Path> split(size_t position) const;
         
         //! Checks if the given file exists
-        bool exists() const;
+        [[nodiscard]] bool exists() const;
 
         //! Returns the file size and throws exceptions if it does not exist or is a dir
-        uint64_t file_size() const;
+        [[nodiscard]] uint64_t file_size() const;
         
         //! Returns the last modified time
-        uint64_t last_modified() const;
+        [[nodiscard]] uint64_t last_modified() const;
         
         //! Recursively creates the folders for this path
         bool create_folder() const;
         
         //! Check whether the given filename exists and is a folder
-        bool is_folder() const;
+        [[nodiscard]] bool is_folder() const;
         
         //! Finds all files under the given path. Exception if the given
         //  path is not a folder.
-        std::set<file::Path> find_files(const std::string& filter_extension = "") const;
+        [[nodiscard]] std::set<file::Path> find_files(const std::string& filter_extension = "") const;
         
         //! Checks whether the given path is a regular file.
-        bool is_regular() const;
+        [[nodiscard]] bool is_regular() const;
         
         //! Deletes the file if it exists and is a file - otherwise returns false.
         bool delete_file() const;
@@ -67,23 +148,18 @@ namespace file {
         //! Moves the file to given destination
         bool move_to(const file::Path& to);
         
-        Path replace_extension(std::string_view ext) const;
-        Path add_extension(std::string_view ext) const;
-        bool has_extension() const;
-        Path remove_extension(const std::string& = "") const;
+        [[nodiscard]] Path replace_extension(std::string_view ext) const;
+        [[nodiscard]] Path add_extension(std::string_view ext) const;
+        [[nodiscard]] bool has_extension() const;
+        [[nodiscard]] Path remove_extension(const std::string& = "") const;
         
-        FILE* fopen(const std::string& access_rights) const;
+        FilePtr fopen(const std::string& access_rights) const;
         std::vector<char> retrieve_data() const;
         std::string read_file() const;
         
         std::string_view extension() const;
         
-        bool operator<(const Path& other) const;
-        bool operator<=(const Path& other) const;
-        bool operator>(const Path& other) const;
-        bool operator>=(const Path& other) const;
-        
-        file::Path absolute() const;
+        [[nodiscard]] file::Path absolute() const;
         
         explicit operator std::string() const { return str(); }
         std::string toStr() const { return str(); }
@@ -93,8 +169,6 @@ namespace file {
 
     Path operator/( const Path& lhs, const Path& rhs );
     Path operator+( const Path& lhs, const Path& rhs);
-    bool operator==(const Path& lhs, const Path& rhs);
-    bool operator!=(const Path& lhs, const Path& rhs);
     
     std::string exec(const char* cmd);
 
@@ -105,5 +179,3 @@ namespace file {
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p);
-
-#endif

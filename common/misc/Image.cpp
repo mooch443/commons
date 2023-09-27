@@ -398,7 +398,7 @@ namespace cmn {
         png_byte bit_depth;
         png_bytep *row_pointers;
         
-        FILE *fp = path.fopen("rb");
+        auto fp = path.fopen("rb");
         
         png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
         if(!png) abort();
@@ -408,7 +408,7 @@ namespace cmn {
         
         if(setjmp(png_jmpbuf(png))) abort();
         
-        png_init_io(png, fp);
+        png_init_io(png, fp.get());
         
         png_read_info(png, info);
         
@@ -451,8 +451,6 @@ namespace cmn {
         }
         
         png_read_image(png, row_pointers);
-        
-        fclose(fp);
         
         static_assert(sizeof(png_byte) == sizeof(uchar), "Must be the same.");
         

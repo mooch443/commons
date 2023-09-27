@@ -2,8 +2,8 @@
 
 #include <commons.pc.h>
 #include <file/Path.h>
+#include <misc/metastring.h>
 #include <regex>
-#include <algorithm>
 
 namespace file {
 

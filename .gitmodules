@@ -9,4 +9,4 @@
 	url = https://mooch443@github.com/mooch443/flat_hash_map.git
 [submodule "robin-hood-hashing"]
 	path = robin-hood-hashing
-	url = https://github.com/martinus/robin-hood-hashing.git
+        url=https://github.com/mooch443/robin-hood-hashing.git

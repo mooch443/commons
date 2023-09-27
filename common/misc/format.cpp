@@ -23,7 +23,7 @@ file::Path& runtime_log_file() {
     return *_log_path;
 }
 
-static FILE* f{ nullptr };
+static file::FilePtr f;
 
 void set_runtime_quiet(bool quiet) {
     runtime_is_quiet = quiet;
@@ -80,8 +80,6 @@ bool has_log_file() {
 }
 void set_log_file(const std::string& path) {
     std::lock_guard guard(log_file_mutex());
-    if (f)
-        fclose(f);
     f = nullptr;
     runtime_log_file() = file::Path(path);
 }
@@ -121,15 +119,15 @@ void write_log_message(const std::string& str) {
                 "    darkgray {color:  darkgray;}\n"
                 "</style>\n";
 
-            fwrite((const void*)head, sizeof(char), sizeof(head) - 1, f);
+            fwrite((const void*)head, sizeof(char), sizeof(head) - 1, f.get());
         }
     });
 
     std::lock_guard guard(log_file_mutex());
     if (f) {
         auto r = utils::find_replace(str, { {"\n", "<br/>"}, {"\t","&nbsp;&nbsp;&nbsp;&nbsp;"} }) + "\n";
-        fwrite((void*)r.c_str(), sizeof(char), r.length(), f);
-        fflush(f);
+        fwrite((void*)r.c_str(), sizeof(char), r.length(), f.get());
+        fflush(f.get());
     }
 #endif
 }

@@ -460,20 +460,6 @@ int main(int argc, char**argv) {
     State state;
     std::vector<Layout::Ptr> objects;
     
-    /*
-     // Theoretical optimum:
-     Button("Test",
-     Loc(100, 100),
-     TextClr(Cyan))
-     
-     // Previous state:
-     Button button(
-     "Test",
-     Bounds(100, 100, 100, 33),
-     Drawable::accent_color,
-     Cyan);
-     */
-    
     ScrollableList<DetailItem> list(Bounds(200,200,300,600));
     list.set_items(std::vector<DetailItem>{
         { "Title", "detail" },
