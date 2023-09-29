@@ -139,7 +139,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         return ptr;
     } catch(const std::exception& e) {
         print("Caught exception here: ", e.what());
-        throw;
+        return nullptr;
     }
 }
 
@@ -456,7 +456,7 @@ void update_tooltips(DrawStructure& graph, State& state) {
         
         if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {
             found = ptr->representative();
-            name = key;
+            name = ptr->_ref.get().name();
             break;
         }
     }

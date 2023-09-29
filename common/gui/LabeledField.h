@@ -22,24 +22,25 @@ sprite::Map& settings_map();
 struct LabeledField {
     gui::derived_ptr<gui::Text> _text;
     std::string _docs;
+    sprite::Reference _ref;
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
-    LabeledField(const std::string& name = "")
-    : _text(std::make_shared<gui::Text>(name))
-    //_joint(std::make_shared<gui::HorizontalLayout>(std::vector<Layout::Ptr>{_text, _text_field}))
-    {
-        _text->set_font(Font(0.6f));
-        _text->set_color(White);
-    }
-    
-    virtual ~LabeledField() {}
+    LabeledField(const std::string& name, const std::string& desc);
+    virtual ~LabeledField();
     
     virtual void add_to(std::vector<Layout::Ptr>& v) {
+        assert(_text != nullptr);
         v.push_back(_text);
     }
     virtual void update() {}
     virtual Layout::Ptr representative() { return _text; }
     virtual void set_description(std::string);
+    
+    LabeledField(LabeledField&&) = default;
+    LabeledField(const LabeledField&) = delete;
+    
+    LabeledField& operator=(const LabeledField&) = delete;
+    LabeledField& operator=(LabeledField&&) = default;
     
     template<typename T>
     void set(T attribute) {
@@ -142,7 +143,7 @@ protected:
 
 struct LabeledCombobox : public LabeledField {
     gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(const std::string& name = "");
+    LabeledCombobox(const std::string& name, const std::string& desc);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_combo);
@@ -152,19 +153,18 @@ struct LabeledCombobox : public LabeledField {
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
-    sprite::Reference _ref;
-    LabeledTextField(const std::string& name = "");
+    LabeledTextField(const std::string& name, const std::string& desc);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_text_field);
+        assert(_text_field != nullptr);
     }
     void update() override;
     Layout::Ptr representative() override { return _text_field; }
 };
 struct LabeledDropDown : public LabeledField {
     gui::derived_ptr<gui::Dropdown> _dropdown;
-    sprite::Reference _ref;
-    LabeledDropDown(const std::string& name = "");
+    LabeledDropDown(const std::string& name, const std::string& desc);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
@@ -173,9 +173,8 @@ struct LabeledDropDown : public LabeledField {
     Layout::Ptr representative() override { return _dropdown; }
 };
 struct LabeledList : public LabeledField {
-    gui::derived_ptr<gui::ScrollableList<>> _list;
-    sprite::Reference _ref;
-    LabeledList(const std::string& name = "");
+    gui::derived_ptr<gui::List> _list;
+    LabeledList(const std::string& name, const std::string& desc);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_list);
@@ -199,15 +198,13 @@ struct LabeledPath : public LabeledField {
     };
     
     gui::derived_ptr<gui::Dropdown> _dropdown;
-    sprite::Reference _ref;
-    
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
     std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
     file::Path _path;
     std::function<bool(file::Path)> _validity;
     
-    LabeledPath(std::string name, file::Path path = "");
+    LabeledPath(std::string name, const std::string& desc, file::Path path);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
@@ -220,8 +217,14 @@ struct LabeledPath : public LabeledField {
 struct LabeledCheckbox : public LabeledField {
     gui::derived_ptr<gui::Checkbox> _checkbox;
     bool _invert{false};
-    sprite::Reference _ref;
-    LabeledCheckbox(const std::string& name = "", bool invert = false);
+    LabeledCheckbox(const std::string& name, const std::string& desc, bool invert = false);
+    LabeledCheckbox(LabeledCheckbox&&) = default;
+    LabeledCheckbox(const LabeledCheckbox&) = delete;
+    
+    LabeledCheckbox& operator=(const LabeledCheckbox&) = delete;
+    LabeledCheckbox& operator=(LabeledCheckbox&&) = default;
+    
+    ~LabeledCheckbox();
     void add_to(std::vector<Layout::Ptr>& v) override {
         //LabeledField::add_to(v);
         v.push_back(_checkbox);

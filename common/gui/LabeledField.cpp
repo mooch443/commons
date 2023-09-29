@@ -13,6 +13,28 @@ sprite::Map& settings_map() {
     return settings_scene::temp_settings;
 }
 
+LabeledField::LabeledField(const std::string& name, const std::string& desc)
+    : _text(std::make_shared<gui::Text>(desc)), _ref(settings_map()[name])
+{
+    if(name.empty())
+        throw std::invalid_argument("Name cannot be empty.");
+    _text->set_font(Font(0.6f));
+    _text->set_color(White);
+    
+    print("Registering callback for ", name);
+    
+    settings_map().register_callback(Meta::toStr((uint64_t)this), [this, name](auto, auto&, auto& n, auto&)
+    {
+        if(n == name) {
+            update();
+        }
+    });
+}
+
+LabeledField::~LabeledField() {
+    settings_map().unregister_callback(Meta::toStr((uint64_t)this));
+}
+
 void Combobox::init() {
     _dropdown = std::make_shared<Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
     auto keys = settings_map().keys();
@@ -125,8 +147,8 @@ void Combobox::set_size(const Size2& p) {
     Entangled::set_size(p);
 }
 
-LabeledCombobox::LabeledCombobox(const std::string& name)
-    : LabeledField(name),
+LabeledCombobox::LabeledCombobox(const std::string& name, const std::string& desc)
+    : LabeledField(name, desc),
     _combo(std::make_shared<Combobox>())
 {}
 
@@ -146,7 +168,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, std::string d
 
 std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, bool invert) {
     if(parm.empty()) {
-        auto ptr = std::make_unique<LabeledCombobox>();
+        auto ptr = std::make_unique<LabeledCombobox>("", "");
         return ptr;
     }
     
@@ -156,28 +178,34 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, bool invert) 
     
     std::unique_ptr<LabeledField> ptr;
     if(ref.is_type<bool>()) {
-        ptr = std::make_unique<LabeledCheckbox>(parm, invert);
+        ptr = std::make_unique<LabeledCheckbox>(parm, parm,invert);
         
     } else if(ref.is_type<std::string>()) {
-        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr = std::make_unique<LabeledTextField>(parm, parm);
         ptr->representative().to<Textfield>()->set_text(ref.value<std::string>());
     } else if(ref.is_type<int>() || ref.is_type<float>() || ref.is_type<double>()
               || ref.is_type<uint8_t>() || ref.is_type<uint16_t>()
               || ref.is_type<uint64_t>()
               || ref.is_type<timestamp_t>())
     {
-        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr = std::make_unique<LabeledTextField>(parm, parm);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
     } else if(ref.is_type<file::Path>()) {
-        ptr = std::make_unique<LabeledPath>(parm, ref.value<file::Path>());
+        ptr = std::make_unique<LabeledPath>(parm, parm, ref.value<file::Path>());
         //ptr->representative().to<Dropdown>()->set_text(ref.value<file::Path>().str());
     } else if(ref.get().is_enum()) {
-        ptr = std::make_unique<LabeledList>(parm);
-        auto list = ptr->representative().to<ScrollableList<>>();
+        ptr = std::make_unique<LabeledList>(parm, parm);
+        auto list = ptr->representative().to<List>();
         auto values = ref.get().enum_values()();
         auto index = ref.get().enum_index()();
         
-        list->set_items(values);
+        std::vector<std::shared_ptr<List::Item>> vs;
+        for(auto& v : values)
+            vs.push_back(std::make_shared<TextItem>(v));
+        
+        list->set_foldable(true);
+        list->set_folded(true);
+        list->set_items(vs);
         list->select_item(index);
         
         //ptr = std::make_unique<LabeledDropDown>(parm);
@@ -185,25 +213,23 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, bool invert) 
         //ptr->representative().to<Dropdown>()->set_items(std::vector<Dropdown::TextItem>(values.begin(), values.end()));
         //ptr->representative().to<Dropdown>()->select_item(index);
     } else {
-        ptr = std::make_unique<LabeledTextField>(parm);
+        ptr = std::make_unique<LabeledTextField>(parm, parm);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
         //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
     }
     return ptr;
 }
 
-LabeledCheckbox::LabeledCheckbox(const std::string& name, bool invert)
-: LabeledField(name),
-_checkbox(std::make_shared<gui::Checkbox>(attr::Loc(), name)),
-_invert(invert),
-_ref(settings_map()[name])
+LabeledCheckbox::LabeledCheckbox(const std::string& name, const std::string& desc, bool invert)
+: LabeledField(name, desc),
+_checkbox(std::make_shared<gui::Checkbox>(attr::Loc(), desc)),
+_invert(invert)
 {
     _docs = settings_scene::temp_docs[name];
     
     _checkbox->set_checked(_invert
                            ? not _ref.value<bool>()
                            : _ref.value<bool>());
-    print(name, ": Initially set checkbox to ", _checkbox->checked(), " with invert ", _invert, " for ", _ref.get().valueString());
     _checkbox->set_font(Font(0.7f));
     
     _checkbox->on_change([this](){
@@ -222,19 +248,21 @@ _ref(settings_map()[name])
 
 void LabeledCheckbox::update() {
     _checkbox->set_checked(_invert ? not _ref.value<bool>() : _ref.value<bool>());
-    print("Setting checkbox to ", _checkbox->checked());
+    print("Checkbox for ", _ref.get().name(), " is ", _checkbox->checked());
 }
 
 void LabeledCheckbox::set_description(std::string desc) {
     _checkbox.to<Checkbox>()->set_text(desc);
 }
 
-LabeledTextField::LabeledTextField(const std::string& name)
-: LabeledField(name),
-_text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
-_ref(settings_scene::temp_settings[name])
+LabeledCheckbox::~LabeledCheckbox() {
+}
+
+LabeledTextField::LabeledTextField(const std::string& name, const std::string& desc)
+: LabeledField(name, desc),
+_text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
-    _text_field->set_placeholder(name);
+    _text_field->set_placeholder(desc);
     _text_field->set_font(Font(0.7f));
     
     _docs = settings_scene::temp_docs[name];
@@ -253,46 +281,62 @@ void LabeledTextField::update() {
     if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
         str = str.substr(1,str.length()-2);
     }
-    _text_field->set_text(str);
+    if(str != _text_field.to<Textfield>()->text()) {
+        _text_field->set_text(str);
+        print("Updating textfield for ", _ref.get().name(), " -> ", str);
+    }
 }
 
-LabeledList::LabeledList(const std::string& name)
-: LabeledField(name),
-_list(std::make_shared<gui::ScrollableList<>>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
-_ref(settings_scene::temp_settings[name])
+LabeledList::LabeledList(const std::string& name, const std::string& desc)
+: LabeledField(name, desc),
+_list(std::make_shared<gui::List>(
+    Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
+  std::string(), std::vector<std::shared_ptr<List::Item>>{}, [this](List*, const List::Item& item){
+      auto index = item.ID();
+      if(index < 0)
+          return;
+      
+      try {
+          auto name = _ref.get().enum_values()().at((size_t)index);
+          auto current = _ref.get().valueString();
+          if(name != current)
+              _ref.get().set_value_from_string(name);
+      } catch(...) {}
+  }))
 {
     _docs = settings_scene::temp_docs[name];
     
     //_list->textfield()->set_font(Font(0.7f));
-    _list->set(Font(0.7f));
+    //_list->set(Font(0.7f));
     assert(_ref.get().is_enum());
-    std::vector<std::string> items;
+    std::vector<std::shared_ptr<List::Item>> items;
     for(auto &name : _ref.get().enum_values()()) {
-        items.push_back(name);
+        items.push_back(std::make_shared<TextItem>(name));
     }
     _list->set_items(items);
     _list->select_item(narrow_cast<long>(_ref.get().enum_index()()));
-    
-    _list->on_select([this](auto index, auto) {
+    /*_list->on_select([this](auto index, auto) {
         if(index < 0)
             return;
         
         try {
-            _ref.get().set_value_from_string(_ref.get().enum_values()().at((size_t)index));
+            auto name = _ref.get().enum_values()().at((size_t)index);
+            auto current = _ref.get().valueString();
+            if(name != current)
+                _ref.get().set_value_from_string(name);
         } catch(...) {}
         
         //_dropdown->set_opened(false);
-    });
+    });*/
 }
 
 void LabeledList::update() {
     _list->select_item(narrow_cast<long>(_ref.get().enum_index()()));
 }
 
-LabeledDropDown::LabeledDropDown(const std::string& name)
-: LabeledField(name),
-_dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28))),
-_ref(settings_scene::temp_settings[name])
+LabeledDropDown::LabeledDropDown(const std::string& name, const std::string& desc)
+: LabeledField(name, desc),
+_dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _docs = settings_scene::temp_docs[name];
     
@@ -340,9 +384,8 @@ Color LabeledPath::FileItem::color() const {
     return _path.is_folder() ? Color(180, 255, 255, 255) : White;
 }
 
-LabeledPath::LabeledPath(std::string name, file::Path path)
-    : LabeledField(),
-    _ref(settings_scene::temp_settings[name]),
+LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path path)
+    : LabeledField(name, ""),
     _files([](const file::Path& A, const file::Path& B) -> bool {
         return (A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str()); //A.str() == ".." || (A.str() != ".." && ((A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str())));
     }), _path(path)
@@ -375,6 +418,9 @@ LabeledPath::LabeledPath(std::string name, file::Path path)
     _dropdown->on_text_changed([this](std::string str) {
         auto path = file::Path(str);
         auto file = (std::string)path.filename();
+        
+        if(_ref.get().value<file::Path>() == path)
+            return;
         
         _ref.get() = path;
         
@@ -462,7 +508,10 @@ void LabeledPath::update_names() {
 }
 
 void LabeledPath::update() {
-    
+    if(_ref.value<file::Path>() != file::Path(_dropdown->textfield()->text())) {
+        print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
+        _dropdown->textfield()->set_text(_ref.value<file::Path>().str());
+    }
 }
 
 }

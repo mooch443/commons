@@ -22,6 +22,9 @@ Image::Ptr load_image(const file::Path& path) {
 LayoutContext::LayoutContext(const nlohmann::json& obj, State& state)
  : obj(obj), state(state)
 {
+    if(not obj.contains("type"))
+        throw std::invalid_argument("Structure does not contain type information");
+    
     auto type_name = utils::lowercase(obj["type"].get<std::string>());
     type = LayoutType::get(type_name);
     
@@ -262,7 +265,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
                 }
                 rows.emplace_back(Layout::Make<Layout>(std::move(cols)));
                 rows.back()->set_name("Row");
-                rows.back().to<Layout>()->set(LineClr{Yellow});
+                //rows.back().to<Layout>()->set(LineClr{Yellow});
                 rows.back().to<Layout>()->update();
                 rows.back().to<Layout>()->update_layout();
                 rows.back().to<Layout>()->auto_size({});
@@ -318,10 +321,20 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         invert = obj["invert"].get<bool>();
     }
     
+    std::string key = var + std::to_string(hash);
     {
-        auto &ref = state._text_fields[var];
-        ref = LabeledField::Make(var, invert);
+        {
+            print("Field var=",key, " ", state._text_fields.contains(key) ? (uint64_t)state._text_fields.at(key).get() : 0u);
+            if(not state._text_fields.contains(key) or not state._text_fields.at(key)) {
+                auto ptr = LabeledField::Make(var, invert);
+                state._text_fields.emplace(key, std::move(ptr));
+            } else {
+                print("Field var=",key," already exists: ", *state._text_fields.at(key)->_text);
+                //state._text_fields.at(key) = std::move(ptr);
+            }
+        }
         
+        auto& ref = state._text_fields.at(key);
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
         }
@@ -594,6 +607,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context& c
             ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
             IndexScopeHandler handler{state._current_index};
             auto c = parse_object(child, context, state);
+            if(not c)
+                return nullptr;
+            
             c->set_is_displayed(false);
             
             Layout::Ptr _else;

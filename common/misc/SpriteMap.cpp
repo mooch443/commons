@@ -106,7 +106,7 @@ Map::~Map() {
     : Reference(container, type, type.name()) {}
 
     std::string Reference::toStr() const {
-        return _type.toStr();
+        return _type->toStr();
     }
     
     /*_PRINT_NAME_RETURN_TYPE Reference:: _PRINT_NAME_HEAD {
@@ -122,7 +122,7 @@ Map::~Map() {
     }
     
     std::string ConstReference::toStr() const {
-        return _type.toStr();
+        return _type->toStr();
     }
     
     /*_PRINT_NAME_RETURN_TYPE ConstReference:: _PRINT_NAME_HEAD {

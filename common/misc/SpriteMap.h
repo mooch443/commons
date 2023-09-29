@@ -19,12 +19,12 @@ namespace sprite {
     
     class ConstReference {
     private:
-        const PropertyType& _type;
-        const Map& _container;
+        const PropertyType* _type;
+        const Map* _container;
         
     public:
         ConstReference(const Map& container, const PropertyType& type)
-        : _type(type), _container(container)//, _name(name)
+        : _type(&type), _container(&container)//, _name(name)
         { }
         
         bool operator==(const PropertyType& other) const;
@@ -52,22 +52,22 @@ namespace sprite {
         template<typename T>
         bool is_type() const;
         
-        const PropertyType& get() const { return _type; }
-        const Map& container() const { return _container; }
+        const PropertyType& get() const { return *_type; }
+        const Map& container() const { return *_container; }
         
         std::string toStr() const;
     };
     
     class Reference {
     private:
-        PropertyType& _type;
-        Map& _container;
-        const std::string& _name;
+        PropertyType* _type;
+        Map* _container;
+        std::string _name;
         
     public:
         Reference(Map& container, PropertyType& type);
         Reference(Map& container, PropertyType& type, const std::string& name)
-        : _type(type), _container(container), _name(name)
+        : _type(&type), _container(&container), _name(name)
         { }
         
         bool operator==(const PropertyType& other) const;
@@ -100,8 +100,8 @@ namespace sprite {
         template<typename T>
         bool is_type() const;
         
-        PropertyType& get() const { return _type; }
-        Map& container() const { return _container; }
+        PropertyType& get() const { return *_type; }
+        Map& container() const { return *_container; }
 
 		double speed() const;
 		Reference& speed(double s);
@@ -367,73 +367,73 @@ namespace sprite {
     
     template<typename T>
     Property<T>& Reference::toProperty() const {
-        return _type.toProperty<T>();
+        return _type->toProperty<T>();
     }
     
     template<typename T>
     Reference::operator const T() {
-        LockGuard guard(&_container);
-        Property<T> *tmp = dynamic_cast<Property<T>*>(&_type);
+        LockGuard guard(_container);
+        Property<T> *tmp = dynamic_cast<Property<T>*>(_type);
         if (tmp) {
             return tmp->value();
         }
         
-        std::string e = _type.valid()
+        std::string e = _type->valid()
             ? "Cannot find variable '" + _name + "' of type " + Meta::name<T>() + " in map."
-            : "Cannot cast '" + _name + "' of type " + (_type.valid() ? _type.type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
+            : "Cannot cast '" + _name + "' of type " + (_type->valid() ? _type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
     
     template<typename T>
     bool Reference::is_type() const {
-        return _type.toProperty<T>().valid();
+        return _type->toProperty<T>().valid();
     }
     
 template<typename T>
     requires (not std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
-    if (_type.valid()) {
-        _type.operator=(value);
+    if (_type->valid()) {
+        _type->operator=(value);
         
     }
     else {
-        _container.insert(_name, value);
+        _container->insert(_name, value);
     }
 }
 
 template<typename T>
     requires (std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
-    if (_type.valid()) {
-        _type.operator=(std::string(value));
+    if (_type->valid()) {
+        _type->operator=(std::string(value));
         
     }
     else {
-        _container.insert(_name, std::string(value));
+        _container->insert(_name, std::string(value));
     }
 }
 
     template<typename T>
     const Property<T>& ConstReference::toProperty() const {
-        return _type.toProperty<T>();
+        return _type->toProperty<T>();
     }
     
     template<typename T>
     ConstReference::operator const T() const {
-        Property<T> *tmp = dynamic_cast<Property<T>*>(&_type);
+        Property<T> *tmp = dynamic_cast<Property<T>*>(_type);
         if (tmp) {
             return tmp->value();
         }
         
-        std::string e = "Cannot cast " + _type.toStr() + " to value type "+ Meta::name<T>() +" .";
+        std::string e = "Cannot cast " + _type->toStr() + " to value type "+ Meta::name<T>() +" .";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
     
     template<typename T>
     bool ConstReference::is_type() const {
-        return _type.toProperty<T>().valid();
+        return _type->toProperty<T>().valid();
     }
 
     template<typename T>
