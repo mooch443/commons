@@ -560,11 +560,12 @@ Path Path::absolute() const {
         
     FilePtr Path::fopen(const std::string& access_rights) const {
 #if WIN32 && !defined(__EMSCRIPTEN__)
-        FILE* f = nullptr;
-        ::fopen_s(&f, c_str(), access_rights.c_str());
+        FILE* fptr = nullptr;
+        ::fopen_s(&fptr, c_str(), access_rights.c_str());
+        FilePtr f{fptr};
 #elif defined(__EMSCRIPTEN__)
         //!TODO: [EMSCRIPTEN] can it?
-        FILE* f = nullptr;
+        FilePtr f;
         throw U_EXCEPTION("Emscripten cannot open files.");
 #else
         FilePtr f{std::fopen(c_str(), access_rights.c_str())};
