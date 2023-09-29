@@ -55,58 +55,60 @@ public:
         return nullptr;
     }
     
-    // Specializations
-    template <>
-    Layout::Ptr create_object<LayoutType::combobox>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::image>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::vlayout>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::hlayout>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::gridlayout>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::collection>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::settings>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::button>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::checkbox>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::textfield>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::stext>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::rect>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::text>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::circle>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::each>(const Context&);
-
-    template <>
-    Layout::Ptr create_object<LayoutType::condition>(const Context&);
     
     void finalize(const Layout::Ptr& ptr);
 };
 
 Image::Ptr load_image(const file::Path& path);
+
+
+// Specializations
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::combobox>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::image>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::circle>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context&);
 
 }
