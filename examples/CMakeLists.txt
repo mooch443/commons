@@ -56,41 +56,44 @@ endif()
 
 function(copy_resources EXEC_NAME FILES)
     foreach(comp ${FILES})
-        if(IS_DIRECTORY ${comp})
-            get_filename_component(comp_s ${comp} NAME)
-            if(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
-                add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}")
-                message(STATUS "Copied directory ${comp} to $<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}")
+        get_filename_component(comp_abs ${comp} ABSOLUTE)  # Get absolute path
+        if(EXISTS ${comp_abs})
+            get_filename_component(comp_s ${comp_abs} NAME)
+            if(IS_DIRECTORY ${comp_abs})
+                if(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
+                    add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                            "${comp_abs}"
+                            "$<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}"
+                        COMMENT "Copying directory ${comp_abs} to $<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}"
+                    )
+                else()
+                    add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                            "${comp_abs}"
+                            "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                        COMMENT "Copying directory ${comp_abs} to $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                    )
+                endif()
             else()
-                add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_directory
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
-                message(STATUS "Copied directory ${comp} to $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
+                if(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
+                    add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy
+                            "${comp_abs}"
+                            "$<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}"
+                        COMMENT "Copying ${comp_abs} to $<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}"
+                    )
+                else()
+                    add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy
+                            "${comp_abs}"
+                            "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                        COMMENT "Copying ${comp_abs} to $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                    )
+                endif()
             endif()
         else()
-            get_filename_component(comp_s ${comp} NAME)
-            if(NOT "${CMAKE_SYSTEM_NAME}" MATCHES "Darwin")
-                add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}")
-                message(STATUS "Copied ${comp} to $<TARGET_FILE_DIR:${EXEC_NAME}>/${comp_s}")
-            else()
-                add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
-                message(STATUS "Copied ${comp} to $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
-                add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E create_symlink
-                        "${comp}"
-                        "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
-                message(STATUS "Created symlink for ${comp} in $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}")
-            endif()
+            message(WARNING "The file/directory ${comp_abs} does not exist.")
         endif()
     endforeach()
 endfunction()
