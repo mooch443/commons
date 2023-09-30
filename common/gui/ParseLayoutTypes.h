@@ -6,6 +6,8 @@
 
 namespace gui::dyn {
 
+Font parse_font(const nlohmann::json& obj, Font font = Font(0.75));
+
 template<typename T>
 auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash) {
     if(obj.count(name)) {
@@ -29,14 +31,17 @@ public:
     const nlohmann::json& obj;
     State& state;
     
+    DefaultSettings _defaults;
+    
     Vec2 scale;
-    Size2 size;
+    Size2 size, max_size;
     Vec2 pos;
     Vec2 origin;
     Bounds margins;
     std::string name;
     Color fill;
     Color line;
+    Color highlight_clr;
     bool clickable;
     Font font;
     uint64_t hash;
@@ -47,7 +52,7 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(const nlohmann::json& obj, State& state);
+    LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults);
     
     template <LayoutType::Class T>
     Layout::Ptr create_object(const Context&) {

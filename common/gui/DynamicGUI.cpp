@@ -72,8 +72,9 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
                          State& state)
 {
+    LayoutContext layout(obj, state, context.defaults);
     try {
-        LayoutContext layout(obj, state);
+        
         Layout::Ptr ptr;
 
         switch (layout.type) {
@@ -138,8 +139,9 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
         layout.finalize(ptr);
         return ptr;
     } catch(const std::exception& e) {
-        print("Caught exception here: ", e.what());
-        return nullptr;
+        std::string text = "Failed to make object with '"+std::string(e.what())+"' for "+ obj.dump();
+        FormatExcept("Failed to make object here ",e.what(), " for ",obj.dump());
+        return Layout::Make<ErrorElement>(attr::Content{text}, Loc{layout.pos}, Size{layout.size});
     }
 }
 
@@ -189,6 +191,36 @@ std::string parse_text(const std::string& pattern, const Context& context) {
         }
     }
     return output;
+}
+
+tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path){
+    static Timer timer;
+    if(timer.elapsed() < 0.15) {
+        return tl::unexpected("Have to wait longer to reload.");
+    }
+    timer.reset();
+    
+    auto text = path.read_file();
+    static std::string previous;
+    if(previous != text) {
+        previous = text;
+        auto obj = nlohmann::json::parse(text);
+        DefaultSettings defaults;
+        try {
+            if(obj.contains("defaults") && obj["defaults"].is_object()) {
+                auto d = obj["defaults"];
+                defaults.font = parse_font(d, defaults.font);
+                if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
+                if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
+                if(d.contains("line")) defaults.line = parse_color(d["line"]);
+            }
+        } catch(const std::exception& ex) {
+            FormatExcept("Cannot parse layout due to: ", ex.what());
+            return tl::unexpected(ex.what());
+        }
+        return std::make_tuple(defaults, obj["objects"]);
+    } else
+        return tl::unexpected("Nothing changed.");
 }
 
 void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
@@ -420,7 +452,8 @@ void update_layout(const file::Path& path, Context& context, State& state, std::
         if(result) {
             state._text_fields.clear();
             
-            auto layout = result.value();
+            auto [defaults, layout] = result.value();
+            context.defaults = defaults;
             std::vector<Layout::Ptr> objs;
             State tmp;
             for(auto &obj : layout) {
@@ -452,6 +485,9 @@ void update_tooltips(DrawStructure& graph, State& state) {
     std::unique_ptr<sprite::Reference> ref;
     
     for(auto & [key, ptr] : state._text_fields) {
+        if(not ptr)
+            continue;
+        
         ptr->_text->set_clickable(true);
         
         if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {

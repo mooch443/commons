@@ -705,26 +705,29 @@ void DrawStructure::close_dialogs() {
     }
     
     void DrawStructure::select(Drawable* d) {
-        if(d != _selected_object) {
-            Drawable * parent = NULL;
-            if(_selected_object) {
-                parent = _selected_object->parent();
-                _selected_object->deselect();
-                
-                if(d && (d == parent || d->is_child_of(parent))) {
-                    // dont deselect
-                } else {
-                    while(parent) {
-                        parent->deselect();
-                        parent = parent->parent();
-                    }
+        if(d == _selected_object)
+            return;
+        
+        Drawable * parent = NULL;
+        Drawable * previous = _selected_object;
+        _selected_object = d;
+        
+        if(previous) {
+            parent = previous->parent();
+            previous->deselect();
+            
+            if(d && d->is_child_of(parent)) {
+                // dont deselect
+            } else {
+                while(parent) {
+                    parent->deselect();
+                    parent = parent->parent();
                 }
             }
-            
-            if(d) {
-                d->select();
-            }
-            _selected_object = d;
+        }
+        
+        if(d) {
+            d->select();
         }
     }
     

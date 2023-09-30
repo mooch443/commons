@@ -41,6 +41,7 @@ namespace gui {
     protected:
         gui::Text _title;
         gui::Rect _title_background;
+        Font _item_font{0.6, Align::Center};
         
         Color _accent_color;
         
@@ -62,6 +63,25 @@ namespace gui {
     public:
         List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});
         virtual ~List() override;
+        
+        using Entangled::set;
+        void set(attr::HighlightClr clr) {
+            set_accent_color(clr);
+            //Entangled::set(clr);
+        }
+        void set(attr::Content content) {
+            set_title(content);
+        }
+        void set(Font font) {
+            font.align = Align::Center;
+            if(font != _item_font) {
+                _item_font = font;
+                set_content_changed(true);
+            }
+        }
+        void set_size(const Size2&) override;
+        void set_bounds(const Bounds&) override;
+        
         void set_display_selection(bool v) {
             if(v == _display_selection)
                 return;

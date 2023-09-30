@@ -9,7 +9,12 @@ namespace gui {
         std::shared_ptr<Base> ptr;
         Base* raw_ptr;
 
-        derived_ptr(std::shared_ptr<Base> share = nullptr) : ptr(share), raw_ptr(nullptr) {}
+        template<typename T>
+            requires std::is_base_of_v<Base, T>
+        derived_ptr(const derived_ptr<T>& share)
+            : ptr(share.ptr), raw_ptr(share.raw_ptr)
+        {}
+        derived_ptr(const std::shared_ptr<Base>& share = nullptr) : ptr(share), raw_ptr(nullptr) {}
         derived_ptr(Base* raw) : ptr(nullptr), raw_ptr(raw) {}
         
         Base& operator*() const { return ptr ? *ptr : *raw_ptr; }
@@ -90,6 +95,11 @@ namespace gui {
         void set_margins(const Bounds&);
         virtual std::string name() const override { return "HorizontalLayout"; }
         
+        using Layout::set;
+        void set(attr::Margins margins) {
+            set_margins(margins);
+        }
+        
         void update_layout() override;
     };
     
@@ -114,6 +124,11 @@ namespace gui {
         void set_policy(Policy);
         void set_margins(const Bounds&);
         virtual std::string name() const override { return "VerticalLayout"; }
+        
+        using Layout::set;
+        void set(attr::Margins margins) {
+            set_margins(margins);
+        }
         
         void update_layout() override;
     };

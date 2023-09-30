@@ -52,12 +52,31 @@ inline Color parse_color(const auto& obj) {
                  a);
 }
 
+struct DefaultSettings {
+    Vec2 scale{1.f};
+    Vec2 pos{0.f};
+    Vec2 origin{0.f};
+    Size2 size{0.f};
+    Bounds margins{5.f,5.f,5.f,5.f};
+    std::string name;
+    Color fill{Transparent};
+    Color line{Transparent};
+    Color verticalClr{DarkCyan.alpha(150)};
+    Color horizontalClr{DarkGray.alpha(150)};
+    Color highlightClr{White};
+    Color textClr{White};
+    bool clickable{false};
+    Size2 max_size{0.f};
+    Font font{0.75f};
+};
+
 using VarBase_t = VarBase<std::string>;
 using VarReturn_t = sprite::Reference;
 
 struct Context {
     std::unordered_map<std::string, std::function<void(Event)>> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
+    DefaultSettings defaults;
 };
 
 struct State;
@@ -286,21 +305,7 @@ T resolve_variable_type(std::string word, const Context& context) {
 
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
-inline tl::expected<nlohmann::json, const char*> load(const file::Path& path){
-    static Timer timer;
-    if(timer.elapsed() < 0.15) {
-        return tl::unexpected("Have to wait longer to reload.");
-    }
-    timer.reset();
-    
-    auto text = path.read_file();
-    static std::string previous;
-    if(previous != text) {
-        previous = text;
-        return nlohmann::json::parse(text)["objects"];
-    } else
-        return tl::unexpected("Nothing changed.");
-}
+tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path);
 
 void update_layout(const file::Path&, Context&, State&, std::vector<Layout::Ptr>&);
 void update_tooltips(DrawStructure&, State&);

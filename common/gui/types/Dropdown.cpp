@@ -277,11 +277,23 @@ void Dropdown::init() {
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
         if(options != _items) {
+            print("_items=",_items, " options=",options);
+            _items.clear();
+            
+            size_t i=0;
+            for(auto& o : options) {
+                if(o.ID() == Item::INVALID_ID) {
+                    _items.emplace_back(o.name(), i, o.search_name(), o.custom());
+                } else {
+                    _items.emplace_back(o);
+                }
+                ++i;
+            }
+            //_items = options;
             if(_list) {
-                _list->set_items(convert_to_search_name(options));
+                _list->set_items(convert_to_search_name(_items));
                 print("Setting items = ", items());
             }
-            _items = options;
             _selected_id = _selected_item = -1;
             _preprocessed = {};
             _corpus.clear();

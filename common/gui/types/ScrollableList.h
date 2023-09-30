@@ -149,7 +149,7 @@ namespace gui {
             if(_items.size() == objs.size()) {
                 bool okay = true;
                 
-                for(size_t i=0; i<_items.size() && i < objs.size(); ++i) {
+                for(size_t i=0; i<_items.size(); ++i) {
                     if(_items.at(i).value() != objs.at(i)) {
                         okay = false;
                         break;
@@ -303,7 +303,7 @@ namespace gui {
         }
         
         void select_item(uint64_t index) {
-            if(_items.size() > index) {
+            if(_items.size() > index && _last_selected_item != index) {
                 _last_selected_item = narrow_cast<long>(index);
                 set_content_changed(true);
                 

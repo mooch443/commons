@@ -16,8 +16,10 @@ namespace gui {
             return;
         
         begin();
-        for(auto o : _objects)
+        for(auto& o : _objects) {
+            assert(o != nullptr);
             advance_wrap(*o);
+        }
         end();
         
         update_layout();

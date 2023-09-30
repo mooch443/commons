@@ -380,11 +380,29 @@ namespace gui {
             advance_wrap(*r);
             add<Text>(std::string(*item),
                       Loc(offset+local+Vec2(size.width, _row_height)*0.5f),
-                      Font(0.6, Align::Center));
+                      _item_font);
             offset.y += inversion_correct_height;
         }
         
         draw_title();
         end();
+    }
+
+    void List::set_size(const Size2& size) {
+        if(size.Equals(_bounds.size()))
+            return;
+        
+        set_row_height(size.height);
+        Entangled::set_size(size);
+        set_content_changed(true);
+    }
+
+    void List::set_bounds(const Bounds& size) {
+        if(size.Equals(_bounds))
+            return;
+        
+        set_row_height(size.height);
+        Entangled::set_bounds(size);
+        set_content_changed(true);
     }
 }

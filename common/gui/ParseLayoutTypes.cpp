@@ -2,61 +2,7 @@
 
 namespace gui::dyn {
 
-Image::Ptr load_image(const file::Path& path) {
-    try {
-        auto m = cv::imread(path.str());
-        //auto ptr = ;
-        //size_t hash = std::hash<std::string_view>{}(std::string_view(reinterpret_cast<const char*>(m.data), uint64_t(m.cols) * uint64_t(m.rows) * uint64_t(m.channels())));
-        if(m.channels() != 1 && m.channels() != 4) {
-            if(m.channels() == 3) {
-                cv::cvtColor(m, m, cv::COLOR_RGB2RGBA);
-            }
-        }
-        return Image::Make(m); //std::make_tuple(hash, std::move(ptr));
-    } catch(...) {
-        return nullptr;
-    }
-}
-
-// Initialize from a JSON object
-LayoutContext::LayoutContext(const nlohmann::json& obj, State& state)
- : obj(obj), state(state)
-{
-    if(not obj.contains("type"))
-        throw std::invalid_argument("Structure does not contain type information");
-    
-    auto type_name = utils::lowercase(obj["type"].get<std::string>());
-    type = LayoutType::get(type_name);
-    
-    hash = state._current_index.hash();
-    state._current_index.inc();
-    
-    if(is_in(type, LayoutType::vlayout, LayoutType::hlayout, LayoutType::collection, LayoutType::gridlayout))
-    {
-        if(obj.contains("size")) {
-            size = get(Size2(0), "size");
-        } else {
-            //print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.patterns[hash]["size"] = "auto";
-        }
-        
-    } else {
-        size = get(Size2(0), "size");
-    }
-    
-    scale = get(Vec2(1), "scale");
-    pos = get(Vec2(0), "pos");
-    origin = get(Vec2(0), "origin");
-    margins = get(Bounds(5,5,5,5), "margins");
-    name = get(std::string(), "name");
-    fill = get(Transparent, "fill");
-    line = get(Transparent, "line");
-    clickable = get(false, "clickable");
-
-    font = Font(0.75); // Initialize with default values
-    if(type == LayoutType::button) {
-        font.align = Align::Center;
-    }
+Font parse_font(const nlohmann::json& obj, Font font) {
     if(obj.count("font")) {
         auto f = obj["font"];
         if(f.count("size")) font.size = f["size"].get<float>();
@@ -79,6 +25,66 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state)
                 font.align = Align::Center;
         }
     }
+    return font;
+}
+
+Image::Ptr load_image(const file::Path& path) {
+    try {
+        auto m = cv::imread(path.str());
+        //auto ptr = ;
+        //size_t hash = std::hash<std::string_view>{}(std::string_view(reinterpret_cast<const char*>(m.data), uint64_t(m.cols) * uint64_t(m.rows) * uint64_t(m.channels())));
+        if(m.channels() != 1 && m.channels() != 4) {
+            if(m.channels() == 3) {
+                cv::cvtColor(m, m, cv::COLOR_RGB2RGBA);
+            }
+        }
+        return Image::Make(m); //std::make_tuple(hash, std::move(ptr));
+    } catch(...) {
+        return nullptr;
+    }
+}
+
+// Initialize from a JSON object
+LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults)
+ : obj(obj), state(state), _defaults(defaults)
+{
+    if(not obj.contains("type"))
+        throw std::invalid_argument("Structure does not contain type information");
+    
+    auto type_name = utils::lowercase(obj["type"].get<std::string>());
+    type = LayoutType::get(type_name);
+    
+    hash = state._current_index.hash();
+    state._current_index.inc();
+    
+    if(is_in(type, LayoutType::vlayout, LayoutType::hlayout, LayoutType::collection, LayoutType::gridlayout))
+    {
+        if(obj.contains("size")) {
+            size = get(_defaults.size, "size");
+        } else {
+            //print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
+            state.patterns[hash]["size"] = "auto";
+        }
+        
+    } else {
+        size = get(_defaults.size, "size");
+    }
+    
+    scale = get(_defaults.scale, "scale");
+    pos = get(_defaults.pos, "pos");
+    origin = get(_defaults.origin, "origin");
+    margins = get(_defaults.margins, "margins");
+    name = get(_defaults.name, "name");
+    fill = get(_defaults.fill, "fill");
+    line = get(_defaults.line, "line");
+    clickable = get(_defaults.clickable, "clickable");
+    max_size = get(_defaults.max_size, "max_size");
+
+    font = _defaults.font; // Initialize with default values
+    if(type == LayoutType::button) {
+        font.align = Align::Center;
+    }
+    font = parse_font(obj, font);
 }
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
@@ -276,8 +282,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
     auto ptr = Layout::Make<GridLayout>();
     ptr.to<GridLayout>()->set_children(std::move(rows));
     
-    auto vertical_clr = get(DarkCyan.alpha(150), "vertical_clr");
-    auto horizontal_clr = get(DarkGray.alpha(150), "horizontal_clr");
+    auto vertical_clr = get(_defaults.verticalClr, "vertical_clr");
+    auto horizontal_clr = get(_defaults.horizontalClr, "horizontal_clr");
     
     ptr.to<GridLayout>()->set(VerticalClr{vertical_clr});
     ptr.to<GridLayout>()->set(HorizontalClr{horizontal_clr});
@@ -326,7 +332,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         {
             print("Field var=",key, " ", state._text_fields.contains(key) ? (uint64_t)state._text_fields.at(key).get() : 0u);
             if(not state._text_fields.contains(key) or not state._text_fields.at(key)) {
-                auto ptr = LabeledField::Make(var, invert);
+                auto ptr = LabeledField::Make(var, obj, invert);
                 state._text_fields.emplace(key, std::move(ptr));
             } else {
                 print("Field var=",key," already exists: ", *state._text_fields.at(key)->_text);
@@ -335,6 +341,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         }
         
         auto& ref = state._text_fields.at(key);
+        if(not ref) {
+            FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
+            return nullptr;
+        }
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
         }
@@ -346,8 +356,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
+        if(max_size != Vec2(0)) 
+            ref->set(attr::SizeLimit{max_size});
         
-        Color color{White};
+        Color color{_defaults.textClr};
         if(obj.count("color")) {
             if(obj["color"].is_string())
                 state.patterns[hash]["color"] = obj["color"].get<std::string>();
@@ -357,8 +369,20 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
             }
         }
         
+        Color highlight_clr{_defaults.highlightClr};
+        if(obj.count("highlight_clr")) {
+            if(obj["highlight_clr"].is_string())
+                state.patterns[hash]["highlight_clr"] = obj["highlight_clr"].get<std::string>();
+            else {
+                highlight_clr = parse_color(obj["highlight_clr"]);
+                ref->set(attr::HighlightClr{highlight_clr});
+            }
+        }
+        
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
+        for(auto &o : objs)
+            assert(o != nullptr);
         ptr = Layout::Make<HorizontalLayout>(std::move(objs), Vec2(), Bounds{0, 0, 0, 0});
     }
     
@@ -491,7 +515,6 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
         text = obj["text"].get<std::string>();
     }
     
-    Size2 max_size = get(Size2(0), "max_size");
     if(utils::contains(text, '{')) {
         state.patterns[hash]["text"] = text;
     }
@@ -502,7 +525,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
     {
         ptr.to<StaticText>()->set(attr::Margins(margins));
         if(not max_size.empty())
-            ptr.to<StaticText>()->set_max_size(max_size);
+            ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
     }
     
     Color color{White};

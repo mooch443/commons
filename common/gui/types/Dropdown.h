@@ -38,8 +38,8 @@ namespace gui {
         class TextItem : public Item {
             std::string _name, _search;
             GETTER_SETTER(std::string, display)
-            GETTER_PTR(void*, custom)
-            GETTER_SETTER(int, index)
+            GETTER_PTR_I(void*, custom, nullptr)
+            GETTER_SETTER_I(int, index, Item::INVALID_ID)
             
         public:
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
@@ -59,10 +59,10 @@ namespace gui {
             }
             
             bool operator==(const TextItem& other) const {
-                return other.ID() == ID() && other._custom == _custom;
+                return /*other.ID() == ID() &&*/ other._custom == _custom && other.name() == name();
             }
             bool operator!=(const TextItem& other) const {
-                return other.ID() != ID() || other._custom != _custom;
+                return /*other.ID() != ID() ||*/ other._custom != _custom || other.name() != name();
             }
             
             bool operator<(const TextItem& other) const {

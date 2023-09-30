@@ -115,7 +115,9 @@ public:
     
     void set_placeholder(const std::string& text);
     void set_text(const std::string& text);
-    void set_font(const Font& font) {
+    void set_font(Font font) {
+        font.align = Align::Left;
+        
         if(_settings.font == font)
             return;
         
