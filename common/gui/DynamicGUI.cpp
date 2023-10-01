@@ -213,6 +213,7 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
                 if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
                 if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
                 if(d.contains("line")) defaults.line = parse_color(d["line"]);
+                if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
             }
         } catch(const std::exception& ex) {
             FormatExcept("Cannot parse layout due to: ", ex.what());

@@ -363,21 +363,19 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         if(obj.count("color")) {
             if(obj["color"].is_string())
                 state.patterns[hash]["color"] = obj["color"].get<std::string>();
-            else {
+            else
                 color = parse_color(obj["color"]);
-                ref->set(attr::TextClr{color});
-            }
         }
+        ref->set(attr::TextClr{color});
         
         Color highlight_clr{_defaults.highlightClr};
         if(obj.count("highlight_clr")) {
             if(obj["highlight_clr"].is_string())
                 state.patterns[hash]["highlight_clr"] = obj["highlight_clr"].get<std::string>();
-            else {
+            else
                 highlight_clr = parse_color(obj["highlight_clr"]);
-                ref->set(attr::HighlightClr{highlight_clr});
-            }
         }
+        ref->set(attr::HighlightClr{highlight_clr});
         
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
@@ -414,15 +412,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
         });
     }
     
-    Color color{White};
+    Color color{_defaults.textClr};
     if(obj.count("color")) {
         if(obj["color"].is_string())
             state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else {
+        else
             color = parse_color(obj["color"]);
-            ptr.to<Button>()->set_text_clr(color);
-        }
     }
+    ptr.to<Button>()->set_text_clr(color);
     
     if(fill != Transparent)
         ptr.to<Button>()->set_fill_clr(fill);

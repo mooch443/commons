@@ -15,9 +15,9 @@ class Combobox : public Entangled {
 public:
     struct Settings {
         Bounds bounds = Bounds(0, 0, 100, 33);
-        Color fill_clr = Drawable::accent_color;
-        Color line_clr = Black.alpha(200);
-        Color text_clr = White;
+        FillClr fill_clr = Drawable::accent_color;
+        LineClr line_clr = Black.alpha(200);
+        TextClr text_clr = White;
         Font font = Font(0.75, Align::Center);
         std::string param;
         

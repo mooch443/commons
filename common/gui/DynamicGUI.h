@@ -63,7 +63,7 @@ struct DefaultSettings {
     Color line{Transparent};
     Color verticalClr{DarkCyan.alpha(150)};
     Color horizontalClr{DarkGray.alpha(150)};
-    Color highlightClr{White};
+    Color highlightClr{Drawable::accent_color};
     Color textClr{White};
     bool clickable{false};
     Size2 max_size{0.f};
