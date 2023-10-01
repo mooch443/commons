@@ -10,6 +10,7 @@
 #include <gui/types/SettingsTooltip.h>
 #include <common/misc/default_settings.h>
 #include <gui/ParseLayoutTypes.h>
+#include <gui/types/ErrorElement.h>
 #include <regex>
 
 namespace gui {
@@ -214,6 +215,7 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
                 if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
                 if(d.contains("line")) defaults.line = parse_color(d["line"]);
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
+                if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
             }
         } catch(const std::exception& ex) {
             FormatExcept("Cannot parse layout due to: ", ex.what());

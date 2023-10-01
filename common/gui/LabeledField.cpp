@@ -1,6 +1,7 @@
 #include "LabeledField.h"
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>
+#include <gui/types/ErrorElement.h>
 
 namespace gui::dyn {
 
@@ -41,78 +42,6 @@ LabeledField::~LabeledField() {
         settings_map().unregister_callback(Meta::toStr((uint64_t)this));
 }
 
-void ErrorElement::init() {
-    _text = std::make_shared<Text>("ERROR: element "+name()+" cannot be loaded.");
-    set_bounds(_settings.bounds);
-}
-
-void ErrorElement::update() {
-    if(not content_changed())
-        return;
-    
-    set_background(_settings.fill_clr, _settings.line_clr);
-    _text->set_txt(_settings.content);
-    _text->set_font(_settings.font);
-    //auto_size({});
-    
-    begin();
-    advance_wrap(*_text);
-    end();
-}
-
-void ErrorElement::set(attr::Content content) {
-    if(_settings.content != content) {
-        _settings.content = content;
-        set_content_changed(true);
-    }
-}
-void ErrorElement::set(attr::FillClr clr) {
-    if(_settings.fill_clr != clr) {
-        _settings.fill_clr = clr;
-        Entangled::set(clr);
-        set_content_changed(true);
-    }
-}
-void ErrorElement::set(attr::LineClr clr) {
-    if(_settings.line_clr != clr) {
-        _settings.line_clr = clr;
-        Entangled::set(clr);
-        set_content_changed(true);
-    }
-}
-void ErrorElement::set(attr::TextClr clr) {
-    if(_settings.text_clr != clr) {
-        _settings.text_clr = clr;
-        if(_text)
-            _text->set(clr);
-        set_content_changed(true);
-    }
-}
-
-void ErrorElement::set_bounds(const Bounds& bds) {
-    if(not _settings.bounds.Equals(bds)) {
-        _settings.bounds = bds;
-        set_content_changed(true);
-    }
-    Entangled::set_bounds(bds);
-}
-
-void ErrorElement::set_pos(const Vec2& p) {
-    if(not _settings.bounds.pos().Equals(p)) {
-        _settings.bounds << p;
-        set_content_changed(true);
-    }
-    Entangled::set_pos(p);
-}
-
-void ErrorElement::set_size(const Size2& p) {
-    if(not _settings.bounds.size().Equals(p)) {
-        _settings.bounds << p;
-        set_content_changed(true);
-    }
-    Entangled::set_size(p);
-}
-
 LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json& obj)
     : LabeledField(name),
     _combo(std::make_shared<Combobox>())
@@ -150,38 +79,16 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohman
     {
         ptr = std::make_unique<LabeledTextField>(parm, obj);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
+        
     } else if(ref.is_type<file::Path>()) {
         ptr = std::make_unique<LabeledPath>(parm, parm, ref.value<file::Path>());
-        //ptr->representative().to<Dropdown>()->set_text(ref.value<file::Path>().str());
+        
     } else if(ref.is_type<file::PathArray>()) {
         ptr = std::make_unique<LabeledPathArray>(parm, obj);
         
     } else if(ref.is_type<bool>() || ref.get().is_enum()) {
         ptr = std::make_unique<LabeledList>(parm, obj);
-        auto list = ptr->representative().to<List>();
         
-        /*std::vector<std::shared_ptr<List::Item>> vs;
-        size_t index{0};
-        if(ref.is_type<bool>()) {
-            vs = {
-                std::make_shared<TextItem>("false", 0),
-                std::make_shared<TextItem>("true", 1)
-            };
-            index = ref.get().value<bool>() ? 1 : 0;
-            
-        } else {
-            auto values = ref.get().enum_values()();
-            index = ref.get().enum_index()();
-            
-            for(auto& v : values)
-                vs.push_back(std::make_shared<TextItem>(v));
-        }*/
-        
-        
-        //ptr = std::make_unique<LabeledDropDown>(parm);
-        
-        //ptr->representative().to<Dropdown>()->set_items(std::vector<Dropdown::TextItem>(values.begin(), values.end()));
-        //ptr->representative().to<Dropdown>()->select_item(index);
     } else {
         ptr = std::make_unique<LabeledTextField>(parm, obj);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());

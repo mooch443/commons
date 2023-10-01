@@ -50,7 +50,7 @@ namespace gui {
         void set(attr::TextClr clr) { _settings.text_clr = clr; }
         void set(attr::Size size) override   { _settings.bounds << size; Entangled::set(size); }
         void set(Bounds bounds) override   { _settings.bounds = bounds; Entangled::set(bounds); }
-        void set(const std::string& text) { _settings.text = text; }
+        void set(const Content& text) { _settings.text = text; }
         void set(std::function<void()> on_click) {
             if(on_click)
                 this->on_click([on_click](auto) { on_click(); });

@@ -67,7 +67,10 @@ struct LabeledField {
     template<typename T>
     static void delegate_to_proper_type(const T& attribute, const Layout::Ptr& object) {
         // Existing base class set implementation
-        if(object.is<Button>()) {
+        if constexpr(takes_attribute<Drawable, T>) {
+            object->set(attribute);
+            
+        } else if(object.is<Button>()) {
             if constexpr(takes_attribute<Button, T>)
             {
                 object.to<Button>()->set(attribute);
@@ -109,57 +112,8 @@ struct LabeledField {
             if constexpr(takes_attribute<Combobox, T>) {
                 object.to<Combobox>()->set(attribute);
             }
-        } else if constexpr(takes_attribute<Drawable, T>) {
-            object->set(attribute);
-            
         }
     }
-};
-
-class ErrorElement : public Entangled {
-public:
-    struct Settings {
-        Bounds bounds = Bounds(0, 0, 100, 33);
-        Color fill_clr = Red.alpha(50);
-        Color line_clr = Red.exposureHSL(0.5).alpha(50);
-        Color text_clr = White;
-        Font font = Font(0.35, Align::Left);
-        std::string content;
-    };
-    
-protected:
-    Settings _settings;
-    derived_ptr<Text> _text;
-    
-public:
-    template<typename... Args>
-    ErrorElement(Args... args)
-    {
-        create(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    void create(Args... args) {
-        (set(std::forward<Args>(args)), ...);
-        init();
-    }
-    
-public:
-    using Entangled::set;
-    
-    void set(attr::Font font);
-    void set(attr::FillClr clr) override;
-    void set(attr::LineClr clr) override;
-    void set(attr::TextClr clr);
-    void set(attr::Content content);
-    
-    void set_bounds(const Bounds& bds) override;
-    void set_pos(const Vec2& p) override;
-    void set_size(const Size2& p) override;
-    
-protected:
-    void init();
-    void update() override;
 };
 
 struct LabeledCombobox : public LabeledField {

@@ -65,6 +65,7 @@ struct DefaultSettings {
     Color horizontalClr{DarkGray.alpha(150)};
     Color highlightClr{Drawable::accent_color};
     Color textClr{White};
+    Color window_color{Black};
     bool clickable{false};
     Size2 max_size{0.f};
     Font font{0.75f};
