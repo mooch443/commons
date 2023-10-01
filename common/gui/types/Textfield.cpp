@@ -12,7 +12,7 @@
 #endif
 
 namespace gui {
-    constexpr static const float margin = 2;
+    constexpr static const float margin = 5;
 
     void set_clipboard(const std::string& text) {
 #ifdef CMN_CLIPBOARD_GLFW
@@ -155,7 +155,7 @@ void Textfield::init() {
                 if(parent() && parent()->stage()) {
                     std::vector<Textfield*> textfields;
                     std::deque<SectionInterface*> q{
-                        { (SectionInterface*)&parent()->stage()->root() }
+                        (SectionInterface*)&parent()->stage()->root() 
                     };
                     
                     std::optional<size_t> index;
