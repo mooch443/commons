@@ -11,10 +11,13 @@
 #include <common/misc/default_settings.h>
 #include <gui/ParseLayoutTypes.h>
 #include <gui/types/ErrorElement.h>
+#include <gui/DrawBase.h>
 #include <regex>
 
 namespace gui {
 namespace dyn {
+
+void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
 std::string extractControls(std::string& variable) {
     std::string controls;
@@ -226,8 +229,19 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
         return tl::unexpected("Nothing changed.");
 }
 
-void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
+void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
     auto hash = (std::size_t)o->custom_data("object_index");
+    if(not hash) {
+        //! if this is a Layout type, need to iterate all children as well:
+        if(o.is<Layout>()) {
+            for(auto &child : o.to<Layout>()->objects()) {
+                update_objects(g, child, context, state);
+            }
+        } else {
+            //print("Object ", *o, " has no hash and is thus not updated.");
+        }
+        return;
+    }
     //print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
     
     //! something that needs to be executed before everything runs
@@ -442,7 +456,7 @@ void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& conte
     }
 }
 
-void update_layout(const file::Path& path, Context& context, State& state, std::vector<Layout::Ptr>& objects) {
+void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) {
     try {
         auto cwd = file::cwd().absolute();
         auto app = file::DataLocation::parse("app").absolute();
@@ -457,6 +471,7 @@ void update_layout(const file::Path& path, Context& context, State& state, std::
             
             auto [defaults, layout] = result.value();
             context.defaults = defaults;
+            
             std::vector<Layout::Ptr> objs;
             State tmp;
             for(auto &obj : layout) {
@@ -476,6 +491,61 @@ void update_layout(const file::Path& path, Context& context, State& state, std::
     } catch(...) {
         FormatExcept("Error loading gui layout from file");
     }
+    
+    if(context.defaults.window_color != Transparent) {
+        if(base)
+            base->set_background_color(context.defaults.window_color);
+        else {
+            static std::once_flag flag;
+            std::call_once(flag, [&](){
+                FormatWarning("Cannot set background color to ", context.defaults.window_color);
+            });
+        }
+    }
+    
+    if(parent) {
+        //! check if we need anything more to be done to the objects before adding
+        if(before_add) {
+            auto copy = objects;
+            before_add(copy);
+            parent->set_children(copy);
+        } else {
+            parent->set_children(objects);
+        }
+        
+        for(auto &obj : objects) {
+            update_objects(*graph, obj, context, state);
+        }
+        
+    } else {
+        //! check if we need anything more to be done to the objects before adding
+        if(before_add) {
+            auto copy = objects;
+            before_add(copy);
+            for(auto &obj : copy) {
+                update_objects(*graph, obj, context, state);
+                graph->wrap_object(*obj);
+            }
+            
+        } else {
+            for(auto &obj : objects) {
+                update_objects(*graph, obj, context, state);
+                graph->wrap_object(*obj);
+            }
+        }
+    }
+    
+    dyn::update_tooltips(*graph, state);
+}
+
+DynamicGUI::operator bool() const {
+    return graph != nullptr;
+}
+
+void DynamicGUI::clear() {
+    graph = nullptr;
+    objects.clear();
+    state = {};
 }
 
 void update_tooltips(DrawStructure& graph, State& state) {

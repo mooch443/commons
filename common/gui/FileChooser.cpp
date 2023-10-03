@@ -131,7 +131,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     
     _textfield = std::make_shared<Dropdown>(Bounds(0, 0, _list->width(), 30));
     //_textfield = std::make_shared
-    _textfield->on_select([this](long_t, const Dropdown::TextItem &item) {
+    _textfield->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path;
         
         if(((std::string)item).empty()) {

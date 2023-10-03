@@ -149,7 +149,8 @@ struct LabeledDropDown : public LabeledField {
 };
 struct LabeledList : public LabeledField {
     gui::derived_ptr<gui::List> _list;
-    LabeledList(const std::string& name, const nlohmann::json& obj);
+    bool _invert{false};
+    LabeledList(const std::string& name, const nlohmann::json& obj, bool invert = false);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_list);

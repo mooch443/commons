@@ -5,6 +5,7 @@
 #include <misc/vec2.h>
 #include <nlohmann/json.hpp>
 #include <file/Path.h>
+#include <file/PathArray.h>
 
 namespace cmn {
     namespace sprite {
@@ -15,6 +16,10 @@ namespace cmn {
                 return nlohmann::json(v);
             if constexpr (_clean_same<VT, bool>)
                 return nlohmann::json((bool)v);
+            if constexpr (_clean_same<VT, file::PathArray>) {
+                auto i = v.source();
+                return nlohmann::json(i);
+            }
             if constexpr (_clean_same<VT, file::Path>) {
                 auto i = v.str();
                 return nlohmann::json(i.c_str());

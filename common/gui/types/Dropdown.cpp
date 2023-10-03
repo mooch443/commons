@@ -32,9 +32,16 @@ std::string Dropdown::TextItem::class_name() {
     }
     
 void Dropdown::init() {
-    _list = std::make_unique<ScrollableList<TextItem>>(Bounds(0, _bounds.height, _bounds.width, 230), items(), Font(0.6f, Align::Left), [this](size_t s) { _selected_item = s; });
+    _list = std::make_unique<ScrollableList<TextItem>>(Bounds(0, _bounds.height, _bounds.width, 230), items(), Font(0.6f, Align::Left), [this](size_t s) {
+        FilteredIndex filtered_index(s); // explicit casting to FilteredIndex
+        if(filtered_items.contains(filtered_index)) {
+            _selected_item = RawIndex(filtered_items.at(filtered_index).value); // Use RawIndex for type safety
+        } else {
+            FormatWarning("Invalid ItemID selected: ", s, " for ", extract_keys(filtered_items));
+        }
+    });
+    _selected_item = RawIndex();
     _list->set_z_index(1);
-    _selected_item = -1;
     
     if(_type == BUTTON) {
         _button = Button::MakePtr("Please select...",  Bounds(_bounds.size()));
@@ -62,24 +69,47 @@ void Dropdown::init() {
             
             if(e.key.code == Codes::Down) {
                 auto& items = _list->items();
-                if(not items.empty() && _selected_item + 1 < _list->items().size() && _selected_item != -1) {
-                    _selected_item++;
-                } else if(not items.empty()) {
-                    _selected_item = 0;
-                } else
-                    _selected_item = -1;
-                
-                _list->highlight_item(_selected_item);
+                FilteredIndex current = items_to_filtered_items.contains(_selected_item) ? items_to_filtered_items.at(_selected_item) : FilteredIndex{};
+
+                if (current && size_t(current.value + 1) < items.size()) {
+                    // Get the next filtered item
+                    if (filtered_items.contains(FilteredIndex{current.value + 1})) {
+                        _selected_item = filtered_items.at(FilteredIndex{current.value + 1});
+                    }
+                } else if (filtered_items.contains(FilteredIndex{0})) {
+                    // Start from the beginning
+                    _selected_item = filtered_items.at(FilteredIndex{0});
+                } else {
+                    _selected_item = RawIndex{};
+                }
+
+                if (items_to_filtered_items.contains(_selected_item)) {
+                    _list->highlight_item(items_to_filtered_items.at(_selected_item).value);
+                } else {
+                    _list->highlight_item(-1);
+                }
             }
             else if(e.key.code == Codes::Up) {
-                if(_selected_item > 0 && _selected_item < _list->items().size()) {
-                    _selected_item--;
-                } else if(not _list->items().empty()) {
-                    _selected_item = _list->items().size() - 1;
-                } else
-                    _selected_item = -1;
-                
-                _list->highlight_item(_selected_item);
+                FilteredIndex current = items_to_filtered_items.contains(_selected_item) ? items_to_filtered_items.at(_selected_item) : FilteredIndex();
+
+                if (current) {
+                    // Find the previous filtered item
+                    auto iter = filtered_items.find(FilteredIndex{current.value - 1});
+                    if (iter != filtered_items.end()) {
+                        _selected_item = iter->second;
+                    }
+                } else if (!filtered_items.empty()) {
+                    // Go to the last item if we're at the beginning
+                    _selected_item = filtered_items.rbegin()->second;
+                } else {
+                    _selected_item = RawIndex{};
+                }
+
+                if (items_to_filtered_items.contains(_selected_item)) {
+                    _list->highlight_item(items_to_filtered_items.at(_selected_item).value);
+                } else {
+                    _list->highlight_item(-1);
+                }
             }
             
             select_item(_selected_item);
@@ -92,6 +122,7 @@ void Dropdown::init() {
             }
 
             filtered_items.clear();
+            items_to_filtered_items.clear();
 
             if (!_textfield->text().empty()) {
                 if(_corpus.empty()) {
@@ -110,15 +141,17 @@ void Dropdown::init() {
 
                 // Create a filtered vector of TextItems
                 std::vector<TextItem> filtered;
-                for (int index : search_result_indexes) {
-                    filtered.push_back(_items[index]);
-                    filtered_items[filtered.size() - 1] = index;
+                for (int _index : search_result_indexes) {
+                    RawIndex index(_index);
+                    filtered.push_back(_items[_index]);
+                    filtered_items[FilteredIndex{static_cast<long>(filtered.size() - 1)}] = index;
+                    items_to_filtered_items[index] = FilteredIndex{static_cast<long>(filtered.size() -1)};
                 }
 
                 // Update the list with the filtered items
                 if(_list->set_items(convert_to_search_name(filtered))) {
                 //if(not filtered.empty()) {
-                    select_item(-1);
+                    select_item(RawIndex{});
                     _list->set_scroll_offset(Vec2());
                 }
 
@@ -134,16 +167,25 @@ void Dropdown::init() {
         _textfield->on_text_changed(_on_text_changed);
         
         _textfield->on_enter([this](){
+            if(_on_enter) {
+                _on_enter();
+                return;
+            }
+            
             if(!_list->items().empty()) {
-                if (stage())
-                    stage()->select(NULL);
+                if(_closes_after_select) {
+                    if (stage())
+                        stage()->select(NULL);
+                }
                 _list->select_highlighted_item();
             } else {
-                if(stage())
-                    stage()->select(NULL);
-                _selected_id = -1;
+                if(_closes_after_select) {
+                    if(stage())
+                        stage()->select(NULL);
+                }
+                //_selected_item = -1;
                 if(_on_select)
-                    _on_select(-1, TextItem());
+                    _on_select(RawIndex{}, TextItem::invalid_item());
             }
             
             if(stage())
@@ -154,15 +196,17 @@ void Dropdown::init() {
     }
     
     _list->on_select([this](size_t i, Dropdown::TextItem txt){
-        long_t real_id = long_t(i);
+        FilteredIndex filtered_id{long_t(i)};
+        RawIndex real_id;
         if(!filtered_items.empty()) {
-            if(filtered_items.find(i) != filtered_items.end()) {
-                real_id = long_t(filtered_items[i]);
+            if(filtered_items.find(filtered_id) != filtered_items.end()) {
+                real_id = filtered_items.at(filtered_id);
             } else
                 throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
         }
         
-        txt = _items.at(real_id);
+        if(real_id.valid())
+            txt = _items.at(real_id.value);
         
         if(_button) {
             _button->set_toggle(_opened);
@@ -172,7 +216,7 @@ void Dropdown::init() {
             _textfield->set_text(txt);
         }
         
-        _selected_id = real_id;
+        //_selected_id = real_id;
         
         /*if(stage()) {
             stage()->select(NULL);
@@ -221,7 +265,7 @@ void Dropdown::init() {
             return;
         
         _opened = opened;
-        _selected_item = -1;
+        _selected_item = RawIndex{};
         if(_opened) {
             _textfield->set_z_index(2);
         } else {
@@ -256,23 +300,39 @@ void Dropdown::init() {
             advance_wrap(*_textfield);
         end();
     }
+
+Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
+    if(filtered_items.contains(index)) {
+        return filtered_items.at(index);
+    }
+    return RawIndex{};
+}
     
-    void Dropdown::select_item(long index) {
-        _selected_item = index;
-        
-        if(index >= 0 && _list && (size_t)index+1 > _list->items().size())
-            index = (long)_list->items().size()-1;
-        
-        if(not _list || _list->items().empty())
-            index = -1;
-        
-        //if(index > -1 && _list)
-        //    _list->highlight_item(index);
-        
-        if(index != _selected_item) {
-            _selected_item = index;
+    void Dropdown::select_item(RawIndex index) {
+        if(static_cast<size_t>(index.value) < items().size())
+            print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
+
+        if (index.value >= 0 && items_to_filtered_items.contains(index)) {
+            auto iter = items_to_filtered_items.find(index);
+            if (iter != items_to_filtered_items.end()) {
+                _selected_item = index; // Use RawIndex for type safety
+                if(_list)
+                    _list->highlight_item(iter->second.value); // Highlight based on filtered list
+            } else {
+                _selected_item = RawIndex(); // Using default constructor
+            }
+        } else {
+            _selected_item = RawIndex(); // Using default constructor
+        }
+
+        if (_selected_item.value != index.value) {
+            print("Setting _selected_item = ", _selected_item.value, " from ", index.value, " in ", (uint64_t)this);
             set_dirty();
         }
+    }
+
+    bool Dropdown::has_selection() const {
+        return (bool)_selected_item;
     }
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
@@ -282,11 +342,12 @@ void Dropdown::init() {
             
             size_t i=0;
             for(auto& o : options) {
-                if(o.ID() == Item::INVALID_ID) {
+                //if(o.ID() == Item::INVALID_ID)
+                //{
                     _items.emplace_back(o.name(), i, o.search_name(), o.custom());
-                } else {
-                    _items.emplace_back(o);
-                }
+                //} else {
+                //    _items.emplace_back(o);
+                //}
                 ++i;
             }
             //_items = options;
@@ -294,7 +355,7 @@ void Dropdown::init() {
                 _list->set_items(convert_to_search_name(_items));
                 print("Setting items = ", items());
             }
-            _selected_id = _selected_item = -1;
+            _selected_item = RawIndex{};
             _preprocessed = {};
             _corpus.clear();
             if(_on_text_changed)
@@ -310,17 +371,25 @@ void Dropdown::init() {
     }
     
     Dropdown::TextItem Dropdown::selected_item() const {
-        if(selected_id() != -1)
-            return _list && (size_t)_selected_item < _list->items().size() ?_list->items().at(_selected_item).value() : TextItem();
+        if(_selected_item)
+            return size_t(_selected_item.value) < _items.size() ? _items.at(_selected_item.value) : TextItem::invalid_item();
+            //return _list && (size_t)_selected_item < _list->items().size() ?_list->items().at(_selected_item).value() : TextItem();
         
-        return TextItem();
+        return TextItem::invalid_item();
     }
     
     Dropdown::TextItem Dropdown::hovered_item() const {
         if(_list && _list->last_hovered_item() != -1) {
-            return (size_t)_list->last_hovered_item() < _list->items().size() ? _list->items().at(_list->last_hovered_item()).value() : TextItem();
+            auto index = FilteredIndex{(long_t)_list->last_hovered_item()};
+            if(filtered_items.contains(index)) {
+                RawIndex raw = filtered_items.at(index);
+                if(raw.value < _items.size()) {
+                    return _items.at(raw.value);
+                }
+            }
+            //return (size_t)_list->last_hovered_item() < _list->items().size() ? _list->items().at(_list->last_hovered_item()).value() : TextItem();
         }
-        return TextItem();
+        return TextItem::invalid_item();
     }
     
     void Dropdown::update_bounds() {

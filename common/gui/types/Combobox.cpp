@@ -8,7 +8,7 @@ void Combobox::init() {
     _dropdown = std::make_shared<Dropdown>(Bounds(0, 0, 800, 28));
     auto keys = settings_map().keys();
     _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
-    _dropdown->on_select([this](long_t, const Dropdown::TextItem & item){
+    _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
         auto name = item.name();
         if(settings_map().has(name)) {
             set(ParmName{name});

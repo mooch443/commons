@@ -16,6 +16,7 @@ public:
     using CheckText_t = attr::AttributeAlias<std::function<bool(std::string& text, char inserted, size_t at)>>;
     using OnEnter_t = attr::AttributeAlias<std::function<void()>, 0>;
     using OnTextChanged_t = attr::AttributeAlias<std::function<void()>, 1>;
+    using OnTab_t = attr::AttributeAlias<std::function<void()>, 2>;
     struct ReadOnly {
         bool read_only;
         
@@ -42,6 +43,7 @@ protected:
     struct Settings {
         CheckText_t check_text = nullptr;
         OnEnter_t on_enter = nullptr;
+        OnTab_t on_tab = nullptr;
         OnTextChanged_t on_text_changed = nullptr;
         
         std::string text;
@@ -81,6 +83,7 @@ public:
     void set(Font font) { set_font(font); }
     void set(CheckText_t check) { _settings.check_text = check; }
     void set(OnEnter_t enter) { on_enter(enter); }
+    void set(OnTab_t tab) { on_tab(tab); }
     void set(OnTextChanged_t change) { on_text_changed(change); }
     
 public:
@@ -144,6 +147,10 @@ public:
     
     void on_enter(const OnEnter_t& fn) {
         _settings.on_enter = fn;
+    }
+    
+    void on_tab(const OnTab_t& fn) {
+        _settings.on_tab = fn;
     }
     
     void enter();

@@ -65,7 +65,7 @@ struct DefaultSettings {
     Color horizontalClr{DarkGray.alpha(150)};
     Color highlightClr{Drawable::accent_color};
     Color textClr{White};
-    Color window_color{Black};
+    Color window_color{Transparent};
     bool clickable{false};
     Size2 max_size{0.f};
     Font font{0.75f};
@@ -304,11 +304,28 @@ T resolve_variable_type(std::string word, const Context& context) {
     });
 }
 
-void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
 tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path);
 
-void update_layout(const file::Path&, Context&, State&, std::vector<Layout::Ptr>&);
+//! A simple struct that manages properties like the path to where the dyn gui is loaded from,
+//! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
+struct DynamicGUI {
+    file::Path path;
+    Context context;
+    State state;
+    DrawStructure* graph{nullptr};
+    Base* base;
+    std::vector<Layout::Ptr> objects;
+    
+    void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
+    
+    operator bool() const;
+    void clear();
+    
+private:
+    static void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+};
+
 void update_tooltips(DrawStructure&, State&);
 
 }

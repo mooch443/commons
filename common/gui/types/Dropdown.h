@@ -6,6 +6,17 @@
 #include <gui/types/ScrollableList.h>
 
 namespace gui {
+    struct ClosesAfterSelect {
+        bool closes{true};
+
+        ClosesAfterSelect() = default;
+        explicit ClosesAfterSelect(bool after) : closes(after) {}
+
+        operator bool() const {
+            return closes;
+        }
+    };
+
     class Dropdown : public Entangled {
         std::vector<std::string> _corpus;
         PreprocessedData _preprocessed;
@@ -14,6 +25,44 @@ namespace gui {
         enum Type {
             SEARCH,
             BUTTON
+        };
+        
+        struct FilteredIndex {
+            long value;
+            explicit FilteredIndex(long v = -1) : value(v) {}
+
+            explicit operator bool() const { return value != -1; }
+            
+            bool valid() const { return (bool)*this; }
+            
+            std::string toStr() const { return value != -1 ? Meta::toStr(value) : "null"; }
+            static std::string class_name() { return "FilteredIndex"; }
+
+            // Equality operators
+            friend bool operator==(const FilteredIndex& lhs, const FilteredIndex& rhs) { return lhs.value == rhs.value; }
+            friend bool operator!=(const FilteredIndex& lhs, const FilteredIndex& rhs) { return !(lhs == rhs); }
+
+            // Spaceship operator
+            auto operator<=>(const FilteredIndex& other) const { return value <=> other.value; }
+        };
+
+        struct RawIndex {
+            long value;
+            explicit RawIndex(long v = -1) : value(v) {}
+
+            explicit operator bool() const { return value != -1; }
+
+            bool valid() const { return (bool)*this; }
+            
+            std::string toStr() const { return value != -1 ? Meta::toStr(value) : "null"; }
+            static std::string class_name() { return "RawIndex"; }
+
+            // Equality operators
+            friend bool operator==(const RawIndex& lhs, const RawIndex& rhs) { return lhs.value == rhs.value; }
+            friend bool operator!=(const RawIndex& lhs, const RawIndex& rhs) { return !(lhs == rhs); }
+
+            // Spaceship operator
+            auto operator<=>(const RawIndex& other) const { return value <=> other.value; }
         };
         
         class Item {
@@ -44,7 +93,9 @@ namespace gui {
         public:
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
                 : Item(ID), _name(name), _search(search), _custom(custom)
-            { }
+            {
+                _index = this->ID();
+            }
             
             std::string name() const override {
                 return _name;
@@ -71,24 +122,34 @@ namespace gui {
             
             std::string toStr() const;
             static std::string class_name();
+            
+            static TextItem invalid_item() {
+                TextItem item;
+                item.set_index(INVALID_ID);
+                item._ID = INVALID_ID;
+                return item;
+            }
         };
         
     protected:
         GETTER_NCONST(std::shared_ptr<Textfield>, textfield)
         GETTER_NCONST(std::shared_ptr<Button>, button)
         GETTER_NCONST(std::unique_ptr<ScrollableList<TextItem>>, list)
-        std::function<void(long_t, const TextItem&)> _on_select;
+        std::function<void(RawIndex, const TextItem&)> _on_select;
+        Textfield::OnEnter_t _on_enter;
         
         GETTER(std::vector<TextItem>, items)
         
         GETTER_I(bool, opened, false)
         GETTER_I(Type, type, SEARCH)
         GETTER_I(bool, inverted, false)
+        GETTER(ClosesAfterSelect, closes_after_select)
         
-        long _selected_item = -1;
-        GETTER_I(long, selected_id, -1)
+        RawIndex _selected_item;
         
-        std::map<size_t, size_t> filtered_items;
+        std::map<FilteredIndex, RawIndex> filtered_items;
+        std::map<RawIndex, FilteredIndex> items_to_filtered_items;
+        
         std::function<void()> _on_text_changed;
         std::function<void(std::string)> _custom_on_text_changed;
         std::function<void(bool)> _on_open;
@@ -99,12 +160,23 @@ namespace gui {
         void set(LineClr clr) override { _textfield->set(clr); }
         void set(FillClr clr) override { _textfield->set(clr); }
         void set(Font font) { _textfield->set(font); }
+        void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }
         void set(const std::vector<TextItem>& options) { set_items(options); }
         void set(const std::vector<std::string>& options) { set_items(std::vector<TextItem>(options.begin(), options.end())); }
         void set(const Type& type) { _type = type; set_content_changed(true); }
+        void set(std::function<void(RawIndex, const TextItem&)> on_select) {
+            _on_select = on_select;
+        }
+        void set(Textfield::OnEnter_t on_enter) {
+            _on_enter = on_enter;
+        }
         
         void set_bounds(const Bounds& bounds) override;
         void set_size(const Size2& size) override;
+        
+        const auto& on_open() const { return _on_open; }
+        const auto& on_enter() const { return _on_enter; }
+        const auto& on_select() const { return _on_select; }
         
         template<typename... Args>
         Dropdown(Args... args) {
@@ -123,7 +195,7 @@ namespace gui {
         
         void set_opened(bool opened);
         
-        void on_select(const std::function<void(long_t, const TextItem&)>& fn) {
+        void on_select(const std::function<void(RawIndex, const TextItem&)>& fn) {
             _on_select = fn;
         }
         
@@ -142,7 +214,9 @@ namespace gui {
         const std::string& text() const;
         TextItem selected_item() const;
         TextItem hovered_item() const;
-        void select_item(long index);
+        void select_item(RawIndex index);
+        bool has_selection() const;
+        RawIndex filtered_item_index(FilteredIndex index) const;
         
     protected:
         void set_inverted(bool); //! whether dropdown opens to the top

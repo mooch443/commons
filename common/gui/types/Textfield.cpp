@@ -79,6 +79,57 @@ namespace gui {
     }
 
 void Textfield::init() {
+    if(not _settings.on_tab) {
+        _settings.on_tab = OnTab_t{[this](){
+            if(parent() && parent()->stage()) {
+                std::vector<Textfield*> textfields;
+                std::deque<SectionInterface*> q{
+                    (SectionInterface*)&parent()->stage()->root()
+                };
+                
+                std::optional<size_t> index;
+                while(not q.empty()) {
+                    auto root = q.front();
+                    q.pop_front();
+                    
+                    print("* searching ", (uint64_t)root, " name=", root->name());
+                    
+                    for(auto c : root->children()) {
+                        if(c->type() == Type::SINGLETON)
+                            c = ((SingletonObject*)c)->ptr();
+                        if(c->type() == Type::ENTANGLED
+                           && dynamic_cast<Textfield*>(c))
+                        {
+                            if(c == this) {
+                                index = textfields.size();
+                            }
+                            textfields.push_back(static_cast<Textfield*>(c));
+                            
+                        } else if(dynamic_cast<SectionInterface*>(c)) {
+                            q.push_front(static_cast<SectionInterface*>(c));
+                        }
+                    }
+                }
+                
+                print("* searching for ", (uint64_t)this);
+                std::vector<uint64_t> ptrs;
+                for(auto t : textfields) {
+                    ptrs.push_back((uint64_t)t);
+                }
+                print("  all textfields: ", ptrs);
+                
+                if(index.has_value()) {
+                    if(textfields.size() >= index.value() && index.value() > 0) {
+                        stage()->select(textfields.at(index.value()-1));
+                    } else if(not textfields.empty()) {
+                        stage()->select(textfields.back());
+                    }
+                }
+                
+            }
+        }};
+    }
+    
     _selection_rect.set_fillclr(DarkCyan.alpha(100));
     _cursor_position = narrow_cast<long_t>(text().length());
     _text_display.create(text(), Black, _settings.font);
@@ -152,52 +203,8 @@ void Textfield::init() {
         
         switch (e.key.code) {
             case Keyboard::Tab:
-                if(parent() && parent()->stage()) {
-                    std::vector<Textfield*> textfields;
-                    std::deque<SectionInterface*> q{
-                        (SectionInterface*)&parent()->stage()->root() 
-                    };
-                    
-                    std::optional<size_t> index;
-                    while(not q.empty()) {
-                        auto root = q.front();
-                        q.pop_front();
-                        
-                        print("* searching ", (uint64_t)root, " name=", root->name());
-                        
-                        for(auto c : root->children()) {
-                            if(c->type() == Type::SINGLETON)
-                                c = ((SingletonObject*)c)->ptr();
-                            if(c->type() == Type::ENTANGLED
-                               && dynamic_cast<Textfield*>(c))
-                            {
-                                if(c == this) {
-                                    index = textfields.size();
-                                }
-                                textfields.push_back(static_cast<Textfield*>(c));
-                                
-                            } else if(dynamic_cast<SectionInterface*>(c)) {
-                                q.push_front(static_cast<SectionInterface*>(c));
-                            }
-                        }
-                    }
-                    
-                    print("* searching for ", (uint64_t)this);
-                    std::vector<uint64_t> ptrs;
-                    for(auto t : textfields) {
-                        ptrs.push_back((uint64_t)t);
-                    }
-                    print("  all textfields: ", ptrs);
-                    
-                    if(index.has_value()) {
-                        if(textfields.size() >= index.value() && index.value() > 0) {
-                            stage()->select(textfields.at(index.value()-1));
-                        } else if(not textfields.empty()) {
-                            stage()->select(textfields.back());
-                        }
-                    }
-                    
-                }
+                if(_settings.on_tab)
+                    _settings.on_tab();
                 break;
             case Keyboard::Left:
                 if(_cursor_position > 0) {

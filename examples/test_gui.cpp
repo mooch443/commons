@@ -507,6 +507,11 @@ int main(int argc, char**argv) {
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
     IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
+        static dyn::DynamicGUI dynGUI{
+            .base = ptr,
+            .graph = &graph,
+            .path = file::DataLocation::parse("app", "test_gui.json")
+        };
         
         //! set dt and target position for the constexpr functions to exploit
         if (last_mouse_pos != graph.mouse_position()) {
@@ -549,21 +554,8 @@ int main(int argc, char**argv) {
         graph.text("BBC MicroOwl", Loc(10, 10), White.alpha(el / 5 * 205 + 50), Font(1));
         graph.wrap_object(button);
         
-        {
-            static Timer timer;
-            if(timer.elapsed() > 1) {
-                update_layout(file::DataLocation::parse("app", "test_gui.json"), context, state, objects);
-                timer.reset();
-            }
-        }
+        dynGUI.update(nullptr);
         
-        for(auto &o : objects) {
-            update_objects(graph, o, context, state);
-            //if(o.is<Layout>())
-            //    print(o.to<Layout>()->toString(nullptr));
-            graph.wrap_object(*o);
-        }
-
         auto size = circle0->size() + Size2(1);
         if(size.width > 50) {
             size = Size2(5);

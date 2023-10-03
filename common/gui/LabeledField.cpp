@@ -87,7 +87,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohman
         ptr = std::make_unique<LabeledPathArray>(parm, obj);
         
     } else if(ref.is_type<bool>() || ref.get().is_enum()) {
-        ptr = std::make_unique<LabeledList>(parm, obj);
+        ptr = std::make_unique<LabeledList>(parm, obj, invert);
         
     } else {
         ptr = std::make_unique<LabeledTextField>(parm, obj);
@@ -164,7 +164,7 @@ void LabeledTextField::update() {
     }
 }
 
-LabeledList::LabeledList(const std::string& name, const nlohmann::json& obj)
+LabeledList::LabeledList(const std::string& name, const nlohmann::json& obj, bool invert)
 : LabeledField(name),
 _list(std::make_shared<gui::List>(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
@@ -175,9 +175,13 @@ _list(std::make_shared<gui::List>(
       
       try {
           if(_ref.is_type<bool>()) {
-              _ref = index == 1 ? true : false;
+              if(_invert) {
+                  _ref = index == 0 ? true : false;
+              } else
+                  _ref = index == 1 ? true : false;
               
           } else {
+              assert(not _invert); // incompatible with enums
               assert(_ref.get().is_enum());
               auto name = _ref.get().enum_values()().at((size_t)index);
               auto current = _ref.get().valueString();
@@ -188,7 +192,8 @@ _list(std::make_shared<gui::List>(
       } catch(...) {}
       
       list->set_folded(true);
-  }))
+  })),
+    _invert(invert)
 {
     _docs = settings_scene::temp_docs[name];
     
@@ -201,7 +206,9 @@ _list(std::make_shared<gui::List>(
             std::make_shared<TextItem>("false", 0),
             std::make_shared<TextItem>("true", 1)
         };
-        index = _ref.value<bool>() ? 1 : 0;
+        index = not _invert ?
+                    (_ref.value<bool>() ? 1 : 0)
+                :   (_ref.value<bool>() ? 0 : 1);
         
     } else {
         assert(_ref.get().is_enum());
@@ -245,7 +252,9 @@ _list(std::make_shared<gui::List>(
 
 void LabeledList::update() {
     if(_ref.is_type<bool>()) {
-        _list->select_item(_ref.value<bool>() ? 1 : 0);
+        _list->select_item(not _invert ?
+                                (_ref.value<bool>() ? 1 : 0)
+                               :(_ref.value<bool>() ? 0 : 1));
     } else {
         _list->select_item(narrow_cast<long>(_ref.get().enum_index()()));
     }
@@ -266,15 +275,15 @@ _dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_cho
         items.push_back(Dropdown::TextItem((std::string)file::Path(name).filename(), index++, name));
     }
     _dropdown->set_items(items);
-    _dropdown->select_item(narrow_cast<long>(_ref.get().enum_index()()));
+    _dropdown->select_item(Dropdown::RawIndex{narrow_cast<long>(_ref.get().enum_index()())});
     _dropdown->textfield()->set_text(_ref.get().valueString());
     
     _dropdown->on_select([this](auto index, auto) {
-        if(index < 0)
+        if(not index.valid())
             return;
         
         try {
-            _ref.get().set_value_from_string(_ref.get().enum_values()().at((size_t)index));
+            _ref.get().set_value_from_string(_ref.get().enum_values()().at((size_t)index.value));
         } catch(...) {}
         
         _dropdown->set_opened(false);
@@ -282,7 +291,7 @@ _dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_cho
 }
 
 void LabeledDropDown::update() {
-    _dropdown->select_item(narrow_cast<long>(_ref.get().enum_index()()));
+    _dropdown->select_item(Dropdown::RawIndex{narrow_cast<long>(_ref.get().enum_index()())});
 }
 
 LabeledPath::FileItem::FileItem(const file::Path& path) : _path(path)
@@ -311,7 +320,7 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     set_description("");
     _dropdown = std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
     
-    _dropdown->on_select([this](long_t, const Dropdown::TextItem &item) {
+    _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
         if(path.empty()) {
             path = _dropdown->textfield()->text();
@@ -441,9 +450,69 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     _dropdown->on_text_changed([this](std::string){
         // handle text changed
         updateDropdownItems();
-        updateStaticText(); // Function to update the preview based on the new pattern
     });
-
+    _dropdown->set(ClosesAfterSelect(false));
+    _dropdown->set([this](auto, const Dropdown::TextItem& item) {
+        // on select
+        _ref.container().set_do_print(true);
+        print("Selecting ", item.name());
+        auto path = file::Path(_dropdown->text());
+        if(path.is_folder()) {
+            _dropdown->textfield()->set_text(_dropdown->text()+file::Path::os_sep());
+        } else {
+            _dropdown->stage()->select(nullptr);
+            _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
+        }
+        updateDropdownItems();
+        
+    });
+    _dropdown->set(Textfield::OnEnter_t{
+        [this, dropdown = _dropdown.to<Dropdown>()](){
+            auto list = dropdown->list().get();
+            auto text = _dropdown->text();
+            file::PathArray pathArray(text);
+            
+            if(pathArray.matched_patterns()) {
+                if(dropdown->stage())
+                    dropdown->stage()->select(NULL);
+                _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
+                
+            } else if(not list->items().empty()) {
+                list->select_highlighted_item();
+            } else if(dropdown->on_select())
+                dropdown->on_select()(Dropdown::RawIndex{}, Dropdown::TextItem::invalid_item());
+            
+            list->set_last_hovered_item(-1);
+        }
+    });
+    
+    _dropdown->textfield()->set(Textfield::OnTab_t{
+        [this](){
+            if(not _dropdown->items().empty()) {
+                auto dropdown = _dropdown.to<Dropdown>();
+                //auto index = dropdown->hovered_item().index();
+                //print("_selected_item ", dropdown->selected_item().index()," / hovered_item = ", index);
+                //if(index != Dropdown::Item::INVALID_ID) {
+                //    dropdown->select_item(index);
+                //} else
+                Dropdown::FilteredIndex index{0};
+                if(index){
+                    dropdown->select_item(dropdown->filtered_item_index(index));
+                }
+                
+                auto path = dropdown->selected_item().name();
+                if(file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
+                {
+                    _dropdown->textfield()->set_text(path+file::Path::os_sep());
+                } else {
+                    _dropdown->textfield()->set_text(path);
+                }
+                
+                updateDropdownItems();
+            }
+        }
+    });
+    
     // Initialize StaticText
     _staticText = Layout::Make<gui::StaticText>();
     _layout = Layout::Make<gui::VerticalLayout>(std::vector<Layout::Ptr>{_dropdown, _staticText});
@@ -465,6 +534,9 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
             }
         }
     }
+    
+    _dropdown->textfield()->set(Content{ _ref.value<file::PathArray>().source() });
+    updateDropdownItems();
 }
 
 void LabeledPathArray::updateStaticText() {
@@ -489,30 +561,55 @@ void LabeledPathArray::add_to(std::vector<Layout::Ptr>& v) {
 
 void LabeledPathArray::updateDropdownItems() {
     try {
-        // Create a PathArray object using the pattern from the dropdown textfield
-        file::PathArray pathArray(_dropdown->textfield()->text());
+        auto text = _dropdown->text();
+        file::PathArray pathArray(text);
+        
+        std::vector<file::Path> matches; // Temporary storage for matched or listed files
 
-        // Populate _files based on pattern
-        auto matches = pathArray.get_paths();
-        _files.clear();
-        _files.insert(matches.begin(), matches.end());
+        if (utils::endsWith(text, file::Path::os_sep())) {
+            // User is navigating into a folder
+            matches = pathArray.get_paths();
+            if (not pathArray.matched_patterns()) {
+                if (matches.empty() || matches.front().is_folder()) {
+                    auto folder = matches.empty() ? file::Path("/") : matches.front();
+                    auto files = folder.find_files();
+                    matches = {files.begin(), files.end()};
+                }
+            }
+            _files = {matches.begin(), matches.end()};
+            print("items for ", text, " = ", _files, " from ", pathArray);
+            
+        } else {
+            // Handle wildcard matching or parent folder display
+            if (pathArray.matched_patterns()) {
+                // If wildcards are present, filter based on them
+                matches = pathArray.get_paths();
+            } else {
+                // If a separator was deleted, show parent folder contents
+                auto parentPath = file::Path(text).remove_filename();
+                auto parentFiles = parentPath.find_files();
+                matches = {parentFiles.begin(), parentFiles.end()};
+            }
+            _files = {matches.begin(), matches.end()};
+        }
 
-        // Populate _search_items
+        // Always update _search_items based on _files
         _search_items.clear();
-        for(auto &f : _files) {
-            if(f.str() != ".." && !utils::beginsWith((std::string)f.filename(), '.')) {
+        for (const auto &f : _files) {
+            if (f.str() != ".." && !utils::beginsWith((std::string)f.filename(), '.')) {
                 _search_items.push_back(Dropdown::TextItem(f.str()));
                 _search_items.back().set_display(std::string(file::Path(f.str()).filename()));
             }
         }
         
-        // Update dropdown items
         _dropdown->set_items(_search_items);
-
-    } catch(const UtilsException&) {
+        
+    } catch (const UtilsException&) {
         // Handle exception
         // Maybe reset _files to some safe state
     }
+    
+    updateStaticText();
 }
 
 void LabeledPathArray::update() {

@@ -41,6 +41,7 @@ template <typename FS = RealFilesystem>
 class _PathArray {
 private:
     GETTER(std::string, source)
+    GETTER_I(bool, matched_patterns, false)
     
     std::vector<file::Path> _paths; ///< Member to store the list of file paths
     FS fs; // Object to interact with the filesystem
@@ -150,7 +151,7 @@ public:
     * @param path The path pattern to parse.
     * @return A vector of file::Path objects that match the pattern.
     */
-    static std::vector<file::Path> parse_path(const std::string& path) {
+    std::vector<file::Path> parse_path(const std::string& path) {
         // Define the regex pattern for different types of placeholders in the path
         std::regex pattern(R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)");
         std::smatch match;
@@ -158,6 +159,7 @@ public:
         FS fs;
 
         if (std::regex_search(path, match, pattern)) {
+            _matched_patterns = true;
             std::ostringstream ss;
             
             // Handle cases like %0.100.6d
