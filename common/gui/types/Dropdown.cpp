@@ -157,6 +157,11 @@ void Dropdown::init() {
 
             } else {
                 // If the search text is empty, display all items
+                // trivial mapping
+                for(long i=0; i<(long)_items.size(); ++i) {
+                    filtered_items[FilteredIndex{i}] = RawIndex{i};
+                    items_to_filtered_items[RawIndex{i}] = FilteredIndex{i};
+                }
                 _list->set_items(convert_to_search_name(_items));
             }
 
