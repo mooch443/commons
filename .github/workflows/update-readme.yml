@@ -30,7 +30,8 @@ jobs:
     - name: Display changes
       run: |
         cat README.md
-        git diff
+    - name: Display diff
+      run: git diff
     
     - name: Commit and push if changed
       run: |
