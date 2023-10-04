@@ -471,8 +471,6 @@ int main(int argc, char**argv) {
     IMGUIBase* ptr = nullptr;
     IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
         static dyn::DynamicGUI dynGUI{
-            .base = ptr,
-            .graph = &graph,
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .context = {
                 .actions = {
@@ -508,7 +506,9 @@ int main(int argc, char**argv) {
                             }))
                         }
                     }
-            }
+            },
+            .graph = &graph,
+            .base = ptr
         };
         
         //! set dt and target position for the constexpr functions to exploit
