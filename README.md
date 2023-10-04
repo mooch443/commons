@@ -112,7 +112,8 @@ int main(int argc, char**argv) {
 
 For the JSON configuration (\`test_gui.json\`) that accompanies this example, you might have something like:
 
-```json{
+```json
+{
     "objects": [{
         "type": "vlayout", "pos": [20, 10],
         "children": [
