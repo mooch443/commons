@@ -26,7 +26,7 @@ jobs:
       run: python .github/scripts/update-readme.py
       
     - name: Display changes
-      run: git diff
+      run: cat README.md
     
     - name: Commit and push if changed
       run: |
