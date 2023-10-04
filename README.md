@@ -65,6 +65,32 @@ int main(int argc, char**argv) {
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
     
+    // Create a list variable
+    static std::vector<std::shared_ptr<VarBase_t>> list;
+    std::vector<sprite::Map> _data;
+    
+    for(size_t i = 0; i<3; ++i) {
+        sprite::Map tmp;
+        tmp["name"] = std::string("object"+Meta::toStr(i));
+        tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
+        tmp["pos"] = Vec2(100, 150+i*50);
+        tmp["size"] = Size2(25, 25);
+        _data.push_back(std::move(tmp));
+        
+        list.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
+            return _data[i];
+        }));
+    }
+    
+    // Ability to add a module that makes a certain element draggable
+    // (since this is not a native ability of the json)
+    dyn::Modules::add(Modules::Module{
+        ._name = "draggable",
+        ._apply = [](size_t, State&, const Layout::Ptr& o) {
+            o->set_draggable();
+        }
+    });
+    
     // Initialize the GUI
     DrawStructure graph(1024, 1024);  // Window size
     IMGUIBase base("Dynamic GUI Example", graph, [&]() -> bool {
@@ -82,6 +108,12 @@ int main(int argc, char**argv) {
                     }
                 },
                 .variables = {
+                    {
+                        "list_var",
+                        std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                            return list;
+                        }))
+                    },
                     {
                         "global",
                         std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
@@ -115,20 +147,22 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
 
 ```json
 {
-    "objects": [{
-        "type": "vlayout", "pos": [20, 10],
-        "children": [
+    "objects": [
+        {"type": "vlayout", "pos": [20, 10],
+         "children": [
             {"type": "hlayout", "children": [
                 {"type": "button", "text": "Quit", "action": "QUIT"},
-                {"type": "collection", "pos": [300, 100], "children": [
+                {"type": "collection", "pos": [300, 100], 
+                 "children": [
                     {"type": "text", "text": "Hello World!"}
-                ]}
+                 ]
+                }
             ]},
             {"type": "vlayout", "children": [
-                {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "patharray", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "region_model", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "blob_size_ranges", "fill": [50, 50, 50, 125]}
+                {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "patharray", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "region_model", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "blob_size_ranges", "fill": [50, 50, 50, 125], "size":[300,40]}
             ]},
             {"type": "gridlayout", 
              "pos": [550, 600], 
@@ -148,13 +182,27 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
             },
             {"type": "rect", "pos": [0, 0], "size": [50, 50], "fill": [255, 0, 0, 125]},
             {"type": "circle", "pos": [0, 0], "radius": 10, "fill": [125, 125, 0, 125]},
-            {"type": "each", "var": "list_var", "do": {"type": "text", "text": "{i:item}"}},
             {"type": "condition", "var": "isTrue", 
              "then": {"type": "text", "text": "True"}, 
              "else": {"type": "text", "text": "False"}
             }
-        ]
-    }]
+        ]},
+        {"type":"vlayout",
+         "modules":["draggable"],
+         "line":[125,0,0,200],
+         "fill":[125,0,0,100],
+         "margins":[0,0,0,0],
+         "children": [
+           {"type": "each", 
+            "var": "list_var", 
+            "do": {
+                "type": "stext",
+                "text": "{i:name} {i:color}", 
+                "color":"{i:color}"
+            }
+           }
+        ]}
+    ]
 }
 
 ```
