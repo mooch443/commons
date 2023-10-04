@@ -108,6 +108,7 @@ int main(int argc, char**argv) {
     base.loop();  // Start the GUI event loop
     return 0;
 }
+
 ```
 
 For the JSON configuration (\`test_gui.json\`) that accompanies this example, you might have something like:
@@ -131,13 +132,13 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
             ]},
             {"type": "gridlayout", "pos": [550, 600], "horizontal_clr": [50, 50, 150, 100], "vertical_clr": [50, 150, 150, 100], "clickable": true, "children": [
                 [ 
-				  [{"type": "text", "text": "Entry 1"}], 
-				  [{"type": "text", "text": "app={global:patharray}"}] 
-				],
+                  [{"type": "text", "text": "Entry 1"}], 
+                  [{"type": "text", "text": "app={global:patharray}"}] 
+                ],
                 [ 
-				  [{"type": "text", "text": "app={global:region_model}"}], 
-				  [{"type": "text", "text": "app={global:app_name}"}]
-				]
+                  [{"type": "text", "text": "app={global:region_model}"}], 
+                  [{"type": "text", "text": "app={global:app_name}"}]
+                ]
             ]},
             {"type": "rect", "pos": [0, 0], "size": [50, 50], "fill": [255, 0, 0, 125]},
             {"type": "circle", "pos": [0, 0], "radius": 10, "fill": [125, 125, 0, 125]},
@@ -146,6 +147,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         ]
     }]
 }
+
 ```
 
 ## Contributions
