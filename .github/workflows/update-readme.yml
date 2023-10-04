@@ -40,5 +40,5 @@ jobs:
         git add -A
         git diff --cached --exit-code || echo "Changes detected"
         git diff --cached --exit-code || git commit -m "Automatically updated README.md"
-        echo git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
     
