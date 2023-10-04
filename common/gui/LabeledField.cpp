@@ -135,9 +135,9 @@ void LabeledCheckbox::set_description(std::string desc) {
 LabeledCheckbox::~LabeledCheckbox() {
 }
 
-LabeledTextField::LabeledTextField(const std::string& name, const nlohmann::json& obj)
-: LabeledField(name),
-_text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
+LabeledTextField::LabeledTextField(const std::string& name, const nlohmann::json&)
+    : LabeledField(name),
+    _text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _text_field->set_placeholder(name);
     _text_field->set_font(Font(0.7f));
@@ -149,18 +149,28 @@ _text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_
         try {
             _ref.get().set_value_from_string(_text_field->text());
             
-        } catch(...) {}
+        } catch(...) {
+            FormatExcept("Cannot convert ", _text_field->text(), " to ", _ref.get().type_name());
+        }
     });
 }
 
 void LabeledTextField::update() {
-    auto str = _ref.get().valueString();
-    if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
-        str = str.substr(1,str.length()-2);
+    if(_text_field->selected()) {
+        // dont update because of self-changes
+        return;
     }
+    std::string str;
+    if(_ref.is_type<std::string>()) {
+        str = _ref.value<std::string>();
+    } else {
+        str = _ref.get().valueString();
+    }
+    /*if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
+        str = str.substr(1,str.length()-2);
+    }*/
     if(str != _text_field.to<Textfield>()->text()) {
         _text_field->set_text(str);
-        print("Updating textfield for ", _ref.get().name(), " -> ", str);
     }
 }
 
@@ -446,7 +456,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     : LabeledField(name)
 {
     // Initialize Dropdown, attach handlers for events
-    _dropdown = Layout::Make<gui::Dropdown>(/*args*/);
+    _dropdown = Layout::Make<gui::Dropdown>(attr::Size(300,40));
     _dropdown->on_text_changed([this](std::string){
         // handle text changed
         updateDropdownItems();

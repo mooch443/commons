@@ -377,6 +377,8 @@ int main(int argc, char**argv) {
                   Loc(100, 100),
                   TextClr{Cyan});
     
+    SETTING(app_name) = std::string("test application");
+    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.mp4");
     SETTING(blob_size_ranges) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
@@ -420,45 +422,6 @@ int main(int argc, char**argv) {
             return _data[i];
         }));
     }
-    
-    Context context{
-        .actions = {
-            {
-                "QUIT", [&](auto) {
-                    terminate = true;
-                }
-            }
-        },
-            .variables = {
-                {
-                    "fishes",
-                    std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
-                        return fishes;
-                    }))
-                },
-                {
-                    "invalid",
-                    std::unique_ptr<VarBase_t>(new Variable([](std::string){
-                        return false;
-                    }))
-                },
-                {
-                    "valid",
-                    std::unique_ptr<VarBase_t>(new Variable([](std::string){
-                        return true;
-                    }))
-                },
-                {
-                    "global",
-                    std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
-                        return GlobalSettings::map();
-                    }))
-                }
-            }
-    };
-    
-    State state;
-    std::vector<Layout::Ptr> objects;
     
     ScrollableList<DetailItem> list(Bounds(200,200,300,400));
     list.set_items(std::vector<DetailItem>{
@@ -510,7 +473,42 @@ int main(int argc, char**argv) {
         static dyn::DynamicGUI dynGUI{
             .base = ptr,
             .graph = &graph,
-            .path = file::DataLocation::parse("app", "test_gui.json")
+            .path = file::DataLocation::parse("app", "test_gui.json"),
+            .context = {
+                .actions = {
+                    {
+                        "QUIT", [&](auto) {
+                            terminate = true;
+                        }
+                    }
+                },
+                    .variables = {
+                        {
+                            "list_var",
+                            std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                                return fishes;
+                            }))
+                        },
+                        {
+                            "isFalse",
+                            std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                                return false;
+                            }))
+                        },
+                        {
+                            "isTrue",
+                            std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                                return true;
+                            }))
+                        },
+                        {
+                            "global",
+                            std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
+                                return GlobalSettings::map();
+                            }))
+                        }
+                    }
+            }
         };
         
         //! set dt and target position for the constexpr functions to exploit

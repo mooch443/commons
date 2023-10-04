@@ -160,13 +160,13 @@ public:
                 auto access = [&map](const std::string& key) -> std::string {
                     auto ref = map[key];
                     if(ref.get().valid()) {
-                        if(ref.template is_type<std::string>()
-                           || ref.template is_type<file::Path>())
-                        {
-                            // clean up "" quotes from paths and strings
-                            auto str = ref.get().valueString();
-                            if(str.length() >= 2)
-                                return str.substr(1, str.length()-2);
+                        if (ref.template is_type<std::string>()) {
+                            // clean up quotes from paths and strings
+                            //auto str = r.get().valueString();
+                            //return str.length() < 2 ? "" : str.substr(1, str.length()-2);
+                            return ref.template value<std::string>();
+                        } else if (ref.template is_type<file::Path>()) {
+                            return ref.template value<file::Path>().str();
                         }
                         return ref.get().valueString();
                     }
@@ -187,12 +187,13 @@ public:
                 // we can directly retrieve its value
                 auto r = function(std::forward<decltype(args)>(args)...);
                 if(r.get().valid()) {
-                    if constexpr(_clean_same<std::string, return_type>
-                                 || _clean_same<file::Path, return_type>)
-                    {
+                    if constexpr(_clean_same<std::string, return_type>) {
                         // clean up quotes from paths and strings
-                        auto str = r.get().valueString();
-                        return str.length() < 2 ? "" : str.substr(1, str.length()-2);
+                        //auto str = r.get().valueString();
+                        //return str.length() < 2 ? "" : str.substr(1, str.length()-2);
+                        return r.template value<std::string>();
+                    } else if constexpr(_clean_same<file::Path, return_type>) {
+                        return r.template value<file::Path>().str();
                     }
                     return r.get().valueString();
                 } else

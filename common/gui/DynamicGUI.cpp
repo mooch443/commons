@@ -177,7 +177,13 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 if(inside == 0) {
                     output += resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
-                            auto ret = variable.value_string(modifiers.sub);
+                            std::string ret;
+                            if(variable.is<std::string>()) {
+                                ret = variable.value<std::string>(modifiers.sub);
+                            } else if(variable.is<file::Path>()) {
+                                ret = variable.value<file::Path>(modifiers.sub).str();
+                            } else
+                                ret = variable.value_string(modifiers.sub);
                             //print(word, " resolves to ", ret);
                             if(modifiers.html)
                                 return settings::htmlify(ret);

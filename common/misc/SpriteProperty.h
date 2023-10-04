@@ -231,8 +231,11 @@ namespace cmn {
             
             void init() {
                 _set_value_from_string = [this](const std::string& str) {
-                    auto v = Meta::fromStr<ValueType>(str);
-                    *this = v;
+                    if constexpr(_clean_same<ValueType, std::string>
+                                 || _clean_same<ValueType, file::Path>)
+                        *this = Meta::fromStr<ValueType>(util::escape(str));
+                    else
+                        *this = Meta::fromStr<ValueType>(str);
                 };
                 
                 _type_name = [](){ return Meta::name<ValueType>(); };

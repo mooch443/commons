@@ -664,8 +664,8 @@ Q fromStr(const std::string& str)
 {
     if((utils::beginsWith(str, '"') && utils::endsWith(str, '"'))
         || (utils::beginsWith(str, '\'') && utils::endsWith(str, '\'')))
-        return util::unescape(utils::trim(str.substr(1, str.length()-2)));
-    return util::unescape(utils::trim(str));
+        return util::unescape(/*utils::trim(*/str.substr(1, str.length()-2)/*)*/);
+    return util::unescape(/*utils::trim(*/str/*)*/);
 }
     
 template<class Q>
