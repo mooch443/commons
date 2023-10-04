@@ -58,8 +58,6 @@ int main(int argc, char**argv) {
     IMGUIBase base("Dynamic GUI Example", graph, [&]() -> bool {
         // Initialize Dynamic GUI
         static dyn::DynamicGUI dynGUI{
-            .base = &base,
-            .graph = &graph,
             .path = file::DataLocation::parse("app", "test_gui.json"),  // JSON file location
             .context = {
                 .actions = {
@@ -89,7 +87,9 @@ int main(int argc, char**argv) {
                         })
                     }
                 }
-            }
+            },
+            .graph = &graph,
+            .base = &base
         };
 
         // Update Dynamic GUI
