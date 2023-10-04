@@ -5,6 +5,8 @@ on:
     paths:
       - 'examples/test_gui.json'
       - 'examples/simple_gui.cpp'
+      - '.github/workflows/update-readme.yml'
+      - '.github/scripts/update-readme.py'
 
 jobs:
   update-readme:
