@@ -77,9 +77,11 @@ int main(int argc, char**argv) {
         tmp["size"] = Size2(25, 25);
         _data.push_back(std::move(tmp));
         
-        list.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
-            return _data[i];
-        }));
+        list.emplace_back(new Variable{
+            [i, &_data](std::string) -> sprite::Map& {
+                return _data[i];
+            }
+        });
     }
     
     // Ability to add a module that makes a certain element draggable
@@ -110,15 +112,21 @@ int main(int argc, char**argv) {
                 .variables = {
                     {
                         "list_var",
-                        std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
-                            return list;
-                        }))
+                        std::unique_ptr<VarBase_t>(new Variable{
+                            [](std::string) 
+                                -> std::vector<std::shared_ptr<VarBase_t>>&
+                            {
+                                return list;
+                            }
+                        })
                     },
                     {
                         "global",
-                        std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
-                            return GlobalSettings::map();
-                        }))
+                        std::unique_ptr<VarBase_t>(new Variable{
+                            [](std::string) -> sprite::Map& {
+                                return GlobalSettings::map();
+                            }
+                        })
                     }
                 }
             }
