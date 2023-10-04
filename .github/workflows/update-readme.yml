@@ -1,0 +1,26 @@
+name: Update README
+
+on:
+  push:
+    paths:
+      - 'examples/test_gui.json'
+      - 'examples/simple_gui.cpp'
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install PyYAML  # or any other dependencies you might need
+
+    - name: Update README
+      run: python .github/scripts/update-readme.py

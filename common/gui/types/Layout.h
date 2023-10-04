@@ -150,7 +150,7 @@ public:
 
     // Safe access to individual cell bounds
     Bounds getCellBounds(size_t row, size_t col) const {
-        if (row >= numRows || col >= numCols) {
+        if (row >= gridBounds.size() || col >= gridBounds[row].size()) {
             throw std::out_of_range("Invalid row or column index");
         }
         return gridBounds[row][col];
