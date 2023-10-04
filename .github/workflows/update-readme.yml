@@ -28,13 +28,16 @@ jobs:
       run: python .github/scripts/update-readme.py
       
     - name: Display changes
-      run: cat README.md
+      run: |
+        cat README.md
+        git diff
     
     - name: Commit and push if changed
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add -A
+        git diff --cached --exit-code || echo "Changes detected"
         git diff --cached --exit-code || git commit -m "Automatically updated README.md"
         echo git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
     

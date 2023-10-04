@@ -1,6 +1,11 @@
 name: MacOS
 
-on: [push]
+on: 
+  push:
+    paths-ignore:
+      - '.github/scripts/**'
+      - '.github/workflows/update-readme.yml'
+      - '*.md'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
