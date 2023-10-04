@@ -186,7 +186,8 @@ Module* exists(const std::string& name);
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
-                         State& state);
+                         State& state,
+                         const DefaultSettings& defaults);
 
 std::string parse_text(const std::string& pattern, const Context& context);
 

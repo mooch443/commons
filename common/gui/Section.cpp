@@ -107,14 +107,14 @@ namespace gui {
             auto &gbounds = global_bounds();
             
             if(!prect)
-                prect = new Rect(gbounds, FillClr{_clr}, LineClr{Red.alpha(125)});
+                prect = new Rect(Box{gbounds}, FillClr{_clr}, LineClr{Red.alpha(125)});
             else {
                 prect->set_bounds(gbounds);
                 prect->set_fillclr(_clr);
             }
             
             if(!ptext)
-                ptext = new Text(HasName::name(), Loc(gbounds.pos() - Vec2(0, 20)), White, Font(0.5));
+                ptext = new Text(Str{HasName::name()}, Loc(gbounds.pos() - Vec2(0, 20)), TextClr{White}, Font(0.5));
             else {
                 ptext->set_pos(gbounds.pos() - Vec2(0, 20));
             }

@@ -288,12 +288,13 @@ protected:
             }
         }
         
-    private:
+    public:
         using Drawable::set;
         void set(Radius radius) { set_radius(radius); }
         void set(FillClr clr) { set_fill_clr(clr); }
         void set(LineClr clr) { set_line_clr(clr); }
         
+    private:
         void init();
         
     public:
@@ -380,7 +381,7 @@ protected:
         
     public:
         using Drawable::set;
-        void set(const Content& txt) { set_txt(txt); }
+        void set(const Str& txt) { set_txt(txt); }
         void set(const Color& color) { set_color(color); }
         void set(const Font& font) { set_font(font); }
         

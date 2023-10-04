@@ -878,7 +878,7 @@ namespace gui {
         
         if(_bg_fill_color != Transparent || _bg_line_color != Transparent) {
             if(!_background) {
-                _background = new Rect(Bounds());
+                _background = new Rect();
                 _background->set_parent(this);
                 _background->set_z_index(_z_index);
             }

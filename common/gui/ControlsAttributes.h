@@ -16,34 +16,45 @@ inline constexpr bool pack_contains() {
     return std::is_same<T, A>::value ? true : pack_contains<T, Tail...>();
 }
 
-template <class T, int _position = 0>
+template <class T, class Tag>
 struct AttributeAlias : T {
     using base_type = T;
-    using base_type::base_type;
-    //static constexpr auto position = _position;
+    using T::T;
     
-    constexpr AttributeAlias(const T& copy) : T(copy) {}
-    constexpr AttributeAlias(T&& copy) : T(std::move(copy)) {}
-    constexpr AttributeAlias& operator=(const T& copy) { T::operator=(copy); return *this; }
-    constexpr AttributeAlias& operator=(T&& copy) { T::operator=(std::move(copy)); return *this; }
+    explicit constexpr AttributeAlias(const T& copy) : T(copy) {}
+    explicit constexpr AttributeAlias(T&& copy) : T(std::move(copy)) {}
+    constexpr AttributeAlias& operator=(const T& copy) {
+        T::operator=(copy);
+        return *this;
+    }
+    constexpr AttributeAlias& operator=(T&& copy) {
+        T::operator=(std::move(copy));
+        return *this;
+    }
 };
 
-using Loc = AttributeAlias<cmn::Vec2, 0>;
-using Size = AttributeAlias<cmn::Size2, 0>;
-using SizeLimit = AttributeAlias<cmn::Size2, 1>;
-using Origin = AttributeAlias<cmn::Vec2, 1>;
-using Scale = AttributeAlias<cmn::Vec2, 2>;
-using Margins = AttributeAlias<cmn::Bounds, 3>;
-using FillClr = AttributeAlias<gui::Color, 0>;
-using LineClr = AttributeAlias<gui::Color, 1>;
-using TextClr = AttributeAlias<gui::Color, 2>;
-using HighlightClr = AttributeAlias<gui::Color, 3>;
-using VerticalClr = AttributeAlias<gui::Color, 4>;
-using HorizontalClr = AttributeAlias<gui::Color, 5>;
-using Content = AttributeAlias<std::string, 1>;
-using Postfix = AttributeAlias<std::string, 2>;
-using Prefix = AttributeAlias<std::string, 3>;
-using ParmName = AttributeAlias<std::string, 4>;
+#define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \
+    struct ALIAS_NAME##Tag {};                                  \
+    using ALIAS_NAME = AttributeAlias<BASE_TYPE, ALIAS_NAME##Tag>;
+
+// Using the ALIAS macro to define type aliases
+ATTRIBUTE_ALIAS(Loc, cmn::Vec2)
+ATTRIBUTE_ALIAS(Size, cmn::Size2)
+ATTRIBUTE_ALIAS(SizeLimit, cmn::Size2)
+ATTRIBUTE_ALIAS(Origin, cmn::Vec2)
+ATTRIBUTE_ALIAS(Scale, cmn::Vec2)
+ATTRIBUTE_ALIAS(Margins, cmn::Bounds)
+ATTRIBUTE_ALIAS(Box, cmn::Bounds)
+ATTRIBUTE_ALIAS(FillClr, gui::Color)
+ATTRIBUTE_ALIAS(LineClr, gui::Color)
+ATTRIBUTE_ALIAS(TextClr, gui::Color)
+ATTRIBUTE_ALIAS(HighlightClr, gui::Color)
+ATTRIBUTE_ALIAS(VerticalClr, gui::Color)
+ATTRIBUTE_ALIAS(HorizontalClr, gui::Color)
+ATTRIBUTE_ALIAS(Str, std::string)
+ATTRIBUTE_ALIAS(Postfix, std::string)
+ATTRIBUTE_ALIAS(Prefix, std::string)
+ATTRIBUTE_ALIAS(ParmName, std::string)
 
 template<typename T, int _arbitrary = 0>
 struct NumberAlias {

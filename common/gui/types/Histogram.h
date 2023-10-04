@@ -58,7 +58,7 @@ namespace gui {
               _filter(filter),
               _display(display),
               _needs_update(true),
-              _title_obj(title, Loc(margin, margin), Font(0.7f, Style::Bold))
+              _title_obj(Str(title), Loc(margin, margin), Font(0.7f, Style::Bold))
         {
             //set_background(Black.alpha(125));
             set_bounds(size);
@@ -234,7 +234,7 @@ namespace gui {
                     if(yticks.step > 2)
                         y = roundf(y);
                     
-                    auto text = new Text(Meta::toStr(y),
+                    auto text = new Text(Str(Meta::toStr(y)),
                                          Font(0.5, Align::Center));
                     
                     _y_label_width = max(_y_label_width, text->width());
@@ -355,7 +355,7 @@ namespace gui {
                 const auto& size = bounds();
                 
                 begin();
-                add<Rect>(Bounds(Vec2(), this->size()), FillClr{Black.alpha(125)});
+                add<Rect>(Box(Vec2(), this->size()), FillClr{Black.alpha(125)});
                 
                 if(!_title.empty())
                     advance_wrap(_title_obj);
@@ -407,9 +407,9 @@ namespace gui {
                     }
                     
                     auto text = add<Text>(
-                        "N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median),
+                        Str("N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median)),
                         legend_pos,
-                        clr,
+                        TextClr(clr),
                         Font(0.5, Align::Right));
 
                     legend_pos.y += text->height();
@@ -426,7 +426,7 @@ namespace gui {
                         const auto bar_height = max(1, min(1, samples / (max_bar - min_bar)) * element.y);
                         
                         // draw bar
-                        add<Rect>(Bounds(
+                        add<Rect>(Box(
                             Loc(bar_pos.x, bar_pos.y + element.y - bar_height),
                             Size2(element.x, bar_height)), 
                                   FillClr{clr});
@@ -435,7 +435,7 @@ namespace gui {
                             // label for x-axis                            
                             float text_x = text->pos().x;
                             if(text_x - last_text.x > 40) {
-                                add<Text>(Meta::toStr(v),
+                                add<Text>(Str(Meta::toStr(v)),
                                     Loc(bar_pos.x + element.x * 0.5f,
                                         bar_pos.y + element.y + axes_width + text_height * 0.5f),
                                     Font(0.5, Align::Center));

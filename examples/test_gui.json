@@ -1,18 +1,20 @@
 {
-    "objects": [{
-        "type": "vlayout", "pos": [20, 10],
-        "children": [
+    "objects": [
+        {"type": "vlayout", "pos": [20, 10],
+         "children": [
             {"type": "hlayout", "children": [
                 {"type": "button", "text": "Quit", "action": "QUIT"},
-                {"type": "collection", "pos": [300, 100], "children": [
+                {"type": "collection", "pos": [300, 100], 
+                 "children": [
                     {"type": "text", "text": "Hello World!"}
-                ]}
+                 ]
+                }
             ]},
             {"type": "vlayout", "children": [
-                {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "patharray", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "region_model", "fill": [50, 50, 50, 125]},
-                {"type": "settings", "var": "blob_size_ranges", "fill": [50, 50, 50, 125]}
+                {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "patharray", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "region_model", "fill": [50, 50, 50, 125], "size":[300,40]},
+                {"type": "settings", "var": "blob_size_ranges", "fill": [50, 50, 50, 125], "size":[300,40]}
             ]},
             {"type": "gridlayout", 
              "pos": [550, 600], 
@@ -32,11 +34,25 @@
             },
             {"type": "rect", "pos": [0, 0], "size": [50, 50], "fill": [255, 0, 0, 125]},
             {"type": "circle", "pos": [0, 0], "radius": 10, "fill": [125, 125, 0, 125]},
-            {"type": "each", "var": "list_var", "do": {"type": "text", "text": "{i:item}"}},
             {"type": "condition", "var": "isTrue", 
              "then": {"type": "text", "text": "True"}, 
              "else": {"type": "text", "text": "False"}
             }
-        ]
-    }]
+        ]},
+        {"type":"vlayout",
+         "modules":["draggable"],
+         "line":[125,0,0,200],
+         "fill":[125,0,0,100],
+         "margins":[0,0,0,0],
+         "children": [
+           {"type": "each", 
+            "var": "list_var", 
+            "do": {
+                "type": "stext",
+                "text": "{i:name} {i:color}", 
+                "color":"{i:color}"
+            }
+           }
+        ]}
+    ]
 }

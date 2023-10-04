@@ -5,7 +5,7 @@ namespace gui {
 using namespace dyn;
 
 void Combobox::init() {
-    _dropdown = std::make_shared<Dropdown>(Bounds(0, 0, 800, 28));
+    _dropdown = std::make_shared<Dropdown>(Box(0, 0, 800, 28));
     auto keys = settings_map().keys();
     _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
     _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
@@ -16,10 +16,9 @@ void Combobox::init() {
         _dropdown->set_opened(false);
     });
     
-    _dropdown->set(attr::LineClr{Yellow});
     _layout.set(Margins{0, 0, 0, 0});
     _layout.set_policy(HorizontalLayout::Policy::TOP);
-    _layout.auto_size({});
+    _layout.auto_size();
     //set_background(_settings.fill_clr, _settings.line_clr);
     set_bounds(_settings.bounds);
     set_clickable(true);
@@ -44,7 +43,7 @@ void Combobox::update() {
     }
     
     _layout.update_layout();
-    _layout.auto_size({});
+    _layout.auto_size();
 }
 
 void Combobox::set(ParmName name) {
@@ -109,7 +108,7 @@ void Combobox::set(attr::TextClr clr) {
         set_content_changed(true);
     }
 }
-void Combobox::set(attr::Content content) {
+void Combobox::set(attr::Str content) {
     if(_settings.content != content) {
         _settings.content = content;
         if(_value)

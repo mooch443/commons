@@ -25,6 +25,32 @@ int main(int argc, char**argv) {
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
     
+    // Create a list variable
+    static std::vector<std::shared_ptr<VarBase_t>> list;
+    std::vector<sprite::Map> _data;
+    
+    for(size_t i = 0; i<3; ++i) {
+        sprite::Map tmp;
+        tmp["name"] = std::string("object"+Meta::toStr(i));
+        tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
+        tmp["pos"] = Vec2(100, 150+i*50);
+        tmp["size"] = Size2(25, 25);
+        _data.push_back(std::move(tmp));
+        
+        list.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
+            return _data[i];
+        }));
+    }
+    
+    // Ability to add a module that makes a certain element draggable
+    // (since this is not a native ability of the json)
+    dyn::Modules::add(Modules::Module{
+        ._name = "draggable",
+        ._apply = [](size_t, State&, const Layout::Ptr& o) {
+            o->set_draggable();
+        }
+    });
+    
     // Initialize the GUI
     DrawStructure graph(1024, 1024);  // Window size
     IMGUIBase base("Dynamic GUI Example", graph, [&]() -> bool {
@@ -42,6 +68,12 @@ int main(int argc, char**argv) {
                     }
                 },
                 .variables = {
+                    {
+                        "list_var",
+                        std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                            return list;
+                        }))
+                    },
                     {
                         "global",
                         std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {

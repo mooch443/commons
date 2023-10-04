@@ -3,7 +3,7 @@
 namespace gui {
 
 void ErrorElement::init() {
-    _text = std::make_shared<Text>("ERROR: element "+name()+" cannot be loaded.");
+    _text = std::make_shared<Text>(Str{"ERROR: element "+name()+" cannot be loaded."});
     set_bounds(_settings.bounds);
 }
 
@@ -14,14 +14,14 @@ void ErrorElement::update() {
     set_background(_settings.fill_clr, _settings.line_clr);
     _text->set_txt(_settings.content);
     _text->set_font(_settings.font);
-    //auto_size({});
+    //auto_size();
     
     begin();
     advance_wrap(*_text);
     end();
 }
 
-void ErrorElement::set(attr::Content content) {
+void ErrorElement::set(attr::Str content) {
     if(_settings.content != content) {
         _settings.content = content;
         set_content_changed(true);

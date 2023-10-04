@@ -89,16 +89,13 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
     //print("Calculating hash for index ", hash, " ", (uint64_t)ptr.get());
-    
-    if(type != LayoutType::settings && ptr.is<SectionInterface>()) {
-        if(fill != Transparent) {
-            if(line != Transparent)
-                ptr.to<SectionInterface>()->set_background(fill, line);
-            else
-                ptr.to<SectionInterface>()->set_background(fill);
-        } else if(line != Transparent)
-            ptr.to<SectionInterface>()->set_background(Transparent, line);
+    if(type != LayoutType::settings) {
+        if(line != Transparent)
+            LabeledField::delegate_to_proper_type(attr::LineClr{line}, ptr);
+        if(fill != Transparent)
+            LabeledField::delegate_to_proper_type(attr::FillClr{fill}, ptr);
     }
+    LabeledField::delegate_to_proper_type(attr::Margins{margins}, ptr);
     
     if(clickable)
         ptr->set_clickable(clickable);
@@ -121,6 +118,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(pos != Vec2(0)) ptr->set_pos(pos);
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
+    
     ptr->add_custom_data("object_index", (void*)hash);
     //print("adding object_index to ",ptr->type()," with index ", hash, " for ", (uint64_t)ptr.get());
 }
@@ -189,7 +187,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>(const Context& con
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
-            auto ptr = parse_object(child, context, state);
+            auto ptr = parse_object(child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -220,7 +218,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>(const Context& con
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
-            auto ptr = parse_object(child, context, state);
+            auto ptr = parse_object(child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -257,24 +255,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
                         std::vector<Layout::Ptr> objects;
                         IndexScopeHandler handler{state._current_index};
                         for(auto& obj : cell) {
-                            auto ptr = parse_object(obj, context, state);
+                            auto ptr = parse_object(obj, context, state, context.defaults);
                             if(ptr) {
                                 objects.push_back(ptr);
                             }
                         }
-                        cols.emplace_back(Layout::Make<Layout>(std::move(objects)));
+                        cols.emplace_back(Layout::Make<Layout>(std::move(objects), attr::Margins{0,0,0,0}));
                         cols.back()->set_name("Col");
                         cols.back().to<Layout>()->update();
                         cols.back().to<Layout>()->update_layout();
-                        cols.back().to<Layout>()->auto_size({});
+                        cols.back().to<Layout>()->auto_size();
                     }
                 }
-                rows.emplace_back(Layout::Make<Layout>(std::move(cols)));
+                rows.emplace_back(Layout::Make<Layout>(std::move(cols), attr::Margins{0, 0, 0, 0}));
                 rows.back()->set_name("Row");
                 //rows.back().to<Layout>()->set(LineClr{Yellow});
                 rows.back().to<Layout>()->update();
                 rows.back().to<Layout>()->update_layout();
-                rows.back().to<Layout>()->auto_size({});
+                rows.back().to<Layout>()->auto_size();
             }
         }
     }
@@ -300,7 +298,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context& 
         IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
             //print("collection: ", child.dump());
-            auto ptr = parse_object(child, context, state);
+            auto ptr = parse_object(child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -330,12 +328,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
     std::string key = var + std::to_string(hash);
     {
         {
-            print("Field var=",key, " ", state._text_fields.contains(key) ? (uint64_t)state._text_fields.at(key).get() : 0u);
             if(not state._text_fields.contains(key) or not state._text_fields.at(key)) {
                 auto ptr = LabeledField::Make(var, obj, invert);
                 state._text_fields.emplace(key, std::move(ptr));
             } else {
-                print("Field var=",key," already exists: ", *state._text_fields.at(key)->_text);
+                throw U_EXCEPTION("Cannot deal with replacement LabeledFields yet.");
                 //state._text_fields.at(key) = std::move(ptr);
             }
         }
@@ -381,7 +378,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         ref->add_to(objs);
         for(auto &o : objs)
             assert(o != nullptr);
-        ptr = Layout::Make<HorizontalLayout>(std::move(objs), Vec2(), Bounds{0, 0, 0, 0});
+        ptr = Layout::Make<HorizontalLayout>(std::move(objs), Loc(), Box{0, 0, 0, 0});
     }
     
     return ptr;
@@ -399,7 +396,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
         state.patterns[hash]["text"] = text;
     }
     
-    auto ptr = Layout::Make<Button>(text, attr::Scale(scale), attr::Origin(origin), font);
+    auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     std::string action;
     if(obj.count("action")) {
@@ -446,7 +443,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
         checked = obj["checked"].get<bool>();
     }
     
-    auto ptr = Layout::Make<Checkbox>(attr::Loc(), text, attr::Checked(checked), font);
+    auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
     
     std::string action;
     if(obj.count("action")) {
@@ -474,7 +471,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
         state.patterns[hash]["text"] = text;
     }
     
-    auto ptr = Layout::Make<Textfield>(attr::Content(text), attr::Scale(scale), attr::Origin(origin), font);
+    auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     std::string action;
     if(obj.count("action")) {
@@ -516,7 +513,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
         state.patterns[hash]["text"] = text;
     }
     
-    ptr = Layout::Make<StaticText>(text, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
+    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
     
     //if(margins != Margins{0, 0, 0, 0})
     {
@@ -566,7 +563,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
         state.patterns[hash]["text"] = text;
     }
     
-    ptr = Layout::Make<Text>(text, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
+    ptr = Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
     ptr->set_name(text);
     
     Color color{White};
@@ -610,7 +607,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
                 .child = child,
                 .state = std::make_unique<State>(state)
             };
-            ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
+            ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             ptr->set_name("foreach<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
         }
     }
@@ -624,9 +621,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context& c
     if(obj.count("then")) {
         auto child = obj["then"];
         if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
-            ptr = Layout::Make<Layout>(std::vector<Layout::Ptr>{});
+            ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             IndexScopeHandler handler{state._current_index};
-            auto c = parse_object(child, context, state);
+            auto c = parse_object(child, context, state, context.defaults);
             if(not c)
                 return nullptr;
             
@@ -634,7 +631,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context& c
             
             Layout::Ptr _else;
             if(obj.count("else") && obj["else"].is_object()) {
-                _else = parse_object(obj["else"], context, state);
+                _else = parse_object(obj["else"], context, state, context.defaults);
             }
             
             state.ifs[hash] = IfBody{

@@ -67,7 +67,7 @@ public:
         }
     }
     void set(attr::Checked checked) { set_checked(checked); }
-    void set(const Content& text) { set_text(text); }
+    void set(const Str& text) { set_text(text); }
     void set(std::function<void()> on_change) {
         if(on_change)
             this->on_change([on_change]() { on_change(); });

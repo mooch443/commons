@@ -36,7 +36,7 @@ namespace gui {
             begin();
             advance_wrap(_box);
             if(_settings.checked)
-                add<Rect>(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)));
+                add<Rect>(Box(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)));
                 //advance(new Rect(Bounds(_box.pos() + Vec2(1, 1), _box.size() - Vec2(2, 2)), Black));
             if(!_settings.text.empty())
                 advance_wrap(_description);

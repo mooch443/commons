@@ -70,47 +70,54 @@ struct LabeledField {
         if constexpr(takes_attribute<Drawable, T>) {
             object->set(attribute);
             
-        } else if(object.is<Button>()) {
-            if constexpr(takes_attribute<Button, T>)
-            {
-                object.to<Button>()->set(attribute);
-            }
+        } else if(object.is<Circle>()) {
+            if constexpr(takes_attribute<Circle, T>)
+                object.to<Circle>()->set(attribute);
             
-        } else if(object.is<Textfield>()) {
-            if constexpr(takes_attribute<Textfield, T>)
-            {
-                object.to<Textfield>()->set(attribute);
-            }
+        } else if(object.is<Rect>()) {
+            if constexpr(takes_attribute<Rect, T>)
+                object.to<Rect>()->set(attribute);
             
-        } else if(object.is<Dropdown>()) {
-            if constexpr(takes_attribute<Dropdown, T>)
-            {
-                object.to<Dropdown>()->set(attribute);
-            }
-            
-        } else if(object.is<Checkbox>()) {
-            if constexpr(takes_attribute<Checkbox, T>)
-            {
-                object.to<Checkbox>()->set(attribute);
-            }
-        } else if(object.is<List>()) {
-            if constexpr(takes_attribute<List, T>)
-            {
-                object.to<List>()->set(attribute);
-            }
-        } else if(object.is<ScrollableList<>>()) {
-            if constexpr(takes_attribute<ScrollableList<>, T>)
-            {
-                object.to<ScrollableList<>>()->set(attribute);
-            }
-        } else if(object.is<StaticText>()) {
-            if constexpr(takes_attribute<StaticText, T>)
-            {
-                object.to<StaticText>()->set(attribute);
-            }
-        } else if(object.is<Combobox>()) {
-            if constexpr(takes_attribute<Combobox, T>) {
-                object.to<Combobox>()->set(attribute);
+        } else if(object.is<SectionInterface>()) {
+            if constexpr(takes_attribute<SectionInterface, T>) {
+                object.to<SectionInterface>()->set(attribute);
+                
+            } else if(object.is<Button>()) {
+                if constexpr(takes_attribute<Button, T>)
+                    object.to<Button>()->set(attribute);
+                
+            } else if(object.is<Textfield>()) {
+                if constexpr(takes_attribute<Textfield, T>)
+                    object.to<Textfield>()->set(attribute);
+                
+            } else if(object.is<Dropdown>()) {
+                if constexpr(takes_attribute<Dropdown, T>)
+                    object.to<Dropdown>()->set(attribute);
+                
+            } else if(object.is<List>()) {
+                if constexpr(takes_attribute<List, T>)
+                    object.to<List>()->set(attribute);
+                
+            } else if(object.is<ScrollableList<>>()) {
+                if constexpr(takes_attribute<ScrollableList<>, T>)
+                    object.to<ScrollableList<>>()->set(attribute);
+                
+            } else if(object.is<Checkbox>()) {
+                if constexpr(takes_attribute<Checkbox, T>)
+                    object.to<Checkbox>()->set(attribute);
+                
+            } else if(object.is<Combobox>()) {
+                if constexpr(takes_attribute<Combobox, T>)
+                    object.to<Combobox>()->set(attribute);
+                
+            } else if(object.is<Layout>()) {
+                if constexpr(takes_attribute<Layout, T>)
+                    object.to<Layout>()->set(attribute);
+                
+            } else if(object.is<StaticText>()) {
+                if constexpr(takes_attribute<StaticText, T>)
+                    object.to<StaticText>()->set(attribute);
+                
             }
         }
     }

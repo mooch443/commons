@@ -162,7 +162,7 @@ void Graph::update() {
         
         add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
         //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
-        return add<Text>(str, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), fg, x_label_font);
+        return add<Text>(Str{str}, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), TextClr{fg}, x_label_font);
         //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
     };
     
@@ -179,7 +179,7 @@ void Graph::update() {
         std::string str = ss.str();
         
         add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
-        add<Text>(str, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), fg, y_label_font);
+        add<Text>(Str{str}, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), TextClr{fg}, y_label_font);
         //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
         //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
     };
@@ -422,11 +422,11 @@ void Graph::update() {
     if(!_title.txt().empty()) {
         _title.set_pos(Vec2(20, 15));
         _title.set_color(fg);
-        add<Rect>(Bounds(_title.pos() - Vec2(1, 1),
+        add<Rect>(Box(_title.pos() - Vec2(1, 1),
                          Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
                   FillClr{Black.alpha(150)});
         
-        add<Rect>(Bounds(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
+        add<Rect>(Box(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
                         Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
                   FillClr{Black.alpha(150)});
         advance_wrap(_title);
@@ -515,7 +515,7 @@ Graph::Graph(const Bounds& bounds,
              const std::string& name,
              const Rangef& x_range,
              const Rangef& y_range)
-    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(name, title_font)
+    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(Str{name}, title_font)
 {
     set_bounds(bounds);
     set_background(Black.alpha(175), Transparent);

@@ -2,9 +2,7 @@
 #include <gui/types/SingletonObject.h>
 
 namespace gui {
-    Layout::Layout(const std::vector<Layout::Ptr>& objects)
-        : _objects(objects)
-    {
+    void Layout::init() {
         set_content_changed(true);
         //set_background(Red.alpha(125));
         if(not _objects.empty())
@@ -62,20 +60,22 @@ namespace gui {
     void Layout::update_layout() {
         //if(name() != "Entangled")
         //    print(name(), " updating.");
-        //auto_size({});
+        //auto_size();
     }
 
-    void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
+    void Layout::set_children(std::vector<Layout::Ptr>&& objects) {
+#ifndef NDEBUG
         if(std::set<Layout::Ptr>(objects.begin(), objects.end()).size() != objects.size())
             throw U_EXCEPTION("Cannot insert the same object multiple times.");
+#endif
         
         std::vector<Layout::Ptr> next;
         bool dirty = false;
         
-        for(auto& obj : objects) {
-            next.push_back(obj);
-            
+        for(auto&& obj : objects) {
             auto it = std::find(_objects.begin(), _objects.end(), obj);
+            next.emplace_back(std::move(obj));
+            
             if(it != _objects.end()) {
                 continue;
             }
@@ -94,10 +94,17 @@ namespace gui {
         }
         
         if(dirty) {
-            _objects = next;
+            _objects = std::move(next);
             set_content_changed(true);
             update();
         }
+        
+        objects.clear();
+    }
+
+    void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
+        std::vector<Layout::Ptr> copy(objects);
+        set_children(std::move(copy));
     }
     
     void Layout::remove_child(Layout::Ptr ptr) {
@@ -124,32 +131,46 @@ namespace gui {
         //print("Cannot find object ",ptr);
     }
     
-    /*void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
-        if(std::set<Layout::Ptr>(objects.begin(), objects.end()).size() != objects.size())
-            throw U_EXCEPTION("Cannot insert the same object multiple times.");
-        
-        if(_objects == objects)
+    void Layout::set_margins(const attr::Margins &margins) {
+        if(_margins == margins)
             return;
         
-        clear_children();
-        
-        _objects = objects;
+        _margins = margins;
+        update_layout();
         set_content_changed(true);
-        update();
-    }*/
+    }
     
     void Layout::clear_children() {
         _objects.clear(); 
         set_content_changed(true);
         Entangled::clear_children(); 
     }
+
+    std::vector<Drawable*> Layout::fetch_children(Drawable* drawable) {
+        std::vector<Drawable*> result;
+        if (PlaceinLayout* placein = dynamic_cast<PlaceinLayout*>(drawable)) {
+            //print("Placein with ", placein->children().size(), " children.");
+            for (auto child : placein->children()) {
+                auto nestedChildren = fetch_children(child);
+                result.insert(result.end(), nestedChildren.begin(), nestedChildren.end());
+            }
+        } else {
+            result.push_back(drawable);
+        }
+        return result;
+    }
+
+    std::vector<Drawable*> Layout::fetch_children() {
+        std::vector<Drawable*> allChildren;
+        for (auto c : children()) {
+            auto nestedChildren = fetch_children(c);
+            allChildren.insert(allChildren.end(), nestedChildren.begin(), nestedChildren.end());
+        }
+        return allChildren;
+    }
     
-    HorizontalLayout::HorizontalLayout(const std::vector<Layout::Ptr>& objects,
-                                       const Vec2& position,
-                                       const Bounds& margins)
-        : gui::Layout(objects), _margins(margins), _policy(CENTER)
+    void HorizontalLayout::init()
     {
-        set_pos(position);
         update();
     }
     
@@ -157,7 +178,10 @@ namespace gui {
         float x = 0;
         float max_height = _margins.y + _margins.height;
         
-        for(auto c : children()) {
+        // Fetch all children, recursively expanding PlaceinLayout objects
+        std::vector<Drawable*> allChildren = fetch_children();
+        
+        for(auto c : allChildren) {
             if(!c)
                 continue;
 
@@ -176,14 +200,14 @@ namespace gui {
         
         //if(_policy == CENTER || _policy == BOTTOM)
         {
-            for(auto c : children()) {
+            for(auto c : allChildren) {
                 if(!c)
                     continue;
                 max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
             }
         }
         
-        for(auto c : children()) {
+        for(auto c : allChildren) {
             if(!c)
                 continue;
             
@@ -216,12 +240,8 @@ namespace gui {
         update_layout();
     }
     
-    VerticalLayout::VerticalLayout(const std::vector<Layout::Ptr>& objects,
-                                       const Vec2& position,
-                                       const Bounds& margins)
-        : gui::Layout(objects), _margins(margins), _policy(LEFT)
+    void VerticalLayout::init()
     {
-        set_pos(position);
         update();
     }
     
@@ -229,7 +249,9 @@ namespace gui {
         float y = 0;
         float max_width = _margins.x + _margins.width;
         
-        for(auto c : children()) {
+        auto allChildren = fetch_children();
+        
+        for(auto c : allChildren) {
             if(!c)
                 continue;
 
@@ -246,7 +268,7 @@ namespace gui {
             c->update_bounds();
         }
         
-        for(auto c : children()) {
+        for(auto c : allChildren) {
             if(!c)
                 continue;
             
@@ -254,7 +276,7 @@ namespace gui {
             assert(not std::isnan(max_width));
         }
         
-        for(auto c : children()) {
+        for(auto c : allChildren) {
             if(!c)
                 continue;
             
@@ -276,10 +298,11 @@ namespace gui {
         set_size(Size2(max_width, max(0.f, y)));
     }
 
-    void Layout::auto_size(Margin margin) {
+    void Layout::auto_size() {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
+        auto allChildren = fetch_children();
         
-        for(auto c : children()) {
+        for(auto c : allChildren) {
             if(!c)
                 continue;
 
@@ -290,17 +313,17 @@ namespace gui {
             if (_c->type() == Type::ENTANGLED
                 && dynamic_cast<Layout*>(_c))
             {
-                static_cast<Layout*>(_c)->auto_size(margin);
+                static_cast<Layout*>(_c)->auto_size();
             }
 
-            auto bds = c->local_bounds();
+            auto bds = _c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
         }
         
         if(mi.x != std::numeric_limits<Float2_t>::max()) {
-            ma += Vec2(max(0.f, margin.right), max(0.f, margin.bottom));
-            set_size(ma - mi);
+            ma += Vec2(max(0.f, _margins.width), max(0.f, _margins.height));
+            set_size(ma);
         } else {
             set_size(Size2());
         }
@@ -311,22 +334,6 @@ namespace gui {
             return;
         
         _policy = policy;
-        update_layout();
-    }
-
-    void VerticalLayout::set_margins(const Bounds &margins) {
-        if(_margins == margins)
-            return;
-        
-        _margins = margins;
-        update_layout();
-    }
-
-    void HorizontalLayout::set_margins(const Bounds &margins) {
-        if(_margins == margins)
-            return;
-        
-        _margins = margins;
         update_layout();
     }
 
@@ -394,7 +401,7 @@ std::string GridInfo::toStr() const {
 }
 
 void GridLayout::init() {
-    _vertical_rect = std::make_shared<Rect>(Bounds(0, 0, 50, 50), FillClr{_settings.verticalClr});
+    _vertical_rect = std::make_shared<Rect>(Box(0, 0, 50, 50), FillClr{_settings.verticalClr});
     _horizontal_rect = std::make_shared<Rect>(FillClr{_settings.horizontalClr});
     
     on_hover([this](Event e){
@@ -408,16 +415,15 @@ void GridLayout::init() {
     update_layout();
 }
 
-void GridLayout::set(GridLayout::Policy policy) {
-    if(policy != _settings.policy) {
-        _settings.policy = policy;
+void GridLayout::set(GridLayout::HPolicy policy) {
+    if(policy != _settings.hpolicy) {
+        _settings.hpolicy = policy;
         set_content_changed(true);
     }
 }
-
-void GridLayout::set(attr::Margins margins) {
-    if(margins != _settings.margins) {
-        _settings.margins = margins;
+void GridLayout::set(GridLayout::VPolicy policy) {
+    if(policy != _settings.vpolicy) {
+        _settings.vpolicy = policy;
         set_content_changed(true);
     }
 }
@@ -452,14 +458,14 @@ void GridLayout::update_hover() {
                     if(r != row)
                         bds.combine(_grid_info.getCellBounds(r, col));
                 }
-                _vertical_rect->set(bds);
+                _vertical_rect->set(Box{bds});
                 
                 bds = _grid_info.getCellBounds(row, col);
                 for(size_t c = 0; c < _grid_info.numCols; ++c) {
                     if(c != col)
                         bds.combine(_grid_info.getCellBounds(row, c));
                 }
-                _horizontal_rect->set(bds);
+                _horizontal_rect->set(Box{bds});
                 break;
             }
         }
@@ -471,7 +477,7 @@ void GridLayout::update_layout() {
     GridInfo::GridBounds gridBounds;
 
     // Step 1: Calculate max dimensions for columns and rows
-    for (auto _row : objects()) {
+    for (auto &_row : objects()) {
         if(not _row.is<Layout>())
             continue;
 
@@ -502,9 +508,9 @@ void GridLayout::update_layout() {
 
     // Step 2: Update the position of each row and cell, relative to its parent
     float y = margins().y;
-    size_t i = 0;
+    size_t row_idx = 0;
 
-    for (auto _row : objects()) {
+    for (auto &_row : objects()) {
         if(not _row.is<Layout>())
             continue;
         
@@ -514,30 +520,32 @@ void GridLayout::update_layout() {
         // Reset x-coordinate at the beginning of each new row
         float x = margins().x;
 
-        float row_height = max_row_heights[i];
+        float row_height = max_row_heights[row_idx];
         size_t col_idx = 0;  // Column index
 
-        for (auto _cell : row->objects()) {
+        for (auto &_cell : row->objects()) {
             if(not _cell.is<Layout>())
                 continue;
 
             Layout* cell = _cell.to<Layout>();
-            cell->auto_size({});
+            cell->auto_size();
             
             auto cell_bounds = cell->local_bounds();
 
-            float cell_y = margins().y + (row_height - cell_bounds.height) * 0.5f;
+            float cell_y = 0;
+            if(_settings.vpolicy == VPolicy::CENTER) {
+                cell_y = margins().y + (row_height - cell_bounds.height) * 0.5f;
+            } else if(_settings.vpolicy == VPolicy::BOTTOM) {
+                cell_y = row_height - cell_bounds.height;
+            }
 
             // Ensure that cell_x is calculated afresh for each cell based on x and not dependent on old value.
-            float cell_x;
-            if (_settings.policy == CENTER) {
+            float cell_x = x;
+            if (_settings.hpolicy == HPolicy::CENTER) {
                 cell_x = x + (max_col_widths[col_idx] - cell_bounds.width) * 0.5f;
-            } else if (_settings.policy == LEFT) {
-                cell_x = x;
-            } else if (_settings.policy == RIGHT) {
+            } else if (_settings.hpolicy == HPolicy::RIGHT) {
                 cell_x = x + (max_col_widths[col_idx] - cell_bounds.width);
-            } else
-                cell_x = x;
+            }
             
             cell->set_pos({cell_x, cell_y});
             // Add this cell's bounds to rowBounds
@@ -546,6 +554,12 @@ void GridLayout::update_layout() {
                 max_col_widths[col_idx] + margins().width + margins().x,
                 row_height + margins().height + margins().y
             });
+            
+            //print("cell(",col_idx,",",row_idx,") coordinates ", cell, " -> row_height=", row_height, " @ ", cell->pos()," with margins=", _margins, " and size=", cell->size(), " vs rowbounds=", rowBounds.back());
+            /*for(auto c : cell->children()) {
+                if(c)
+                    print("\t",*c, " ", c->pos());
+            }*/
 
             x += max_col_widths[col_idx] + margins().width;
             ++col_idx;
@@ -553,15 +567,15 @@ void GridLayout::update_layout() {
 
         // Update the position of the row itself here if necessary
         // Corrected this part
-        row->auto_size({});
+        row->auto_size();
         row->set_pos({0, y});
         row->set_size({x, row_height + margins().height + margins().y});
         
         // Add this row's bounds to gridBounds
         gridBounds.push_back(rowBounds);
         
-        y += row_height + margins().height + margins().y; // Updated to row_height from max_row_heights[col_idx]
-        ++i; // Increment row index
+        y += row->height(); // Updated to row_height from max_row_heights[col_idx]
+        ++row_idx; // Increment row index
     }
     
     if(not max_col_widths.empty()) {
@@ -596,7 +610,7 @@ void GridLayout::children_rect_changed() {
     Layout::children_rect_changed();
 }
 
-void GridLayout::auto_size(Margin ) {
+void GridLayout::auto_size() {
     // nothing?
 }
 

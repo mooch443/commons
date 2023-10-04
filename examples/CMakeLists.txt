@@ -13,6 +13,19 @@ if(COMMONS_FOR_JS)
     target_compile_options(test_gui PRIVATE -pthread)
 endif()
 
+add_executable(
+    simple_gui
+    simple_gui.cpp
+)
+
+target_include_directories(simple_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
+target_link_libraries(simple_gui commons )
+
+if(COMMONS_FOR_JS)
+    set_target_properties(simple_gui PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --preload-file fonts -s ALLOW_MEMORY_GROWTH=1") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
+    target_compile_options(simple_gui PRIVATE -pthread)
+endif()
+
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(test_gui PRIVATE -fbracket-depth=400)
 endif()
@@ -21,6 +34,13 @@ if(APPLE)
 set_target_properties(test_gui PROPERTIES
   MACOSX_BUNDLE TRUE
   MACOSX_BUNDLE_GUI_IDENTIFIER "app.trex.test_gui"
+  MACOSX_BUNDLE_BUNDLE_NAME TRex
+  MACOSX_BUNDLE_INFO_STRING "Testing some GUI functions"
+  MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist
+)
+set_target_properties(simple_gui PROPERTIES
+  MACOSX_BUNDLE TRUE
+  MACOSX_BUNDLE_GUI_IDENTIFIER "app.trex.simple_gui"
   MACOSX_BUNDLE_BUNDLE_NAME TRex
   MACOSX_BUNDLE_INFO_STRING "Testing some GUI functions"
   MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist
@@ -104,3 +124,4 @@ set(RESOURCE_COPY_FILES
 )
 
 copy_resources(test_gui "${RESOURCE_COPY_FILES}")
+copy_resources(simple_gui "${RESOURCE_COPY_FILES}")

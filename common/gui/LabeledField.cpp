@@ -16,7 +16,7 @@ sprite::Map& settings_map() {
 }
 
 LabeledField::LabeledField(const std::string& name)
-    : _text(std::make_shared<gui::Text>(name)), _ref(settings_map()[name])
+    : _text(std::make_shared<gui::Text>(Str{name})), _ref(settings_map()[name])
 {
     //if(name.empty())
     //    throw std::invalid_argument("Name cannot be empty.");
@@ -99,7 +99,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohman
 
 LabeledCheckbox::LabeledCheckbox(const std::string& name, const std::string& desc, const nlohmann::json&, bool invert)
 : LabeledField(name),
-_checkbox(std::make_shared<gui::Checkbox>(attr::Loc(), desc)),
+_checkbox(std::make_shared<gui::Checkbox>(attr::Str(desc))),
 _invert(invert)
 {
     _docs = settings_scene::temp_docs[name];
@@ -137,7 +137,7 @@ LabeledCheckbox::~LabeledCheckbox() {
 
 LabeledTextField::LabeledTextField(const std::string& name, const nlohmann::json&)
     : LabeledField(name),
-    _text_field(std::make_shared<gui::Textfield>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
+    _text_field(std::make_shared<gui::Textfield>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _text_field->set_placeholder(name);
     _text_field->set_font(Font(0.7f));
@@ -273,7 +273,7 @@ void LabeledList::update() {
 
 LabeledDropDown::LabeledDropDown(const std::string& name, const nlohmann::json& obj)
 : LabeledField(name),
-_dropdown(std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28)))
+_dropdown(std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _docs = settings_scene::temp_docs[name];
     
@@ -328,7 +328,7 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     }), _path(path)
 {
     set_description("");
-    _dropdown = std::make_shared<gui::Dropdown>(Bounds(0, 0, settings_scene::video_chooser_column_width, 28));
+    _dropdown = std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28));
     
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
@@ -526,7 +526,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     // Initialize StaticText
     _staticText = Layout::Make<gui::StaticText>();
     _layout = Layout::Make<gui::VerticalLayout>(std::vector<Layout::Ptr>{_dropdown, _staticText});
-    _layout->set_margins(Bounds());
+    _layout->set(attr::Margins{0, 0, 0, 0});
     _layout->set_policy(VerticalLayout::Policy::LEFT);
     
     if(obj.contains("preview") && obj["preview"].is_object()) {
@@ -545,7 +545,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
         }
     }
     
-    _dropdown->textfield()->set(Content{ _ref.value<file::PathArray>().source() });
+    _dropdown->textfield()->set(Str{ _ref.value<file::PathArray>().source() });
     updateDropdownItems();
 }
 

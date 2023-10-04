@@ -15,9 +15,9 @@ class Combobox : public Entangled {
 public:
     struct Settings {
         Bounds bounds = Bounds(0, 0, 100, 33);
-        FillClr fill_clr = Drawable::accent_color;
-        LineClr line_clr = Black.alpha(200);
-        TextClr text_clr = White;
+        FillClr fill_clr{Drawable::accent_color};
+        LineClr line_clr{Black.alpha(200)};
+        TextClr text_clr{White};
         Font font = Font(0.75, Align::Center);
         std::string param;
         
@@ -25,7 +25,7 @@ public:
         attr::SizeLimit sizeLimit;
         attr::Postfix postfix;
         attr::Prefix prefix;
-        attr::Content content;
+        attr::Str content;
     };
     
 protected:
@@ -56,7 +56,7 @@ public:
     void set(attr::LineClr clr) override;
     void set(attr::TextClr clr);
     void set(attr::HighlightClr clr);
-    void set(attr::Content content);
+    void set(attr::Str content);
     void set(attr::SizeLimit limit);
     void set(attr::Prefix prefix);
     void set(attr::Postfix postfix);

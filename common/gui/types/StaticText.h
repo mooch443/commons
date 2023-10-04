@@ -75,7 +75,7 @@ namespace gui {
         
     public:
         using Entangled::set;
-        void set(const Content& str) { set_txt(str); }
+        void set(const Str& str) { set_txt(str); }
         void set(TextClr clr) { set_text_color(clr); }
         void set(LineClr clr) override { set_line_color(clr); }
         void set(Font font) { set_default_font(font); }

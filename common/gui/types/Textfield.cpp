@@ -132,7 +132,7 @@ void Textfield::init() {
     
     _selection_rect.set_fillclr(DarkCyan.alpha(100));
     _cursor_position = narrow_cast<long_t>(text().length());
-    _text_display.create(text(), Black, _settings.font);
+    _text_display.create(Str{text()}, TextClr{Black}, _settings.font);
     
     set_clickable(true);
     set_scroll_enabled(true);
@@ -613,9 +613,9 @@ void Textfield::set_postfix(const std::string &p) {
         } else if(!postfix().empty()) {
             //auto tmp = new Text(_postfix, Vec2(width() - 5, height() * 0.5), _text_color.exposure(0.5), Font(max(0.1, _text_display.font().size * 0.9)));
             //tmp->set_origin(Vec2(1, 0.5));
-            add<Text>(postfix(),
+            add<Text>(Str{postfix()},
                       Loc(width() - 5, height() * 0.5),
-                      text_color().exposure(0.5),
+                      TextClr{text_color().exposure(0.5)},
                       Font(max(0.1, _text_display.font().size * 0.9)),
                       Origin(1, 0.5));
             //advance(tmp);
@@ -626,7 +626,7 @@ void Textfield::set_postfix(const std::string &p) {
             //tmp->set_origin(Vec2(1, 0.5));
             //advance(tmp);
             
-            add<Text>("(read-only)", Loc(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
+            add<Text>(Str("(read-only)"), Loc(width() - 5, height() * 0.5), TextClr(Gray), Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
         }
         
         if(!_selection.empty()) {
@@ -670,7 +670,7 @@ void Textfield::set_postfix(const std::string &p) {
                 return;
             
             if(!_placeholder)
-                _placeholder = new Text(text, Gray, _text_display.font());
+                _placeholder = new Text(Str{text}, TextClr{Gray}, _text_display.font());
             else
                 _placeholder->set_txt(text);
             

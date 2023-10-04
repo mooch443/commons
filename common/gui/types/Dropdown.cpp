@@ -44,7 +44,7 @@ void Dropdown::init() {
     _list->set_z_index(1);
     
     if(_type == BUTTON) {
-        _button = Button::MakePtr("Please select...",  Bounds(_bounds.size()));
+        _button = Button::MakePtr("Please select...",  attr::Box(_bounds.size()));
         _button->set_toggleable(true);
         _button->add_event_handler(MBUTTON, [this](Event e){
             if(!e.mbutton.pressed && e.mbutton.button == 0) {
@@ -61,7 +61,7 @@ void Dropdown::init() {
         });
         
     } else {
-        _textfield = std::make_shared<Textfield>(Bounds(_bounds.size()));
+        _textfield = std::make_shared<Textfield>(Box(_bounds.size()));
         _textfield->set_placeholder("Please select...");
         _textfield->add_event_handler(KEY, [this](Event e){
             if(!e.key.pressed)
@@ -164,7 +164,7 @@ void Dropdown::init() {
             this->set_content_changed(true);
         };
         
-        _textfield->on_text_changed(_on_text_changed);
+        _textfield->on_text_changed(Textfield::OnTextChanged_t(_on_text_changed));
         
         _textfield->on_enter([this](){
             if(_on_enter) {

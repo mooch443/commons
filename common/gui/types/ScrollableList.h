@@ -359,7 +359,7 @@ namespace gui {
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
-                    _rects.push_back(new Rect(Bounds(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
+                    _rects.push_back(new Rect(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
                     _rects.back()->set_clickable(true);
                     _rects.back()->on_hover([r = _rects.back(), this](Event e) {
                         if(!e.hover.hovered)

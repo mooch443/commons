@@ -1556,7 +1556,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     std::string text;
     if(o->parent() && o->parent()->background() == o) {
         if(dynamic_cast<Entangled*>(o->parent()))
-            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->global_bounds());
+            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
         else
             text = Meta::toStr(*(Drawable*)o->parent());
     } else

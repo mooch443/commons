@@ -69,7 +69,7 @@ namespace gui {
             set_accent_color(clr);
             //Entangled::set(clr);
         }
-        void set(attr::Content content) {
+        void set(attr::Str content) {
             set_title(content);
         }
         void set(Font font) {

@@ -32,8 +32,8 @@ namespace gui {
     
     List::List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click)
     : //gui::DrawableCollection("List"+std::to_string((long)this)),
-        _title(title, White, Font(0.75, Align::VerticalCenter)),
-        _title_background(Bounds()),
+        _title(Str{title}, TextClr(White), Font(0.75, Align::VerticalCenter)),
+        _title_background(),
         _accent_color(Drawable::accent_color),
         _on_click(on_click),
         _toggle(false),
@@ -276,7 +276,7 @@ namespace gui {
                     break;
                 }
             }
-            add<Text>(item_name, Loc(_title.pos()), _title.color(), _title.font());
+            add<Text>(Str{item_name}, Loc(_title.pos()), _title.color(), _title.font());
         }
     }
     
@@ -378,7 +378,7 @@ namespace gui {
                              Vec2(size.width - local.x*2,
                                   _row_height - local.y*2)));
             advance_wrap(*r);
-            add<Text>(std::string(*item),
+            add<Text>(Str(*item),
                       Loc(offset+local+Vec2(size.width, _row_height)*0.5f),
                       _item_font);
             offset.y += inversion_correct_height;

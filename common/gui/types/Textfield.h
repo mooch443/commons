@@ -13,10 +13,14 @@ class MetaTextfield;
 
 class Textfield : public Entangled {
 public:
-    using CheckText_t = attr::AttributeAlias<std::function<bool(std::string& text, char inserted, size_t at)>>;
-    using OnEnter_t = attr::AttributeAlias<std::function<void()>, 0>;
-    using OnTextChanged_t = attr::AttributeAlias<std::function<void()>, 1>;
-    using OnTab_t = attr::AttributeAlias<std::function<void()>, 2>;
+    using CheckTextFn = std::function<bool(std::string& text, char inserted, size_t at)>;
+    ATTRIBUTE_ALIAS(CheckText_t, CheckTextFn)
+    
+    using VoidFn = std::function<void()>;
+    ATTRIBUTE_ALIAS(OnEnter_t, VoidFn)
+    ATTRIBUTE_ALIAS(OnTextChanged_t, VoidFn)
+    ATTRIBUTE_ALIAS(OnTab_t, VoidFn)
+    
     struct ReadOnly {
         bool read_only;
         
@@ -27,7 +31,7 @@ public:
 
 private:
     long_t _cursor_position;
-    Rect _cursor = Rect(Bounds(0,0,2,30));
+    Rect _cursor = Rect(Box(0,0,2,30));
     Rect _selection_rect = Rect(FillClr{DarkCyan.alpha(100)});
     Text *_placeholder{nullptr};
     
@@ -74,7 +78,7 @@ public:
     
 public:
     using Entangled::set;
-    void set(const Content& text) { set_text(text); }
+    void set(const Str& text) { set_text(text); }
     void set(const Postfix& postfix) { set_postfix(postfix); }
     void set(FillClr fill) override { set_fill_color(fill); }
     void set(LineClr line) override { set_line_color(line); }
@@ -226,7 +230,7 @@ class NumericTextfield : public Textfield {
     
 public:
     NumericTextfield(const T& number, const Bounds& bounds, arange<T> limits = {0, 0})
-        : Textfield(Content(Meta::toStr(number)), bounds), _limits(limits)
+        : Textfield(Str(Meta::toStr(number)), Box(bounds)), _limits(limits)
     { }
     
     T get_value() const {

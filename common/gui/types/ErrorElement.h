@@ -41,7 +41,7 @@ public:
     void set(attr::FillClr clr) override;
     void set(attr::LineClr clr) override;
     void set(attr::TextClr clr);
-    void set(attr::Content content);
+    void set(attr::Str content);
     
     void set_bounds(const Bounds& bds) override;
     void set_pos(const Vec2& p) override;

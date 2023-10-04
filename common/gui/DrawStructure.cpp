@@ -120,14 +120,14 @@ namespace gui {
                         }
                         
                         auto sub = e.msg.substr(i, min(e.msg.length() - i, next - i));
-                        auto t = text(sub, Loc(pos), e.clr, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
+                        auto t = text(Str{sub}, Loc(pos), TextClr{e.clr}, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
                         pos.y += t->global_bounds().height;
                         
                         i = next;
                     }
                     
                 } else {
-                    auto t = text(e.msg, Loc(pos), e.clr, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
+                    auto t = text(Str{e.msg}, Loc(pos), TextClr{e.clr}, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
                     pos.y += t->global_bounds().height;
                 }
                 
@@ -155,16 +155,16 @@ void Dialog::set_closed() {
     
     Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
-        _title_bg(Bounds(), FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(text, Loc(250, 135), SizeLimit(500, 50), Font(0.8f))),
-        _title(title, Font(0.9f, Style::Bold)),
-        _okay(Button::MakePtr(okay)),
-        _abort(abort.empty() ? nullptr : Button::MakePtr(abort)),
-        _second(second.empty() ? nullptr : Button::MakePtr(second)),
-        _third(third.empty() ? nullptr : Button::MakePtr(third)),
-        _fourth(fourth.empty() ? nullptr : Button::MakePtr(fourth)),
+        _title_bg(FillClr{White.alpha(100)}),
+        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 135), SizeLimit(500, 50), Font(0.8f))),
+        _title(attr::Str(title), Font(0.9f, Style::Bold)),
+        _okay(Button::MakePtr(attr::Str(okay))),
+        _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
+        _second(second.empty() ? nullptr : Button::MakePtr(attr::Str(second))),
+        _third(third.empty() ? nullptr : Button::MakePtr(attr::Str(third))),
+        _fourth(fourth.empty() ? nullptr : Button::MakePtr(attr::Str(fourth))),
         _buttons(std::make_shared<HorizontalLayout>()),
-        _layout(std::vector<Layout::Ptr>{_text, _buttons}, Vec2()),
+        _layout(std::vector<Layout::Ptr>{_text, _buttons}),
         _callback(callback)
     {
         Size2 size = Size2(d.width(), d.height());
@@ -293,7 +293,7 @@ void Dialog::set_closed() {
         if(_custom && _layout.children().size() == 2) {
             std::vector<Layout::Ptr> children{_text, _custom, _buttons};
             _layout.set_children(children);
-            _layout.auto_size(Margin{0,0});
+            _layout.auto_size();
         }
         
         d.wrap_object(_title_bg);
@@ -342,7 +342,7 @@ void Dialog::set_closed() {
             if(!dialog_window_size().empty())
                 size = dialog_window_size();
             
-            auto rect = new Rect(Bounds(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red});
+            auto rect = new Rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red});
             rect->set_origin(Vec2(0.5));
             rect->set_clickable(true);
             rect = add_object(rect);

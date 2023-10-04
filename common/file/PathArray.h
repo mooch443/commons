@@ -85,7 +85,7 @@ public:
     * @param path The path string to add.
     */
     void add_path(const std::string& path) {
-        auto parsed_paths = parse_path(path);
+        auto parsed_paths = parse_path(path, _matched_patterns);
         for (const auto& parsed_path : parsed_paths) {
           add_path_if_not_empty(parsed_path);
         }
@@ -151,7 +151,7 @@ public:
     * @param path The path pattern to parse.
     * @return A vector of file::Path objects that match the pattern.
     */
-    std::vector<file::Path> parse_path(const std::string& path) {
+    static std::vector<file::Path> parse_path(const std::string& path, bool& matched_patterns) {
         // Define the regex pattern for different types of placeholders in the path
         std::regex pattern(R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)");
         std::smatch match;
@@ -159,7 +159,7 @@ public:
         FS fs;
 
         if (std::regex_search(path, match, pattern)) {
-            _matched_patterns = true;
+            matched_patterns = true;
             std::ostringstream ss;
             
             // Handle cases like %0.100.6d

@@ -74,9 +74,10 @@ Module* exists(const std::string& name) {
 
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
-                         State& state)
+                         State& state,
+                         const DefaultSettings& defaults)
 {
-    LayoutContext layout(obj, state, context.defaults);
+    LayoutContext layout(obj, state, defaults);
     try {
         
         Layout::Ptr ptr;
@@ -145,7 +146,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     } catch(const std::exception& e) {
         std::string text = "Failed to make object with '"+std::string(e.what())+"' for "+ obj.dump();
         FormatExcept("Failed to make object here ",e.what(), " for ",obj.dump());
-        return Layout::Make<ErrorElement>(attr::Content{text}, Loc{layout.pos}, Size{layout.size});
+        return Layout::Make<ErrorElement>(attr::Str{text}, Loc{layout.pos}, Size{layout.size});
     }
 }
 
@@ -308,7 +309,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                     Context tmp = context;
                     for(auto &v : vector) {
                         tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, *obj.state);
+                        auto ptr = parse_object(obj.child, tmp, *obj.state, context.defaults);
                         update_objects(g, ptr, tmp, *obj.state);
                         ptrs.push_back(ptr);
                         //print("Creating i", i++," to ", tmp.variables["i"]->value_string("pos"), " for ",ptr->pos(), " with hash ", hash);
@@ -343,10 +344,16 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         if(it->second.contains("fill")) {
             try {
                 auto fill = resolve_variable_type<Color>(pattern.at("fill"), context);
-                if(o.is<Rect>())
-                    o.to<Rect>()->set_fillclr(fill);
-                else if(o.is<SectionInterface>())
-                    o.to<SectionInterface>()->set_background(fill, o.to<SectionInterface>()->background()->lineclr());
+                LabeledField::delegate_to_proper_type(FillClr{fill}, o);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if(it->second.contains("color")) {
+            try {
+                auto clr = resolve_variable_type<Color>(pattern.at("color"), context);
+                LabeledField::delegate_to_proper_type(TextClr{clr}, o);
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -355,10 +362,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         if(it->second.contains("line")) {
             try {
                 auto line = resolve_variable_type<Color>(pattern.at("line"), context);
-                if(o.is<Rect>())
-                    o.to<Rect>()->set_lineclr(line);
-                else if(o.is<SectionInterface>())
-                    o.to<SectionInterface>()->set_background(o.to<SectionInterface>()->background()->fillclr(), line);
+                LabeledField::delegate_to_proper_type(LineClr{line}, o);
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -382,7 +386,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 if(size == "auto")
                 {
                     if(o.is<Layout>())
-                        o.to<Layout>()->auto_size({});
+                        o.to<Layout>()->auto_size();
                     else
                         FormatExcept("pattern for size should only be auto for layouts, not: ", *o);
                 } else {
@@ -481,7 +485,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             std::vector<Layout::Ptr> objs;
             State tmp;
             for(auto &obj : layout) {
-                auto ptr = parse_object(obj, context, tmp);
+                auto ptr = parse_object(obj, context, tmp, context.defaults);
                 if(ptr) {
                     objs.push_back(ptr);
                 }
