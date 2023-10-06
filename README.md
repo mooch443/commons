@@ -182,8 +182,8 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
              "action":"QUIT"
             },
             {"type": "vlayout", "margins":[5,5,5,5], "children": [
-              {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125], "size":[300,40]},
-              {"type": "settings", "var": "patharray", 
+              {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
+              {"type":"settings","var": "patharray", 
                "fill": [50,50,50,125], 
                "size":[800,40],
                "preview":{
