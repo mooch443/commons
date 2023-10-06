@@ -1,88 +1,87 @@
 { "objects": [
-    {"type":"vlayout", "pos":[20,10], "pad":[5,5,5,5],
-        "children": [
-        {"type": "hlayout", "children": [
-            {"type": "button", "text": "Quit", "action": "QUIT"},
-            {"type": "collection", "pos": [300, 100], 
-                "children": [{"type": "text", "text": "Hello World!"}]
-            }
-        ]},
-        {"type": "textfield",
-            "size":[500,40],
-            "color":[255,0,255,255],
-            "action":"QUIT"
-        },
-        {"type": "vlayout", "pad":[5,5,5,5], "children": [
-            {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
-            {"type":"settings","var": "patharray", 
+    { "type":"vlayout", "pos":[20,10], "pad":[5,5,5,5],
+      "children": [
+      { "type": "hlayout", "children": [
+          { "type": "button", "text": "Quit", "action": "QUIT"},
+          { "type": "collection", "pos": [300, 100], 
+            "children": [{"type": "text", "text": "Hello World!"}]
+          }
+      ]},
+      { "type": "textfield",
+        "size":[500,40],
+        "color":[255,0,255,255],
+        "action":"QUIT"
+      },
+      {"type": "vlayout", "pad":[5,5,5,5], "children": [
+          {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
+          { "type":"settings","var": "patharray", 
             "fill": [50,50,50,125], 
             "size":[800,40],
             "preview":{
-                "max_size":[800,100],
-                "font": { "size": 0.5 }
+              "max_size":[800,100],
+              "font": { "size": 0.5 }
             }
-            },
-            {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40]},
-            {"type":"settings","var":"blob_size_ranges","fill":[50,50,50,125],"size":[300,40]}
-        ]},
-        {"type": "gridlayout", 
-            "pos": [550, 600], 
-            "horizontal_clr": [50,50,150,100], 
-            "vertical_clr": [50,150,150,100],
-            "line":[50,50,50,200],
-            "pad":[5,5,5,5],
-            "clickable": true, 
-            "children": [
-            [ 
-              [{"type": "text", "text": "Entry 1"}], 
-              [{"type": "stext", 
-                "text": "patharray={#global:patharray}", 
-                "max_size":[500,50], 
-                "fade_out":true,
-                "font": { "size": 0.5 }
-              }] 
-            ],
-            [ 
-              [{"type": "text", "text": "region={global:region_model}"}], 
-              [{"type": "text", "text": "app={global:app_name}"}]
-            ],
-            [
-              [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
-              [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
-            ]
-            ]
-        },
-        {"type":"rect","pos":[0,0],"size": [50,50],"fill":[255,0,0,125]},
-        {"type":"circle","pos":[0,0],"radius":10,"fill":[125,125,0,125]},
-        {"type":"condition", "var": "isTrue", "size":"auto",
-            "then":{"type":"text","text":"True"}, 
-            "else":{"type":"text","text":"False"}
-        },
-        { "type":"list",
-            "var":"list_var",
-            "size":[300,300],
-            "line":[255,0,0,125],
-            "font":{ "size":0.75, "align":"center" },
-            "template": {
-                "text":"{i:name}",
-                "detail":"{i:detail}",
-                "action":"open_recent"
-            }
-        }
-    ]},
-    {"type":"vlayout",
-        "modules":["draggable"],
-        "line":[125,0,0,200],
-        "fill":[125,0,0,100],
-        "pos":[500,10],
+          },
+          {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40]},
+          {"type":"settings","var":"blob_size_ranges","fill":[50,50,50,125],"size":[300,40]}
+      ]},
+      { "type": "gridlayout", 
+        "pos": [550, 600], 
+        "horizontal_clr": [50,50,150,100], 
+        "vertical_clr": [50,150,150,100],
+        "line":[50,50,50,200],
+        "pad":[5,5,5,5],
+        "clickable": true, 
         "children": [
-        {"type": "each", 
+        [ 
+          [{"type": "text", "text": "Entry 1"}], 
+          [{"type": "stext", 
+          "text": "patharray={#global:patharray}", 
+          "max_size":[500,50], 
+          "fade_out":true,
+          "font": { "size": 0.5 }
+          }] 
+        ],
+        [ 
+          [{"type": "text", "text": "region={global:region_model}"}], 
+          [{"type": "text", "text": "app={global:app_name}"}]
+        ],
+        [
+          [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
+          [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
+        ]
+      ]},
+      { "type":"rect","pos":[0,0],"size": [50,50],"fill":[255,0,0,125]},
+      { "type":"circle","pos":[0,0],"radius":10,"fill":[125,125,0,125]},
+      { "type":"condition", "var": "isTrue", "size":"auto",
+        "then":{"type":"text","text":"True"}, 
+        "else":{"type":"text","text":"False"}
+      },
+      { "type":"list",
+        "var":"list_var",
+        "size":[300,300],
+        "line":[255,0,0,125],
+        "font":{ "size":0.75, "align":"center" },
+        "template": {
+            "text":"{i:name}",
+            "detail":"{i:detail}",
+            "action":"open_recent"
+        }
+      }
+    ]},
+    { "type":"vlayout",
+      "modules":["draggable"],
+      "line":[125,0,0,200],
+      "fill":[125,0,0,100],
+      "pos":[500,10],
+      "children": [
+      { "type": "each", 
         "var": "list_var", 
         "do": {
-            "type": "stext",
-            "text": "{i:name} {i:color}", 
-            "color":"{i:color}"
+          "type": "stext",
+          "text": "{i:name} {i:color}", 
+          "color":"{i:color}"
         }
-        }
+      }
     ]}
 ]}
