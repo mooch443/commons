@@ -7,18 +7,16 @@
 namespace gui {
 
 FileChooser::~FileChooser() {
-    _graph = nullptr;
 }
 
 FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
-    _graph(std::make_unique<DrawStructure>(1200, 640)),
     _description(std::make_shared<Text>(Str("Please choose a file in order to continue."), Loc(10, 10), Font(0.75))),
     _columns(std::make_shared<HorizontalLayout>()),
     _overall(std::make_shared<VerticalLayout>()),
-    _base("Choose file", *_graph, [this](){
+    _base("Choose file", {1200,640}, [this](DrawStructure& graph){
         using namespace gui;
         tf::show();
         
@@ -38,16 +36,16 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
         
         //_graph->wrap_object(*_textfield);
         //_graph->wrap_object(*_list);
-        _graph->wrap_object(*_overall);
+        graph.wrap_object(*_overall);
         if(_on_update)
-            _on_update(*_graph);
+            _on_update(graph);
         
-        auto scale = _graph->scale().reciprocal();
+        auto scale = graph.scale().reciprocal();
         auto dim = _base.window_dimensions().mul(scale * gui::interface_scale());
-        _graph->draw_log_messages(Bounds(Vec2(), dim));
+        graph.draw_log_messages(Bounds(Vec2(), dim));
         if(!_tooltips.empty()) {
             for(auto && [ID, obj] : _tooltips)
-                _graph->wrap_object(*obj);
+                graph.wrap_object(*obj);
         }
         
         if(!_selected_file.empty()) {
@@ -60,24 +58,25 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
             _running = false;
 
         return _running;
-    }, [this](gui::Event e) {
+        
+    }, [this](DrawStructure& graph, gui::Event e) {
         // --
         if(e.type == gui::WINDOW_RESIZED) {
             using namespace gui;
             {
-                std::lock_guard guard(_graph->lock());
+                std::lock_guard guard(graph.lock());
                 Size2 size(e.size.width, e.size.height);
                 
                 float min_height = 640;
                 auto scale = gui::interface_scale() / max(1, min_height / size.height);
-                _graph->set_size(size);
-                _graph->set_scale(scale);
+                graph.set_size(size);
+                graph.set_scale(scale);
                 
                 //update_size();
                 
                 //if(_base.window_dimensions().height < min_height)
                 {
-                    _graph->set_scale(1 / (min_height / e.size.height));
+                    graph.set_scale(1 / (min_height / e.size.height));
                     update_size();
                 }
                 
@@ -118,8 +117,8 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _list = std::make_shared<ScrollableList<FileItem>>(Bounds(
         0,
         0, 
-        _graph->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0), 
-        _graph->height() - 70 - 10 - 100 - 70));
+      _base.graph()->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0),
+      _base.graph()->height() - 70 - 10 - 100 - 70));
 
     _list->set_stays_toggled(true);
     //if(_extra)
@@ -317,7 +316,6 @@ void FileChooser::set_tab(std::string tab) {
     }
     
     update_size();
-    _graph->set_dirty(&_base);
 }
 
 void FileChooser::update_names() {
@@ -470,6 +468,7 @@ void FileChooser::file_selected(size_t, file::Path p) {
 }
 
 void FileChooser::update_size() {
+    auto _graph = _base.graph().get();
     float s = _graph->scale().x / gui::interface_scale();
     
     if(_selected_text && !_selected_file.empty()) {

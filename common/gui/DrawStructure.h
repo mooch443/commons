@@ -124,6 +124,11 @@ namespace gui {
               _scale(scale),
               _changed(true)
         {}
+        DrawStructure(DrawStructure&& other)
+            : _root(std::move(other._root))
+        {
+            
+        }
         ~DrawStructure();
         
     private:

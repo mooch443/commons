@@ -331,7 +331,6 @@ int main(int argc, char**argv) {
     owl_init(owl_indexes);
     
     //! initialize data struct for gui and timer (for physics)
-    DrawStructure graph(1024,1024);
     Timer timer;
     Timer action_timer;
     Vec2 last_mouse_pos;
@@ -469,7 +468,9 @@ int main(int argc, char**argv) {
     
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
-    IMGUIBase base("BBC Micro owl", graph, [&]() -> bool {
+    IMGUIBase base("BBC Micro owl", {1024,1024},
+        [&](DrawStructure& graph) -> bool
+    {
         static dyn::DynamicGUI dynGUI{
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .context = {
@@ -561,14 +562,6 @@ int main(int argc, char**argv) {
         circle0->set_size(size);
         
         graph.wrap_object(list);
-        //graph.wrap_object(layout);
-        //image.set_pos(last_mouse_pos);
-        //graph.wrap_object(image);
-        
-        //layout.set_pos(last_mouse_pos);
-        //layout.update_layout();
-        //print(layout.toString(nullptr));
-        
         
         auto scale = graph.scale().reciprocal();
         ptr->window_dimensions().mul(scale * gui::interface_scale());
@@ -579,7 +572,7 @@ int main(int argc, char**argv) {
         //graph.root().set_dirty();
         return !terminate;
         
-    }, [&](const Event& e) {
+    }, [&](DrawStructure& graph, const Event& e) {
         if (e.type == EventType::KEY && !e.key.pressed) {
             if (e.key.code == Codes::F && graph.is_key_pressed(Codes::LControl)) {
                 ptr->toggle_fullscreen(graph);

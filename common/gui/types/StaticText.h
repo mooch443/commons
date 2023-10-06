@@ -29,9 +29,14 @@ namespace gui {
     };
 
     class StaticText : public Entangled {
+    public:
+        using FadeOut_t = NumberAlias<bool, 1337>;
+        
+    private:
         std::vector<std::shared_ptr<Text>> texts;
         std::vector<Vec2> positions;
         Vec2 _org_position;
+        derived_ptr<ExternalImage> _fade_out;
         
         struct Settings {
             Vec2 max_size{-1, -1};
@@ -42,6 +47,7 @@ namespace gui {
             std::string txt;
             Alpha alpha{1};
             Alpha fill_alpha{0};
+            FadeOut_t fade_out{false};
             
         } _settings;
         
@@ -82,6 +88,12 @@ namespace gui {
         void set(SizeLimit limit) { set_max_size(limit); }
         void set(Margins margins) { set_margins(margins); }
         void set(Alpha alpha) { set_alpha(alpha); }
+        void set(FadeOut_t fade_out) {
+            if(_settings.fade_out == fade_out)
+                return;
+            _settings.fade_out = fade_out;
+            set_content_changed(true);
+        }
         
         void set_bounds(const Bounds& bounds) override {
             if(not this->bounds().Equals(bounds)) {
@@ -93,6 +105,7 @@ namespace gui {
     public:
         virtual ~StaticText() {
             texts.clear();
+            _fade_out = nullptr;
         }
         
         using Entangled::set_background;
@@ -143,6 +156,7 @@ namespace gui {
         
     private:
         void update_text();
+        void add_shadow();
     };
 }
 

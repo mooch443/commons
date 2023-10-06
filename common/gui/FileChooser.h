@@ -56,7 +56,6 @@ public:
     };
     
 protected:
-    GETTER_NCONST(std::unique_ptr<DrawStructure>, graph)
     derived_ptr<Text> _description;
     derived_ptr<StaticText> _selected_text;
     derived_ptr<ScrollableList<FileItem>> _list;

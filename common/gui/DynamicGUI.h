@@ -35,7 +35,8 @@ ENUM_CLASS(LayoutType,
            checkbox,
            settings,
            combobox,
-           image);
+           image,
+           list);
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())
@@ -57,7 +58,7 @@ struct DefaultSettings {
     Vec2 pos{0.f};
     Vec2 origin{0.f};
     Size2 size{0.f};
-    Bounds margins{5.f,5.f,5.f,5.f};
+    Bounds margins{0.f,0.f,0.f,0.f};
     std::string name;
     Color fill{Transparent};
     Color line{Transparent};
@@ -75,7 +76,7 @@ using VarBase_t = VarBase<std::string>;
 using VarReturn_t = sprite::Reference;
 
 struct Context {
-    std::unordered_map<std::string, std::function<void(Event)>> actions;
+    std::unordered_map<std::string, std::function<void(std::string)>> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
     DefaultSettings defaults;
 };
@@ -93,6 +94,14 @@ struct IfBody {
     std::string variable;
     Layout::Ptr _if;
     Layout::Ptr _else;
+};
+
+struct ListContents {
+    std::string variable;
+    nlohmann::json item;
+    std::unique_ptr<State> state;
+    std::vector<std::shared_ptr<VarBase_t>> cache;
+    std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
 };
 
 // Index class manages unique identifiers for objects.
@@ -143,6 +152,7 @@ struct State {
     robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, std::string>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
+    std::unordered_map<size_t, ListContents> lists;
     std::unordered_map<size_t, IfBody> ifs;
     
     std::map<std::string, std::unique_ptr<LabeledField>> _text_fields;
@@ -165,6 +175,15 @@ struct State {
                 .child = body.child,
                 .state = std::make_unique<State>(*body.state),
                 .cache = body.cache
+            };
+        }
+        for(auto &[k, body] : other.lists) {
+            lists[k] = {
+                .variable = body.variable,
+                .item = body.item,
+                .state = std::make_unique<State>(*body.state),
+                .cache = body.cache,
+                .on_select_actions = {}
             };
         }
     }

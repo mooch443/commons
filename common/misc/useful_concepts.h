@@ -73,6 +73,10 @@ template<typename T, typename U>
 concept _clean_same =
     std::same_as<T, typename std::remove_cv<U>::type>;
 
+template<typename T, typename U>
+concept are_the_same =
+    std::same_as<std::remove_cvref_t<T>, typename std::remove_cvref_t<U>>;
+
 template<typename T>
 concept unsigned_number = (std::unsigned_integral<T> && !cmn::_clean_same<T, bool> && !cmn::_clean_same<T, unsigned char>);
 

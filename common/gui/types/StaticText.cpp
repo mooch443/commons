@@ -89,15 +89,19 @@ void StaticText::set_default_font(const Font& font) {
         set_content_changed(true);
         update_text();
     }
+
+#define yet
     
     void StaticText::update() {
-        if(_content_changed) {
+        if(_content_changed && not _begun && not _content_changed_while_updating) {
             _content_changed = false;
             
             begin();
             
             // find enclosing rectangle dimensions
             Vec2 m(0);
+            bool hiding_something{false};
+            std::vector<Text*> hidden;
             
             for(auto& t : texts) {
                 if(t->txt().empty())
@@ -105,7 +109,21 @@ void StaticText::set_default_font(const Font& font) {
                 
                 // add texts so that dimensions are retrieved
                 t->set_color(t->color().alpha(255 * _settings.alpha));
-                advance_wrap(*t);
+                
+                if(_settings.max_size.y < 0
+                   || t->pos().y < _settings.max_size.y)
+                {
+                    if(not yet hiding_something
+                       && t->pos().y + t->size().height > _settings.max_size.y)
+                    {
+                        hiding_something = true;
+                        hidden.push_back(t.get());
+                    }
+                    advance_wrap(*t);
+                    
+                } else {
+                    hiding_something = true;
+                }
                 
                 auto local_pos = t->pos() - t->size().mul(t->origin());
                 auto v = local_pos + t->size(); //+ t->text_bounds().pos();
@@ -116,7 +134,16 @@ void StaticText::set_default_font(const Font& font) {
             
             // subtract position, add margins
             m = m + _settings.margins.size();
+            if(_settings.max_size.y >= 0) {
+                m.y = min(m.y, _settings.max_size.y);
+            }
             set_size(m);
+            
+            if(hiding_something && _settings.fade_out) {
+                add_shadow();
+                
+            } else
+                _fade_out = nullptr;
             
             if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
                 set_background(bg_fill_color() != Transparent
@@ -156,7 +183,40 @@ void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
     text->set_font(font);
     text->set_txt(parsed);
 }
+
+void StaticText::add_shadow() {
+    if(not _fade_out)
+        _fade_out = std::make_shared<ExternalImage>();
     
+    float h = Base::default_line_spacing(_settings.default_font);
+    auto image = Image::Make(height()+1, 1, 4);
+    image->set_to(0);
+    
+    auto bg = _bg_fill_color;
+    if(bg.a == 0 && parent()) {
+        bg = parent()->bg_fill_color();
+    }
+    image->get().setTo(cv::Scalar(bg.alpha(0)));
+    
+    const float start_y = height() - h;
+    const float end_y = height() + 1;
+    
+    for(uint y=start_y; y<end_y; ++y) {
+        float percent = saturate(float(y-start_y) / float(end_y - start_y + 1), 0.f, 1.f);
+        auto ptr = image->ptr(y, 0);
+        //*(ptr+0) = saturate((percent) * 255, 0, 255);
+        //*(ptr+1) = saturate((percent) * 255, 0, 255);
+        //*(ptr+2) = saturate((percent) * 255, 0, 255);
+        *(ptr+3) = saturate((percent) * 255, 0, 255);
+    }
+    
+    _fade_out->set_source(std::move(image));
+    
+    _fade_out->set(Loc{0, 0});
+    _fade_out->set(Scale{width(),1});
+    advance_wrap(*_fade_out);
+}
+
     void StaticText::add_string(std::shared_ptr<RichString> ptr, std::vector<std::shared_ptr<RichString>> &strings, Vec2& offset)
     {
         
@@ -407,10 +467,11 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         auto global_tags = to_tranges(text());
         
         auto mix_colors = [&](const Color& A, const Color& B) {
-            if(A != default_clr)
+            //if(A != default_clr)
+            return Color::blend(B.alpha(0.75 * 255), A.alpha(0.25 * 255));
                 return B * 0.75 + A * 0.25;
-            else
-                return B;
+            //else
+            //    return B;
         };
         
         std::deque<TRange> queue;

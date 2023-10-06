@@ -409,6 +409,7 @@ namespace gui {
         SectionInterface(const Type::Class& type, DrawStructure* s)
             : Drawable(type), _background(NULL), _stage(s)
         {}
+        SectionInterface(SectionInterface&&) = default;
         virtual ~SectionInterface();
         
         void set_pos(const Vec2& pos) override;

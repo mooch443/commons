@@ -401,10 +401,9 @@ std::string GridInfo::toStr() const {
 }
 
 void GridLayout::init() {
-    _vertical_rect = std::make_shared<Rect>(Box(0, 0, 50, 50), FillClr{_settings.verticalClr});
-    _horizontal_rect = std::make_shared<Rect>(FillClr{_settings.horizontalClr});
-    
     on_hover([this](Event e){
+        _vertical_rect->set(FillClr{_settings.verticalClr});
+        _horizontal_rect->set(FillClr{_settings.horizontalClr});
         _last_hover = Vec2(e.hover.x, e.hover.y);
         //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
         update_hover();
@@ -507,7 +506,7 @@ void GridLayout::update_layout() {
     }
 
     // Step 2: Update the position of each row and cell, relative to its parent
-    float y = margins().y;
+    float y = 0;
     size_t row_idx = 0;
 
     for (auto &_row : objects()) {
@@ -518,9 +517,9 @@ void GridLayout::update_layout() {
         Layout* row = _row.to<Layout>();
 
         // Reset x-coordinate at the beginning of each new row
-        float x = margins().x;
+        float x = 0;
 
-        float row_height = max_row_heights[row_idx];
+        float row_height = max_row_heights[row_idx] + margins().height + margins().y;
         size_t col_idx = 0;  // Column index
 
         for (auto &_cell : row->objects()) {
@@ -532,14 +531,22 @@ void GridLayout::update_layout() {
             
             auto cell_bounds = cell->local_bounds();
 
-            float cell_y = 0;
+            float cell_y = _margins.y;
             if(_settings.vpolicy == VPolicy::CENTER) {
-                cell_y = margins().y + (row_height - cell_bounds.height) * 0.5f;
+                cell_y = (row_height - cell_bounds.height) * 0.5f;
             } else if(_settings.vpolicy == VPolicy::BOTTOM) {
-                cell_y = row_height - cell_bounds.height;
+                cell_y = row_height - cell_bounds.height - _margins.height;
             }
-
+            
+            // Add this cell's bounds to rowBounds
+            rowBounds.push_back({
+                x, y,
+                max_col_widths[col_idx] + margins().width + margins().x,
+                row_height
+            });
+            
             // Ensure that cell_x is calculated afresh for each cell based on x and not dependent on old value.
+            x += _margins.x;
             float cell_x = x;
             if (_settings.hpolicy == HPolicy::CENTER) {
                 cell_x = x + (max_col_widths[col_idx] - cell_bounds.width) * 0.5f;
@@ -548,12 +555,6 @@ void GridLayout::update_layout() {
             }
             
             cell->set_pos({cell_x, cell_y});
-            // Add this cell's bounds to rowBounds
-            rowBounds.push_back({
-                x - margins().x, y,
-                max_col_widths[col_idx] + margins().width + margins().x,
-                row_height + margins().height + margins().y
-            });
             
             //print("cell(",col_idx,",",row_idx,") coordinates ", cell, " -> row_height=", row_height, " @ ", cell->pos()," with margins=", _margins, " and size=", cell->size(), " vs rowbounds=", rowBounds.back());
             /*for(auto c : cell->children()) {
@@ -569,7 +570,7 @@ void GridLayout::update_layout() {
         // Corrected this part
         row->auto_size();
         row->set_pos({0, y});
-        row->set_size({x, row_height + margins().height + margins().y});
+        row->set_size({x, row_height});
         
         // Add this row's bounds to gridBounds
         gridBounds.push_back(rowBounds);
@@ -580,7 +581,7 @@ void GridLayout::update_layout() {
     
     if(not max_col_widths.empty()) {
         set_size({
-            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + margins().width + margins().x * max_col_widths.size(),
+            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + (margins().width + margins().x) * max_col_widths.size(),
             y
         });
     }

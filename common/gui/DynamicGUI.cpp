@@ -86,6 +86,9 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
             case LayoutType::each:
                 ptr = layout.create_object<LayoutType::each>(context);
                 break;
+            case LayoutType::list:
+                ptr = layout.create_object<LayoutType::list>(context);
+                break;
             case LayoutType::condition:
                 ptr = layout.create_object<LayoutType::condition>(context);
                 break;
@@ -226,6 +229,8 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
                 if(d.contains("line")) defaults.line = parse_color(d["line"]);
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
+                if(d.contains("margins"))
+                    defaults.margins = Meta::fromStr<Bounds>(d["margins"].dump());
             }
         } catch(const std::exception& ex) {
             FormatExcept("Cannot parse layout due to: ", ex.what());
@@ -380,6 +385,16 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
             }
         }
         
+        if(pattern.contains("scale")) {
+            try {
+                o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
+                //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        
         if(pattern.contains("size")) {
             try {
                 auto size = pattern.at("size");
@@ -463,6 +478,81 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 }
             }
         }
+    }
+    
+    //! list contents loops below
+    if(auto it = state.lists.find(hash); it != state.lists.end()) {
+        ListContents &obj = it->second;
+        if(context.variables.contains(obj.variable)) {
+            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+                
+                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
+                
+                IndexScopeHandler handler{state._current_index};
+                //if(vector != obj.cache) {
+                    std::vector<DetailItem> ptrs;
+                    //obj.cache = vector;
+                    obj.state = std::make_unique<State>();
+                    Context tmp = context;
+                
+                size_t index=0;
+                auto convert_to_item = [&gc = context, &index, &obj, &o](sprite::Map&, const nlohmann::json& item_template, Context& context) -> DetailItem
+                {
+                    DetailItem item;
+                    if(item_template.contains("text") && item_template["text"].is_string()) {
+                        item.set_name(parse_text(item_template["text"].get<std::string>(), context));
+                    }
+                    if(item_template.contains("detail") && item_template["detail"].is_string()) {
+                        item.set_detail(parse_text(item_template["detail"].get<std::string>(), context));
+                    }
+                    if(item_template.contains("action") && item_template["action"].is_string()) {
+                        auto action = parse_text(item_template["action"].get<std::string>(), context);
+                        
+                        if(not obj.on_select_actions.contains(index)
+                           || std::get<0>(obj.on_select_actions.at(index)) != action)
+                        {
+                            obj.on_select_actions[index] = std::make_tuple(
+                                index, [&gc = gc, ptr = o.get(), index = index, action = action](){
+                                    print("Clicked item at ", index, " with action ", action);
+                                    if(gc.actions.contains(action)) {
+                                        gc.actions.at(action)(Meta::toStr(index));
+                                    }
+                                }
+                            );
+                        }
+                    }
+                    return item;
+                };
+                
+                    for(auto &v : vector) {
+                        tmp.variables["i"] = v;
+                        try {
+                            auto &ref = v->value<sprite::Map&>("");
+                            auto item = convert_to_item(ref, obj.item, tmp);
+                            ptrs.emplace_back(std::move(item));
+                            ++index;
+                        } catch(const std::exception& ex) {
+                            FormatExcept("Cannot create list items for template: ", obj.item.dump(), " and type ", v->class_name());
+                        }
+                    }
+                    
+                    o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
+                    
+                /*} else {
+                    Context tmp = context;
+                    for(size_t i=0; i<obj.cache.size(); ++i) {
+                        tmp.variables["i"] = obj.cache[i];
+                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]->pos(), " with hash ", hash);
+                        //o.to<Layout>()->children()[i]->set_pos(Meta::fromStr<Vec2>(tmp.variables["i"]->value_string("pos")));
+                        auto p = o.to<Layout>()->children().at(i);
+                        if(p)
+                            update_objects(g, p, tmp, *obj.state);
+                        //p->parent()->stage()->print(nullptr);
+                    }
+                }*/
+            }
+        }
+        return;
     }
 }
 

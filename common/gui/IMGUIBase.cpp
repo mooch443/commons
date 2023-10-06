@@ -936,6 +936,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             obj->clear_cache();
         }*/
         
+        _graph = nullptr;
         TextureCache::remove_base(this);
         
         while(!_exec_main_queue.empty()) {
@@ -956,7 +957,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             return;
         
         try {
-            _event_fn(e);
+            _event_fn(*_graph, e);
         } catch(const std::invalid_argument& e) { }
     }
 

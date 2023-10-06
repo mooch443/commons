@@ -51,11 +51,11 @@ namespace gui {
         };
         
         GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform)
-        DrawStructure * _graph;
+        GETTER(std::unique_ptr<DrawStructure>, graph)
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area)
         GETTER_I(bool, focussed, true)
-        std::function<void(const gui::Event&)> _event_fn;
+        std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
 #ifndef NDEBUG
         std::unordered_map<Type::Class, size_t> _type_counts;
@@ -104,14 +104,20 @@ namespace gui {
 #endif
         
     public:
-        template<typename impl_t = default_impl_t>
-        IMGUIBase(std::string title, 
-                  DrawStructure& base,
-                  CrossPlatform::custom_function_t custom_loop,
-                  std::function<void(const gui::Event&)> event_fn) 
-            : _custom_loop(custom_loop), _event_fn(event_fn), _title(title)
+        template<typename impl_t = default_impl_t, typename Graph = Size2>
+        IMGUIBase(std::string title,
+                  Graph&& window,
+                  std::function<bool(DrawStructure&)> custom_loop,
+                  std::function<void(DrawStructure&, const gui::Event&)> event_fn)
+        : _custom_loop([this, custom_loop = std::move(custom_loop) ](){ return custom_loop(*_graph); }), _event_fn(event_fn), _title(title)
         {
-            set_graph(base);
+            if constexpr(are_the_same<Graph, Size2>)
+                _graph = std::make_unique<DrawStructure>(window.width, window.height);
+            else if constexpr(are_the_same<Graph, std::unique_ptr<DrawStructure>>) {
+                _graph = std::move(window);
+            } else {
+                static_assert(are_the_same<void, Graph>, "Invalid type of Graph.");
+            }
             
             auto ptr = new impl_t([this](){
                 //! draw loop
@@ -147,10 +153,9 @@ namespace gui {
             init(title);
         }
         
-        void set_graph(DrawStructure& base) {
-            _graph = &base;
-            
-        }
+        /*void set_graph(std::unique_ptr<DrawStructure>&& base) {
+            _graph = std::move(base);
+        }*/
         void init(const std::string& title, bool soft = false);
         ~IMGUIBase();
         

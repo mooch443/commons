@@ -2,6 +2,24 @@
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>
 #include <gui/types/ErrorElement.h>
+#include <misc/default_settings.h>
+
+namespace gui {
+class PathArrayView : public VerticalLayout {
+    using VerticalLayout::VerticalLayout;
+public:
+    StaticText* text{nullptr};
+    Drawable* control{nullptr};
+    void update_layout() override {
+        //set(LineClr{Red});
+        print("Updating layout.");
+        if(text && control) {
+            //text->set(SizeLimit{control->width(), control->height()});
+        }
+        VerticalLayout::update_layout();
+    }
+};
+}
 
 namespace gui::dyn {
 
@@ -328,7 +346,7 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     }), _path(path)
 {
     set_description("");
-    _dropdown = std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28));
+    _dropdown = std::make_shared<gui::Dropdown>(Box(0, 0, 500, 28));
     
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
@@ -375,6 +393,9 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     
     _dropdown->textfield()->set_text(path.str());
     change_folder(path);
+    
+    _dropdown->auto_size({0,0});
+    print("Dropdown -> ", _dropdown->bounds());
 }
 
 void LabeledPath::change_folder(const file::Path& p) {
@@ -524,9 +545,12 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     });
     
     // Initialize StaticText
-    _staticText = Layout::Make<gui::StaticText>();
-    _layout = Layout::Make<gui::VerticalLayout>(std::vector<Layout::Ptr>{_dropdown, _staticText});
-    _layout->set(attr::Margins{0, 0, 0, 0});
+    _staticText = Layout::Make<gui::StaticText>(StaticText::FadeOut_t{true});
+    
+    _layout = Layout::Make<gui::PathArrayView>(std::vector<Layout::Ptr>{_dropdown, _staticText}, attr::Margins{0, 0, 0, 0});
+    auto view = static_cast<PathArrayView*>(_layout.get());
+    view->text = (StaticText*)_staticText.get();
+    view->control = _dropdown.get();
     _layout->set_policy(VerticalLayout::Policy::LEFT);
     
     if(obj.contains("preview") && obj["preview"].is_object()) {
@@ -543,6 +567,14 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
                 FormatExcept("Invalid format for color: ", ex.what());
             }
         }
+        if(text.contains("max_size")) {
+            try {
+                auto max_size = Meta::fromStr<Size2>(text["max_size"].dump());
+                _staticText->set(SizeLimit{max_size});
+            } catch(const std::exception& ex) {
+                FormatExcept("Invalid format for max_size: ", ex.what());
+            }
+        }
     }
     
     _dropdown->textfield()->set(Str{ _ref.value<file::PathArray>().source() });
@@ -556,7 +588,7 @@ void LabeledPathArray::updateStaticText() {
     if (matches.empty()) {
         _staticText->set_txt("No matches found");
     } else {
-        _staticText->set_txt(Meta::toStr(matches));
+        _staticText->set_txt(settings::htmlify( Meta::toStr(matches) ));
     }
 }
 

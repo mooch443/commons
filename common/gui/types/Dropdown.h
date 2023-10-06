@@ -157,8 +157,8 @@ namespace gui {
     public:
         using Entangled::set;
         void set(TextClr clr) { _textfield->set(clr); }
-        void set(LineClr clr) override { _textfield->set(clr); }
-        void set(FillClr clr) override { _textfield->set(clr); }
+        void set(LineClr clr) override { Entangled::set(clr); _textfield->set(clr); }
+        void set(FillClr clr) override { Entangled::set(clr); _textfield->set(clr); }
         void set(Font font) { _textfield->set(font); }
         void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }
         void set(const std::vector<TextItem>& options) { set_items(options); }

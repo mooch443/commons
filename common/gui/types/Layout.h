@@ -14,6 +14,11 @@ namespace gui {
         derived_ptr(const derived_ptr<T>& share)
             : ptr(share.ptr), raw_ptr(share.raw_ptr)
         {}
+        template<typename T>
+            requires std::is_base_of_v<Base, T>
+        derived_ptr(derived_ptr<T>&& share)
+            : ptr(std::move(share.ptr)), raw_ptr(std::move(share.raw_ptr))
+        {}
         derived_ptr(const std::shared_ptr<Base>& share = nullptr) : ptr(share), raw_ptr(nullptr) {}
         derived_ptr(Base* raw) : ptr(nullptr), raw_ptr(raw) {}
         
@@ -264,6 +269,9 @@ public:
     template<typename... Args>
     GridLayout(Args... args)
     {
+        _vertical_rect = std::make_shared<Rect>();
+        _horizontal_rect = std::make_shared<Rect>();
+        
         create(std::forward<Args>(args)...);
     }
     

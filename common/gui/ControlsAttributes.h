@@ -75,22 +75,9 @@ public:
     constexpr NumberAlias(NumberAlias&&) = default;
     template<typename K>
         requires std::convertible_to<K, T>
-    constexpr NumberAlias(K other) : value(other) {}
+    explicit constexpr NumberAlias(K other) : value(other) {}
     constexpr self_type& operator=(const NumberAlias& other) = default;
     constexpr self_type& operator=(T other) { value = other; return *this; }
-    
-    /*
-     With self type
-     
-    constexpr self_type& operator+=(const self_type& other) { value += other.value; return *this; }
-    constexpr self_type& operator-=(const self_type& other) { value -= other.value; return *this; }
-    constexpr self_type& operator*=(const self_type& other) { value *= other.value; return *this; }
-    constexpr self_type& operator/=(const self_type& other) { value /= other.value; return *this; }
-    
-    constexpr self_type operator/(const self_type& other) const { return self_type{value / other.value}; }
-    constexpr self_type operator*(const self_type& other) const { return self_type{value * other.value}; }
-    constexpr self_type operator+(const self_type& other) const { return self_type{value + other.value}; }
-    constexpr self_type operator-(const self_type& other) const { return self_type{value - other.value}; }*/
     
     constexpr operator T() const { return value; }
 };

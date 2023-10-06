@@ -30,7 +30,7 @@ Font parse_font(const nlohmann::json& obj, Font font) {
 
 Image::Ptr load_image(const file::Path& path) {
     try {
-        auto m = cv::imread(path.str());
+        auto m = cv::imread(path.str(), cv::IMREAD_UNCHANGED);
         //auto ptr = ;
         //size_t hash = std::hash<std::string_view>{}(std::string_view(reinterpret_cast<const char*>(m.data), uint64_t(m.cols) * uint64_t(m.rows) * uint64_t(m.channels())));
         if(m.channels() != 1 && m.channels() != 4) {
@@ -79,6 +79,14 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
     line = get(_defaults.line, "line");
     clickable = get(_defaults.clickable, "clickable");
     max_size = get(_defaults.max_size, "max_size");
+    
+    textClr = _defaults.textClr;
+    if(obj.count("color")) {
+        if(obj["color"].is_string())
+            state.patterns[hash]["color"] = obj["color"].get<std::string>();
+        else
+            textClr = parse_color(obj["color"]);
+    }
 
     font = _defaults.font; // Initialize with default values
     if(type == LayoutType::button) {
@@ -96,6 +104,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             LabeledField::delegate_to_proper_type(attr::FillClr{fill}, ptr);
     }
     LabeledField::delegate_to_proper_type(attr::Margins{margins}, ptr);
+    LabeledField::delegate_to_proper_type(font, ptr);
+    LabeledField::delegate_to_proper_type(textClr, ptr);
     
     if(clickable)
         ptr->set_clickable(clickable);
@@ -245,6 +255,21 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& context)
 {
     std::vector<Layout::Ptr> rows;
+    GridLayout::HPolicy halign{GridLayout::HPolicy::LEFT};
+    GridLayout::VPolicy valign{GridLayout::VPolicy::TOP};
+    {
+        auto _valign = utils::lowercase(get(std::string("top"), "valign"));
+        auto _halign = utils::lowercase(get(std::string("left"), "halign"));
+        if(_valign == "bottom")
+            valign = GridLayout::VPolicy::BOTTOM;
+        if(_valign == "center")
+            valign = GridLayout::VPolicy::CENTER;
+        if(_halign == "right")
+            halign = GridLayout::HPolicy::RIGHT;
+        if(_halign == "center")
+            halign = GridLayout::HPolicy::CENTER;
+    }
+    
                 
     if(obj.count("children")) {
         for(auto &row : obj["children"]) {
@@ -265,11 +290,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
                         cols.back().to<Layout>()->update();
                         cols.back().to<Layout>()->update_layout();
                         cols.back().to<Layout>()->auto_size();
+                        
+                        print("Col:");
+                        for(auto& o : cols.back().to<Layout>()->objects())
+                            print("\t",*o, " @ ", o->bounds());
                     }
                 }
                 rows.emplace_back(Layout::Make<Layout>(std::move(cols), attr::Margins{0, 0, 0, 0}));
                 rows.back()->set_name("Row");
-                //rows.back().to<Layout>()->set(LineClr{Yellow});
                 rows.back().to<Layout>()->update();
                 rows.back().to<Layout>()->update_layout();
                 rows.back().to<Layout>()->auto_size();
@@ -277,14 +305,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
         }
     }
     
-    auto ptr = Layout::Make<GridLayout>();
-    ptr.to<GridLayout>()->set_children(std::move(rows));
-    
     auto vertical_clr = get(_defaults.verticalClr, "vertical_clr");
     auto horizontal_clr = get(_defaults.horizontalClr, "horizontal_clr");
     
-    ptr.to<GridLayout>()->set(VerticalClr{vertical_clr});
-    ptr.to<GridLayout>()->set(HorizontalClr{horizontal_clr});
+    auto ptr = Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr});
 
     return ptr;
 }
@@ -378,7 +402,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         ref->add_to(objs);
         for(auto &o : objs)
             assert(o != nullptr);
-        ptr = Layout::Make<HorizontalLayout>(std::move(objs), Loc(), Box{0, 0, 0, 0});
+        ptr = Layout::Make<HorizontalLayout>(std::move(objs), Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
     }
     
     return ptr;
@@ -401,27 +425,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
     std::string action;
     if(obj.count("action")) {
         action = obj["action"].get<std::string>();
-        ptr->on_click([action, context](auto e){
+        ptr->on_click([action, context](auto){
             if(context.actions.contains(action))
-                context.actions.at(action)(e);
+                context.actions.at(action)(action);
             else
                 print("Unknown Action: ", action);
         });
     }
-    
-    Color color{_defaults.textClr};
-    if(obj.count("color")) {
-        if(obj["color"].is_string())
-            state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else
-            color = parse_color(obj["color"]);
-    }
-    ptr.to<Button>()->set_text_clr(color);
-    
-    if(fill != Transparent)
-        ptr.to<Button>()->set_fill_clr(fill);
-    if(line != Transparent)
-        ptr.to<Button>()->set_line_clr(line);
     
     return ptr;
 }
@@ -450,7 +460,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
         action = obj["action"].get<std::string>();
         ptr.to<Checkbox>()->on_change([action, context](){
             if(context.actions.contains(action))
-                context.actions.at(action)(Event(EventType::KEY));
+                context.actions.at(action)(action);
             else
                 print("Unknown Action: ", action);
         });
@@ -478,24 +488,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
         action = obj["action"].get<std::string>();
         ptr.to<Textfield>()->on_enter([action, context](){
             if(context.actions.contains(action))
-                context.actions.at(action)(Event(EventType::KEY));
+                context.actions.at(action)(action);
             else
                 print("Unknown Action: ", action);
         });
     }
-    
-    Color color{White};
-    if(obj.count("color")) {
-        if(obj["color"].is_string())
-            state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else {
-            color = parse_color(obj["color"]);
-            ptr.to<Textfield>()->set_text_color(color);
-        }
-    }
-    
-    if(fill != Transparent)
-        ptr.to<Textfield>()->set_fill_color(fill);
     
     return ptr;
 }
@@ -513,23 +510,18 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
         state.patterns[hash]["text"] = text;
     }
     
-    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
+    StaticText::FadeOut_t fade_out{false};
+    if(obj.contains("fade_out") && obj["fade_out"].is_boolean()) {
+        fade_out = obj["fade_out"].get<bool>();
+    }
+    
+    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, fade_out);
     
     //if(margins != Margins{0, 0, 0, 0})
     {
         ptr.to<StaticText>()->set(attr::Margins(margins));
         if(not max_size.empty())
             ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
-    }
-    
-    Color color{White};
-    if(obj.count("color")) {
-        if(obj["color"].is_string())
-            state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else {
-            color = parse_color(obj["color"]);
-            ptr.to<StaticText>()->set_text_color(color);
-        }
     }
     
     ptr->set_name(text);
@@ -566,16 +558,6 @@ Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
     ptr = Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
     ptr->set_name(text);
     
-    Color color{White};
-    if(obj.count("color")) {
-        if(obj["color"].is_string())
-            state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else {
-            color = parse_color(obj["color"]);
-            ptr.to<Text>()->set_color(color);
-        }
-    }
-    
     return ptr;
 }
 
@@ -609,6 +591,34 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
             };
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             ptr->set_name("foreach<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
+        }
+    }
+    return ptr;
+}
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& context)
+{
+    Layout::Ptr ptr;
+    if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
+        auto child = obj["template"];
+        if(child.is_object()) {
+            //print("collection: ", child.dump());
+            // all successfull, add collection:
+            state.lists[hash] = {
+                .variable = obj["var"].get<std::string>(),
+                .item = child,
+                .state = std::make_unique<State>(state)
+            };
+            
+            ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
+            ptr.to<ScrollableList<DetailItem>>()->on_select([&, &body = state.lists[hash]](size_t index, const DetailItem & item)
+            {
+                if(body.on_select_actions.contains(index)) {
+                    std::get<1>(body.on_select_actions.at(index))();
+                }
+            });
+            ptr->set_name("list<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
         }
     }
     return ptr;

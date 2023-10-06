@@ -40,6 +40,8 @@ struct LabeledField {
     
     virtual void add_to(std::vector<Layout::Ptr>& v) {
         assert(_text != nullptr);
+        if(_text->txt().empty())
+            return;
         v.push_back(_text);
     }
     virtual void update() {}
@@ -101,6 +103,10 @@ struct LabeledField {
             } else if(object.is<ScrollableList<>>()) {
                 if constexpr(takes_attribute<ScrollableList<>, T>)
                     object.to<ScrollableList<>>()->set(attribute);
+                
+            } else if(object.is<ScrollableList<DetailItem>>()) {
+                if constexpr(takes_attribute<ScrollableList<DetailItem>, T>)
+                    object.to<ScrollableList<DetailItem>>()->set(attribute);
                 
             } else if(object.is<Checkbox>()) {
                 if constexpr(takes_attribute<Checkbox, T>)

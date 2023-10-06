@@ -15,10 +15,12 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
         {
             // is it a color variable?
             if(obj[name].is_string()) {
-                state.patterns[hash][name] = obj[name].template get<std::string>();
-                //print("pattern for ", name, " at object ", obj[name].template get<std::string>(), " at ", hash);
-                //std::cout << obj << std::endl;
-                return de;
+                if constexpr(not _clean_same<std::string, T>) {
+                    state.patterns[hash][name] = obj[name].template get<std::string>();
+                    //print("pattern for ", name, " at object ", obj[name].template get<std::string>(), " at ", hash);
+                    //std::cout << obj << std::endl;
+                    return de;
+                }
             }
         }
         return Meta::fromStr<T>(obj[name].dump());
@@ -42,6 +44,7 @@ public:
     Color fill;
     Color line;
     Color highlight_clr;
+    TextClr textClr;
     bool clickable;
     Font font;
     uint64_t hash;
@@ -115,5 +118,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&);
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context&);
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context&);
 
 }

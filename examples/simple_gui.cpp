@@ -20,7 +20,7 @@ int main(int argc, char**argv) {
     // Define global variables
     bool terminate = false;
     SETTING(app_name) = std::string("test application");
-    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.mp4");
+    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.pt");
     SETTING(blob_size_ranges) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
@@ -52,39 +52,51 @@ int main(int argc, char**argv) {
             o->set_draggable();
         }
     });
-    
-    // Initialize the GUI
-    DrawStructure graph(1024, 1024);  // Window size
-    IMGUIBase base("Dynamic GUI Example", graph, [&]() -> bool {
-        // Initialize Dynamic GUI
+
+    // Open the Window
+    IMGUIBase base("Dynamic GUI Example",
+                   Size2{1024,1024},
+                   [&](DrawStructure& graph) -> bool
+    {
+        // Initialize Dynamic GUI once, when the program starts
+        // it contains all the context variables / actions for
+        // the GUI itself, which is loaded form the JSON file.
         static dyn::DynamicGUI dynGUI{
-            .path = file::DataLocation::parse("app", "test_gui.json"),  // JSON file location
+            // JSON file location
+            .path = file::DataLocation::parse("app", "test_gui.json"),
             .context = {
+                // stuff that can be triggered by lists / buttons
                 .actions = {
-                    {
-                        "QUIT", [&](auto) {
-                            terminate = true;  // Quit action
-                        }
-                    }
+                    { "QUIT", [&](auto) {
+                        terminate = true;  // Quit action
+                    } }
                 },
+                // variables can be accessed in lots of ways,
+                // e.g. printed out or looped through within
+                // the json
                 .variables = {
-                    {
-                        "list_var",
-                        std::unique_ptr<VarBase_t>(new Variable{
-                            [](std::string) 
-                                -> std::vector<std::shared_ptr<VarBase_t>>&
-                            {
-                                return list;
-                            }
-                        })
+                    { "list_var",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                         [](std::string)
+                            -> std::vector<std::shared_ptr<VarBase_t>>&
+                         {
+                            return list;
+                         }
+                      })
                     },
-                    {
-                        "global",
-                        std::unique_ptr<VarBase_t>(new Variable{
-                            [](std::string) -> sprite::Map& {
-                                return GlobalSettings::map();
-                            }
-                        })
+                    { "global", // this gives access to the global settings
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](std::string) -> sprite::Map& {
+                            return GlobalSettings::map();
+                        }
+                      })
+                    },
+                    { "isTrue",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](std::string) {
+                            return true;
+                        }
+                      })
                     }
                 }
             },
@@ -97,7 +109,7 @@ int main(int argc, char**argv) {
 
         return not terminate;  // Continue the event loop unless terminated
         
-    }, [&](const Event& event){
+    }, [&](auto&, const Event& event){
         if(event.type == EventType::KEY
            && event.key.code == Keyboard::Escape)
         {

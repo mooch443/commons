@@ -33,6 +33,7 @@ namespace gui {
         size_t index() const { return _index; }
         
         Section() : Section(nullptr, nullptr, "") {}
+        Section(Section&&) = default;
         Section(DrawStructure* s, Section* parent,
                 const std::string& name,
                 const std::vector<Drawable*> o = std::vector<Drawable*>())

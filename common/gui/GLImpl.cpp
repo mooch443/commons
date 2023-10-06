@@ -267,7 +267,7 @@ GLFWwindow* GLImpl::window_handle() {
     return window;
 }
 
-LoopStatus GLImpl::update_loop(const CrossPlatform::custom_function_t& custom_loop) {
+LoopStatus GLImpl::update_loop(const std::function<bool()>& custom_loop) {
     LoopStatus status = LoopStatus::IDLE;
     glfwPollEvents();
     
