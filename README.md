@@ -60,7 +60,7 @@ int main(int argc, char**argv) {
     // Define global variables
     bool terminate = false;
     SETTING(app_name) = std::string("test application");
-    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.mp4");
+    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.pt");
     SETTING(blob_size_ranges) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
@@ -92,39 +92,51 @@ int main(int argc, char**argv) {
             o->set_draggable();
         }
     });
-    
-    // Initialize the GUI
-    DrawStructure graph(1024, 1024);  // Window size
-    IMGUIBase base("Dynamic GUI Example", graph, [&]() -> bool {
-        // Initialize Dynamic GUI
+
+    // Open the Window
+    IMGUIBase base("Dynamic GUI Example",
+                   Size2{1024,1024},
+                   [&](DrawStructure& graph) -> bool
+    {
+        // Initialize Dynamic GUI once, when the program starts
+        // it contains all the context variables / actions for
+        // the GUI itself, which is loaded form the JSON file.
         static dyn::DynamicGUI dynGUI{
-            .path = file::DataLocation::parse("app", "test_gui.json"),  // JSON file location
+            // JSON file location
+            .path = file::DataLocation::parse("app", "test_gui.json"),
             .context = {
+                // stuff that can be triggered by lists / buttons
                 .actions = {
-                    {
-                        "QUIT", [&](auto) {
-                            terminate = true;  // Quit action
-                        }
-                    }
+                    { "QUIT", [&](auto) {
+                        terminate = true;  // Quit action
+                    } }
                 },
+                // variables can be accessed in lots of ways,
+                // e.g. printed out or looped through within
+                // the json
                 .variables = {
-                    {
-                        "list_var",
-                        std::unique_ptr<VarBase_t>(new Variable{
-                            [](std::string) 
-                                -> std::vector<std::shared_ptr<VarBase_t>>&
-                            {
-                                return list;
-                            }
-                        })
+                    { "list_var",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                         [](std::string)
+                            -> std::vector<std::shared_ptr<VarBase_t>>&
+                         {
+                            return list;
+                         }
+                      })
                     },
-                    {
-                        "global",
-                        std::unique_ptr<VarBase_t>(new Variable{
-                            [](std::string) -> sprite::Map& {
-                                return GlobalSettings::map();
-                            }
-                        })
+                    { "global", // this gives access to the global settings
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](std::string) -> sprite::Map& {
+                            return GlobalSettings::map();
+                        }
+                      })
+                    },
+                    { "isTrue",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](std::string) {
+                            return true;
+                        }
+                      })
                     }
                 }
             },
@@ -137,7 +149,7 @@ int main(int argc, char**argv) {
 
         return not terminate;  // Continue the event loop unless terminated
         
-    }, [&](const Event& event){
+    }, [&](auto&, const Event& event){
         if(event.type == EventType::KEY
            && event.key.code == Keyboard::Escape)
         {
@@ -156,50 +168,82 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
 ```json
 {
     "objects": [
-        {"type": "vlayout", "pos": [20, 10],
+        {"type":"vlayout", "pos":[20,10], "margins":[5,5,5,5],
          "children": [
             {"type": "hlayout", "children": [
                 {"type": "button", "text": "Quit", "action": "QUIT"},
                 {"type": "collection", "pos": [300, 100], 
-                 "children": [
-                    {"type": "text", "text": "Hello World!"}
-                 ]
+                 "children": [{"type": "text", "text": "Hello World!"}]
                 }
             ]},
-            {"type": "vlayout", "children": [
-                {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125], "size":[300,40]},
-                {"type": "settings", "var": "patharray", "fill": [50, 50, 50, 125], "size":[300,40]},
-                {"type": "settings", "var": "region_model", "fill": [50, 50, 50, 125], "size":[300,40]},
-                {"type": "settings", "var": "blob_size_ranges", "fill": [50, 50, 50, 125], "size":[300,40]}
+            {"type": "textfield",
+             "size":[500,40],
+             "color":[255,0,255,255],
+             "action":"QUIT"
+            },
+            {"type": "vlayout", "margins":[5,5,5,5], "children": [
+              {"type": "settings", "var": "app_name", "fill": [50, 50, 50, 125], "size":[300,40]},
+              {"type": "settings", "var": "patharray", 
+               "fill": [50,50,50,125], 
+               "size":[800,40],
+               "preview":{
+                  "max_size":[800,100],
+                  "font": { "size": 0.5 }
+               }
+              },
+              {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40]},
+              {"type":"settings","var":"blob_size_ranges","fill":[50,50,50,125],"size":[300,40]}
             ]},
             {"type": "gridlayout", 
              "pos": [550, 600], 
-             "horizontal_clr": [50, 50, 150, 100], 
-             "vertical_clr": [50, 150, 150, 100], 
+             "horizontal_clr": [50,50,150,100], 
+             "vertical_clr": [50,150,150,100],
+             "line":[50,50,50,200],
+             "margins":[5,5,5,5],
              "clickable": true, 
              "children": [
                 [ 
                   [{"type": "text", "text": "Entry 1"}], 
-                  [{"type": "text", "text": "app={global:patharray}"}] 
+                  [{"type": "stext", 
+                    "text": "patharray={#global:patharray}", 
+                    "max_size":[500,50], 
+                    "fade_out":true,
+                    "font": { "size": 0.5 }
+                   }] 
                 ],
                 [ 
-                  [{"type": "text", "text": "app={global:region_model}"}], 
+                  [{"type": "text", "text": "region={global:region_model}"}], 
                   [{"type": "text", "text": "app={global:app_name}"}]
+                ],
+                [
+                  [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
+                  [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
                 ]
              ]
             },
-            {"type": "rect", "pos": [0, 0], "size": [50, 50], "fill": [255, 0, 0, 125]},
-            {"type": "circle", "pos": [0, 0], "radius": 10, "fill": [125, 125, 0, 125]},
-            {"type": "condition", "var": "isTrue", 
-             "then": {"type": "text", "text": "True"}, 
-             "else": {"type": "text", "text": "False"}
+            {"type":"rect","pos":[0,0],"size": [50,50],"fill":[255,0,0,125]},
+            {"type":"circle","pos":[0,0],"radius":10,"fill":[125,125,0,125]},
+            {"type":"condition", "var": "isTrue", "size":"auto",
+             "then":{"type":"text","text":"True"}, 
+             "else":{"type":"text","text":"False"}
+            },
+            { "type":"list",
+              "var":"list_var",
+              "size":[300,300],
+              "line":[255,0,0,125],
+              "font":{ "size":0.75, "align":"center" },
+              "template": {
+                  "text":"{i:name}",
+                  "detail":"{i:detail}",
+                  "action":"open_recent"
+              }
             }
         ]},
         {"type":"vlayout",
          "modules":["draggable"],
          "line":[125,0,0,200],
          "fill":[125,0,0,100],
-         "margins":[0,0,0,0],
+         "pos":[500,10],
          "children": [
            {"type": "each", 
             "var": "list_var", 
