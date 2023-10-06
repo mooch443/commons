@@ -221,9 +221,9 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
       ]},
       { "type":"rect","pos":[0,0],"size": [50,50],"fill":[255,0,0,125]},
       { "type":"circle","pos":[0,0],"radius":10,"fill":[125,125,0,125]},
-      { "type":"condition", "var": "isTrue", "size":"auto",
-        "then":{"type":"text","text":"True"}, 
-        "else":{"type":"text","text":"False"}
+      { "type":"condition", "var": "isTrue",
+        "then":{"type":"stext","text":"The value is <key>True</key>."}, 
+        "else":{"type":"stext","text":"The value is <key>False</key>."}
       },
       { "type":"list",
         "var":"list_var",
