@@ -80,6 +80,10 @@ struct LabeledField {
             if constexpr(takes_attribute<Rect, T>)
                 object.to<Rect>()->set(attribute);
             
+        } else if(object.is<Text>()) {
+            if constexpr(takes_attribute<Text, T>)
+                object.to<Text>()->set(attribute);
+            
         } else if(object.is<SectionInterface>()) {
             if constexpr(takes_attribute<SectionInterface, T>) {
                 object.to<SectionInterface>()->set(attribute);
