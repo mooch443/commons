@@ -276,7 +276,7 @@ namespace gui {
                     break;
                 }
             }
-            add<Text>(Str{item_name}, Loc(_title.pos()), _title.color(), _title.font());
+            add<Text>(Str{item_name}, Loc(_title.pos()), TextClr{_title.color()}, _title.font());
         }
     }
     

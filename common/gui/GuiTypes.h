@@ -382,7 +382,7 @@ protected:
     public:
         using Drawable::set;
         void set(const Str& txt) { set_txt(txt); }
-        void set(const Color& color) { set_color(color); }
+        void set(const TextClr& color) { set_color(color); }
         void set(const Font& font) { set_font(font); }
         
     public:
