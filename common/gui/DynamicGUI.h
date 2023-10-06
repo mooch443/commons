@@ -222,7 +222,7 @@ std::string regExtractControls(std::string& variable);
 
 template<typename ApplyF, typename ErrorF>
 inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
-    auto variable = utils::lowercase(word);
+    auto variable = word;
     VarProps props;
     
     // Call to the separated function
@@ -263,11 +263,12 @@ inline auto resolve_variable(const std::string& word, const Context& context, Ap
 template<typename T>
 T resolve_variable_type(std::string word, const Context& context) {
     if(word.empty())
-        throw std::invalid_argument("Invalid variable type for "+word);
+        throw U_EXCEPTION("Invalid variable name (is empty).");
     
     if(word.length() > 2
        && word.front() == '{'
-       && word.back() == '}') {
+       && word.back() == '}') 
+    {
         word = word.substr(1,word.length()-2);
     }
     
@@ -317,10 +318,10 @@ T resolve_variable_type(std::string word, const Context& context) {
             }
         }
         
-        throw std::invalid_argument("Invalid variable type for "+word);
+        throw U_EXCEPTION("Invalid variable type for ",word," or variable not found.");
         
     }, [&]() -> T {
-        throw std::invalid_argument("Invalid variable type for "+word);
+        throw U_EXCEPTION("Invalid variable type for ",word," or variable not found.");
     });
 }
 
@@ -336,6 +337,8 @@ struct DynamicGUI {
     DrawStructure* graph{nullptr};
     Base* base;
     std::vector<Layout::Ptr> objects;
+    Timer last_update;
+    bool first_load{true};
     
     void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     
@@ -343,6 +346,7 @@ struct DynamicGUI {
     void clear();
     
 private:
+    void reload();
     static void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
 };
 

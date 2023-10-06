@@ -12,7 +12,7 @@ public:
     Drawable* control{nullptr};
     void update_layout() override {
         //set(LineClr{Red});
-        print("Updating layout.");
+        //print("Updating layout.");
         if(text && control) {
             //text->set(SizeLimit{control->width(), control->height()});
         }

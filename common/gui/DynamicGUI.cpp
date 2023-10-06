@@ -293,7 +293,9 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
             }
             update_objects(g, obj._if, context, state);
             
-        } catch(...) { }
+        } catch(const std::exception& ex) {
+            FormatError(ex.what());
+        }
         
         return;
     }
@@ -556,7 +558,16 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
     }
 }
 
-void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) {
+void DynamicGUI::reload() {
+    if(not first_load
+       && last_update.elapsed() < 0.25)
+    {
+        return;
+    }
+    
+    if(first_load)
+        first_load = false;
+    
     try {
         auto cwd = file::cwd().absolute();
         auto app = file::DataLocation::parse("app").absolute();
@@ -591,6 +602,13 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     } catch(...) {
         FormatExcept("Error loading gui layout from file");
     }
+    
+    last_update.reset();
+}
+
+void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
+{
+    reload();
     
     if(context.defaults.window_color != Transparent) {
         if(base)
