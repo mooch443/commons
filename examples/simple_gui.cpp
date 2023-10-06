@@ -64,6 +64,7 @@ int main(int argc, char**argv) {
         static dyn::DynamicGUI dynGUI{
             // JSON file location
             .path = file::DataLocation::parse("app", "test_gui.json"),
+            .graph = &graph,
             .context = {
                 // stuff that can be triggered by lists / buttons
                 .actions = {
@@ -100,7 +101,6 @@ int main(int argc, char**argv) {
                     }
                 }
             },
-            .graph = &graph,
             .base = &base
         };
 

@@ -332,9 +332,9 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
 //! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
 struct DynamicGUI {
     file::Path path;
+    DrawStructure* graph{nullptr};
     Context context;
     State state;
-    DrawStructure* graph{nullptr};
     Base* base;
     std::vector<Layout::Ptr> objects;
     Timer last_update;

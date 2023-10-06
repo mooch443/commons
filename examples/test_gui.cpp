@@ -473,6 +473,7 @@ int main(int argc, char**argv) {
     {
         static dyn::DynamicGUI dynGUI{
             .path = file::DataLocation::parse("app", "test_gui.json"),
+            .graph = &graph,
             .context = {
                 .actions = {
                     {
@@ -508,7 +509,6 @@ int main(int argc, char**argv) {
                         }
                     }
             },
-            .graph = &graph,
             .base = ptr
         };
         
