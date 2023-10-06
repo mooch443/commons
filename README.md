@@ -167,7 +167,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
 
 ```json
 { "objects": [
-    {"type":"vlayout", "pos":[20,10], "margins":[5,5,5,5],
+    {"type":"vlayout", "pos":[20,10], "pad":[5,5,5,5],
         "children": [
         {"type": "hlayout", "children": [
             {"type": "button", "text": "Quit", "action": "QUIT"},
@@ -180,7 +180,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
             "color":[255,0,255,255],
             "action":"QUIT"
         },
-        {"type": "vlayout", "margins":[5,5,5,5], "children": [
+        {"type": "vlayout", "pad":[5,5,5,5], "children": [
             {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
             {"type":"settings","var": "patharray", 
             "fill": [50,50,50,125], 
@@ -198,25 +198,25 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
             "horizontal_clr": [50,50,150,100], 
             "vertical_clr": [50,150,150,100],
             "line":[50,50,50,200],
-            "margins":[5,5,5,5],
+            "pad":[5,5,5,5],
             "clickable": true, 
             "children": [
             [ 
-                [{"type": "text", "text": "Entry 1"}], 
-                [{"type": "stext", 
+              [{"type": "text", "text": "Entry 1"}], 
+              [{"type": "stext", 
                 "text": "patharray={#global:patharray}", 
                 "max_size":[500,50], 
                 "fade_out":true,
                 "font": { "size": 0.5 }
-                }] 
+              }] 
             ],
             [ 
-                [{"type": "text", "text": "region={global:region_model}"}], 
-                [{"type": "text", "text": "app={global:app_name}"}]
+              [{"type": "text", "text": "region={global:region_model}"}], 
+              [{"type": "text", "text": "app={global:app_name}"}]
             ],
             [
-                [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
-                [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
+              [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
+              [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
             ]
             ]
         },
