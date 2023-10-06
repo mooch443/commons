@@ -139,7 +139,7 @@ void StaticText::set_default_font(const Font& font) {
             }
             set_size(m);
             
-            if(hiding_something && _settings.fade_out) {
+            if(_settings.fade_out > 0) {
                 add_shadow();
                 
             } else
@@ -188,26 +188,30 @@ void StaticText::add_shadow() {
     if(not _fade_out)
         _fade_out = std::make_shared<ExternalImage>();
     
-    float h = Base::default_line_spacing(_settings.default_font);
+    float h = min(height(), Base::default_line_spacing(_settings.default_font) * 2.f);
     auto image = Image::Make(height()+1, 1, 4);
     image->set_to(0);
     
     auto bg = _bg_fill_color;
-    if(bg.a == 0 && parent()) {
-        bg = parent()->bg_fill_color();
+    auto ptr = parent();
+    while(bg.a == 0 && ptr) {
+        bg = ptr->bg_fill_color();
+        ptr = ptr->parent();
     }
     image->get().setTo(cv::Scalar(bg.alpha(0)));
     
-    const float start_y = height() - h;
-    const float end_y = height() + 1;
+    const float start_y = height() - h - 1;
+    const float end_y = height();
     
     for(uint y=start_y; y<end_y; ++y) {
         float percent = saturate(float(y-start_y) / float(end_y - start_y + 1), 0.f, 1.f);
+        percent *= percent;
+        
         auto ptr = image->ptr(y, 0);
         //*(ptr+0) = saturate((percent) * 255, 0, 255);
         //*(ptr+1) = saturate((percent) * 255, 0, 255);
         //*(ptr+2) = saturate((percent) * 255, 0, 255);
-        *(ptr+3) = saturate((percent) * 255, 0, 255);
+        *(ptr+3) = saturate((percent) * _settings.fade_out * 255, 0, 255);
     }
     
     _fade_out->set_source(std::move(image));

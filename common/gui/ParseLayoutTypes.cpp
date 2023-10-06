@@ -510,9 +510,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
         state.patterns[hash]["text"] = text;
     }
     
-    StaticText::FadeOut_t fade_out{false};
-    if(obj.contains("fade_out") && obj["fade_out"].is_boolean()) {
-        fade_out = obj["fade_out"].get<bool>();
+    StaticText::FadeOut_t fade_out{0.f};
+    if(obj.contains("fade_out") && obj["fade_out"].is_number()) {
+        fade_out = obj["fade_out"].get<float>();
     }
     
     ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, fade_out);

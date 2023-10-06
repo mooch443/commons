@@ -124,12 +124,12 @@ namespace gui {
         using Layout::set_children;
         using Layout::clear_children;
         
-        using Layout::auto_size;
         using Layout::set;
         
         void update_layout() override {
             auto_size();
         }
+        void auto_size() override {}
     };
 
     

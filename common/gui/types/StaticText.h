@@ -30,7 +30,7 @@ namespace gui {
 
     class StaticText : public Entangled {
     public:
-        using FadeOut_t = NumberAlias<bool, 1337>;
+        using FadeOut_t = NumberAlias<float, 1337>;
         
     private:
         std::vector<std::shared_ptr<Text>> texts;
@@ -47,7 +47,7 @@ namespace gui {
             std::string txt;
             Alpha alpha{1};
             Alpha fill_alpha{0};
-            FadeOut_t fade_out{false};
+            FadeOut_t fade_out{0.f};
             
         } _settings;
         

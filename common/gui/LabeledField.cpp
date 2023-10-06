@@ -545,7 +545,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     });
     
     // Initialize StaticText
-    _staticText = Layout::Make<gui::StaticText>(StaticText::FadeOut_t{true});
+    _staticText = Layout::Make<gui::StaticText>(StaticText::FadeOut_t{1.f});
     
     _layout = Layout::Make<gui::PathArrayView>(std::vector<Layout::Ptr>{_dropdown, _staticText}, attr::Margins{0, 0, 0, 0});
     auto view = static_cast<PathArrayView*>(_layout.get());
