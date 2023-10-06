@@ -229,8 +229,8 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
                 if(d.contains("line")) defaults.line = parse_color(d["line"]);
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
-                if(d.contains("margins"))
-                    defaults.margins = Meta::fromStr<Bounds>(d["margins"].dump());
+                if(d.contains("pad"))
+                    defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
             }
         } catch(const std::exception& ex) {
             FormatExcept("Cannot parse layout due to: ", ex.what());

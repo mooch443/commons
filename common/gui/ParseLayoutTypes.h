@@ -39,7 +39,7 @@ public:
     Size2 size, max_size;
     Vec2 pos;
     Vec2 origin;
-    Bounds margins;
+    Bounds pad;
     std::string name;
     Color fill;
     Color line;

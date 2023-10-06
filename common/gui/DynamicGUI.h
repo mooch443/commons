@@ -58,7 +58,7 @@ struct DefaultSettings {
     Vec2 pos{0.f};
     Vec2 origin{0.f};
     Size2 size{0.f};
-    Bounds margins{0.f,0.f,0.f,0.f};
+    Bounds pad{0.f,0.f,0.f,0.f};
     std::string name;
     Color fill{Transparent};
     Color line{Transparent};

@@ -73,7 +73,7 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
     scale = get(_defaults.scale, "scale");
     pos = get(_defaults.pos, "pos");
     origin = get(_defaults.origin, "origin");
-    margins = get(_defaults.margins, "margins");
+    pad = get(_defaults.pad, "pad");
     name = get(_defaults.name, "name");
     fill = get(_defaults.fill, "fill");
     line = get(_defaults.line, "line");
@@ -103,7 +103,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         if(fill != Transparent)
             LabeledField::delegate_to_proper_type(attr::FillClr{fill}, ptr);
     }
-    LabeledField::delegate_to_proper_type(attr::Margins{margins}, ptr);
+    LabeledField::delegate_to_proper_type(attr::Margins{pad}, ptr);
     LabeledField::delegate_to_proper_type(font, ptr);
     LabeledField::delegate_to_proper_type(textClr, ptr);
     
@@ -519,7 +519,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
     
     //if(margins != Margins{0, 0, 0, 0})
     {
-        ptr.to<StaticText>()->set(attr::Margins(margins));
+        ptr.to<StaticText>()->set(attr::Margins(pad));
         if(not max_size.empty())
             ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
     }
