@@ -171,9 +171,9 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
       "children": [
       { "type": "hlayout", "children": [
           { "type": "button", "text": "Quit", "action": "QUIT"},
-          { "type": "collection", "pos": [300, 100], 
-            "children": [{"type": "text", "text": "Hello World!"}]
-          }
+          { "type": "collection", "children": [
+            {"type": "text", "text": "Hello World!"}
+          ]}
       ]},
       { "type": "textfield",
         "size":[500,40],
