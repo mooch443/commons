@@ -169,7 +169,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
 { "objects": [
     { "type":"vlayout", "pos":[20,10], "pad":[5,5,5,5],
       "children": [
-      { "type": "hlayout", "children": [
+      { "type": "hlayout", "pad":[0,0,10,5], "children": [
           { "type": "button", "text": "Quit", "action": "QUIT"},
           { "type": "collection", "children": [
             {"type": "text", "text": "Hello World!"}
