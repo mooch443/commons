@@ -339,11 +339,15 @@ protected:
     class Text final : public Drawable {
     public:
         static constexpr auto Class = Type::data::values::TEXT;
+        NUMBER_ALIAS(Shadow_t, float)
+        
     private:
         struct Settings {
             std::string txt;
             Color color = White;
             Font font;
+            Shadow_t shadow{0};
+            
         } _settings;
         
         Bounds _text_bounds;
@@ -384,11 +388,18 @@ protected:
         void set(const Str& txt) { set_txt(txt); }
         void set(const TextClr& color) { set_color(color); }
         void set(const Font& font) { set_font(font); }
+        void set(const Shadow_t& shadow) {
+            if(_settings.shadow == shadow)
+                return;
+            _settings.shadow = shadow;
+            set_dirty();
+        }
         
     public:
         const auto& font() const { return _settings.font; }
         const auto& color() const { return _settings.color; }
         const auto& txt() const { return _settings.txt; }
+        const auto& shadow() const { return _settings.shadow; }
         
         void set_txt(const std::string& txt) {
             if(txt == _settings.txt)

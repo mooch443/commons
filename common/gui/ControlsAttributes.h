@@ -56,12 +56,17 @@ ATTRIBUTE_ALIAS(Postfix, std::string)
 ATTRIBUTE_ALIAS(Prefix, std::string)
 ATTRIBUTE_ALIAS(ParmName, std::string)
 
-template<typename T, int _arbitrary = 0>
+// Macro for defining a NumberAlias
+#define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \
+    struct ALIAS_NAME##Tag {};                                \
+    using ALIAS_NAME = NumberAlias<BASE_TYPE, ALIAS_NAME##Tag>;
+
+template <typename T, class Tag>
 struct NumberAlias {
     T value;
 public:
-    using self_type = NumberAlias<T, _arbitrary>;
-    
+    using self_type = NumberAlias<T, Tag>;
+
 public:
     constexpr self_type& operator++() { ++value; return *this; }
     constexpr self_type& operator--() { --value; return *this; }
@@ -82,52 +87,47 @@ public:
     constexpr operator T() const { return value; }
 };
 
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator+(const NumberAlias<T, a>& A, const K& B) {
-    return NumberAlias<T, a>(A.value + B);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator-(const NumberAlias<T, a>& A, const K& B) {
-    return NumberAlias<T, a>(A.value - B);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator/(const NumberAlias<T, a>& A, const K& B) {
-    return NumberAlias<T, a>(A.value / B);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator*(const NumberAlias<T, a>& A, const K& B) {
-    return NumberAlias<T, a>(A.value * B);
+template<typename T> struct _IsNumberAlias : std::false_type {};
+template<typename T, class Tag> struct _IsNumberAlias<NumberAlias<T, Tag>> : std::true_type {};
+
+template<typename T> concept IsNumberAlias = _IsNumberAlias<std::remove_cvref_t<T>>::value;
+
+template<typename T, typename K, class Tag>
+concept CompatibleArithmetic = std::integral<K> || std::floating_point<K> ||
+                               std::same_as<NumberAlias<K, Tag>, T>;
+
+#define DEFINE_ARITHMETIC_OP(OP) \
+template<typename T, class Tag, typename K> \
+    requires CompatibleArithmetic<T, K, Tag> \
+constexpr NumberAlias<T, Tag> operator OP (const NumberAlias<T, Tag>& A, const K& B) { \
+    if constexpr (std::is_same_v<NumberAlias<T, Tag>, K>) { \
+        return NumberAlias<T, Tag>(A.value OP B.value); \
+    } else { \
+        return NumberAlias<T, Tag>(A.value OP B); \
+    } \
+} \
+template<typename T, class Tag, typename K> \
+    requires CompatibleArithmetic<T, K, Tag> \
+constexpr NumberAlias<T, Tag> operator OP (const K& A, const NumberAlias<T, Tag>& B) { \
+    if constexpr (std::is_same_v<NumberAlias<T, Tag>, K>) { \
+        return NumberAlias<T, Tag>(A.value OP B.value); \
+    } else { \
+        return NumberAlias<T, Tag>(A OP B.value); \
+    } \
 }
 
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator+(const K& A, const NumberAlias<T, a>& B) {
-    return NumberAlias<T, a>(A + B.value);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator-(const K& A, const NumberAlias<T, a>& B) {
-    return NumberAlias<T, a>(A - B.value);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator*(const K& A, const NumberAlias<T, a>& B) {
-    return NumberAlias<T, a>(A * B.value);
-}
-template<typename T, int a, typename K>
-    requires std::integral<K> || std::floating_point<K>
-constexpr NumberAlias<T, a> operator/(const K& A, const NumberAlias<T, a>& B) {
-    return NumberAlias<T, a>(A / B.value);
-}
+// Define operators
+DEFINE_ARITHMETIC_OP(+)
+DEFINE_ARITHMETIC_OP(-)
+DEFINE_ARITHMETIC_OP(*)
+DEFINE_ARITHMETIC_OP(/)
 
-using Radius = NumberAlias<float, 0>;
-using Rotation = NumberAlias<float, 1>;
-using Alpha = NumberAlias<float, 2>;
-using Checked = NumberAlias<bool, 0>;
+#undef DEFINE_ARITHMETIC_OP
+
+NUMBER_ALIAS(Radius, float)
+NUMBER_ALIAS(Rotation, float)
+NUMBER_ALIAS(Alpha, float)
+NUMBER_ALIAS(Checked, bool)
 using Font = gui::Font;
 
 }

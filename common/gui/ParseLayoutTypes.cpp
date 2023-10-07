@@ -400,8 +400,6 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
-        for(auto &o : objs)
-            assert(o != nullptr);
         ptr = Layout::Make<HorizontalLayout>(std::move(objs), Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
     }
     
@@ -515,14 +513,15 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
         fade_out = obj["fade_out"].get<float>();
     }
     
-    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, fade_out);
-    
-    //if(margins != Margins{0, 0, 0, 0})
-    {
-        ptr.to<StaticText>()->set(attr::Margins(pad));
-        if(not max_size.empty())
-            ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
+    StaticText::Shadow_t shadow{0};
+    if(obj.contains("shadow")) {
+        shadow = obj["shadow"].get<float>();
     }
+    
+    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, fade_out, shadow, attr::Margins(pad));
+    
+    if(not max_size.empty())
+        ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
     
     ptr->set_name(text);
     
@@ -555,7 +554,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
         state.patterns[hash]["text"] = text;
     }
     
-    ptr = Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font);
+    Text::Shadow_t shadow{0};
+    if(obj.contains("shadow")) {
+        shadow = obj["shadow"].get<float>();
+    }
+    
+    ptr = Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, Text::Shadow_t{shadow});
     ptr->set_name(text);
     
     return ptr;
@@ -597,7 +601,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context&)
 {
     Layout::Ptr ptr;
     if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
@@ -612,7 +616,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
             };
             
             ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
-            ptr.to<ScrollableList<DetailItem>>()->on_select([&, &body = state.lists[hash]](size_t index, const DetailItem & item)
+            ptr.to<ScrollableList<DetailItem>>()->on_select([&, &body = state.lists[hash]](size_t index, const DetailItem &)
             {
                 if(body.on_select_actions.contains(index)) {
                     std::get<1>(body.on_select_actions.at(index))();

@@ -109,6 +109,7 @@ void StaticText::set_default_font(const Font& font) {
                 
                 // add texts so that dimensions are retrieved
                 t->set_color(t->color().alpha(255 * _settings.alpha));
+                t->set(Text::Shadow_t{_settings.shadow});
                 
                 if(_settings.max_size.y < 0
                    || t->pos().y < _settings.max_size.y)

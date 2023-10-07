@@ -30,7 +30,8 @@ namespace gui {
 
     class StaticText : public Entangled {
     public:
-        using FadeOut_t = NumberAlias<float, 1337>;
+        NUMBER_ALIAS(FadeOut_t, float)
+        NUMBER_ALIAS(Shadow_t, float)
         
     private:
         std::vector<std::shared_ptr<Text>> texts;
@@ -48,6 +49,7 @@ namespace gui {
             Alpha alpha{1};
             Alpha fill_alpha{0};
             FadeOut_t fade_out{0.f};
+            Shadow_t shadow{0.f};
             
         } _settings;
         
@@ -92,6 +94,12 @@ namespace gui {
             if(_settings.fade_out == fade_out)
                 return;
             _settings.fade_out = fade_out;
+            set_content_changed(true);
+        }
+        void set(Shadow_t shadow) {
+            if(_settings.shadow == shadow)
+                return;
+            _settings.shadow = shadow;
             set_content_changed(true);
         }
         
