@@ -44,7 +44,7 @@ void Dropdown::init() {
     _list->set_z_index(1);
     
     if(_type == BUTTON) {
-        _button = Button::MakePtr("Please select...",  attr::Box(_bounds.size()));
+        _button = Button::MakePtr(Str{"Please select..."},  attr::Box(_bounds.size()));
         _button->set_toggleable(true);
         _button->add_event_handler(MBUTTON, [this](Event e){
             if(!e.mbutton.pressed && e.mbutton.button == 0) {

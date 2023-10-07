@@ -372,7 +372,7 @@ int main(int argc, char**argv) {
     using namespace attr;
     bool terminate = false;
     
-    Button button("Text",
+    Button button(Str("Text"),
                   Loc(100, 100),
                   TextClr{Cyan});
     

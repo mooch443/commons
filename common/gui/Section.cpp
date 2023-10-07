@@ -120,7 +120,7 @@ namespace gui {
             }
             
             if(!stext) {
-                stext = new Text("");
+                stext = new Text();
                 stext->set_font(Font(0.5, Align::Center));
             }
             stext->set_txt(std::to_string(int(location().x))+","+std::to_string(int(location().y))+" "+std::to_string(int(width()))+"x"+std::to_string(int(height())));

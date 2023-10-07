@@ -55,6 +55,7 @@ ATTRIBUTE_ALIAS(Str, std::string)
 ATTRIBUTE_ALIAS(Postfix, std::string)
 ATTRIBUTE_ALIAS(Prefix, std::string)
 ATTRIBUTE_ALIAS(ParmName, std::string)
+ATTRIBUTE_ALIAS(Name, std::string)
 
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \

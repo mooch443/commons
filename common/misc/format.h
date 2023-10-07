@@ -1045,6 +1045,18 @@ struct CustomException : T {
 template<typename T, typename... Args>
 CustomException(type_t<T>, Args... args) -> CustomException<T, Args...>;
 
+
+template<typename... Args>
+struct InvalidArgumentException : CustomException<std::invalid_argument, Args...> {
+    InvalidArgumentException(const Args&... args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+        : CustomException<std::invalid_argument, Args...>(type_t<std::invalid_argument>{}, args..., info)
+    {
+    }
+};
+
+template<typename... Args>
+InvalidArgumentException(Args... args) -> InvalidArgumentException<Args...>;
+
 template<typename... Args>
 void DebugHeader(const Args& ...args) {
     std::string str = format<FormatterType::NONE>(args...);

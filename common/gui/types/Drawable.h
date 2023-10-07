@@ -289,6 +289,7 @@ namespace gui {
         virtual void set(Size size) { set_size(size); }
         virtual void set(attr::Box bounds) { set_bounds(bounds); }
         virtual void set(Rotation r) { set_rotation(r); }
+        virtual void set(attr::Name name) { set_name(name); }
         
     protected:
         /**

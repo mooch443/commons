@@ -111,7 +111,7 @@ void StaticText::set_default_font(const Font& font) {
                 t->set_color(t->color().alpha(255 * _settings.alpha));
                 t->set(Text::Shadow_t{_settings.shadow});
                 
-                if(_settings.max_size.y < 0
+                if(_settings.max_size.y <= 0
                    || t->pos().y < _settings.max_size.y)
                 {
                     if(not yet hiding_something
@@ -135,7 +135,7 @@ void StaticText::set_default_font(const Font& font) {
             
             // subtract position, add margins
             m = m + _settings.margins.size();
-            if(_settings.max_size.y >= 0) {
+            if(_settings.max_size.y > 0) {
                 m.y = min(m.y, _settings.max_size.y);
             }
             set_size(m);

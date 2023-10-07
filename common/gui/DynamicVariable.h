@@ -142,12 +142,15 @@ public:
         :   VarBase<arg_types...>(refcode),
             function(std::move(fn))
     {
-        // Lambda to convert the function's return value to a string
+        // Lambda to convert the captured function's return value to a string
         value_string = [this](auto... args) -> std::string {
-            if constexpr(std::same_as<std::string, return_type>) {
+            if constexpr(_clean_same<std::string, return_type>) {
                 // if we encounter a string type, we can already return without converting
                 // or adding any quotes
-                return function(std::forward<decltype(args)>(args)...);
+                return function( std::forward<decltype(args)>(args)... );
+                
+            } else if constexpr(_clean_same<file::Path, return_type>) {
+                return function( std::forward<decltype(args)>(args)... ).str();
                 
             } else if constexpr(_clean_same<sprite::Map&, return_type>) {
                 // for sprite::Maps we have to do some more work.
@@ -155,22 +158,30 @@ public:
                 // constref from a map, so we get the map first and then
                 // use another indirection to get the actual value as a string.
                 // here, we could have multiple args theoretically.
-                auto& map = function(args...);
+                sprite::Map& map = function( args... );
                 
+                // we have no information about the contents of the sprite::Map
+                // at compile-time, so this is essentially a runtime version of
+                // the logic further down.
+                // this access function will retrieve a value from a sprite::Map
+                // given a key, and return it as a string:
                 auto access = [&map](const std::string& key) -> std::string {
                     auto ref = map[key];
-                    if(ref.get().valid()) {
-                        if (ref.template is_type<std::string>()) {
-                            // clean up quotes from paths and strings
-                            //auto str = r.get().valueString();
-                            //return str.length() < 2 ? "" : str.substr(1, str.length()-2);
-                            return ref.template value<std::string>();
-                        } else if (ref.template is_type<file::Path>()) {
-                            return ref.template value<file::Path>().str();
-                        }
-                        return ref.get().valueString();
+                    if(not ref.get().valid())
+                        throw std::invalid_argument("Cannot find given parameter.");
+                    
+                    // for string-types we can directly return the contents
+                    // of the string and there is no need to convert:
+                    if (ref.template is_type<std::string>()) {
+                        return ref.template value<std::string>();
+                    } else if (ref.template is_type<file::Path>()) {
+                        return ref.template value<file::Path>().str();
                     }
-                    throw std::invalid_argument("Cannot find given parameter.");
+                    
+                    // otherwise we are out of luck and need to use
+                    // more complex logic, encapsulated inside sprite::Map's
+                    // valueString lambda:
+                    return ref.get().valueString();
                 };
                 
                 // "args" would be the key here, so realistically we only
@@ -186,18 +197,22 @@ public:
                 // here we simply get a constreference from a sprite::Map, meaning
                 // we can directly retrieve its value
                 auto r = function(std::forward<decltype(args)>(args)...);
-                if(r.get().valid()) {
-                    if constexpr(_clean_same<std::string, return_type>) {
-                        // clean up quotes from paths and strings
-                        //auto str = r.get().valueString();
-                        //return str.length() < 2 ? "" : str.substr(1, str.length()-2);
-                        return r.template value<std::string>();
-                    } else if constexpr(_clean_same<file::Path, return_type>) {
-                        return r.template value<file::Path>().str();
-                    }
-                    return r.get().valueString();
-                } else
+                if(not r.get().valid())
                     return "null";
+                
+                // we know the type (return_type) here at compile-time,
+                // so we can use constexpr logic here (unlike above).
+                // for string-types we can directly return the contents
+                // of the string and there is no need to convert
+                if constexpr(_clean_same<std::string, return_type>) {
+                    return r.template value<std::string>();
+                } else if constexpr(_clean_same<file::Path, return_type>) {
+                    return r.template value<file::Path>().str();
+                }
+                
+                // otherwise we need to use sprite::Maps valueString
+                // to convert the value to a string recursively:
+                return r.get().valueString();
                 
             } else {
                 // no special handling for the given type -- use the default

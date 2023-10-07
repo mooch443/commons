@@ -8,24 +8,54 @@ namespace gui::dyn {
 
 Font parse_font(const nlohmann::json& obj, Font font = Font(0.75));
 
-template<typename T>
-auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash) {
-    if(obj.count(name)) {
-        //if constexpr(std::same_as<T, Color>)
-        {
-            // is it a color variable?
-            if(obj[name].is_string()) {
-                if constexpr(not _clean_same<std::string, T>) {
-                    state.patterns[hash][name] = obj[name].template get<std::string>();
-                    //print("pattern for ", name, " at object ", obj[name].template get<std::string>(), " at ", hash);
-                    //std::cout << obj << std::endl;
-                    return de;
-                }
-            }
-        }
-        return Meta::fromStr<T>(obj[name].dump());
+inline Color parse_color(const auto& obj) {
+    if(not obj.is_array())
+        throw std::invalid_argument("Color is not an array.");
+    if(obj.size() < 3)
+        throw std::invalid_argument("Color is not an array of RGB.");
+    uint8_t a = 255;
+    if(obj.size() >= 4) {
+        a = obj[3].template get<uint8_t>();
     }
-    return de;
+    return Color(obj[0].template get<uint8_t>(),
+                 obj[1].template get<uint8_t>(),
+                 obj[2].template get<uint8_t>(),
+                 a);
+}
+
+template<typename T, bool assume_exists = false>
+auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash) 
+{
+    auto it = obj.find(name);
+    
+    if constexpr(assume_exists) {
+        if(it == obj.end())
+            throw InvalidArgumentException("Expected property ", name, " in ", obj.dump());
+    } else {
+        if(it == obj.end())
+            return de;
+    }
+    
+    auto& o = *it;
+    if constexpr(not are_the_same<std::string, T>
+                 && not are_the_same<file::Path, T>)
+    {
+        if(o.is_string()) {
+            state.patterns[hash][name] = o.template get<std::string>();
+            return de;
+        }
+        return Meta::fromStr<T>(o.dump());
+        
+    } else if constexpr(are_the_same<file::Path, T>) {
+        return o.template get<file::Path>();
+    } else {
+        auto val = o.template get<std::string>();
+        if(utils::contains(val, '{')) {
+            state.patterns[hash][name] = val;
+            return de;
+        }
+        return val;
+    }
 }
 
 class LayoutContext {
@@ -44,6 +74,8 @@ public:
     Color fill;
     Color line;
     Color highlight_clr;
+    Color vertical_clr;
+    Color horizontal_clr;
     TextClr textClr;
     bool clickable;
     Font font;

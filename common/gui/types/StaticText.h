@@ -40,7 +40,7 @@ namespace gui {
         derived_ptr<ExternalImage> _fade_out;
         
         struct Settings {
-            Vec2 max_size{-1, -1};
+            Vec2 max_size{0};
             Margins margins{5, 5, 5, 5};
             Color text_color = White;
             Color line_color = Transparent;

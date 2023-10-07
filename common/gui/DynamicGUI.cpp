@@ -181,13 +181,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 if(inside == 0) {
                     output += resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
-                            std::string ret;
-                            if(variable.is<std::string>()) {
-                                ret = variable.value<std::string>(modifiers.sub);
-                            } else if(variable.is<file::Path>()) {
-                                ret = variable.value<file::Path>(modifiers.sub).str();
-                            } else
-                                ret = variable.value_string(modifiers.sub);
+                            std::string ret = variable.value_string(modifiers.sub);
                             //print(word, " resolves to ", ret);
                             if(modifiers.html)
                                 return settings::htmlify(ret);
@@ -301,46 +295,8 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
     }
     
     //! for-each loops below
-    if(auto it = state.loops.find(hash); it != state.loops.end()) {
-        auto &obj = it->second;
-        if(context.variables.contains(obj.variable)) {
-            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-                
-                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
-                
-                IndexScopeHandler handler{state._current_index};
-                if(vector != obj.cache) {
-                    std::vector<Layout::Ptr> ptrs;
-                    obj.cache = vector;
-                    obj.state = std::make_unique<State>();
-                    Context tmp = context;
-                    for(auto &v : vector) {
-                        tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, *obj.state, context.defaults);
-                        update_objects(g, ptr, tmp, *obj.state);
-                        ptrs.push_back(ptr);
-                        //print("Creating i", i++," to ", tmp.variables["i"]->value_string("pos"), " for ",ptr->pos(), " with hash ", hash);
-                        //o.to<Layout>()->parent()->stage()->print(nullptr);
-                    }
-                    
-                    o.to<Layout>()->set_children(ptrs);
-                    
-                } else {
-                    Context tmp = context;
-                    for(size_t i=0; i<obj.cache.size(); ++i) {
-                        tmp.variables["i"] = obj.cache[i];
-                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]->pos(), " with hash ", hash);
-                        //o.to<Layout>()->children()[i]->set_pos(Meta::fromStr<Vec2>(tmp.variables["i"]->value_string("pos")));
-                        auto p = o.to<Layout>()->children().at(i);
-                        if(p)
-                            update_objects(g, p, tmp, *obj.state);
-                        //p->parent()->stage()->print(nullptr);
-                    }
-                }
-            }
-        }
+    if(update_loops(hash, g, o, context, state))
         return;
-    }
     
     //! fill default fields like fill, line, pos, etc.
     auto it = state.patterns.find(hash);
@@ -402,10 +358,8 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 auto size = pattern.at("size");
                 if(size == "auto")
                 {
-                    if(o.is<Layout>())
-                        o.to<Layout>()->auto_size();
-                    else
-                        FormatExcept("pattern for size should only be auto for layouts, not: ", *o);
+                    if(o.is<Layout>()) o.to<Layout>()->auto_size();
+                    else FormatExcept("pattern for size should only be auto for layouts, not: ", *o);
                 } else {
                     o->set_size(resolve_variable_type<Size2>(size, context));
                 }
@@ -414,54 +368,13 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
         }
-    }
-    
-    //! if this is a Layout type, need to iterate all children as well:
-    if(o.is<Layout>()) {
-        for(auto &child : o.to<Layout>()->objects()) {
-            update_objects(g, child, context, state);
-        }
-    }
-    
-    //! fill other properties specific to type:
-    if(it != state.patterns.end()) {
-        auto pattern = it->second;
         
-        if(o.is<Text>()) {
-            if(pattern.contains("text")) {
-                auto text = o.to<Text>();
-                auto output = parse_text(pattern.at("text"), context);
-                text->set_txt(output);
-            }
-            
-        } else if(o.is<StaticText>()) {
-            if(pattern.contains("text")) {
-                auto text = o.to<StaticText>();
-                auto output = parse_text(pattern.at("text"), context);
-                //print("pattern executed for ", (uint64_t)o.get(), " -> ", output, " hash=", hash);
-                text->set_txt(output);
-                text->set_name(output);
-            }
-            
-        } else if(o.is<Button>()) {
-            if(pattern.contains("text")) {
-                auto button = o.to<Button>();
-                auto output = parse_text(pattern.at("text"), context);
-                button->set_txt(output);
-            }
-        } else if(o.is<Textfield>()) {
-            if(pattern.contains("text")) {
-                auto textfield = o.to<Textfield>();
-                auto output = parse_text(pattern.at("text"), context);
-                textfield->set_text(output);
-            }
-        } else if(o.is<Checkbox>()) {
-            if(pattern.contains("text")) {
-                auto checkbox = o.to<Checkbox>();
-                auto output = parse_text(pattern.at("text"), context);
-                checkbox->set_text(output);
-            }
-        } else if(o.is<ExternalImage>()) {
+        if(pattern.contains("text")) {
+            auto text = Str{parse_text(pattern.at("text"), context)};
+            LabeledField::delegate_to_proper_type(text, o);
+        }
+        
+        if(o.is<ExternalImage>()) {
             if(pattern.contains("path")) {
                 auto img = o.to<ExternalImage>();
                 auto output = file::Path(parse_text(pattern.at("path"), context));
@@ -482,7 +395,20 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         }
     }
     
+    //! if this is a Layout type, need to iterate all children as well:
+    if(o.is<Layout>()) {
+        for(auto &child : o.to<Layout>()->objects()) {
+            update_objects(g, child, context, state);
+        }
+    }
+    
     //! list contents loops below
+    if(update_lists(hash, g, o, context, state))
+        return;
+}
+
+bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state) 
+{
     if(auto it = state.lists.find(hash); it != state.lists.end()) {
         ListContents &obj = it->second;
         if(context.variables.contains(obj.variable)) {
@@ -492,10 +418,10 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 
                 IndexScopeHandler handler{state._current_index};
                 //if(vector != obj.cache) {
-                    std::vector<DetailItem> ptrs;
-                    //obj.cache = vector;
-                    obj.state = std::make_unique<State>();
-                    Context tmp = context;
+                std::vector<DetailItem> ptrs;
+                //obj.cache = vector;
+                obj.state = std::make_unique<State>();
+                Context tmp = context;
                 
                 size_t index=0;
                 auto convert_to_item = [&gc = context, &index, &obj, &o](sprite::Map&, const nlohmann::json& item_template, Context& context) -> DetailItem
@@ -526,19 +452,19 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                     return item;
                 };
                 
-                    for(auto &v : vector) {
-                        tmp.variables["i"] = v;
-                        try {
-                            auto &ref = v->value<sprite::Map&>("");
-                            auto item = convert_to_item(ref, obj.item, tmp);
-                            ptrs.emplace_back(std::move(item));
-                            ++index;
-                        } catch(const std::exception& ex) {
-                            FormatExcept("Cannot create list items for template: ", obj.item.dump(), " and type ", v->class_name());
-                        }
+                for(auto &v : vector) {
+                    tmp.variables["i"] = v;
+                    try {
+                        auto &ref = v->value<sprite::Map&>("");
+                        auto item = convert_to_item(ref, obj.item, tmp);
+                        ptrs.emplace_back(std::move(item));
+                        ++index;
+                    } catch(const std::exception& ex) {
+                        FormatExcept("Cannot create list items for template: ", obj.item.dump(), " and type ", v->class_name());
                     }
-                    
-                    o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
+                }
+                
+                o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
                     
                 /*} else {
                     Context tmp = context;
@@ -554,8 +480,54 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 }*/
             }
         }
-        return;
+        return true;
     }
+    return false;
+}
+
+bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
+{
+    if(auto it = state.loops.find(hash); it != state.loops.end()) {
+        auto &obj = it->second;
+        if(context.variables.contains(obj.variable)) {
+            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+                
+                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
+                
+                IndexScopeHandler handler{state._current_index};
+                if(vector != obj.cache) {
+                    std::vector<Layout::Ptr> ptrs;
+                    obj.cache = vector;
+                    obj.state = std::make_unique<State>();
+                    Context tmp = context;
+                    for(auto &v : vector) {
+                        tmp.variables["i"] = v;
+                        auto ptr = parse_object(obj.child, tmp, *obj.state, context.defaults);
+                        update_objects(g, ptr, tmp, *obj.state);
+                        ptrs.push_back(ptr);
+                        //print("Creating i", i++," to ", tmp.variables["i"]->value_string("pos"), " for ",ptr->pos(), " with hash ", hash);
+                        //o.to<Layout>()->parent()->stage()->print(nullptr);
+                    }
+                    
+                    o.to<Layout>()->set_children(ptrs);
+                    
+                } else {
+                    Context tmp = context;
+                    for(size_t i=0; i<obj.cache.size(); ++i) {
+                        tmp.variables["i"] = obj.cache[i];
+                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]->pos(), " with hash ", hash);
+                        //o.to<Layout>()->children()[i]->set_pos(Meta::fromStr<Vec2>(tmp.variables["i"]->value_string("pos")));
+                        auto p = o.to<Layout>()->children().at(i);
+                        if(p)
+                            update_objects(g, p, tmp, *obj.state);
+                        //p->parent()->stage()->print(nullptr);
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 void DynamicGUI::reload() {

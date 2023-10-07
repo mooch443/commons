@@ -80,13 +80,10 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
     clickable = get(_defaults.clickable, "clickable");
     max_size = get(_defaults.max_size, "max_size");
     
-    textClr = _defaults.textClr;
-    if(obj.count("color")) {
-        if(obj["color"].is_string())
-            state.patterns[hash]["color"] = obj["color"].get<std::string>();
-        else
-            textClr = parse_color(obj["color"]);
-    }
+    textClr = get(_defaults.textClr, "color");
+    highlight_clr = get(_defaults.highlightClr, "highlight_clr");
+    vertical_clr = get(_defaults.verticalClr, "vertical_clr");
+    horizontal_clr = get(_defaults.horizontalClr, "horizontal_clr");
 
     font = _defaults.font; // Initialize with default values
     if(type == LayoutType::button) {
@@ -305,12 +302,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
         }
     }
     
-    auto vertical_clr = get(_defaults.verticalClr, "vertical_clr");
-    auto horizontal_clr = get(_defaults.horizontalClr, "horizontal_clr");
-    
-    auto ptr = Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr});
-
-    return ptr;
+    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr});
 }
 
 template <>
@@ -377,25 +369,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
-        if(max_size != Vec2(0)) 
-            ref->set(attr::SizeLimit{max_size});
-        
-        Color color{_defaults.textClr};
-        if(obj.count("color")) {
-            if(obj["color"].is_string())
-                state.patterns[hash]["color"] = obj["color"].get<std::string>();
-            else
-                color = parse_color(obj["color"]);
-        }
-        ref->set(attr::TextClr{color});
-        
-        Color highlight_clr{_defaults.highlightClr};
-        if(obj.count("highlight_clr")) {
-            if(obj["highlight_clr"].is_string())
-                state.patterns[hash]["highlight_clr"] = obj["highlight_clr"].get<std::string>();
-            else
-                highlight_clr = parse_color(obj["highlight_clr"]);
-        }
+        if(max_size != Vec2(0)) ref->set(attr::SizeLimit{max_size});
+        ref->set(attr::TextClr{textClr});
         ref->set(attr::HighlightClr{highlight_clr});
         
         std::vector<Layout::Ptr> objs;
@@ -409,15 +384,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& context)
 {
-    std::string text;
-    if(obj.contains("text")) {
-        text = obj["text"].get<std::string>();
-    }
-    
-    if(utils::contains(text, '{')) {
-        state.patterns[hash]["text"] = text;
-    }
-    
+    std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     std::string action;
@@ -437,19 +404,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& context)
 {
-    std::string text;
-    if(obj.contains("text")) {
-        text = obj["text"].get<std::string>();
-    }
-    
-    if(utils::contains(text, '{')) {
-        state.patterns[hash]["text"] = text;
-    }
-    
-    bool checked = false;
-    if(obj.contains("checked")) {
-        checked = obj["checked"].get<bool>();
-    }
+    std::string text = get(std::string(), "text");
+    bool checked = get(false, "checked");
     
     auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
     
@@ -470,15 +426,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& context)
 {
-    std::string text;
-    if(obj.contains("text")) {
-        text = obj["text"].get<std::string>();
-    }
-    
-    if(utils::contains(text, '{')) {
-        state.patterns[hash]["text"] = text;
-    }
-    
+    std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     std::string action;
@@ -498,83 +446,43 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
 {
-    Layout::Ptr ptr;
-    std::string text;
-    if(obj.contains("text")) {
-        text = obj["text"].get<std::string>();
-    }
+    std::string text = get(std::string(), "text");
+    StaticText::FadeOut_t fade_out{get(0.f, "fade_out")};
+    StaticText::Shadow_t shadow{get(0.f, "shadow")};
     
-    if(utils::contains(text, '{')) {
-        state.patterns[hash]["text"] = text;
-    }
-    
-    StaticText::FadeOut_t fade_out{0.f};
-    if(obj.contains("fade_out") && obj["fade_out"].is_number()) {
-        fade_out = obj["fade_out"].get<float>();
-    }
-    
-    StaticText::Shadow_t shadow{0};
-    if(obj.contains("shadow")) {
-        shadow = obj["shadow"].get<float>();
-    }
-    
-    ptr = Layout::Make<StaticText>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, fade_out, shadow, attr::Margins(pad));
-    
-    if(not max_size.empty())
-        ptr.to<StaticText>()->set(attr::SizeLimit{max_size});
-    
-    ptr->set_name(text);
-    
-    return ptr;
+    return Layout::Make<StaticText>(
+         Str{text},
+         attr::Scale(scale),
+         attr::Loc(pos),
+         attr::Origin(origin),
+         font,
+         fade_out,
+         shadow,
+         attr::Margins(pad),
+         attr::Name{text},
+         attr::SizeLimit{max_size}
+    );
 }
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context&) {
-    auto ptr = Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin));
-    
-    if(fill != Transparent)
-        ptr.to<Rect>()->set_fillclr(fill);
-    if(line != Transparent)
-        ptr.to<Rect>()->set_lineclr(line);
-
-    return ptr;
+    return Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
 }
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
 {
-    Layout::Ptr ptr;
-
-    std::string text;
-    if(obj.contains("text")) {
-        text = obj["text"].get<std::string>();
-    }
-    
-    if(utils::contains(text, '{')) {
-        state.patterns[hash]["text"] = text;
-    }
-    
-    Text::Shadow_t shadow{0};
-    if(obj.contains("shadow")) {
-        shadow = obj["shadow"].get<float>();
-    }
-    
-    ptr = Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, Text::Shadow_t{shadow});
-    ptr->set_name(text);
-    
-    return ptr;
+    Text::Shadow_t shadow{get(0.f, "shadow")};
+    auto text = get(std::string(), "text");
+    return Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, shadow, Name{text});
 }
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::circle>(const Context&)
 {
     Layout::Ptr ptr;
-    float radius = 0;
-    if(obj.count("radius")) {
-        if(obj["radius"].is_number())
-            radius = obj["radius"].get<float>();
-    }
-    ptr = Layout::Make<Circle>(attr::Scale(scale), attr::Loc(pos), attr::Radius(radius), attr::Origin(origin), attr::FillClr{fill}, attr::LineClr{line});
+    Radius radius {get(5.f, "radius")};
+    ptr = Layout::Make<Circle>(attr::Scale(scale), attr::Loc(pos), radius, attr::Origin(origin), attr::FillClr{fill}, attr::LineClr{line});
 
     return ptr;
 }

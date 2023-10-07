@@ -38,21 +38,6 @@ ENUM_CLASS(LayoutType,
            image,
            list);
 
-inline Color parse_color(const auto& obj) {
-    if(not obj.is_array())
-        throw std::invalid_argument("Color is not an array.");
-    if(obj.size() < 3)
-        throw std::invalid_argument("Color is not an array of RGB.");
-    uint8_t a = 255;
-    if(obj.size() >= 4) {
-        a = obj[3].template get<uint8_t>();
-    }
-    return Color(obj[0].template get<uint8_t>(),
-                 obj[1].template get<uint8_t>(),
-                 obj[2].template get<uint8_t>(),
-                 a);
-}
-
 struct DefaultSettings {
     Vec2 scale{1.f};
     Vec2 pos{0.f};
@@ -240,7 +225,7 @@ inline auto resolve_variable(const std::string& word, const Context& context, Ap
     variable = props.parts.front();
     
     std::string modifiers;
-    if(props.parts.size() > 1)
+    if(props.parts.size() > 1 && not props.parts.back().empty())
         modifiers = props.parts.back();
     props.parts.erase(props.parts.begin());
     props.sub = modifiers;
@@ -348,6 +333,8 @@ struct DynamicGUI {
 private:
     void reload();
     static void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    [[nodiscard]] static bool update_loops(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    [[nodiscard]] static bool update_lists(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
 };
 
 void update_tooltips(DrawStructure&, State&);
