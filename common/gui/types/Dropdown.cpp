@@ -342,7 +342,6 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
         if(options != _items) {
-            print("_items=",_items, " options=",options);
             _items.clear();
             
             size_t i=0;
@@ -356,10 +355,8 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
                 ++i;
             }
             //_items = options;
-            if(_list) {
+            if(_list)
                 _list->set_items(convert_to_search_name(_items));
-                print("Setting items = ", items());
-            }
             _selected_item = RawIndex{};
             _preprocessed = {};
             _corpus.clear();
