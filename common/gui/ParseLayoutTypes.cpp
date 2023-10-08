@@ -287,10 +287,6 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
                         cols.back().to<Layout>()->update();
                         cols.back().to<Layout>()->update_layout();
                         cols.back().to<Layout>()->auto_size();
-                        
-                        print("Col:");
-                        for(auto& o : cols.back().to<Layout>()->objects())
-                            print("\t",*o, " @ ", o->bounds());
                     }
                 }
                 rows.emplace_back(Layout::Make<Layout>(std::move(cols), attr::Margins{0, 0, 0, 0}));

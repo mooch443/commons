@@ -50,9 +50,12 @@ LabeledField::LabeledField(const std::string& name)
                 update();
             }
         });
-    } else {
-        print("Ref invalid.");
+    } 
+#ifndef NDEBUG
+    else {
+        print("Ref invalid: ", name);
     }
+#endif
 }
 
 LabeledField::~LabeledField() {
@@ -459,7 +462,7 @@ void LabeledPath::update_names() {
             _names.push_back(FileItem(f));
             _search_items.push_back(Dropdown::TextItem(f.str()));
             _search_items.back().set_display(std::string(file::Path(f.str()).filename()));
-            print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
+            //print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
         }
     }
     //_list->set_items(_names);
@@ -468,7 +471,7 @@ void LabeledPath::update_names() {
 
 void LabeledPath::update() {
     if(_ref.value<file::Path>() != file::Path(_dropdown->textfield()->text())) {
-        print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
+        //print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
         _dropdown->textfield()->set_text(_ref.value<file::Path>().str());
     }
 }
