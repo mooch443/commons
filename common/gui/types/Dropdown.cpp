@@ -270,7 +270,7 @@ void Dropdown::init() {
             return;
         
         _opened = opened;
-        _selected_item = RawIndex{};
+        //_selected_item = RawIndex{};
         if(_opened) {
             _textfield->set_z_index(2);
         } else {
