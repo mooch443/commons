@@ -1058,6 +1058,17 @@ template<typename... Args>
 InvalidArgumentException(Args... args) -> InvalidArgumentException<Args...>;
 
 template<typename... Args>
+struct OutOfRangeException : CustomException<std::out_of_range, Args...> {
+    OutOfRangeException(const Args&... args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+        : CustomException<std::out_of_range, Args...>(type_t<std::out_of_range>{}, args..., info)
+    {
+    }
+};
+
+template<typename... Args>
+OutOfRangeException(Args... args) -> OutOfRangeException<Args...>;
+
+template<typename... Args>
 void DebugHeader(const Args& ...args) {
     std::string str = format<FormatterType::NONE>(args...);
     auto line = utils::repeat("-", str.length());

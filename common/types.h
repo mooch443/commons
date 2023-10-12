@@ -146,8 +146,13 @@ struct Pose {
             if(pose.empty())
                 continue;
             
+            if(points.empty()) {
+                points.resize(pose.points.size());
+                weights.resize(points.size());
+            }
+            
             if(points.size() not_eq pose.points.size()) {
-                throw std::out_of_range("Length of skeletons differs for the same individual.");
+                throw OutOfRangeException("Length of skeletons differs for the same individual: ", points.size(), " != ", pose.points.size());
             }
             
             float weight = WeightPolicy::calculate_weight(i, num);

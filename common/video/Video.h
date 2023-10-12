@@ -35,7 +35,7 @@ namespace cmn { class Video; }
  * @class Video
  */
 class cmn::Video {
-    ImageMode _colored{ImageMode::GRAY};
+    GETTER_I(ImageMode, colored, ImageMode::GRAY);
     mutable std::mutex _mutex;
     
 public:

@@ -174,7 +174,9 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
             if (!_video->isOpened()) {
                 _video->open(_filename);
                 _video->set_colored(color);
-            }
+            } else if(_video->colored() != color)
+                _video->set_colored(color);
+            
             if (!_video->isOpened())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
 
