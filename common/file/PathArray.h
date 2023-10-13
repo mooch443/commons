@@ -223,13 +223,20 @@ public:
                     std::string regex_str = "^" + escape_regex(path) + "$";
                     std::regex star_replace("\\*");
                     regex_str = std::regex_replace(regex_str, star_replace, ".*");
-                    std::regex file_matcher(regex_str);
-                    
-                    for (const auto& file : all_files) {
-                        if (std::regex_match(file.str(), file_matcher)) {
-                            parsed_paths.push_back(file);
+                    try {
+                        std::regex file_matcher(regex_str);
+
+                        for (const auto& file : all_files) {
+                            if (std::regex_match(file.str(), file_matcher)) {
+                                parsed_paths.push_back(file);
+                            }
                         }
                     }
+                    catch (const std::regex_error& e) {
+						// Invalid regex, treat it as a regular path
+						parsed_paths.push_back(file::Path(path));
+                        FormatWarning("Cannot parse regex: ", regex_str, " (", e.what(), ")");
+					}
                 }
             }
             

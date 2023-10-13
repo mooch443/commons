@@ -59,45 +59,80 @@ Path Path::absolute() const {
     return std::filesystem::canonical(std::filesystem::absolute(path)).string();
 }
 #else
-std::string getCanonicalPath(const std::string& filePath) {
-    std::vector<std::string> pathComponents;
-    std::istringstream iss(filePath);
-    std::string component;
+    std::string getCanonicalPath(const std::string& filePath) {
+        std::vector<std::string> pathComponents;
+        std::string normalizedFilePath = filePath;
+        std::istringstream iss(normalizedFilePath);
+        std::string component;
+        std::string driveLetter;
 
-    while (std::getline(iss, component, OS_SEP)) {
-        if (component == "..") {
-            if (!pathComponents.empty()) {
-                pathComponents.pop_back();
-            }
-        } else if (!component.empty() && component != ".") {
-            pathComponents.push_back(component);
+#if defined(_WIN32) || defined(_WIN64)
+        std::replace(normalizedFilePath.begin(), normalizedFilePath.end(), '/', '\\');
+        if (normalizedFilePath.length() >= 2 and normalizedFilePath[1] == ':') {
+            driveLetter = normalizedFilePath.substr(0, 2);
+            normalizedFilePath = normalizedFilePath.substr(2);
+            iss.str(normalizedFilePath);
         }
+#endif
+
+        while (std::getline(iss, component, OS_SEP)) {
+            if (component == "..") {
+                if (not pathComponents.empty()) {
+                    pathComponents.pop_back();
+                }
+            }
+            else if (not component.empty() and component != ".") {
+                pathComponents.push_back(component);
+            }
+        }
+
+        std::ostringstream oss;
+        if (not driveLetter.empty()) {
+            oss << driveLetter;
+        }
+
+        if (filePath[0] == OS_SEP or not driveLetter.empty()) {
+            oss << OS_SEP;
+        }
+
+        for (size_t i = 0; i < pathComponents.size(); ++i) {
+            oss << pathComponents[i];
+            if (i < pathComponents.size() - 1) {
+                oss << OS_SEP;
+            }
+        }
+
+        return oss.str();
     }
-    
-    std::ostringstream oss;
-    if (filePath[0] == '/') {
-       oss << '/';
+
+    std::string joinPaths(const std::string& basePath, const std::string& relPath) {
+        std::string driveLetter;
+
+#if defined(_WIN32) || defined(_WIN64)
+        if (relPath.length() >= 2 and relPath[1] == ':') {
+            return getCanonicalPath(relPath);
+        }
+#endif
+
+        return getCanonicalPath(basePath + std::string(1, OS_SEP) + relPath);
     }
 
-    std::copy(pathComponents.begin(), pathComponents.end() - 1, std::ostream_iterator<std::string>(oss, "/"));
-    oss << pathComponents.back();
+    Path Path::absolute() const {
+#if defined(_WIN32) || defined(_WIN64)
+        if ((_str.length() >= 2 and _str[1] == ':') or (_str.length() >= 1 and _str[0] == OS_SEP)) {
+            return Path(getCanonicalPath(_str));
+        }
+#else
+        if (_str.length() >= 1 and _str[0] == OS_SEP) {
+            return Path(getCanonicalPath(_str));
+        }
+#endif
 
-    return oss.str();
-}
-
-std::string joinPaths(const std::string& basePath, const std::string& relPath) {
-    if (relPath[0] == '/') {
-        return relPath;
-    } else {
-        return basePath + '/' + relPath;
+        std::string currentWorkingDirectory = cwd().str();
+        std::string fullPath = joinPaths(currentWorkingDirectory, _str);
+        return Path(getCanonicalPath(fullPath));
     }
-}
 
-Path Path::absolute() const {
-    auto currentWorkingDirectory = cwd();
-    std::string fullPath = joinPaths(currentWorkingDirectory.str(), _str);
-    return getCanonicalPath(fullPath);  // Use the previously defined getCanonicalPath function
-}
 #endif
     
     Path::Path(const std::string& s)
