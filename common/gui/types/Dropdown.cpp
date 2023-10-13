@@ -314,8 +314,8 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
 }
     
     void Dropdown::select_item(RawIndex index) {
-        if(static_cast<size_t>(index.value) < items().size())
-            print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
+        //if(static_cast<size_t>(index.value) < items().size())
+        //    print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
 
         if (index.value >= 0 && items_to_filtered_items.contains(index)) {
             auto iter = items_to_filtered_items.find(index);

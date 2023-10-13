@@ -3,6 +3,7 @@
 #include <commons.pc.h>
 #include <file/Path.h>
 #include <misc/metastring.h>
+#include <misc/format.h>
 #include <regex>
 
 namespace file {
