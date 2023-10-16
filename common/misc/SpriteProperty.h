@@ -233,7 +233,7 @@ namespace cmn {
                 _set_value_from_string = [this](const std::string& str) {
                     if constexpr(_clean_same<ValueType, std::string>
                                  || _clean_same<ValueType, file::Path>)
-                        *this = Meta::fromStr<ValueType>(util::escape(str));
+                        *this = Meta::fromStr<ValueType>(str);
                     else
                         *this = Meta::fromStr<ValueType>(str);
                 };

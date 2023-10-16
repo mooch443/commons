@@ -48,13 +48,7 @@ void Dropdown::init() {
         _button->set_toggleable(true);
         _button->add_event_handler(MBUTTON, [this](Event e){
             if(!e.mbutton.pressed && e.mbutton.button == 0) {
-                _opened = !_opened;
-                if(_opened) {
-                    _textfield->set_z_index(2);
-                } else {
-                    _textfield->set_z_index(0);
-                }
-                this->set_content_changed(true);
+                set_opened(not _opened);
                 if(_on_open)
                     _on_open(_opened);
             }
@@ -231,13 +225,8 @@ void Dropdown::init() {
         _list->set_last_hovered_item(-1);
         
         if(this->selected() != _opened) {
-            _opened = this->selected();
-            if(_opened) {
-                _textfield->set_z_index(2);
-            } else {
-                _textfield->set_z_index(0);
-            }
-            if(_on_open)
+            set_opened(this->selected());
+            if (_on_open)
                 _on_open(_opened);
         }
         
@@ -251,10 +240,7 @@ void Dropdown::init() {
     
     if(_type == SEARCH)
         add_event_handler(SELECT, [this](Event e) {
-            if(e.select.selected)
-                this->set_opened(true);
-            else
-                this->set_opened(false);
+            this->set_opened(e.select.selected);
             if(this->_on_open)
                 this->_on_open(this->_opened);
         });
