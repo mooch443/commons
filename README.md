@@ -206,7 +206,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
           [{"type": "stext", 
           "text": "patharray={#global:patharray}", 
           "max_size":[500,50], 
-          "fade_out":true,
+          "fade_out":0.5,
           "font": { "size": 0.5 }
           }] 
         ],
