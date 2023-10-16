@@ -29,10 +29,6 @@ endif()
 # to include generated moc headers, since they are generated in binary dir
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
-    set(HDRS ${HDRS} commons.pc.h)
-endif()
-
 add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
 target_include_directories(commons PUBLIC 

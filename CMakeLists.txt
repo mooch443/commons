@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.17)
 if(POLICY CMP0114)
   cmake_policy(PUSH)
   cmake_policy(SET CMP0114 NEW)
@@ -10,9 +10,7 @@ endif()
 project(commons)
 
 include(ExternalProject)
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
-    include(FetchContent)
-endif()
+include(FetchContent)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules )
 
@@ -727,7 +725,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v2.10.4")
+set(pybind11_version_tag "v2.11.1")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -1319,14 +1317,14 @@ endif()
                 -DCMAKE_DEBUG_POSTFIX=
                 ${OPENCV_EXTRA_FLAGS})
 
-    set(COMMONS_OPENCV_VERSION "4.8.0")
+    set(COMMONS_OPENCV_VERSION "4.8.1")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
         if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
             message(STATUS "ARM?")
         else()
             message(STATUS "x86_64 macos")
-            set(COMMONS_OPENCV_VERSION "4.8.0")
+            set(COMMONS_OPENCV_VERSION "4.8.1")
         endif()
     endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})
