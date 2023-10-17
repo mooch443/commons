@@ -353,101 +353,85 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
-        if(path.empty()) {
+        if(path.empty())
             path = _dropdown->textfield()->text();
-        }
-        
-        print("Selected ", path, " item.name()=",item.name(), " display_name=", item.display_name());
-        
-        _ref.get() = path;
         
         if(!_validity || _validity(path))
         {
-            //file_selected(0, path.str());
+            print("Selected ", path, " item.name()=",item.name(), " display_name=", item.display_name());
+            
+            _ref.get() = path;
+            
             if(path.is_folder()) {
-                if(_path != path)
+                if(_path != path) {
                     change_folder(path);
+                    _path = path;
+                }
             }
-                
+            
             _dropdown->select_textfield();
+            _dropdown->set_opened(false);
+            //if(_dropdown->stage())
+            //    _dropdown->stage()->select(nullptr);
+            
         } else
-            FormatError("Path ",path.str()," cannot be opened.");
+            FormatError("Path ",path," cannot be opened.");
     });
     
     _dropdown->on_text_changed([this](std::string str) {
         auto path = file::Path(str);
         auto file = (std::string)path.filename();
         
-        if(_ref.get().value<file::Path>() == path)
-            return;
-        
-        _ref.get() = path;
-        
-        if(path.empty() || (path == _path || ((!path.exists() || !path.is_folder()) && path.remove_filename() == _path)))
+        if(utils::endsWith(str, file::Path::os_sep()))
         {
-            // still in the same folder
-        } else if(utils::endsWith(str, file::Path::os_sep()) && path != _path && path.is_folder())
+            if(path.is_folder())
+            {
+                change_folder(path);
+            }
+            
+        } else if(not path.empty()
+                  && not path.remove_filename().empty()
+                  && path.remove_filename().is_folder())
         {
-            change_folder(path);
-        } else if(not path.empty() && not path.remove_filename().empty() && path.remove_filename().is_folder() && _path != path.remove_filename()) {
             change_folder(path.remove_filename());
         }
+        
+        _path = path;
+        if(_ref.get().value<file::Path>() != path)
+            _ref.get() = path;
     });
     
-    _dropdown->textfield()->set_text(path.str());
-    change_folder(path);
     
+    if(path.is_folder())
+        change_folder(path);
+    else if(path.remove_filename().is_folder())
+        change_folder(path.remove_filename());
+    
+    _path = path;
+    _dropdown->textfield()->set_text(_path.str());
     _dropdown->auto_size({0,0});
     print("Dropdown -> ", _dropdown->bounds());
 }
 
-void LabeledPath::change_folder(const file::Path& p) {
-    auto org = _path;
+void LabeledPath::change_folder(file::Path p) {
+    if(_folder == p)
+        return;
+    
+    _folder = p;
     auto copy = _files;
     
-    /*if(p.str() == "..") {
-        try {
-            _path = _path.remove_filename();
-            auto files = _path.find_files("");
-            _files.clear();
-            _files.insert(files.begin(), files.end());
-            _files.insert("..");
-            
-            //_list->set_scroll_offset(Vec2());
-            if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
-                _dropdown->textfield()->set_text(_path.str());
-            
-        } catch(const UtilsException&) {
-            _path = org;
-            _files = copy;
-        }
-        update_names();
-        
-    } else*/
     if(p.is_folder()) {
         try {
             try {
                 if(not p.empty())
-                    _path = p.absolute();
-                else
-                    _path = p;
-            } catch (...) {
-                _path = p;
-            }
+                    p = p.absolute();
+            } catch (...) { }
             
-            auto files = _path.find_files("");
+            auto files = p.find_files("");
             _files.clear();
             _files.insert(files.begin(), files.end());
-            //_files.insert("..");
-            
-            //_list->set_scroll_offset(Vec2());
-            //if(not utils::beginsWith(_dropdown->textfield()->text(), _path.str()))
-            if(not _path.empty()) {
-                _dropdown->textfield()->set_text(_path.str()+file::Path::os_sep());
-            }
             
         } catch(const UtilsException&) {
-            _path = org;
             _files = copy;
         }
         update_names();
@@ -470,6 +454,9 @@ void LabeledPath::update_names() {
 }
 
 void LabeledPath::update() {
+    if(_dropdown->textfield()->selected())
+        return;
+    
     if(_ref.value<file::Path>() != file::Path(_dropdown->textfield()->text())) {
         //print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
         _dropdown->textfield()->set_text(_ref.value<file::Path>().str());
@@ -493,6 +480,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
         auto path = file::Path(_dropdown->text());
         if(path.is_folder()) {
             _dropdown->textfield()->set_text(_dropdown->text()+file::Path::os_sep());
+            _dropdown->select_textfield();
         } else {
             _dropdown->stage()->select(nullptr);
             _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
@@ -535,6 +523,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
                 }
                 
                 auto path = dropdown->selected_item().name();
+                print("selected ", dropdown->selected_item(), " at ", index, " => path=", path);
                 if(file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
                 {
                     _dropdown->textfield()->set_text(path+file::Path::os_sep());

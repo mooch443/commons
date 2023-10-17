@@ -11,6 +11,8 @@ auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
 }
 
 std::string Dropdown::TextItem::toStr() const {
+    if(ID() == INVALID_ID)
+        return "Item<null>";
     if(search_name() != name() || display_name() != name())
         return "Item<name='"+name()+"' search='"+search_name()+"' display='"+display_name()+"'>";
     return "Item<'"+name()+"'>";
@@ -34,23 +36,26 @@ std::string Dropdown::TextItem::class_name() {
 void Dropdown::init() {
     _list = std::make_unique<ScrollableList<TextItem>>(Bounds(0, _bounds.height, _bounds.width, 230), items(), Font(0.6f, Align::Left), [this](size_t s) {
         FilteredIndex filtered_index(s); // explicit casting to FilteredIndex
-        if(filtered_items.contains(filtered_index)) {
-            _selected_item = RawIndex(filtered_items.at(filtered_index).value); // Use RawIndex for type safety
-        } else {
-            FormatWarning("Invalid ItemID selected: ", s, " for ", extract_keys(filtered_items));
+        if(_filtered_items.contains(filtered_index)) {
+            _selected_item = RawIndex(_filtered_items.at(filtered_index).value); // Use RawIndex for type safety
         }
+#ifndef NDEBUG
+        else {
+            FormatWarning("Invalid ItemID selected: ", s, " for ", extract_keys(_filtered_items));
+        }
+#endif
     });
     _selected_item = RawIndex();
-    _list->set_z_index(1);
+    _items_changed = true;
+    set_content_changed(true);
+    set_opened(false);
     
     if(_type == BUTTON) {
         _button = Button::MakePtr(Str{"Please select..."},  attr::Box(_bounds.size()));
         _button->set_toggleable(true);
         _button->add_event_handler(MBUTTON, [this](Event e){
             if(!e.mbutton.pressed && e.mbutton.button == 0) {
-                set_opened(not _opened);
-                if(_on_open)
-                    _on_open(_opened);
+                _set_open(not _opened);
             }
         });
         
@@ -61,46 +66,53 @@ void Dropdown::init() {
             if(!e.key.pressed)
                 return;
             
+            if(not is_in(e.key.code, Codes::Up, Codes::Down))
+                return;
+            
             if(e.key.code == Codes::Down) {
+                _set_open(true);
+                
                 auto& items = _list->items();
-                FilteredIndex current = items_to_filtered_items.contains(_selected_item) ? items_to_filtered_items.at(_selected_item) : FilteredIndex{};
+                FilteredIndex current = _items_to_filtered_items.contains(_selected_item) ? _items_to_filtered_items.at(_selected_item) : FilteredIndex{};
 
                 if (current && size_t(current.value + 1) < items.size()) {
                     // Get the next filtered item
-                    if (filtered_items.contains(FilteredIndex{current.value + 1})) {
-                        _selected_item = filtered_items.at(FilteredIndex{current.value + 1});
+                    if (_filtered_items.contains(FilteredIndex{current.value + 1})) {
+                        _selected_item = _filtered_items.at(FilteredIndex{current.value + 1});
                     }
-                } else if (filtered_items.contains(FilteredIndex{0})) {
+                } else if (_filtered_items.contains(FilteredIndex{0})) {
                     // Start from the beginning
-                    _selected_item = filtered_items.at(FilteredIndex{0});
+                    _selected_item = _filtered_items.at(FilteredIndex{0});
                 } else {
                     _selected_item = RawIndex{};
                 }
 
-                if (items_to_filtered_items.contains(_selected_item)) {
-                    _list->highlight_item(items_to_filtered_items.at(_selected_item).value);
+                if (_items_to_filtered_items.contains(_selected_item)) {
+                    _list->highlight_item(_items_to_filtered_items.at(_selected_item).value);
                 } else {
                     _list->highlight_item(-1);
                 }
             }
             else if(e.key.code == Codes::Up) {
-                FilteredIndex current = items_to_filtered_items.contains(_selected_item) ? items_to_filtered_items.at(_selected_item) : FilteredIndex();
+                _set_open(true);
+                
+                FilteredIndex current = _items_to_filtered_items.contains(_selected_item) ? _items_to_filtered_items.at(_selected_item) : FilteredIndex();
 
                 if (current) {
                     // Find the previous filtered item
-                    auto iter = filtered_items.find(FilteredIndex{current.value - 1});
-                    if (iter != filtered_items.end()) {
+                    auto iter = _filtered_items.find(FilteredIndex{current.value - 1});
+                    if (iter != _filtered_items.end()) {
                         _selected_item = iter->second;
                     }
-                } else if (!filtered_items.empty()) {
+                } else if (!_filtered_items.empty()) {
                     // Go to the last item if we're at the beginning
-                    _selected_item = filtered_items.rbegin()->second;
+                    _selected_item = _filtered_items.rbegin()->second;
                 } else {
                     _selected_item = RawIndex{};
                 }
 
-                if (items_to_filtered_items.contains(_selected_item)) {
-                    _list->highlight_item(items_to_filtered_items.at(_selected_item).value);
+                if (_items_to_filtered_items.contains(_selected_item)) {
+                    _list->highlight_item(_items_to_filtered_items.at(_selected_item).value);
                 } else {
                     _list->highlight_item(-1);
                 }
@@ -109,61 +121,9 @@ void Dropdown::init() {
             select_item(_selected_item);
         });
         
-        _on_text_changed = [this](){
-            if (_custom_on_text_changed) {
-                auto text = _textfield->text();
-                _custom_on_text_changed(text);
-            }
-
-            filtered_items.clear();
-            items_to_filtered_items.clear();
-
-            if (!_textfield->text().empty()) {
-                if(_corpus.empty()) {
-                    _corpus.reserve(items().size());
-                    for (const auto &item : _items) {
-                        _corpus.push_back(item.search_name());
-                    }
-                }
-                
-                if(_preprocessed.empty())
-                    _preprocessed = preprocess_corpus(_corpus);
-                
-                // Filter items using the search text
-                // Get the search result indexes
-                auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
-
-                // Create a filtered vector of TextItems
-                std::vector<TextItem> filtered;
-                for (int _index : search_result_indexes) {
-                    RawIndex index(_index);
-                    filtered.push_back(_items[_index]);
-                    filtered_items[FilteredIndex{static_cast<long>(filtered.size() - 1)}] = index;
-                    items_to_filtered_items[index] = FilteredIndex{static_cast<long>(filtered.size() -1)};
-                }
-
-                // Update the list with the filtered items
-                if(_list->set_items(convert_to_search_name(filtered))) {
-                //if(not filtered.empty()) {
-                    select_item(RawIndex{});
-                    _list->set_scroll_offset(Vec2());
-                }
-
-            } else {
-                // If the search text is empty, display all items
-                // trivial mapping
-                for(long i=0; i<(long)_items.size(); ++i) {
-                    filtered_items[FilteredIndex{i}] = RawIndex{i};
-                    items_to_filtered_items[RawIndex{i}] = FilteredIndex{i};
-                }
-                _list->set_items(convert_to_search_name(_items));
-            }
-
-            this->select_item(_selected_item);
-            this->set_content_changed(true);
-        };
-        
-        _textfield->on_text_changed(Textfield::OnTextChanged_t(_on_text_changed));
+        _textfield->on_text_changed(Textfield::OnTextChanged_t([this](){
+            on_text_changed();
+        }));
         
         _textfield->on_enter([this](){
             if(_on_enter) {
@@ -187,9 +147,9 @@ void Dropdown::init() {
                     _on_select(RawIndex{}, TextItem::invalid_item());
             }
             
-            if(stage())
-                stage()->do_hover(NULL);
-            
+            //if(stage())
+            //    stage()->do_hover(NULL);
+            _set_open(false);
             _list->set_last_hovered_item(-1);
         });
     }
@@ -197,11 +157,13 @@ void Dropdown::init() {
     _list->on_select([this](size_t i, Dropdown::TextItem txt){
         FilteredIndex filtered_id{long_t(i)};
         RawIndex real_id;
-        if(!filtered_items.empty()) {
-            if(filtered_items.find(filtered_id) != filtered_items.end()) {
-                real_id = filtered_items.at(filtered_id);
+        if(not _filtered_items.empty()) {
+            if(auto it = _filtered_items.find(filtered_id);
+               it != _filtered_items.end())
+            {
+                real_id = it->second;
             } else
-                throw U_EXCEPTION("Unknown item id ",i," (",filtered_items.size()," items)");
+                throw U_EXCEPTION("Unknown item id ",i," (",_filtered_items.size()," items)");
         }
         
         if(real_id.valid())
@@ -215,20 +177,8 @@ void Dropdown::init() {
             _textfield->set_text(txt);
         }
         
-        //_selected_id = real_id;
-        
-        /*if(stage()) {
-            stage()->select(NULL);
-            stage()->do_hover(NULL);
-        }*/
-        
+        _set_open(false);
         _list->set_last_hovered_item(-1);
-        
-        if(this->selected() != _opened) {
-            set_opened(this->selected());
-            if (_on_open)
-                _on_open(_opened);
-        }
         
         this->set_content_changed(true);
         
@@ -240,15 +190,25 @@ void Dropdown::init() {
     
     if(_type == SEARCH)
         add_event_handler(SELECT, [this](Event e) {
-            this->set_opened(e.select.selected);
-            if(this->_on_open)
-                this->_on_open(this->_opened);
+            if(not e.select.selected)
+                _set_open(e.select.selected);
+            else if(not _opened && selected()) {
+                _set_open(true);
+            }
         });
     }
 
     Dropdown::~Dropdown() {
         _button = nullptr;
         _textfield = nullptr;
+    }
+
+    void Dropdown::_set_open(bool open) {
+        if(open != _opened) {
+            set_opened(open);
+            if(this->_on_open)
+                this->_on_open(open);
+        }
     }
     
     void Dropdown::set_opened(bool opened) {
@@ -258,9 +218,9 @@ void Dropdown::init() {
         _opened = opened;
         //_selected_item = RawIndex{};
         if(_opened) {
-            _textfield->set_z_index(2);
+            set_z_index(2);
         } else {
-            _textfield->set_z_index(0);
+            set_z_index(0);
         }
         set_content_changed(true);
     }
@@ -271,14 +231,15 @@ void Dropdown::init() {
         }
     }
     void Dropdown::clear_textfield() {
-        if(_textfield) {
+        if(_textfield && not _textfield->text().empty()) {
             _textfield->set_text("");
-            if(_on_text_changed)
-                _on_text_changed();
+            on_text_changed();
         }
     }
     
     void Dropdown::update() {
+        apply_item_filtering();
+        
         if(!content_changed())
             return;
         
@@ -293,8 +254,10 @@ void Dropdown::init() {
     }
 
 Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
-    if(filtered_items.contains(index)) {
-        return filtered_items.at(index);
+    if(auto it = _filtered_items.find(index);
+       it != _filtered_items.end())
+    {
+        return it->second;
     }
     return RawIndex{};
 }
@@ -303,15 +266,17 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         //if(static_cast<size_t>(index.value) < items().size())
         //    print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
 
-        if (index.value >= 0 && items_to_filtered_items.contains(index)) {
-            auto iter = items_to_filtered_items.find(index);
-            if (iter != items_to_filtered_items.end()) {
+        if (index.value >= 0 && _items_to_filtered_items.contains(index)) {
+            if (auto iter = _items_to_filtered_items.find(index);
+                iter != _items_to_filtered_items.end())
+            {
                 _selected_item = index; // Use RawIndex for type safety
                 if(_list)
                     _list->highlight_item(iter->second.value); // Highlight based on filtered list
             } else {
                 _selected_item = RawIndex(); // Using default constructor
             }
+            
         } else {
             _selected_item = RawIndex(); // Using default constructor
         }
@@ -327,29 +292,32 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     }
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {
-        if(options != _items) {
-            _items.clear();
-            
-            size_t i=0;
-            for(auto& o : options) {
-                //if(o.ID() == Item::INVALID_ID)
-                //{
-                    _items.emplace_back(o.name(), i, o.search_name(), o.custom());
-                //} else {
-                //    _items.emplace_back(o);
-                //}
-                ++i;
-            }
-            //_items = options;
-            if(_list)
-                _list->set_items(convert_to_search_name(_items));
-            _selected_item = RawIndex{};
-            _preprocessed = {};
-            _corpus.clear();
-            if(_on_text_changed)
-                _on_text_changed();
-            set_dirty();
+        if(options == _original_items)
+            return;
+        
+        _original_items = options;
+        _items.clear();
+        
+        size_t i=0;
+        for(auto& o : options) {
+            //if(o.ID() == Item::INVALID_ID)
+            //{
+                _items.emplace_back(o.name(), i, o.search_name(), o.custom());
+            //} else {
+            //    _items.emplace_back(o);
+            //}
+            ++i;
         }
+        //_items = options;
+        if(_list)
+            _list->set_items(convert_to_search_name(_items));
+        _selected_item = RawIndex{};
+        _preprocessed = {};
+        _corpus.clear();
+        //if(_on_text_changed)
+        //    _on_text_changed();
+        _items_changed = true;
+        set_dirty();
     }
     
     const std::string& Dropdown::text() const {
@@ -369,11 +337,10 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     Dropdown::TextItem Dropdown::hovered_item() const {
         if(_list && _list->last_hovered_item() != -1) {
             auto index = FilteredIndex{(long_t)_list->last_hovered_item()};
-            if(filtered_items.contains(index)) {
-                RawIndex raw = filtered_items.at(index);
-                if(raw.value < _items.size()) {
+            if(_filtered_items.contains(index)) {
+                RawIndex raw = _filtered_items.at(index);
+                if(raw.value < _items.size())
                     return _items.at(raw.value);
-                }
             }
             //return (size_t)_list->last_hovered_item() < _list->items().size() ? _list->items().at(_list->last_hovered_item()).value() : TextItem();
         }
@@ -426,6 +393,82 @@ void Dropdown::set_size(const Size2 &size) {
         Entangled::set_size(size);
         set_content_changed(true);
     }
+}
+
+void Dropdown::on_text_changed() {
+    _set_open(true);
+    
+    if (_custom_on_text_changed) {
+        auto text = _textfield->text();
+        _custom_on_text_changed(text);
+    }
+
+    _items_changed = true;
+    apply_item_filtering();
+    set_content_changed(true);
+}
+
+void Dropdown::apply_item_filtering() {
+    if(not _items_changed)
+        return;
+    
+    _filtered_items.clear();
+    _items_to_filtered_items.clear();
+    
+    if(not _textfield)
+        return; // abort if we arent initialized fully yet
+    
+    bool list_changed{false};
+
+    if (not _textfield->text().empty())
+    {
+        if(_corpus.empty()) {
+            _corpus.reserve(items().size());
+            for (const auto &item : _items) {
+                _corpus.push_back(item.search_name());
+            }
+        }
+        
+        if(_preprocessed.empty())
+            _preprocessed = preprocess_corpus(_corpus);
+        
+        // Filter items using the search text
+        // Get the search result indexes
+        auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
+
+        // Create a filtered vector of TextItems
+        std::vector<TextItem> filtered;
+        for (int _index : search_result_indexes) {
+            RawIndex index(_index);
+            filtered.push_back(_items[_index]);
+            _filtered_items[FilteredIndex{static_cast<long>(filtered.size() - 1)}] = index;
+            _items_to_filtered_items[index] = FilteredIndex{static_cast<long>(filtered.size() -1)};
+        }
+
+        // Update the list with the filtered items
+        if(_list->set_items(convert_to_search_name(filtered))) {
+            list_changed = true;
+            _selected_item = RawIndex();
+            _list->set_scroll_offset(Vec2());
+        }
+
+    } else {
+        // If the search text is empty, display all items
+        // trivial mapping
+        for(long i=0; i<(long)_items.size(); ++i) {
+            _filtered_items[FilteredIndex{i}] = RawIndex{i};
+            _items_to_filtered_items[RawIndex{i}] = FilteredIndex{i};
+        }
+        
+        list_changed = _list->set_items(convert_to_search_name(_items));
+    }
+
+    if(list_changed) {
+        this->select_item(_selected_item);
+        this->set_content_changed(true);
+    }
+    
+    _items_changed = false;
 }
 
 }

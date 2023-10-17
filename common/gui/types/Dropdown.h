@@ -139,6 +139,7 @@ namespace gui {
         Textfield::OnEnter_t _on_enter;
         
         GETTER(std::vector<TextItem>, items)
+        std::vector<TextItem> _original_items;
         
         GETTER_I(bool, opened, false)
         GETTER_I(Type, type, SEARCH)
@@ -147,10 +148,10 @@ namespace gui {
         
         RawIndex _selected_item;
         
-        std::map<FilteredIndex, RawIndex> filtered_items;
-        std::map<RawIndex, FilteredIndex> items_to_filtered_items;
+        bool _items_changed{false};
+        std::map<FilteredIndex, RawIndex> _filtered_items;
+        std::map<RawIndex, FilteredIndex> _items_to_filtered_items;
         
-        std::function<void()> _on_text_changed;
         std::function<void(std::string)> _custom_on_text_changed;
         std::function<void(bool)> _on_open;
         
@@ -220,7 +221,10 @@ namespace gui {
         
     protected:
         void set_inverted(bool); //! whether dropdown opens to the top
+        void _set_open(bool);
         void update() override;
         void update_bounds() override;
+        void on_text_changed();
+        void apply_item_filtering();
     };
 }

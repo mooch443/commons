@@ -59,6 +59,9 @@ std::string load_string(const file::Path& npz, const std::string fname) {
 std::vector<std::pair<std::string, VideoSource::File::Type>> VideoSource::File::_extensions = {
     { "mov", VIDEO },
     { "mp4", VIDEO },
+    { "h264", VIDEO },
+    { "h265", VIDEO },
+    { "hevc", VIDEO },
     { "mpg", VIDEO },
     { "mkv", VIDEO },
     { "mxf", VIDEO },
