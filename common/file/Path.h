@@ -86,6 +86,13 @@ namespace file {
         //! The full path without any trailing slashes,
         //  but with file extension and filename
         GETTER(std::string, str)
+
+        mutable struct Stat {
+            std::optional<bool> exists, is_folder, is_regular;
+            timestamp_t assigned_at{ 0u };
+            bool too_old();
+            void update();
+        } _stat_cache;
         
     public:
         Path(const std::string& s = "");
@@ -101,9 +108,15 @@ namespace file {
         Path& append(const Path&);
         
         //! Comparison operators:
-        auto operator<=>(const Path& other) const noexcept = default;
-        bool operator==(const Path& other) const noexcept = default;
-        bool operator!=(const Path& other) const noexcept = default;
+        auto operator<=>(const Path& other) const noexcept {
+            return _str <=> other._str;
+        }
+        bool operator==(const Path& other) const noexcept {
+            return _str == other._str;
+        }
+        bool operator!=(const Path& other) const noexcept {
+            return _str != other._str;
+        }
         
         static char os_sep() noexcept;
         [[nodiscard]] bool is_absolute() const noexcept;

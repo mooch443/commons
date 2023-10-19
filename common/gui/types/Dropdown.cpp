@@ -5,8 +5,11 @@ namespace gui {
 auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
     std::vector<Dropdown::TextItem> result;
     result.reserve(items.size());
-    for(auto&item : items)
-        result.emplace_back(item.display_name());
+    for (auto& item : items) {
+        Dropdown::TextItem p(item.display_name());
+        p.set_color(item.color());
+        result.emplace_back(std::move(p));
+    }
     return result;
 }
 
@@ -303,6 +306,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
             //if(o.ID() == Item::INVALID_ID)
             //{
                 _items.emplace_back(o.name(), i, o.search_name(), o.custom());
+                _items.back().set_color(o.color());
             //} else {
             //    _items.emplace_back(o);
             //}

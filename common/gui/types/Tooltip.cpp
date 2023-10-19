@@ -23,7 +23,6 @@ namespace gui {
             return;
         
         _other = other;
-        _text.set_size(Size2(_max_width > 0 || !_other ? _max_width : _other->width(), -1));
         set_content_changed(true);
     }
     
@@ -32,12 +31,6 @@ namespace gui {
             return;
         
         auto mp = stage()->mouse_position();
-        //auto hovered = stage()->hovered_object();
-        /*if(hovered && hovered->type() != Type::ENTANGLED && hovered->parent())
-            hovered = hovered->parent();
-        if(hovered && dynamic_cast<const Dropdown*>(hovered->parent()) != nullptr)
-            hovered = hovered->parent();*/
-        
         if(parent()) {
             auto tf = parent()->global_transform().getInverse();
             mp = tf.transformPoint(mp) + Vec2(5, 0);
@@ -47,7 +40,7 @@ namespace gui {
         if(stage() && mp.x > stage()->dialog_window_size().width * 0.5) {
             ox = 1;
         }
-            
+
         if(mp.y - _text.height() < 0)
             set_origin(Vec2(ox, 0));
         else
@@ -61,10 +54,6 @@ namespace gui {
         begin();
         advance_wrap(_text);
         end();
-        
-        _text.set_content_changed(true);
-        _text.update();
-        _text.set_bounds_changed();
         
         set_bounds(Bounds(mp, _text.size() + Vec2(5, 2) * 2));
     }

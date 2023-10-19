@@ -40,11 +40,25 @@ struct RealFilesystem : FilesystemInterface {
  */
 template <typename FS = RealFilesystem>
 class _PathArray {
+public:
+    struct DeferredFileCheck {
+        std::string path;
+        int start;
+        int end;
+        int padding;
+    };
+
+    static inline const std::regex pattern{ R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)" };
+
 private:
-    GETTER(std::string, source)
+    GETTER_SETTER(std::string, source)
     GETTER_I(bool, matched_patterns, false)
-    
-    std::vector<file::Path> _paths; ///< Member to store the list of file paths
+
+    mutable bool _has_to_be_filtered{ false };
+    mutable std::optional<std::vector<std::string>> _to_be_resolved;
+    mutable std::vector<file::Path> _paths; ///< Member to store the list of file paths
+    mutable std::vector<DeferredFileCheck> _deferredFileChecks;
+
     FS fs; // Object to interact with the filesystem
     
     /**
@@ -57,8 +71,80 @@ private:
             _paths.push_back(path);
         }
     }
+
+public:
+    static void ensure_loaded_static(std::vector<file::Path>& paths,
+        std::vector<DeferredFileCheck>& deferredFileChecks,
+        std::optional<std::vector<std::string>>& to_be_resolved,
+        bool& has_to_be_filtered,
+        const FS& fs) 
+    {
+        if (not deferredFileChecks.empty()) {
+            std::ostringstream ss;
+            for (const auto& dfc : deferredFileChecks) {
+                for (int i = dfc.start; ; ++i) {
+                    ss.str("");
+                    ss << std::setw(dfc.padding) << std::setfill('0') << i;
+                    auto replaced_path = std::regex_replace(dfc.path, pattern, ss.str());
+                    file::Path filePath(replaced_path);
+                    if (not fs.exists(filePath)) {
+                        break;
+                    }
+                    paths.push_back(filePath);
+                }
+            }
+            deferredFileChecks.clear();
+        }
+
+        if (to_be_resolved.has_value()
+            && not to_be_resolved->empty())
+        {
+            std::string path = to_be_resolved.value().front();
+            file::Path parent_path = file::Path(path).remove_filename();
+            if (fs.is_folder(parent_path)) {
+                auto all_files = fs.find_files(parent_path);
+
+                // Replace * with .* and escape other special characters
+                std::string regex_str = "^" + escape_regex(path) + "$";
+                std::regex star_replace("\\*");
+                regex_str = std::regex_replace(regex_str, star_replace, ".*");
+                try {
+                    std::regex file_matcher(regex_str);
+
+                    for (const auto& file : all_files) {
+                        if (std::regex_match(file.str(), file_matcher)) {
+                            paths.push_back(file);
+                        }
+                    }
+                }
+                catch (const std::regex_error& e) {
+                    // Invalid regex, treat it as a regular path
+                    paths.push_back(file::Path(path));
+                    FormatWarning("Cannot parse regex: ", regex_str, " (", e.what(), ")");
+                }
+            }
+
+            has_to_be_filtered = true;
+            to_be_resolved.reset();
+        }
+
+        if (has_to_be_filtered) {
+            // filter the std::vector _paths for files that exist:
+            std::vector<file::Path> existing_paths;
+            std::copy_if(paths.begin(), paths.end(), std::back_inserter(existing_paths), [&fs](const file::Path& p) { return fs.exists(p); });
+            paths = std::move(existing_paths);
+            has_to_be_filtered = false;
+        }
+    }
+
+protected:
+    void ensure_loaded() const {
+        ensure_loaded_static(_paths, _deferredFileChecks, _to_be_resolved, _has_to_be_filtered, fs);
+    }
     
 public:
+    bool has_to_be_resolved() const { return _to_be_resolved.has_value(); }
+
     /**
      * @brief Constructor for initializing with a std::string.
      *
@@ -86,7 +172,7 @@ public:
     * @param path The path string to add.
     */
     void add_path(const std::string& path) {
-        auto parsed_paths = parse_path(path, _matched_patterns);
+        auto parsed_paths = parse_path(path, _matched_patterns, _to_be_resolved, _deferredFileChecks, _has_to_be_filtered);
         for (const auto& parsed_path : parsed_paths) {
           add_path_if_not_empty(parsed_path);
         }
@@ -104,7 +190,7 @@ public:
      */
     auto operator<=>(const _PathArray& other) const {
         // First, you can check the sizes for quick comparison
-        if (auto cmp = _paths.size() <=> other._paths.size(); cmp != 0) {
+        /*if (auto cmp = _paths.size() <=> other._paths.size(); cmp != 0) {
             return cmp;
         }
 
@@ -115,17 +201,22 @@ public:
             }
         }
 
-        return std::strong_ordering::equal;
+        return std::strong_ordering::equal;*/
+        return source() <=> other.source();
     }
     
     bool operator==(const _PathArray& other) const {
-        return other._paths == _paths;
+        return other.source()  == source();
     }
     
     static _PathArray fromStr(const std::string& str) {
         return { str };
     }
     std::string toStr() const {
+        if (_to_be_resolved.has_value()) {
+            return "PathArray<to be resolved:" + source() + ">";
+        }
+
         if(_paths.empty())
             return "";
         if(_paths.size() == 1)
@@ -137,8 +228,8 @@ public:
     }
     
     static std::string escape_regex(const std::string& str) {
-        // List of regex special characters that need to be escaped
-        static const std::regex esc("[.^$|()\\[\\]{}+?]");
+        // List of regex special characters that need to be escaped, including the backslash
+        static const std::regex esc("[.^$|()\\[\\]{}+?\\\\]");
         return std::regex_replace(str, esc, "\\$&");
     }
     
@@ -152,9 +243,8 @@ public:
     * @param path The path pattern to parse.
     * @return A vector of file::Path objects that match the pattern.
     */
-    static std::vector<file::Path> parse_path(const std::string& path, bool& matched_patterns) {
+    static std::vector<file::Path> parse_path(const std::string& path, bool& matched_patterns, auto& to_be_resolved, auto& deferredFileChecks, bool& has_to_be_filtered) {
         // Define the regex pattern for different types of placeholders in the path
-        std::regex pattern(R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)");
         std::smatch match;
         std::vector<file::Path> parsed_paths;
         FS fs;
@@ -175,70 +265,26 @@ public:
                     ss << std::setw(padding) << std::setfill('0') << i;
                     auto replaced_path = std::regex_replace(path, pattern, ss.str());
                     file::Path filePath(replaced_path);
-                    if (not fs.exists(filePath)) {
-                        break;
-                    }
                     parsed_paths.push_back(filePath);
                 }
+
+                // filter for existing files later on:
+                has_to_be_filtered = true;
             }
             // Handle cases like %10.6d
             else if (match[4].length() && match[5].length()) {
                 int padding = std::stoi(match[5]);
                 int starting_index = std::stoi(match[4]);  // Parse the starting index
-                
-                // Iterate indefinitely until no matching files are found
-                for (int i = starting_index; ; ++i) {  // Start from the parsed index
-                    ss.str("");
-                    ss << std::setw(padding) << std::setfill('0') << i;
-                    auto replaced_path = std::regex_replace(path, pattern, ss.str());
-                    file::Path filePath(replaced_path);
-                    if (not fs.exists(filePath)) {
-                        break;
-                    }
-                    parsed_paths.push_back(filePath);
-                }
+                deferredFileChecks.push_back({ path, starting_index, -1, padding });
             }
             // Handle cases like %6d
             else if (match[6].length()) {
                 int padding = std::stoi(match[6]);
-                
-                // Iterate indefinitely until no matching files are found
-                for (int i = 0; ; ++i) {
-                    ss.str("");
-                    ss << std::setw(padding) << std::setfill('0') << i;
-                    auto replaced_path = std::regex_replace(path, pattern, ss.str());
-                    file::Path filePath(replaced_path);
-                    if (not fs.exists(filePath)) {
-                        break;
-                    }
-                    parsed_paths.push_back(filePath);
-                }
+                deferredFileChecks.push_back({ path, 0, -1, padding });
                 
             } else if (match.str() == "*") {
                 // Handle cases like *
-                file::Path parent_path = file::Path(path).remove_filename();
-                if (fs.is_folder(parent_path)) {
-                    auto all_files = fs.find_files(parent_path);
-                    
-                    // Replace * with .* and escape other special characters
-                    std::string regex_str = "^" + escape_regex(path) + "$";
-                    std::regex star_replace("\\*");
-                    regex_str = std::regex_replace(regex_str, star_replace, ".*");
-                    try {
-                        std::regex file_matcher(regex_str);
-
-                        for (const auto& file : all_files) {
-                            if (std::regex_match(file.str(), file_matcher)) {
-                                parsed_paths.push_back(file);
-                            }
-                        }
-                    }
-                    catch (const std::regex_error& e) {
-						// Invalid regex, treat it as a regular path
-						parsed_paths.push_back(file::Path(path));
-                        FormatWarning("Cannot parse regex: ", regex_str, " (", e.what(), ")");
-					}
-                }
+                to_be_resolved = std::vector<std::string>{ path };
             }
             
         } else {
@@ -255,6 +301,7 @@ public:
      * @return True if empty, otherwise False.
      */
     [[nodiscard]] bool empty() const {
+        ensure_loaded();
         return _paths.empty();
     }
     
@@ -264,6 +311,7 @@ public:
      * @return An iterator to the beginning of _paths.
      */
     auto begin() const -> decltype(_paths.begin()) {
+        ensure_loaded();
         return _paths.begin();
     }
     
@@ -273,10 +321,12 @@ public:
      * @return An iterator to the end of _paths.
      */
     auto end() const -> decltype(_paths.end()) {
+        ensure_loaded();
         return _paths.end();
     }
     
     [[nodiscard]] size_t size() const {
+        ensure_loaded();
         return _paths.size();
     }
     
@@ -286,6 +336,7 @@ public:
      * @return A constant reference to _paths.
      */
     [[nodiscard]] const std::vector<file::Path>& get_paths() const {
+        ensure_loaded();
         return _paths;
     }
     
@@ -296,6 +347,7 @@ public:
      * @return A constant reference to the file::Path object at the specified index.
      */
     const file::Path& operator[](std::size_t index) const {
+        ensure_loaded();
         if (index >= _paths.size()) {
             throw std::out_of_range("Index out of range");
         }

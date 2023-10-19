@@ -201,5 +201,6 @@ namespace gui {
         void draw_element(const DrawOrder& order);
         void event(const gui::Event& e);
         static void update_size_scale(GLFWwindow*);
+        void set_last_framebuffer(Size2);
     };
 }

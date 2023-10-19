@@ -204,6 +204,15 @@ struct LabeledList : public LabeledField {
     void update() override;
     Layout::Ptr representative() const override { return _list; }
 };
+
+class CustomDropdown : public gui::Dropdown {
+    GETTER_SETTER(std::function<void()>, update_callback);
+public:
+    using gui::Dropdown::Dropdown;
+
+    void update() override;
+};
+
 struct LabeledPath : public LabeledField {
     class FileItem {
         GETTER(file::Path, path)
@@ -219,7 +228,7 @@ struct LabeledPath : public LabeledField {
         }
     };
     
-    gui::derived_ptr<gui::Dropdown> _dropdown;
+    gui::derived_ptr<CustomDropdown> _dropdown;
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
     std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
@@ -241,17 +250,22 @@ struct LabeledPath : public LabeledField {
 class LabeledPathArray : public LabeledField {
 private:
     gui::derived_ptr<gui::VerticalLayout> _layout;
-    gui::derived_ptr<gui::Dropdown> _dropdown;
+    gui::derived_ptr<CustomDropdown> _dropdown;
     gui::derived_ptr<gui::StaticText> _staticText;
     file::PathArray _pathArray;
+    file::PathArray _pathArrayCopy;
+    std::vector<file::Path> _tmp_files;
     
-    std::set<file::Path> _files;
     std::vector<Dropdown::TextItem> _search_items;
+
+    std::future<std::vector<file::Path>> _future;
+    std::atomic<bool> _should_update{ false };
     
 public:
     LabeledPathArray(const std::string& name, const nlohmann::json& obj);
+    ~LabeledPathArray();
 
-    void updateStaticText();
+    void updateStaticText(const std::vector<file::Path>&);
     void updateDropdownItems();
     void add_to(std::vector<Layout::Ptr>& v) override;
     void update() override;
@@ -263,6 +277,8 @@ public:
         };
     }
     Layout::Ptr representative() const override { return _dropdown; }
+
+    void asyncUpdateItems();
 };
 
 struct LabeledCheckbox : public LabeledField {

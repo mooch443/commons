@@ -89,6 +89,7 @@ namespace gui {
             GETTER_SETTER(std::string, display)
             GETTER_PTR_I(void*, custom, nullptr)
             GETTER_SETTER_I(int, index, Item::INVALID_ID)
+            GETTER_SETTER_I(Color, color, Transparent)
             
         public:
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)

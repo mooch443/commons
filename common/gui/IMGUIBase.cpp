@@ -569,7 +569,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     fw = fb.width;
     fh = fb.height;
 
-    base->_last_framebuffer_size = Size2(fw, fh).mul(base->_dpi_scale);
+    base->set_last_framebuffer(Size2(fw, fh));
 
     //print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
@@ -761,7 +761,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         fw = fb.width;
         fh = fb.height;
 
-        _last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
+        set_last_framebuffer(Size2(fw, fh));
+        //_last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
         
         if (!soft) {
             io.Fonts->Clear();
@@ -1037,6 +1038,19 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         return _platform->current_frame_buffer();
     }
 
+    void IMGUIBase::set_last_framebuffer(Size2 size) {
+        if (size.width > 0 && size.height > 0 
+            && (size.width * _dpi_scale != _last_framebuffer_size.width 
+                || size.height * _dpi_scale != _last_framebuffer_size.height))
+        {
+#ifndef NDEBUG
+            //print("Changed framebuffer size to ", fw,"x",fh);
+#endif
+            _last_framebuffer_size = size.mul(_dpi_scale);
+            _graph->set_dialog_window_size(window_dimensions().div(_graph->scale()) * gui::interface_scale());
+        }
+    }
+
     void IMGUIBase::paint(DrawStructure& s) {
         int fw, fh;
         auto window = _platform->window_handle();
@@ -1048,15 +1062,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //fw *= _dpi_scale;
         //fh *= _dpi_scale;
         
-        if(fw > 0 && fh > 0 && (fw * _dpi_scale != _last_framebuffer_size.width || fh * _dpi_scale != _last_framebuffer_size.height))
-        {
-#ifndef NDEBUG
-            //print("Changed framebuffer size to ", fw,"x",fh);
-#endif
-            _last_framebuffer_size = Size2(fw, fh).mul(_dpi_scale);
-            
-            s.set_dialog_window_size(window_dimensions().div(s.scale()) * gui::interface_scale());
-        }
+        set_last_framebuffer(Size2(fw, fh));
         
         std::unique_lock<std::recursive_mutex> lock(s.lock());
         auto objects = s.collect();

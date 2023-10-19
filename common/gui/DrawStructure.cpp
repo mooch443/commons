@@ -156,7 +156,7 @@ void Dialog::set_closed() {
     Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 135), SizeLimit(500, 50), Font(0.8f))),
+        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 135), SizeLimit(500, 0), Font(0.8f))),
         _title(attr::Str(title), Font(0.9f, Style::Bold)),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
@@ -171,6 +171,7 @@ void Dialog::set_closed() {
         if(!d.dialog_window_size().empty())
             size = d.dialog_window_size();
         
+        _layout.set(Margins(5, 5, 5, 5));
         _okay->set_size(Size2(gui::Base::default_text_bounds(_okay->txt(), nullptr, _okay->font()).width + 20, 40));
         _okay->set_fill_clr(Color::blend(DarkCyan.exposure(0.5).alpha(110), Green.exposure(0.15)));
         if (_abort) {
@@ -188,7 +189,7 @@ void Dialog::set_closed() {
         _layout.set_pos(_title_bg.pos() + Vec2(0, _title_bg.height()));
         _layout.update();
         
-        _text->set_max_size(Size2(_title_bg.width() - 50, 50));
+        _text->set_max_size(Size2(_title_bg.width() - 50, 0));
         
         set_bounds(Bounds(Vec2(size*0.5), Size2(_title_bg.width() + 10,300)));
         set_origin(Vec2(0.5, 0.5));

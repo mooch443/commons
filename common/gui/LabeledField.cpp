@@ -349,7 +349,8 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
     }), _path(path)
 {
     set_description("");
-    _dropdown = std::make_shared<gui::Dropdown>(Box(0, 0, 500, 28));
+    _dropdown = std::make_shared<CustomDropdown>(Box(0, 0, 500, 28));
+    _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path...");
     
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
@@ -467,8 +468,9 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     : LabeledField(name)
 {
     // Initialize Dropdown, attach handlers for events
-    _dropdown = Layout::Make<gui::Dropdown>(attr::Size(300,40));
-    _dropdown->on_text_changed([this](std::string){
+    _dropdown = Layout::Make<CustomDropdown>(attr::Size(300,40));
+    _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path or matching pattern...");
+    _dropdown->on_text_changed([this](std::string str){
         // handle text changed
         updateDropdownItems();
     });
@@ -486,24 +488,24 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
             _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
         }
         updateDropdownItems();
-        
+
     });
     _dropdown->set(Textfield::OnEnter_t{
         [this, dropdown = _dropdown.to<Dropdown>()](){
             auto list = dropdown->list().get();
             auto text = _dropdown->text();
-            file::PathArray pathArray(text);
             
-            if(pathArray.matched_patterns()) {
+            if(_pathArray.matched_patterns()) {
                 if(dropdown->stage())
                     dropdown->stage()->select(NULL);
-                _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
+                _ref.value<file::PathArray>() = _pathArray;
                 
             } else if(not list->items().empty()) {
                 list->select_highlighted_item();
             } else if(dropdown->on_select())
                 dropdown->on_select()(Dropdown::RawIndex{}, Dropdown::TextItem::invalid_item());
-            
+
+            updateDropdownItems();
             list->set_last_hovered_item(-1);
         }
     });
@@ -569,14 +571,25 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
         }
     }
     
+    _dropdown->set_update_callback([this]() { asyncUpdateItems(); });
     _dropdown->textfield()->set(Str{ _ref.value<file::PathArray>().source() });
     updateDropdownItems();
 }
 
-void LabeledPathArray::updateStaticText() {
+LabeledPathArray::~LabeledPathArray() {
+    if (_future.valid())
+        _future.get(); // finalize future
+}
+
+void CustomDropdown::update() {
+    if(_update_callback)
+        _update_callback();
+    Dropdown::update();
+}
+
+void LabeledPathArray::updateStaticText(const std::vector<file::Path>& matches) {
     std::string pattern = _dropdown->textfield()->text();
     // perform pattern matching using PathArray
-    auto matches = file::PathArray(pattern).get_paths();
     if (matches.empty()) {
         _staticText->set_txt("No matches found");
     } else {
@@ -593,62 +606,144 @@ void LabeledPathArray::add_to(std::vector<Layout::Ptr>& v) {
     //v.push_back(_staticText);
 }
 
-void LabeledPathArray::updateDropdownItems() {
+void LabeledPathArray::asyncUpdateItems() {
+    if (_future.valid()
+        && _future.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
+    {
+        _tmp_files = _future.get();
+    }
+    else
+        return;
+
+    if (_should_update) {
+        _should_update = false;
+        updateDropdownItems();
+        return;
+    }
+
+    _pathArray = std::move(_pathArrayCopy);
+    //print("Setting value = ", _pathArray);
+    _ref.value<file::PathArray>() = _pathArray;
+
     try {
-        auto text = _dropdown->text();
-        file::PathArray pathArray(text);
-        
-        std::vector<file::Path> matches; // Temporary storage for matched or listed files
-
-        if (utils::endsWith(text, file::Path::os_sep())) {
-            // User is navigating into a folder
-            matches = pathArray.get_paths();
-            if (not pathArray.matched_patterns()) {
-                if (matches.empty() || matches.front().is_folder()) {
-                    auto folder = matches.empty() ? file::Path("/") : matches.front();
-                    auto files = folder.find_files();
-                    matches = {files.begin(), files.end()};
-                }
-            }
-            _files = {matches.begin(), matches.end()};
-            print("items for ", text, " = ", _files, " from ", pathArray);
-            
-        } else {
-            // Handle wildcard matching or parent folder display
-            if (pathArray.matched_patterns()) {
-                // If wildcards are present, filter based on them
-                matches = pathArray.get_paths();
-            } else {
-                // If a separator was deleted, show parent folder contents
-                auto parentPath = file::Path(text).remove_filename();
-                auto parentFiles = parentPath.find_files();
-                matches = {parentFiles.begin(), parentFiles.end()};
-            }
-            _files = {matches.begin(), matches.end()};
-        }
-
         // Always update _search_items based on _files
         _search_items.clear();
-        for (const auto &f : _files) {
+        for (const auto& f : _tmp_files) {
             if (f.str() != ".." && !utils::beginsWith((std::string)f.filename(), '.')) {
-                _search_items.push_back(Dropdown::TextItem(f.str()));
-                _search_items.back().set_display(std::string(file::Path(f.str()).filename()));
+                Dropdown::TextItem p(f.str());
+                p.set_display(std::string(file::Path(f.str()).filename()));
+                p.set_color(f.is_folder() ? Color(255, 0, 0, 255) : Transparent);
+                _search_items.emplace_back(std::move(p));
             }
         }
-        
+
         _dropdown->set_items(_search_items);
-        
-    } catch (const UtilsException&) {
+
+    }
+    catch (const UtilsException&) {
         // Handle exception
         // Maybe reset _files to some safe state
     }
-    
-    updateStaticText();
+
+    updateStaticText(_tmp_files);
+    _tmp_files.clear();
+}
+
+void LabeledPathArray::updateDropdownItems() {
+    if (_pathArray.source() == _dropdown->text())
+        return;
+
+    if(_future.valid())
+        _should_update = true;
+    else {
+        _future = std::async(std::launch::async, [this, text = _dropdown->text(), ptr = _dropdown.get(), files = std::move(_tmp_files)]() {
+            std::vector<file::Path> matches; // Temporary storage for matched or listed files
+            
+            try {
+                file::PathArray pathArray(text);
+
+                if ((file::Path(pathArray.source()).is_folder() && file::Path(_pathArrayCopy.source()) == file::Path(pathArray.source()))
+                    || (not file::Path(pathArray.source()).is_folder()
+                        && not file::Path(_pathArrayCopy.source()).is_folder()
+                        && file::Path(pathArray.source()).remove_filename() == file::Path(_pathArrayCopy.source()).remove_filename()))
+                {
+                    print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
+                    _pathArrayCopy.set_source(pathArray.source());
+                    return files;
+                }
+
+                if (utils::endsWith(text, file::Path::os_sep())) {
+                    // User is navigating into a folder
+                    matches = pathArray.get_paths();
+                    if (not pathArray.matched_patterns()) {
+                        if (matches.empty() || matches.front().is_folder()) {
+                            auto folder = matches.empty() ? file::Path("/") : matches.front();
+                            auto files = folder.find_files();
+                            matches = { files.begin(), files.end() };
+                        }
+                    }
+
+                }
+                else {
+                    file::Path p(text);
+                    // Handle wildcard matching or parent folder display
+                    if (pathArray.matched_patterns()) {
+                        // If wildcards are present, filter based on them
+                        matches = pathArray.get_paths();
+                    }
+                    else if (p.exists() && p.is_regular())
+                    {
+                        matches = pathArray.get_paths();
+                    }
+                    else if (p.exists() && p.is_folder()) {
+                        auto files = p.find_files();
+                        matches = { files.begin(), files.end() };
+                    }
+                    else {
+                        // If a separator was deleted, show parent folder contents
+                        auto parentPath = p.remove_filename();
+                        auto parentFiles = parentPath.find_files();
+                        matches = { parentFiles.begin(), parentFiles.end() };
+                        //matches = pathArray.get_paths();
+                    }
+                }
+
+                //print("items for ", text, " = ", matches, " from ", pathArray);
+                _pathArrayCopy = std::move(pathArray);
+            }
+            catch (...) {
+                FormatExcept("Cannot parse ", text, " as PathArray.");
+            }
+
+            for (auto& m : matches)
+                m.is_folder(); // cache is_folder
+
+            if (ptr->stage()) {
+                std::unique_lock guard(ptr->stage()->lock());
+                ptr->set_content_changed(true);
+                ptr->set_dirty();
+                //print("Returning + setting dirty for ", text);
+                return matches;
+            }
+            //print("Returning for ", text);
+            return matches;
+        });
+
+        if (_future.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready) {
+            asyncUpdateItems();
+        }
+    }
 }
 
 void LabeledPathArray::update() {
     // Refresh dropdown items
     // ... other update logic
+    if (_dropdown->selected())
+        return;
+
+    if (_ref.value<file::PathArray>().source() != _dropdown->text()) {
+        updateDropdownItems();
+    }
 }
 
 }

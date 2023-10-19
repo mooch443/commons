@@ -1,11 +1,13 @@
 #include "Path.h"
 #include <cstdlib>
 #if WIN32 && !defined(__EMSCRIPTEN__)
-#include <misc/dirent.h>
+#include <direct.h>
+#define PATH_BUF_SIZE MAX_PATH
 #define OS_SEP '\\'
 #define NOT_OS_SEP '/'
 #else//if !defined(__EMSCRIPTEN__)
 #include <dirent.h>
+#define PATH_BUF_SIZE PATH_MAX
 #define OS_SEP '/'
 #define NOT_OS_SEP '\\'
 #endif
@@ -13,10 +15,6 @@
 #if defined(__EMSCRIPTEN__)
 #define OS_SEP '/'
 #define NOT_OS_SEP '\\'
-#endif
-
-#if defined(WIN32)
-#include <direct.h>
 #endif
 
 #include <errno.h>
@@ -135,6 +133,21 @@ Path Path::absolute() const {
 
 #endif
     
+    void Path::Stat::update() {
+        if(assigned_at == 0u)
+            assigned_at = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+
+    bool Path::Stat::too_old() {
+        /*if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - assigned_at.get() > std::chrono::seconds(60).count()) {
+            assigned_at = 0u;
+            exists.reset();
+            is_folder.reset();
+            return true;
+        }*/
+        return false;
+    }
+
     Path::Path(const std::string& s)
         : _str(s)
     {
@@ -215,7 +228,13 @@ Path Path::absolute() const {
     }
 
     bool Path::exists() const {
-        return file_exists(_str);
+        if (_stat_cache.exists.has_value())
+            return _stat_cache.exists.value();
+
+        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 100)));
+        _stat_cache.exists = file_exists(_str);
+        _stat_cache.assigned_at = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        return _stat_cache.exists.value();
     }
 
     std::vector<char> Path::retrieve_data() const {
@@ -289,12 +308,12 @@ Path Path::absolute() const {
     }
 
     file::Path cwd() {
-        char buffer[PATH_MAX];
+        char buffer[PATH_BUF_SIZE];
         std::string cwd;
 #ifdef WIN32
-        if(_getcwd(buffer, PATH_MAX) != 0) {
+        if(_getcwd(buffer, PATH_BUF_SIZE) != 0) {
 #else
-        if(getcwd(buffer, PATH_MAX) != 0) {
+        if(getcwd(buffer, PATH_BUF_SIZE) != 0) {
 #endif
             cwd = buffer;
         }
@@ -408,31 +427,58 @@ Path Path::absolute() const {
     }
     
     bool Path::is_folder() const {
+        if (_stat_cache.is_folder.has_value() && not _stat_cache.too_old()) {
+            return _stat_cache.is_folder.value();
+        }
+
+        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 100)));
+
+        _stat_cache.is_folder = false;
+
 #if WIN32 && !defined(__EMSCRIPTEN__)
         DWORD ftyp = GetFileAttributesA(str().c_str());
-        if (ftyp == INVALID_FILE_ATTRIBUTES)
+        /*if (ftyp == INVALID_FILE_ATTRIBUTES) {
             return false;  //something is wrong with your path!
-
-        if (ftyp & FILE_ATTRIBUTE_DIRECTORY)
-            return true;   // this is a directory!
-
-        return false;
+        }*/
+        if (ftyp & FILE_ATTRIBUTE_DIRECTORY) {
+            _stat_cache.is_folder = true;
+        }
 //#elif defined(__EMSCRIPTEN__)
- //       //!TODO: [EMSCRIPTEN]
- //       return false;
+    //       //!TODO: [EMSCRIPTEN]
+    //       return false;
 #else
         struct stat path_stat;
-        if(stat(empty() ? "/" : str().c_str(), &path_stat) != 0)
-            return false;
-        return S_ISDIR(path_stat.st_mode);
+        if (stat(empty() ? "/" : str().c_str(), &path_stat) != 0) {
+            // does not exist
+        } else
+            _stat_cache.is_folder = S_ISDIR(path_stat.st_mode);
 #endif
+        _stat_cache.update();
+        return _stat_cache.is_folder.value();
+
     }
     
     bool Path::is_regular() const {
+        if (_stat_cache.is_regular.has_value() && not _stat_cache.too_old()) {
+            return _stat_cache.is_regular.value();
+        }
+
+        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 100))); 
+
+        _stat_cache.is_regular = false;
+#if defined(_WIN32)
+        DWORD dwAttrib = GetFileAttributes(str().c_str());
+        if (dwAttrib != INVALID_FILE_ATTRIBUTES)
+            _stat_cache.is_regular = (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) == 0;
+#else
         struct stat path_stat;
-        if(stat(str().c_str(), &path_stat) != 0)
-            return false;
-        return S_ISREG(path_stat.st_mode);
+        if (stat(str().c_str(), &path_stat) != 0) {
+            // does not exist
+        }
+        else _stat_cache.is_regular = S_ISREG(path_stat.st_mode);
+#endif
+        _stat_cache.update();
+        return _stat_cache.is_regular.value();
     }
     
     bool Path::delete_file() const {
@@ -489,34 +535,54 @@ Path Path::absolute() const {
         }
     
     std::set<Path> Path::find_files(const std::string& filter_extension) const {
-/*#if defined(__EMSCRIPTEN__)
-        //!TODO: [EMSCRIPTEN]
-        throw U_EXCEPTION("Cannot iterate folders in Emscripten.");
-#else*/
-        if(!is_folder())
-            throw U_EXCEPTION("The path ",str()," is not a folder and can not be iterated on.");
-        if(!empty() && !exists())
-            throw U_EXCEPTION("The path ",str()," does not exist.");
-        
+        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 500)));
+
+        if (not is_folder())
+            throw U_EXCEPTION("The path " + str() + " is not a folder and cannot be iterated on.");
+        if (not empty() && not exists())
+            throw U_EXCEPTION("The path " + str() + " does not exist.");
+
         std::set<Path> result;
-        DIR *dir;
-        struct dirent *ent;
-        if ((dir = opendir (empty() ? "/" : str().c_str())) != NULL) {
-            while ((ent = readdir (dir)) != NULL) {
-                std::string file(ent->d_name);
-                if(file == "." || file == "..")
-                    continue;
-                
-                if(ent->d_type & DT_DIR || valid_extension(file::Path(ent->d_name), filter_extension))
-                    result.insert(*this / ent->d_name);
+
+    #if defined(_WIN32)
+        WIN32_FIND_DATA findFileData;
+        auto str = this->str() + "\\*";
+        HANDLE hFind = FindFirstFile(str.c_str(), &findFileData);
+
+        if (hFind == INVALID_HANDLE_VALUE) {
+            throw U_EXCEPTION("Folder " + str + " exists but cannot be read.");
+        }
+        else {
+            do {
+                const std::string file = findFileData.cFileName;
+                if (file != "." && file != "..") {
+                    // Assume valid_extension is some function to validate file extensions
+                    if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY || valid_extension(file, filter_extension)) {
+                        result.insert(*this / file);
+                    }
+                }
+            } while (FindNextFile(hFind, &findFileData) != 0);
+            FindClose(hFind);
+        }
+    #else
+        DIR* dir;
+        struct dirent* ent;
+        if ((dir = opendir(empty() ? "/" : str().c_str())) != NULL) {
+            while ((ent = readdir(dir)) != NULL) {
+                const std::string file = ent->d_name;
+                if (file != "." && file != "..") {
+                    if (ent->d_type & DT_DIR || valid_extension(file, filter_extension)) {
+                        result.insert(*this / file);
+                    }
+                }
             }
-            closedir (dir);
-            
-        } else
-            throw U_EXCEPTION("Folder ",str()," exists but cannot be read.");
-        
+            closedir(dir);
+        }
+        else {
+            throw U_EXCEPTION("Folder " + str() + " exists but cannot be read.");
+        }
+    #endif
         return result;
-//#endif
     }
 
     Path Path::replace_extension(std::string_view ext) const {

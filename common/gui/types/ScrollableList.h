@@ -449,7 +449,9 @@ namespace gui {
                     
                     if constexpr (has_color_function<T>) {
                         if (item.value().color() != Transparent)
-                            _texts.at(idx)->set_text_color(item.value().color());
+                            _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
+                        else
+                            _texts.at(idx)->set_text_color(_text_color);
                     }
 
                     if constexpr (has_font_function<T>) {

@@ -93,7 +93,7 @@ void StaticText::set_default_font(const Font& font) {
 #define yet
     
     void StaticText::update() {
-        if(_content_changed && not _begun && not _content_changed_while_updating) {
+        if(_content_changed && not _begun /* && not _content_changed_while_updating*/) {
             _content_changed = false;
             
             begin();
@@ -155,6 +155,8 @@ void StaticText::set_default_font(const Font& font) {
                                : Transparent);
             
             end();
+
+            set_content_changed(false);
         }
     }
 
