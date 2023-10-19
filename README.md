@@ -72,6 +72,7 @@ int main(int argc, char**argv) {
     for(size_t i = 0; i<3; ++i) {
         sprite::Map tmp;
         tmp["name"] = std::string("object"+Meta::toStr(i));
+        tmp["detail"] = std::string("detail");
         tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
         tmp["pos"] = Vec2(100, 150+i*50);
         tmp["size"] = Size2(25, 25);
