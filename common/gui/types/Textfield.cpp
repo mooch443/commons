@@ -92,7 +92,7 @@ void Textfield::init() {
                     auto root = q.front();
                     q.pop_front();
                     
-                    print("* searching ", (uint64_t)root, " name=", root->name());
+                    //print("* searching ", (uint64_t)root, " name=", root->name());
                     
                     for(auto c : root->children()) {
                         if(c->type() == Type::SINGLETON)
@@ -111,12 +111,12 @@ void Textfield::init() {
                     }
                 }
                 
-                print("* searching for ", (uint64_t)this);
+                //print("* searching for ", (uint64_t)this);
                 std::vector<uint64_t> ptrs;
                 for(auto t : textfields) {
                     ptrs.push_back((uint64_t)t);
                 }
-                print("  all textfields: ", ptrs);
+                //print("  all textfields: ", ptrs);
                 
                 if(index.has_value()) {
                     if(textfields.size() >= index.value() && index.value() > 0) {
