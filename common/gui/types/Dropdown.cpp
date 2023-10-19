@@ -152,7 +152,8 @@ void Dropdown::init() {
             
             //if(stage())
             //    stage()->do_hover(NULL);
-            _set_open(false);
+            if(_closes_after_select)
+                _set_open(false);
             _list->set_last_hovered_item(-1);
         });
     }

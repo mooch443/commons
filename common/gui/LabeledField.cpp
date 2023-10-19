@@ -368,10 +368,12 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
                     change_folder(path);
                     _path = path;
                 }
+                
+                _dropdown->select_textfield();
+                _dropdown->set_opened(true);
+            } else {
+                _dropdown->set_opened(false);
             }
-            
-            _dropdown->select_textfield();
-            _dropdown->set_opened(false);
             //if(_dropdown->stage())
             //    _dropdown->stage()->select(nullptr);
             
@@ -402,6 +404,14 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
             _ref.get() = path;
     });
     
+    _dropdown->set(Textfield::OnEnter_t{
+        [list = _dropdown->list().get()](){
+            if(!list->items().empty()) {
+                list->select_highlighted_item();
+            }
+        }
+    });
+    
     
     if(path.is_folder())
         change_folder(path);
@@ -415,7 +425,7 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
 }
 
 void LabeledPath::change_folder(file::Path p) {
-    if(_folder == p)
+    if(_folder.has_value() && _folder.value() == p)
         return;
     
     _folder = p;

@@ -233,7 +233,7 @@ struct LabeledPath : public LabeledField {
     std::vector<Dropdown::TextItem> _search_items;
     std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
     file::Path _path;
-    file::Path _folder;
+    std::optional<file::Path> _folder;
     std::function<bool(file::Path)> _validity;
     
     LabeledPath(std::string name, const std::string& desc, file::Path path);
