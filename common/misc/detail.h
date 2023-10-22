@@ -612,7 +612,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     };
     
     //! Escapes html reserved characters in a string
-    inline std::string escape_html(const std::string& data) {
+    inline std::string escape_html(const std::string_view& data) {
         std::string buffer;
         buffer.reserve(size_t(data.size()*1.1f));
         for(size_t pos = 0; pos != data.size(); ++pos) {

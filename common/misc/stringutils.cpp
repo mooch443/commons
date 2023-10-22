@@ -176,9 +176,51 @@ namespace utils {
         return output;
     }
 
+template <typename Str>
+std::vector<std::basic_string_view<typename Str::value_type>>
+_split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = false)
+{
+    using CharT = typename Str::value_type;
+    std::basic_string_view<CharT> sv(s);
+    std::vector<std::basic_string_view<CharT>> ret;
+    
+    auto start = sv.begin();
+    auto end = sv.end();
+    while (start != end) {
+        auto pos = std::find(start, end, c);
+        auto len = pos - start;
+        
+        if (trim) {
+            while (len > 0 and std::isspace(*(start + len - 1))) {
+                len--;
+            }
+            while (len > 0 and std::isspace(*start)) {
+                start++;
+                len--;
+            }
+        }
+        
+        if (len > 0 or not skip_empty) {
+            ret.emplace_back(start, len);
+        }
+        
+        start = pos;
+        if (start != end) {
+            start++;
+        }
+    }
+    
+    if (not skip_empty and (end == sv.begin() or *(end - 1) == c)) {
+        ret.emplace_back();
+    }
+
+    return ret;
+}
+
     template <typename Str>
     std::vector<Str> _split(Str const& s, char c, bool skip_empty = false, bool trim = false) {
         std::vector<Str> ret;
+        ret.reserve(2);
         std::basic_string_view<typename Str::value_type> sv(s);
         auto start = sv.begin();
         auto end = sv.end();
@@ -208,12 +250,21 @@ namespace utils {
         return ret;
     }
 
+    std::vector<std::string_view> split(std::string_view const& s, char c, bool skip_empty, bool trim) {
+        return _split_with_reserve<std::string_view>(s, c, skip_empty, trim);
+    }
     std::vector<std::string> split(std::string const& s, char c, bool skip_empty, bool trim) {
         return _split<std::string>(s, c, skip_empty, trim);
+    }
+    std::vector<std::basic_string_view<typename std::string::value_type>> split(std::string& s, char c, bool skip_empty, bool trim) {
+        return _split_with_reserve<std::string>(s, c, skip_empty, trim);
     }
 
     std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty, bool trim) {
         return _split<std::wstring>(s, c, skip_empty, trim);
+    }
+    std::vector<std::basic_string_view<typename std::wstring::value_type>> split(std::wstring& s, char c, bool skip_empty, bool trim) {
+        return _split_with_reserve<std::wstring>(s, c, skip_empty, trim);
     }
 
     std::string read_file(const std::string& filename) {

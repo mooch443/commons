@@ -36,15 +36,15 @@
         [ 
           [{"type": "text", "text": "Entry 1"}], 
           [{"type": "stext", 
-          "text": "patharray={#global:patharray}", 
-          "max_size":[500,50], 
-          "fade_out":0.5,
-          "font": { "size": 0.5 }
+            "text": "{add} {path}", 
+            "max_size":[500,50], 
+            "fade_out":0.5,
+            "font": { "size": 0.5 }
           }] 
         ],
         [ 
-          [{"type": "text", "text": "region={global:region_model}"}], 
-          [{"type": "text", "text": "app={global:app_name}"}]
+          [{"type": "text", "text": "region={global.region_model}"}], 
+          [{"type": "text", "text": "app={global.app_name}"}]
         ],
         [
           [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
@@ -63,8 +63,8 @@
         "line":[255,0,0,125],
         "font":{ "size":0.75, "align":"center" },
         "template": {
-            "text":"{i:name}",
-            "detail":"{i:detail}",
+            "text":"{i.name}",
+            "detail":"{i.detail}",
             "action":"open_recent"
         }
       }
@@ -79,8 +79,8 @@
         "var": "list_var", 
         "do": {
           "type": "stext",
-          "text": "{i:name} {i:color}", 
-          "color":"{i:color}"
+          "text": "{i.name} {i.color}", 
+          "color":"{i.color}"
         }
       }
     ]}

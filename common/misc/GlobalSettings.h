@@ -34,7 +34,7 @@ namespace cmn {
     class GlobalSettings {
     public:
         typedef std::unordered_map<std::string, std::string> docs_map_t;
-        typedef std::unordered_map<std::string, AccessLevel> user_access_map_t;
+        typedef std::unordered_map<std::string, AccessLevel, MultiStringHash, MultiStringEqual> user_access_map_t;
         
     private:
         
@@ -94,7 +94,7 @@ namespace cmn {
         
         //! Returns true if this key may be modified by the user.
         static bool has_access(const std::string& name, AccessLevel level);
-        static AccessLevel access_level(const std::string& name);
+        static AccessLevel access_level(const std::string_view& name);
         static void set_access_level(const std::string& name, AccessLevel access_level);
         
         static user_access_map_t& access_levels();
@@ -102,7 +102,18 @@ namespace cmn {
         /**
          * @param name
          */
-        static sprite::Reference get(const std::string& name);
+        static sprite::Reference _get(const char* name);
+        
+        template<typename T>
+            requires std::is_same_v<std::remove_reference_t<T>, const char*>
+                        || std::is_lvalue_reference_v<T&&>
+                        || std::is_array_v<std::remove_reference_t<T>>
+        static sprite::Reference get(T&& name) {
+            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*> || std::is_array_v<std::remove_reference_t<T>>)
+                return _get(name);
+            else
+                return _get(name.c_str());
+        }
         
         /**
          * Retrieves documentation for a given name.

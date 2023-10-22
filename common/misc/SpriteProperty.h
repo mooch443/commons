@@ -80,7 +80,7 @@ namespace cmn {
             GETTER(std::function<std::vector<std::string>()>, enum_values)
             GETTER(std::function<size_t()>, enum_index)
             
-            GETTER_PTR(Map*, map)
+            GETTER_SETTER_PTR_I(Map*, map, nullptr)
             
         public:
             PropertyType(Map *map)
@@ -93,7 +93,7 @@ namespace cmn {
                 _map(map)
             { }
             
-            PropertyType(Map *map, const std::string& name)
+            PropertyType(Map *map, const std::string_view& name)
                 : _name(name), _valid(true), _is_array(false), _is_enum(false),
                 _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
                 _type_name([](){return "unknown";}),
@@ -221,8 +221,8 @@ namespace cmn {
                 init();
             }
             
-            Property(Map *map, const std::string& name, const ValueType& v = ValueType())
-            : PropertyType(map, name), _value(v)
+            Property(Map *map, const std::string_view& name, const ValueType& v = ValueType())
+                : PropertyType(map, name), _value(v)
             {
                 init();
             }
@@ -231,11 +231,7 @@ namespace cmn {
             
             void init() {
                 _set_value_from_string = [this](const std::string& str) {
-                    if constexpr(_clean_same<ValueType, std::string>
-                                 || _clean_same<ValueType, file::Path>)
-                        *this = Meta::fromStr<ValueType>(str);
-                    else
-                        *this = Meta::fromStr<ValueType>(str);
+                    *this = Meta::fromStr<ValueType>(str);
                 };
                 
                 _type_name = [](){ return Meta::name<ValueType>(); };

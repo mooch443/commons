@@ -107,8 +107,8 @@ namespace gui {
         
     protected:
         using Entangled::auto_size;
-        static std::vector<Drawable*> fetch_children(Drawable* drawable);
-        std::vector<Drawable*> fetch_children();
+        static void _apply_to_children(Drawable* ptr, const std::function<void(Drawable*)>&);
+        void apply_to_children(const std::function<void(Drawable*)>&);
     };
 
     class PlaceinLayout : public Layout {

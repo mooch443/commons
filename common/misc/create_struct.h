@@ -743,7 +743,7 @@ public: \
             cmn::GlobalSettings::map().register_callback(#NAM + std::to_string((uint64_t)&flag), NAM :: variable_changed ); \
             for(auto &n : NAM :: names()) \
                 if(cmn::GlobalSettings::map().has(n)) \
-                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n).get()); \
+                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n.c_str()).get()); \
                 else\
                     FormatWarning("Cannot find parameter ", n, " in global settings."); \
         }); \

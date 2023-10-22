@@ -417,12 +417,12 @@ int main(int argc, char**argv) {
         tmp["px"] = 100;
         _data.push_back(std::move(tmp));
         
-        fishes.emplace_back(new Variable([i, &_data](std::string) -> sprite::Map& {
+        fishes.emplace_back(new Variable([i, &_data](VarProps) -> sprite::Map& {
             return _data[i];
         }));
     }
     
-    ScrollableList<DetailItem> list(Bounds(200,200,300,400));
+    ScrollableList<DetailItem> list(Box(200,200,300,400));
     list.set_items(std::vector<DetailItem>{
         { "<b>Title</b>", "detail" },
         { "Title2", "detail2" },
@@ -485,25 +485,25 @@ int main(int argc, char**argv) {
                     .variables = {
                         {
                             "list_var",
-                            std::unique_ptr<VarBase_t>(new Variable([](std::string) -> std::vector<std::shared_ptr<VarBase_t>>& {
+                            std::unique_ptr<VarBase_t>(new Variable([](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& {
                                 return fishes;
                             }))
                         },
                         {
                             "isFalse",
-                            std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                            std::unique_ptr<VarBase_t>(new Variable([](VarProps){
                                 return false;
                             }))
                         },
                         {
                             "isTrue",
-                            std::unique_ptr<VarBase_t>(new Variable([](std::string){
+                            std::unique_ptr<VarBase_t>(new Variable([](VarProps){
                                 return true;
                             }))
                         },
                         {
                             "global",
-                            std::unique_ptr<VarBase_t>(new Variable([](std::string) -> sprite::Map& {
+                            std::unique_ptr<VarBase_t>(new Variable([](VarProps) -> sprite::Map& {
                                 return GlobalSettings::map();
                             }))
                         }

@@ -19,36 +19,229 @@ namespace dyn {
 
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
-std::string extractControls(std::string& variable) {
-    std::string controls;
+Action Action::fromStr(std::string str) {
+    std::string trimmedStr = str;
+
+    // If the entire string is enclosed within {}, remove them
+    if (trimmedStr.front() == '{' and trimmedStr.back() == '}') {
+        trimmedStr = trimmedStr.substr(1, trimmedStr.size() - 2);
+    }
+    
+    Action action;
+    std::size_t pos = 0;
+
+    // Function to skip over quoted strings, so they don't interfere with our parsing
+    auto skipQuoted = [&trimmedStr, &pos](char quoteChar) {
+        pos++; // Skip the opening quote
+        while (pos < trimmedStr.size() and (trimmedStr[pos] not_eq quoteChar or trimmedStr[pos-1] == '\\')) {
+            pos++;
+        }
+        pos++; // Skip the closing quote
+    };
+
+    // Extract the name first
+    while (pos < trimmedStr.size() and trimmedStr[pos] not_eq ':') {
+        if (trimmedStr[pos] == '\'' or trimmedStr[pos] == '\"') {
+            skipQuoted(trimmedStr[pos]);
+        } else {
+            pos++;
+        }
+    }
+
+    action.name = trimmedStr.substr(0, pos);
+    
+    // Now extract parameters
+    std::string token;
+    bool inQuote = false;
+    char quoteChar = '\0';
+    pos++; // Skip the first ':'
+    
+    for (; pos < trimmedStr.size(); pos++) {
+        char c = trimmedStr[pos];
+        
+        if (c == ':' and not inQuote) {
+            if (not token.empty()) {
+                action.parameters.push_back(token);
+            }
+            token.clear();
+        } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
+            inQuote = not inQuote;
+            token += c;  // Keep the quote as part of the parameter
+            if (inQuote) {
+                quoteChar = c;
+            }
+        } else {
+            if (c == '\\' and (pos + 1 < trimmedStr.size())) {
+                char nextChar = trimmedStr[pos + 1];
+                if (nextChar == ':' or nextChar == '\'' or nextChar == '\"') {
+                    // Skip the backslash
+                    pos++;
+                    c = nextChar;
+                }
+            }
+            token += c;
+        }
+    }
+
+    if (inQuote) {
+        throw std::invalid_argument("Invalid format: Missing closing quote");
+    }
+    
+    if (not token.empty()) {
+        action.parameters.push_back(token);
+    }
+    
+    return action;
+}
+
+std::string Action::toStr() const {
+    return "Action<"+name+" parms="+Meta::toStr(parameters)+">";
+}
+
+std::string VarProps::toStr() const {
+    return "VarProps<"+name+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";
+}
+
+VarProps extractControls(const std::string& variable, const Context& context) {
+    auto action = Action::fromStr(variable);
+    
+    VarProps props{
+        .name = variable
+    };
+    
     std::size_t controlsSize = 0;
-    for (char c : variable) {
-        if (std::isalnum(c) || c == '_' || c == '-' || c == ':' || c == ' ') {
+    for (char c : action.name) {
+        if(c == '#' || c == '.') {
+            if (c == '#') {
+                props.html = true;
+            }
+            else if (c == '.') {
+                props.optional = true;
+            }
+            controlsSize++;
+        } else {
+            // Once we hit a character that's not a control character,
+            // we break out of the loop.
             break;
         }
-        controls += c;
-        controlsSize++;
     }
 
-    if (controlsSize > 0) {
-        variable = variable.substr(controlsSize);
+    // Parsing the name and sub-variables, omitting the controls
+    props.subs = utils::split(action.name.substr(controlsSize), '.');
+    
+    // Assigning the action name without the control characters.
+    if (not props.subs.empty()) {
+        props.name = props.subs.front();
+        props.subs.erase(props.subs.begin());
+    } else {
+        throw InvalidArgumentException("No variables found: ", action.name);
     }
 
-    return controls;
+    props.parameters = std::move(action.parameters);
+    for(auto &p : props.parameters) {
+        // parse parameters here
+        // if the parameter seems to be a string (quotes '"), use parse_text(text, context) function to parse it
+        // if the parameter seems to be a variable, it needs to be resolved:
+        p = resolve_variable(p, context, [](const VarBase_t& var, const VarProps& p) {
+            //print("Resolving variable ", p, " => ", var.value_string(p));
+            return var.value_string(p);
+        }, [p]() {
+            // error
+            //print("Error resolving variable ",p," which was ", optional ? "optional" : "not optional");
+            return p;
+        });
+    }
+    
+    return props;
 }
 
-// New function to handle the regex related work
-std::string regExtractControls(std::string& variable) {
-    std::regex rgx("[^a-zA-Z0-9_\\-: ]+");
-    std::smatch match;
-    std::string controls;
-    if (std::regex_search(variable, match, rgx)) {
-        controls = match[0].str();
-        variable = variable.substr(controls.size());
-    }
-    return controls;
+bool Context::has(const std::string & name) const noexcept {
+    if(variables.contains(name))
+        return true;
+    
+    init();
+    return system_variables.contains(name);
 }
 
+template<typename T>
+T map_vectors(const VarProps& props, auto&& apply) {
+    if(props.parameters.size() < 2) {
+        throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
+    }
+    
+    T A, B;
+    
+    try {
+        auto& a = props.parameters.front();
+        auto& b = props.parameters.back();
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<float>(a));
+            B = T(Meta::fromStr<float>(b));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<float>(a));
+            
+            if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
+                B = Meta::fromStr<T>(b);
+            else
+                B = T(Meta::fromStr<float>(b));
+        }
+
+    } catch(const std::exception& ex) {
+        FormatExcept("Exception in vectorAdd: ", ex.what());
+    }
+    
+    return apply(A, B);
+}
+
+void Context::init() const {
+    if(system_variables.empty())
+        system_variables = {
+            {   "add",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
+                    return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
+                }))
+            },
+            {   "addVector",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
+                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A+B;});
+                }))
+            },
+            {   "minVector",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
+                    return map_vectors<Vec2>(props, [](auto& A, auto& B) {
+                        return cmn::min(A, B);
+                    });
+                }))
+            },
+            {   "addSize",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
+                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A+B;});
+                }))
+            },
+            {   "global",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps) -> sprite::Map& {
+                    return GlobalSettings::map();
+                }))
+            }
+        };
+    
+}
+
+std::shared_ptr<VarBase_t> Context::variable(const std::string & name) const {
+    if(variables.contains(name))
+        return variables.at(name);
+    
+    init();
+    if(system_variables.contains(name))
+        return system_variables.at(name);
+    
+    throw InvalidArgumentException("Cannot find key ", name, " in variables.");
+}
 namespace Modules {
 std::unordered_map<std::string, Module> mods;
 
@@ -181,12 +374,14 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 if(inside == 0) {
                     output += resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
-                            std::string ret = variable.value_string(modifiers.sub);
-                            //print(word, " resolves to ", ret);
+                            std::string ret = variable.value_string(modifiers);
+                            //auto str = modifiers.toStr();
+                            //print(str.c_str(), " resolves to ", ret);
                             if(modifiers.html)
                                 return settings::htmlify(ret);
                             return ret;
-                        } catch(...) {
+                        } catch(const std::exception& ex) {
+                            FormatExcept("Exception: ", ex.what());
                             return modifiers.optional ? "" : "null";
                         }
                     }, [word](bool optional) -> std::string {
@@ -411,10 +606,10 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr
 {
     if(auto it = state.lists.find(hash); it != state.lists.end()) {
         ListContents &obj = it->second;
-        if(context.variables.contains(obj.variable)) {
-            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(context.has(obj.variable)) {
+            if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
                 
-                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
+                auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
                 
                 IndexScopeHandler handler{state._current_index};
                 //if(vector != obj.cache) {
@@ -434,16 +629,18 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         item.set_detail(parse_text(item_template["detail"].get<std::string>(), context));
                     }
                     if(item_template.contains("action") && item_template["action"].is_string()) {
-                        auto action = parse_text(item_template["action"].get<std::string>(), context);
+                        auto action = Action::fromStr(parse_text(item_template["action"].get<std::string>(), context));
                         
                         if(not obj.on_select_actions.contains(index)
-                           || std::get<0>(obj.on_select_actions.at(index)) != action)
+                           || std::get<0>(obj.on_select_actions.at(index)) != action.name)
                         {
                             obj.on_select_actions[index] = std::make_tuple(
                                 index, [&gc = gc, ptr = o.get(), index = index, action = action](){
                                     print("Clicked item at ", index, " with action ", action);
-                                    if(gc.actions.contains(action)) {
-                                        gc.actions.at(action)(Meta::toStr(index));
+                                    Action _action = action;
+                                    _action.parameters = { Meta::toStr(index) };
+                                    if(gc.actions.contains(action.name)) {
+                                        gc.actions.at(action.name)(_action);
                                     }
                                 }
                             );
@@ -455,7 +652,7 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr
                 for(auto &v : vector) {
                     tmp.variables["i"] = v;
                     try {
-                        auto &ref = v->value<sprite::Map&>("");
+                        auto &ref = v->value<sprite::Map&>({});
                         auto item = convert_to_item(ref, obj.item, tmp);
                         ptrs.emplace_back(std::move(item));
                         ++index;
@@ -465,19 +662,6 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr
                 }
                 
                 o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
-                    
-                /*} else {
-                    Context tmp = context;
-                    for(size_t i=0; i<obj.cache.size(); ++i) {
-                        tmp.variables["i"] = obj.cache[i];
-                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]->pos(), " with hash ", hash);
-                        //o.to<Layout>()->children()[i]->set_pos(Meta::fromStr<Vec2>(tmp.variables["i"]->value_string("pos")));
-                        auto p = o.to<Layout>()->children().at(i);
-                        if(p)
-                            update_objects(g, p, tmp, *obj.state);
-                        //p->parent()->stage()->print(nullptr);
-                    }
-                }*/
             }
         }
         return true;
@@ -489,10 +673,10 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
 {
     if(auto it = state.loops.find(hash); it != state.loops.end()) {
         auto &obj = it->second;
-        if(context.variables.contains(obj.variable)) {
-            if(context.variables.at(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(context.has(obj.variable)) {
+            if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
                 
-                auto& vector = context.variables.at(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>("");
+                auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
                 
                 IndexScopeHandler handler{state._current_index};
                 if(vector != obj.cache) {
@@ -505,8 +689,6 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         auto ptr = parse_object(obj.child, tmp, *obj.state, context.defaults);
                         update_objects(g, ptr, tmp, *obj.state);
                         ptrs.push_back(ptr);
-                        //print("Creating i", i++," to ", tmp.variables["i"]->value_string("pos"), " for ",ptr->pos(), " with hash ", hash);
-                        //o.to<Layout>()->parent()->stage()->print(nullptr);
                     }
                     
                     o.to<Layout>()->set_children(ptrs);
@@ -515,8 +697,6 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                     Context tmp = context;
                     for(size_t i=0; i<obj.cache.size(); ++i) {
                         tmp.variables["i"] = obj.cache[i];
-                        //print("Setting i", i," to ", tmp.variables["i"]->value_string("pos"), " for ",o.to<Layout>()->children()[i]->pos(), " with hash ", hash);
-                        //o.to<Layout>()->children()[i]->set_pos(Meta::fromStr<Vec2>(tmp.variables["i"]->value_string("pos")));
                         auto p = o.to<Layout>()->children().at(i);
                         if(p)
                             update_objects(g, p, tmp, *obj.state);

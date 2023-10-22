@@ -774,7 +774,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             config.OversampleH = 5;
             config.OversampleV = 5;
 
-            auto load_font = [&](int no, std::string suffix, const file::Path& path, float scale = 1.0) {
+            auto load_font = [&](int no, std::string suffix, const file::Path& path, float scale = 1.0, bool add_all_ranges = false) {
                 config.FontNo = no;
                 if (no > 0)
                     config.MergeMode = false;
@@ -783,7 +783,57 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 print("Loading font...");
                 auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale * scale, &config);
 #else
-                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config);
+                static const ImWchar all_ranges[] = {
+                    // Basic Latin
+                    0x0020, 0x007F,
+
+                    // Cyrillic + Cyrillic Supplement
+                    0x0400, 0x052F,
+                    
+                    0x2190, 0x21FF, // Arrows
+
+                    // General Punctuation
+                    0x2000, 0x206F,
+
+                    // Superscripts and Subscripts
+                    0x2070, 0x209F,
+
+                    // Currency Symbols
+                    0x20A0, 0x20CF,
+
+                    // CJK Radicals Supplement
+                    0x2E80, 0x2EFF,
+
+                    // CJK Symbols and Punctuation
+                    0x3000, 0x303F,
+
+                    // Hiragana
+                    0x3040, 0x309F,
+
+                    // Katakana
+                    0x30A0, 0x30FF,
+
+                    // CJK Unified Ideographs Extension A
+                    0x3400, 0x4DBF,
+
+                    // CJK Unified Ideographs
+                    0x4E00, 0x9FFF,
+
+                    // Miscellaneous Symbols
+                    0x2600, 0x26FF,
+
+                    0x2700, 0x27BF, // Dingbats
+                    
+                    0x2300, 0x23FF, // Miscellaneous Technical
+
+                    // Play Symbol
+                    0x25B6, 0x25B6,
+
+                    // Sentinel to indicate end of ranges
+                    0xFFFF
+                };
+
+                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config, add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
 #endif
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
@@ -806,9 +856,17 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 mono = file::DataLocation::parse("app", mono);
             }
             if (not mono.add_extension("ttf").exists())
-                FormatExcept("Cannot find file ",mono.str(),"");
+                FormatExcept("Cannot find file ",mono.str());
+            
+            file::Path syms("fonts/NotoSansSymbols2-Regular");
+            if(file::DataLocation::is_registered("app")) {
+                syms = file::DataLocation::parse("app", syms);
+            }
+            if (not syms.add_extension("ttf").exists())
+                FormatExcept("Cannot find file ",syms.str());
             
             _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
+            _fonts[Style::Symbols] = load_font(0, "", syms, 0.95, true);
         }
 
         _platform->post_init();
@@ -1212,6 +1270,12 @@ bool operator!=(const ImVec4& A, const ImVec4& B) {
     return A.w != B.w || A.x != B.x || A.y != B.y || A.z != B.z;
 }
 
+std::string u8string_to_string(const std::u8string& u8str)
+{
+    std::string str(u8str.begin(), u8str.end());
+    return str;
+}
+
 void IMGUIBase::draw_element(const DrawOrder& order) {
     auto list = ImGui::GetForegroundDrawList();
     /*if(order.type == DrawOrder::POP) {
@@ -1398,7 +1462,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                           (ImColor)ptr->color(),
                           ptr->txt().c_str());
             
-            
             break;
         }
             
@@ -1571,11 +1634,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     std::string text;
     if(o->parent() && o->parent()->background() == o) {
         if(dynamic_cast<Entangled*>(o->parent()))
-            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
+            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->z_index());//Meta::toStr(o->parent()->bounds());
         else
-            text = Meta::toStr(*(Drawable*)o->parent());
+            text = Meta::toStr(o->z_index());//Meta::toStr(*(Drawable*)o->parent());
     } else
-        text = Meta::toStr(*o);
+        text = Meta::toStr(o->z_index());//Meta::toStr(*o);
     auto font = _fonts.at(Style::Regular);
     auto _font = Font(0.3, Style::Regular);
     
@@ -1713,26 +1776,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     }
 
     Bounds IMGUIBase::text_bounds(const std::string& text, Drawable* obj, const Font& font) {
-        /*Vec2 scale(1, 1);
-        
-        if(obj) {
-            try {
-                //scale = obj->global_text_scale();
-                //text.setScale(gscale.reciprocal());
-                //text.setCharacterSize(font.size * gscale.x * 25);
-                //font_size = font.size * gscale.x * font_size;
-                
-            } catch(const UtilsException& ex) {
-                FormatWarning("Not initialising scale of (probably StaticText) fully because of a UtilsException.");
-                //text.setCharacterSize(font.size * 25);
-                //text.setScale(1, 1);
-            }
-            
-        } else {
-            //text.setCharacterSize(font.size * 25);
-            //text.setScale(1, 1);
-        }*/
-        
         if(_fonts.empty()) {
             FormatWarning("Trying to retrieve text_bounds before fonts are available.");
             return gui::Base::text_bounds(text, obj, font);

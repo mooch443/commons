@@ -57,13 +57,45 @@ struct DefaultSettings {
     Font font{0.75f};
 };
 
-using VarBase_t = VarBase<std::string>;
+struct VarProps {
+    std::string name;
+    std::vector<std::string> subs;
+    std::vector<std::string> parameters;
+    bool optional{false};
+    bool html{false};
+    
+    std::string first() const { return parameters.empty() ? "" : parameters.front(); }
+    std::string last() const { return parameters.empty() ? "" : parameters.back(); }
+    
+    static VarProps fromStr(std::string);
+    std::string toStr() const;
+    static std::string class_name() { return "VarProps"; }
+    //operator std::string() const { return last(); }
+};
+
+using VarBase_t = VarBase<VarProps>;
 using VarReturn_t = sprite::Reference;
 
+struct Action {
+    std::string name;
+    std::vector<std::string> parameters;
+    
+    static Action fromStr(std::string);
+    std::string toStr() const;
+    static std::string class_name() { return "Action"; }
+};
+
 struct Context {
-    std::unordered_map<std::string, std::function<void(std::string)>> actions;
+    std::unordered_map<std::string, std::function<void(Action)>> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
     DefaultSettings defaults;
+    
+    mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>> system_variables;
+    [[nodiscard]] std::shared_ptr<VarBase_t> variable(const std::string&) const;
+    [[nodiscard]] bool has(const std::string&) const noexcept;
+    
+private:
+    void init() const;
 };
 
 struct State;
@@ -195,46 +227,16 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 
 std::string parse_text(const std::string& pattern, const Context& context);
 
-struct VarProps {
-    std::vector<std::string> parts;
-    std::string sub;
-    bool optional{false};
-    bool html{false};
-};
 
-std::string extractControls(std::string& variable);
-std::string regExtractControls(std::string& variable);
+VarProps extractControls(const std::string& variable, const Context& context);
 
 template<typename ApplyF, typename ErrorF>
 inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
-    auto variable = word;
-    VarProps props;
+    auto props = extractControls(word, context);
     
-    // Call to the separated function
-    std::string controls = extractControls(variable);
-
-    if (controls.find('.') == 0) {
-        // optional variable
-        props.optional = true;
-    }
-    if(controls.find('#') == 0) {
-        props.html = true;
-    }
-    
-    props.parts = utils::split(variable, ':');
-    variable = props.parts.front();
-    
-    std::string modifiers;
-    if(props.parts.size() > 1 && not props.parts.back().empty())
-        modifiers = props.parts.back();
-    props.parts.erase(props.parts.begin());
-    props.sub = modifiers;
-    
-    if(context.variables.contains(variable)) {
-        if constexpr(std::invocable<ApplyF, VarBase_t&, const std::string&>)
-            return apply(*context.variables.at(variable), modifiers);
-        else if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
-            return apply(*context.variables.at(variable), props);
+    if(context.has(props.name)) {
+        if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
+            return apply(*context.variable(props.name), props);
         else
             static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
     }
@@ -257,7 +259,7 @@ T resolve_variable_type(std::string word, const Context& context) {
         word = word.substr(1,word.length()-2);
     }
     
-    return resolve_variable(word, context, [&](const VarBase_t& variable, const std::string& modifiers) -> T
+    return resolve_variable(word, context, [&](const VarBase_t& variable, const VarProps& modifiers) -> T
     {
         if constexpr(std::is_same_v<T, bool>) {
             if(variable.is<bool>()) {
@@ -269,8 +271,11 @@ T resolve_variable_type(std::string word, const Context& context) {
                 auto tmp = variable.value<std::string>(modifiers);
                 return not tmp.empty();
             } else if(variable.is<sprite::Map&>()) {
-                auto& tmp = variable.value<sprite::Map&>("null");
-                auto ref = tmp[modifiers];
+                auto& tmp = variable.value<sprite::Map&>({});
+                if(modifiers.subs.empty())
+                    throw U_EXCEPTION("sprite::Map selector is empty, need subvariable doing ", word,".sub");
+                
+                auto ref = tmp[modifiers.subs.front()];
                 if(not ref.get().valid()) {
                     FormatWarning("Retrieving invalid property (", modifiers, ") from map with keys ", tmp.keys(), ".");
                     return false;
@@ -290,11 +295,15 @@ T resolve_variable_type(std::string word, const Context& context) {
             return variable.value<T>(modifiers);
             
         } else if(variable.is<sprite::Map&>()) {
-            auto& tmp = variable.value<sprite::Map&>("null");
-            auto ref = tmp[modifiers];
-            if(ref.template is_type<T>()) {
-                return ref.get().template value<T>();
-            }
+            auto& tmp = variable.value<sprite::Map&>({});
+            if(not modifiers.subs.empty()) {
+                auto ref = tmp[modifiers.subs.front()];
+                if(ref.template is_type<T>()) {
+                    return ref.get().template value<T>();
+                }
+                
+            } else
+                throw U_EXCEPTION("sprite::Map selector is empty, need subvariable doing ", word,".sub");
             
         } else if(variable.is<VarReturn_t>()) {
             auto tmp = variable.value<VarReturn_t>(modifiers);

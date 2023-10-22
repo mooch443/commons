@@ -158,7 +158,7 @@ namespace gui {
         
     public:
         using Entangled::set;
-        void set(TextClr clr) { _textfield->set(clr); }
+        void set(TextClr clr) { _textfield->set(clr); _list->set(clr); }
         void set(LineClr clr) override { Entangled::set(clr); _textfield->set(clr); }
         void set(FillClr clr) override { Entangled::set(clr); _textfield->set(clr); }
         void set(Font font) { _textfield->set(font); }

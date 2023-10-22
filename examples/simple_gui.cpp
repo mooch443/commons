@@ -29,7 +29,7 @@ int main(int argc, char**argv) {
     static std::vector<std::shared_ptr<VarBase_t>> list;
     std::vector<sprite::Map> _data;
     
-    for(size_t i = 0; i<3; ++i) {
+    for(size_t i = 0; i<300; ++i) {
         sprite::Map tmp;
         tmp["name"] = std::string("object"+Meta::toStr(i));
         tmp["detail"] = std::string("detail");
@@ -39,7 +39,7 @@ int main(int argc, char**argv) {
         _data.push_back(std::move(tmp));
         
         list.emplace_back(new Variable{
-            [i, &_data](std::string) -> sprite::Map& {
+            [i, &_data](VarProps) -> sprite::Map& {
                 return _data[i];
             }
         });
@@ -79,7 +79,7 @@ int main(int argc, char**argv) {
                 .variables = {
                     { "list_var",
                       std::unique_ptr<VarBase_t>(new Variable{
-                         [](std::string)
+                         [](VarProps)
                             -> std::vector<std::shared_ptr<VarBase_t>>&
                          {
                             return list;
@@ -88,15 +88,29 @@ int main(int argc, char**argv) {
                     },
                     { "global", // this gives access to the global settings
                       std::unique_ptr<VarBase_t>(new Variable{
-                        [](std::string) -> sprite::Map& {
+                        [](VarProps) -> sprite::Map& {
                             return GlobalSettings::map();
                         }
                       })
                     },
                     { "isTrue",
                       std::unique_ptr<VarBase_t>(new Variable{
-                        [](std::string) {
+                        [](VarProps) {
                             return true;
+                        }
+                      })
+                    },
+                    { "add",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](VarProps) {
+                            return true;
+                        }
+                      })
+                    },
+                    { "path",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](VarProps) {
+                            return file::Path("Herakles");
                         }
                       })
                     }

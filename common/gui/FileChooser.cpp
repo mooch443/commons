@@ -114,7 +114,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _overall->set_policy(VerticalLayout::CENTER);
     //_overall->set_background(Transparent, Blue);
     
-    _list = std::make_shared<ScrollableList<FileItem>>(Bounds(
+    _list = std::make_shared<ScrollableList<FileItem>>(Box(
         0,
         0, 
       _base.graph()->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0),

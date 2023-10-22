@@ -206,7 +206,7 @@ struct LabeledList : public LabeledField {
 };
 
 class CustomDropdown : public gui::Dropdown {
-    GETTER_SETTER(std::function<void()>, update_callback);
+    GETTER_SETTER(std::function<void()>, update_callback)
 public:
     using gui::Dropdown::Dropdown;
 
@@ -228,6 +228,10 @@ struct LabeledPath : public LabeledField {
         }
     };
     
+    std::mutex _file_mutex;
+    std::future<tl::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
+    std::optional<std::function<file::Path()>> _should_reload;
+    
     gui::derived_ptr<CustomDropdown> _dropdown;
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
@@ -242,9 +246,11 @@ struct LabeledPath : public LabeledField {
         v.push_back(_dropdown);
     }
     void update() override;
-    void update_names();
+    std::vector<Dropdown::TextItem> updated_names(const std::set<file::Path>& paths);
     void change_folder(file::Path);
     Layout::Ptr representative() const override { return _dropdown; }
+    void asyncUpdateItems();
+    void asyncRetrieve(std::function<file::Path()>);
 };
 
 class LabeledPathArray : public LabeledField {

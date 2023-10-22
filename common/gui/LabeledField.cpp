@@ -412,16 +412,106 @@ LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path p
         }
     });
     
-    
-    if(path.is_folder())
-        change_folder(path);
-    else if(path.remove_filename().is_folder())
-        change_folder(path.remove_filename());
+    _dropdown->set_update_callback([this]() { asyncUpdateItems(); });
+    _dropdown->list()->set(Placeholder_t("Loading..."));
     
     _path = path;
     _dropdown->textfield()->set_text(_path.str());
     _dropdown->auto_size({0,0});
     print("Dropdown -> ", _dropdown->bounds());
+    
+    asyncRetrieve([path](){
+        if(path.is_folder())
+            return path;
+        else if(path.remove_filename().is_folder())
+            return path.remove_filename();
+        
+        throw std::invalid_argument("Do nothing.");
+    });
+}
+
+void LabeledPath::asyncUpdateItems() {
+    tl::expected<std::vector<Dropdown::TextItem>, const char*> items;
+    if (_file_retrieval.valid()
+        && _file_retrieval.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
+    {
+        items = _file_retrieval.get();
+    }
+    else
+        return;
+
+    if (_should_reload.has_value()) {
+        auto val = _should_reload.value();
+        _should_reload.reset();
+        asyncRetrieve(val);
+        return;
+    }
+    
+    if(not items) {
+        //FormatWarning("Items did not retrieve successfully: ", items.error());
+        return;
+    }
+    
+    _dropdown->set_items(std::move(items.value()));
+}
+
+void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
+    if(_file_retrieval.valid()) {
+        if(_file_retrieval.wait_for(std::chrono::milliseconds(10)) != std::future_status::ready)
+        {
+            _should_reload = fn;
+            return;
+        }
+        
+        (void)_file_retrieval.get(); // discard
+    }
+    
+    _file_retrieval = std::async(std::launch::async, [this, copy = _files](std::function<file::Path()> fn) -> tl::expected<std::vector<Dropdown::TextItem>, const char*> {
+        try {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            auto p = fn();
+            if(p.is_folder()) {
+                try {
+                    try {
+                        if(not p.empty())
+                            p = p.absolute();
+                    } catch (...) { }
+                    
+                    auto files = p.find_files("");
+                    auto items = updated_names(files);
+                    
+                    {
+                        std::unique_lock guard(_file_mutex);
+                        _files.clear();
+                        _files.insert(files.begin(), files.end());
+                    }
+                    
+                    if(_dropdown->stage()) {
+                        std::unique_lock guard(_dropdown->stage()->lock());
+                        _dropdown->set_content_changed(true);
+                        _dropdown->set_dirty();
+                    }
+                    
+                    return items;
+                    
+                } catch(const UtilsException& ex) {
+                    //_files = copy;
+                    // do nothing...
+                    FormatWarning("Cannot retrieve files for ", p, ": ", ex.what());
+                    return tl::unexpected(ex.what());
+                }
+            }
+        } catch(...) { }
+        
+        return tl::unexpected("");
+    }, fn);
+    
+    if(_file_retrieval.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready) 
+    {
+        asyncUpdateItems();
+    } else {
+        _dropdown->set_items({});
+    }
 }
 
 void LabeledPath::change_folder(file::Path p) {
@@ -429,39 +519,24 @@ void LabeledPath::change_folder(file::Path p) {
         return;
     
     _folder = p;
-    auto copy = _files;
-    
-    if(p.is_folder()) {
-        try {
-            try {
-                if(not p.empty())
-                    p = p.absolute();
-            } catch (...) { }
-            
-            auto files = p.find_files("");
-            _files.clear();
-            _files.insert(files.begin(), files.end());
-            
-        } catch(const UtilsException&) {
-            _files = copy;
-        }
-        update_names();
-    }
+    asyncRetrieve([p]() { return p; });
 }
 
-void LabeledPath::update_names() {
-    _names.clear();
-    _search_items.clear();
-    for(auto &f : _files) {
+std::vector<Dropdown::TextItem> LabeledPath::updated_names(const std::set<file::Path>& path) {
+    std::vector<Dropdown::TextItem> search_items;
+    //_names.clear();
+    //_search_items.clear();
+    for(auto &f : path) {
         if(f.str() == ".." || !utils::beginsWith((std::string)f.filename(), '.')) {
-            _names.push_back(FileItem(f));
-            _search_items.push_back(Dropdown::TextItem(f.str()));
-            _search_items.back().set_display(std::string(file::Path(f.str()).filename()));
+            //_names.push_back(FileItem(f));
+            search_items.push_back(Dropdown::TextItem(f.str()));
+            search_items.back().set_display(std::string(file::Path(f.str()).filename()));
             //print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
         }
     }
     //_list->set_items(_names);
-    _dropdown->set_items(_search_items);
+    //_dropdown->set_items(_search_items);
+    return search_items;
 }
 
 void LabeledPath::update() {

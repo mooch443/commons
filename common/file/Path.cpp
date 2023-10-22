@@ -53,8 +53,15 @@ namespace file {
 
 #ifdef USE_STD_FILESYSTEM
 Path Path::absolute() const {
+    if(_stat_cache.absolute.has_value() && not _stat_cache.too_old()) {
+        return _stat_cache.absolute.value();
+    }
+    
     std::filesystem::path path(_str);
-    return std::filesystem::canonical(std::filesystem::absolute(path)).string();
+    path = std::filesystem::canonical(std::filesystem::absolute(path)).string();
+    _stat_cache.absolute = path.string();
+    _stat_cache.update();
+    return _stat_cache.absolute.value();
 }
 #else
     std::string getCanonicalPath(const std::string& filePath) {

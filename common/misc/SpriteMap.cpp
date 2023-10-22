@@ -1,10 +1,10 @@
 #include "SpriteMap.h"
 
 namespace std {
-size_t hash<cmn::sprite::PNameRef>::operator()(const cmn::sprite::PNameRef& k) const
+/*size_t hash<cmn::sprite::PNameRef>::operator()(const cmn::sprite::PNameRef& k) const
 {
     return std::hash<std::string>{}(k.name());
-}
+}*/
 }
 
 namespace cmn {
@@ -15,6 +15,20 @@ Map::Map() : _do_print(true) {
 
 Map::Map(const Map& other) {
     _props = other._props;
+    _do_print = other._do_print;
+    
+    for(auto &[k, p] : _props)
+        p->set_map(this);
+}
+
+Map::Map(Map&& other) 
+    : _props(std::move(other._props)),
+      _callbacks(std::move(other._callbacks)),
+      _print_key(std::move(other._print_key)),
+      _do_print(std::move(other._do_print))
+{
+    for(auto& [k, p]: _props)
+        p->set_map(this);
 }
 
 void Map::register_callback(const std::string& obj, const callback_func &func) {
@@ -64,26 +78,32 @@ Map::~Map() {
     
     // --------- PNameRef
     
-    LockGuard::LockGuard(Map*map) {
-        obj = std::make_shared<decltype(obj)::element_type>(map->mutex());
+    LockGuard::LockGuard(Map*map) : obj(map->mutex()) {
+        //obj = std::make_unique<decltype(obj)::element_type>(map->mutex());
     }
     LockGuard::~LockGuard() {
     }
     
+    /*PNameRef::PNameRef(const std::string_view& name)
+        : _ref(NULL)
+    {}
+
     PNameRef::PNameRef(const std::string& name)
-    : _nameOnly(name), _ref(NULL)
+        : _ref(NULL)
     {
     }
     
     PNameRef::PNameRef(const std::shared_ptr<PropertyType>& ref)
-    : _nameOnly(std::string()), _ref(ref)
-    {
-    }
+        : _ref(ref)
+    {}
     
     //PNameRef::PNameRef(const PropertyType& ref) : PNameRef(&ref) { }
     
     const std::string& PNameRef::name() const {
-        return _ref ? _ref->name() : _nameOnly;
+        static std::string null;
+        return _ref 
+            ? _ref->name()
+            : null;
     }
     
     bool PNameRef::operator==(const PNameRef& other) const {
@@ -97,13 +117,13 @@ Map::~Map() {
     
     bool PNameRef::operator<(const PNameRef& other) const {
         return name() < other.name();
-    }
+    }*/
     
     
     // -------- REFERENCE
     
-    Reference::Reference(Map& container, PropertyType& type)
-    : Reference(container, type, type.name()) {}
+    //Reference::Reference(Map& container, PropertyType& type)
+    //: Reference(container, type, type.name()) {}
 
     std::string Reference::toStr() const {
         return _type->toStr();

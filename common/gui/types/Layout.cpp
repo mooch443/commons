@@ -146,27 +146,20 @@ namespace gui {
         Entangled::clear_children(); 
     }
 
-    std::vector<Drawable*> Layout::fetch_children(Drawable* drawable) {
-        std::vector<Drawable*> result;
-        if (PlaceinLayout* placein = dynamic_cast<PlaceinLayout*>(drawable)) {
+    void Layout::_apply_to_children(Drawable* ptr, const std::function<void (Drawable *)> & fn) {
+        if (PlaceinLayout* placein = dynamic_cast<PlaceinLayout*>(ptr)) {
             //print("Placein with ", placein->children().size(), " children.");
-            for (auto child : placein->children()) {
-                auto nestedChildren = fetch_children(child);
-                result.insert(result.end(), nestedChildren.begin(), nestedChildren.end());
-            }
+            for (auto child : placein->children())
+                _apply_to_children(child, fn);
+            
         } else {
-            result.push_back(drawable);
+            fn(ptr);
         }
-        return result;
     }
 
-    std::vector<Drawable*> Layout::fetch_children() {
-        std::vector<Drawable*> allChildren;
-        for (auto c : children()) {
-            auto nestedChildren = fetch_children(c);
-            allChildren.insert(allChildren.end(), nestedChildren.begin(), nestedChildren.end());
-        }
-        return allChildren;
+    void Layout::apply_to_children(const std::function<void (Drawable *)> & fn) {
+        for (auto c : children())
+            _apply_to_children(c, fn);
     }
     
     void HorizontalLayout::init()
@@ -179,11 +172,11 @@ namespace gui {
         float max_height = _margins.y + _margins.height;
         
         // Fetch all children, recursively expanding PlaceinLayout objects
-        std::vector<Drawable*> allChildren = fetch_children();
+        //std::vector<Drawable*> allChildren = fetch_children();
         
-        for(auto c : allChildren) {
+        apply_to_children([&](Drawable* c) {
             if(!c)
-                continue;
+                return;
 
             auto _c = c;
             if (c->type() == Type::SINGLETON)
@@ -196,20 +189,13 @@ namespace gui {
             }
 
             c->update_bounds();
-        }
+            
+            max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
+        });
         
-        //if(_policy == CENTER || _policy == BOTTOM)
-        {
-            for(auto c : allChildren) {
-                if(!c)
-                    continue;
-                max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
-            }
-        }
-        
-        for(auto c : allChildren) {
+        apply_to_children([&](Drawable* c) {
             if(!c)
-                continue;
+                return;
             
             x += _margins.x;
 
@@ -224,7 +210,7 @@ namespace gui {
                 c->set_pos(offset + Vec2(x, max_height - _margins.height - local.height));
             
             x += local.width + _margins.width;
-        }
+        });
         
         if(not Size2(x, max(0, max_height)).Equals(size())) {
             set_size(Size2(x, max(0, max_height)));
@@ -249,11 +235,9 @@ namespace gui {
         float y = 0;
         float max_width = _margins.x + _margins.width;
         
-        auto allChildren = fetch_children();
-        
-        for(auto c : allChildren) {
+        apply_to_children([&](Drawable* c) {
             if(!c)
-                continue;
+                return;
 
             auto _c = c;
             if (c->type() == Type::SINGLETON)
@@ -266,19 +250,14 @@ namespace gui {
             }
 
             c->update_bounds();
-        }
-        
-        for(auto c : allChildren) {
-            if(!c)
-                continue;
             
             max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
             assert(not std::isnan(max_width));
-        }
+        });
         
-        for(auto c : allChildren) {
+        apply_to_children([&](Drawable* c) {
             if(!c)
-                continue;
+                return;
             
             y += _margins.y;
             
@@ -293,18 +272,17 @@ namespace gui {
                 c->set_pos(offset + Vec2(max_width - _margins.width - local.width, y));
             
             y += local.height + _margins.height;
-        }
+        });
         
         set_size(Size2(max_width, max(0.f, y)));
     }
 
     void Layout::auto_size() {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
-        auto allChildren = fetch_children();
         
-        for(auto c : allChildren) {
+        apply_to_children([&](Drawable* c){
             if(!c)
-                continue;
+                return;
 
             auto _c = c;
             if (c->type() == Type::SINGLETON)
@@ -319,7 +297,7 @@ namespace gui {
             auto bds = _c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
-        }
+        });
         
         if(mi.x != std::numeric_limits<Float2_t>::max()) {
             ma += Vec2(max(0.f, _margins.width), max(0.f, _margins.height));

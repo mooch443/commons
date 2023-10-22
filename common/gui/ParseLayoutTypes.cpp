@@ -383,12 +383,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
-    std::string action;
+    Action action;
     if(obj.count("action")) {
-        action = obj["action"].get<std::string>();
+        action = Action::fromStr(obj["action"].get<std::string>());
         ptr->on_click([action, context](auto){
-            if(context.actions.contains(action))
-                context.actions.at(action)(action);
+            if(context.actions.contains(action.name))
+                context.actions.at(action.name)(action);
             else
                 print("Unknown Action: ", action);
         });
@@ -405,12 +405,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
     
     auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
     
-    std::string action;
     if(obj.count("action")) {
-        action = obj["action"].get<std::string>();
+        auto action = Action::fromStr(obj["action"].get<std::string>());
         ptr.to<Checkbox>()->on_change([action, context](){
-            if(context.actions.contains(action))
-                context.actions.at(action)(action);
+            if(context.actions.contains(action.name))
+                context.actions.at(action.name)(action);
             else
                 print("Unknown Action: ", action);
         });
@@ -425,12 +424,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
-    std::string action;
     if(obj.count("action")) {
-        action = obj["action"].get<std::string>();
+        auto action = Action::fromStr(obj["action"].get<std::string>());
         ptr.to<Textfield>()->on_enter([action, context](){
-            if(context.actions.contains(action))
-                context.actions.at(action)(action);
+            if(context.actions.contains(action.name))
+                context.actions.at(action.name)(action);
             else
                 print("Unknown Action: ", action);
         });

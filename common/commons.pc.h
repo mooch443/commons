@@ -736,6 +736,38 @@ public:
     }
 };
 
+struct MultiStringHash {
+    using is_transparent = void;  // Enable heterogeneous lookup
+    
+    size_t operator()(const std::string& str) const {
+        return std::hash<std::string>{}(str);
+    }
+
+    size_t operator()(std::string_view strv) const {
+        return std::hash<std::string_view>{}(strv);
+    }
+};
+
+struct MultiStringEqual {
+    using is_transparent = void;  // Enable heterogeneous lookup
+    
+    bool operator()(const std::string& lhs, const std::string& rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(const std::string& lhs, std::string_view rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(std::string_view lhs, const std::string& rhs) const {
+        return lhs == rhs;
+    }
+
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
+        return lhs == rhs;
+    }
+};
+
 
 }
 

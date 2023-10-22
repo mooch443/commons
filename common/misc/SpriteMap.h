@@ -9,7 +9,7 @@ namespace sprite {
     class PropertyType;
     
     struct LockGuard {
-        std::shared_ptr<std::lock_guard<std::mutex>> obj;
+        std::lock_guard<std::mutex> obj;
         LockGuard(Map*);
         ~LockGuard();
     };
@@ -62,13 +62,19 @@ namespace sprite {
     private:
         PropertyType* _type;
         Map* _container;
-        std::string _name;
+        std::string_view _name;
+        
         
     public:
-        Reference(Map& container, PropertyType& type);
-        Reference(Map& container, PropertyType& type, const std::string& name)
-        : _type(&type), _container(&container), _name(name)
-        { }
+        template <typename T,
+            std::enable_if_t<
+                std::is_same_v<T, const char*> ||
+                std::is_lvalue_reference_v<T&&>, int> = 0>
+        Reference(Map& container, PropertyType& type, T&& name)
+            : _type(&type), _container(&container), _name(name) { }
+
+        // Delete the constructor for r-value std::string
+        Reference(Map&, PropertyType&, std::string&&) = delete;
         
         bool operator==(const PropertyType& other) const;
         bool operator==(const Reference& other) const { return operator==(other.get()); }
@@ -124,11 +130,11 @@ namespace sprite {
 
 namespace cmn {
 namespace sprite {
-    struct PNameRef {
+    /*struct PNameRef {
         PNameRef(const std::string& name);
+        PNameRef(const std::string_view& name);
         PNameRef(const std::shared_ptr<PropertyType>& ref);
         
-        std::string _nameOnly;
         std::shared_ptr<PropertyType> _ref;
         
         const std::string& name() const;
@@ -136,17 +142,17 @@ namespace sprite {
         bool operator==(const PNameRef& other) const;
         bool operator==(const std::string& other) const;
         bool operator<(const PNameRef& other) const;
-    };
+    };*/
 }
 }
 
 namespace std
 {
-    template <>
+    /*template <>
     struct hash<cmn::sprite::PNameRef>
     {
         size_t operator()(const cmn::sprite::PNameRef& k) const;
-    };
+    };*/
 }
 
 namespace cmn {
@@ -165,7 +171,7 @@ namespace sprite {
     private:
         
     protected:
-        ska::bytell_hash_map<PNameRef, Store> _props;
+        std::unordered_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
         ska::bytell_hash_map<std::string, callback_func> _callbacks;
         ska::bytell_hash_map<std::string, bool> _print_key;
         
@@ -209,6 +215,7 @@ namespace sprite {
     public:
         Map();
         Map(const Map& other);
+        Map(Map&& other);
         
         ~Map();
         
@@ -224,7 +231,7 @@ namespace sprite {
             
             for(; it0 != other._props.end(); ++it0, ++it1) {
                 if(!(it0->first == it1->first) || !(*it0->second == *it1->second)) {
-                    print(it0->first.name()," != ",it1->first.name()," || ");
+                    print(it0->first," != ",it1->first," || ");
                     return false;
                 }
             }
@@ -235,27 +242,52 @@ namespace sprite {
         void register_callback(const std::string& obj, const callback_func &func);
         void unregister_callback(const std::string& obj);
         
-        Reference operator[](const std::string& name) {
+        template<typename T>
+            requires std::is_same_v<T, const char*>
+                    || std::is_lvalue_reference_v<T&&>
+                    || std::is_array_v<std::remove_reference_t<T>>
+        Reference operator[](T&& name) {
             LockGuard guard(this);
-            auto it = _props.find(name);
-            if(it != _props.end()) {
-                return Reference(*this, *it->second);
+
+            decltype(_props)::const_iterator it;
+
+            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
+                it = _props.find(std::string_view(name));
+            } else if constexpr(std::is_array_v<std::remove_reference_t<T>>) {
+                it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
+            } else {
+                it = _props.find(name);
             }
-            
+
+            if(it != _props.end())
+                return Reference(*this, *it->second, it->first);
+
             return Reference(*this, Property<bool>::InvalidProp, name);
         }
         
-        const ConstReference operator[](const std::string& name) const {
-            auto it = _props.find(name);
-            if(it != _props.end()) {
-                return ConstReference(*this, *it->second);
+        template<typename T>
+            requires std::is_same_v<T, const char*>
+                    || std::is_lvalue_reference_v<T&&>
+                    || std::is_array_v<std::remove_reference_t<T>>
+        ConstReference operator[](T&& name) const {
+            decltype(_props)::const_iterator it;
+
+            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
+                it = _props.find(std::string_view(name));
+            } else if constexpr(std::is_array_v<std::remove_reference_t<T>>) {
+                it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
+            } else {
+                it = _props.find(name);
             }
-            
+
+            if(it != _props.end())
+                return ConstReference(*this, *it->second);
+
             return ConstReference(*this, Property<bool>::InvalidProp);
         }
         
         template<typename T>
-        Property<T>& get(const std::string& name) {
+        Property<T>& get(const std::string_view& name) {
             LockGuard guard(this);
             auto it = _props.find(name);
             if(it != _props.end()) {
@@ -266,7 +298,7 @@ namespace sprite {
         }
         
         template<typename T>
-        Property<T>& get(const std::string& name) const {
+        Property<T>& get(const std::string_view& name) const {
             auto it = _props.find(name);
             if(it != _props.end()) {
                 return (Property<T>&)it->second->toProperty<T>();
@@ -275,18 +307,17 @@ namespace sprite {
             return Property<T>::InvalidProp;
         }
         
-        bool has(const std::string& name) const {
-            auto count = _props.count(name);
-            return count > 0;
+        bool has(const std::string_view& name) const {
+            return _props.contains(name);
         }
         
         template<typename T>
-        bool is_type(const std::string& name, const T&) const {
+        bool is_type(const std::string_view& name, const T&) const {
             return get<T>(name).valid();
         }
         
         template<typename T>
-        bool is_type(const std::string& name) const {
+        bool is_type(const std::string_view& name) const {
             return get<T>(name).valid();
         }
         
@@ -295,7 +326,7 @@ namespace sprite {
         }
         
         template<typename T>
-        Property<T>& set(const std::string& name, const T& value) {
+        Property<T>& set(const std::string_view& name, const T& value) {
             operator[](name) = value;
         }
         
@@ -312,7 +343,7 @@ namespace sprite {
         }
         
         template<typename T>
-        Property<T>& insert(const std::string& name, const T& value) {
+        Property<T>& insert(const std::string_view& name, const T& value) {
             return insert(Property<T>(this, name, value));
         }
         
@@ -331,7 +362,7 @@ namespace sprite {
                 property_ = new Property<T>(this, property.name(), property.value());
                 {
                     auto ptr = Store(property_);
-                    _props[ptr] = ptr;
+                    _props[ptr->name()] = ptr;
                 }
             }
             
@@ -354,7 +385,7 @@ namespace sprite {
             result.reserve(_props.size());
 
             for (auto &p: _props)
-                result.push_back(p.first.name());
+                result.push_back(p.first);
 
             std::sort(result.begin(), result.end());
             return result;
@@ -379,8 +410,8 @@ namespace sprite {
         }
         
         std::string e = _type->valid()
-            ? "Cannot find variable '" + _name + "' of type " + Meta::name<T>() + " in map."
-            : "Cannot cast '" + _name + "' of type " + (_type->valid() ? _type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
+            ? "Cannot find variable '" + (std::string)_name + "' of type " + Meta::name<T>() + " in map."
+            : "Cannot cast '" + (std::string)_name + "' of type " + (_type->valid() ? _type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }

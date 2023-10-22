@@ -42,6 +42,9 @@ namespace gui {
         requires std::convertible_to<T, std::string>;
         { t != t }; // has != operator
     };
+    
+    ATTRIBUTE_ALIAS(Placeholder_t, std::string)
+    ATTRIBUTE_ALIAS(OnHover_t, std::function<void(size_t)>)
 
     template <typename T = std::string>
     requires list_compatible_item<T>
@@ -62,14 +65,15 @@ namespace gui {
         std::vector<StaticText*> _texts;
         std::vector<Text*> _details;
 
+        StaticText _placeholder_text;
         Tooltip tooltip = Tooltip(nullptr);
         
         std::function<void(size_t, const T&)> _callback;
-        std::function<void(size_t)> _on_hovered;
+        OnHover_t _on_hovered;
         
         GETTER(Font, font)
         GETTER(Color, item_color)
-        GETTER(Color, text_color)
+        GETTER_I(Color, text_color, White)
         float _line_spacing, _previous_width{-1};
         GETTER_SETTER_I(long, last_hovered_item, -1)
         GETTER_I(long, last_selected_item, -1)
@@ -79,25 +83,9 @@ namespace gui {
         std::map<Drawable*, size_t> rect_to_idx;
         
     public:
-        ScrollableList(const Bounds& bounds,
-                       const std::vector<T>& objs = {},
-                       const Font& font = Font(0.75f),
-                       const decltype(_on_hovered)& on_hover = [](size_t){})
-            : item_padding(5,5),
-              _callback([](auto, const auto&){}),
-              _on_hovered(on_hover),
-              _font(font),
-              _item_color(Color(100, 100, 100, 200)),
-              _text_color(White),
-              _line_spacing(Base::default_line_spacing(_font) + item_padding.y * 2)
-        {
-            for(auto &item : objs) {
-                _items.push_back(Item<T>(item));
-            }
-            
-            set_background(_item_color.exposure(0.5));
-            set_clickable(true);
-            set_scroll_enabled(true);
+        template<typename... Args>
+        ScrollableList(Args... args) {
+            create(std::forward<Args>(args)...);
             
             add_event_handler(HOVER, [this](auto){ this->set_dirty(); });
             add_event_handler(MBUTTON, [this](Event e){
@@ -111,9 +99,26 @@ namespace gui {
             add_event_handler(SCROLL, [this](auto) {
                 this->update_items();
             });
+        }
+        
+        template<typename... Args>
+        void create(Args... args) {
+            init();
             
-            set_bounds(bounds);
+            (set(std::forward<Args>(args)), ...);
+            
+            _line_spacing = Base::default_line_spacing(_font) + item_padding.y * 2;
+            set_background(_item_color.exposure(0.5));
             update_items();
+        }
+        
+        void init() {
+            item_padding = {5,5};
+            _item_color = Color(100, 100, 100, 200);
+            set(TextClr{_text_color});
+            
+            set_clickable(true);
+            set_scroll_enabled(true);
         }
         
         ~ScrollableList() {
@@ -143,6 +148,17 @@ namespace gui {
         
         float line_padding() const {
             return _line_spacing;
+        }
+        
+        void set(const std::vector<T>& objs) {
+            set_items(objs);
+        }
+        
+        void set(OnHover_t hover) {
+            _on_hovered = hover;
+        }
+        void set(TextClr lr) {
+            set_text_color(lr);
         }
         
         size_t set_items(const std::vector<T>& objs) {
@@ -193,6 +209,9 @@ namespace gui {
             _text_color = text_color;
             for(auto t : _texts)
                 t->set_text_color(text_color);
+            
+            uchar c = (int(text_color.r) + int(text_color.g) + int(text_color.b)) / 3 >= 150 ? 200 : 50;
+            _placeholder_text.set(TextClr{c, c, c, text_color.a});
         }
         
         void set_alternating(bool alternate) {
@@ -206,6 +225,14 @@ namespace gui {
         using Entangled::set;
         void set(const Font& font) {
             set_font(font);
+        }
+        void set(const Placeholder_t& placeholder) {
+            if(_placeholder_text.text() == placeholder)
+                return;
+            
+            _placeholder_text.set_txt(placeholder);
+            if(_items.empty())
+                set_content_changed(true);
         }
         
         void set_font(const Font& font) {
@@ -232,9 +259,10 @@ namespace gui {
                 }
             }
             
+            _placeholder_text.set_default_font(font);
+            
             // line spacing may have changed
             if(_font.size != font.size || _font.style != font.style) {
-                _font = font;
                 set_bounds_changed();
             }
             
@@ -368,12 +396,13 @@ namespace gui {
                             auto idx = rect_to_idx.at(r);
                             if(_last_hovered_item != (long)idx) {
                                 _last_hovered_item = long(idx);
-                                _on_hovered(idx);
+                                if(_on_hovered)
+                                    _on_hovered(idx);
                             }
                         }
                     });
                     
-                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0)));
+                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
                     if constexpr(has_detail<T>) {
                         _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
                     }
@@ -503,6 +532,12 @@ namespace gui {
                             _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
                         else
                             _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                    }
+                }
+                
+                if(_items.empty()) {
+                    if(not _placeholder_text.text().empty()) {
+                        advance_wrap(_placeholder_text);
                     }
                 }
                 

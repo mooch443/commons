@@ -89,6 +89,7 @@ namespace file {
 
         mutable struct Stat {
             std::optional<bool> exists, is_folder, is_regular;
+            std::optional<std::string> absolute;
             timestamp_t assigned_at{ 0u };
             bool too_old();
             void update();

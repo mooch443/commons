@@ -67,7 +67,7 @@ GlobalSettings::user_access_map_t& GlobalSettings::access_levels() {
  * @param name
  * @return sprite::Reference
  */
-sprite::Reference GlobalSettings::get(const std::string& name) {
+sprite::Reference GlobalSettings::_get(const char* name) {
     std::lock_guard<std::mutex> lock(mutex());
     return map()[name];
 }
@@ -91,7 +91,7 @@ bool GlobalSettings::has_doc(const std::string& name) {
     return docs().find(name) != docs().end();
 }
 
-AccessLevel GlobalSettings::access_level(const std::string &name) {
+AccessLevel GlobalSettings::access_level(const std::string_view &name) {
     std::lock_guard<std::mutex> lock(mutex());
     auto it = access_levels().find(name);
     if(it == access_levels().end())
@@ -133,14 +133,15 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                 if (!str.empty() && utils::contains(str, "=") && !utils::beginsWith(str, '#')) {
                     auto parts = utils::split(str, '=');
                     if (parts.size() == 2) {
-                        auto var = utils::trim(parts.at(0));
-                        auto val = utils::trim(parts.at(1));
+                        auto var = (std::string)utils::trim(parts.at(0));
+                        auto val = (std::string)utils::trim(parts.at(1));
                         
                         if(access_level(var) <= access) {
-                            auto it = deprecations.find(utils::lowercase(var));
+                            std::string lower(utils::lowercase(var));
+                            auto it = deprecations.find(lower);
                             if(it != deprecations.end()) {
                                 if(correct_deprecations) {
-                                    auto& obj = map[deprecations.at(utils::lowercase(var))].get();
+                                    auto& obj = map[deprecations.at(lower)].get();
                                     obj.set_value_from_string(val);
                                 }
                                 

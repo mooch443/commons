@@ -358,9 +358,9 @@ public:
             return (states.back() == s);
         };
 
-        auto is_keyword = [](std::string word) {
+        auto is_keyword = [](std::string_view word) {
             word = utils::trim(utils::lowercase(word));
-            static const std::vector<std::string> keywords{
+            static const std::vector<std::string_view> keywords{
                 //"string", "pv",
                 //"path",
                 //"array", "map", "set", "pair",
@@ -929,13 +929,13 @@ struct FormatColoredPrefix {
         
         auto universal = utils::find_replace(info.file_name(), "\\", "/");
         auto split = utils::split(universal, '/');
-        auto &file = split.empty() ? universal : split.back();
+        auto file = split.empty() ? universal : split.back();
         
         std::string str =
           console_color<bracket_color, formatter>("[")
           + cmn::console_color<color, formatter>(
                 std::string(PrefixLiterals::names[(size_t)prefix]) + " " + cmn::current_time_string()
-                + " " + file + ":" + std::to_string(info.line()))
+                + " " + (std::string)file + ":" + std::to_string(info.line()))
           + console_color<bracket_color, formatter>("]") + " "
           + format<formatter>(args...);
         

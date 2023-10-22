@@ -165,10 +165,12 @@ public:
                 // the logic further down.
                 // this access function will retrieve a value from a sprite::Map
                 // given a key, and return it as a string:
-                auto access = [&map](const std::string& key) -> std::string {
-                    auto ref = map[key];
+                auto access = [&map](const auto& key) -> std::string {
+                    if(key.subs.empty())
+                        throw InvalidArgumentException("sprite::Map needs sub variable to be accessed like this: ", key.name,".variable");
+                    auto ref = map[key.subs.front()];
                     if(not ref.get().valid())
-                        throw std::invalid_argument("Cannot find given parameter.");
+                        throw InvalidArgumentException("Cannot find given parameter ", key,". ", Meta::name<decltype(key)>());
                     
                     // for string-types we can directly return the contents
                     // of the string and there is no need to convert:
