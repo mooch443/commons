@@ -185,7 +185,6 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
           [{"type": "stext", 
             "text": "<sym>▶⏸⏹📁❤⚖️⚠✓✂☁</sym> <key><c>Привет</c></key> {add} {path}", 
             "max_size":[500,50], 
-            "fade_out":0.5,
             "font": { "size": 0.5 }
           }] 
         ],
