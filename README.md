@@ -106,55 +106,19 @@ int main(int argc, char**argv) {
             // JSON file location
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .graph = &graph,
-            .context = {
+            .context = Context{
                 // stuff that can be triggered by lists / buttons
-                .actions = {
-                    { "QUIT", [&](auto) {
-                        terminate = true;  // Quit action
-                    } }
-                },
+                // is an "Action". this quits the app:
+                ActionFunc("QUIT", [&](Action) { terminate = true; }),
+                
                 // variables can be accessed in lots of ways,
                 // e.g. printed out or looped through within
                 // the json
-                .variables = {
-                    { "list_var",
-                      std::unique_ptr<VarBase_t>(new Variable{
-                         [](VarProps)
-                            -> std::vector<std::shared_ptr<VarBase_t>>&
-                         {
-                            return list;
-                         }
-                      })
-                    },
-                    { "global", // this gives access to the global settings
-                      std::unique_ptr<VarBase_t>(new Variable{
-                        [](VarProps) -> sprite::Map& {
-                            return GlobalSettings::map();
-                        }
-                      })
-                    },
-                    { "isTrue",
-                      std::unique_ptr<VarBase_t>(new Variable{
-                        [](VarProps) {
-                            return true;
-                        }
-                      })
-                    },
-                    { "add",
-                      std::unique_ptr<VarBase_t>(new Variable{
-                        [](VarProps) {
-                            return true;
-                        }
-                      })
-                    },
-                    { "path",
-                      std::unique_ptr<VarBase_t>(new Variable{
-                        [](VarProps) {
-                            return file::Path("Herakles");
-                        }
-                      })
-                    }
-                }
+                VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& { return list; }),
+                VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
+                VarFunc("isTrue", [](VarProps) { return true; }),
+                VarFunc("add", [](VarProps) { return true; }),
+                VarFunc("path", [](VarProps) { return file::Path("Herakles"); })
             },
             .base = &base
         };
@@ -219,7 +183,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         [ 
           [{"type": "text", "text": "Entry 1"}], 
           [{"type": "stext", 
-            "text": "{add} {path}", 
+            "text": "<sym>▶⏸⏹📁❤⚖️⚠✓✂☁</sym> <key><c>Привет</c></key> {add} {path}", 
             "max_size":[500,50], 
             "fade_out":0.5,
             "font": { "size": 0.5 }
