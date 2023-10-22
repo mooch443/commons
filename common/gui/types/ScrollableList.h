@@ -335,7 +335,8 @@ namespace gui {
                 _last_selected_item = narrow_cast<long>(index);
                 set_content_changed(true);
                 
-                _callback(index, _items.at(index).value());
+                if(_callback)
+                    _callback(index, _items.at(index).value());
             }
         }
         

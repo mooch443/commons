@@ -406,6 +406,7 @@ int main(int argc, char**argv) {
     for(size_t i = 0; i<3; ++i) {
         sprite::Map tmp;
         tmp["name"] = std::string("fish"+Meta::toStr(i));
+        tmp["detail"] = std::string("detail");
         tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
         tmp["pos"] = Vec2(100, 150+i*50);
         tmp["size"] = Size2(25, 25);
@@ -476,10 +477,10 @@ int main(int argc, char**argv) {
             .graph = &graph,
             .context = {
                 ActionFunc("QUIT", [&](Action) { terminate = true; }),
-                VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& { return fishes; }),
-                VarFunc("isFalse", [](VarProps) -> bool { return false; }),
-                VarFunc("isTrue", [](VarProps) -> bool { return true; }),
-                VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); })
+                VarFunc("list_var", [](VarProps) -> auto& { return fishes; }),
+                VarFunc("isFalse", [](VarProps) { return false; }),
+                VarFunc("isTrue", [](VarProps) { return true; }),
+                VarFunc("global", [](VarProps) -> auto& { return GlobalSettings::map(); })
             },
             .base = ptr
         };
@@ -533,7 +534,7 @@ int main(int argc, char**argv) {
         }
         circle0->set_size(size);
         
-        graph.wrap_object(list);
+        //graph.wrap_object(list);
         
         auto scale = graph.scale().reciprocal();
         ptr->window_dimensions().mul(scale * gui::interface_scale());

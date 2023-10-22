@@ -468,8 +468,62 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context&) {
-    return Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
+Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context& context) {
+    auto ptr = Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
+    
+    if(obj.count("action")) {
+        Action action = Action::fromStr(obj["action"].get<std::string>());
+        auto context_copy = context;
+        
+        context_copy.variables.insert(VarFunc("mouse", [_ptr = ptr.get()](VarProps){
+            return _ptr->parent() && _ptr->parent()->stage() ? _ptr->parent()->stage()->mouse_position() : Vec2();
+        }));
+        
+        ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = std::move(context_copy)](Event event) {
+            if(event.hover.hovered
+               && _ptr->pressed()) 
+            {
+                print("Dragging: ", event.hover.x);
+                try {
+                    if(context.actions.contains(action.name)) {
+                        auto copy = action;
+                        for(auto&p : copy.parameters) {
+                            auto c = p;
+                            p = parse_text(p, context);
+                            print(c," => ", p);
+                        }
+                        
+                        context.actions.at(action.name)(copy);
+                    } else
+                        print("Unknown Action: ", action);
+                    
+                } catch(...) {
+                    FormatExcept("error using action ", action);
+                }
+            }
+        });
+        
+        /*ptr->on_click([action, context = std::move(context_copy)](auto){
+            try {
+                if(context.actions.contains(action.name)) {
+                    auto copy = action;
+                    for(auto&p : copy.parameters) {
+                        auto c = p;
+                        p = parse_text(p, context);
+                        print(c," => ", p);
+                    }
+                    
+                    context.actions.at(action.name)(copy);
+                } else
+                    print("Unknown Action: ", action);
+                
+            } catch(...) {
+                FormatExcept("error using action ", action);
+            }
+        });*/
+    }
+    
+    return ptr;
 }
 
 template <>

@@ -159,7 +159,7 @@ bool Context::has(const std::string & name) const noexcept {
 
 template<typename T>
 T map_vectors(const VarProps& props, auto&& apply) {
-    if(props.parameters.size() < 2) {
+    if(props.parameters.size() != 2) {
         throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
     }
     
@@ -192,66 +192,74 @@ T map_vectors(const VarProps& props, auto&& apply) {
     return apply(A, B);
 }
 
+template<typename T>
+T map_vector(const VarProps& props, auto&& apply) {
+    if(props.parameters.size() != 1) {
+        throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
+    }
+    
+    T A{}, B{};
+    
+    try {
+        auto& a = props.parameters.front();
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<float>(a));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<float>(a));
+        }
+
+    } catch(const std::exception& ex) {
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
+    }
+    
+    return apply(A);
+}
+
 void Context::init() const {
     if(system_variables.empty())
         system_variables = {
-            {   "+",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
-                    return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
-                }))
-            },
-            {   "*",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
-                    return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
-                }))
-            },
-            {   "/",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
-                    return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
-                }))
-            },
-            {   "addVector",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
-                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A+B;});
-                }))
-            },
-            {   "mulVector",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
-                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A.mul(B);});
-                }))
-            },
-            {   "divVector",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
-                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A.div(B);});
-                }))
-            },
-            {   "mulSize",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
-                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A.mul(B);});
-                }))
-            },
-            {   "divSize",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
-                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A.div(B);});
-                }))
-            },
-            {   "minVector",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
-                    return map_vectors<Vec2>(props, [](auto& A, auto& B) {
-                        return cmn::min(A, B);
-                    });
-                }))
-            },
-            {   "addSize",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
-                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A+B;});
-                }))
-            },
-            {   "global",
-                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps) -> sprite::Map& {
-                    return GlobalSettings::map();
-                }))
-            }
+            VarFunc("+", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
+            }),
+            VarFunc("-", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return A-B;});
+            }),
+            VarFunc("*", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
+            }),
+            VarFunc("/", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
+            }),
+            VarFunc("addVector", [](VarProps props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
+            }),
+            VarFunc("mulVector", [](VarProps props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.mul(B); });
+            }),
+            VarFunc("divVector", [](VarProps props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.div(B); });
+            }),
+            VarFunc("mulSize", [](VarProps props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.mul(B); });
+            }),
+            VarFunc("divSize", [](VarProps props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.div(B); });
+            }),
+            VarFunc("minVector", [](VarProps props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return cmn::min(A, B); });
+            }),
+            VarFunc("addSize", [](VarProps props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A + B; });
+            }),
+            VarFunc("round", [](VarProps props) -> float {
+                return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
+            }),
+            VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); })
         };
     
 }
@@ -654,8 +662,12 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         }
         
         if(pattern.contains("text")) {
-            auto text = Str{parse_text(pattern.at("text"), context)};
-            LabeledField::delegate_to_proper_type(text, o);
+            try {
+                auto text = Str{parse_text(pattern.at("text"), context)};
+                LabeledField::delegate_to_proper_type(text, o);
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context ", pattern.at("text"),": ", e.what());
+            }
         }
         
         if(o.is<ExternalImage>()) {
