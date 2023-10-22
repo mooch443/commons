@@ -475,39 +475,11 @@ int main(int argc, char**argv) {
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .graph = &graph,
             .context = {
-                .actions = {
-                    {
-                        "QUIT", [&](auto) {
-                            terminate = true;
-                        }
-                    }
-                },
-                    .variables = {
-                        {
-                            "list_var",
-                            std::unique_ptr<VarBase_t>(new Variable([](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& {
-                                return fishes;
-                            }))
-                        },
-                        {
-                            "isFalse",
-                            std::unique_ptr<VarBase_t>(new Variable([](VarProps){
-                                return false;
-                            }))
-                        },
-                        {
-                            "isTrue",
-                            std::unique_ptr<VarBase_t>(new Variable([](VarProps){
-                                return true;
-                            }))
-                        },
-                        {
-                            "global",
-                            std::unique_ptr<VarBase_t>(new Variable([](VarProps) -> sprite::Map& {
-                                return GlobalSettings::map();
-                            }))
-                        }
-                    }
+                ActionFunc("QUIT", [&](Action) { terminate = true; }),
+                VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& { return fishes; }),
+                VarFunc("isFalse", [](VarProps) -> bool { return false; }),
+                VarFunc("isTrue", [](VarProps) -> bool { return true; }),
+                VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); })
             },
             .base = ptr
         };

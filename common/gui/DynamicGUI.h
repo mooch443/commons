@@ -85,6 +85,16 @@ struct Action {
     static std::string class_name() { return "Action"; }
 };
 
+template<typename Fn>
+std::pair<std::string, std::function<void(Action)>> ActionFunc(const std::string& name, Fn&& func) {
+    return std::make_pair(name, std::function<void(Action)>(std::forward<Fn>(func)));
+}
+
+template<typename Fn, typename T = typename cmn::detail::return_type<Fn>::type>
+std::pair<std::string, std::shared_ptr<VarBase_t>> VarFunc(const std::string& name, Fn&& func) {
+    return std::make_pair(name, std::shared_ptr<VarBase_t>(new Variable(std::forward<Fn>(func))));
+}
+
 struct Context {
     std::unordered_map<std::string, std::function<void(Action)>> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
@@ -93,6 +103,22 @@ struct Context {
     mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>> system_variables;
     [[nodiscard]] std::shared_ptr<VarBase_t> variable(const std::string&) const;
     [[nodiscard]] bool has(const std::string&) const noexcept;
+    
+    Context() noexcept = default;
+    Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list, DefaultSettings settings = DefaultSettings{})
+        : defaults(settings)
+        {
+            for (const auto& item : init_list) {
+                if (std::holds_alternative<std::pair<std::string, std::function<void(Action)>>>(item)) {
+                    auto& pair = std::get<std::pair<std::string, std::function<void(Action)>>>(item);
+                    actions[pair.first] = std::move(pair.second);
+                }
+                else if (std::holds_alternative<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item)) {
+                    auto& pair = std::get<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item);
+                    variables[pair.first] = std::move(pair.second);
+                }
+            }
+        }
     
 private:
     void init() const;

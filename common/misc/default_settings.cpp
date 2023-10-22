@@ -68,7 +68,7 @@ namespace cmn {
                 
                 if(!str.empty()) {
                     if(keywords.find(str) != keywords.end())
-                        str = "<keyword>" + str +"</keyword>";
+                        str = "<key>" + str +"</key>";
                     else if(is_number(str))
                         str = "<nr>" + str + "</nr>";
                 }
@@ -83,7 +83,8 @@ namespace cmn {
             };
             
             char last_c = 0;
-            doc = utils::find_replace(doc, "<", "&#x3C;");
+            doc = utils::find_replace(doc, "<", "&lt;");
+            doc = utils::find_replace(doc, ">", "&gt;");
             
             for(size_t i=0; i<doc.length(); ++i) {
                 auto c = doc.at(i);

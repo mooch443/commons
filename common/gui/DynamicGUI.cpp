@@ -13,6 +13,7 @@
 #include <gui/types/ErrorElement.h>
 #include <gui/DrawBase.h>
 #include <regex>
+#include <stack>
 
 namespace gui {
 namespace dyn {
@@ -162,7 +163,7 @@ T map_vectors(const VarProps& props, auto&& apply) {
         throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
     }
     
-    T A, B;
+    T A{}, B{};
     
     try {
         auto& a = props.parameters.front();
@@ -185,7 +186,7 @@ T map_vectors(const VarProps& props, auto&& apply) {
         }
 
     } catch(const std::exception& ex) {
-        FormatExcept("Exception in vectorAdd: ", ex.what());
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
     }
     
     return apply(A, B);
@@ -194,17 +195,17 @@ T map_vectors(const VarProps& props, auto&& apply) {
 void Context::init() const {
     if(system_variables.empty())
         system_variables = {
-            {   "add",
+            {   "+",
                 std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
                     return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
                 }))
             },
-            {   "mul",
+            {   "*",
                 std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
                     return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
                 }))
             },
-            {   "div",
+            {   "/",
                 std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
                     return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
                 }))
@@ -370,32 +371,49 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 }
 
 std::string parse_text(const std::string& pattern, const Context& context) {
-    int inside = 0;
+    std::stack<std::string> nesting;
     bool comment_out = false;
-    std::string word, output;
-    for(std::size_t i = 0; i<pattern.length(); ++i) {
-        if(inside == 0) {
+    std::string output;
+    std::string current_word;
+
+    for(std::size_t i = 0; i < pattern.length(); ++i) {
+        if(nesting.empty()) {
             if(pattern[i] == '\\') {
-                if(not comment_out)
+                if(not comment_out) {
                     comment_out = true;
+                } else {
+                    comment_out = false; // Handle escaped backslashes
+                    output += '\\';
+                }
             } else if(comment_out) {
-                output += pattern[i];
+                if(pattern[i] == '{' || pattern[i] == '}') {
+                    output += pattern[i];
+                } else {
+                    throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", pattern[i], ". Only braces need to be escaped.");
+                }
                 comment_out = false;
-                
             } else if(pattern[i] == '{') {
-                word = "";
-                inside++;
-                
+                nesting.push("");
+            } else if(pattern[i] == '}') {
+                throw InvalidSyntaxException("Mismatched closing brace at position ", i);
             } else {
                 output += pattern[i];
             }
-            
         } else {
             if(pattern[i] == '}') {
-                inside--;
+                if(nesting.empty()) {
+                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                }
+
+                current_word = nesting.top();
+                nesting.pop();
                 
-                if(inside == 0) {
-                    auto r = resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                if(current_word.empty()) {
+                    // Empty variable name
+                    throw InvalidSyntaxException("Empty braces at position ", i);
+                }
+
+                std::string resolved_word = resolve_variable(current_word, context, [word = current_word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
                             std::string ret;
                             if(variable.is<Size2>()) {
@@ -429,25 +447,35 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                             FormatExcept("Exception: ", ex.what());
                             return modifiers.optional ? "" : "null";
                         }
-                    }, [word](bool optional) -> std::string {
+                    }, [](bool optional) -> std::string {
                         return optional ? "" : "null";
                     });
-                    
-                    //print("Resolving ", word, " within ", pattern, " => ",r);
-                    output += r;
+                if(nesting.empty()) {
+                    output += resolved_word;
                 } else {
-                    word += pattern[i];
+                    nesting.top() += resolved_word;
                 }
-                
+
             } else if(pattern[i] == '{') {
-                word += pattern[i];
-                inside++;
-            } else if(is_in(pattern[i], '\'', '"')) {
-                word += pattern[i] + skipNested(pattern, i, pattern[i], pattern[i]) + pattern[i];
-            } else
-                word += pattern[i];
+                nesting.push("");
+            } else {
+                if(nesting.empty()) {
+                    throw InvalidSyntaxException("Mismatched opening brace at position ", i);
+                }
+                nesting.top() += pattern[i];
+            }
         }
     }
+
+    if(not nesting.empty()) {
+        throw InvalidSyntaxException("Mismatched opening brace");
+    }
+    
+    if(comment_out) {
+        // Trailing backslash without a following character
+        throw InvalidSyntaxException("Trailing backslash");
+    }
+
     return output;
 }
 
@@ -585,8 +613,12 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         
         if(pattern.contains("pos")) {
             try {
-                o->set_pos(resolve_variable_type<Vec2>(pattern.at("pos"), context));
+                auto pos = pattern.at("pos");
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
+                auto str = parse_text(pos, context);
+                o->set_pos(Meta::fromStr<Vec2>(str));
+                //o->set_pos(resolve_variable_type<Vec2>(pattern.at("pos"), context));
+                //
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -595,7 +627,8 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         
         if(pattern.contains("scale")) {
             try {
-                o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
+                o->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context)));
+                //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 
             } catch(const std::exception& e) {
@@ -611,7 +644,8 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                     if(o.is<Layout>()) o.to<Layout>()->auto_size();
                     else FormatExcept("pattern for size should only be auto for layouts, not: ", *o);
                 } else {
-                    o->set_size(resolve_variable_type<Size2>(size, context));
+                    o->set_size(Meta::fromStr<Size2>(parse_text(size, context)));
+                    //o->set_size(resolve_variable_type<Size2>(size, context));
                 }
                 
             } catch(const std::exception& e) {

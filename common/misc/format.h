@@ -1058,6 +1058,17 @@ template<typename... Args>
 InvalidArgumentException(Args... args) -> InvalidArgumentException<Args...>;
 
 template<typename... Args>
+struct InvalidSyntaxException : CustomException<std::runtime_error, Args...> {
+    InvalidSyntaxException(const Args&... args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+        : CustomException<std::runtime_error, Args...>(type_t<std::runtime_error>{}, args..., info)
+    {
+    }
+};
+
+template<typename... Args>
+InvalidSyntaxException(Args... args) -> InvalidSyntaxException<Args...>;
+
+template<typename... Args>
 struct OutOfRangeException : CustomException<std::out_of_range, Args...> {
     OutOfRangeException(const Args&... args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
         : CustomException<std::out_of_range, Args...>(type_t<std::out_of_range>{}, args..., info)
