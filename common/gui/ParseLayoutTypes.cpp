@@ -273,15 +273,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
             if(row.is_array()) {
                 std::vector<Layout::Ptr> cols;
                 for(auto &cell : row) {
-                    if(cell.is_array()) {
+                    if(cell.is_array() || cell.is_object()) {
                         std::vector<Layout::Ptr> objects;
                         IndexScopeHandler handler{state._current_index};
-                        for(auto& obj : cell) {
-                            auto ptr = parse_object(obj, context, state, context.defaults);
-                            if(ptr) {
+                        if(cell.is_object()) {
+                            // only a single object
+                            auto ptr = parse_object(cell, context, state, context.defaults);
+                            if(ptr)
                                 objects.push_back(ptr);
+                            
+                        } else {
+                            for(auto& obj : cell) {
+                                auto ptr = parse_object(obj, context, state, context.defaults);
+                                if(ptr) {
+                                    objects.push_back(ptr);
+                                }
                             }
                         }
+                        
                         cols.emplace_back(Layout::Make<Layout>(std::move(objects), attr::Margins{0,0,0,0}));
                         cols.back()->set_name("Col");
                         cols.back().to<Layout>()->update();

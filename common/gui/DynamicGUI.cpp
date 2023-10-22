@@ -19,66 +19,65 @@ namespace dyn {
 
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
+// Function to skip over nested structures so they don't interfere with our parsing
+std::string skipNested(const std::string& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
+    int balance = 1;
+    std::size_t startPos = pos;
+    pos++; // Skip the opening char
+    while (pos < trimmedStr.size() and balance > 0) {
+        if (trimmedStr[pos] == openChar) {
+            balance++;
+        } else if (trimmedStr[pos] == closeChar) {
+            balance--;
+        }
+        pos++;
+    }
+    return trimmedStr.substr(startPos, pos - startPos);  // Return the nested structure as a string
+};
+
 Action Action::fromStr(std::string str) {
     std::string trimmedStr = str;
 
-    // If the entire string is enclosed within {}, remove them
     if (trimmedStr.front() == '{' and trimmedStr.back() == '}') {
         trimmedStr = trimmedStr.substr(1, trimmedStr.size() - 2);
     }
-    
+
     Action action;
     std::size_t pos = 0;
-
-    // Function to skip over quoted strings, so they don't interfere with our parsing
-    auto skipQuoted = [&trimmedStr, &pos](char quoteChar) {
-        pos++; // Skip the opening quote
-        while (pos < trimmedStr.size() and (trimmedStr[pos] not_eq quoteChar or trimmedStr[pos-1] == '\\')) {
-            pos++;
-        }
-        pos++; // Skip the closing quote
-    };
-
-    // Extract the name first
+    
     while (pos < trimmedStr.size() and trimmedStr[pos] not_eq ':') {
-        if (trimmedStr[pos] == '\'' or trimmedStr[pos] == '\"') {
-            skipQuoted(trimmedStr[pos]);
-        } else {
-            pos++;
-        }
+        ++pos;
     }
 
     action.name = trimmedStr.substr(0, pos);
-    
-    // Now extract parameters
     std::string token;
     bool inQuote = false;
     char quoteChar = '\0';
-    pos++; // Skip the first ':'
-    
-    for (; pos < trimmedStr.size(); pos++) {
+    int braceLevel = 0;  // Keep track of nested braces
+    ++pos;  // Skip the first ':'
+
+    for (; pos < trimmedStr.size(); ++pos) {
         char c = trimmedStr[pos];
-        
-        if (c == ':' and not inQuote) {
-            if (not token.empty()) {
-                action.parameters.push_back(token);
-            }
+
+        if (c == ':' and not inQuote and braceLevel == 0) {
+            action.parameters.push_back(token);
             token.clear();
         } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
             inQuote = not inQuote;
-            token += c;  // Keep the quote as part of the parameter
+            token += c;
             if (inQuote) {
                 quoteChar = c;
             }
+        } else if (c == '{' and not inQuote) {
+            token += skipNested(trimmedStr, pos, '{', '}');
+            --pos;
+        } else if (c == '[' and not inQuote) {
+            ++braceLevel;
+            token += c;
+        } else if (c == ']' and not inQuote) {
+            --braceLevel;
+            token += c;
         } else {
-            if (c == '\\' and (pos + 1 < trimmedStr.size())) {
-                char nextChar = trimmedStr[pos + 1];
-                if (nextChar == ':' or nextChar == '\'' or nextChar == '\"') {
-                    // Skip the backslash
-                    pos++;
-                    c = nextChar;
-                }
-            }
             token += c;
         }
     }
@@ -138,18 +137,12 @@ VarProps extractControls(const std::string& variable, const Context& context) {
     }
 
     props.parameters = std::move(action.parameters);
+    //print("Initial parameters = ", props.parameters);
     for(auto &p : props.parameters) {
         // parse parameters here
         // if the parameter seems to be a string (quotes '"), use parse_text(text, context) function to parse it
         // if the parameter seems to be a variable, it needs to be resolved:
-        p = resolve_variable(p, context, [](const VarBase_t& var, const VarProps& p) {
-            //print("Resolving variable ", p, " => ", var.value_string(p));
-            return var.value_string(p);
-        }, [p]() {
-            // error
-            //print("Error resolving variable ",p," which was ", optional ? "optional" : "not optional");
-            return p;
-        });
+        p = parse_text(p, context);
     }
     
     return props;
@@ -206,9 +199,39 @@ void Context::init() const {
                     return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
                 }))
             },
+            {   "mul",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
+                    return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
+                }))
+            },
+            {   "div",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> float {
+                    return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
+                }))
+            },
             {   "addVector",
                 std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
                     return map_vectors<Vec2>(props, [](auto&A, auto&B){return A+B;});
+                }))
+            },
+            {   "mulVector",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
+                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A.mul(B);});
+                }))
+            },
+            {   "divVector",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Vec2 {
+                    return map_vectors<Vec2>(props, [](auto&A, auto&B){return A.div(B);});
+                }))
+            },
+            {   "mulSize",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
+                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A.mul(B);});
+                }))
+            },
+            {   "divSize",
+                std::unique_ptr<dyn::VarBase_t>(new dyn::Variable([](VarProps props) -> Size2 {
+                    return map_vectors<Size2>(props, [](auto&A, auto&B){return A.div(B);});
                 }))
             },
             {   "minVector",
@@ -350,7 +373,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
     int inside = 0;
     bool comment_out = false;
     std::string word, output;
-    for(size_t i = 0; i<pattern.length(); ++i) {
+    for(std::size_t i = 0; i<pattern.length(); ++i) {
         if(inside == 0) {
             if(pattern[i] == '\\') {
                 if(not comment_out)
@@ -372,9 +395,31 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 inside--;
                 
                 if(inside == 0) {
-                    output += resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                    auto r = resolve_variable(word, context, [word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
-                            std::string ret = variable.value_string(modifiers);
+                            std::string ret;
+                            if(variable.is<Size2>()) {
+                                if(modifiers.subs.empty())
+                                    ret = variable.value_string(modifiers);
+                                else if(modifiers.subs.front() == "w")
+                                    ret = Meta::toStr(variable.value<Size2>(modifiers).width);
+                                else if(modifiers.subs.front() == "h")
+                                    ret = Meta::toStr(variable.value<Size2>(modifiers).height);
+                                else
+                                    throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
+                                
+                            } else if(variable.is<Vec2>()) {
+                                if(modifiers.subs.empty())
+                                    ret = variable.value_string(modifiers);
+                                else if(modifiers.subs.front() == "x")
+                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
+                                else if(modifiers.subs.front() == "y")
+                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
+                                else
+                                    throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
+                                
+                            } else
+                                ret = variable.value_string(modifiers);
                             //auto str = modifiers.toStr();
                             //print(str.c_str(), " resolves to ", ret);
                             if(modifiers.html)
@@ -387,8 +432,18 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                     }, [word](bool optional) -> std::string {
                         return optional ? "" : "null";
                     });
+                    
+                    //print("Resolving ", word, " within ", pattern, " => ",r);
+                    output += r;
+                } else {
+                    word += pattern[i];
                 }
                 
+            } else if(pattern[i] == '{') {
+                word += pattern[i];
+                inside++;
+            } else if(is_in(pattern[i], '\'', '"')) {
+                word += pattern[i] + skipNested(pattern, i, pattern[i], pattern[i]) + pattern[i];
             } else
                 word += pattern[i];
         }
