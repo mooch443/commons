@@ -69,7 +69,7 @@ int main(int argc, char**argv) {
     static std::vector<std::shared_ptr<VarBase_t>> list;
     std::vector<sprite::Map> _data;
     
-    for(size_t i = 0; i<3; ++i) {
+    for(size_t i = 0; i<300; ++i) {
         sprite::Map tmp;
         tmp["name"] = std::string("object"+Meta::toStr(i));
         tmp["detail"] = std::string("detail");
@@ -79,7 +79,7 @@ int main(int argc, char**argv) {
         _data.push_back(std::move(tmp));
         
         list.emplace_back(new Variable{
-            [i, &_data](std::string) -> sprite::Map& {
+            [i, &_data](VarProps) -> sprite::Map& {
                 return _data[i];
             }
         });
@@ -119,7 +119,7 @@ int main(int argc, char**argv) {
                 .variables = {
                     { "list_var",
                       std::unique_ptr<VarBase_t>(new Variable{
-                         [](std::string)
+                         [](VarProps)
                             -> std::vector<std::shared_ptr<VarBase_t>>&
                          {
                             return list;
@@ -128,15 +128,29 @@ int main(int argc, char**argv) {
                     },
                     { "global", // this gives access to the global settings
                       std::unique_ptr<VarBase_t>(new Variable{
-                        [](std::string) -> sprite::Map& {
+                        [](VarProps) -> sprite::Map& {
                             return GlobalSettings::map();
                         }
                       })
                     },
                     { "isTrue",
                       std::unique_ptr<VarBase_t>(new Variable{
-                        [](std::string) {
+                        [](VarProps) {
                             return true;
+                        }
+                      })
+                    },
+                    { "add",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](VarProps) {
+                            return true;
+                        }
+                      })
+                    },
+                    { "path",
+                      std::unique_ptr<VarBase_t>(new Variable{
+                        [](VarProps) {
+                            return file::Path("Herakles");
                         }
                       })
                     }
@@ -205,15 +219,15 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         [ 
           [{"type": "text", "text": "Entry 1"}], 
           [{"type": "stext", 
-          "text": "patharray={#global:patharray}", 
-          "max_size":[500,50], 
-          "fade_out":0.5,
-          "font": { "size": 0.5 }
+            "text": "{add} {path}", 
+            "max_size":[500,50], 
+            "fade_out":0.5,
+            "font": { "size": 0.5 }
           }] 
         ],
         [ 
-          [{"type": "text", "text": "region={global:region_model}"}], 
-          [{"type": "text", "text": "app={global:app_name}"}]
+          [{"type": "text", "text": "region={global.region_model}"}], 
+          [{"type": "text", "text": "app={global.app_name}"}]
         ],
         [
           [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
@@ -232,8 +246,8 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         "line":[255,0,0,125],
         "font":{ "size":0.75, "align":"center" },
         "template": {
-            "text":"{i:name}",
-            "detail":"{i:detail}",
+            "text":"{i.name}",
+            "detail":"{i.detail}",
             "action":"open_recent"
         }
       }
@@ -248,8 +262,8 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         "var": "list_var", 
         "do": {
           "type": "stext",
-          "text": "{i:name} {i:color}", 
-          "color":"{i:color}"
+          "text": "{i.name} {i.color}", 
+          "color":"{i.color}"
         }
       }
     ]}
