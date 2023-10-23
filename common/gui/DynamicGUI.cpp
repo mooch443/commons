@@ -384,41 +384,42 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     }
 }
 
-std::string parse_text(const std::string& pattern, const Context& context) {
+std::string parse_text(const std::string_view& pattern, const Context& context) {
+    std::stringstream output;
     std::stack<std::string> nesting;
     bool comment_out = false;
-    std::string output;
     std::string current_word;
 
-    for(std::size_t i = 0; i < pattern.length(); ++i) {
+    for(std::size_t i = 0; i < pattern.size(); ++i) {
+        char ch = pattern[i];
         if(nesting.empty()) {
-            if(pattern[i] == '\\') {
-                if(not comment_out) {
-                    comment_out = true;
-                } else {
-                    comment_out = false; // Handle escaped backslashes
-                    output += '\\';
-                }
-            } else if(comment_out) {
-                if(pattern[i] == '{' || pattern[i] == '}') {
-                    output += pattern[i];
-                } else {
-                    throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", pattern[i], ". Only braces need to be escaped.");
-                }
-                comment_out = false;
-            } else if(pattern[i] == '{') {
-                nesting.push("");
-            } else if(pattern[i] == '}') {
-                throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-            } else {
-                output += pattern[i];
+            switch(ch) {
+                case '\\':
+                    if(not comment_out) {
+                        comment_out = true;
+                    } else {
+                        comment_out = false;
+                        output << '\\';
+                    }
+                    break;
+                case '{':
+                    if(!comment_out) nesting.push("");
+                    else output << ch;
+                    comment_out = false;
+                    break;
+                case '}':
+                    if(!comment_out) throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                    else output << ch;
+                    comment_out = false;
+                    break;
+                default:
+                    if(comment_out) {
+                        throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
+                    }
+                    output << ch;
             }
         } else {
-            if(pattern[i] == '}') {
-                if(nesting.empty()) {
-                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                }
-
+            if(ch == '}') {
                 current_word = nesting.top();
                 nesting.pop();
                 
@@ -465,7 +466,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                         return optional ? "" : "null";
                     });
                 if(nesting.empty()) {
-                    output += resolved_word;
+                    output << resolved_word;
                 } else {
                     nesting.top() += resolved_word;
                 }
@@ -476,7 +477,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
                 if(nesting.empty()) {
                     throw InvalidSyntaxException("Mismatched opening brace at position ", i);
                 }
-                nesting.top() += pattern[i];
+                nesting.top() += ch;
             }
         }
     }
@@ -490,7 +491,7 @@ std::string parse_text(const std::string& pattern, const Context& context) {
         throw InvalidSyntaxException("Trailing backslash");
     }
 
-    return output;
+    return output.str();
 }
 
 tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path){

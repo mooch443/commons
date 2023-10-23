@@ -13,61 +13,31 @@
 #include <type_traits>
 
 namespace utils {
-    /**
-     * Detects whether the given \p str begins with a given needle character.
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string starts with exactly the given needle
-     */
-    bool beginsWith(const std::string &str, const char needle);
-    bool beginsWith(const std::wstring &str, const wchar_t needle);
-    
-    /**
-     * Detects whether the given \p str begins with a given needle string.
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string starts with exactly the given needle
-     */
-    bool beginsWith(const std::string &str, const std::string &needle);
-    bool beginsWith(const std::wstring &str, const std::wstring &needle);
-    
-    /**
-     * Detects whether the given \p str begins with a given needle string.
-     * The string \p needle has to be NULL terminated in order to work (this
-     * method will use strlen() to detect the length).
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string starts with exactly the given needle
-     */
-    bool beginsWith(const std::string &str, const char *needle);
-    
-    /**
-     * Detects whether the given \p str ends with a given needle character.
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string ends with exactly the given needle
-     */
-    bool endsWith(const std::string &str, const char needle);
-    bool endsWith(const std::wstring &str, const wchar_t needle);
-    
-    /**
-     * Detects whether the given \p str ends with a given needle string.
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string ends with exactly the given needle
-     */
-    bool endsWith(const std::string &str, const std::string &needle);
-    bool endsWith(const std::wstring &str, const std::wstring &needle);
-    
-    /**
-     * Detects whether the given \p str ends with a given needle string.
-     * The string \p needle has to be NULL terminated in order to work (this
-     * method will use strlen() to detect the length).
-     * @param str haystack
-     * @param needle the needle
-     * @return true if the given string ends with exactly the given needle
-     */
-    bool endsWith(const std::string &str, const char *needle);
+
+    template<typename Str>
+    bool beginsWith(const Str& str, char c) {
+        return !str.empty() && str.front() == c;
+    }
+
+    template<typename Str>
+    bool endsWith(const Str& str, char c) {
+        return !str.empty() && str.back() == c;
+    }
+
+    template<typename Str, typename Needle>
+    bool beginsWith(const Str& str, const Needle& needle) {
+        std::string_view sv_str(str);
+        std::string_view sv_needle(needle);
+        return sv_str.substr(0, sv_needle.size()) == sv_needle;
+    }
+
+    template<typename Str, typename Needle>
+    bool endsWith(const Str& str, const Needle& needle) {
+        std::string_view sv_str(str);
+        std::string_view sv_needle(needle);
+        return sv_str.size() >= sv_needle.size() &&
+               sv_str.substr(sv_str.size() - sv_needle.size()) == sv_needle;
+    }
 
 	/**
 	 * Finds a given needle inside the \p str given as first parameter.

@@ -132,12 +132,28 @@ std::string to_string(const T& t) {
     return std::to_string (t);
 }
 
-inline std::string truncate(const std::string& str) {
-    if ((utils::beginsWith(str, '{') && utils::endsWith(str, '}'))
-        || (utils::beginsWith(str, '[') && utils::endsWith(str, ']')))
-        return utils::trim(str.substr(1, str.length() - 2));
+template<typename Str>
+auto truncate(const Str& str) {
+    using StrDecayed = std::remove_cvref_t<Str>;
+    std::string_view sv(str);
 
-    throw illegal_syntax("Cannot parse array '"+str+"'.");
+    if ((utils::beginsWith(sv, '{') && utils::endsWith(sv, '}'))
+        || (utils::beginsWith(sv, '[') && utils::endsWith(sv, ']'))) {
+
+        std::string_view trimmed = utils::trim(sv.substr(1, sv.size() - 2));
+
+        if constexpr (std::is_rvalue_reference_v<Str&&>
+                      || (std::is_lvalue_reference_v<Str> && std::is_const_v<std::remove_reference_t<Str>>)) 
+        {
+            if constexpr (std::is_same_v<StrDecayed, std::string>) {
+                return std::string(trimmed);
+            } else
+                return trimmed;
+        } else
+            return trimmed;
+    }
+
+    throw illegal_syntax("Cannot parse array '" + std::string(sv) + "'.");
 }
 
 inline std::string escape(std::string str) {
@@ -150,71 +166,66 @@ inline std::string unescape(std::string str) {
     return utils::find_replace(str, "\\\\", "\\");
 }
 
-inline std::vector<std::string> parse_array_parts(const std::string& str, const char delimiter = ',') {
-    std::deque<char> brackets;
-    std::stringstream value;
+template<typename Str>
+std::vector<std::string> parse_array_parts(const Str& str, const char delimiter = ',') {
+    std::stack<char> brackets;
+    std::string value;
     std::vector<std::string> ret;
 
     char prev = 0;
-    for (size_t i = 0; i < str.length(); i++) {
-        char c = str.at(i);
-        bool in_string = !brackets.empty() && (brackets.front() == '\'' || brackets.front() == '"');
+    std::string_view sv(str);  // Convert input to string_view for uniform handling
+    value.reserve(sv.size());  // Pre-allocate the maximum possible size
+
+    for (size_t i = 0; i < sv.size(); ++i) {
+        char c = sv[i];
+        bool in_string = !brackets.empty() && (brackets.top() == '\'' || brackets.top() == '"');
 
         if (in_string) {
-            auto s = value.str();
-            if (prev != '\\' && c == brackets.front()) {
-                brackets.pop_front();
+            if (prev != '\\' && c == brackets.top()) {
+                brackets.pop();
             }
-
-            value << c;
-
-        }
-        else {
+            value.push_back(c);
+        } else {
             switch (c) {
-            case '[':
-            case '{':
-                brackets.push_front(c);
-                break;
-
-            case '"':
-            case '\'':
-                brackets.push_front(c);
-                break;
-            case ']':
-                if (!brackets.empty() && brackets.front() == '[')
-                    brackets.pop_front();
-                break;
-            case '}':
-                if (!brackets.empty() && brackets.front() == '{')
-                    brackets.pop_front();
-                break;
-            default:
-                break;
+                case '[':
+                case '{':
+                case '"':
+                case '\'':
+                    brackets.push(c);
+                    break;
+                case ']':
+                    if (!brackets.empty() && brackets.top() == '[')
+                        brackets.pop();
+                    break;
+                case '}':
+                    if (!brackets.empty() && brackets.top() == '{')
+                        brackets.pop();
+                    break;
+                default:
+                    break;
             }
 
             if (brackets.empty()) {
                 if (c == delimiter) {
-                    ret.push_back(utils::trim(value.str()));
-                    value.str("");
+                    ret.emplace_back(value);
+                    value.clear();
+                } else {
+                    value.push_back(c);
                 }
-                else
-                    value << c;
-
-            }
-            else {
-                value << c;
+            } else {
+                value.push_back(c);
             }
         }
 
-        if (prev == '\\' && c == '\\')
+        if (prev == '\\' && c == '\\') {
             prev = 0;
-        else
+        } else {
             prev = c;
+        }
     }
 
-    std::string s = utils::trim(value.str());
-    if (!s.empty()) {
-        ret.push_back(s);
+    if (!value.empty() || prev == delimiter) {
+        ret.emplace_back(value);
     }
 
     return ret;

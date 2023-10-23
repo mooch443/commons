@@ -68,6 +68,7 @@
 #include <compare>
 #include <random>
 #include <any>
+#include <stack>
 #if __APPLE__
 #include <Availability.h>
 #endif

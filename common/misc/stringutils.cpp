@@ -13,58 +13,6 @@
 #include <misc/checked_casts.h>
 
 namespace utils {
-    /*
-     * Begins with.
-     */
-    bool beginsWith(const std::string &str, const char needle) {
-        return str.empty() ? false : (str.at(0) == needle);
-    }
-    bool beginsWith(const std::wstring &str, const wchar_t needle) {
-        return str.empty() ? false : (str.at(0) == needle);
-    }
-    
-    bool beginsWith(const std::string &str, const std::string &needle) {
-        return str.compare(0, needle.length(), needle) == 0;
-    }
-    bool beginsWith(const std::wstring &str, const std::wstring &needle) {
-        return str.compare(0, needle.length(), needle) == 0;
-    }
-    
-    bool beginsWith(const std::string &str, const char *needle) {
-        return str.compare(0, strlen(needle), needle) == 0;
-    }
-    
-    /*
-     * Ends with.
-     */
-    bool endsWith(const std::string &str, const char needle) {
-        return str.empty() ? false : (str.back() == needle);
-    }
-    bool endsWith(const std::wstring &str, const wchar_t needle) {
-        return str.empty() ? false : (str.back() == needle);
-    }
-    
-    bool endsWith(const std::string &str, const std::string &needle) {
-        if (needle.length() > str.length()) {
-            return false;
-        }
-        return str.compare(str.length()-needle.length(), needle.length(), needle) == 0;
-    }
-    bool endsWith(const std::wstring &str, const std::wstring &needle) {
-        if (needle.length() > str.length()) {
-            return false;
-        }
-        return str.compare(str.length()-needle.length(), needle.length(), needle) == 0;
-    }
-    
-    bool endsWith(const std::string &str, const char *needle) {
-        const size_t len = strlen(needle);
-        if (len > str.length()) {
-            return false;
-        }
-        return str.compare(str.length()-len, len, needle) == 0;
-    }
-
 	bool contains(const std::string &str, const std::string &needle) {
 		return str.find(needle) != std::string::npos;
 	}

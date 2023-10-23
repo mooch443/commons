@@ -251,7 +251,7 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          State& state,
                          const DefaultSettings& defaults);
 
-std::string parse_text(const std::string& pattern, const Context& context);
+std::string parse_text(const std::string_view& pattern, const Context& context);
 
 
 VarProps extractControls(const std::string& variable, const Context& context);
