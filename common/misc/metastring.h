@@ -112,18 +112,18 @@ requires std::floating_point<T>
 constexpr std::array<char, 128> to_string_floating_point(T value) {
     std::array<char, 128> contents { 0 }; // Initialize array with null terminators
 
-    if (std::isnan(value)) {
-        const char nan[] = "nan";
-        std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
-        return contents;
-    }
-    if (std::isinf(value)) {
-        const char* inf = (value < 0) ? "-inf" : "inf";
-        std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
-        return contents;
-    }
+    if (std::is_constant_evaluated()) {
+        if (value != value) {
+            const char nan[] = "nan";
+            std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
+            return contents;
+        }
+        if (value == std::numeric_limits<T>::infinity() || value == -std::numeric_limits<T>::infinity()) {
+            const char* inf = (value < 0) ? "-inf" : "inf";
+            std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
+            return contents;
+        }
 
-    if consteval {
         constexpr int max_digits = 50;
         // Extract integer and fractional parts
         int64_t integerPart = static_cast<int64_t>(value);
@@ -187,6 +187,17 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
         
         return contents;
     } else {
+        if (std::isnan(value)) {
+            const char nan[] = "nan";
+            std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
+            return contents;
+        }
+        if (std::isinf(value)) {
+            const char* inf = (value < 0) ? "-inf" : "inf";
+            std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
+            return contents;
+        }
+
         // Fallback to std::to_chars for runtime
         auto result = std::to_chars(contents.data(), contents.data() + contents.size(), value);
         if (result.ec == std::errc{}) {
@@ -202,7 +213,7 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
 template <typename T>
 requires std::floating_point<T>
 std::string to_string(const T& t) {
-    if consteval {
+    if (std::is_constant_evaluated()) {
         auto a = to_string_floating_point(t);
         return std::string(a.data());
     } else {
@@ -231,7 +242,7 @@ std::string to_string(const T& t) {
 template<typename T>
 requires std::integral<T>
 constexpr std::string to_string(T value) {
-    if consteval {
+    if (std::is_constant_evaluated()) {
         // For simplicity, we'll assume a maximum of 20 chars for int64_t (and its negative sign).
         std::array<char, 21> buffer;
         char* end = buffer.data() + 20;

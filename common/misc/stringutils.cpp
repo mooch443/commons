@@ -149,7 +149,7 @@ _split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = f
         }
         
         if (len > 0 or not skip_empty) {
-            ret.emplace_back(start, len);
+            ret.emplace_back(&*start, len);
         }
         
         start = pos;
@@ -185,7 +185,7 @@ _split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = f
                 }
             }
             if (len > 0 || !skip_empty) {
-                ret.emplace_back(start, start + len);
+                ret.emplace_back(&*start, len);
             }
             start = pos;
             if (start != end) {

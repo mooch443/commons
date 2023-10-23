@@ -15,6 +15,7 @@
 #include <gui/types/List.h>
 #include <gui/DynamicVariable.h>
 #include <gui/LabeledField.h>
+#include <variant>
 
 namespace gui {
 namespace dyn {
@@ -105,20 +106,19 @@ struct Context {
     [[nodiscard]] bool has(const std::string_view&) const noexcept;
     
     Context() noexcept = default;
-    Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list, DefaultSettings settings = DefaultSettings{})
-        : defaults(settings)
-        {
-            for (const auto& item : init_list) {
-                if (std::holds_alternative<std::pair<std::string, std::function<void(Action)>>>(item)) {
-                    auto& pair = std::get<std::pair<std::string, std::function<void(Action)>>>(item);
-                    actions[pair.first] = std::move(pair.second);
-                }
-                else if (std::holds_alternative<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item)) {
-                    auto& pair = std::get<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item);
-                    variables[pair.first] = std::move(pair.second);
-                }
+    Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list)
+    {
+        for (auto&& item : init_list) {
+            if (std::holds_alternative<std::pair<std::string, std::function<void(Action)>>>(item)) {
+                auto&& pair = std::get<std::pair<std::string, std::function<void(Action)>>>(item);
+                actions[pair.first] = std::move(pair.second);
+            }
+            else if (std::holds_alternative<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item)) {
+                auto&& pair = std::get<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item);
+                variables[pair.first] = std::move(pair.second);
             }
         }
+    }
     
 private:
     void init() const;

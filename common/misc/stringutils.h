@@ -94,7 +94,7 @@ auto ltrim(Str&& s) {
         return std::forward<Str>(s);
     } else {
         auto start = std::find_if(s.begin(), s.end(), pred);
-        return std::string_view(start, s.end() - start);
+        return std::string_view(&*start, std::distance(start, s.end()));
     }
 }
 
@@ -118,7 +118,7 @@ auto rtrim(Str&& s) {
         
     } else {
         auto end = std::find_if(s.rbegin(), s.rend(), pred).base();
-        return std::string_view(s.begin(), end - s.begin());
+        return std::string_view(&*s.begin(), std::distance(s.begin(), end));
     }
 }
 
