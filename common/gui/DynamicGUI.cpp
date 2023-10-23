@@ -131,7 +131,7 @@ VarProps extractControls(const std::string_view& variable, const Context& contex
         throw InvalidArgumentException("No variables found: ", action.name);
 
     VarProps props{
-        .name{r.front()},
+        .name{std::string(r.front())},
         .optional = optional,
         .html = html
     };
