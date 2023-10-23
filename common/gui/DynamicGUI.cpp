@@ -21,7 +21,7 @@ namespace dyn {
 void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
 
 // Function to skip over nested structures so they don't interfere with our parsing
-std::string skipNested(const std::string& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
+auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
     int balance = 1;
     std::size_t startPos = pos;
     pos++; // Skip the opening char
@@ -36,8 +36,8 @@ std::string skipNested(const std::string& trimmedStr, std::size_t& pos, char ope
     return trimmedStr.substr(startPos, pos - startPos);  // Return the nested structure as a string
 };
 
-Action Action::fromStr(std::string str) {
-    std::string trimmedStr = str;
+Action Action::fromStr(std::string_view str) {
+    auto trimmedStr = str;
 
     if (trimmedStr.front() == '{' and trimmedStr.back() == '}') {
         trimmedStr = trimmedStr.substr(1, trimmedStr.size() - 2);
@@ -99,24 +99,21 @@ std::string Action::toStr() const {
 }
 
 std::string VarProps::toStr() const {
-    return "VarProps<"+name+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";
+    return "VarProps<"+std::string(name)+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";
 }
 
-VarProps extractControls(const std::string& variable, const Context& context) {
+VarProps extractControls(const std::string_view& variable, const Context& context) {
     auto action = Action::fromStr(variable);
     
-    VarProps props{
-        .name = variable
-    };
-    
+    bool html{false}, optional{false};
     std::size_t controlsSize = 0;
     for (char c : action.name) {
         if(c == '#' || c == '.') {
             if (c == '#') {
-                props.html = true;
+                html = true;
             }
             else if (c == '.') {
-                props.optional = true;
+                optional = true;
             }
             controlsSize++;
         } else {
@@ -127,14 +124,22 @@ VarProps extractControls(const std::string& variable, const Context& context) {
     }
 
     // Parsing the name and sub-variables, omitting the controls
-    props.subs = utils::split(action.name.substr(controlsSize), '.');
+    auto r = utils::split(std::string_view(action.name).substr(controlsSize), '.');
     
     // Assigning the action name without the control characters.
-    if (not props.subs.empty()) {
-        props.name = props.subs.front();
-        props.subs.erase(props.subs.begin());
-    } else {
+    if (r.empty())
         throw InvalidArgumentException("No variables found: ", action.name);
+
+    VarProps props{
+        .name{r.front()},
+        .optional = optional,
+        .html = html
+    };
+    
+    const size_t N = r.size();
+    props.subs.resize(N - 1);
+    for (size_t i=1, N = r.size(); i<N; ++i) {
+        props.subs[i - 1] = r[i];
     }
 
     props.parameters = std::move(action.parameters);
@@ -149,7 +154,7 @@ VarProps extractControls(const std::string& variable, const Context& context) {
     return props;
 }
 
-bool Context::has(const std::string & name) const noexcept {
+bool Context::has(const std::string_view & name) const noexcept {
     if(variables.contains(name))
         return true;
     
@@ -270,13 +275,16 @@ void Context::init() const {
     
 }
 
-std::shared_ptr<VarBase_t> Context::variable(const std::string & name) const {
-    if(variables.contains(name))
-        return variables.at(name);
+const std::shared_ptr<VarBase_t>& Context::variable(const std::string_view & name) const {
+    auto it = variables.find(name);
+    if(it != variables.end())
+        return it->second;
     
     init();
-    if(system_variables.contains(name))
-        return system_variables.at(name);
+    
+    auto sit = system_variables.find(name);
+    if(sit != system_variables.end())
+        return sit->second;
     
     throw InvalidArgumentException("Cannot find key ", name, " in variables.");
 }
@@ -386,13 +394,12 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 
 std::string parse_text(const std::string_view& pattern, const Context& context) {
     std::stringstream output;
-    std::stack<std::string> nesting;
+    std::stack<std::size_t> nesting_start_positions;
     bool comment_out = false;
-    std::string current_word;
 
     for(std::size_t i = 0; i < pattern.size(); ++i) {
         char ch = pattern[i];
-        if(nesting.empty()) {
+        if(nesting_start_positions.empty()) {
             switch(ch) {
                 case '\\':
                     if(not comment_out) {
@@ -403,7 +410,7 @@ std::string parse_text(const std::string_view& pattern, const Context& context) 
                     }
                     break;
                 case '{':
-                    if(!comment_out) nesting.push("");
+                    if(!comment_out) nesting_start_positions.push(i + 1);
                     else output << ch;
                     comment_out = false;
                     break;
@@ -420,15 +427,19 @@ std::string parse_text(const std::string_view& pattern, const Context& context) 
             }
         } else {
             if(ch == '}') {
-                current_word = nesting.top();
-                nesting.pop();
+                if(nesting_start_positions.empty()) {
+                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                }
                 
+                std::size_t start_pos = nesting_start_positions.top();
+                nesting_start_positions.pop();
+
+                std::string_view current_word = pattern.substr(start_pos, i - start_pos);
                 if(current_word.empty()) {
-                    // Empty variable name
                     throw InvalidSyntaxException("Empty braces at position ", i);
                 }
 
-                std::string resolved_word = resolve_variable(current_word, context, [word = current_word](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                std::string resolved_word = resolve_variable(current_word, context, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                         try {
                             std::string ret;
                             if(variable.is<Size2>()) {
@@ -465,24 +476,24 @@ std::string parse_text(const std::string_view& pattern, const Context& context) 
                     }, [](bool optional) -> std::string {
                         return optional ? "" : "null";
                     });
-                if(nesting.empty()) {
+                if(nesting_start_positions.empty()) {
                     output << resolved_word;
                 } else {
-                    nesting.top() += resolved_word;
+                    //nesting.top() += resolved_word;
                 }
-
-            } else if(pattern[i] == '{') {
-                nesting.push("");
+                
+            } else if(ch == '{') {
+                nesting_start_positions.push(i + 1);
             } else {
-                if(nesting.empty()) {
+                if(nesting_start_positions.empty()) {
                     throw InvalidSyntaxException("Mismatched opening brace at position ", i);
                 }
-                nesting.top() += ch;
+                //nesting.top() += ch;
             }
         }
     }
 
-    if(not nesting.empty()) {
+    if(not nesting_start_positions.empty()) {
         throw InvalidSyntaxException("Mismatched opening brace");
     }
     

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <charconv>
 
 namespace cmn {
     
@@ -105,17 +106,165 @@ struct FileSize {
 #pragma region util
 namespace util {
 
+
 template <typename T>
-    requires std::floating_point<T>
-std::string to_string(const T& t) {
-    std::string str{std::to_string (t)};
-    size_t offset = min(str.size()-1, size_t(1));
-    if (str.find_last_not_of('0') == str.find('.')) {
-        offset = 0;
+requires std::floating_point<T>
+constexpr std::array<char, 128> to_string_floating_point(T value) {
+    std::array<char, 128> contents { 0 }; // Initialize array with null terminators
+
+    if (std::isnan(value)) {
+        const char nan[] = "nan";
+        std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
+        return contents;
     }
+    if (std::isinf(value)) {
+        const char* inf = (value < 0) ? "-inf" : "inf";
+        std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
+        return contents;
+    }
+
+    if consteval {
+        constexpr int max_digits = 50;
+        // Extract integer and fractional parts
+        int64_t integerPart = static_cast<int64_t>(value);
+        T fractionalPart = value - integerPart;
+        if(fractionalPart < 0)
+            fractionalPart = -fractionalPart;
+
+        // Convert integer part directly into 'contents'
+        char* current = contents.data() + max_digits + 1; // Make room for the largest integer
+        if (integerPart < 0) {
+            integerPart = -integerPart;  // Convert to positive
+            do {
+                --current;
+                *current = '0' + integerPart % 10; // This should now be '+', not '-'
+                integerPart /= 10;
+            } while (integerPart != 0);
             
-    str.erase(str.find_last_not_of('0') + offset, std::string::npos);
-    return str;
+            --current;
+            *current = '-';
+        } else {
+            do {
+                --current;
+                *current = '0' + integerPart % 10;
+                integerPart /= 10;
+            } while (integerPart != 0);
+        }
+        
+        // Adjust contents starting point
+        auto n = max_digits + 2 - (current - contents.data());
+        std::move(current, current + n, contents.data());
+        std::fill(contents.data() + n, contents.data() + contents.size(), 0);
+        
+        // Convert fractional part
+        std::string_view tmp(contents.data());
+        char* fraction_start = contents.data() + tmp.size();
+        *fraction_start = '.';
+        char* fraction_current = fraction_start + 1;
+
+        constexpr T tolerance{1e-4};
+        char* last_non_zero = 0;
+        for (int i = 0; i < max_digits; ++i) {
+            fractionalPart *= 10;
+            char digit = '0' + static_cast<int>(fractionalPart);
+            *fraction_current = digit;
+            if (digit != '0') {
+                last_non_zero = fraction_current;
+            }
+            fraction_current++;
+            fractionalPart -= static_cast<int>(fractionalPart);
+            
+            if (fractionalPart < tolerance && fractionalPart > -tolerance) {
+                break;  // Break when the fractional part is close enough to zero
+            }
+        }
+
+        if (last_non_zero) {
+            *(last_non_zero + 1) = '\0'; // Trim the trailing zeros
+        } else {
+            *fraction_start = '\0'; // If the fractional part is all zeros, remove it.
+        }
+        
+        return contents;
+    } else {
+        // Fallback to std::to_chars for runtime
+        auto result = std::to_chars(contents.data(), contents.data() + contents.size(), value);
+        if (result.ec == std::errc{}) {
+            *result.ptr = 0;
+            return contents;
+        } else {
+            throw std::invalid_argument("Error converting floating point to string");
+        }
+    }
+}
+
+
+template <typename T>
+requires std::floating_point<T>
+std::string to_string(const T& t) {
+    if consteval {
+        auto a = to_string_floating_point(t);
+        return std::string(a.data());
+    } else {
+        char buffer[128];
+        auto result = std::to_chars(buffer, buffer + sizeof(buffer), t, std::chars_format::fixed);
+        if (result.ec == std::errc{}) {
+            std::string str{buffer, result.ptr};
+            
+            /*if (auto dotPos = str.find('.'); dotPos != std::string::npos) {
+             // If only zeros follow the dot or the dot is the last character
+             if (str.find_first_not_of('0', dotPos + 1) == std::string::npos) {
+             str.erase(dotPos);  // Remove the dot and all following characters
+             } else {
+             // Trim trailing zeros
+             str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+             }
+             }*/
+            
+            return str;
+        } else {
+            throw std::invalid_argument("Error converting to string");
+        }
+    }
+}
+
+template<typename T>
+requires std::integral<T>
+constexpr std::string to_string(T value) {
+    if consteval {
+        // For simplicity, we'll assume a maximum of 20 chars for int64_t (and its negative sign).
+        std::array<char, 21> buffer;
+        char* end = buffer.data() + 20;
+        *end = '\0';
+        char* current = end;
+        
+        if (value < 0) {
+            do {
+                --current;
+                *current = '0' - value % 10;
+                value /= 10;
+            } while (value != 0);
+            
+            --current;
+            *current = '-';
+        } else {
+            do {
+                --current;
+                *current = '0' + value % 10;
+                value /= 10;
+            } while (value != 0);
+        }
+        
+        return std::string(current, end - current);
+    } else {
+        char buffer[128];
+        auto result = std::to_chars(buffer, buffer + sizeof(buffer), value);
+        if (result.ec == std::errc{}) {
+            return std::string{buffer, result.ptr};
+        } else {
+            throw std::invalid_argument("Error converting to string");
+        }
+    }
 }
 
 template <typename T>
@@ -128,6 +277,7 @@ std::string to_string(const T& t) {
 template <typename T>
     requires (!std::convertible_to<T, std::string>)
              && (!std::floating_point<T>)
+            && (!std::integral<T>)
 std::string to_string(const T& t) {
     return std::to_string (t);
 }
@@ -207,7 +357,7 @@ std::vector<std::string> parse_array_parts(const Str& str, const char delimiter 
 
             if (brackets.empty()) {
                 if (c == delimiter) {
-                    ret.emplace_back(value);
+                    ret.emplace_back(utils::trim(value));
                     value.clear();
                 } else {
                     value.push_back(c);
@@ -225,7 +375,7 @@ std::vector<std::string> parse_array_parts(const Str& str, const char delimiter 
     }
 
     if (!value.empty() || prev == delimiter) {
-        ret.emplace_back(value);
+        ret.emplace_back(utils::trim(value));
     }
 
     return ret;

@@ -80,7 +80,7 @@ struct Action {
     std::string name;
     std::vector<std::string> parameters;
     
-    static Action fromStr(std::string);
+    static Action fromStr(std::string_view);
     std::string toStr() const;
     static std::string class_name() { return "Action"; }
 };
@@ -96,13 +96,13 @@ std::pair<std::string, std::shared_ptr<VarBase_t>> VarFunc(const std::string& na
 }
 
 struct Context {
-    std::unordered_map<std::string, std::function<void(Action)>> actions;
-    std::unordered_map<std::string, std::shared_ptr<VarBase_t>> variables;
+    std::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
+    std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;
     DefaultSettings defaults;
     
-    mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>> system_variables;
-    [[nodiscard]] std::shared_ptr<VarBase_t> variable(const std::string&) const;
-    [[nodiscard]] bool has(const std::string&) const noexcept;
+    mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> system_variables;
+    [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(const std::string_view&) const;
+    [[nodiscard]] bool has(const std::string_view&) const noexcept;
     
     Context() noexcept = default;
     Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list, DefaultSettings settings = DefaultSettings{})
@@ -254,10 +254,10 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 std::string parse_text(const std::string_view& pattern, const Context& context);
 
 
-VarProps extractControls(const std::string& variable, const Context& context);
+VarProps extractControls(const std::string_view& variable, const Context& context);
 
 template<typename ApplyF, typename ErrorF>
-inline auto resolve_variable(const std::string& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
+inline auto resolve_variable(const std::string_view& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
     auto props = extractControls(word, context);
     
     if(context.has(props.name)) {
