@@ -566,7 +566,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& context)
 {
     Layout::Ptr ptr;
     if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
@@ -588,8 +588,51 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context&)
                 }
             });
             ptr->set_name("list<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
+            
         }
+        
+    } else if(obj.count("items") && obj["items"].is_array()) {
+        auto child = obj["items"];
+        ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
+        std::vector<Action> actions;
+        std::vector<DetailItem> items;
+        
+        for(auto &item : child) {
+            if(item.is_object()) {
+                auto text = item.contains("text") && item["text"].is_string() ? item["text"].get<std::string>() : "";
+                auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
+                auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
+                
+                actions.push_back(Action::fromStr(action));
+                print("list item: ", text, " ", action);
+                items.push_back(DetailItem{
+                    text,
+                    detail
+                });
+            }
+        }
+        
+        ptr.to<ScrollableList<DetailItem>>()->set_items(items);
+        ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context](size_t index, const DetailItem &)
+        {
+            if(index >= actions.size()) {
+                FormatWarning("Cannot select invalid index: ", index, " from ", actions);
+                return;
+            }
+            
+            print("Selecting ", actions.at(index));
+            auto copy = actions.at(index);
+            for(auto &p : copy.parameters) {
+                p = parse_text(p, context);
+            }
+            print(" => ", copy);
+            
+            if(context.actions.contains(copy.name)) {
+                context.actions.at(copy.name)(copy);
+            }
+        });
     }
+    
     return ptr;
 }
 

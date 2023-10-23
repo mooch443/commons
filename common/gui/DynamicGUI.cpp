@@ -223,6 +223,12 @@ T map_vector(const VarProps& props, auto&& apply) {
 void Context::init() const {
     if(system_variables.empty())
         system_variables = {
+            VarFunc("min", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return min(A, B);});
+            }),
+            VarFunc("max", [](VarProps props) -> float {
+                return map_vectors<float>(props, [](auto&A, auto&B){return max(A, B);});
+            }),
             VarFunc("+", [](VarProps props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
             }),

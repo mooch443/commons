@@ -93,6 +93,7 @@ namespace gui {
                 
                 if(!e.mbutton.pressed && e.mbutton.button == 0) {
                     size_t idx = size_t(floorf((scroll_offset().y + e.mbutton.y) / _line_spacing));
+                    _last_selected_item = -1;
                     select_item(idx);
                 }
             });
