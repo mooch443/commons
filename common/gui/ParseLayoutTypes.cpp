@@ -45,7 +45,7 @@ Image::Ptr load_image(const file::Path& path) {
 }
 
 // Initialize from a JSON object
-LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults)
+LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults, uint64_t hash)
  : obj(obj), state(state), _defaults(defaults)
 {
     if(not obj.contains("type"))
@@ -54,8 +54,11 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
     auto type_name = utils::lowercase(obj["type"].get<std::string>());
     type = LayoutType::get(type_name);
     
-    hash = state._current_index.hash();
-    state._current_index.inc();
+    if(hash == 0) {
+        hash = state._current_index.hash();
+        state._current_index.inc();
+    }
+    this->hash = hash;
     
     if(is_in(type, LayoutType::vlayout, LayoutType::hlayout, LayoutType::collection, LayoutType::gridlayout))
     {
@@ -332,12 +335,16 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context& 
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context& context)
 {
     Layout::Ptr ptr;
     std::string var;
     if(obj.contains("var")) {
-        var = obj["var"].get<std::string>();
+        auto input = obj["var"].get<std::string>();
+        var = parse_text(input, context);
+        if(var != input) {
+            state.patterns[hash]["var"] = input;
+        }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");
     
@@ -346,23 +353,29 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&)
         invert = obj["invert"].get<bool>();
     }
     
-    std::string key = var + std::to_string(hash);
     {
         {
-            if(not state._text_fields.contains(key) or not state._text_fields.at(key)) {
-                auto ptr = LabeledField::Make(var, obj, invert);
-                state._text_fields.emplace(key, std::move(ptr));
+            auto ptr = LabeledField::Make(var, obj, invert);
+            if(not state._text_fields.contains(hash) or not state._text_fields.at(hash))
+            {
+                state._text_fields.emplace(hash, std::move(ptr));
             } else {
-                throw U_EXCEPTION("Cannot deal with replacement LabeledFields yet.");
-                //state._text_fields.at(key) = std::move(ptr);
+                //throw U_EXCEPTION("Cannot deal with replacement LabeledFields yet.");
+                state._text_fields[hash] = std::move(ptr);
             }
         }
         
-        auto& ref = state._text_fields.at(key);
+        VarCache& cache = state._var_cache[hash];
+        cache._var = var;
+        cache._obj = obj;
+        
+        auto& ref = state._text_fields.at(hash);
         if(not ref) {
             FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
             return nullptr;
         }
+        
+        cache._value = ref->_ref.get().valueString();
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
         }
@@ -593,6 +606,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
         
     } else if(obj.count("items") && obj["items"].is_array()) {
         auto child = obj["items"];
+        
         ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
         std::vector<Action> actions;
         std::vector<DetailItem> items;
@@ -631,6 +645,27 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
                 context.actions.at(copy.name)(copy);
             }
         });
+    }
+    
+    if(ptr) {
+        ItemHeight_t item_height{get(float(5), "item_height")};
+        auto list = ptr.to<ScrollableList<DetailItem>>();
+        list->set(item_height);
+        
+        Alternating_t alternate{get(false, "alternate")};
+        list->set(alternate);
+        
+        Foldable_t foldable{get(false, "foldable")};
+        Folded_t folded{get(false, "folded")};
+        Str folded_label{get(std::string(), "text")};
+        
+        if(foldable) {
+            list->set(foldable);
+            list->set(folded);
+        }
+        
+        if(not folded_label.empty())
+            list->set(folded_label);
     }
     
     return ptr;

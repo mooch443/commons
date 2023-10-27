@@ -14,6 +14,23 @@
 
 namespace utils {
 
+template<typename Str>
+concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
+                      std::is_same_v<std::remove_cvref_t<Str>, const char*> ||
+                      std::is_same_v<std::remove_cvref_t<Str>, std::string_view> ||
+                      std::is_array_v<std::remove_cvref_t<Str>>;
+
+// Concept to identify valid needle types
+template<typename T>
+concept NeedleLike = std::is_same_v<std::remove_cvref_t<T>, char> ||
+                     StringLike<T>;
+
+template<typename T>
+struct is_const_lvalue_ref : std::false_type {};
+
+template<typename T>
+struct is_const_lvalue_ref<const T&> : std::true_type {};
+
     template<typename Str>
     bool beginsWith(const Str& str, char c) {
         return !str.empty() && str.front() == c;
@@ -46,10 +63,65 @@ namespace utils {
 	 * @param needle the needle
 	 * @return true if it is found
 	 */
-	bool contains(const std::string &str, const std::string &needle);
-    bool contains(const std::string &str, const char &needle);
-    bool contains(const std::wstring &str, const std::wstring &needle);
-    bool contains(const std::wstring &str, const wchar_t &needle);
+    template<StringLike Str, NeedleLike Needle>
+    [[nodiscard]] constexpr bool contains(const Str& str, const Needle& needle) noexcept {
+        if constexpr(std::is_same_v<std::remove_cvref_t<Str>, const char*>)
+        {
+            std::string_view sv_str(str);
+            if(sv_str.empty())
+                return false;
+            
+            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+                return sv_str.find(needle) != std::string::npos;
+            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+                if constexpr(sizeof(Needle) <= 1u)
+                    return false;
+                
+                std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
+                return sv_str.find(sv_needle) != std::string::npos;
+            } else {
+                std::string_view sv_needle(needle);
+                if(sv_needle.empty())
+                    return false;
+                
+                return sv_str.find(sv_needle) != std::string::npos;
+            }
+            
+        } else if constexpr(std::is_array_v<std::remove_cvref_t<Str>>) {
+            std::string_view sv_str(reinterpret_cast<const char*>(str), sizeof(Str) - 1);  // -1 to exclude null-terminator
+            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+                return sv_str.find(needle) != std::string::npos;
+            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+                if constexpr(sizeof(Needle) <= 1u)
+                    return false;
+                
+                std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
+                return sv_str.find(sv_needle) != std::string::npos;
+            } else {
+                std::string_view sv_needle(needle);
+                if(sv_needle.empty())
+                    return false;
+                return sv_str.find(sv_needle) != std::string::npos;
+            }
+            
+        } else {
+            if(str.empty())
+                return false;
+            
+            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+                // no check required
+            } else if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, const char*>) {
+                // check is not efficient
+            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+                if(sizeof(Needle) <= 1u)
+                    return false;
+            } else {
+                if (needle.empty())
+                    return false;
+            }
+            return str.find(needle) != std::string::npos;
+        }
+    }
     
     //! find and replace string in another string
     /**
@@ -58,22 +130,10 @@ namespace utils {
      * @param newStr replacement of needle
      * @return str with all occurences of needle replaced by newStr
      */
-    std::string find_replace(const std::string& str, const std::string& oldStr, const std::string& newStr);
     std::wstring find_replace(const std::wstring& str, const std::wstring& oldStr, const std::wstring& newStr);
+    std::string find_replace(std::string_view str, std::string_view oldStr, std::string_view newStr);
 
     std::string find_replace(const std::string& str, std::vector<std::tuple<std::string, std::string>>);
-    
-template<typename Str>
-concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
-                      std::is_same_v<std::remove_cvref_t<Str>, const char*> ||
-                      std::is_same_v<std::remove_cvref_t<Str>, std::string_view> ||
-                      std::is_array_v<std::remove_cvref_t<Str>>;
-
-template<typename T>
-struct is_const_lvalue_ref : std::false_type {};
-
-template<typename T>
-struct is_const_lvalue_ref<const T&> : std::true_type {};
 
 template<StringLike Str>
 auto ltrim(Str&& s) {

@@ -594,3 +594,44 @@ uint64_t DataPackage::write_data(uint64_t num_bytes, const char *buffer) {
     return before;
 }
 
+DataFormat::DataFormat(const file::Path& filename, const std::string& proj_name)
+    : _project_name(proj_name),
+    _filename(filename),
+    _file_offset(0),
+    _mmapped(false),
+    fd(0),
+    _open_for_writing(false),
+    _open_for_modifying(false),
+    _header_written(false)
+{}
+
+DataFormat::DataFormat(DataFormat&& other) noexcept
+    : Data(std::move(other)), // Move-construct base class
+      _project_name(std::move(other._project_name)),
+      _filename(std::move(other._filename)),
+      f(std::move(other.f)),
+      _file_offset(other._file_offset),
+      _mmapped(other._mmapped),
+      fd(other.fd),
+      _data(other._data),
+#if defined(__EMSCRIPTEN__)
+      _data_container(std::move(other._data_container)),
+#endif
+      _internal_modification(), // Mutexes cannot be moved, so we'll initialize a new one
+      _reading_file_size(other._reading_file_size),
+#if defined(WIN32)
+      reg(std::move(other.reg)),
+#endif
+      _open_for_writing(other._open_for_writing),
+      _open_for_modifying(other._open_for_modifying),
+      _header_written(other._header_written)
+{
+    // Ensure the moved-from object is left in a safe state
+    other._file_offset = 0;
+    other._mmapped = false;
+    other.fd = 0;
+    other._data = nullptr;
+    other._open_for_writing = false;
+    other._open_for_modifying = false;
+    other._header_written = false;
+}

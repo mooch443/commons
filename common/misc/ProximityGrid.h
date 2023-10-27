@@ -34,6 +34,7 @@ class ProximityGrid : public Grid2D<fdx_pos, std::vector<pixel<fdx_pos>>> {
 public:
     using result_t = std::tuple<float, fdx_pos>;
     
+    ProximityGrid() noexcept = default;
     ProximityGrid(const Size2& resolution, int r = -1);
     
     UnorderedVectorSet<result_t> query(const Vec2& pos, float max_d) const;

@@ -43,14 +43,8 @@ LabeledField::LabeledField(const std::string& name)
     
     if(_ref.get().valid()) {
         print("Registering callback for ", name);
-        
-        settings_map().register_callback(Meta::toStr((uint64_t)this), [this, name](auto, auto&, auto& n, auto&)
-                                         {
-            if(n == name) {
-                update();
-            }
-        });
-    } 
+        _callback_id = settings_map().register_callbacks({name}, [this](auto){update();});
+    }
 #ifndef NDEBUG
     else {
         print("Ref invalid: ", name);
@@ -59,8 +53,8 @@ LabeledField::LabeledField(const std::string& name)
 }
 
 LabeledField::~LabeledField() {
-    if(_ref.get().valid())
-        settings_map().unregister_callback(Meta::toStr((uint64_t)this));
+    if(_callback_id)
+        settings_map().unregister_callbacks(std::move(_callback_id));
 }
 
 LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json& obj)
@@ -468,7 +462,7 @@ void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
     
     _file_retrieval = std::async(std::launch::async, [this, copy = _files](std::function<file::Path()> fn) -> tl::expected<std::vector<Dropdown::TextItem>, const char*> {
         try {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            //std::this_thread::sleep_for(std::chrono::seconds(1));
             auto p = fn();
             if(p.is_folder()) {
                 try {

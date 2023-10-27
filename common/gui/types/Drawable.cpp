@@ -10,7 +10,7 @@
 namespace gui {
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 0;
-    const char *callback = NULL;
+    CallbackCollection callback;
 
     std::string Drawable::toStr() const {
         return std::string(type().name()) + " " + Meta::toStr(_bounds);
@@ -74,23 +74,17 @@ namespace gui {
     
     float interface_scale() {
         if(!callback) {
-            callback = "gui::interface_scale";
-            
-            auto update = [](auto signal, auto&map, std::string name, auto&)
-            {
-                if(signal == sprite::Map::Signal::EXIT) {
-                    map.unregister_callback(callback);
-                    callback = nullptr;
-                    return;
-                }
-                
-                if(name == "gui_interface_scale") {
-                    hidden::Global::interface_scale = GlobalSettings::has("gui_interface_scale") ? SETTING(gui_interface_scale).value<float>() : 1;
-                }
+            GlobalSettings::map().register_shutdown_callback([](auto){
+                callback.reset();
+            });
+            auto update = [](std::string_view name) {
+                hidden::Global::interface_scale = GlobalSettings::has(std::string(name))
+                        ? SETTING(gui_interface_scale).value<float>()
+                        : 1;
             };
             
-            GlobalSettings::map().register_callback(callback, update);
-            update(sprite::Map::Signal::NONE, GlobalSettings::map(), "gui_interface_scale", GlobalSettings::get("gui_interface_scale").get());
+            callback = GlobalSettings::map().register_callbacks({"gui_interface_scale"}, update);
+            update("gui_interface_scale");
         }
         return hidden::Global::interface_scale;
     }

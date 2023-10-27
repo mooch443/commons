@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <file/Path.h>
 #include <file/PathArray.h>
+#include <misc/CallbackManager.h>
 
 namespace cmn {
     namespace sprite {
@@ -65,47 +66,90 @@ namespace cmn {
         class Property;
         class Map;
         
+        /**
+         * @class PropertyType
+         * Represents a generic property type that serves as the base for specialized property types.
+         * Provides essential functionalities such as serialization, comparison, and string conversion.
+         */
         class PropertyType {
         protected:
-            std::string _name;
-            bool _valid;
-            std::mutex _property_mutex;
+            const std::string _name; ///< Name of the property.
+            bool _valid = false; ///< Flag indicating if the property is valid.
             
-            GETTER(bool, is_array)
-            GETTER(bool, is_enum)
+            // Mutex to ensure thread safety for concurrent access.
+            // NOTE: Currently, the mutex is defined but not used in any member functions.
+            // Ensure you lock this mutex in member functions that modify the object's state if they can be called concurrently.
+            mutable std::mutex _property_mutex;
+
+            // The following are getters for specific flags.
+            GETTER(bool, is_array) ///< Indicates if the property is of array type.
+            GETTER(bool, is_enum) ///< Indicates if the property is of enum type.
             
-            std::function<void(const std::string&)> _set_value_from_string;
-            std::function<std::string()> _type_name;
-            std::function<nlohmann::json()> _to_json;
-            GETTER(std::function<std::vector<std::string>()>, enum_values)
-            GETTER(std::function<size_t()>, enum_index)
+            // Lambda functions to allow custom behaviors. These can be overridden as needed.
+            std::function<void(const std::string&)> _set_value_from_string; ///< Setter function from string.
+            std::function<std::string()> _type_name = [](){return "unknown";}; ///< Getter for the type name.
+            std::function<nlohmann::json()> _to_json = [](){return nlohmann::json();}; ///< Function to serialize property to JSON.
+
+            // More lambda functions for enum type properties.
+            GETTER(std::function<std::vector<std::string>()>, enum_values) ///< Getter for the enum values.
+            GETTER(std::function<size_t()>, enum_index) ///< Getter for the index of an enum value.
             
-            GETTER_SETTER_PTR_I(Map*, map, nullptr)
+            CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             
         public:
-            PropertyType(Map *map)
-                : _name("<invalid>"), _valid(false), _is_array(false), _is_enum(false),
-                _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
-                _type_name([](){return "unknown";}),
-                _to_json([](){return nlohmann::json();}),
-                _enum_values([]() -> std::vector<std::string> {     throw U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
-                _enum_index([]() -> size_t{ throw U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
-                _map(map)
-            { }
+            // Constructors
+            PropertyType() : PropertyType("<invalid>") {
+                _valid = false;
+            }
+
+            /**
+             * Primary constructor for the PropertyType.
+             * @param map Pointer to associated map object.
+             * @param name Name of the property.
+             */
+            PropertyType(const std::string_view& name)
+                : _name(name), _valid(true)
+            {
+                // Set default behaviors for lambda functions.
+                _set_value_from_string = [this](const std::string&){
+                    throw U_EXCEPTION("Uninitialized function set_value_from_string (", _name, ").");
+                };
+                _enum_values = []() -> std::vector<std::string> {
+                    throw U_EXCEPTION("PropertyType::enum_values() not initialized.");
+                };
+                _enum_index = []() -> size_t {
+                    throw U_EXCEPTION("PropertyType::enum_index() not initialized");
+                };
+            }
             
-            PropertyType(Map *map, const std::string_view& name)
-                : _name(name), _valid(true), _is_array(false), _is_enum(false),
-                _set_value_from_string([this](const std::string&){throw U_EXCEPTION("Uninitialized function set_value_from_string (",_name,").");}),
-                _type_name([](){return "unknown";}),
-                _enum_values([]() -> std::vector<std::string> {     throw U_EXCEPTION("PropertyType::enum_values() not initialized."); }),
-                _enum_index([]() -> size_t{ throw U_EXCEPTION("PropertyType::enum_index() not initialized"); }),
-                _map(map)
-            { }
+            virtual ~PropertyType() = default; ///< Default virtual destructor.
             
-            virtual ~PropertyType() = default;
+            virtual void copy_to(Map* other) const; ///< Copy function to duplicate this property to another map.
             
-            virtual void copy_to(Map* other) const;
+            /**
+             * Registers a new callback function and returns its unique ID.
+             * The callback will be invoked when certain events or changes occur.
+             *
+             * @param callback The callback function to register.
+             * @return A unique identifier for the registered callback.
+             */
+            std::size_t registerCallback(const std::function<void(std::string_view)>& callback) {
+                return _callbacks.registerCallback(callback);
+            }
+
+            /**
+             * Unregisters (removes) a previously registered callback using its unique ID.
+             *
+             * @param id The unique identifier of the callback to unregister.
+             */
+            void unregisterCallback(std::size_t id) {
+                _callbacks.unregisterCallback(id);
+            }
             
+            /**
+             * Sets the value of the property from a string-serialized object.
+             * @param str String representation of the value.
+             */
             void set_value_from_string(const std::string& str) {
                 try {
                     _set_value_from_string(str);
@@ -114,19 +158,52 @@ namespace cmn {
                 }
             }
             
+            /**
+             * Compares the current property with another for equality.
+             * Must be overridden by derived classes.
+             * @param other The other property to compare with.
+             * @return True if equal, false otherwise.
+             */
             virtual bool operator==(const PropertyType& other) const = 0;
+            
+            /**
+             * Compares the current property with another for inequality.
+             * @param other The other property to compare with.
+             * @return True if not equal, false otherwise.
+             */
             bool operator!=(const PropertyType& other) const {
                 return !operator==(other);
             }
             
+            /**
+             * Assigns a value to the property.
+             * @param value The value to assign.
+             */
             template<typename T>
             void operator=(const T& value);
             
+            /**
+             * Retrieves the name of the property.
+             * @return The property's name.
+             */
             const std::string& name() const { return _name; }
-            
-            void valid(bool valid) { _valid = valid; }
-            bool valid() const { return _valid; }
 
+            /**
+             * Sets the validity state of the property.
+             * @param valid The validity state to set.
+             */
+            void valid(bool valid) { _valid = valid; }
+
+            /**
+             * Checks the validity state of the property.
+             * @return True if valid, false otherwise.
+             */
+            bool valid() const { return _valid; }
+            
+            /**
+             * Serializes the property to a JSON object.
+             * @return A JSON representation of the property.
+             */
             auto to_json() const {
 				return _to_json();
 			}
@@ -166,7 +243,11 @@ namespace cmn {
                 
                 throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
             }
-
+            
+            /**
+             * Converts the property to a specific type.
+             * @return The property as the specified type.
+             */
             template<typename T>
             operator typename std::remove_const<T>::type &() {
                 Property<T>& p = toProperty<T>();
@@ -176,16 +257,28 @@ namespace cmn {
                 throw PropertyException("Cannot cast " + toStr() + " to reference type ("+ Meta::name<T>()+").");
             }
             
+            /**
+             * Retrieves the type name of the property.
+             * @return The type name.
+             */
             virtual const std::string type_name() const {
                 return _type_name();
             }
             
+            /**
+             * Converts the property value to its string representation.
+             * @return The string representation of the value.
+             */
             virtual std::string valueString() const {
                 if(!valid())
                     throw PropertyException("ValueString of invalid PropertyType.");
                 throw PropertyException("Cannot use valueString of PropertyType directly.");
             }
             
+            /**
+             * Generates a string representation of the property.
+             * @return A string representing the property.
+             */
             std::string toStr() const {
                 return "Property<"+type_name()+">"
                      + "('" + _name + "'"
@@ -209,20 +302,20 @@ namespace cmn {
         template<class ValueType>
         class Property : public PropertyType {
         public:
-            static Property<ValueType> InvalidProp;
+            inline static Property<ValueType> InvalidProp;
             
         protected:
             ValueType _value;
             
         public:
-            Property(Map *map)
-            : PropertyType(map), _value(ValueType())
+            Property() 
+                : PropertyType(), _value(ValueType())
             {
                 init();
             }
             
-            Property(Map *map, const std::string_view& name, const ValueType& v = ValueType())
-                : PropertyType(map, name), _value(v)
+            Property(const std::string_view& name, const ValueType& v = ValueType())
+                : PropertyType(name), _value(v)
             {
                 init();
             }
@@ -304,9 +397,6 @@ namespace cmn {
                 return ss.str();
             }
         };
-                
-        template<typename T>
-        Property<T> Property<T>::InvalidProp(NULL);
     
     Property(const char*) -> Property<std::string>;
     }
@@ -318,7 +408,7 @@ namespace cmn {
     namespace sprite {
         template<typename T>
         void Property<T>::operator=(const Reference& other) {
-            LockGuard guard(map());
+            std::unique_lock guard(_property_mutex);
             const Property& _other = other.toProperty<T>();
             if (_other)
                 *this = _other;
@@ -328,7 +418,7 @@ namespace cmn {
         
         template<typename T>
         void Property<T>::operator=(const PropertyType& other) {
-            LockGuard guard(map());
+            std::unique_lock guard(_property_mutex);
             const Property& _other = other.operator const cmn::sprite::Property<T>&();
             if(_other.valid()) {
                 *this = _other.value();

@@ -51,7 +51,7 @@ namespace gui {
         typedef derived_ptr<Drawable> Ptr;
         
     private:
-        GETTER(std::vector<Ptr>, objects)
+        GETTER_NCONST(std::vector<Ptr>, objects)
         
     protected:
         GETTER(attr::Margins, margins)
@@ -84,6 +84,7 @@ namespace gui {
         void update() override;
         void add_child(size_t pos, Layout::Ptr ptr);
         void add_child(Layout::Ptr ptr);
+        void replace_child(size_t pos, Layout::Ptr ptr);
         
         void remove_child(Layout::Ptr ptr);
         void remove_child(Drawable* ptr) override;

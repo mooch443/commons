@@ -224,11 +224,6 @@ namespace cmn {
         virtual bool is_write_mode() const;
         
     public:
-        virtual ~DataFormat();
-        
-        //void read_file();
-        //void write_file(bool overwrite = false);
-        
         virtual void start_reading();
         virtual void start_modifying();
         virtual void start_writing(bool overwrite = false);
@@ -245,9 +240,9 @@ namespace cmn {
 		virtual uint64_t tell() const override;
         
     public:
-        DataFormat(const file::Path& filename, const std::string& proj_name = "untitled")
-        : _project_name(proj_name), _filename(filename), _file_offset(0), _mmapped(false), fd(0), _open_for_writing(false), _open_for_modifying(false), _header_written(false)
-        {}
+        DataFormat(const file::Path& filename, const std::string& proj_name = "untitled");
+        DataFormat(DataFormat&& other) noexcept;
+        virtual ~DataFormat();
         
         // reading some data from the opened file
         virtual uint64_t read_data(uint64_t num_bytes, char *buffer) override;

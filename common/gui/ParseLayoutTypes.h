@@ -87,7 +87,7 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults);
+    LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults, uint64_t hash = 0);
     
     template <LayoutType::Class T>
     Layout::Ptr create_object(const Context&) {

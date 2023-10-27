@@ -42,7 +42,7 @@ namespace cmn {
         Bounds _bounds;
         //int (*_diff)(int, int);
         std::string _name;
-        const char* _callback;
+        CallbackCollection _callback;
         
     public:
         Background(Image::Ptr&& image, LuminanceGrid* grid);

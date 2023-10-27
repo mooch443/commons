@@ -48,97 +48,84 @@ namespace cmn {
                                               s.end(), [](char c) { return !std::isdigit(c) && c!='.'; }) == s.end();
         }
         
-        std::string htmlify(std::string doc, bool add_links) {
-            std::stringstream parsed;
-            std::deque<char> in_string;
-            std::stringstream word;
+    std::string htmlify(std::string doc, bool add_links) {
+        std::stringstream parsed;
+        //parsed.reserve(doc.size() * 1.2);  // Reserve an estimate to avoid reallocations
+        
+        std::stringstream word;
+        char in_string = 0;
+        
+        static constexpr std::array<std::string_view, 19> keywords {
+            "true", "false",
+            "int", "float", "double",
+            "ulong", "uint", "uchar",
+            "vector", "string", "vec", "size", "color",
+            "bool", "array", "long", "path", "map",
+            "bounds"
+        };
+        
+        auto end_word = [&](char c, char sep) {
+            std::string str = word.str();
+            word.str("");
             
-            auto end_word = [&](char c, char sep) {
-                static std::set<std::string> keywords {
-                    "true", "false",
-                    "int", "float", "double",
-                    "ulong", "uint", "uchar",
-                    "vector", "string", "vec", "size", "color",
-                    "bool", "array", "long", "path", "map",
-                    "bounds"
-                };
-                
-                auto str = word.str();
-                word.str("");
-                
-                if(!str.empty()) {
-                    if(keywords.find(str) != keywords.end())
-                        str = "<key>" + str +"</key>";
-                    else if(is_number(str))
-                        str = "<nr>" + str + "</nr>";
-                }
-                
-                if(sep == '`')
-                    parsed << (utils::contains(str, "://") ? (add_links ? "<a href=\""+str+"\" target=\"_blank\">" : "<a>") : "<ref>") << str << (utils::contains(str, "://") ? "</a>" : "</ref>");
-                else
-                    parsed << str;
-                
-                if(c)
-                    parsed << c;
-            };
-            
-            char last_c = 0;
-            doc = utils::find_replace(doc, "<", "&lt;");
-            doc = utils::find_replace(doc, ">", "&gt;");
-            
-            for(size_t i=0; i<doc.length(); ++i) {
-                auto c = doc.at(i);
-                if(c == '\n') {
-                    end_word(0, 0);
-                    parsed << "<br/>\n";
-                    
-                } else if(is_in(c, '\'', '`', '"', '$')) {
-                    bool closing = false;
-                    if(!in_string.empty() && in_string.back() == c) {
-                        in_string.pop_back();
-                        closing = true;
-                    } else
-                        in_string.push_back(c);
-                    
-                    auto w = word.str();
-                    end_word(0, closing ? c : 0);
-                    
-                    if(c == '\'' || c == '"') {
-                        if(!in_string.empty() && in_string.back() == c)
-                            parsed << "<str>" << c;
-                        else
-                            parsed << c << "</str>";
-                    } else if(c == '`') {
-                        
-                    } else if(c == '$') {
-                        if(!in_string.empty() && in_string.back() == c)
-                            parsed << "<h4>";
-                        else
-                            parsed << "</h4>";
-                    }
-                    
-                } else if(in_string.empty()) {
-                    if((std::isspace(c) || c < '0' || (c > '9' && c < 'A') || (c > 'Z' && c < 'a') || c > 'z') && c != '.') {
-                        if(last_c == '%' && c == '%') {
-                            last_c = 0;
-                            continue;
-                        }
-                        end_word(c, 0);
-                        
-                    } else
-                        word << c;
-                } else
-                    word << c;
-                
-                last_c = c;
+            if(!str.empty()) {
+                if(contains(keywords, str))
+                    str = "<key>" + str + "</key>";
+                else if(is_number(str))
+                    str = "<nr>" + str + "</nr>";
             }
             
-            if(!word.str().empty()) {
+            if(sep == '`') {
+                parsed << (utils::contains(str, "://") ? (add_links ? "<a href=\"" + str + "\" target=\"_blank\">" : "<a>") : "<ref>") << str << (utils::contains(str, "://") ? "</a>" : "</ref>");
+            } else {
+                parsed << str;
+            }
+            
+            if(c) parsed << c;
+        };
+
+        doc = utils::find_replace(doc, "<", "&lt;");
+        doc = utils::find_replace(doc, ">", "&gt;");
+        
+        for(auto c : doc) {
+            if(c == '\n') {
                 end_word(0, 0);
+                parsed << "<br/>\n";
+            } else if(is_in(c, '\'', '`', '"', '$')) {
+                bool closing = (in_string == c);
+                if(closing) in_string = 0;
+                else in_string = c;
+                
+                end_word(0, closing ? c : 0);
+                
+                if(c == '\'' || c == '"') {
+                    if(closing)
+                        parsed << c << (in_string == c ? "<str>" : "</str>");
+                    else
+                        parsed << (in_string == c ? "<str>" : "</str>") << c;
+                } else if(c == '`') {
+                    //...
+                } else if(c == '$') {
+                    parsed << (in_string == c ? "<h4>" : "</h4>");
+                }
+            } else if(in_string == 0) {
+                if(c != '.' && (std::isspace(c) || !std::isalnum(c))) {
+                    end_word(c, 0);
+                } else {
+                    word << c;
+                }
+            } else {
+                word << c;
             }
-            
-            return parsed.str();
         }
+        
+        if(!word.str().empty()) {
+            end_word(0, 0);
+        }
+        
+        return parsed.str();
+    }
+
     
     /**
      * Outputs a given set of Parameter map and documentation into the reStructuredText format (https://docutils.sourceforge.io/docs/ref/rst/directives.html). The output is a single page containing documentation for all parameters in the map, including parameter type, access type and default parameters plus a description.

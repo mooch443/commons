@@ -675,7 +675,7 @@ public: \
         static Members _members; \
         return _members; \
     } \
-    typedef std::function<void(const std::string&, const sprite::PropertyType&)> callback_fn_t; \
+    typedef std::function<void(const std::string_view&, const sprite::PropertyType&)> callback_fn_t; \
     static auto& callbacks() { \
         static CallbackHolder<Variables, callback_fn_t> _callbacks(#NAM); \
         return _callbacks._callbacks; \
@@ -721,9 +721,10 @@ private: \
         } \
     } \
     inline static std::once_flag flag; \
+    inline static CallbackCollection _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
-    template<Variables M> static void update(const std::string &key, const sprite::PropertyType& value) { auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
+template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { print("Updating key ", key, " = ", value); auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
     template<Variables M> \
     static const char* name() { \
         return VariableNames[M]; \
@@ -731,21 +732,20 @@ public: \
     static void set_callback(Variables v, callback_fn_t f) { callbacks()[v] = f; } \
     static void clear_callbacks() { callbacks().clear(); } \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
-    static void variable_changed (sprite::Map::Signal signal, sprite::Map &, const std::string &key, const sprite::PropertyType& value) { \
-        if(signal == sprite::Map::Signal::EXIT) { \
-            cmn::GlobalSettings::map().unregister_callback(#NAM + std::to_string((uint64_t)&flag)); \
-            return; \
-        } \
+    static void variable_changed (sprite::Map::Signal signal, sprite::Map &, const std::string_view &key, const sprite::PropertyType& value) { \
         if(false); STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
         std::call_once(flag, [](){ \
-            cmn::GlobalSettings::map().register_callback(#NAM + std::to_string((uint64_t)&flag), NAM :: variable_changed ); \
-            for(auto &n : NAM :: names()) \
-                if(cmn::GlobalSettings::map().has(n)) \
-                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), n, cmn::GlobalSettings::get(n.c_str()).get()); \
-                else\
-                    FormatWarning("Cannot find parameter ", n, " in global settings."); \
+        _callback_id = cmn::GlobalSettings::map().register_callbacks(NAM :: names(), [](std::string_view name){ \
+                variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+            }); \
+            for(auto &name : NAM :: names()) { \
+                if(cmn::GlobalSettings::map().has(name)) \
+                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+                else \
+                    FormatWarning("Cannot find parameter ", name, " in global settings."); \
+            } \
         }); \
     } \
 }; \

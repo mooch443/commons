@@ -14,23 +14,13 @@ namespace cmn {
     Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
         : _image(std::move(image)), _grid(grid), _bounds(_image->bounds())
     {
-        _name = "Background"+Meta::toStr((uint64_t)this);
-        _callback = _name.c_str();
-        
-        GlobalSettings::map().register_callback(_callback, [this](sprite::Map::Signal signal, sprite::Map&map, auto& name, auto&v){
-            if(signal == sprite::Map::Signal::EXIT) {
-                map.unregister_callback(_callback);
-                _callback = nullptr;
-                return;
-            }
-            
+        auto _callback = GlobalSettings::map().register_callbacks({"track_absolute_difference","track_background_subtraction"}, [this](std::string_view name) {
             if(name == "track_absolute_difference") {
-                cmn::track_absolute_difference = v.template value<bool>();
-                this->update_callback();
+                cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
             } else if(name == "track_background_subtraction") {
-                cmn::track_background_subtraction = v.template value<bool>();
-                this->update_callback();
+                cmn::track_background_subtraction = SETTING(track_background_subtraction).value<bool>();
             }
+            update_callback();
         });
         
         cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
@@ -40,7 +30,7 @@ namespace cmn {
     
     Background::~Background() {
         if(_callback)
-            GlobalSettings::map().unregister_callback(_callback);
+            GlobalSettings::map().unregister_callbacks(std::move(_callback));
     }
 
     void Background::update_callback() {

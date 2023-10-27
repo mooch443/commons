@@ -5,6 +5,11 @@
 namespace cmn {
 namespace sprite {
     
+template <typename T>
+concept HasNotEqualOperator = requires(T a, T b) {
+    { a != b } -> std::same_as<bool>;
+};
+
     class Map;
     class PropertyType;
     
@@ -62,7 +67,7 @@ namespace sprite {
     private:
         PropertyType* _type;
         Map* _container;
-        std::string_view _name;
+        GETTER(std::string_view, name)
         
         
     public:
@@ -158,6 +163,12 @@ namespace std
 namespace cmn {
 namespace sprite {
 
+template <typename T>
+concept Iterable = requires(T obj) {
+    { std::begin(obj) } -> std::input_iterator;
+    { std::end(obj) } -> std::input_iterator;
+};
+
     class Map {
     public:
         enum class Signal {
@@ -166,40 +177,18 @@ namespace sprite {
         };
         
         typedef std::shared_ptr<PropertyType> Store;
-        typedef std::function<void(Signal, Map&, const std::string&, const PropertyType&)> callback_func;
-        
-    private:
         
     protected:
         std::unordered_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
-        ska::bytell_hash_map<std::string, callback_func> _callbacks;
         ska::bytell_hash_map<std::string, bool> _print_key;
+
+        std::atomic<std::size_t> _id_counter{0u};
+        std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
         GETTER_NCONST(std::mutex, mutex)
         GETTER_SETTER_I(bool, do_print, true)
         
     public:
-        //! value of the property name has changed
-        void changed(const PropertyType& var) {
-            decltype(_callbacks) copy;
-            {
-                LockGuard guard(this);
-                copy = _callbacks;
-            }
-            
-            for(auto c: copy)
-                c.second(Signal::NONE, *this, var.name(), var);
-            
-            if(_do_print) {
-                LockGuard guard(this);
-                auto it = _print_key.find(var.name());
-                if(it == _print_key.end() || it->second) {
-                    auto str = var.toStr(), val = var.valueString();
-                    print(str.c_str()," = ",val.c_str());
-                }
-            }
-        }
-        
         void dont_print(const std::string& name) {
             _print_key[name] = false;
         }
@@ -209,6 +198,30 @@ namespace sprite {
             if(it != _print_key.end())
                 _print_key.erase(it);
         }
+
+        /**
+         * @brief Registers a shutdown callback function.
+         * 
+         * @param callback The callback function to register.
+         * @return The ID of the registered callback.
+         */
+        std::size_t register_shutdown_callback(std::function<void(Map*)> callback) {
+            std::size_t id = _id_counter++;
+            _shutdown_callbacks[id] = callback;
+            return id;
+        }
+
+        /**
+         * @brief Unregisters a shutdown callback with the given ID.
+         * 
+         * @param id The ID of the shutdown callback to unregister.
+         */
+        void unregister_shutdown_callback(std::size_t id) {
+            auto it = _shutdown_callbacks.find(id);
+            if(it != _shutdown_callbacks.end())
+                _shutdown_callbacks.erase(it);
+        }
+
         
         friend PropertyType;
         
@@ -239,8 +252,55 @@ namespace sprite {
             return true;
         }
         
-        void register_callback(const std::string& obj, const callback_func &func);
-        void unregister_callback(const std::string& obj);
+        template<typename Callback, typename Str>
+            requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
+                    && std::convertible_to<Str, std::string>
+        CallbackCollection register_callbacks(const std::initializer_list<Str>& names, Callback callback) {
+            if constexpr(std::same_as<Str, const char*>) {
+                std::vector<std::string_view> converted_names;
+                for(const char* str : names) {
+                    converted_names.emplace_back(str);
+                }
+                return register_callbacks_impl(converted_names, callback);
+            } else
+                return register_callbacks_impl(names, callback);
+        }
+        
+        template<typename Callback, typename Str>
+            requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
+                    && std::convertible_to<Str, std::string>
+        CallbackCollection register_callbacks(const std::vector<Str>& names, Callback callback) {
+            return register_callbacks_impl(names, callback);
+        }
+        
+        template<std::ranges::range Container, typename Callback>
+        requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
+        CallbackCollection register_callbacks_impl(const Container& names, Callback callback) {
+            CallbackCollection collection;
+            for(const auto& name : names) {
+                if(has(name)) {
+                    collection._ids[std::string(name)] = operator[](name).get().registerCallback(callback);
+                }
+            }
+            return collection;
+        }
+        
+        void unregister_callbacks(CallbackCollection&& collection) {
+            for(auto &[name, id] : collection._ids) {
+                if(has(name)) {
+                    operator[](name).get().unregisterCallback(id);
+                }
+            }
+            collection._ids.clear();
+        }
+        
+        template<typename T>
+            requires std::is_same_v<T, const char*>
+                    || std::is_lvalue_reference_v<T&&>
+                    || std::is_array_v<std::remove_reference_t<T>>
+        ConstReference at(T&& name) const {
+            return operator[](std::forward<T>(name));
+        }
         
         template<typename T>
             requires std::is_same_v<T, const char*>
@@ -344,7 +404,7 @@ namespace sprite {
         
         template<typename T>
         Property<T>& insert(const std::string_view& name, const T& value) {
-            return insert(Property<T>(this, name, value));
+            return insert(Property<T>(name, value));
         }
         
         template<typename T>
@@ -359,14 +419,13 @@ namespace sprite {
                     throw PropertyException(e);
                 }
                 
-                property_ = new Property<T>(this, property.name(), property.value());
+                property_ = new Property<T>(property.name(), property.value());
                 {
                     auto ptr = Store(property_);
                     _props[ptr->name()] = ptr;
                 }
             }
             
-            changed(*property_);
             return *property_;
         }
         
@@ -469,9 +528,9 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void PropertyType::operator=(const T& value) {
-        Property<T>& ref = *this;
-        if(ref.valid()) {
-            ref = value;
+        auto ptr = static_cast<Property<T>*>(this);
+        if(ptr->valid()) {
+            *ptr = value;
             
         } else {
             std::stringstream ss;
@@ -484,12 +543,25 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void Property<T>::value(const T& v) {
-        {
-            std::lock_guard<std::mutex> guard(_property_mutex);
-            _value = v;
+        if constexpr(HasNotEqualOperator<T>) {
+            if(std::unique_lock guard(_property_mutex);
+               v != _value)
+            {
+                _value = v;
+                
+                guard.unlock();
+                _callbacks.callAll(_name);
+            }
+            return;
+            
+        } else {
+            {
+                std::unique_lock guard(_property_mutex);
+                _value = v;
+            }
+            
+            _callbacks.callAll(_name);
         }
-        if(_map)
-            _map->changed(*this);
     }
 
 
@@ -499,6 +571,7 @@ void Reference::operator=(const T& value) {
         if (other->has(_name))
             other->erase(_name);
 
+        std::unique_lock guard(_property_mutex);
         other->insert(_name, _value);
     }
 }
