@@ -66,6 +66,7 @@ bool Video::open(const std::string& filename) {
 
     _cap = new VideoCapture(filename);
     if(!_cap->isOpened()) {
+        guard.unlock();
         close();
         return false;
     }
