@@ -302,7 +302,7 @@ namespace cmn {
         template<class ValueType>
         class Property : public PropertyType {
         public:
-            inline static Property<ValueType> InvalidProp;
+            static Property<ValueType> InvalidProp;
             
         protected:
             ValueType _value;
@@ -399,6 +399,9 @@ namespace cmn {
         };
     
     Property(const char*) -> Property<std::string>;
+
+    template<typename T>
+    Property<T> Property<T>::InvalidProp = Property<T>();
     }
 }
             
