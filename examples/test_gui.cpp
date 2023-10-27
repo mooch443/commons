@@ -475,13 +475,17 @@ int main(int argc, char**argv) {
         static dyn::DynamicGUI dynGUI{
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .graph = &graph,
-            .context = {
-                ActionFunc("QUIT", [&](Action) { terminate = true; }),
-                VarFunc("list_var", [](VarProps) -> auto& { return fishes; }),
-                VarFunc("isFalse", [](VarProps) { return false; }),
-                VarFunc("isTrue", [](VarProps) { return true; }),
-                VarFunc("global", [](VarProps) -> auto& { return GlobalSettings::map(); })
-            },
+            .context = [&](){
+                dyn::Context context;
+                context.actions = { ActionFunc("QUIT", [&](Action) { terminate = true; }) };
+                context.variables = {
+                    VarFunc("list_var", [](VarProps) -> auto& { return fishes; }),
+                    VarFunc("isFalse", [](VarProps) { return false; }),
+                    VarFunc("isTrue", [](VarProps) { return true; }),
+                    VarFunc("global", [](VarProps) -> auto& { return GlobalSettings::map(); })
+                };
+                return context;
+            }(),
             .base = ptr
         };
         

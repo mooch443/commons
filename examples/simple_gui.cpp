@@ -66,20 +66,31 @@ int main(int argc, char**argv) {
             // JSON file location
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .graph = &graph,
-            .context = Context{
-                // stuff that can be triggered by lists / buttons
-                // is an "Action". this quits the app:
-                ActionFunc("QUIT", [&](Action) { terminate = true; }),
-                
-                // variables can be accessed in lots of ways,
-                // e.g. printed out or looped through within
-                // the json
-                VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>& { return list; }),
-                VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
-                VarFunc("isTrue", [](VarProps) { return true; }),
-                VarFunc("add", [](VarProps) { return true; }),
-                VarFunc("path", [](VarProps) { return file::Path("Herakles"); })
-            },
+            .context = [&]() {
+                /**
+                 * In theory we could do all of this in one line, at least in most compilers.
+                 * Visual Studio however currently (2022) has a bug that prevents this, 
+                 * so we have to create an inline lambda function to split up the assignments of
+                 * variables and actions. Otherwise "the compiler" will "run out of heap space".
+                 */
+                dyn::Context context;
+                context.variables = {
+                    // variables can be accessed in lots of ways,
+                    // e.g. printed out or looped through within
+                    // the json
+                    VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>&{ return list; }),
+                    VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
+                    VarFunc("isTrue", [](VarProps) { return true; }),
+                    VarFunc("add", [](VarProps) { return true; }),
+                    VarFunc("path", [](VarProps) { return file::Path("Herakles"); })
+                };
+                context.actions = {
+                    // stuff that can be triggered by lists / buttons
+                    // is an "Action". this quits the app:
+                    ActionFunc("QUIT", [&](Action) { terminate = true; })
+                };
+                return context;
+            }(),
             .base = &base
         };
 
