@@ -45,6 +45,10 @@ namespace gui {
     
     ATTRIBUTE_ALIAS(Placeholder_t, std::string)
     ATTRIBUTE_ALIAS(OnHover_t, std::function<void(size_t)>)
+    NUMBER_ALIAS(Foldable_t, bool)
+    NUMBER_ALIAS(Folded_t, bool)
+    NUMBER_ALIAS(Alternating_t, bool)
+    NUMBER_ALIAS(ItemHeight_t, float)
 
     template <typename T = std::string>
     requires list_compatible_item<T>
@@ -76,10 +80,14 @@ namespace gui {
         GETTER_I(Color, text_color, White)
         float _line_spacing, _previous_width{-1};
         GETTER_SETTER_I(long, last_hovered_item, -1)
+        GETTER_SETTER_I(bool, foldable, false)
+        GETTER_I(bool, folded, false)
+        GETTER_I(std::string, folded_label, "")
         GETTER_I(long, last_selected_item, -1)
         GETTER_I(bool, stays_toggled, false)
         GETTER_I(bool, alternating_rows, false)
         
+        Box _set_box;
         std::map<Drawable*, size_t> rect_to_idx;
         
     public:
@@ -92,9 +100,13 @@ namespace gui {
                 this->set_dirty();
                 
                 if(!e.mbutton.pressed && e.mbutton.button == 0) {
-                    size_t idx = size_t(floorf((scroll_offset().y + e.mbutton.y) / _line_spacing));
-                    _last_selected_item = -1;
-                    select_item(idx);
+                    if(_foldable && _folded) {
+                        set(Folded_t{false});
+                    } else {
+                        size_t idx = size_t(floorf((scroll_offset().y + e.mbutton.y) / _line_spacing));
+                        _last_selected_item = -1;
+                        select_item(idx);
+                    }
                 }
             });
             add_event_handler(SCROLL, [this](auto) {
@@ -108,7 +120,13 @@ namespace gui {
             
             (set(std::forward<Args>(args)), ...);
             
-            _line_spacing = Base::default_line_spacing(_font) + item_padding.y * 2;
+            _line_spacing = [this] (){
+                if constexpr(has_detail<T>) {
+                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
+                }
+                return Base::default_line_spacing(_font) + item_padding.y * 2;
+            }();
+            
             set_background(_item_color.exposure(0.5));
             update_items();
         }
@@ -117,6 +135,13 @@ namespace gui {
             item_padding = {5,5};
             _item_color = Color(100, 100, 100, 200);
             set(TextClr{_text_color});
+            
+            _line_spacing = [this] (){
+                if constexpr(has_detail<T>) {
+                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
+                }
+                return Base::default_line_spacing(_font) + item_padding.y * 2;
+            }();
             
             set_clickable(true);
             set_scroll_enabled(true);
@@ -160,6 +185,42 @@ namespace gui {
         }
         void set(TextClr lr) {
             set_text_color(lr);
+        }
+        void set(ItemHeight_t height) {
+            if(item_padding.y == height)
+                return;
+            set_item_padding(Vec2(item_padding.x, height));
+        }
+        void set(Alternating_t alternating) {
+            set_alternating(alternating);
+        }
+        void set(Foldable_t foldable) {
+            if(_foldable == foldable)
+                return;
+            _foldable = foldable;
+            if(_foldable && _folded) {
+                Entangled::set_size(Size(width(), _line_spacing));
+            } else {
+                Entangled::set_size(Size(_set_box.size()));
+            }
+            set_content_changed(true);
+        }
+        void set(Folded_t folded) {
+            if(_folded == folded)
+                return;
+            _folded = folded;
+            if(_foldable && _folded) {
+                Entangled::set_size(Size(width(), _line_spacing));
+            } else {
+                Entangled::set_size(Size(_set_box.size()));
+            }
+            set_content_changed(true);
+        }
+        void set(Str text) {
+            if(_folded_label == text)
+                return;
+            _folded_label = text;
+            set_content_changed(true);
         }
         
         size_t set_items(const std::vector<T>& objs) {
@@ -430,13 +491,25 @@ namespace gui {
         void set_bounds(const Bounds& bounds) override {
             if(bounds.size() != size())
                 set_content_changed(true);
-            Entangled::set_bounds(bounds);
+            if(bounds != _set_box) {
+                _set_box = bounds;
+                print("_set_box = ", bounds);
+            }
+            if(not _foldable)
+                Entangled::set_bounds(bounds);
+            else
+                Entangled::set_pos(bounds.pos());
         }
         
         void set_size(const Size2& bounds) override {
             if(size() != bounds)
                 set_content_changed(true);
-            Entangled::set_size(bounds);
+            if(bounds != _set_box.size()) {
+                _set_box << bounds;
+                print("_set_box = ", bounds);
+            }
+            if(not _foldable)
+                Entangled::set_size(bounds);
         }
         
     private:
@@ -457,101 +530,124 @@ namespace gui {
                 if(spacing != _line_spacing || width() != _previous_width) {
                     _line_spacing = spacing;
                     _previous_width = width();
+                    if(_set_box.height != spacing || _set_box.width != width()) {
+                        _set_box.height = spacing;
+                        _set_box.width = width();
+                        if(_folded && _foldable)
+                            Entangled::set_size(Size(_set_box.size()));
+                    }
                     update_items();
                 }
                 
                 const float item_height = _line_spacing;
-                begin();
                 
-                size_t first_visible = (size_t)floorf(scroll_offset().y / item_height);
-                size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / item_height);
-                                
-                rect_to_idx.clear();
-                
-                for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
-                    auto& item = _items[i];
-                    const float y = i * item_height;
-                    _rects.at(idx)->set_pos(Vec2(0, y));
+                if(_foldable && _folded) {
+                    begin();
+                    add<Rect>(Box{0.f, 0.f, width(), item_height}, FillClr{
+                        hovered() 
+                            ? item_color().exposureHSL(1.5)
+                            : item_color()
+                    });
+                    add<Text>(Str{_folded_label + " " + Meta::toStr(size()) + " vs. "+ Meta::toStr(_set_box)}, _font);
+                    end();
                     
-                    _texts.at(idx)->set_txt(item.value());
-                    if constexpr(has_detail<T>) {
-                        _details.at(idx)->set_txt(item.value().detail());
-                    }
+                    set_scroll_limits(Rangef(), Rangef());
+                    set_scroll_offset(Vec2());
                     
-                    if constexpr (has_color_function<T>) {
-                        if (item.value().color() != Transparent)
-                            _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
-                        else
-                            _texts.at(idx)->set_text_color(_text_color);
-                    }
-
-                    if constexpr (has_font_function<T>) {
-                        if (item.value().font().size > 0) {
-                            _texts.at(idx)->set_default_font(item.value().font());
-                            if constexpr(has_detail<T>) {
-                                _details.at(idx)->set_font(detail_font(item.value().font()));
+                } else {
+                    
+                    begin();
+                    
+                    size_t first_visible = (size_t)floorf(scroll_offset().y / item_height);
+                    size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / item_height);
+                    
+                    rect_to_idx.clear();
+                    
+                    for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
+                        auto& item = _items[i];
+                        const float y = i * item_height;
+                        _rects.at(idx)->set_pos(Vec2(0, y));
+                        
+                        _texts.at(idx)->set_txt(item.value());
+                        if constexpr(has_detail<T>) {
+                            _details.at(idx)->set_txt(item.value().detail());
+                        }
+                        
+                        if constexpr (has_color_function<T>) {
+                            if (item.value().color() != Transparent)
+                                _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
+                            else
+                                _texts.at(idx)->set_text_color(_text_color);
+                        }
+                        
+                        if constexpr (has_font_function<T>) {
+                            if (item.value().font().size > 0) {
+                                _texts.at(idx)->set_default_font(item.value().font());
+                                if constexpr(has_detail<T>) {
+                                    _details.at(idx)->set_font(detail_font(item.value().font()));
+                                }
                             }
+                        } else if constexpr(has_detail<T>) {
+                            _details.at(idx)->set_font(detail_font(font()));
                         }
-                    } else if constexpr(has_detail<T>) {
-                        _details.at(idx)->set_font(detail_font(font()));
-                    }
-                    
-                    rect_to_idx[_rects.at(idx)] = i;
-                    
-                    advance_wrap(*_rects.at(idx));
-                    advance_wrap(*_texts.at(idx));
-                    if constexpr(has_detail<T>) {
-                        advance_wrap(*_details.at(idx));
-                    }
-                    
-                    if constexpr(has_detail<T>) {
-                        if(_font.align == Align::Center) {
-                            float ycenter = y + item_height * 0.5;
-                            float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
-                            //print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
-                            
-                            _texts.at(idx)->set_pos(Vec2{
-                                (width() - _texts.at(idx)->width()) * 0.5f, 
-                                ycenter - _texts.at(idx)->height() + middle
-                            });
-                            
-                            _details.at(idx)->set_pos(Vec2{
-                                roundf(width() * 0.5f),
-                                ycenter + _details.at(idx)->height() - middle
-                            });
-                            
-                        } else if(_font.align == Align::Left) {
-                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
-                            _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + item_padding);
+                        
+                        rect_to_idx[_rects.at(idx)] = i;
+                        
+                        advance_wrap(*_rects.at(idx));
+                        advance_wrap(*_texts.at(idx));
+                        if constexpr(has_detail<T>) {
+                            advance_wrap(*_details.at(idx));
+                        }
+                        
+                        if constexpr(has_detail<T>) {
+                            if(_font.align == Align::Center) {
+                                float ycenter = y + item_height * 0.5;
+                                float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
+                                //print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
+                                
+                                _texts.at(idx)->set_pos(Vec2{
+                                    (width() - _texts.at(idx)->width()) * 0.5f,
+                                    ycenter - _texts.at(idx)->height() + middle
+                                });
+                                
+                                _details.at(idx)->set_pos(Vec2{
+                                    roundf(width() * 0.5f),
+                                    ycenter + _details.at(idx)->height() - middle
+                                });
+                                
+                            } else if(_font.align == Align::Left) {
+                                _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                                _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + item_padding);
+                            } else {
+                                _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y * 0.5));
+                                _details.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                            }
                         } else {
-                            _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y * 0.5));
-                            _details.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                            if(_font.align == Align::Center)
+                                _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
+                            else if(_font.align == Align::Left)
+                                _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                            else
+                                _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
                         }
-                    } else {
-                        if(_font.align == Align::Center)
-                            _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
-                        else if(_font.align == Align::Left)
-                            _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
-                        else
-                            _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
                     }
-                }
-                
-                if(_items.empty()) {
-                    if(not _placeholder_text.text().empty()) {
-                        advance_wrap(_placeholder_text);
+                    
+                    if(_items.empty()) {
+                        if(not _placeholder_text.text().empty()) {
+                            advance_wrap(_placeholder_text);
+                        }
                     }
+                    
+                    end();
+                    
+                    const float last_y = item_height * (_items.size()-1);
+                    set_scroll_limits(Rangef(),
+                                      Rangef(0,
+                                             (height() < last_y ? last_y + item_height - height() : 0.1f)));
+                    auto scroll = scroll_offset();
+                    set_scroll_offset(Vec2());
+                    set_scroll_offset(scroll);
                 }
-                
-                end();
-            
-                const float last_y = item_height * (_items.size()-1);
-                set_scroll_limits(Rangef(),
-                                  Rangef(0,
-                                         (height() < last_y ? last_y + item_height - height() : 0.1f)));
-                auto scroll = scroll_offset();
-                set_scroll_offset(Vec2());
-                set_scroll_offset(scroll);
             }
 
             Color base_color;

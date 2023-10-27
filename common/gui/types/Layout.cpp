@@ -43,6 +43,24 @@ namespace gui {
         update();
     }
 
+    void Layout::replace_child(size_t pos, Layout::Ptr ptr) {
+        auto it = std::find(_objects.begin(), _objects.end(), ptr);
+        if(it != _objects.end()) {
+            size_t index = std::distance(_objects.begin(), it);
+            if(index != pos) {
+                throw InvalidArgumentException("Cannot add ", ptr.get(), " twice (already at ", index, " != ", pos, ")");
+            }
+        }
+        
+        if (pos < _objects.size())
+            _objects[pos] = ptr;
+        else
+            throw OutOfRangeException("Cannot add ", ptr.get(), " at ", pos, " which is out of bounds.");
+        
+        set_content_changed(true);
+        update();
+    }
+
     void Layout::add_child(Layout::Ptr ptr) {
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if (it != _objects.end()) {

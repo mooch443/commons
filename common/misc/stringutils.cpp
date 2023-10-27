@@ -13,27 +13,18 @@
 #include <misc/checked_casts.h>
 
 namespace utils {
-	bool contains(const std::string &str, const std::string &needle) {
-		return str.find(needle) != std::string::npos;
-	}
-    
-    bool contains(const std::string &str, const char &needle) {
-        return str.find(needle) != std::string::npos;
-    }
-
-    bool contains(const std::wstring &str, const std::wstring &needle) {
-        return str.find(needle) != std::wstring::npos;
-    }
-
-    bool contains(const std::wstring &str, const wchar_t &needle) {
-        return str.find(needle) != std::wstring::npos;
-    }
+    // Explicitly instantiate the most commonly used forms of the contains function
+    template bool contains<std::string, char>(const std::string& str, const char& needle) noexcept;
+    template bool contains<std::string, std::string>(const std::string& str, const std::string& needle) noexcept;
+    template bool contains<std::string_view, char>(const std::string_view& str, const char& needle) noexcept;
+    template bool contains<std::string_view, std::string_view>(const std::string_view& str, const std::string_view& needle) noexcept;
 
     // find/replace
     template<typename T>
-    T _find_replace(const T& str, const T& oldStr, const T& newStr)
+    auto _find_replace(const T& str, const T& oldStr, const T& newStr) -> std::conditional_t<std::is_same_v<T, std::string_view>, std::string, T>
     {
-        T result = str;
+        using ReturnType = std::conditional_t<std::is_same_v<T, std::string_view>, std::string, T>;
+        ReturnType result(str);
         
         size_t pos = 0;
         while((pos = result.find(oldStr, pos)) != T::npos)
@@ -44,9 +35,10 @@ namespace utils {
         
         return result;
     }
-    std::string find_replace(const std::string& str, const std::string& oldStr, const std::string& newStr)
+
+    std::string find_replace(std::string_view str, std::string_view oldStr, std::string_view newStr)
     {
-        return _find_replace<std::string>(str, oldStr, newStr);
+        return _find_replace<std::string_view>(str, oldStr, newStr);
     }
     std::wstring find_replace(const std::wstring& str, const std::wstring& oldStr, const std::wstring& newStr)
     {

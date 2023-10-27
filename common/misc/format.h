@@ -338,7 +338,8 @@ public:
         return console_color<string_color, colors>(Meta::toStr(value));
     }
 
-    static std::string pretty_text(const std::string& s) {
+    template<utils::StringLike Str>
+    static std::string pretty_text(Str&& s) {
         std::stringstream ss;
         std::string tmp;
         enum State {
@@ -359,7 +360,7 @@ public:
         };
 
         auto is_keyword = [](std::string_view word) {
-            word = utils::trim(utils::lowercase(word));
+            auto trimmed = utils::lowercase(utils::trim(word));
             static const std::vector<std::string_view> keywords{
                 //"string", "pv",
                 //"path",
@@ -368,7 +369,7 @@ public:
                 "true", "false",
                 "if", "def"
             };
-            return contains(keywords, word);
+            return contains(keywords, trimmed);
         };
 
         /*auto alpha_numeric = [](char c) {
@@ -476,68 +477,69 @@ public:
 
         static constexpr auto whitespace = " \t\n,^()[]{}<>/&%$!?\\.:=-";
 
-        size_t N = s.size();
+        std::string_view sv(s);
+        const size_t N = sv.size();
         char str_char = 0;
 
         for (size_t i = 0; i < N; ++i) {
-            if (!s[i])
+            if (not sv[i])
                 break;
 
             if (is_state(WHITESPACE)) {
-                if (i == 0 || s[i] != s[i - 1])
+                if (i == 0 || sv[i] != sv[i - 1])
                     pop_state();
             }
             
             if (is_state(NUMBER)) {
-                if (s[i] == '.' || (s[i] >= '0' && s[i] <= '9') || s[i] == 'f') {
+                if (sv[i] == '.' || (sv[i] >= '0' && sv[i] <= '9') || sv[i] == 'f') {
                 }
                 else
                     pop_state();
             }
             
-            if (is_state(TAG) && s[i] == '>') {
+            if (is_state(TAG) && sv[i] == '>') {
                 //printf("is_state TAG : %c\n", s[i]);
                 pop_state();
-                push_state(TAG_WHITESPACE); tmp += s[i]; pop_state();
+                push_state(TAG_WHITESPACE); tmp += sv[i]; pop_state();
                 continue;
             }
 
             if (is_state(COMMENT) || is_state(MULTI_COMMENT)) {
-                if (is_state(COMMENT) && s[i] == '\n') {
+                if (is_state(COMMENT) && sv[i] == '\n') {
                     pop_state();
                 }
-                else if (is_state(MULTI_COMMENT) && s[i] == '*' && i < N - 1 && s[i + 1] == '/') {
-                    tmp += s[i];
-                    tmp += s[i + 1];
+                else if (is_state(MULTI_COMMENT) && sv[i] == '*' && i < N - 1 && sv[i + 1] == '/') {
+                    tmp += sv[i];
+                    tmp += sv[i + 1];
                     ++i;
                     pop_state();
                     continue;
                 }
 
             }
-            else if (s[i] == '"' || s[i] == '\'' || s[i] == '`') {
+            else if (sv[i] == '"' || sv[i] == '\'' || sv[i] == '`') {
                 if (!is_state(STRING)) {
-                    str_char = s[i];
+                    str_char = sv[i];
                     push_state(STRING);
                 }
-                else if (s[i] == str_char) {
-                    tmp += s[i];
+                else if (sv[i] == str_char) {
+                    tmp += sv[i];
                     pop_state();
                     continue;
                 }
             }
             else if (is_state(STRING)) {
-                if (s[i] == '\\' && i < N - 1) //&& (alpha_numeric(s[i + 1]) || ))
+                if (sv[i] == '\\' && i < N - 1) //&& (alpha_numeric(s[i + 1]) || ))
                 {
                     push_state(ESCAPED_CHAR);
-                    tmp += s[i];
-                    tmp += s[i + 1];
+                    tmp += sv[i];
+                    tmp += sv[i + 1];
                     ++i;
                     pop_state();
                     continue;
                 }
             }
-            else if (!is_state(FUNCTION) && s[i] == '(') {
+            else if (!is_state(FUNCTION) && sv[i] == '(') {
                 if (states.back() == NAMESPACE || states.back() == CLASS) {
                     states.back() = FUNCTION;
                     pop_state();
@@ -547,34 +549,34 @@ public:
                     pop_state();
                 }
 
-                push_state(WHITESPACE); tmp += s[i]; pop_state();
+                push_state(WHITESPACE); tmp += sv[i]; pop_state();
                 continue;
             }
-            else if (!is_state(COMMENT) && s[i] == '/' && i < N - 1 && s[i + 1] == '/') {
+            else if (!is_state(COMMENT) && sv[i] == '/' && i < N - 1 && sv[i + 1] == '/') {
                 push_state(COMMENT);
             }
-            else if (!is_state(MULTI_COMMENT) && s[i] == '/' && i < N - 1 && s[i + 1] == '*') {
+            else if (!is_state(MULTI_COMMENT) && sv[i] == '/' && i < N - 1 && sv[i + 1] == '*') {
                 push_state(MULTI_COMMENT);
             }
-            else if (s[i] == '<') {
+            else if (sv[i] == '<') {
                 states.push_back(CLASS); pop_state();
-                push_state(TAG_WHITESPACE); tmp += s[i]; pop_state();
+                push_state(TAG_WHITESPACE); tmp += sv[i]; pop_state();
                 push_state(TAG);
                 continue;
             }
-            else if ((i == 0 || (utils::contains(whitespace, s[i-1]) && s[i-1] != '.')) && !is_state(NUMBER) && s[i] >= '0' && s[i] <= '9') {
+            else if ((i == 0 || (utils::contains(whitespace, sv[i-1]) && sv[i-1] != '.')) && !is_state(NUMBER) && sv[i] >= '0' && sv[i] <= '9') {
                 push_state(NUMBER);
             }
-            else if ((!is_state(NUMBER) || s[i] != '.') &&  utils::contains(whitespace, s[i])) {
+            else if ((!is_state(NUMBER) || sv[i] != '.') &&  utils::contains(whitespace, sv[i])) {
                 if (!is_state(WHITESPACE)) {
                     while (is_state(CLASS) || is_state(NAMESPACE) || is_state(FUNCTION)) {
                         pop_state();
                     }
 
-                    if (s[i] == ':' && i < N - 1 && s[i + 1] == s[i]) {
+                    if (sv[i] == ':' && i < N - 1 && sv[i + 1] == sv[i]) {
                         states.push_back(NAMESPACE);
                         pop_state();
-                        push_state(WHITESPACE); tmp += s[i]; tmp += s[i + 1]; pop_state();
+                        push_state(WHITESPACE); tmp += sv[i]; tmp += sv[i + 1]; pop_state();
                         push_state(CLASS);
                         ++i;
                         continue;
@@ -584,7 +586,7 @@ public:
                 }
             }
 
-            tmp += s[i];
+            tmp += sv[i];
         }
 
         if (!tmp.empty())
@@ -594,9 +596,9 @@ public:
     }
 
     template<typename T, size_t N, typename K = cmn::remove_cvref_t<T>>
-        requires std::convertible_to<T[N], std::string>
+        requires std::convertible_to<T[N], std::string_view>
     static std::string parse_value(T(&s)[N]) {
-        return pretty_text(std::string(s));
+        return pretty_text(std::string_view(s, N));
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>

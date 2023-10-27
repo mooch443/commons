@@ -24,6 +24,7 @@ namespace gui {
         
         std::atomic<size_t> frame_index;
         std::thread::id _update_thread;
+        CallbackCollection _callback;
         
         GETTER_I(bool, gui_macos_blur, false)
         

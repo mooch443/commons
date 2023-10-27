@@ -191,6 +191,11 @@ public:
     IndexScopeHandler& operator=(const IndexScopeHandler&) = delete;
 };
 
+struct VarCache {
+    std::string _var, _value;
+    nlohmann::json _obj;
+};
+
 struct State {
     robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, std::string>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
@@ -198,9 +203,10 @@ struct State {
     std::unordered_map<size_t, ListContents> lists;
     std::unordered_map<size_t, IfBody> ifs;
     
-    std::map<std::string, std::unique_ptr<LabeledField>> _text_fields;
+    std::unordered_map<size_t, std::unique_ptr<LabeledField>> _text_fields;
     Layout::Ptr _settings_tooltip;
     std::unordered_map<std::string, std::tuple<size_t, Image::Ptr>> _image_cache;
+    std::unordered_map<size_t, VarCache> _var_cache;
     
     Index _current_index;
     
@@ -210,6 +216,7 @@ struct State {
         : patterns(other.patterns),
           display_fns(other.display_fns),
           ifs(other.ifs),
+          _var_cache(other._var_cache),
           _current_index(other._current_index)
     {
         for(auto &[k, body] : other.loops) {
@@ -249,38 +256,22 @@ Module* exists(const std::string& name);
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
                          State& state,
-                         const DefaultSettings& defaults);
+                         const DefaultSettings& defaults,
+                         uint64_t hash = 0);
 
 std::string parse_text(const std::string_view& pattern, const Context& context);
 
 
 VarProps extractControls(const std::string_view& variable, const Context& context);
 
-template<typename ApplyF, typename ErrorF>
-inline auto resolve_variable(const std::string_view& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> typename cmn::detail::return_type<ApplyF>::type {
-    auto props = extractControls(word, context);
-    
-    if(context.has(props.name)) {
-        if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
-            return apply(*context.variable(props.name), props);
-        else
-            static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
-    }
-    
-    if constexpr(std::invocable<ErrorF, bool>)
-        return error(props.optional);
-    else
-        return error();
-}
-
-template<typename T>
-T resolve_variable_type(std::string word, const Context& context) {
+template<typename T, typename Str>
+T resolve_variable_type(Str word, const Context& context) {
     if(word.empty())
         throw U_EXCEPTION("Invalid variable name (is empty).");
     
     if(word.length() > 2
        && word.front() == '{'
-       && word.back() == '}') 
+       && word.back() == '}')
     {
         word = word.substr(1,word.length()-2);
     }
@@ -345,6 +336,33 @@ T resolve_variable_type(std::string word, const Context& context) {
     });
 }
 
+template<typename ApplyF, typename ErrorF, typename Result = typename cmn::detail::return_type<ApplyF>::type>
+inline auto resolve_variable(const std::string_view& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> Result {
+    auto props = extractControls(word, context);
+    
+    if(context.has(props.name)) {
+        if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
+            return apply(*context.variable(props.name), props);
+        else
+            static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
+        
+    } else if(props.name == "if") {
+        std::string result;
+        bool condition{false};
+            condition = resolve_variable_type<bool>(props.parameters.at(0), context);
+        //print("Condition ", props.parameters.at(0)," => ", condition);
+        if(condition)
+            return Meta::fromStr<Result>(parse_text(props.parameters.at(1), context));
+        else
+            return Meta::fromStr<Result>(parse_text(props.parameters.at(2), context));
+    }
+    
+    if constexpr(std::invocable<ErrorF, bool>)
+        return error(props.optional);
+    else
+        return error();
+}
+
 
 tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path);
 
@@ -367,9 +385,10 @@ struct DynamicGUI {
     
 private:
     void reload();
-    static void update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    static bool update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
     [[nodiscard]] static bool update_loops(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
     [[nodiscard]] static bool update_lists(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    static bool update_patterns(uint64_t hash, Layout::Ptr& o, const Context& context, State& state);
 };
 
 void update_tooltips(DrawStructure&, State&);

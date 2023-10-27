@@ -262,7 +262,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     static bool enable_diff = SETTING(enable_difference);
     static bool enable_abs_diff = SETTING(enable_absolute_difference);
     static bool blur_difference = SETTING(blur_difference);
-    static std::atomic_bool registered_callback = false;
+    static std::once_flag registered_callback;
     static float adaptive_threshold_scale = 0;
     static int threshold = 25, threshold_maximum = 255;
     static bool use_closing = false;
@@ -271,54 +271,61 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     static int32_t dilation_size = 0;
     static bool tags_enable = false, image_invert = false;
     
-    bool expected = false;
-    if (registered_callback.compare_exchange_strong(expected, true)) {
-        const char* ptr = "RawProcessing";
-        sprite::Map::callback_func callback = [ptr](sprite::Map::Signal signal, sprite::Map& map, auto& key, auto& value)
-        {
-            if (signal == sprite::Map::Signal::EXIT) {
-                map.unregister_callback(ptr);
-                return;
-            }
-
-            if (key == std::string("enable_difference"))
+    std::call_once(registered_callback, [](){
+        static const auto callback = [](std::string_view key) {
+            auto& value = GlobalSettings::map().at(key).get();
+            if (key == "enable_difference")
                 enable_diff = value.template value<bool>();
-            else if (key == std::string("enable_absolute_difference"))
+            else if (key == "enable_absolute_difference")
                 enable_abs_diff = value.template value<bool>();
-            else if (key == std::string("adaptive_threshold_scale"))
+            else if (key == "adaptive_threshold_scale")
                 adaptive_threshold_scale = value.template value<float>();
-            else if (key == std::string("threshold"))
+            else if (key == "threshold")
                 threshold = value.template value<int>();
-            else if (key == std::string("threshold_maximum"))
+            else if (key == "threshold_maximum")
                 threshold_maximum = value.template value<int>();
-            else if (key == std::string("use_closing"))
+            else if (key == "use_closing")
                 use_closing = value.template value<bool>();
-            else if (key == std::string("closing_size"))
+            else if (key == "closing_size")
                 closing_size = value.template value<int>();
-            else if (key == std::string("use_adaptive_threshold"))
+            else if (key == "use_adaptive_threshold")
                 use_adaptive_threshold = value.template value<bool>();
-            else if (key == std::string("dilation_size"))
+            else if (key == "dilation_size")
                 dilation_size = value.template value<int32_t>();
-            else if (key == std::string("image_invert"))
+            else if (key == "image_invert")
                 image_invert = value.template value<bool>();
-            else if (key == std::string("tags_enable"))
+            else if (key == "tags_enable")
                 tags_enable = value.template value<bool>();
         };
-        GlobalSettings::map().register_callback(ptr, callback);
-
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "enable_difference", GlobalSettings::get("enable_difference").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "enable_absolute_difference", GlobalSettings::get("enable_absolute_difference").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "square_brightness", GlobalSettings::get("square_brightness").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "adaptive_threshold_scale", GlobalSettings::get("adaptive_threshold_scale").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "threshold", GlobalSettings::get("threshold").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "threshold_maximum", GlobalSettings::get("threshold_maximum").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "use_closing", GlobalSettings::get("use_closing").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "closing_size", GlobalSettings::get("closing_size").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "use_adaptive_threshold", GlobalSettings::get("use_adaptive_threshold").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "dilation_size", GlobalSettings::get("dilation_size").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "image_invert", GlobalSettings::get("image_invert").get());
-        callback(sprite::Map::Signal::NONE, GlobalSettings::map(), "tags_enable", GlobalSettings::get("tags_enable").get());
-    }
+        
+        GlobalSettings::map().register_callbacks({
+            "enable_difference",
+            "enable_absolute_difference",
+            "adaptive_threshold_scale",
+            "threshold",
+            "threshold_maximum",
+            "use_closing",
+            "closing_size",
+            "use_adaptive_threshold",
+            "dilation_size",
+            "image_invert",
+            "tags_enable"
+            
+        }, callback);
+        
+        callback("enable_difference");
+        callback("enable_absolute_difference");
+        callback("square_brightness");
+        callback("adaptive_threshold_scale");
+        callback("threshold");
+        callback("threshold_maximum");
+        callback("use_closing");
+        callback("closing_size");
+        callback("use_adaptive_threshold");
+        callback("dilation_size");
+        callback("image_invert");
+        callback("tags_enable");
+    });
 
     // These two buffers are constantly going to be exchanged
     // after every call to a cv function. This means that no additional
@@ -533,6 +540,15 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     if (tags_enable) {
         INPUT = &_floatb0;
         OUTPUT = &_buffer1;
+        
+        static const bool show_debug_info = SETTING(tags_debug).value<bool>();
+        cv::Mat local, result;
+        
+        /*if(show_debug_info) {
+            INPUT->copyTo(local);
+            print(getImgType(local.type()));
+            tf::imshow("only_bg_invert", local);
+        }*/
 
         if (!enable_diff) {
             if (OUTPUT->cols != input.cols || OUTPUT->rows != input.rows || OUTPUT->type() != input.type())
@@ -558,14 +574,6 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         // invert
         CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
 
-        static const bool show_debug_info = SETTING(tags_debug).value<bool>();
-        cv::Mat local, result;
-        
-        if (show_debug_info) {
-            INPUT->copyTo(local);
-            tf::imshow("only_bg", local);
-        }
-
         tag_cache->tags.clear();
         tag_cache->contours.clear();
         tag_cache->hierarchy.clear();
@@ -579,10 +587,21 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         // debug info can be generated with the tags_debug bit.
         if (show_debug_info)
             cv::cvtColor(input, result, cv::COLOR_GRAY2BGRA);
+        
+        gpuMat inverted_input;
+        if(image_invert)
+            cv::subtract(255, input, inverted_input);
+        else
+            input.copyTo(inverted_input);
+        
+        if (show_debug_info) {
+            inverted_input.copyTo(local);
+            tf::imshow("inverted", local);
+        }
 
         // calculate in multiple threads (the contours array)
         distribute_indexes([&](auto index, auto start, auto end, auto){
-            process_tags(index, start, end, result, tag_cache, INPUT, input, _average);
+            process_tags(index, start, end, result, tag_cache, INPUT, inverted_input, _average);
         }, _contour_pool, tag_cache->contours.begin(), tag_cache->contours.end());
 
         if (show_debug_info) {

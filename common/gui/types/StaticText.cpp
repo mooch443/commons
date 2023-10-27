@@ -101,7 +101,6 @@ void StaticText::set_default_font(const Font& font) {
             // find enclosing rectangle dimensions
             Vec2 m(0);
             bool hiding_something{false};
-            std::vector<Text*> hidden;
             
             for(auto& t : texts) {
                 if(t->txt().empty())
@@ -111,19 +110,14 @@ void StaticText::set_default_font(const Font& font) {
                 t->set_color(t->color().alpha(255 * _settings.alpha));
                 t->set(Text::Shadow_t{_settings.shadow});
                 
-                if(_settings.max_size.y <= 0
-                   || t->pos().y < _settings.max_size.y)
+                if(_settings.max_size.y > 0
+                   && t->pos().y + t->size().height * (1 - t->origin().y) > _settings.max_size.y)
                 {
-                    if(not yet hiding_something
-                       && t->pos().y + t->size().height > _settings.max_size.y)
-                    {
-                        hiding_something = true;
-                        hidden.push_back(t.get());
-                    }
-                    advance_wrap(*t);
+                    print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y);
+                    hiding_something = true;
                     
                 } else {
-                    hiding_something = true;
+                    advance_wrap(*t);
                 }
                 
                 auto local_pos = t->pos() - t->size().mul(t->origin());
@@ -191,7 +185,7 @@ void StaticText::add_shadow() {
     if(not _fade_out)
         _fade_out = std::make_shared<ExternalImage>();
     
-    float h = min(height(), Base::default_line_spacing(_settings.default_font) * 2.f);
+    float h = min(height(), Base::default_line_spacing(_settings.default_font) * 3.f);
     auto image = Image::Make(height()+1, 1, 4);
     image->set_to(0);
     
@@ -203,13 +197,13 @@ void StaticText::add_shadow() {
     }
     image->get().setTo(cv::Scalar(bg.alpha(0)));
     
-    const float start_y = height() - h - 1;
-    const float end_y = height();
+    const float start_y = height() - h;
+    const float end_y = height() + 1;
     
     for(uint y=start_y; y<end_y; ++y) {
         float percent = saturate(float(y-start_y) / float(end_y - start_y + 1), 0.f, 1.f);
         percent *= percent;
-        
+        //percent = 1;
         auto ptr = image->ptr(y, 0);
         //*(ptr+0) = saturate((percent) * 255, 0, 255);
         //*(ptr+1) = saturate((percent) * 255, 0, 255);
@@ -218,7 +212,6 @@ void StaticText::add_shadow() {
     }
     
     _fade_out->set_source(std::move(image));
-    
     _fade_out->set(Loc{0, 0});
     _fade_out->set(Scale{width(),1});
     advance_wrap(*_fade_out);

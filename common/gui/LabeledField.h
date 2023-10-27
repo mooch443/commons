@@ -33,6 +33,7 @@ struct LabeledField {
     gui::derived_ptr<gui::Text> _text;
     std::string _docs;
     sprite::Reference _ref;
+    CallbackCollection _callback_id;
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
     LabeledField(const std::string& name);

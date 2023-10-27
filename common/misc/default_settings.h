@@ -10,7 +10,7 @@ namespace cmn {
         class Adding {
             sprite::Map &config;
             GlobalSettings::docs_map_t &docs;
-            decltype(GlobalSettings::set_access_level) *fn;
+            std::function<void(const std::string& name, AccessLevel w)> fn;
             
         public:
             Adding(sprite::Map& config, GlobalSettings::docs_map_t& docs, decltype(fn) function) : config(config), docs(docs), fn(function) {}
@@ -19,7 +19,7 @@ namespace cmn {
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<is_enum<T>::value && T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)
-                    (*fn)(name, access);
+                    fn(name, access);
                 
                 std::string overall_doc = doc;
                 auto fdocs = T::Data::template docs<T>();
@@ -49,7 +49,7 @@ namespace cmn {
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<is_enum<T>::value && !T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)
-                    (*fn)(name, access);
+                    fn(name, access);
                 docs[name] = doc;
                 
                 if(!config.has(name))
@@ -64,7 +64,7 @@ namespace cmn {
             sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, typename std::enable_if<!is_enum<T>::value, T>::type * = nullptr)
             {
                 if(access > AccessLevelType::PUBLIC && fn)
-                    (*fn)(name, access);
+                    fn(name, access);
                 docs[name] = doc;
                 
                 if(!config.has(name))

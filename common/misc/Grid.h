@@ -60,14 +60,21 @@ namespace grid {
         //using pixel = std::tuple<float, float, T>;
         
         std::vector<Set_t> grid;
-        GETTER_CONST(const Vec2, scale)
-        GETTER_CONST(const Size2, resolution)
+        GETTER_CONST(Vec2, scale)
+        GETTER_CONST(Size2, resolution)
         GETTER(uint, n)
         GETTER(uint, N)
         ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
         const decltype(_value_where)& value_where() const { return _value_where; }
+        
+        Grid2D() noexcept
+            : _scale(1.0f, 1.0f),
+              _resolution(0, 0),
+              _n(0),
+              _N(0)
+        {}
         
         Grid2D(const Size2& resolution, uint n)
             :
@@ -84,6 +91,23 @@ namespace grid {
             grid.resize(_N);
              
         }
+        
+        void set_resolution(const Size2& new_resolution, uint new_n) {
+            if(_resolution == Vec2(new_resolution.max(), new_resolution.max())
+               && _n == new_n)
+            {
+                return;
+            }
+            
+           _scale = Vec2(ceilf(new_resolution.max() / float(new_n)), ceilf(new_resolution.max() / float(new_n)));
+           _resolution = Vec2(new_resolution.max(), new_resolution.max());
+           _n = new_n;
+           _N = new_n * new_n;
+
+           grid.clear();
+           grid.resize(_N);
+           _value_where.clear();
+       }
         
         virtual ~Grid2D() {}
         

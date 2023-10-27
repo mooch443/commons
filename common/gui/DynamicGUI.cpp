@@ -18,8 +18,6 @@
 namespace gui {
 namespace dyn {
 
-void update_objects(DrawStructure&, const Layout::Ptr& o, const Context& context, State& state);
-
 // Function to skip over nested structures so they don't interfere with our parsing
 auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
     int balance = 1;
@@ -203,7 +201,7 @@ T map_vector(const VarProps& props, auto&& apply) {
         throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
     }
     
-    T A{}, B{};
+    T A{};
     
     try {
         auto& a = props.parameters.front();
@@ -314,11 +312,11 @@ Module* exists(const std::string& name) {
 Layout::Ptr parse_object(const nlohmann::json& obj,
                          const Context& context,
                          State& state,
-                         const DefaultSettings& defaults)
+                         const DefaultSettings& defaults,
+                         uint64_t hash)
 {
-    LayoutContext layout(obj, state, defaults);
+    LayoutContext layout(obj, state, defaults, hash);
     try {
-        
         Layout::Ptr ptr;
 
         switch (layout.type) {
@@ -516,41 +514,54 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
     static std::string previous;
     if(previous != text) {
         previous = text;
-        auto obj = nlohmann::json::parse(text);
         DefaultSettings defaults;
         try {
-            if(obj.contains("defaults") && obj["defaults"].is_object()) {
-                auto d = obj["defaults"];
-                defaults.font = parse_font(d, defaults.font);
-                if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
-                if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
-                if(d.contains("line")) defaults.line = parse_color(d["line"]);
-                if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
-                if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
-                if(d.contains("pad"))
-                    defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
+            auto obj = nlohmann::json::parse(text);
+            try {
+                if(obj.contains("defaults") && obj["defaults"].is_object()) {
+                    auto d = obj["defaults"];
+                    defaults.font = parse_font(d, defaults.font);
+                    if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
+                    if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
+                    if(d.contains("line")) defaults.line = parse_color(d["line"]);
+                    if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
+                    if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
+                    if(d.contains("pad"))
+                        defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
+                }
+            } catch(const std::exception& ex) {
+                FormatExcept("Cannot parse layout due to: ", ex.what());
+                return tl::unexpected(ex.what());
             }
-        } catch(const std::exception& ex) {
-            FormatExcept("Cannot parse layout due to: ", ex.what());
-            return tl::unexpected(ex.what());
+            return std::make_tuple(defaults, obj["objects"]);
+            
+        } catch(const nlohmann::json::exception& error) {
+            return tl::unexpected(error.what());
         }
-        return std::make_tuple(defaults, obj["objects"]);
+        
     } else
         return tl::unexpected("Nothing changed.");
 }
 
-void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state) {
+bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state) {
     auto hash = (std::size_t)o->custom_data("object_index");
     if(not hash) {
         //! if this is a Layout type, need to iterate all children as well:
         if(o.is<Layout>()) {
-            for(auto &child : o.to<Layout>()->objects()) {
-                update_objects(g, child, context, state);
+            auto layout = o.to<Layout>();
+            auto& objects = layout->objects();
+            for(size_t i=0, N = objects.size(); i<N; ++i) {
+                auto& child = objects[i];
+                auto r = update_objects(g, child, context, state);
+                if(r) {
+                    // objects changed
+                    layout->replace_child(i, child);
+                }
             }
         } else {
             //print("Object ", *o, " has no hash and is thus not updated.");
         }
-        return;
+        return false;
     }
     //print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
     
@@ -580,7 +591,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                     }
                 }
                 
-                return;
+                return false;
             }
             
             auto last_condition = (uint64_t)o->custom_data("last_condition");
@@ -595,23 +606,84 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
             FormatError(ex.what());
         }
         
-        return;
+        return false;
     }
     
     //! for-each loops below
     if(update_loops(hash, g, o, context, state))
-        return;
+        return false;
+    
+    //! did the current object change?
+    bool changed{false};
     
     //! fill default fields like fill, line, pos, etc.
+    if(update_patterns(hash, o, context, state)) {
+        changed = true;
+    }
+    
+    //! if this is a Layout type, need to iterate all children as well:
+    if(o.is<Layout>()) {
+        auto layout = o.to<Layout>();
+        auto& objects = layout->objects();
+        for(size_t i=0, N = objects.size(); i<N; ++i) {
+            auto& child = objects[i];
+            auto r = update_objects(g, child, context, state);
+            if(r) {
+                // objects changed
+                layout->replace_child(i, child);
+            }
+        }
+    }
+    
+    //! list contents loops below
+    (void)update_lists(hash, g, o, context, state);
+    return changed;
+}
+
+bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
+    bool changed{false};
+    
     auto it = state.patterns.find(hash);
     if(it != state.patterns.end()) {
         auto pattern = it->second;
+        LabeledField *field{nullptr};
+        if(state._text_fields.contains(hash))
+            field = state._text_fields.at(hash).get();
+        
         //print("Found pattern ", pattern, " at index ", hash);
+        
+        if(it->second.contains("var")) {
+            try {
+                auto var = parse_text(pattern.at("var"), context);
+                if(state._text_fields.contains(hash)) {
+                    auto &f = state._text_fields.at(hash);
+                    auto str = f->_ref.get().valueString();
+                    VarCache &cache = state._var_cache[hash];
+                    if(cache._var != var || str != cache._value)
+                    {
+                        print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
+                        
+                        //! replace old object (also updates the cache)
+                        o = parse_object(cache._obj, context, state, context.defaults, hash);
+                        
+                        field = f.get();
+                        changed = true;
+                    }
+                }
+            } catch(std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        
+        auto ptr = o;
+        if(field) {
+            ptr = field->representative();
+        }
         
         if(it->second.contains("fill")) {
             try {
                 auto fill = resolve_variable_type<Color>(pattern.at("fill"), context);
-                LabeledField::delegate_to_proper_type(FillClr{fill}, o);
+                LabeledField::delegate_to_proper_type(FillClr{fill}, ptr);
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -620,7 +692,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         if(it->second.contains("color")) {
             try {
                 auto clr = resolve_variable_type<Color>(pattern.at("color"), context);
-                LabeledField::delegate_to_proper_type(TextClr{clr}, o);
+                LabeledField::delegate_to_proper_type(TextClr{clr}, ptr);
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -629,7 +701,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         if(it->second.contains("line")) {
             try {
                 auto line = resolve_variable_type<Color>(pattern.at("line"), context);
-                LabeledField::delegate_to_proper_type(LineClr{line}, o);
+                LabeledField::delegate_to_proper_type(LineClr{line}, ptr);
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -642,7 +714,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 auto pos = pattern.at("pos");
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 auto str = parse_text(pos, context);
-                o->set_pos(Meta::fromStr<Vec2>(str));
+                ptr->set_pos(Meta::fromStr<Vec2>(str));
                 //o->set_pos(resolve_variable_type<Vec2>(pattern.at("pos"), context));
                 //
                 
@@ -653,7 +725,7 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         
         if(pattern.contains("scale")) {
             try {
-                o->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context)));
+                ptr->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context)));
                 //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 
@@ -667,10 +739,10 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
                 auto size = pattern.at("size");
                 if(size == "auto")
                 {
-                    if(o.is<Layout>()) o.to<Layout>()->auto_size();
-                    else FormatExcept("pattern for size should only be auto for layouts, not: ", *o);
+                    if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
+                    else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
                 } else {
-                    o->set_size(Meta::fromStr<Size2>(parse_text(size, context)));
+                    ptr->set_size(Meta::fromStr<Size2>(parse_text(size, context)));
                     //o->set_size(resolve_variable_type<Size2>(size, context));
                 }
                 
@@ -682,15 +754,15 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
         if(pattern.contains("text")) {
             try {
                 auto text = Str{parse_text(pattern.at("text"), context)};
-                LabeledField::delegate_to_proper_type(text, o);
+                LabeledField::delegate_to_proper_type(text, ptr);
             } catch(const std::exception& e) {
                 FormatError("Error parsing context ", pattern.at("text"),": ", e.what());
             }
         }
         
-        if(o.is<ExternalImage>()) {
+        if(ptr.is<ExternalImage>()) {
             if(pattern.contains("path")) {
-                auto img = o.to<ExternalImage>();
+                auto img = ptr.to<ExternalImage>();
                 auto output = file::Path(parse_text(pattern.at("path"), context));
                 if(output.exists() && not output.is_folder()) {
                     auto modified = output.last_modified();
@@ -708,20 +780,10 @@ void DynamicGUI::update_objects(DrawStructure& g, const Layout::Ptr& o, const Co
             }
         }
     }
-    
-    //! if this is a Layout type, need to iterate all children as well:
-    if(o.is<Layout>()) {
-        for(auto &child : o.to<Layout>()->objects()) {
-            update_objects(g, child, context, state);
-        }
-    }
-    
-    //! list contents loops below
-    if(update_lists(hash, g, o, context, state))
-        return;
+    return changed;
 }
 
-bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state) 
+bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
 {
     if(auto it = state.lists.find(hash); it != state.lists.end()) {
         ListContents &obj = it->second;
@@ -816,7 +878,7 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                     Context tmp = context;
                     for(size_t i=0; i<obj.cache.size(); ++i) {
                         tmp.variables["i"] = obj.cache[i];
-                        auto p = o.to<Layout>()->children().at(i);
+                        auto& p = o.to<Layout>()->objects().at(i);
                         if(p)
                             update_objects(g, p, tmp, *obj.state);
                         //p->parent()->stage()->print(nullptr);

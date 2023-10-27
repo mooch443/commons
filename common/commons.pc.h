@@ -769,6 +769,11 @@ struct MultiStringEqual {
     }
 };
 
+struct CallbackCollection {
+    std::unordered_map<std::string, std::size_t, MultiStringHash, MultiStringEqual> _ids;
+    operator bool() const { return not _ids.empty(); }
+    void reset() { _ids.clear(); }
+};
 
 }
 
