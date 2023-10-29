@@ -724,7 +724,7 @@ private: \
     inline static CallbackCollection _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
-template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { print("Updating key ", key, " = ", value); auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
+template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { print("Updating key ", key, " = ", value.valueString()); auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
     template<Variables M> \
     static const char* name() { \
         return VariableNames[M]; \

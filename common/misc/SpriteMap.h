@@ -185,10 +185,12 @@ concept Iterable = requires(T obj) {
         std::atomic<std::size_t> _id_counter{0u};
         std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
-        GETTER_NCONST(std::mutex, mutex)
+        mutable std::mutex _mutex;
         GETTER_SETTER_I(bool, do_print, true)
         
     public:
+        auto& mutex() const { return _mutex; }
+        
         void dont_print(const std::string& name) {
             _print_key[name] = false;
         }
@@ -232,13 +234,14 @@ concept Iterable = requires(T obj) {
         
         ~Map();
         
-        bool empty() const { return _props.empty(); }
-        size_t size() const { return _props.size(); }
+        bool empty() const { std::unique_lock guard(mutex()); return _props.empty(); }
+        size_t size() const { std::unique_lock guard(mutex()); return _props.size(); }
         
         bool operator==(const Map& other) const {
             if(other.size() != size())
                 return false;
             
+            std::scoped_lock guard(mutex(), other.mutex());
             auto it0 = other._props.begin();
             auto it1 = _props.begin();
             
@@ -307,8 +310,7 @@ concept Iterable = requires(T obj) {
                     || std::is_lvalue_reference_v<T&&>
                     || std::is_array_v<std::remove_reference_t<T>>
         Reference operator[](T&& name) {
-            LockGuard guard(this);
-
+            std::unique_lock guard(mutex());
             decltype(_props)::const_iterator it;
 
             if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
@@ -330,6 +332,7 @@ concept Iterable = requires(T obj) {
                     || std::is_lvalue_reference_v<T&&>
                     || std::is_array_v<std::remove_reference_t<T>>
         ConstReference operator[](T&& name) const {
+            std::unique_lock guard(mutex());
             decltype(_props)::const_iterator it;
 
             if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
@@ -348,7 +351,7 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         Property<T>& get(const std::string_view& name) {
-            LockGuard guard(this);
+            std::unique_lock guard(mutex());
             auto it = _props.find(name);
             if(it != _props.end()) {
 				return (Property<T>&)it->second->toProperty<T>();
@@ -359,6 +362,7 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         Property<T>& get(const std::string_view& name) const {
+            std::unique_lock guard(mutex());
             auto it = _props.find(name);
             if(it != _props.end()) {
                 return (Property<T>&)it->second->toProperty<T>();
@@ -368,6 +372,7 @@ concept Iterable = requires(T obj) {
         }
         
         bool has(const std::string_view& name) const {
+            std::unique_lock guard(mutex());
             return _props.contains(name);
         }
         
@@ -412,7 +417,6 @@ concept Iterable = requires(T obj) {
             Property<T> *property_;
             
             {
-                LockGuard guard(this);
                 if(has(property)) {
                     std::string e = "Property already "+((const PropertyType&)property).toStr()+" already exists.";
                     FormatError(e.c_str());
@@ -422,6 +426,8 @@ concept Iterable = requires(T obj) {
                 property_ = new Property<T>(property.name(), property.value());
                 {
                     auto ptr = Store(property_);
+                    
+                    std::unique_lock guard(mutex());
                     _props[ptr->name()] = ptr;
                 }
             }
@@ -430,16 +436,18 @@ concept Iterable = requires(T obj) {
         }
         
         void erase(const std::string& key) {
-            LockGuard guard(this);
             if(not has(key)) {
                 std::string e = "Map does not have key '"+key+"'.";
                 FormatError(e.c_str());
                 throw PropertyException(e);
             }
+            
+            std::unique_lock guard(mutex());
             _props.erase(key);
         }
         
         std::vector<std::string> keys() const {
+            std::unique_lock guard(mutex());
             std::vector<std::string> result;
             result.reserve(_props.size());
 
@@ -451,7 +459,7 @@ concept Iterable = requires(T obj) {
         }
         
         std::string toStr() const {
-            return "Map<size:" + Meta::toStr(_props.size()) + ">";
+            return "Map<size:" + Meta::toStr(size()) + ">";
         }
     };
     
