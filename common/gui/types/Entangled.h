@@ -247,7 +247,7 @@ namespace gui {
         
         void set_bounds_changed() override;
 
-        void set_parent(SectionInterface* p) final override;
+        void set_parent(SectionInterface* p) override;
     protected:
         
         //Drawable* insert_at_current_index(Drawable* );

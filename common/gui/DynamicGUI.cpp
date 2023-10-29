@@ -232,6 +232,19 @@ void Context::init() const {
             VarFunc("max", [](VarProps props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return max(A, B);});
             }),
+            VarFunc("not", [](VarProps props) -> bool {
+                if(props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Invalid number of variables for not: ", props);
+                }
+                
+                auto& p = props.parameters.front();
+                try {
+                    return not Meta::fromStr<bool>(p);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p, ": ", ex.what());
+                }
+            }),
             VarFunc("+", [](VarProps props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
             }),
@@ -268,7 +281,25 @@ void Context::init() const {
             VarFunc("round", [](VarProps props) -> float {
                 return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
             }),
-            VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); })
+            VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
+            VarFunc("clrAlpha", [](VarProps props) -> Color {
+                if(props.parameters.size() != 2) {
+                    throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
+                }
+                
+                auto& _color = props.parameters.front();
+                auto& _alpha = props.parameters.back();
+                
+                try {
+                    auto color = Meta::fromStr<Color>(_color);
+                    auto alpha = Meta::fromStr<float>(_alpha);
+                    
+                    return color.alpha(alpha);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse color ", _color, " and alpha ", _alpha, ": ", ex.what());
+                }
+            })
         };
     
 }

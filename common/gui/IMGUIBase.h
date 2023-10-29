@@ -67,6 +67,7 @@ namespace gui {
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;
         
+    public:
         struct DrawOrder {
             enum Type {
                 DEFAULT = 0,
@@ -87,6 +88,7 @@ namespace gui {
             {}
         };
         
+    protected:
         std::unordered_map<Drawable*, std::tuple<int, Vec2>> _rotation_starts;
         std::vector<DrawOrder> _draw_order;
         

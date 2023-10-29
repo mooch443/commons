@@ -89,10 +89,14 @@ namespace gui {
         
         Box _set_box;
         std::map<Drawable*, size_t> rect_to_idx;
+        Entangled _list;
         
     public:
         template<typename... Args>
         ScrollableList(Args... args) {
+            _list.set_scroll_enabled(true);
+            _list.set_clickable(true);
+            
             create(std::forward<Args>(args)...);
             
             add_event_handler(HOVER, [this](auto){ this->set_dirty(); });
@@ -103,7 +107,19 @@ namespace gui {
                     if(_foldable && _folded) {
                         set(Folded_t{false});
                     } else {
-                        size_t idx = size_t(floorf((scroll_offset().y + e.mbutton.y) / _line_spacing));
+                        Entangled * o = _foldable ? &_list : this;
+                        size_t idx;
+                        if(_foldable) {
+                            idx = size_t(floorf((o->scroll_offset().y - _list.pos().y + e.mbutton.y) / _line_spacing));
+                        } else {
+                            idx = size_t(floorf((o->scroll_offset().y + e.mbutton.y) / _line_spacing));
+                        }
+                        if(_foldable) {
+                            if(not _list.bounds().contains(Vec2(e.mbutton.x, e.mbutton.y))) {
+                                set(Folded_t{true});
+                                return;
+                            }
+                        }
                         _last_selected_item = -1;
                         select_item(idx);
                     }
@@ -112,6 +128,10 @@ namespace gui {
             add_event_handler(SCROLL, [this](auto) {
                 this->update_items();
             });
+            _list.add_event_handler(SCROLL, [this](auto) {
+                this->update_items();
+            });
+            _list.set_z_index(1);
         }
         
         template<typename... Args>
@@ -128,6 +148,7 @@ namespace gui {
             }();
             
             set_background(_item_color.exposure(0.5));
+            _list.set_background(_item_color.exposure(0.5));
             update_items();
         }
         
@@ -198,9 +219,17 @@ namespace gui {
             if(_foldable == foldable)
                 return;
             _foldable = foldable;
-            if(_foldable && _folded) {
+            if(_foldable) {
+                if(scroll_enabled()) {
+                    set_scroll_limits(Rangef(), Rangef());
+                    set_scroll_offset(Vec2());
+                    set_scroll_enabled(false);
+                }
                 Entangled::set_size(Size(width(), _line_spacing));
             } else {
+                set_scroll_enabled(true);
+                set_scroll_limits(Rangef(), Rangef());
+                set_scroll_offset(Vec2());
                 Entangled::set_size(Size(_set_box.size()));
             }
             set_content_changed(true);
@@ -209,9 +238,10 @@ namespace gui {
             if(_folded == folded)
                 return;
             _folded = folded;
-            if(_foldable && _folded) {
+            if(_foldable) {
                 Entangled::set_size(Size(width(), _line_spacing));
             } else {
+                print((uint64_t)this, " Setting size = ", _set_box);
                 Entangled::set_size(Size(_set_box.size()));
             }
             set_content_changed(true);
@@ -243,8 +273,9 @@ namespace gui {
             _items.clear();
 
             Float2_t y = _line_spacing * objs.size();
-            if (y + scroll_offset().y < 0) {
-                set_scroll_offset(Vec2());
+            Entangled * o = _foldable ? &_list : this;
+            if (y + o->scroll_offset().y < 0) {
+                o->set_scroll_offset(Vec2());
             }
 
             for (auto& item : objs) {
@@ -260,6 +291,7 @@ namespace gui {
                 return;
             
             set_background(item_color.exposure(0.5));
+            _list.set_background(item_color.exposure(0.5));
             _item_color = item_color;
             set_dirty();
         }
@@ -364,24 +396,25 @@ namespace gui {
         }
         
         void highlight_item(long index) {
-            float first_visible = scroll_offset().y / _line_spacing;
-            float last_visible = (scroll_offset().y + height()) / _line_spacing;
+            Entangled * o = _foldable ? &_list : this;
+            float first_visible = o->scroll_offset().y / _line_spacing;
+            float last_visible = (o->scroll_offset().y + height()) / _line_spacing;
             
             if(index == -1)
                 return;
             
             if(index > last_visible-1) {
-                float fit = index - height() / _line_spacing + 1;
-                set_scroll_offset(Vec2(0, fit * _line_spacing));
+                float fit = index - o->height() / _line_spacing + 1;
+                o->set_scroll_offset(Vec2(0, fit * _line_spacing));
             }
             else if(index < first_visible)
-                set_scroll_offset(Vec2(0, _line_spacing * index));
+                o->set_scroll_offset(Vec2(0, _line_spacing * index));
             
             update_items();
             update();
             
-            first_visible = floorf(scroll_offset().y / _line_spacing);
-            last_visible = min(_items.size()-1.0f, floorf((scroll_offset().y + height()) / _line_spacing));
+            first_visible = floorf(o->scroll_offset().y / _line_spacing);
+            last_visible = min(_items.size()-1.0f, floorf((o->scroll_offset().y + o->height()) / _line_spacing));
             _last_hovered_item = index;
             
             //draw_structure()->do_hover(_rects.at(index - first_visible));
@@ -413,7 +446,9 @@ namespace gui {
     private:
         void update_items() {
             const float item_height = _line_spacing;
-            size_t N = size_t(ceilf(max(0.f, height()) / _line_spacing)) + 1u; // one item will almost always be half-visible
+            Entangled * e = _foldable ? &_list : this;
+            
+            size_t N = size_t(ceilf(max(0.f, e->height()) / _line_spacing)) + 1u; // one item will almost always be half-visible
             
             if(N != _rects.size()) {
                 if(N < _rects.size()) {
@@ -493,7 +528,7 @@ namespace gui {
                 set_content_changed(true);
             if(bounds != _set_box) {
                 _set_box = bounds;
-                print("_set_box = ", bounds);
+                print((uint64_t)this, " _set_box = ", bounds);
             }
             if(not _foldable)
                 Entangled::set_bounds(bounds);
@@ -506,7 +541,7 @@ namespace gui {
                 set_content_changed(true);
             if(bounds != _set_box.size()) {
                 _set_box << bounds;
-                print("_set_box = ", bounds);
+                print((uint64_t)this, " _set_box = ", bounds);
             }
             if(not _foldable)
                 Entangled::set_size(bounds);
@@ -531,11 +566,15 @@ namespace gui {
                     _line_spacing = spacing;
                     _previous_width = width();
                     if(_set_box.height != spacing || _set_box.width != width()) {
-                        _set_box.height = spacing;
+                        //_set_box.height = spacing;
                         _set_box.width = width();
-                        if(_folded && _foldable)
-                            Entangled::set_size(Size(_set_box.size()));
+                        if(_foldable) {
+                            Entangled::set_size(Size(width(), _line_spacing));
+                            _list.set_scroll_offset(Vec2());
+                        }
                     }
+                    if(foldable())
+                        _list.set(Size(width(), _set_box.height));
                     update_items();
                 }
                 
@@ -544,22 +583,20 @@ namespace gui {
                 if(_foldable && _folded) {
                     begin();
                     add<Rect>(Box{0.f, 0.f, width(), item_height}, FillClr{
-                        hovered() 
+                        hovered()
                             ? item_color().exposureHSL(1.5)
                             : item_color()
                     });
-                    add<Text>(Str{_folded_label + " " + Meta::toStr(size()) + " vs. "+ Meta::toStr(_set_box)}, _font);
+                    add<Text>(Str{_folded_label}, Loc{0, item_height * 0.5f}, Font(_font.size, Align::VerticalCenter));
                     end();
                     
-                    set_scroll_limits(Rangef(), Rangef());
-                    set_scroll_offset(Vec2());
-                    
                 } else {
+                    Entangled * e = _foldable ? &_list : this;
                     
-                    begin();
+                    e->begin();
                     
-                    size_t first_visible = (size_t)floorf(scroll_offset().y / item_height);
-                    size_t last_visible = (size_t)floorf((scroll_offset().y + height()) / item_height);
+                    size_t first_visible = (size_t)max(0.f, floorf(e->scroll_offset().y / item_height));
+                    size_t last_visible = (size_t)floorf((e->scroll_offset().y + e->height()) / item_height);
                     
                     rect_to_idx.clear();
                     
@@ -593,10 +630,10 @@ namespace gui {
                         
                         rect_to_idx[_rects.at(idx)] = i;
                         
-                        advance_wrap(*_rects.at(idx));
-                        advance_wrap(*_texts.at(idx));
+                        e->advance_wrap(*_rects.at(idx));
+                        e->advance_wrap(*_texts.at(idx));
                         if constexpr(has_detail<T>) {
-                            advance_wrap(*_details.at(idx));
+                            e->advance_wrap(*_details.at(idx));
                         }
                         
                         if constexpr(has_detail<T>) {
@@ -634,19 +671,34 @@ namespace gui {
                     
                     if(_items.empty()) {
                         if(not _placeholder_text.text().empty()) {
-                            advance_wrap(_placeholder_text);
+                            e->advance_wrap(_placeholder_text);
                         }
                     }
                     
-                    end();
+                    e->end();
                     
                     const float last_y = item_height * (_items.size()-1);
-                    set_scroll_limits(Rangef(),
+                    e->set_scroll_limits(Rangef(),
                                       Rangef(0,
-                                             (height() < last_y ? last_y + item_height - height() : 0.1f)));
-                    auto scroll = scroll_offset();
-                    set_scroll_offset(Vec2());
-                    set_scroll_offset(scroll);
+                                             (e->height() < last_y ? last_y + item_height - e->height() : 0.1f)));
+                    auto scroll = e->scroll_offset();
+                    e->set_scroll_offset(Vec2());
+                    e->set_scroll_offset(scroll);
+                    
+                    if(_foldable) {
+                        begin();
+                        add<Rect>(Box{0.f, 0.f, width(), item_height}, FillClr{
+                            hovered()
+                                ? item_color().exposureHSL(1.5)
+                                : item_color()
+                        });
+                        add<Text>(Str{_folded_label}, Loc{0, item_height * 0.5f}, Font(_font.size, Align::VerticalCenter));
+                        _list.set_size(_set_box.size());
+                        _list.set_pos(Vec2(0, item_height));
+                        _list.set_pos(Vec2(0, -_list.height()));
+                        advance_wrap(_list);
+                        end();
+                    }
                 }
             }
 

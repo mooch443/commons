@@ -194,6 +194,7 @@ protected:
         void set_fill_clr(const Color& clr);
         void set_border_clr(const Color& clr);
         void set_vertices(const std::vector<Vec2>& vertices);
+        void set_vertices(const std::vector<Vertex>& vertices);
         
         void create(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
         {

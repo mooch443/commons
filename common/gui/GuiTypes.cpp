@@ -245,6 +245,27 @@ void Polygon::set_vertices(const std::vector<Vec2> &vertices) {
     }
 }
 
+void Polygon::set_vertices(const std::vector<Vertex> &tmp) {
+    if(!tmp.empty()) {
+        set_border_clr(tmp.front().color());
+        set_fill_clr(tmp.front().color().alpha(100));
+    }
+    
+    std::vector<Vec2> vertices(tmp.begin(), tmp.end());
+    if(not _vertices) {
+        _vertices = std::make_shared<std::vector<Vec2>>(std::move(vertices));
+    } else {
+        if(*_vertices == vertices)
+            return;
+        
+        _size_calculated = false;
+        *_vertices = std::move(vertices);
+        
+        update_size();
+        set_dirty();
+    }
+}
+
 void Polygon::update_size() {
     if(_size_calculated)
         return;

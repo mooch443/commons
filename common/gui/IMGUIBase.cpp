@@ -784,34 +784,31 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale * scale, &config);
 #else
                 static const ImWchar all_ranges[] = {
-                    // Basic Latin
+                    // Range from Basic Latin to Cyrillic Supplement
                     0x0020, 0x007F,
 
-                    // Cyrillic + Cyrillic Supplement
+                    // Range from Cyrillic + Cyrillic Supplement
                     0x0400, 0x052F,
-                    
+
+                    // Range from General Punctuation to Arrows
+                    0x2000, 0x206F, // General Punctuation
+                    0x2070, 0x209F, // Superscripts and Subscripts
+                    0x20A0, 0x20CF, // Currency Symbols
                     0x2190, 0x21FF, // Arrows
 
-                    // General Punctuation
-                    0x2000, 0x206F,
-
-                    // Superscripts and Subscripts
-                    0x2070, 0x209F,
-
-                    // Currency Symbols
-                    0x20A0, 0x20CF,
+                    // Range from Miscellaneous Technical to Miscellaneous Symbols and Play Symbol
+                    0x2300, 0x23FF, // Miscellaneous Technical
+                    0x2600, 0x26FF, // Miscellaneous Symbols
+                    0x2700, 0x27BF, // Dingbats
+                    0x25B6, 0x25B6, // Play Symbol
 
                     // CJK Radicals Supplement
                     0x2E80, 0x2EFF,
 
-                    // CJK Symbols and Punctuation
-                    0x3000, 0x303F,
-
-                    // Hiragana
-                    0x3040, 0x309F,
-
-                    // Katakana
-                    0x30A0, 0x30FF,
+                    // CJK Symbols and Punctuation to Hiragana and Katakana
+                    0x3000, 0x303F, // CJK Symbols and Punctuation
+                    0x3040, 0x309F, // Hiragana
+                    0x30A0, 0x30FF, // Katakana
 
                     // CJK Unified Ideographs Extension A
                     0x3400, 0x4DBF,
@@ -819,21 +816,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     // CJK Unified Ideographs
                     0x4E00, 0x9FFF,
 
-                    // Miscellaneous Symbols
-                    0x2600, 0x26FF,
-
-                    0x2700, 0x27BF, // Dingbats
-                    
-                    0x2300, 0x23FF, // Miscellaneous Technical
-
-                    // Play Symbol
-                    0x25B6, 0x25B6,
-
                     // Sentinel to indicate end of ranges
                     0xFFFF
                 };
 
-                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config, add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
+                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config, all_ranges); //add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
 #endif
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
@@ -1276,6 +1263,65 @@ std::string u8string_to_string(const std::u8string& u8str)
     return str;
 }
 
+void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBase::DrawOrder& order, ImDrawList* list, float thickness) {
+    const auto points_count = points.size();
+
+    if (points_count <= 1) {
+        return;
+    }
+    //thickness = 5;
+    /*std::vector<Vertex> converted(points.size());
+    for(size_t i=0; i<points.size(); ++i) {
+        converted[i] = Vertex(order.transform.transformPoint(points[i].position()), points[i].color());
+    }*/
+    //AddPolyline(list, converted.data(), converted.size(), false, thickness);
+    //return;
+    
+    const auto count = points_count - 1;
+    const ImVec2 uv = list->_Data->TexUvWhitePixel;
+
+    const auto idx_count = count * 6;
+    const auto vtx_count = count * 4; //! TODO: [OPT] Not sharing edges
+    list->PrimReserve(static_cast<int>(idx_count), static_cast<int>(vtx_count));
+    assert(idx_count > 0 and vtx_count > 0);
+    auto p1 = order.transform.transformPoint(points.front().position());
+
+    for (size_t i1 = 0; i1 < count; i1++) {
+        const size_t i2 = (i1 + 1) == points_count ? 0 : i1 + 1;
+        const auto p2 = order.transform.transformPoint(points[i2].position());
+        const auto col = cvtClr(points[i1].color());
+
+        float dx = p2.x - p1.x;
+        float dy = p2.y - p1.y;
+        IM_NORMALIZE2F_OVER_ZERO(dx, dy);
+        dx *= (thickness * 0.5f);
+        dy *= (thickness * 0.5f);
+
+        // Vertex Writing
+        list->_VtxWritePtr[0].pos.x = p1.x + dy; list->_VtxWritePtr[0].pos.y = p1.y - dx; list->_VtxWritePtr[0].uv = uv; list->_VtxWritePtr[0].col = col;
+        list->_VtxWritePtr[1].pos.x = p2.x + dy; list->_VtxWritePtr[1].pos.y = p2.y - dx; list->_VtxWritePtr[1].uv = uv; list->_VtxWritePtr[1].col = col;
+        list->_VtxWritePtr[2].pos.x = p2.x - dy; list->_VtxWritePtr[2].pos.y = p2.y + dx; list->_VtxWritePtr[2].uv = uv; list->_VtxWritePtr[2].col = col;
+        list->_VtxWritePtr[3].pos.x = p1.x - dy; list->_VtxWritePtr[3].pos.y = p1.y + dx; list->_VtxWritePtr[3].uv = uv; list->_VtxWritePtr[3].col = col;
+        list->_VtxWritePtr += 4;
+
+        // Index Writing
+        list->_IdxWritePtr[0] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx);
+        list->_IdxWritePtr[1] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx + 1);
+        list->_IdxWritePtr[2] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx + 2);
+        list->_IdxWritePtr[3] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx);
+        list->_IdxWritePtr[4] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx + 2);
+        list->_IdxWritePtr[5] = static_cast<ImDrawIdx>(list->_VtxCurrentIdx + 3);
+        list->_IdxWritePtr += 6;
+        list->_VtxCurrentIdx += 4;
+        
+        p1 = p2;
+    }
+
+    list->_Path.Size = 0;
+}
+
+
+
 void IMGUIBase::draw_element(const DrawOrder& order) {
     auto list = ImGui::GetForegroundDrawList();
     /*if(order.type == DrawOrder::POP) {
@@ -1542,57 +1588,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             // Non Anti-aliased Stroke
             auto &points = ptr->VertexArray::points();
-            auto points_count = points.size();
-            
-            if(points_count <= 1)
-                break;
-            
-            auto count = points_count - 1;
-            float thickness = ptr->thickness();
-            const ImVec2 uv = list->_Data->TexUvWhitePixel;
-            
-            const auto idx_count = count*6;
-            const auto vtx_count = count*4; //! TODO: [OPT] Not sharing edges
-            list->PrimReserve((int)idx_count, (int)vtx_count);
-            assert(idx_count > 0 && vtx_count > 0);
-            
-            //Transform transform;
-            //transform.scale(_graph->scale());
-            //transform.combine(o->global_transform());
-            //auto transform = o->global_transform();
-
-            for (size_t i1 = 0; i1 < count; i1++)
-            {
-                const size_t i2 = (i1+1) == points_count ? 0 : i1+1;
-                auto p1 = order.transform.transformPoint(points[i1].position());
-                auto p2 = order.transform.transformPoint(points[i2].position());
-                
-                //const auto& p1 = points[i1].position();
-                //const auto& p2 = points[i2].position();
-                auto col = cvtClr(points[i1].color());
-
-                float dx = p2.x - p1.x;
-                float dy = p2.y - p1.y;
-                
-                
-                IM_NORMALIZE2F_OVER_ZERO(dx, dy);
-                dx *= (thickness * 0.5f);
-                dy *= (thickness * 0.5f);
-
-                list->_VtxWritePtr[0].pos.x = p1.x + dy; list->_VtxWritePtr[0].pos.y = p1.y - dx; list->_VtxWritePtr[0].uv = uv; list->_VtxWritePtr[0].col = col;
-                list->_VtxWritePtr[1].pos.x = p2.x + dy; list->_VtxWritePtr[1].pos.y = p2.y - dx; list->_VtxWritePtr[1].uv = uv; list->_VtxWritePtr[1].col = col;
-                list->_VtxWritePtr[2].pos.x = p2.x - dy; list->_VtxWritePtr[2].pos.y = p2.y + dx; list->_VtxWritePtr[2].uv = uv; list->_VtxWritePtr[2].col = col;
-                list->_VtxWritePtr[3].pos.x = p1.x - dy; list->_VtxWritePtr[3].pos.y = p1.y + dx; list->_VtxWritePtr[3].uv = uv; list->_VtxWritePtr[3].col = col;
-                list->_VtxWritePtr += 4;
-
-                list->_IdxWritePtr[0] = (ImDrawIdx)(list->_VtxCurrentIdx); list->_IdxWritePtr[1] = (ImDrawIdx)(list->_VtxCurrentIdx+1); list->_IdxWritePtr[2] = (ImDrawIdx)(list->_VtxCurrentIdx+2);
-                list->_IdxWritePtr[3] = (ImDrawIdx)(list->_VtxCurrentIdx); list->_IdxWritePtr[4] = (ImDrawIdx)(list->_VtxCurrentIdx+2); list->_IdxWritePtr[5] = (ImDrawIdx)(list->_VtxCurrentIdx+3);
-                list->_IdxWritePtr += 6;
-                list->_VtxCurrentIdx += 4;
-            }
-            
-            list->_Path.Size = 0;
-            
+            RenderNonAntialiasedStroke(points, order, list, ptr->thickness());
             break;
         }
             
@@ -1628,21 +1624,23 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
     }
     
-//#define DEBUG_BOUNDARY
+#define DEBUG_BOUNDARY
 #ifdef DEBUG_BOUNDARY
-    list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(125));
-    std::string text;
-    if(o->parent() && o->parent()->background() == o) {
-        if(dynamic_cast<Entangled*>(o->parent()))
-            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->z_index());//Meta::toStr(o->parent()->bounds());
-        else
-            text = Meta::toStr(o->z_index());//Meta::toStr(*(Drawable*)o->parent());
-    } else
-        text = Meta::toStr(o->z_index());//Meta::toStr(*o);
-    auto font = _fonts.at(Style::Regular);
-    auto _font = Font(0.3, Style::Regular);
-    
-    list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+    if(graph()->is_key_pressed(Codes::RShift)) {
+        list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(125));
+        std::string text;
+        if(o->parent() && o->parent()->background() == o) {
+            if(dynamic_cast<Entangled*>(o->parent()))
+                text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->z_index());//Meta::toStr(o->parent()->bounds());
+            else
+                text = Meta::toStr(o->z_index());//Meta::toStr(*(Drawable*)o->parent());
+        } else
+            text = Meta::toStr(o->z_index());//Meta::toStr(*o);
+        auto font = _fonts.at(Style::Regular);
+        auto _font = Font(0.3, Style::Regular);
+        
+        list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+    }
 #endif
     
     if(o->type() != Type::ENTANGLED && o->has_global_rotation()) {
