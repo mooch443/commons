@@ -218,6 +218,9 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         "var":"list_var",
         "size":[300,300],
         "line":[255,0,0,125],
+        "foldable":true,
+        "folded":true,
+        "text":"test",
         "font":{ "size":0.75, "align":"center" },
         "template": {
             "text":"{i.name}",
