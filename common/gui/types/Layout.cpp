@@ -316,7 +316,7 @@ void VerticalLayout::auto_size() {
             if (_c->type() == Type::ENTANGLED
                 && dynamic_cast<Layout*>(_c))
             {
-                static_cast<Layout*>(_c)->auto_size();
+                //static_cast<Layout*>(_c)->auto_size();
             }
 
             auto bds = _c->local_bounds();
