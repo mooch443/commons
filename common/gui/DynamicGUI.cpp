@@ -34,6 +34,10 @@ auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char cl
     return trimmedStr.substr(startPos, pos - startPos);  // Return the nested structure as a string
 };
 
+std::string Pattern::toStr() const {
+    return "Pattern<" + std::string(original) + ">";
+}
+
 Action Action::fromStr(std::string_view str) {
     auto trimmedStr = str;
 
