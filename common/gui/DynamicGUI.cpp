@@ -245,6 +245,20 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p, ": ", ex.what());
                 }
             }),
+            VarFunc("equal", [](VarProps props) -> bool {
+                if(props.parameters.size() != 2) {
+                    throw InvalidArgumentException("Invalid number of variables for ",props.name,": ", props);
+                }
+                
+                auto& p0 = props.parameters.front();
+                auto& p1 = props.parameters.back();
+                try {
+                    return p0 == p1;
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
+                }
+            }),
             VarFunc("+", [](VarProps props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
             }),

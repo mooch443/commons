@@ -349,6 +349,11 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
     } else if(props.name == "if") {
         std::string result;
         bool condition{false};
+        if(props.parameters.at(0) == "true")
+            condition = true;
+        else if(props.parameters.at(0) == "false")
+            condition = false;
+        else
             condition = resolve_variable_type<bool>(props.parameters.at(0), context);
         //print("Condition ", props.parameters.at(0)," => ", condition);
         if(condition)
