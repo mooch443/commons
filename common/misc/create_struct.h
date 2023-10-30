@@ -724,7 +724,7 @@ private: \
     inline static CallbackCollection _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
-template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { print("Updating key ", key, " = ", value.valueString()); auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
+    template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { print("[",#NAM,"] Updating key ", key, " = ", value.valueString()); auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
     template<Variables M> \
     static const char* name() { \
         return VariableNames[M]; \
@@ -733,7 +733,7 @@ template<Variables M> static void update(std::string_view key, const sprite::Pro
     static void clear_callbacks() { callbacks().clear(); } \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
     static void variable_changed (sprite::Map::Signal signal, sprite::Map &, const std::string_view &key, const sprite::PropertyType& value) { \
-        if(false); STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
+        if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
         std::call_once(flag, [](){ \

@@ -10,36 +10,44 @@ template<typename Base>
 class BFrame_t {
 public:
     using number_t = typename Base::value_type;
-    //static constexpr number_t invalid = -1;
-
+    
+    // Compile-time check to ensure that number_t is integral
+    static_assert(std::is_integral_v<number_t>, "number_t must be integral");
+    
 private:
     Base _frame;
+    
+    template<typename T>
+    constexpr void checkNonNegative(T frame) const noexcept(not is_debug_mode()) {
+        if constexpr (is_debug_mode()) {
+            if (frame < 0) {
+                throw std::invalid_argument("Do not initialize with negative numbers.");
+            }
+        }
+    }
     
 public:
     constexpr BFrame_t() = default;
     template<typename T>
         requires std::unsigned_integral<T>
-    explicit constexpr BFrame_t(T frame)
+    explicit constexpr BFrame_t(T frame) noexcept
         : _frame(static_cast<number_t>(frame))
     { }
+    
     template<typename T>
         requires _clean_same<T, number_t> && std::signed_integral<T>
-    explicit constexpr BFrame_t(T frame)
+    explicit constexpr BFrame_t(T frame) noexcept(not is_debug_mode())
     {
-        if (frame >= 0)
-            _frame = frame;
-        else
-            throw std::invalid_argument("Do not initialize with negative numbers.");
+        checkNonNegative(frame);
+        _frame = frame;
     }
     
     template<typename T>
         requires std::signed_integral<T> && (!_clean_same<T, number_t>)
     explicit constexpr BFrame_t(T frame)
     {
-        if (frame >= 0)
-            _frame = narrow_cast<number_t>(frame);
-        else
-            throw std::invalid_argument("Do not initialize with negative numbers.");
+        checkNonNegative(frame);
+        _frame = narrow_cast<number_t>(frame);
     }
     
     constexpr void invalidate() noexcept {
@@ -71,10 +79,6 @@ public:
     constexpr inline bool operator!=(const BFrame_t& other) const {
         return not operator==(other);
     }
-    
-    /*constexpr BFrame_t operator-() const {
-        return BFrame_t(-get());
-    }*/
     
     constexpr BFrame_t& operator+=(const BFrame_t& other) {
         if(not valid())
