@@ -147,6 +147,10 @@ struct ListContents {
     std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
 };
 
+struct ManualListContents {
+    std::vector<DetailItem> items;
+};
+
 // Index class manages unique identifiers for objects.
 class Index {
 public:
@@ -201,6 +205,7 @@ struct State {
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
     std::unordered_map<size_t, ListContents> lists;
+    std::unordered_map<size_t, ManualListContents> manual_lists;
     std::unordered_map<size_t, IfBody> ifs;
     
     std::unordered_map<size_t, std::unique_ptr<LabeledField>> _text_fields;
@@ -234,6 +239,11 @@ struct State {
                 .state = std::make_unique<State>(*body.state),
                 .cache = body.cache,
                 .on_select_actions = {}
+            };
+        }
+        for (auto& [k, body] : other.manual_lists) {
+            manual_lists[k] = {
+                .items = body.items
             };
         }
     }

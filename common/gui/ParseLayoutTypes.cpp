@@ -629,6 +629,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
             }
         }
         
+        state.manual_lists[hash] = {
+            .items = items
+        };
+        
         ptr.to<ScrollableList<DetailItem>>()->set_items(items);
         ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context](size_t index, const DetailItem &)
         {

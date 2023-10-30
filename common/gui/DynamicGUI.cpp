@@ -232,6 +232,27 @@ void Context::init() const {
             VarFunc("max", [](VarProps props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return max(A, B);});
             }),
+            VarFunc("bool", [](VarProps props) -> bool {
+                if (props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Invalid number of variables for not: ", props);
+                }
+
+                auto& p = props.parameters.front();
+
+                if (   p == "false"
+                    || p == "[]"
+                    || p == "{}"
+                    || p == "0"
+                    || p == "null"
+                    || p == "''"
+                    || p == "\"\""
+                    || p == "0.0"
+                    || p == ""
+                    )
+                  return false;
+
+                return true;
+            }),
             VarFunc("not", [](VarProps props) -> bool {
                 if(props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for not: ", props);
@@ -892,6 +913,17 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr 
         }
         return true;
     }
+    else if (auto it = state.manual_lists.find(hash); it != state.manual_lists.end()) {
+        ManualListContents &body = it->second;
+        auto items = body.items;
+        for (auto& i : items) {
+            i.set_detail(parse_text(i.detail(), context));
+            i.set_name(parse_text(i.name(), context));
+        }
+        o.to<ScrollableList<DetailItem>>()->set_items(items);
+        return true;
+    }
+
     return false;
 }
 
