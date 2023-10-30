@@ -4,6 +4,47 @@
 #include <misc/stacktrace.h>
 
 namespace gui {
+    Entangled::Entangled(Entangled&& other) noexcept
+        : SectionInterface(std::move(other)), // Assuming SectionInterface has a move constructor
+          _current_children(std::move(other._current_children)),
+          _new_children(std::move(other._new_children)),
+          _currently_removed(std::move(other._currently_removed)),
+          _owned(std::move(other._owned)),
+          _begun(std::move(other._begun.load())),
+          scrolling(std::move(other.scrolling)),
+          callback_ptr(std::exchange(other.callback_ptr, nullptr)),
+          _scroll_offset(std::move(other._scroll_offset)),
+          _scroll_enabled(std::move(other._scroll_enabled)),
+          _scroll_limit_x(std::move(other._scroll_limit_x)),
+          _scroll_limit_y(std::move(other._scroll_limit_y)),
+          _index(std::move(other._index)),
+          _content_changed(std::move(other._content_changed)),
+          _content_changed_while_updating(std::move(other._content_changed_while_updating))
+    {}
+
+    Entangled& Entangled::operator=(Entangled&& other) noexcept {
+        if (this != &other) {
+            // Move base part
+            SectionInterface::operator=(std::move(other)); // Assuming SectionInterface has a move assignment
+
+            _current_children = std::move(other._current_children);
+            _new_children = std::move(other._new_children);
+            _currently_removed = std::move(other._currently_removed);
+            _owned = std::move(other._owned);
+            _begun.store(std::move(other._begun.load()));
+            scrolling = std::move(other.scrolling);
+            callback_ptr = std::exchange(other.callback_ptr, nullptr);
+            _scroll_offset = std::move(other._scroll_offset);
+            _scroll_enabled = std::move(other._scroll_enabled);
+            _scroll_limit_x = std::move(other._scroll_limit_x);
+            _scroll_limit_y = std::move(other._scroll_limit_y);
+            _index = std::move(other._index);
+            _content_changed = std::move(other._content_changed);
+            _content_changed_while_updating = std::move(other._content_changed_while_updating);
+        }
+        return *this;
+    }
+
     Entangled::Entangled()
         : SectionInterface(Type::ENTANGLED, NULL)
     {}

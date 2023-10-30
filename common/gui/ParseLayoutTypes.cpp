@@ -409,9 +409,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
     if(obj.count("action")) {
         action = Action::fromStr(obj["action"].get<std::string>());
         ptr->on_click([action, context](auto){
-            if(context.actions.contains(action.name))
-                context.actions.at(action.name)(action);
-            else
+            if(context.actions.contains(action.name)) {
+                auto copy = action;
+                for(auto &p : copy.parameters)
+                    p = parse_text(p, context);
+                context.actions.at(action.name)(copy);
+            } else
                 print("Unknown Action: ", action);
         });
     }

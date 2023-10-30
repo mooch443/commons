@@ -6,6 +6,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
 #include <gui/ControlsAttributes.h>
+#include <gui/types/StaticText.h>
 
 namespace gui {
     class Button : public Entangled {
@@ -18,12 +19,13 @@ namespace gui {
             Color text_clr = White;
             bool toggleable = false;
             Font font = Font(0.75, Align::Center);
+            Margins margins{0,0,0,0};
         };
         
     protected:
         Settings _settings;
         GETTER_I(bool, toggled, false)
-        Text _text;
+        StaticText _text;
         
     public:
         template<typename... Args>
@@ -31,6 +33,9 @@ namespace gui {
         {
             create(std::forward<Args>(args)...);
         }
+        
+        Button(Button&&) noexcept = default;
+        Button& operator=(Button&&) noexcept = default;
         
         template<typename... Args>
         void create(Args... args) {
@@ -47,7 +52,13 @@ namespace gui {
         void set(attr::Loc loc) override    { _settings.bounds << loc; Entangled::set(loc); }
         void set(attr::FillClr clr) override { _settings.fill_clr = clr; }
         void set(attr::LineClr clr) override { _settings.line_clr = clr; }
-        void set(attr::TextClr clr) { _settings.text_clr = clr; }
+        void set(attr::TextClr clr) { _settings.text_clr = clr; _text.set(clr); }
+        void set(attr::Margins margins) {
+            if(_settings.margins == margins)
+                return;
+            _settings.margins = margins;
+            set_dirty();
+        }
         void set(attr::Size size) override   { _settings.bounds << size; Entangled::set(size); }
         void set(attr::Box bounds) override   { _settings.bounds = bounds; Entangled::set(bounds); }
         void set(const Str& text) { set_txt(text); }
@@ -79,7 +90,7 @@ namespace gui {
                 return;
             
             _settings.text_clr = text_clr;
-            _text.set_color(text_clr);
+            _text.set(TextClr{text_clr});
             set_dirty();
         }
         

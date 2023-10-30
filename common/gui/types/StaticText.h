@@ -73,6 +73,9 @@ namespace gui {
             create(std::forward<Args>(args)...);
         }
         
+        StaticText(StaticText&&) noexcept = default;
+        StaticText& operator=(StaticText&&) noexcept = default;
+        
         template<typename... Args>
         void create(Args... args) {
             (set(std::forward<Args>(args)), ...);
@@ -80,6 +83,7 @@ namespace gui {
         
         const auto& text() const { return _settings.txt; }
         const auto& max_size() const { return _settings.max_size; }
+        const auto& font() const { return _settings.default_font; }
         
     public:
         using Entangled::set;
@@ -158,7 +162,7 @@ namespace gui {
         virtual Size2 size() override;
         virtual const Bounds& bounds() override;
         void set_max_size(const Size2&);
-        void set_default_font(const Font&);
+        void set_default_font(Font);
         
         static std::vector<TRange> to_tranges(const std::string& _txt);
         

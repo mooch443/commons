@@ -19,6 +19,68 @@
 using namespace cv;
 using namespace cmn;
 
+// Move constructor
+Video::Video(Video&& other) noexcept
+    : _colored(other._colored),
+      _mutex(), // Mutexes are not moveable; we'll just construct a new one.
+      _last_index(other._last_index),
+      _camera_matrix(std::move(other._camera_matrix)),
+      _distortion(std::move(other._distortion)),
+      _undistort_maps(std::move(other._undistort_maps)),
+      _maps_calculated(other._maps_calculated),
+      _undistorted_frames(std::move(other._undistorted_frames)),
+      _frames(std::move(other._frames)),
+      _frame_callback(std::move(other._frame_callback)),
+      _cap(other._cap),
+      _please_stop(other._please_stop),
+      _thread(other._thread),
+      _filename(std::move(other._filename)),
+      _size(other._size),
+      read(std::move(other.read)),
+      _channels(other._channels)
+#if defined(VIDEOS_USE_CUDA)
+      , d_reader(other.d_reader)
+#endif
+{
+        other._cap = nullptr;
+        other._thread = nullptr;
+#if defined(VIDEOS_USE_CUDA)
+        other.d_reader = nullptr;
+#endif
+}
+
+Video& Video::operator=(Video&& other) noexcept {
+    if (this != &other) {
+        // Clean up resources of *this if needed (e.g., _thread, _cap)
+
+        _colored = other._colored;
+        // Mutexes are not moveable, so we don't try to move them.
+        _last_index = other._last_index;
+        _camera_matrix = std::move(other._camera_matrix);
+        _distortion = std::move(other._distortion);
+        _undistort_maps = std::move(other._undistort_maps);
+        _maps_calculated = other._maps_calculated;
+        _undistorted_frames = std::move(other._undistorted_frames);
+        _frames = std::move(other._frames);
+        _frame_callback = std::move(other._frame_callback);
+        _cap = other._cap;
+        _please_stop = other._please_stop;
+        _thread = other._thread;
+        _filename = std::move(other._filename);
+        _size = other._size;
+        read = std::move(other.read);
+        _channels = other._channels;
+
+        other._cap = nullptr;
+        other._thread = nullptr;
+#if defined(VIDEOS_USE_CUDA)
+        d_reader = other.d_reader;
+        other.d_reader = nullptr;
+#endif
+    }
+    return *this;
+}
+
 /**
  * Constructor of @class Video.
  */

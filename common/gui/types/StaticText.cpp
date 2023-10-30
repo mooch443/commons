@@ -64,7 +64,8 @@ void StaticText::set_txt(const std::string& txt) {
         Entangled::set_size(size);
     }
 
-void StaticText::set_default_font(const Font& font) {
+void StaticText::set_default_font(Font font) {
+    font.align = Align::Left;
     if(font == _settings.default_font)
         return;
     
@@ -361,7 +362,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     std::stringstream tag; // holds current tag when inside one
     
     std::unordered_set<std::string> commands {
-        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym"
+        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange"
     };
     
     for(size_t i=0; i<_txt.size(); ++i) {
@@ -502,6 +503,9 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             }
             else if(tag.name == "str" || tag.name == "string") {
                 tag.color = mix_colors(tag.color, Red);
+            }
+            else if(tag.name == "orange") {
+                tag.color = mix_colors(tag.color, Orange);
             }
             else if(tag.name == "nr" || tag.name == "number") {
                 tag.color = mix_colors(tag.color, Green);

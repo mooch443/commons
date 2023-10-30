@@ -47,6 +47,9 @@ namespace gui {
         bool _content_changed_while_updating = false;
         
     public:
+        Entangled(Entangled&&) noexcept;
+        Entangled& operator=(Entangled&&) noexcept;
+        
         Entangled();
         Entangled(const Bounds&);
         Entangled(const std::vector<Drawable*>& objects);

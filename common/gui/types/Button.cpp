@@ -10,8 +10,8 @@ void Button::init() {
     set_bounds(_settings.bounds);
     set_scroll_limits(Rangef(), Rangef());
     _text.set_txt(_settings.text);
-    _text.set_color(_settings.text_clr);
-    _text.set_font(_settings.font);//Font(0.75, Style::Regular, Align::Center));
+    _text.set(TextClr{_settings.text_clr});
+    _text.set(_settings.font);//Font(0.75, Style::Regular, Align::Center));
     
     add_event_handler(MBUTTON, [this](Event e) {
         if(!e.mbutton.pressed && _settings.toggleable) {
@@ -22,7 +22,7 @@ void Button::init() {
 }
     
     void Button::set_font(Font font) {
-        _text.set_font(font);
+        _text.set(font);
     }
 
     const Font& Button::font() const {
@@ -31,33 +31,44 @@ void Button::init() {
     
     void Button::update() {
         Color clr(_settings.fill_clr);
+        Color text_clr(_settings.text_clr);
 
         if(pressed()) {
-            clr = clr.exposure(0.3);
+            clr = clr.exposure(0.5);
+            text_clr = text_clr.exposure(0.5);
             
         } else {
             if(_settings.toggleable && toggled()) {
                 if(hovered()) {
                     clr = clr.exposure(0.7);
-                } else
-                    clr = clr.exposure(0.3);
+                    text_clr = text_clr.exposure(0.7);
+                } else {
+                    clr = clr.exposure(0.5);
+                    text_clr = text_clr.exposure(0.5);
+                }
                 
             } else if(hovered()) {
                 clr = clr.exposure(1.5);
                 clr.a = saturate(clr.a * 1.5);
+                text_clr = text_clr.exposure(1.5);
+                text_clr.a = saturate(text_clr.a * 1.5);
             }
         }
         
         set_background(clr, _settings.line_clr);
         
-        Vec2 offset = pressed() ? Vec2(0.5) : Vec2(0);
+        Vec2 offset = _settings.margins.pos() + (pressed() ? Vec2(0.5) : Vec2(0));
         if(_settings.font.align == Align::Center) {
+            _text.set_origin(Vec2(0.5));
             _text.set_pos(size() * 0.5 + offset);
         } else if(_settings.font.align == Align::Left) {
-            _text.set_pos(Vec2(10, height() * 0.5 - _text.height() * 0.5) + offset);
+            _text.set_origin(Vec2(0, 0.5));
+            _text.set_pos(Vec2(10, height() * 0.5) + offset);
         } else if(_settings.font.align == Align::Right) {
-            _text.set_pos(Vec2(width() - 10, height() * 0.5 - _text.height() * 0.5) + offset);
+            _text.set_origin(Vec2(1, 0.5));
+            _text.set_pos(Vec2(width() - 10, height() * 0.5) + offset);
         }
+        _text.set(TextClr{text_clr});
         
         if(content_changed()) {
             begin();

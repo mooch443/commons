@@ -69,6 +69,9 @@ namespace gui {
             create(std::forward<Args>(args)...);
         }
         
+        Layout(Layout&&) noexcept = default;
+        Layout& operator=(Layout&&) noexcept = default;
+        
         template<typename... Args>
         void create(Args... args) {
             (set(std::forward<Args>(args)), ...);
@@ -117,6 +120,9 @@ namespace gui {
         // Constructors and destructors, if needed
         PlaceinLayout(const std::vector<Layout::Ptr>& vec = {}) : Layout(vec) {}
         virtual ~PlaceinLayout() { /* custom destruction logic if needed */ }
+        
+        PlaceinLayout(PlaceinLayout&&) noexcept = default;
+        PlaceinLayout& operator=(PlaceinLayout&&) noexcept = default;
 
         // Use the using declaration to make base class member functions visible
         using Layout::update;
@@ -149,6 +155,9 @@ namespace gui {
         {
             create(std::forward<Args>(args)...);
         }
+        
+        HorizontalLayout(HorizontalLayout&&) noexcept = default;
+        HorizontalLayout& operator=(HorizontalLayout&&) noexcept = default;
         
         template<typename... Args>
         void create(Args... args) {
@@ -184,6 +193,9 @@ namespace gui {
         {
             create(std::forward<Args>(args)...);
         }
+        
+        VerticalLayout(VerticalLayout&&) noexcept = default;
+        VerticalLayout& operator=(VerticalLayout&&) noexcept = default;
         
         template<typename... Args>
         void create(Args... args) {

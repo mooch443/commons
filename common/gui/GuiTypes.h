@@ -222,6 +222,11 @@ public:
     const auto& lineclr() const { return _settings.lineclr; }
     const auto& fillclr() const { return _settings.fillclr; }
     
+    Rect(const Rect&) = delete;
+    Rect(Rect&&) = default;
+    Rect& operator=(Rect&&) = default;
+    Rect& operator=(const Rect&) = delete;
+    
     template<typename... Args>
     Rect(Args... args) : gui::Drawable(Type::RECT)
     {

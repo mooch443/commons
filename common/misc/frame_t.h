@@ -146,7 +146,7 @@ public:
     }
 };
 
-using Frame_t = BFrame_t<std::optional<int32_t>>;
+using Frame_t = BFrame_t<std::optional<uint32_t>>;
 
 constexpr Frame_t operator""_f(const unsigned long long int value) {
     // intentional static cast, but probably unsafe.

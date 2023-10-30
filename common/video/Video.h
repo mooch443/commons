@@ -35,7 +35,7 @@ namespace cmn { class Video; }
  * @class Video
  */
 class cmn::Video {
-    GETTER_I(ImageMode, colored, ImageMode::GRAY);
+    GETTER_I(ImageMode, colored, ImageMode::GRAY)
     mutable std::mutex _mutex;
     
 public:
@@ -47,9 +47,9 @@ public:
     Video();
 
     Video(const Video&) = delete;
-    Video(Video&&) = default;
+    Video(Video&&) noexcept;
     Video& operator=(const Video&) = delete;
-    Video& operator=(Video&&) = default;
+    Video& operator=(Video&&) noexcept;
     
     /**
      * Destructor of @class Video.
