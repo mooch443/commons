@@ -39,7 +39,7 @@ int main(int argc, char**argv) {
         _data.push_back(std::move(tmp));
         
         list.emplace_back(new Variable{
-            [i, &_data](VarProps) -> sprite::Map& {
+            [i, &_data](const VarProps&) -> sprite::Map& {
                 return _data[i];
             }
         });
@@ -78,11 +78,11 @@ int main(int argc, char**argv) {
                     // variables can be accessed in lots of ways,
                     // e.g. printed out or looped through within
                     // the json
-                    VarFunc("list_var", [](VarProps) -> std::vector<std::shared_ptr<VarBase_t>>&{ return list; }),
-                    VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
-                    VarFunc("isTrue", [](VarProps) { return true; }),
-                    VarFunc("add", [](VarProps) { return true; }),
-                    VarFunc("path", [](VarProps) { return file::Path("Herakles"); })
+                    VarFunc("list_var", [](const VarProps&) -> std::vector<std::shared_ptr<VarBase_t>>&{ return list; }),
+                    VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
+                    VarFunc("isTrue", [](const VarProps&) { return true; }),
+                    VarFunc("add", [](const VarProps&) { return true; }),
+                    VarFunc("path", [](const VarProps&) { return file::Path("Herakles"); })
                 };
                 context.actions = {
                     // stuff that can be triggered by lists / buttons

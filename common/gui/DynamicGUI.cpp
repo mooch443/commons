@@ -100,6 +100,132 @@ std::string VarProps::toStr() const {
     return "VarProps<"+std::string(name)+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";
 }
 
+template<typename T>
+    requires (std::convertible_to<T, std::string_view> || std::same_as<T, Pattern>)
+std::string _parse_text(const T& _pattern, const Context& context) {
+    std::string_view pattern;
+    if constexpr(std::same_as<T, Pattern>) {
+        pattern = std::string_view(_pattern.original);
+    } else
+        pattern = std::string_view(_pattern);
+    
+    std::stringstream output;
+    std::stack<std::size_t> nesting_start_positions;
+    bool comment_out = false;
+
+    for(std::size_t i = 0; i < pattern.size(); ++i) {
+        char ch = pattern[i];
+        if(nesting_start_positions.empty()) {
+            switch(ch) {
+                case '\\':
+                    if(not comment_out) {
+                        comment_out = true;
+                    } else {
+                        comment_out = false;
+                        output << '\\';
+                    }
+                    break;
+                case '{':
+                    if(!comment_out) nesting_start_positions.push(i + 1);
+                    else output << ch;
+                    comment_out = false;
+                    break;
+                case '}':
+                    if(!comment_out) throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                    else output << ch;
+                    comment_out = false;
+                    break;
+                default:
+                    if(comment_out) {
+                        throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
+                    }
+                    output << ch;
+            }
+        } else {
+            if(ch == '}') {
+                if(nesting_start_positions.empty()) {
+                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                }
+                
+                std::size_t start_pos = nesting_start_positions.top();
+                nesting_start_positions.pop();
+
+                std::string_view current_word = pattern.substr(start_pos, i - start_pos);
+                if(current_word.empty()) {
+                    throw InvalidSyntaxException("Empty braces at position ", i);
+                }
+
+                std::string resolved_word = resolve_variable(current_word, context, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                        try {
+                            std::string ret;
+                            if(variable.is<Size2>()) {
+                                if(modifiers.subs.empty())
+                                    ret = variable.value_string(modifiers);
+                                else if(modifiers.subs.front() == "w")
+                                    ret = Meta::toStr(variable.value<Size2>(modifiers).width);
+                                else if(modifiers.subs.front() == "h")
+                                    ret = Meta::toStr(variable.value<Size2>(modifiers).height);
+                                else
+                                    throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
+                                
+                            } else if(variable.is<Vec2>()) {
+                                if(modifiers.subs.empty())
+                                    ret = variable.value_string(modifiers);
+                                else if(modifiers.subs.front() == "x")
+                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
+                                else if(modifiers.subs.front() == "y")
+                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
+                                else
+                                    throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
+                                
+                            } else
+                                ret = variable.value_string(modifiers);
+                            //auto str = modifiers.toStr();
+                            //print(str.c_str(), " resolves to ", ret);
+                            if(modifiers.html)
+                                return settings::htmlify(ret);
+                            return ret;
+                        } catch(const std::exception& ex) {
+                            FormatExcept("Exception: ", ex.what());
+                            return modifiers.optional ? "" : "null";
+                        }
+                    }, [](bool optional) -> std::string {
+                        return optional ? "" : "null";
+                    });
+                if(nesting_start_positions.empty()) {
+                    output << resolved_word;
+                } else {
+                    //nesting.top() += resolved_word;
+                }
+                
+            } else if(ch == '{') {
+                nesting_start_positions.push(i + 1);
+            } else {
+                if(nesting_start_positions.empty()) {
+                    throw InvalidSyntaxException("Mismatched opening brace at position ", i);
+                }
+                //nesting.top() += ch;
+            }
+        }
+    }
+
+    if(not nesting_start_positions.empty()) {
+        throw InvalidSyntaxException("Mismatched opening brace");
+    }
+    
+    if(comment_out) {
+        // Trailing backslash without a following character
+        throw InvalidSyntaxException("Trailing backslash");
+    }
+
+    return output.str();
+}
+
+std::string parse_text(const std::string_view& pattern, const Context& context) {
+    return _parse_text(pattern, context);
+}
+
+
 VarProps extractControls(const std::string_view& variable, const Context& context) {
     auto action = Action::fromStr(variable);
     
@@ -146,7 +272,7 @@ VarProps extractControls(const std::string_view& variable, const Context& contex
         // parse parameters here
         // if the parameter seems to be a string (quotes '"), use parse_text(text, context) function to parse it
         // if the parameter seems to be a variable, it needs to be resolved:
-        p = parse_text(p, context);
+        p = _parse_text(p, context);
     }
     
     return props;
@@ -226,13 +352,13 @@ T map_vector(const VarProps& props, auto&& apply) {
 void Context::init() const {
     if(system_variables.empty())
         system_variables = {
-            VarFunc("min", [](VarProps props) -> float {
+            VarFunc("min", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return min(A, B);});
             }),
-            VarFunc("max", [](VarProps props) -> float {
+            VarFunc("max", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return max(A, B);});
             }),
-            VarFunc("bool", [](VarProps props) -> bool {
+            VarFunc("bool", [](const VarProps& props) -> bool {
                 if (props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for not: ", props);
                 }
@@ -253,7 +379,7 @@ void Context::init() const {
 
                 return true;
             }),
-            VarFunc("not", [](VarProps props) -> bool {
+            VarFunc("not", [](const VarProps& props) -> bool {
                 if(props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for not: ", props);
                 }
@@ -266,7 +392,7 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p, ": ", ex.what());
                 }
             }),
-            VarFunc("equal", [](VarProps props) -> bool {
+            VarFunc("equal", [](const VarProps& props) -> bool {
                 if(props.parameters.size() != 2) {
                     throw InvalidArgumentException("Invalid number of variables for ",props.name,": ", props);
                 }
@@ -280,44 +406,44 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
                 }
             }),
-            VarFunc("+", [](VarProps props) -> float {
+            VarFunc("+", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
             }),
-            VarFunc("-", [](VarProps props) -> float {
+            VarFunc("-", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A-B;});
             }),
-            VarFunc("*", [](VarProps props) -> float {
+            VarFunc("*", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
             }),
-            VarFunc("/", [](VarProps props) -> float {
+            VarFunc("/", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
             }),
-            VarFunc("addVector", [](VarProps props) -> Vec2 {
+            VarFunc("addVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
             }),
-            VarFunc("mulVector", [](VarProps props) -> Vec2 {
+            VarFunc("mulVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.mul(B); });
             }),
-            VarFunc("divVector", [](VarProps props) -> Vec2 {
+            VarFunc("divVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.div(B); });
             }),
-            VarFunc("mulSize", [](VarProps props) -> Size2 {
+            VarFunc("mulSize", [](const VarProps& props) -> Size2 {
                 return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.mul(B); });
             }),
-            VarFunc("divSize", [](VarProps props) -> Size2 {
+            VarFunc("divSize", [](const VarProps& props) -> Size2 {
                 return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.div(B); });
             }),
-            VarFunc("minVector", [](VarProps props) -> Vec2 {
+            VarFunc("minVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return cmn::min(A, B); });
             }),
-            VarFunc("addSize", [](VarProps props) -> Size2 {
+            VarFunc("addSize", [](const VarProps& props) -> Size2 {
                 return map_vectors<Size2>(props, [](auto& A, auto& B){ return A + B; });
             }),
-            VarFunc("round", [](VarProps props) -> float {
+            VarFunc("round", [](const VarProps& props) -> float {
                 return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
             }),
-            VarFunc("global", [](VarProps) -> sprite::Map& { return GlobalSettings::map(); }),
-            VarFunc("clrAlpha", [](VarProps props) -> Color {
+            VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
+            VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 if(props.parameters.size() != 2) {
                     throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
                 }
@@ -456,119 +582,6 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     }
 }
 
-std::string parse_text(const std::string_view& pattern, const Context& context) {
-    std::stringstream output;
-    std::stack<std::size_t> nesting_start_positions;
-    bool comment_out = false;
-
-    for(std::size_t i = 0; i < pattern.size(); ++i) {
-        char ch = pattern[i];
-        if(nesting_start_positions.empty()) {
-            switch(ch) {
-                case '\\':
-                    if(not comment_out) {
-                        comment_out = true;
-                    } else {
-                        comment_out = false;
-                        output << '\\';
-                    }
-                    break;
-                case '{':
-                    if(!comment_out) nesting_start_positions.push(i + 1);
-                    else output << ch;
-                    comment_out = false;
-                    break;
-                case '}':
-                    if(!comment_out) throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                    else output << ch;
-                    comment_out = false;
-                    break;
-                default:
-                    if(comment_out) {
-                        throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
-                    }
-                    output << ch;
-            }
-        } else {
-            if(ch == '}') {
-                if(nesting_start_positions.empty()) {
-                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                }
-                
-                std::size_t start_pos = nesting_start_positions.top();
-                nesting_start_positions.pop();
-
-                std::string_view current_word = pattern.substr(start_pos, i - start_pos);
-                if(current_word.empty()) {
-                    throw InvalidSyntaxException("Empty braces at position ", i);
-                }
-
-                std::string resolved_word = resolve_variable(current_word, context, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
-                        try {
-                            std::string ret;
-                            if(variable.is<Size2>()) {
-                                if(modifiers.subs.empty())
-                                    ret = variable.value_string(modifiers);
-                                else if(modifiers.subs.front() == "w")
-                                    ret = Meta::toStr(variable.value<Size2>(modifiers).width);
-                                else if(modifiers.subs.front() == "h")
-                                    ret = Meta::toStr(variable.value<Size2>(modifiers).height);
-                                else
-                                    throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
-                                
-                            } else if(variable.is<Vec2>()) {
-                                if(modifiers.subs.empty())
-                                    ret = variable.value_string(modifiers);
-                                else if(modifiers.subs.front() == "x")
-                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
-                                else if(modifiers.subs.front() == "y")
-                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
-                                else
-                                    throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
-                                
-                            } else
-                                ret = variable.value_string(modifiers);
-                            //auto str = modifiers.toStr();
-                            //print(str.c_str(), " resolves to ", ret);
-                            if(modifiers.html)
-                                return settings::htmlify(ret);
-                            return ret;
-                        } catch(const std::exception& ex) {
-                            FormatExcept("Exception: ", ex.what());
-                            return modifiers.optional ? "" : "null";
-                        }
-                    }, [](bool optional) -> std::string {
-                        return optional ? "" : "null";
-                    });
-                if(nesting_start_positions.empty()) {
-                    output << resolved_word;
-                } else {
-                    //nesting.top() += resolved_word;
-                }
-                
-            } else if(ch == '{') {
-                nesting_start_positions.push(i + 1);
-            } else {
-                if(nesting_start_positions.empty()) {
-                    throw InvalidSyntaxException("Mismatched opening brace at position ", i);
-                }
-                //nesting.top() += ch;
-            }
-        }
-    }
-
-    if(not nesting_start_positions.empty()) {
-        throw InvalidSyntaxException("Mismatched opening brace");
-    }
-    
-    if(comment_out) {
-        // Trailing backslash without a following character
-        throw InvalidSyntaxException("Trailing backslash");
-    }
-
-    return output.str();
-}
-
 tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path){
     static Timer timer;
     if(timer.elapsed() < 0.15) {
@@ -630,6 +643,13 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
         return false;
     }
     //print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
+    
+    if(auto it = state._timers.find(hash); it != state._timers.end()) {
+        if(it->second.elapsed() > 0.01) {
+            it->second.reset();
+        } else
+            return false;
+    }
     
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(hash)) {
@@ -711,7 +731,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
     
     auto it = state.patterns.find(hash);
     if(it != state.patterns.end()) {
-        auto pattern = it->second;
+        auto& pattern = it->second;
         LabeledField *field{nullptr};
         if(state._text_fields.contains(hash))
             field = state._text_fields.at(hash).get();
@@ -720,7 +740,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         
         if(it->second.contains("var")) {
             try {
-                auto var = parse_text(pattern.at("var"), context);
+                auto var = _parse_text(pattern.at("var"), context);
                 if(state._text_fields.contains(hash)) {
                     auto &f = state._text_fields.at(hash);
                     auto str = f->_ref.get().valueString();
@@ -777,9 +797,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         
         if(pattern.contains("pos")) {
             try {
-                auto pos = pattern.at("pos");
-                //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
-                auto str = parse_text(pos, context);
+                auto str = _parse_text(pattern.at("pos"), context);
                 ptr->set_pos(Meta::fromStr<Vec2>(str));
                 //o->set_pos(resolve_variable_type<Vec2>(pattern.at("pos"), context));
                 //
@@ -791,7 +809,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         
         if(pattern.contains("scale")) {
             try {
-                ptr->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context)));
+                ptr->set_scale(Meta::fromStr<Vec2>(_parse_text(pattern.at("scale"), context)));
                 //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 
@@ -802,13 +820,13 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         
         if(pattern.contains("size")) {
             try {
-                auto size = pattern.at("size");
-                if(size == "auto")
+                auto& size = pattern.at("size");
+                if(size.original == "auto")
                 {
                     if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
                     else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
                 } else {
-                    ptr->set_size(Meta::fromStr<Size2>(parse_text(size, context)));
+                    ptr->set_size(Meta::fromStr<Size2>(_parse_text(size, context)));
                     //o->set_size(resolve_variable_type<Size2>(size, context));
                 }
                 
@@ -819,7 +837,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         
         if(pattern.contains("text")) {
             try {
-                auto text = Str{parse_text(pattern.at("text"), context)};
+                auto text = Str{_parse_text(pattern.at("text"), context)};
                 LabeledField::delegate_to_proper_type(text, ptr);
             } catch(const std::exception& e) {
                 FormatError("Error parsing context ", pattern.at("text"),": ", e.what());
@@ -829,7 +847,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         if(ptr.is<ExternalImage>()) {
             if(pattern.contains("path")) {
                 auto img = ptr.to<ExternalImage>();
-                auto output = file::Path(parse_text(pattern.at("path"), context));
+                auto output = file::Path(_parse_text(pattern.at("path"), context));
                 if(output.exists() && not output.is_folder()) {
                     auto modified = output.last_modified();
                     auto &entry = state._image_cache[output.str()];
@@ -870,13 +888,13 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr 
                 {
                     DetailItem item;
                     if(item_template.contains("text") && item_template["text"].is_string()) {
-                        item.set_name(parse_text(item_template["text"].get<std::string>(), context));
+                        item.set_name(_parse_text(item_template["text"].get<std::string>(), context));
                     }
                     if(item_template.contains("detail") && item_template["detail"].is_string()) {
-                        item.set_detail(parse_text(item_template["detail"].get<std::string>(), context));
+                        item.set_detail(_parse_text(item_template["detail"].get<std::string>(), context));
                     }
                     if(item_template.contains("action") && item_template["action"].is_string()) {
-                        auto action = Action::fromStr(parse_text(item_template["action"].get<std::string>(), context));
+                        auto action = Action::fromStr(_parse_text(item_template["action"].get<std::string>(), context));
                         
                         if(not obj.on_select_actions.contains(index)
                            || std::get<0>(obj.on_select_actions.at(index)) != action.name)

@@ -184,6 +184,13 @@ namespace gui {
     {
         update();
     }
+
+void HorizontalLayout::auto_size() {
+    // do nothing
+}
+void VerticalLayout::auto_size() {
+    // do nothing
+}
     
     void HorizontalLayout::update_layout() {
         float x = 0;
@@ -318,7 +325,7 @@ namespace gui {
         });
         
         if(mi.x != std::numeric_limits<Float2_t>::max()) {
-            ma += Vec2(max(0.f, _margins.width), max(0.f, _margins.height));
+            //ma += Vec2(max(0.f, _margins.width + _margins.x), max(0.f, _margins.height + _margins.y));
             set_size(ma);
         } else {
             set_size(Size2());

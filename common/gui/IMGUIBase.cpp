@@ -1158,7 +1158,7 @@ void InsertIntersection(std::vector<ImVec2>& scanHits, const ImVec2& intersect) 
     }), intersect);
 }
 
-void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::vector<ImVec2>& output, ImColor color, const int gap = 1, const int strokeWidth = 1) {
+void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::vector<ImVec2>& output, ImU32 color, const int gap = 1, const int strokeWidth = 1) {
     using namespace std;
     
     ImVec2 min, max;
@@ -1450,9 +1450,18 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             static std::vector<ImVec2> points;
             if(ptr->relative()) {
                 points.clear();
+                points.reserve(ptr->relative()->size());
+                
+                ImVec2 prev{order.transform.transformPoint(ptr->relative()->back())};
                 for(auto &pt : *ptr->relative()) {
-                    points.push_back(order.transform.transformPoint(pt));
+                    auto cvt = order.transform.transformPoint(pt);
+                    if(sqdistance(cvt, prev) > SQR(5)) {
+                        points.emplace_back(std::move(cvt));
+                        prev = cvt;
+                    }
                 }
+                
+                //print("points size = ", points.size(), " vs. ", ptr->relative()->size());
                 
                 if(points.size() >= 3) {
                     points.push_back(points.front());
@@ -1463,8 +1472,14 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                         cache = o->insert_cache(this, std::make_unique<PolyCache>()).get();
                     }
                     
-                    if(cache->changed()) {
-                        PolyFillScanFlood(list, points, output, ptr->fill_clr());
+                    //const auto& original = ((PolyCache*)cache)->original();
+                    if(cache->changed()
+                       //&& (points.size() != original.size()
+                       //    || not std::equal(points.begin(), points.end(), original.begin(), [](const ImVec2& A, const ImVec2& B) { return int(A.x) == int(B.x) && int(A.y) == int(B.y); }))
+                       )
+                    {
+                        //((PolyCache*)cache)->original() = points;
+                        PolyFillScanFlood(list, points, output, cvtClr(ptr->fill_clr()));
                         ((PolyCache*)cache)->points() = output;
                         cache->set_changed(false);
                     } else {

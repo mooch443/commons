@@ -297,7 +297,8 @@ void Entangled::on_visibility_change(bool visible) {
         if(c)
             set_dirty();
         
-        SectionInterface::set_bounds_changed();
+        if(c)
+            SectionInterface::set_bounds_changed();
     }
     
     void Entangled::before_draw() {

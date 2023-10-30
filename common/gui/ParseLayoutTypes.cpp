@@ -66,7 +66,7 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
             size = get(_defaults.size, "size");
         } else {
             //print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.patterns[hash]["size"] = "auto";
+            state.patterns[hash]["size"] = Pattern{"auto"};
         }
         
     } else {
@@ -93,6 +93,10 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSet
         font.align = Align::Center;
     }
     font = parse_font(obj, font);
+    
+    if(auto it = state._timers.find(hash); it == state._timers.end()) {
+        state._timers[hash].reset();
+    }
 }
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
@@ -146,7 +150,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>(const Context&)
     if(obj.count("path") && obj["path"].is_string()) {
         std::string raw = obj["path"].get<std::string>();
         if(utils::contains(raw, "{")) {
-            state.patterns[hash]["path"] = raw;
+            state.patterns[hash]["path"] = Pattern{raw};
             
         } else {
             auto path = file::Path(raw);
@@ -343,7 +347,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context& co
         auto input = obj["var"].get<std::string>();
         var = parse_text(input, context);
         if(var != input) {
-            state.patterns[hash]["var"] = input;
+            state.patterns[hash]["var"] = Pattern{input};
         }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");
@@ -491,7 +495,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context& contex
         Action action = Action::fromStr(obj["action"].get<std::string>());
         auto context_copy = context;
         
-        context_copy.variables.insert(VarFunc("mouse", [_ptr = ptr.get()](VarProps){
+        context_copy.variables.insert(VarFunc("mouse", [_ptr = ptr.get()](const VarProps&){
             return _ptr->parent() && _ptr->parent()->stage() ? _ptr->parent()->stage()->mouse_position() : Vec2();
         }));
         

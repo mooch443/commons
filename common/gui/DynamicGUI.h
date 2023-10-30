@@ -74,7 +74,7 @@ struct VarProps {
     //operator std::string() const { return last(); }
 };
 
-using VarBase_t = VarBase<VarProps>;
+using VarBase_t = VarBase<const VarProps&>;
 using VarReturn_t = sprite::Reference;
 
 struct Action {
@@ -200,8 +200,16 @@ struct VarCache {
     nlohmann::json _obj;
 };
 
+struct Pattern {
+    std::string original;
+    std::vector<std::string_view> variables;
+    
+    std::string toStr() const;
+    static std::string class_name() { return "Pattern"; }
+};
+
 struct State {
-    robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, std::string>> patterns;
+    robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, Pattern>> patterns;
     std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
     std::unordered_map<size_t, LoopBody> loops;
     std::unordered_map<size_t, ListContents> lists;
@@ -212,6 +220,7 @@ struct State {
     Layout::Ptr _settings_tooltip;
     std::unordered_map<std::string, std::tuple<size_t, Image::Ptr>> _image_cache;
     std::unordered_map<size_t, VarCache> _var_cache;
+    std::unordered_map<size_t, Timer> _timers;
     
     Index _current_index;
     
@@ -271,11 +280,16 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
 
 std::string parse_text(const std::string_view& pattern, const Context& context);
 
-
 VarProps extractControls(const std::string_view& variable, const Context& context);
 
 template<typename T, typename Str>
-T resolve_variable_type(Str word, const Context& context) {
+T resolve_variable_type(Str _word, const Context& context) {
+    std::string_view word;
+    if constexpr(std::same_as<Str, Pattern>) {
+        word = std::string_view(_word.original);
+    } else
+        word = std::string_view(_word);
+    
     if(word.empty())
         throw U_EXCEPTION("Invalid variable name (is empty).");
     

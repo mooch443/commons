@@ -418,7 +418,7 @@ int main(int argc, char**argv) {
         tmp["px"] = 100;
         _data.push_back(std::move(tmp));
         
-        fishes.emplace_back(new Variable([i, &_data](VarProps) -> sprite::Map& {
+        fishes.emplace_back(new Variable([i, &_data](const VarProps&) -> sprite::Map& {
             return _data[i];
         }));
     }
@@ -479,10 +479,10 @@ int main(int argc, char**argv) {
                 dyn::Context context;
                 context.actions = { ActionFunc("QUIT", [&](Action) { terminate = true; }) };
                 context.variables = {
-                    VarFunc("list_var", [](VarProps) -> auto& { return fishes; }),
-                    VarFunc("isFalse", [](VarProps) { return false; }),
-                    VarFunc("isTrue", [](VarProps) { return true; }),
-                    VarFunc("global", [](VarProps) -> auto& { return GlobalSettings::map(); })
+                    VarFunc("list_var", [](const VarProps&) -> auto& { return fishes; }),
+                    VarFunc("isFalse", [](const VarProps&) { return false; }),
+                    VarFunc("isTrue", [](const VarProps&) { return true; }),
+                    VarFunc("global", [](const VarProps&) -> auto& { return GlobalSettings::map(); })
                 };
                 return context;
             }(),

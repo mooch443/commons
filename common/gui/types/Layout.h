@@ -176,6 +176,7 @@ namespace gui {
         virtual std::string name() const override { return "HorizontalLayout"; }
         
         void update_layout() override;
+        void auto_size() override;
     };
     
     class VerticalLayout : public Layout {
@@ -214,6 +215,7 @@ namespace gui {
         
         virtual std::string name() const override { return "VerticalLayout"; }
         void update_layout() override;
+        void auto_size() override;
     };
 
 class GridInfo {
