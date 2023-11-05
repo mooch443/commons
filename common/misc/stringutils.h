@@ -139,21 +139,35 @@ template<StringLike Str>
 auto ltrim(Str&& s) {
     using StrDecayed = std::remove_cvref_t<Str>;
     using CharType = typename StrDecayed::value_type;
-    auto pred = [](CharType c) -> bool { return !std::isspace(c); };
+    auto pred = [](CharType c) -> bool { return not std::isspace(c); };
+    
+    if (s.empty()) {
+        if constexpr (std::is_same_v<StrDecayed, std::string>) {
+            return std::forward<Str>(s);
+        } else {
+            return std::string_view{};
+        }
+    }
     
     if constexpr((std::is_rvalue_reference_v<Str&&>
                   || is_const_lvalue_ref<Str>::value)
                  && std::is_same_v<StrDecayed, std::string>)
     {
         auto copy = s;
-        copy.erase(copy.begin(), std::find_if(copy.begin(), copy.end(), pred));
+        auto start = std::find_if(copy.begin(), copy.end(), pred);
+        copy.erase(copy.begin(), start);
         return copy;
         
     } else if constexpr (std::is_same_v<StrDecayed, std::string>) {
-        s.erase(s.begin(), std::find_if(s.begin(), s.end(), pred));
+        auto start = std::find_if(s.begin(), s.end(), pred);
+        s.erase(s.begin(), start);
         return std::forward<Str>(s);
+        
     } else {
         auto start = std::find_if(s.begin(), s.end(), pred);
+        if (start == s.end()) {
+            return std::string_view{};
+        }
         return std::string_view(&*start, std::distance(start, s.end()));
     }
 }
@@ -162,22 +176,35 @@ template<StringLike Str>
 auto rtrim(Str&& s) {
     using StrDecayed = std::remove_cvref_t<Str>;
     using CharType = typename StrDecayed::value_type;
-    auto pred = [](CharType c) -> bool { return !std::isspace(c); };
+    auto pred = [](CharType c) -> bool { return not std::isspace(c); };
+    
+    if (s.empty()) {
+        if constexpr (std::is_same_v<StrDecayed, std::string>) {
+            return std::forward<Str>(s);
+        } else {
+            return std::string_view{};
+        }
+    }
     
     if constexpr((std::is_rvalue_reference_v<Str&&>
                   || is_const_lvalue_ref<Str>::value)
                  && std::is_same_v<StrDecayed, std::string>)
     {
         auto copy = s;
-        copy.erase(std::find_if(copy.rbegin(), copy.rend(), pred).base(), copy.end());
+        auto end = std::find_if(copy.rbegin(), copy.rend(), pred).base();
+        copy.erase(end, copy.end());
         return copy;
         
     } else if constexpr (std::is_same_v<StrDecayed, std::string>) {
-        s.erase(std::find_if(s.rbegin(), s.rend(), pred).base(), s.end());
+        auto end = std::find_if(s.rbegin(), s.rend(), pred).base();
+        s.erase(end, s.end());
         return std::forward<Str>(s);
         
     } else {
         auto end = std::find_if(s.rbegin(), s.rend(), pred).base();
+        if (end == s.begin()) {
+            return std::string_view{};
+        }
         return std::string_view(&*s.begin(), std::distance(s.begin(), end));
     }
 }
