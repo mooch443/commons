@@ -76,8 +76,14 @@ namespace gui {
             }
             
         private:
-            static std::mutex _fn_clrs_mutex;
-            static std::unordered_map<std::string, gui::Color> _fn_clrs;
+            static auto& fn_clrs_mutex() {
+                static auto _fn_clrs_mutex = new LOGGED_MUTEX("Graph::Function::fn_clrs_mutex");
+                return *_fn_clrs_mutex;
+            }
+            static auto& fn_clrs() {
+                static std::unordered_map<std::string, gui::Color> _fn_clrs;
+                return _fn_clrs;
+            }
             
         public:
             static gui::Color color_for_function(const std::string& name);

@@ -26,6 +26,8 @@ namespace gui {
         std::thread::id _update_thread;
         CallbackCollection _callback;
         
+        std::function<void()> _after_frame;
+        std::function<void(Image::Ptr&&)> _frame_buffer_receiver;
         GETTER_I(bool, gui_macos_blur, false)
         
     public:
@@ -41,8 +43,8 @@ namespace gui {
         void bind_texture(const PlatformTexture&) override;
         void update_texture(PlatformTexture&, const Image*) override;
         void set_title(std::string) override;
-        const Image::Ptr& current_frame_buffer() override;
         void toggle_full_screen() override;
+        void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)> fn) override;
         void message(const std::string&) const;
         
         virtual ~MetalImpl();

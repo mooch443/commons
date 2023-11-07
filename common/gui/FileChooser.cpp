@@ -64,7 +64,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
         if(e.type == gui::WINDOW_RESIZED) {
             using namespace gui;
             {
-                std::lock_guard guard(graph.lock());
+                auto guard = GUI_LOCK(graph.lock());
                 Size2 size(e.size.width, e.size.height);
                 
                 float min_height = 640;

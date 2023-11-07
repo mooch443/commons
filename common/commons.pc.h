@@ -499,14 +499,6 @@ bool is_in(First &&first, T && ... t)
     return ((first == t) || ...);
 }
 
-class IndexedDataTransport {
-protected:
-    GETTER_SETTER(long_t, index)
-    
-public:
-    virtual ~IndexedDataTransport() {}
-};
-
 template<typename T>
 typename T::value_type percentile(const T& values, float percent, typename std::enable_if<is_set<T>::value || is_container<T>::value, T>::type* = NULL)
 {
@@ -774,6 +766,209 @@ struct CallbackCollection {
     operator bool() const { return not _ids.empty(); }
     void reset() { _ids.clear(); }
 };
+
+/// @brief Template for compile-time type name extraction.
+template <typename T> constexpr std::string_view type_name();
+
+/// @brief Specialization of type_name for the 'void' type.
+/// @return "void" as a compile-time string.
+template <>
+constexpr std::string_view type_name<void>()
+{ return "void"; }
+
+namespace detail {
+
+/// @brief Dummy type used to probe the type-name layout from the compiler.
+using type_name_prober = void;
+
+/// @brief Internal utility to get the full signature of a function or callable type.
+/// The exact output depends on the compiler being used.
+template <typename T>
+constexpr std::string_view wrapped_type_name()
+{
+#ifdef __clang__
+    return __PRETTY_FUNCTION__;
+#elif defined(__GNUC__)
+    return __PRETTY_FUNCTION__;
+#elif defined(_MSC_VER)
+    return __FUNCSIG__;
+#else
+#error "Unsupported compiler"
+#endif
+}
+
+/// @brief Computes the length of the prefix that precedes the actual type name.
+/// For example, in GCC, "__PRETTY_FUNCTION__" might produce
+/// "constexpr std::string_view detail::wrapped_type_name() [T = int]"
+/// and the prefix is "constexpr std::string_view detail::wrapped_type_name() [T = ".
+constexpr std::size_t wrapped_type_name_prefix_length() {
+    return wrapped_type_name<type_name_prober>().find(type_name<type_name_prober>());
+}
+
+/// @brief Computes the length of the suffix that follows the actual type name.
+/// For example, in GCC, "__PRETTY_FUNCTION__" might produce
+/// "constexpr std::string_view detail::wrapped_type_name() [T = int]"
+/// and the suffix is "]".
+constexpr std::size_t wrapped_type_name_suffix_length() {
+    return wrapped_type_name<type_name_prober>().length()
+    - wrapped_type_name_prefix_length()
+    - type_name<type_name_prober>().length();
+}
+
+} // namespace detail
+
+/// @brief Main function to extract the type name.
+/// This function removes the prefix and suffix from the compiler-specific full signature
+/// to isolate and return the actual type name.
+template <typename T>
+constexpr std::string_view type_name() {
+    constexpr auto wrapped_name = detail::wrapped_type_name<T>();
+    constexpr auto prefix_length = detail::wrapped_type_name_prefix_length();
+    constexpr auto suffix_length = detail::wrapped_type_name_suffix_length();
+    constexpr auto type_name_length = wrapped_name.length() - prefix_length - suffix_length;
+    return wrapped_name.substr(prefix_length, type_name_length);
+}
+
+//#define CMN_DEBUG_MUTEXES
+#if defined(CMN_DEBUG_MUTEXES)
+
+template<typename Mutex>
+class LoggedLock;
+
+template<typename Mutex = std::mutex>
+class LoggedMutex {
+    Mutex* _mtx;
+    std::string _thread_name;
+    const char *_name;
+public:
+    const char* name() const { return _name; }
+    
+    LoggedMutex(const char* name, source_location c = source_location::current()) : _mtx(new Mutex()), _name(name) {
+        printf("Constructing Mutex %s at address: %llX @ %s::%s:%u\n", _name, (uint64_t)_mtx, c.file_name(), c.function_name(), c.line());
+    }
+    ~LoggedMutex() {
+        printf("Destroying Mutex %s at address: %llX\n",_name,(uint64_t)_mtx);
+    }
+    
+private:
+    friend class LoggedLock<LoggedMutex<Mutex>>;
+    void lock(source_location c = source_location::current()) {
+        printf("Locking Mutex %s at address: %llX @ %s::%s:%u\n",_name,(uint64_t)_mtx, c.file_name(), c.function_name(), c.line());
+        _mtx->lock();
+        _thread_name = get_thread_name();
+    }
+
+    bool try_lock() {
+        printf("Attempt locking Mutex %s at address: %lX\n",_name,(uint64_t)_mtx);
+        if(_mtx->try_lock()) {
+            _thread_name = get_thread_name();
+            return true;
+        } else
+            return false;
+    }
+
+    void unlock(source_location c = source_location::current()) {
+        printf("Unlocking Mutex %s at address: %llX @ %s::%s:%u\n",_name,(uint64_t)_mtx,c.file_name(), c.function_name(), c.line());
+        _mtx->unlock();
+    }
+    
+};
+
+template<typename T>
+concept mutex_callable_with_loc = requires(T t) {
+    { t.lock(source_location::current()) } -> std::same_as<void>;
+};
+
+// Specialization for your custom Mutex
+template<typename MutexType>
+class LoggedLock {
+    source_location _c;
+    MutexType* _mutex{nullptr};
+    bool _owns_lock{false};
+    const char * _name = "<none>";
+
+public:
+    LoggedLock(MutexType& m, source_location c)
+        : _c(c), _mutex(&m), _owns_lock(false) {
+            if constexpr(mutex_callable_with_loc<MutexType>) {
+                _name = m.name();
+            }
+        lock();
+    }
+    
+    LoggedLock(source_location c) noexcept
+        : _c(c)
+    {
+        
+    }
+
+    ~LoggedLock() {
+        if (_owns_lock && _mutex) {
+            _mutex->unlock();
+        }
+    }
+
+    void lock() {
+        if(not _mutex)
+            throw std::invalid_argument("mutex is nullptr");
+        if (!_owns_lock) {
+            if constexpr(mutex_callable_with_loc<MutexType>) {
+                printf("Attempting to lock _mutex at %s:%u (%s)\n", _c.file_name(), _c.line(), _name);
+                _mutex->lock(_c);
+            } else {
+                printf("Attempting to lock _mutex at %s:%u\n", _c.file_name(), _c.line());
+                _mutex->lock();
+            }
+            _owns_lock = true;
+        }
+    }
+
+    void unlock() {
+        if(not _mutex)
+            throw std::invalid_argument("mutex is nullptr");
+        if (_owns_lock) {
+            if constexpr(mutex_callable_with_loc<MutexType>) {
+                printf("Attempting to unlock _mutex at %s:%u (%s)\n", _c.file_name(), _c.line(), _name);
+                _mutex->unlock(_c);
+            } else {
+                printf("Attempting to unlock _mutex at %s:%u\n", _c.file_name(), _c.line());
+                _mutex->unlock();
+            }
+            
+            _owns_lock = false;
+        }
+    }
+    
+    void swap(LoggedLock& other) noexcept {
+        using std::swap;
+        swap(_mutex, other._mutex);
+        swap(_owns_lock, other._owns_lock);
+        swap(_name, other._name);
+        swap(_c, other._c);
+    }
+
+    bool owns_lock() const noexcept {
+        return _owns_lock;
+    }
+};
+
+#define LOGGED_LOCK_TYPE LoggedLock
+#define LOGGED_LOCK(MUTEX) LOGGED_LOCK_TYPE (MUTEX, cmn::source_location::current())
+#define LOGGED_MUTEX_TYPE LoggedMutex<>
+#define LOGGED_MUTEX(NAME) LOGGED_MUTEX_TYPE (NAME, cmn::source_location::current())
+#define LOGGED_MUTEX_VAR(VAR, NAME) LOGGED_MUTEX_TYPE VAR{NAME, cmn::source_location::current()}
+#define LOGGED_MUTEX_VAR_TYPE(TYPE, VAR, NAME) LoggedMutex<TYPE> VAR{NAME, cmn::source_location::current()}
+
+#else
+
+#define LOGGED_LOCK_TYPE std::unique_lock
+#define LOGGED_LOCK(MUTEX) LOGGED_LOCK_TYPE { MUTEX }
+#define LOGGED_MUTEX_TYPE std::mutex
+#define LOGGED_MUTEX(NAME) LOGGED_MUTEX_TYPE { }
+#define LOGGED_MUTEX_VAR(VAR, NAME) LOGGED_MUTEX_TYPE VAR{}
+#define LOGGED_MUTEX_VAR_TYPE(TYPE, VAR, NAME) TYPE VAR{}
+
+#endif
 
 }
 

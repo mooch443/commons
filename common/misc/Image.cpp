@@ -11,12 +11,6 @@ namespace cmn {
         return "("+Meta::toStr(cols)+"x"+Meta::toStr(rows)+"x"+Meta::toStr(dims)+" "+Meta::toStr(DurationUS{timestamp_t(std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch()) - _timestamp})+" ago)";
     }
     
-    Image::Image()
-    {
-        set_index(-1);
-        reset_stamp();
-    }
-
     Image::Image(const cv::Mat& mat, int index) : Image(mat, index, now()) {}
     Image::Image(const cv::Mat& mat, int index, timestamp_t timestamp)
     {
@@ -45,8 +39,7 @@ namespace cmn {
 
     void Image::clear() {
         if(_data) {
-            free(_data);
-            _data = NULL;
+            _data = nullptr;
             _array_size = 0;
         }
         
@@ -54,10 +47,7 @@ namespace cmn {
         _size = cols = rows = dims = 0;
         _timestamp = 0;
         
-        if(_custom_data) {
-            delete _custom_data;
-            _custom_data = nullptr;
-        }
+        _custom_data = nullptr;
     }
 
     uchar Image::at(uint y, uint x, uint channel) const {
@@ -93,16 +83,13 @@ namespace cmn {
         }
     }
 
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
     Image::~Image() {
         if (_data) {
-#ifdef IMAGE_DEBUG_MEMORY_ALLOC
             print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
-#endif
-            free(_data);
         }
-        if(_custom_data)
-            delete _custom_data;
     }
+#endif
 
     void Image::create(uint rows, uint cols, uint dims, long_t index) {
         create(rows, cols, dims, index, now());
@@ -122,7 +109,7 @@ namespace cmn {
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
                 print("Realloc of image ",this->cols,"x",this->rows,"x",this->dims," to ",cols,"x",rows,"x",dims," (",_array_size," >= ",N,")");
 #endif
-                _data = (uchar*)realloc(_data, _array_size * sizeof(uchar));
+                _data.realloc(_array_size * sizeof(uchar));
 #ifndef NDEBUG
                 //! this does not help us anyway... just crash, i guess.
                 if (!_data) FormatExcept("Cannot allocate memory for image of size ",rows,"x",cols,"x",dims,". Leaking.");
@@ -140,7 +127,7 @@ namespace cmn {
             else
                 _array_size = N;
 
-            _data = (uchar*)malloc(_array_size * sizeof(uchar));
+            _data.malloc(_array_size * sizeof(uchar));
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
             print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
             //print_stacktrace(stdout);
@@ -162,7 +149,7 @@ namespace cmn {
     void Image::create(uint rows, uint cols, uint dims, const uchar* data, long_t index, timestamp_t stamp) {
         create(rows, cols, dims, index, stamp);
         if(data != nullptr)
-            std::memcpy(_data, data, _size);
+            std::memcpy(_data.get(), data, _size);
     }
 
     void Image::create(const cv::Mat& mat, long_t index) {
@@ -196,10 +183,11 @@ namespace cmn {
     void Image::set(Image&& other) {
         clear();
         
+        *this = std::move(other);
         _index = other._index;
         _timestamp = other._timestamp;
-        _custom_data = other._custom_data;
-        _data = other._data;
+        _custom_data = std::move(other._custom_data);
+        _data = std::move(other._data);
         cols = other.cols;
         rows = other.rows;
         dims = other.dims;
@@ -211,71 +199,64 @@ namespace cmn {
         other._size = other._array_size = 0;
         other.cols = other.rows = other.dims = 0;
     }
-    
-    /*Image& Image::operator=(const Image& other) {
-        if (&other == this)
-            return *this;
-        
-        assert(_size == other.size());
-        
-        _index = other.index();
-        _timestamp = other.timestamp();
-        if(other._custom_data)
-            throw U_EXCEPTION("Cannot copy custom data from one image to another.");
-        
-        if(_data)
-            std::memcpy(_data, other.data(), _size);
-        return *this;
-    }*/
-    
-    /*Image& Image::operator=(const cv::Mat& matrix) {
-        set(_index, matrix);
-        reset_stamp();
-        return *this;
-    }*/
 
-    /*void Image::operator=(Image &&image) {
-        if(image.cols == cols && image.rows == rows && image.dims == dims && _data)
-        {
-            std::swap(image._data, _data);
-            _timestamp = image._timestamp;
-            _index = image._index;
-        } else {
-            set(image.index(), image.get(), image.timestamp());
-        }
-        
-#ifndef NDEBUG
-        if(image._custom_data)
-            FormatWarning("Cannot copy custom data from one image to another.");
-#endif
-    }*/
-    
-    /*void Image::set(long_t idx, const cv::Mat& matrix, timestamp_t stamp) {
-        assert(int(rows) == matrix.rows);
-        assert(int(cols) == matrix.cols);
-        assert(int(dims) == matrix.channels());
-        assert(matrix.isContinuous());
-        
-        if(!_data && _size) {
-            create(matrix);
-            return;
-        }
-        
-        _index = idx;
-        _timestamp = stamp;
-        //reset_stamp();
-        if(_size)
-            std::memcpy(_data, matrix.data, _size);
+    void Image::set_custom_data(CustomData *ptr) {
+        _custom_data = std::unique_ptr<CustomData>(ptr);
     }
-    
-    void Image::set(long_t idx, const uchar* matrix, timestamp_t stamp) {
-        assert(_data);
-        assert(matrix);
+
+    Image::Image(Image&& other) noexcept
+        : _data(std::move(other._data)),
+          _size(other._size),
+          _array_size(other._array_size),
+          _timestamp(other._timestamp),
+          _custom_data(std::move(other._custom_data)),
+          _index(other._index),
+          cols(other.cols),
+          rows(other.rows),
+          dims(other.dims)
+    {
+        // Reset the moved-from object
+        other._size = 0;
+        other._array_size = 0;
+        other._timestamp = now();  // Assuming 'now()' is a valid function or macro
+        other._index = -1;
+        other.cols = 0;
+        other.rows = 0;
+        other.dims = 0;
+    }
+
+    Image& Image::operator=(Image&& other) noexcept {
+        // Self-assignment detection
+        if (&other == this) {
+            return *this;
+        }
+      
+        // Release any resources that *this owns
+        _data.nullify();
+        _custom_data.reset();
         
-        _index = idx;
-        _timestamp = stamp;
-        std::memcpy(_data, matrix, _size);
-    }*/
+        // Move ownership of resources
+        _data = std::move(other._data);
+        _size = other._size;
+        _array_size = other._array_size;
+        _timestamp = other._timestamp;
+        _custom_data = std::move(other._custom_data);
+        _index = other._index;
+        cols = other.cols;
+        rows = other.rows;
+        dims = other.dims;
+
+        // Reset the moved-from object
+        other._size = 0;
+        other._array_size = 0;
+        other._timestamp = now();  // Assuming 'now()' is a valid function or macro
+        other._index = -1;
+        other.cols = 0;
+        other.rows = 0;
+        other.dims = 0;
+
+        return *this;
+    }
 
     void Image::set_to(uchar value) {
         std::fill(data(), data()+size(), value);
@@ -288,8 +269,9 @@ namespace cmn {
             assert(c < dims);
 #endif
         
-        auto ptr = _data;
-        auto end = _data + size();
+        auto data = this->data();
+        auto ptr = data;
+        auto end = data + size();
         auto m = source;
         for(; ptr<end; ptr+=dims, ++m)
             for(auto c : channels)
@@ -300,9 +282,10 @@ namespace cmn {
         assert(_data && idx < dims);
         reset_stamp();
         
-        auto ptr = _data + idx;
+        auto data = this->data();
+        auto ptr = data + idx;
         auto m = matrix;
-        for(; ptr<_data + _size; ptr+=dims, ++m)
+        for(; ptr<data + _size; ptr+=dims, ++m)
             *ptr = *m;
     }
     
@@ -310,8 +293,9 @@ namespace cmn {
         assert(_data && idx < dims);
         reset_stamp();
         
-        auto ptr = _data + idx;
-        for(; ptr<_data + _size; ptr+=dims)
+        auto data = this->data();
+        auto ptr = data + idx;
+        for(; ptr<data + _size; ptr+=dims)
             *ptr = value;
     }
     
@@ -319,21 +303,22 @@ namespace cmn {
         assert(_data && idx < dims);
         reset_stamp();
         
-        auto ptr = _data + idx;
+        auto data = this->data();
+        auto ptr = data + idx;
         size_t i=0;
-        for(; ptr<_data + _size; ptr+=dims, ++i)
+        for(; ptr<data + _size; ptr+=dims, ++i)
             *ptr = value(i);
     }
     
     void Image::get(cv::Mat& matrix) const {
         assert(int(rows) == matrix.rows && int(cols) == matrix.cols && int(dims) == matrix.channels());
         assert(matrix.isContinuous());
-        std::memcpy(matrix.data, _data, _size);
+        std::memcpy(matrix.data, data(), _size);
     }
     
     cv::Mat Image::get() const {
         assert(_size == rows * cols * dims * sizeof(uchar));
-        return cv::Mat(rows, cols, CV_8UC(dims), _data);//, cv::Mat::AUTO_STEP);
+        return cv::Mat(rows, cols, CV_8UC(dims), data());//, cv::Mat::AUTO_STEP);
     }
     
     struct PNGGuard {

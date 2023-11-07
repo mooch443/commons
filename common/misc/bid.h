@@ -42,6 +42,8 @@ struct BlobWeakPtr {
     constexpr const pv::Blob& operator*() const {return *ptr;}
     constexpr pv::Blob* operator->() {return ptr;}
     constexpr const pv::Blob* operator->() const {return ptr;}
+    std::string toStr() const;
+    static std::string class_name() { return "BlobWeakPtr"; }
 };
 
 /**

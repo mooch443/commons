@@ -33,6 +33,7 @@ namespace gui {
         
         std::shared_ptr<std::mutex> texture_mutex;
         std::shared_ptr<std::vector<std::function<void()>>> _texture_updates;
+        std::function<void(Image::Ptr&&)> _frame_buffer_receiver;
         
     public:
         GLImpl(std::function<void()> draw, std::function<bool()> new_frame_fn);
@@ -48,11 +49,11 @@ namespace gui {
         void set_title(std::string) override;
         void enable_readback();
         void disable_readback();
-        const Image::Ptr& current_frame_buffer() override;
         void update_pbo();
         void init_pbo(uint dwidth, uint dheight);
         void set_icons(const std::vector<file::Path>& icons) override;
         void toggle_full_screen() override;
+        void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)> fn) override;
         
         GLFWwindow* window_handle() override;
         virtual ~GLImpl();

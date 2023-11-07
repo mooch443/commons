@@ -67,7 +67,7 @@ void log_to_terminal(const std::string& str, bool force_display) {
 #endif
 
     if(!runtime_is_quiet || force_display)
-        printf("%s\n", str.c_str());
+        printf("\n%s\r", str.c_str());
 }
 
 bool has_log_callback() {

@@ -39,6 +39,70 @@ ENUM_CLASS(LayoutType,
            image,
            list);
 
+struct VarProps {
+    std::string name;
+    std::vector<std::string> subs;
+    std::vector<std::string> parameters;
+    bool optional{false};
+    bool html{false};
+    
+    const std::string& first() const { return parameters.front(); }
+    const std::string& last() const { return parameters.back(); }
+    
+    static VarProps fromStr(std::string);
+    std::string toStr() const;
+    static std::string class_name() { return "VarProps"; }
+    //operator std::string() const { return last(); }
+};
+
+struct Context;
+struct State;
+
+struct PreVarProps {
+    std::string original;
+    std::string_view name;
+    std::vector<std::string_view> subs;
+    std::vector<std::string_view> parameters;
+    
+    bool optional{false};
+    bool html{false};
+    
+    PreVarProps() noexcept = default;
+    
+    // Copy constructor
+    PreVarProps(const PreVarProps& other)
+        : original(other.original), // copy the string
+          optional(other.optional),
+          html(other.html)
+    {
+        // Compute the offset in the original string for 'name'
+        auto offset_name = other.name.data() - other.original.data();
+        name = std::string_view(original.data() + offset_name, other.name.size());
+
+        // Compute the offsets in the original string for 'subs' and 'parameters'
+        subs.resize(other.subs.size());
+        parameters.resize(other.parameters.size());
+        for (size_t i = 0; i < other.subs.size(); ++i) {
+            auto offset = other.subs[i].data() - other.original.data();
+            subs[i] = std::string_view(original.data() + offset, other.subs[i].size());
+        }
+        for (size_t i = 0; i < other.parameters.size(); ++i) {
+            auto offset = other.parameters[i].data() - other.original.data();
+            parameters[i] = std::string_view(original.data() + offset, other.parameters[i].size());
+        }
+    }
+    
+    // Move constructor
+    PreVarProps(PreVarProps&& other) noexcept = default;
+    
+    std::string toStr() const;
+    static std::string class_name() { return "PreVarProps"; }
+    VarProps parse(const Context& context, State& state) const;
+};
+
+using VarBase_t = VarBase<const VarProps&>;
+using VarReturn_t = sprite::Reference;
+
 struct DefaultSettings {
     Vec2 scale{1.f};
     Vec2 pos{0.f};
@@ -56,34 +120,53 @@ struct DefaultSettings {
     bool clickable{false};
     Size2 max_size{0.f};
     Font font{0.75f};
-};
-
-struct VarProps {
-    std::string name;
-    std::vector<std::string> subs;
-    std::vector<std::string> parameters;
-    bool optional{false};
-    bool html{false};
     
-    std::string first() const { return parameters.empty() ? "" : parameters.front(); }
-    std::string last() const { return parameters.empty() ? "" : parameters.back(); }
-    
-    static VarProps fromStr(std::string);
-    std::string toStr() const;
-    static std::string class_name() { return "VarProps"; }
-    //operator std::string() const { return last(); }
+    std::unordered_map<std::string, std::shared_ptr<VarBase<const Context&, State&>>, MultiStringHash, MultiStringEqual> variables;
 };
-
-using VarBase_t = VarBase<const VarProps&>;
-using VarReturn_t = sprite::Reference;
 
 struct Action {
     std::string name;
     std::vector<std::string> parameters;
     
-    static Action fromStr(std::string_view);
+    const std::string& first() const { return parameters.front(); }
+    const std::string& last() const { return parameters.back(); }
     std::string toStr() const;
     static std::string class_name() { return "Action"; }
+};
+
+struct PreAction {
+    std::string original;
+    std::string_view name;
+    std::vector<std::string_view> parameters;
+    
+    PreAction() noexcept = default;
+
+    // Copy constructor
+    PreAction(const PreAction& other)
+        : original(other.original)
+    {
+        name = std::string_view(original.data() + (other.name.data() - other.original.data()), other.name.size());
+        parameters.reserve(other.parameters.size());
+        for (const auto& param : other.parameters) {
+            auto offset = param.data() - other.original.data();
+            parameters.emplace_back(original.data() + offset, param.size());
+        }
+    }
+
+    // Move constructor
+    PreAction(PreAction&& other) noexcept = default;
+
+    // Copy assignment operator
+    PreAction& operator=(const PreAction& other) = delete;
+
+    // Move assignment operator
+    PreAction& operator=(PreAction&& other) noexcept = default;
+    
+    static PreAction fromStr(std::string_view);
+    std::string toStr() const;
+    static std::string class_name() { return "PreAction"; }
+    
+    Action parse(const Context& context, State& state) const;
 };
 
 template<typename Fn>
@@ -222,6 +305,8 @@ struct State {
     std::unordered_map<size_t, VarCache> _var_cache;
     std::unordered_map<size_t, Timer> _timers;
     
+    std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
+    
     Index _current_index;
     
     State() = default;
@@ -278,12 +363,29 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          const DefaultSettings& defaults,
                          uint64_t hash = 0);
 
-std::string parse_text(const std::string_view& pattern, const Context& context);
+std::string parse_text(const std::string_view& pattern, const Context&, State&);
 
-VarProps extractControls(const std::string_view& variable, const Context& context);
+PreVarProps extractControls(const std::string_view& variable);
+
+template<utils::StringLike Str>
+bool convert_to_bool(Str&& p) noexcept {
+    if (   p == "false"
+        || p == "[]"
+        || p == "{}"
+        || p == "0"
+        || p == "null"
+        || p == "''"
+        || p == "\"\""
+        || p == "0.0"
+        || p == ""
+        )
+      return false;
+
+    return true;
+}
 
 template<typename T, typename Str>
-T resolve_variable_type(Str _word, const Context& context) {
+T resolve_variable_type(Str _word, const Context& context, State& state) {
     std::string_view word;
     if constexpr(std::same_as<Str, Pattern>) {
         word = std::string_view(_word.original);
@@ -300,7 +402,7 @@ T resolve_variable_type(Str _word, const Context& context) {
         word = word.substr(1,word.length()-2);
     }
     
-    return resolve_variable(word, context, [&](const VarBase_t& variable, const VarProps& modifiers) -> T
+    return resolve_variable(word, context, state, [&](const VarBase_t& variable, const VarProps& modifiers) -> T
     {
         if constexpr(std::is_same_v<T, bool>) {
             if(variable.is<bool>()) {
@@ -360,30 +462,71 @@ T resolve_variable_type(Str _word, const Context& context) {
     });
 }
 
-template<typename ApplyF, typename ErrorF, typename Result = typename cmn::detail::return_type<ApplyF>::type>
-inline auto resolve_variable(const std::string_view& word, const Context& context, ApplyF&& apply, ErrorF&& error) -> Result {
-    auto props = extractControls(word, context);
-    
-    if(context.has(props.name)) {
-        if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
-            return apply(*context.variable(props.name), props);
-        else
-            static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
+#if !defined(NDEBUG) && false
+#define CTIMER_ENABLED true
+#else
+#define CTIMER_ENABLED false
+#endif
+struct CTimer {
+#if CTIMER_ENABLED
+    struct Timing {
+        double count{0};
+        uint64_t samples{0};
         
-    } else if(props.name == "if") {
-        std::string result;
-        bool condition{false};
-        if(props.parameters.at(0) == "true")
-            condition = true;
-        else if(props.parameters.at(0) == "false")
-            condition = false;
-        else
-            condition = resolve_variable_type<bool>(props.parameters.at(0), context);
-        //print("Condition ", props.parameters.at(0)," => ", condition);
-        if(condition)
-            return Meta::fromStr<Result>(parse_text(props.parameters.at(1), context));
-        else
-            return Meta::fromStr<Result>(parse_text(props.parameters.at(2), context));
+        std::string toStr() const {
+            return dec<4>(count / double(samples) * 1000).toStr()+"ms total = "+ dec<4>(count).toStr()+"s";
+        }
+    };
+    
+    static inline std::unordered_map<std::string, Timing> timings;
+    Timer timer;
+#endif
+    std::string_view _name;
+    CTimer(std::string_view name) : _name(name) { }
+#if CTIMER_ENABLED
+    ~CTimer() {
+        auto elapsed = timer.elapsed();
+        auto &field = timings[std::string(_name)];
+        field.count += elapsed;
+        field.samples++;
+        
+        if(field.samples % 10000 == 0) {
+            print("! [", _name, "] ", field);
+            field.count /= double(field.samples);
+            field.samples = 1;
+        }
+    }
+#endif
+};
+
+template<typename ApplyF, typename ErrorF, typename Result = typename cmn::detail::return_type<ApplyF>::type>
+inline auto resolve_variable(const std::string_view& word, const Context& context, State& state, ApplyF&& apply, ErrorF&& error) -> Result {
+    auto props = extractControls(word);
+    
+    try {
+        if(context.has(props.name)) {
+            CTimer ctimer("normal");
+            if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
+                return apply(*context.variable(props.name), props.parse(context, state));
+            else
+                static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
+            
+        } else if(props.name == "if") {
+            CTimer ctimer("if");
+            auto p = props.parse(context, state);
+            bool condition = convert_to_bool(p.parameters.at(0));
+            //print("Condition ", props.parameters.at(0)," => ", condition);
+            if(condition)
+                return Meta::fromStr<Result>(p.parameters.at(1));
+            else
+                return Meta::fromStr<Result>(p.parameters.at(2));
+            
+        } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
+            CTimer ctimer("custom var");
+            return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
+        }
+    } catch(...) {
+        // catch exceptions
     }
     
     if constexpr(std::invocable<ErrorF, bool>)

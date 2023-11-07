@@ -345,7 +345,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context& co
     std::string var;
     if(obj.contains("var")) {
         auto input = obj["var"].get<std::string>();
-        var = parse_text(input, context);
+        var = parse_text(input, context, state);
         if(var != input) {
             state.patterns[hash]["var"] = Pattern{input};
         }
@@ -409,15 +409,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
-    Action action;
     if(obj.count("action")) {
-        action = Action::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj["action"].get<std::string>());
         ptr->on_click([action, context](auto){
-            if(context.actions.contains(action.name)) {
-                auto copy = action;
-                for(auto &p : copy.parameters)
-                    p = parse_text(p, context);
-                context.actions.at(action.name)(copy);
+            if(auto it = context.actions.find(action.name);
+               it != context.actions.end())
+            {
+                State state;
+                it->second(action.parse(context, state));
             } else
                 print("Unknown Action: ", action);
         });
@@ -435,11 +434,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
     auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
     
     if(obj.count("action")) {
-        auto action = Action::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj["action"].get<std::string>());
         ptr.to<Checkbox>()->on_change([action, context](){
-            if(context.actions.contains(action.name))
-                context.actions.at(action.name)(action);
-            else
+            if(auto it = context.actions.find(action.name);
+               it != context.actions.end()) 
+            {
+                State state;
+                it->second(action.parse(context, state));
+            } else
                 print("Unknown Action: ", action);
         });
     }
@@ -454,11 +456,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
     auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     if(obj.count("action")) {
-        auto action = Action::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj["action"].get<std::string>());
         ptr.to<Textfield>()->on_enter([action, context](){
-            if(context.actions.contains(action.name))
-                context.actions.at(action.name)(action);
-            else
+            if(auto it = context.actions.find(action.name);
+               it != context.actions.end()) 
+            {
+                State state;
+                it->second(action.parse(context, state));
+            } else
                 print("Unknown Action: ", action);
         });
     }
@@ -492,7 +497,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context& contex
     auto ptr = Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
     
     if(obj.count("action")) {
-        Action action = Action::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj["action"].get<std::string>());
         auto context_copy = context;
         
         context_copy.variables.insert(VarFunc("mouse", [_ptr = ptr.get()](const VarProps&){
@@ -505,15 +510,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context& contex
             {
                 print("Dragging: ", event.hover.x);
                 try {
-                    if(context.actions.contains(action.name)) {
-                        auto copy = action;
-                        for(auto&p : copy.parameters) {
-                            auto c = p;
-                            p = parse_text(p, context);
-                            print(c," => ", p);
-                        }
-                        
-                        context.actions.at(action.name)(copy);
+                    if(auto it = context.actions.find(action.name);
+                       it != context.actions.end())
+                    {
+                        State state;
+                        it->second(action.parse(context, state));
                     } else
                         print("Unknown Action: ", action);
                     
@@ -615,7 +616,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
         auto child = obj["items"];
         
         ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
-        std::vector<Action> actions;
+        std::vector<PreAction> actions;
         std::vector<DetailItem> items;
         
         for(auto &item : child) {
@@ -624,7 +625,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
                 auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
                 auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
                 
-                actions.push_back(Action::fromStr(action));
+                actions.push_back(PreAction::fromStr(action));
                 print("list item: ", text, " ", action);
                 items.push_back(DetailItem{
                     text,
@@ -645,15 +646,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
                 return;
             }
             
-            print("Selecting ", actions.at(index));
-            auto copy = actions.at(index);
-            for(auto &p : copy.parameters) {
-                p = parse_text(p, context);
-            }
-            print(" => ", copy);
-            
-            if(context.actions.contains(copy.name)) {
-                context.actions.at(copy.name)(copy);
+            auto& action = actions.at(index);
+            if(auto it = context.actions.find(action.name);
+               it != context.actions.end())
+            {
+                State state;
+                //print("Selecting ", actions.at(index));
+                it->second(action.parse(context, state));
             }
         });
     }

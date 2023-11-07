@@ -23,7 +23,7 @@ namespace cmn {
                 
                 std::string overall_doc = doc;
                 auto fdocs = T::Data::template docs<T>();
-                auto fields = T::fields();
+                auto &fields = T::fields();
                 
                 if(!fields.empty())
                     overall_doc += "\n$options$";

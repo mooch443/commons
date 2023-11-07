@@ -149,7 +149,7 @@ public:
     static const self_type& get(T name) {
         return _names::get(name);
     }
-    static auto fields() noexcept { return _names::str(); }
+    static const auto& fields() noexcept { return _names::str(); }
     
     constexpr bool operator==(const std::string& other) const noexcept { return other == _names::str()[(size_t)_value]; }
 };
@@ -178,6 +178,9 @@ namespace NAME { \
         constexpr const char *name = #NAME; \
         constexpr static const size_t num_elements = PP_NARG( __VA_ARGS__ ) ; \
         std::array<const char*, num_elements> docs_exist() noexcept; \
+        static inline constexpr std::array<const char*, num_elements> _names = {    \
+          {IDENTITY( STRINGIZE(__VA_ARGS__) )}            \
+        };                                \
          \
         struct names {						       \
             template<class T> struct enum_has_docs : public std::false_type {}; \
@@ -187,10 +190,7 @@ namespace NAME { \
             { \
                 return docs_exist(); \
             } \
-            constexpr static const std::array<const char *, num_elements> str() noexcept {	\
-                const std::array<const char*, num_elements> _names = {	\
-                  {IDENTITY( STRINGIZE(__VA_ARGS__) )}			\
-                };								\
+            constexpr static const std::array<const char *, num_elements>& str() noexcept {	\
                 return _names;						\
             }								\
             constexpr static std::string_view class_name() noexcept { return std::string_view( #NAME ); } \

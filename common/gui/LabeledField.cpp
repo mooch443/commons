@@ -481,7 +481,7 @@ void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
                     }
                     
                     if(_dropdown->stage()) {
-                        std::unique_lock guard(_dropdown->stage()->lock());
+                        auto guard = GUI_LOCK(_dropdown->stage()->lock());
                         _dropdown->set_content_changed(true);
                         _dropdown->set_dirty();
                     }
@@ -798,7 +798,7 @@ void LabeledPathArray::updateDropdownItems() {
                 m.is_folder(); // cache is_folder
 
             if (ptr->stage()) {
-                std::unique_lock guard(ptr->stage()->lock());
+                auto guard = GUI_LOCK(ptr->stage()->lock());
                 ptr->set_content_changed(true);
                 ptr->set_dirty();
                 //print("Returning + setting dirty for ", text);

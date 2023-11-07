@@ -164,8 +164,18 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 namespace gui {
-static dispatch_semaphore_t _frameBoundarySemaphore;
-static std::mutex mutex, _shutdown_mutex;
+static dispatch_semaphore_t& frameBoundarySemaphore() {
+    static dispatch_semaphore_t sem;
+    return sem;
+}
+static auto& mutex() {
+    static auto m = new LOGGED_MUTEX("MetalImpl::mutex");
+    return *m;
+}
+static auto& shutdown_mutex() {
+    static auto _shutdown_mutex = new LOGGED_MUTEX("MetalImpl::shutdown_mutex");
+    return *_shutdown_mutex;
+}
 
 void MetalImpl::check_thread_id(int line, const char* file) const {
 #ifndef NDEBUG
@@ -181,7 +191,7 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
         : draw_function(draw), new_frame_fn(new_frame_fn), _data(new MetalData)
     {
         gui::metal::current_instance = this;
-        _frameBoundarySemaphore = dispatch_semaphore_create(1);
+        frameBoundarySemaphore() = dispatch_semaphore_create(1);
         _gui_macos_blur = SETTING(gui_macos_blur).value<bool>();
         
         GlobalSettings::map().register_callbacks({"gui_macos_blur"}, [this](std::string_view name) {
@@ -195,8 +205,8 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
         
         GlobalSettings::map().unregister_callbacks(std::move(_callback));
         
-        std::lock_guard<std::mutex> guard(_shutdown_mutex);
-        if(dispatch_semaphore_wait(_frameBoundarySemaphore, dispatch_time(DISPATCH_TIME_NOW, 500000000lu)) != 0)
+        auto guard = LOGGED_LOCK(shutdown_mutex());
+        if(dispatch_semaphore_wait(frameBoundarySemaphore(), dispatch_time(DISPATCH_TIME_NOW, 500000000lu)) != 0)
         {
             FormatError("Semaphore did not receive a signal and had to time out.");
         }
@@ -292,10 +302,13 @@ void MetalImpl::message(const std::string &msg) const {
     [alert beginSheetModalForWindow:win completionHandler:^(NSModalResponse){}];
 }
 
+std::mutex framebuffer_lock;
+id mutexObject = [[NSObject alloc] init];
+
     LoopStatus MetalImpl::update_loop(const CrossPlatform::custom_function_t& custom_loop) {
         GLIMPL_CHECK_THREAD_ID();
         
-        std::lock_guard<std::mutex> guard(_shutdown_mutex);
+        auto guard = LOGGED_LOCK(shutdown_mutex());
         LoopStatus status = LoopStatus::IDLE;
         
         if(custom_loop) {
@@ -303,271 +316,264 @@ void MetalImpl::message(const std::string &msg) const {
                 return LoopStatus::END;
         }
         
-        dispatch_semaphore_wait(_frameBoundarySemaphore, DISPATCH_TIME_FOREVER);
+        dispatch_semaphore_wait(frameBoundarySemaphore(), DISPATCH_TIME_FOREVER);
         
         ++frame_index;
         
         glfwPollEvents();
         if(glfwWindowShouldClose(window)) {
-            dispatch_semaphore_signal(_frameBoundarySemaphore);
+            dispatch_semaphore_signal(frameBoundarySemaphore());
             return LoopStatus::END;
         }
         
         if(new_frame_fn()) {
-            int width, height;
-            glfwGetFramebufferSize(window, &width, &height);
-            if(_frame_capture_enabled) {
-                if(!_current_framebuffer)
-                    _current_framebuffer = Image::Make(height, width, 4);
-            } else if(_current_framebuffer)
-                _current_framebuffer = nullptr;
-            
-            @autoreleasepool {
+            //@synchronized (mutexObject) {
+                int width, height;
+                glfwGetFramebufferSize(window, &width, &height);
                 
-                _data->layer.drawableSize = CGSizeMake(width, height);
-                
-                id<CAMetalDrawable> drawable = [_data->layer nextDrawable];
-                if(_frame_capture_enabled) {
-                    if(!_current_framebuffer) {
-                        _current_framebuffer = Image::Make(height, width, 4);
-                    }
-                } else if(_current_framebuffer)
-                    _current_framebuffer = nullptr;
-                
-                id<MTLCommandBuffer> commandBuffer = [_data->commandQueue commandBuffer];
-#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                if(!_data->computeTextureDescriptor || (int)_data->computeTextureDescriptor.width != width || (int)_data->computeTextureDescriptor.height != height) {
-                    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-
-                    // Set the pixel dimensions of the texture
-                    textureDescriptor.width = width;
-                    textureDescriptor.height = height;
-                    textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
-                    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-                    
-                    _data->computeTextureDescriptor = textureDescriptor;
-                    textureDescriptor = [[MTLTextureDescriptor alloc] init];
-
-                    // Set the pixel dimensions of the texture
-                    textureDescriptor.width = width;
-                    textureDescriptor.height = height;
-                    textureDescriptor.pixelFormat = MTLPixelFormatR8Unorm;
-                    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-                    
-                    _data->binaryTextureDescriptor = textureDescriptor;
-                    _data->maskTexture = nil;
-                    _data->stencilTexture = nil;
-                    _data->binaryTexture = nil;
-                    _data->testTexture = nil;
-                }
-
-                // Create the texture from the device by using the descriptor
-                if(!_data->maskTexture)
-                    _data->maskTexture = [commandBuffer.device newTextureWithDescriptor:_data->computeTextureDescriptor];
-                if(!_data->testTexture)
-                    _data->testTexture = [commandBuffer.device newTextureWithDescriptor:_data->computeTextureDescriptor];
-                if(!_data->binaryTexture)
-                    _data->binaryTexture = [commandBuffer.device newTextureWithDescriptor:_data->binaryTextureDescriptor];
-#endif
-                _data->renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(_clear_color[0] / 255.f, _clear_color[1] / 255.f, _clear_color[2] / 255.f, _clear_color[3] / 255.f);
-                _data->renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
-                _data->renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-                _data->renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
-#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                _data->renderPassDescriptor.colorAttachments[1].texture = _data->maskTexture;
-                _data->renderPassDescriptor.colorAttachments[1].loadAction = MTLLoadActionClear;
-                _data->renderPassDescriptor.colorAttachments[1].clearColor = MTLClearColorMake(0, 0, 0, 0);
-                _data->renderPassDescriptor.colorAttachments[1].storeAction = MTLStoreActionStore;
-                
-                _data->renderPassDescriptor.colorAttachments[2].texture = _data->binaryTexture;
-                _data->renderPassDescriptor.colorAttachments[2].loadAction = MTLLoadActionClear;
-                _data->renderPassDescriptor.colorAttachments[2].clearColor = MTLClearColorMake(0, 0, 0, 0);
-                _data->renderPassDescriptor.colorAttachments[2].storeAction = MTLStoreActionStore;
-#endif
-                id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_data->renderPassDescriptor];
-                
-                [renderEncoder pushDebugGroup:@"TRex"];
-#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                uint8_t buffer = _gui_macos_blur;
-                [renderEncoder setVertexBytes:&buffer length:sizeof(buffer) atIndex:2];
-#endif
-                
-                // Start the Dear ImGui frame
-                ImGui_ImplMetal_NewFrame(_data->renderPassDescriptor);
-                ImGui_ImplGlfw_NewFrame();
-                ImGui::NewFrame();
-                
-                static std::mutex cache_mutex;
-                static std::vector<std::unique_lock<std::mutex>*> unused;
-                
-                std::unique_lock<std::mutex>* lock = nullptr;
                 {
-                    std::unique_lock g(cache_mutex);
-                    if(!unused.empty()) {
-                        lock = std::move(unused.back());
-                        unused.pop_back();
+                    std::unique_lock guard(framebuffer_lock);
+                    if(_frame_capture_enabled) {
+                    } else if(_current_framebuffer)
+                        _current_framebuffer = nullptr;
+                }
+                
+                @autoreleasepool {
+                    
+                    _data->layer.drawableSize = CGSizeMake(width, height);
+                    
+                    id<CAMetalDrawable> drawable = [_data->layer nextDrawable];
+                    {
+                        std::unique_lock guard(framebuffer_lock);
+                        if(_frame_capture_enabled) {
+                            if(!_current_framebuffer) {
+                                _current_framebuffer = Image::Make(height, width, 4);
+                            }
+                        } else if(_current_framebuffer)
+                            _current_framebuffer = nullptr;
                     }
-                }
-                
-                std::unique_lock stack(mutex);
-                if(!lock)
-                    lock = new std::unique_lock<std::mutex>();
-                lock->swap(stack);
-                
-                //auto lock = new std::lock_guard<std::mutex>(mutex);
-                
-                draw_function();
-                
-                // Rendering
-                ImGui::Render();
-                {
-                    std::lock_guard<std::mutex> guard(_texture_mutex);
-                    ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderEncoder);
-                }
-                
-                [renderEncoder popDebugGroup];
-                [renderEncoder endEncoding];
-                
+                    
+                    id<MTLCommandBuffer> commandBuffer = [_data->commandQueue commandBuffer];
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
-                if(SETTING(gui_macos_blur)) {
-                    static id<MTLLibrary> library;
+                    if(!_data->computeTextureDescriptor || (int)_data->computeTextureDescriptor.width != width || (int)_data->computeTextureDescriptor.height != height) {
+                        MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
+                        
+                        // Set the pixel dimensions of the texture
+                        textureDescriptor.width = width;
+                        textureDescriptor.height = height;
+                        textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
+                        textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+                        
+                        _data->computeTextureDescriptor = textureDescriptor;
+                        textureDescriptor = [[MTLTextureDescriptor alloc] init];
+                        
+                        // Set the pixel dimensions of the texture
+                        textureDescriptor.width = width;
+                        textureDescriptor.height = height;
+                        textureDescriptor.pixelFormat = MTLPixelFormatR8Unorm;
+                        textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
+                        
+                        _data->binaryTextureDescriptor = textureDescriptor;
+                        _data->maskTexture = nil;
+                        _data->stencilTexture = nil;
+                        _data->binaryTexture = nil;
+                        _data->testTexture = nil;
+                    }
                     
-                    //static MPSImageGaussianBlur* kernel = [[MPSImageGaussianBlur alloc] initWithDevice:_data->device sigma:7.0];
-                    //[kernel encodeToCommandBuffer:commandBuffer inPlaceTexture:&_data->maskTexture fallbackCopyAllocator:nil];
+                    // Create the texture from the device by using the descriptor
+                    if(!_data->maskTexture)
+                        _data->maskTexture = [commandBuffer.device newTextureWithDescriptor:_data->computeTextureDescriptor];
+                    if(!_data->testTexture)
+                        _data->testTexture = [commandBuffer.device newTextureWithDescriptor:_data->computeTextureDescriptor];
+                    if(!_data->binaryTexture)
+                        _data->binaryTexture = [commandBuffer.device newTextureWithDescriptor:_data->binaryTextureDescriptor];
+#endif
+                    _data->renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(_clear_color[0] / 255.f, _clear_color[1] / 255.f, _clear_color[2] / 255.f, _clear_color[3] / 255.f);
+                    _data->renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+                    _data->renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+                    _data->renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
+                    _data->renderPassDescriptor.colorAttachments[1].texture = _data->maskTexture;
+                    _data->renderPassDescriptor.colorAttachments[1].loadAction = MTLLoadActionClear;
+                    _data->renderPassDescriptor.colorAttachments[1].clearColor = MTLClearColorMake(0, 0, 0, 0);
+                    _data->renderPassDescriptor.colorAttachments[1].storeAction = MTLStoreActionStore;
                     
-                    id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoderWithDescriptor:_data->computePassDescriptor];
+                    _data->renderPassDescriptor.colorAttachments[2].texture = _data->binaryTexture;
+                    _data->renderPassDescriptor.colorAttachments[2].loadAction = MTLLoadActionClear;
+                    _data->renderPassDescriptor.colorAttachments[2].clearColor = MTLClearColorMake(0, 0, 0, 0);
+                    _data->renderPassDescriptor.colorAttachments[2].storeAction = MTLStoreActionStore;
+#endif
+                    id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:_data->renderPassDescriptor];
                     
-                    static id<MTLComputePipelineState> computeState;
+                    [renderEncoder pushDebugGroup:@"TRex"];
+#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
+                    uint8_t buffer = _gui_macos_blur;
+                    [renderEncoder setVertexBytes:&buffer length:sizeof(buffer) atIndex:2];
+#endif
                     
-                    if(!library) {
-                        NSString *shaderSource = @"#include <metal_stdlib>\n"
-                        "using namespace metal;\n"
-                        "\n"
-                        "struct Uniforms {\n"
-                        "    float center_x;\n"
-                        "    float center_y;\n"
-                        "};\n"
-                        "kernel void computeShader(\n"
-                        "    texture2d<half, access::read> source [[ texture(0) ]],\n"
-                        "    texture2d<half, access::read> mask [[ texture(1) ]],\n"
-                        "    texture2d<half, access::write> dest [[ texture(2) ]],\n"
-                        "    texture2d<half, access::read> dtest [[ texture(3) ]],\n"
-                        "    uint2 gid [[ thread_position_in_grid ]])\n"
-                        "    {\n"
-                        "        half4 source_color = source.read(gid);\n"
-                        "        half4 mask_color = mask.read(gid) * min(1.0, (1.0 - dtest.read(gid).r) * 2.0);\n"
-                        "        half4 result_color = (1 - mask_color.a) * source_color + (mask_color.a) * mask_color;\n"
-                        "        result_color.a = source_color.a;\n"
-                        "        \n"
-                        "        dest.write(result_color, gid);\n"
-                        "}\n"
-                        "kernel void customBlur(\n"
-                        "    texture2d<half, access::sample> source [[ texture(0) ]],\n"
-                        "    texture2d<half, access::write> dest [[ texture(1) ]],\n"
-                        "    uint2 gid [[ thread_position_in_grid ]],\n"
-                        "    constant Uniforms &uniforms [[buffer(0)]]\n"
-                        ")\n"
-                        "    {\n"
-                        "    constexpr sampler linearSampler(coord::normalized, min_filter::linear, mag_filter::linear, mip_filter::linear);\n"
-                        "        const float w = source.get_width(), h = source.get_height();\n"
-                        "        constexpr float max_kernel_size = 100.0;\n"
-                        "        const float x = (float(gid.x) / w) - uniforms.center_x;\n"
-                        "        const float y = (float(gid.y) / h) - uniforms.center_y;\n"
-                        "        const float d = sqrt(x * x + y * y);\n"
-                        "        constexpr int kernel_size = 3;\n"
-                        "        const float step = max_kernel_size * d * d / (kernel_size * 2);"
-                        "        const float2 dim(w, h);"
+                    // Start the Dear ImGui frame
+                    ImGui_ImplMetal_NewFrame(_data->renderPassDescriptor);
+                    ImGui_ImplGlfw_NewFrame();
+                    ImGui::NewFrame();
+                    
+                    draw_function();
+                    
+                    // Rendering
+                    ImGui::Render();
+                    
+                    {
+                        std::lock_guard guard(_texture_mutex);
+                        ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderEncoder);
+                    }
+                    
+                    [renderEncoder popDebugGroup];
+                    [renderEncoder endEncoding];
+                    
+#ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
+                    if(_gui_macos_blur) {
+                        static id<MTLLibrary> library;
+                        
+                        //static MPSImageGaussianBlur* kernel = [[MPSImageGaussianBlur alloc] initWithDevice:_data->device sigma:7.0];
+                        //[kernel encodeToCommandBuffer:commandBuffer inPlaceTexture:&_data->maskTexture fallbackCopyAllocator:nil];
+                        
+                        id<MTLComputeCommandEncoder> computeEncoder = [commandBuffer computeCommandEncoderWithDescriptor:_data->computePassDescriptor];
+                        
+                        static id<MTLComputePipelineState> computeState;
+                        
+                        if(!library) {
+                            NSString *shaderSource = @"#include <metal_stdlib>\n"
+                            "using namespace metal;\n"
+                            "\n"
+                            "struct Uniforms {\n"
+                            "    float center_x;\n"
+                            "    float center_y;\n"
+                            "};\n"
+                            "kernel void computeShader(\n"
+                            "    texture2d<half, access::read> source [[ texture(0) ]],\n"
+                            "    texture2d<half, access::read> mask [[ texture(1) ]],\n"
+                            "    texture2d<half, access::write> dest [[ texture(2) ]],\n"
+                            "    texture2d<half, access::read> dtest [[ texture(3) ]],\n"
+                            "    uint2 gid [[ thread_position_in_grid ]])\n"
+                            "    {\n"
+                            "        half4 source_color = source.read(gid);\n"
+                            "        half4 mask_color = mask.read(gid) * min(1.0, (1.0 - dtest.read(gid).r) * 2.0);\n"
+                            "        half4 result_color = (1 - mask_color.a) * source_color + (mask_color.a) * mask_color;\n"
+                            "        result_color.a = source_color.a;\n"
+                            "        \n"
+                            "        dest.write(result_color, gid);\n"
+                            "}\n"
+                            "kernel void customBlur(\n"
+                            "    texture2d<half, access::sample> source [[ texture(0) ]],\n"
+                            "    texture2d<half, access::write> dest [[ texture(1) ]],\n"
+                            "    uint2 gid [[ thread_position_in_grid ]],\n"
+                            "    constant Uniforms &uniforms [[buffer(0)]]\n"
+                            ")\n"
+                            "    {\n"
+                            "    constexpr sampler linearSampler(coord::normalized, min_filter::linear, mag_filter::linear, mip_filter::linear);\n"
+                            "        const float w = source.get_width(), h = source.get_height();\n"
+                            "        constexpr float max_kernel_size = 100.0;\n"
+                            "        const float x = (float(gid.x) / w) - uniforms.center_x;\n"
+                            "        const float y = (float(gid.y) / h) - uniforms.center_y;\n"
+                            "        const float d = sqrt(x * x + y * y);\n"
+                            "        constexpr int kernel_size = 3;\n"
+                            "        const float step = max_kernel_size * d * d / (kernel_size * 2);"
+                            "        const float2 dim(w, h);"
                             "    float4 result_color = float4(source.sample(linearSampler, float2(gid) / dim));\n"
                             //"    float N = (kernel_size + 1) * (kernel_size + 1) * 4 + 1;"
                             "    float N = 1.0;\n"
                             "    float2 coord = float2(gid) / dim;"
                             "    for (int i=1; i<kernel_size + 1; ++i) {\n"
-                                    "for(int j=1; j<kernel_size + 1; ++j) {\n"
-                                        "result_color += float4(source.sample(linearSampler, coord + float2( i, j) / dim * step));\n"
-                                        "result_color += float4(source.sample(linearSampler, coord + float2( i,-j) / dim * step));\n"
-                                        "result_color += float4(source.sample(linearSampler, coord + float2(-i, j) / dim * step));\n"
-                                        "result_color += float4(source.sample(linearSampler, coord + float2(-i,-j) / dim * step));\n"
-                                        "N += 4.0;\n"
-                                    "}\n"
+                            "for(int j=1; j<kernel_size + 1; ++j) {\n"
+                            "result_color += float4(source.sample(linearSampler, coord + float2( i, j) / dim * step));\n"
+                            "result_color += float4(source.sample(linearSampler, coord + float2( i,-j) / dim * step));\n"
+                            "result_color += float4(source.sample(linearSampler, coord + float2(-i, j) / dim * step));\n"
+                            "result_color += float4(source.sample(linearSampler, coord + float2(-i,-j) / dim * step));\n"
+                            "N += 4.0;\n"
+                            "}\n"
                             "    }\n"
-                        "        result_color /= N;"
-                        "        dest.write(half4(result_color), gid);\n"
-                        "   }\n";
-                        
-                        NSError *error;
-                        library = [commandBuffer.device newLibraryWithSource:shaderSource options:nil error:&error];
-                        if (library == nil)
-                        {
-                            NSLog(@"Error: failed to create Metal library: %@", error);
+                            "        result_color /= N;"
+                            "        dest.write(half4(result_color), gid);\n"
+                            "   }\n";
+                            
+                            NSError *error;
+                            library = [commandBuffer.device newLibraryWithSource:shaderSource options:nil error:&error];
+                            if (library == nil)
+                            {
+                                NSLog(@"Error: failed to create Metal library: %@", error);
+                            }
                         }
+                        
+                        MTLSize threadGroupSize = MTLSizeMake(8, 8, 1);
+                        
+                        id<MTLFunction> blurFunction = [library newFunctionWithName:@"customBlur"];
+                        computeState = [commandBuffer.device newComputePipelineStateWithFunction:blurFunction error:nil];
+                        
+                        [computeEncoder setComputePipelineState:computeState];
+                        id<MTLBuffer> mbuffer = [_data->device newBufferWithBytes:center length:sizeof(center) options:MTLResourceCPUCacheModeDefaultCache];
+                        [computeEncoder setBuffer:mbuffer offset:0 atIndex:0];
+                        [computeEncoder setTexture:_data->maskTexture atIndex:0];
+                        
+                        [computeEncoder setTexture:_data->testTexture atIndex:1];
+                        //[computeEncoder dispatchThreads:MTLSizeMake(width, height, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+                        [computeEncoder dispatchThreadgroups:MTLSizeMake(width/threadGroupSize.width+1, height/threadGroupSize.height+1, 1) threadsPerThreadgroup:threadGroupSize];
+                        [computeEncoder endEncoding];
+                        
+                        computeEncoder = [commandBuffer computeCommandEncoderWithDescriptor:_data->computePassDescriptor];
+                        id<MTLFunction> computeFunction = [library newFunctionWithName:@"computeShader"];
+                        computeState = [commandBuffer.device newComputePipelineStateWithFunction:computeFunction error:nil];
+                        
+                        [computeEncoder setComputePipelineState:computeState];
+                        [computeEncoder setTexture:drawable.texture atIndex:0];
+                        [computeEncoder setTexture:_data->testTexture atIndex:1];
+                        [computeEncoder setTexture:drawable.texture atIndex:2];
+                        [computeEncoder setTexture:_data->binaryTexture atIndex:3];
+                        
+                        [computeEncoder dispatchThreadgroups:
+                         MTLSizeMake(width/threadGroupSize.width+1, height/threadGroupSize.height+1, 1) threadsPerThreadgroup:threadGroupSize];
+                        [computeEncoder endEncoding];
                     }
-                    
-                    MTLSize threadGroupSize = MTLSizeMake(8, 8, 1);
-                    
-                    id<MTLFunction> blurFunction = [library newFunctionWithName:@"customBlur"];
-                    computeState = [commandBuffer.device newComputePipelineStateWithFunction:blurFunction error:nil];
-                    
-                    [computeEncoder setComputePipelineState:computeState];
-                    id<MTLBuffer> mbuffer = [_data->device newBufferWithBytes:center length:sizeof(center) options:MTLResourceCPUCacheModeDefaultCache];
-                    [computeEncoder setBuffer:mbuffer offset:0 atIndex:0];
-                    [computeEncoder setTexture:_data->maskTexture atIndex:0];
-                    
-                    [computeEncoder setTexture:_data->testTexture atIndex:1];
-                    //[computeEncoder dispatchThreads:MTLSizeMake(width, height, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-                    [computeEncoder dispatchThreadgroups:MTLSizeMake(width/threadGroupSize.width+1, height/threadGroupSize.height+1, 1) threadsPerThreadgroup:threadGroupSize];
-                    [computeEncoder endEncoding];
-                    
-                    computeEncoder = [commandBuffer computeCommandEncoderWithDescriptor:_data->computePassDescriptor];
-                    id<MTLFunction> computeFunction = [library newFunctionWithName:@"computeShader"];
-                    computeState = [commandBuffer.device newComputePipelineStateWithFunction:computeFunction error:nil];
-                    
-                    [computeEncoder setComputePipelineState:computeState];
-                    [computeEncoder setTexture:drawable.texture atIndex:0];
-                    [computeEncoder setTexture:_data->testTexture atIndex:1];
-                    [computeEncoder setTexture:drawable.texture atIndex:2];
-                    [computeEncoder setTexture:_data->binaryTexture atIndex:3];
-                    
-                    [computeEncoder dispatchThreadgroups:
-                        MTLSizeMake(width/threadGroupSize.width+1, height/threadGroupSize.height+1, 1) threadsPerThreadgroup:threadGroupSize];
-                    [computeEncoder endEncoding];
-                }
 #endif
-                
-                [commandBuffer presentDrawable:drawable];
-                
-                [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
-                    if(_frame_capture_enabled) {
-                        //[commandBuffer waitUntilCompleted];
-                        
-                        [drawable.texture getBytes:_current_framebuffer->data() bytesPerRow:_current_framebuffer->dims * _current_framebuffer->cols fromRegion:MTLRegionMake2D(0, 0, _current_framebuffer->cols, _current_framebuffer->rows) mipmapLevel:0];
-                    }
                     
-                    lock->unlock();
-                    {
-                        std::unique_lock g(cache_mutex);
-                        unused.emplace_back(std::move(lock));
-                    }
+                    [commandBuffer presentDrawable:drawable];
                     
-                    {
-                        std::lock_guard<std::mutex> guard(_texture_mutex);
-                        for(auto ptr : _delete_textures) {
-                            id<MTLTexture> texture = (__bridge id<MTLTexture>)ptr;
-                            [texture release];
+                    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
+                        try {
+                            if(_frame_capture_enabled) {
+                                //[commandBuffer waitUntilCompleted];
+                                std::unique_lock guard(framebuffer_lock);
+                                if(not _current_framebuffer || _current_framebuffer->rows != drawable.texture.height || _current_framebuffer->cols != drawable.texture.width)
+                                    _current_framebuffer = Image::Make(drawable.texture.height, drawable.texture.width, 4);
+                                
+                                [drawable.texture getBytes:_current_framebuffer->data() bytesPerRow:_current_framebuffer->dims * _current_framebuffer->cols fromRegion:MTLRegionMake2D(0, 0, _current_framebuffer->cols, _current_framebuffer->rows) mipmapLevel:0];
+                                
+                                if(_frame_buffer_receiver)
+                                    _frame_buffer_receiver(std::move(_current_framebuffer));
+                            }
+                            
+                            {
+                                auto guard = LOGGED_LOCK(_texture_mutex);
+                                for(auto ptr : _delete_textures) {
+                                    id<MTLTexture> texture = (__bridge id<MTLTexture>)ptr;
+                                    [texture release];
+                                }
+                                _delete_textures.clear();
+                            }
+                        } catch(const std::exception& ex) {
+                            FormatError("Exception in semaphore context: ", ex.what());
                         }
-                        _delete_textures.clear();
-                    }
+                        
+                        dispatch_semaphore_signal(frameBoundarySemaphore());
+                    }];
                     
-                    dispatch_semaphore_signal(_frameBoundarySemaphore);
-                }];
+                    [commandBuffer commit];
+                }
                 
-                [commandBuffer commit];
-            }
-            
+            //}
             ++_draw_calls;
             status = LoopStatus::UPDATED;
             
         } else
-            dispatch_semaphore_signal(_frameBoundarySemaphore);
+            dispatch_semaphore_signal(frameBoundarySemaphore());
         
         /*if(_draw_timer.elapsed() >= 1) {
             print(_draw_calls," draw_calls / s");
@@ -578,9 +584,10 @@ void MetalImpl::message(const std::string &msg) const {
         return status;
     }
 
-    const Image::Ptr& MetalImpl::current_frame_buffer() {
-        return _current_framebuffer;
-    }
+void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn) {
+    std::unique_lock guard(framebuffer_lock);
+    _frame_buffer_receiver = fn;
+}
     
     /*void MetalImpl::loop(CrossPlatform::custom_function_t custom_loop) {
         LoopStatus status = LoopStatus::IDLE;

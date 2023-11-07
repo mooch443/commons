@@ -392,6 +392,10 @@ void GLImpl::update_pbo() {
             
             // flip vertically
             cv::flip(pboImage->get(), pboOutput->get(), 0);
+            
+            if(_frame_buffer_receiver) {
+                _frame_buffer_receiver(Image::Make(*pboOutput));
+            }
         }
 
         // back to conventional pixel operation
@@ -427,8 +431,8 @@ void GLImpl::disable_readback() {
     
 }
 
-const Image::Ptr& GLImpl::current_frame_buffer() {
-    return pboOutput;
+void GLImpl::set_frame_buffer_receiver(std::function<void(Image::Ptr&&)> fn) {
+    _frame_buffer_receiver = fn;
 }
 
 void GLImpl::check_thread_id(int line, const char* file) const {

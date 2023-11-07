@@ -16,8 +16,6 @@ enum class Axis {
 
 IMPLEMENT(Graph::title_font) = Font(0.75, Style::Bold);
 IMPLEMENT(Graph::_colors);
-IMPLEMENT(Graph::Function::_fn_clrs);
-IMPLEMENT(Graph::Function::_fn_clrs_mutex);
 
 #define OFFSET(NR) (NR)
 
@@ -500,15 +498,15 @@ void Graph::highlight_point(std::shared_ptr<Circle> ptr) {
 }
 
 gui::Color Graph::Function::color_for_function(const std::string &name) {
-    std::lock_guard<std::mutex> lock(_fn_clrs_mutex);
-    auto it = _fn_clrs.find(name);
-    if (it == _fn_clrs.end()) {
+    auto lock = LOGGED_LOCK(fn_clrs_mutex());
+    auto it = fn_clrs().find(name);
+    if (it == fn_clrs().end()) {
         auto clr = _colors.next();
-        _fn_clrs[name] = clr;
+        fn_clrs()[name] = clr;
         return clr;
     }
     
-    return _fn_clrs.at(name);
+    return fn_clrs().at(name);
 }
 
 Graph::Graph(const Bounds& bounds,

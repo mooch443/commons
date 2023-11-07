@@ -165,7 +165,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
             return Httpd::Response({}, "text/html");
         
         {
-            std::lock_guard<std::recursive_mutex> lock(_gui.lock());
+            auto lock = GUI_LOCK(_gui.lock());
             if(SETTING(nowindow)) {
                 //GUI::trigger_redraw();
                 _gui.before_paint(&_base);

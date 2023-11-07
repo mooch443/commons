@@ -3,7 +3,9 @@
 #include <gui/types/Textfield.h>
 #include <misc/Timer.h>
 
+#if WITH_SFML
 static std::recursive_mutex cache_lock;
+#endif
 
 namespace gui {
 #if WITH_SFML
@@ -80,7 +82,7 @@ namespace gui {
     }
     
     Event SFBase::toggle_fullscreen(DrawStructure& graph) {
-        std::lock_guard<std::recursive_mutex> guard(graph.lock());
+        auto guard = GUI_LOCK(graph.lock());
         for(auto o : graph.collect()) {
             o->clear_cache();
         }
@@ -259,7 +261,7 @@ namespace gui {
         Timer timer;
         
         {
-            std::lock_guard<std::recursive_mutex> guard(cache_lock);
+            auto guard = GUI_LOCK(cache_lock);
             font(); // load font if not yet done
         }
         
@@ -399,7 +401,7 @@ namespace gui {
         if(setting_nowindow)
             return Bounds(0, 0, t.length() * 11.3 * font.size, 26 * font.size);
         
-        std::lock_guard<std::recursive_mutex> guard(cache_lock);
+        auto guard = GUI_LOCK(cache_lock);
         static sf::Text text("", SFBase::font());
         
         if(obj) {

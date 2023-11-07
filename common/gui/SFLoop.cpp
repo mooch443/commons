@@ -41,7 +41,7 @@ namespace gui {
                 }
                 
             } else {
-                std::lock_guard<std::recursive_mutex> guard(_graph.lock());
+                auto guard = GUI_LOCK(_graph.lock());
                 _graph.before_paint((Base*)nullptr);
             }
                 

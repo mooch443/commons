@@ -155,6 +155,10 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             _settings_keys[s.name] = value;
         }
     }
+            
+    void CommandLine::add_setting(std::string name, std::string value) {
+        _settings.push_back(Option{.name = name, .value = value});
+    }
     
     void CommandLine::cd_home() {
         file::cd(_wd);

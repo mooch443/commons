@@ -209,6 +209,7 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
     }
 }
 
+const char* to_readable_errc(const std::errc& error_code);
 
 template <typename T>
 requires std::floating_point<T>
@@ -234,7 +235,7 @@ std::string to_string(const T& t) {
             
             return str;
         } else {
-            throw std::invalid_argument("Error converting to string");
+            throw std::runtime_error(to_readable_errc(result.ec));
         }
     }
 }
@@ -390,25 +391,6 @@ std::vector<std::string> parse_array_parts(const Str& str, const char delimiter 
     }
 
     return ret;
-}
-
-namespace tuple_tools {
-    template <class F, size_t... Is>
-    constexpr auto index_apply_impl(F f,
-        std::index_sequence<Is...>) {
-        return f(std::integral_constant<size_t, Is> {}...);
-    }
-
-    template <size_t N, class F>
-    constexpr auto index_apply(F f) {
-        return index_apply_impl(f, std::make_index_sequence<N>{});
-    }
-
-    template <class Tuple, class F>
-    constexpr auto apply(Tuple t, F f) {
-        return index_apply < std::tuple_size<Tuple>{} > (
-            [&](auto... Is) { return f(Is..., std::get<Is>(t)...); });
-    }
 }
 
 }

@@ -92,7 +92,7 @@ void CVBase::set_window_bounds(Bounds bounds) {
     }
     
     void CVBase::paint(gui::DrawStructure &s) {
-        std::unique_lock<std::recursive_mutex> lock(s.lock());
+        auto lock = GUI_LOCK(s.lock());
         s.before_paint(this);
         _overlay.copyTo(_window);
         

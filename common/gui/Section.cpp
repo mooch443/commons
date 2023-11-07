@@ -366,9 +366,9 @@ namespace gui {
     }
     
     void Section::clear() {
-        std::lock_guard<std::recursive_mutex> *guard = NULL;
+        DrawStructure::Lock_t *guard = NULL;
         if(stage())
-            guard = new std::lock_guard<std::recursive_mutex>(stage()->lock());
+            guard = new GUI_LOCK(stage()->lock());
         
         // Copy first to prevent changing the list while clearing it
         // through any of the deleted children.
@@ -384,9 +384,9 @@ namespace gui {
     }
     
     Section::~Section() {
-        std::lock_guard<std::recursive_mutex> *guard = NULL;
+        DrawStructure::Lock_t *guard = NULL;
         if(stage())
-            guard = new std::lock_guard<std::recursive_mutex>(stage()->lock());
+            guard = new GUI_LOCK(stage()->lock());
         
         if(stage() && stage()->active_section() == this)
             stage()->pop_section();

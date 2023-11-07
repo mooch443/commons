@@ -2,11 +2,14 @@
 #include <misc/detail.h>
 
 namespace file {
-static std::mutex instance_mutex;
+static auto& instance_mutex() {
+    static auto m = new LOGGED_MUTEX("DataLocation::instance_mutex");
+    return *m;
+}
 static DataLocation* _instance = nullptr;
 
 void DataLocation::set_instance(DataLocation* ptr) {
-    std::unique_lock guard(instance_mutex);
+    auto guard = LOGGED_LOCK(instance_mutex());
     // we are not deleting right now, because we don't know if the instance is still in use
     // probably should reconsider this mechanism
     /*if (_instance) {
@@ -18,7 +21,7 @@ void DataLocation::set_instance(DataLocation* ptr) {
 }
 
 DataLocation* DataLocation::instance() {
-    std::unique_lock guard(instance_mutex);
+    auto guard = LOGGED_LOCK(instance_mutex());
     if (!_instance) {
 		_instance = new DataLocation();
 	}

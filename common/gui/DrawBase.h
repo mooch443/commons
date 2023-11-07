@@ -34,11 +34,6 @@ namespace gui {
             _frame_recording = v;
         }
         
-        virtual const Image::Ptr& current_frame_buffer() {
-            static Image::Ptr _empty(nullptr);
-            return _empty;
-        }
-        
         virtual void paint(DrawStructure& s) = 0;
         virtual void set_title(std::string) = 0;
         virtual void set_window_size(Size2) = 0;

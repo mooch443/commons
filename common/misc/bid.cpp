@@ -5,6 +5,10 @@
 namespace pv {
 using namespace cmn;
 
+std::string BlobWeakPtr::toStr() const {
+    return ptr ? "(weak*)"+ptr->toStr() : "null";
+}
+
 std::string bid::toStr() const {
     if(!valid())
         return "null";

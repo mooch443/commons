@@ -20,7 +20,7 @@ namespace gui {
 	}
     
     void HTMLBase::paint(gui::DrawStructure &s) {
-        std::unique_lock<std::recursive_mutex> lock(s.lock());
+        auto lock = GUI_LOCK(s.lock());
         if(_size.empty())
             _size = Size2(s.width(), s.height());
         

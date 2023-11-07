@@ -322,12 +322,11 @@ void Dialog::set_closed() {
     }
     
     DrawStructure::~DrawStructure() {
-        _lock.lock();
+        auto guard = GUI_LOCK(_lock);
         _selected_object = _hovered_object = nullptr;
         _active_section = nullptr;
         _root.set_stage(NULL);
         clear();
-        _lock.unlock();
     }
     
     void DrawStructure::update_dialogs() {
@@ -352,7 +351,7 @@ void Dialog::set_closed() {
     }
 
 void DrawStructure::close_dialogs() {
-    std::lock_guard guard(lock());
+    auto guard = GUI_LOCK(lock());
     if(!_dialogs.empty() && _dialogs.front())
         _dialogs.front()->set_closed();
     _dialogs.clear();
@@ -362,7 +361,7 @@ void DrawStructure::close_dialogs() {
     
     Dialog* DrawStructure::_dialog(const std::function<bool(Dialog::Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
-        std::lock_guard<std::recursive_mutex> guard(_lock);
+        auto guard = GUI_LOCK(_lock);
         auto d = new Dialog(*this, callback, text, title, okay, abort, second, third, fourth);
         d->set_scale(scale().reciprocal());
         _dialogs.push_back(d);
@@ -634,7 +633,7 @@ void DrawStructure::close_dialogs() {
     }
     
     bool DrawStructure::event(Event e) {
-        std::lock_guard<std::recursive_mutex> lock(_lock);
+        auto lock = GUI_LOCK(_lock);
         Drawable* d = NULL;
 
         switch(e.type) {

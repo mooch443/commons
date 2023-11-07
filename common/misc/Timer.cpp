@@ -87,7 +87,9 @@ double Timing::conclude_measure(double elapsed) {
         all_elapsed += inf.elapsed;
     }
     
-    if (all_elapsed / _threads.size() >= _print_threshold) {
+    if (all_elapsed / _threads.size() >= _print_threshold
+        && info.timingCount > 0)
+    {
         cmn::print("-- (", sample_count,") ", _name.c_str()," took ", cmn::dec<4>(info.averageTime / (double)info.timingCount * 1000),"ms and ",cmn::dec<4>(info.averageTimeSince / (double)info.stimingCount*1000),"ms between");
         
         for(auto && [id, inf] : _threads) {

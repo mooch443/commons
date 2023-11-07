@@ -329,9 +329,6 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
 
     auto start = lines.begin();
     auto end = lines.end();
-    
-    static std::vector<uint64_t> lengths;
-    static std::mutex mutex;
 
     for(auto it = start; it != end; ++it) {
         if(ptr_safe_t(it->x1) - ptr_safe_t(it->x0) > Line_t::bit_size_x1) {

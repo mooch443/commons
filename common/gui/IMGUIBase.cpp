@@ -481,7 +481,7 @@ Size2 frame_buffer_scale(GLFWwindow* window, float r) {
 
 void IMGUIBase::update_size_scale(GLFWwindow* window) {
     auto base = base_pointers.at(window);
-    std::lock_guard lock_guard(base->_graph->lock());
+    auto lock_guard = GUI_LOCK(base->_graph->lock());
     
     int x, y;
     glfwGetWindowPos(window, &x, &y);
@@ -786,7 +786,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 static const ImWchar all_ranges[] = {
                     // Range from Basic Latin to Cyrillic Supplement
                     0x0020, 0x007F,
-
+                    0x00DF, 0x00DF,  // ß
+                    0x00F6, 0x00F6,  // ö
+                    0x00E4, 0x00E4,  // ä
+                    0x00FC, 0x00FC,  // ü
                     // Range from Cyrillic + Cyrillic Supplement
                     0x0400, 0x052F,
 
@@ -817,7 +820,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     0x4E00, 0x9FFF,
 
                     // Sentinel to indicate end of ranges
-                    0xFFFF
+                    0x0
                 };
 
                 auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config, all_ranges); //add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
@@ -852,9 +855,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if (not syms.add_extension("ttf").exists())
                 FormatExcept("Cannot find file ",syms.str());
             
+            config.GlyphOffset.y = 2.5;
             _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
+            config.GlyphOffset.y = 0;
             _fonts[Style::Symbols] = load_font(0, "", syms, 0.95, true);
         }
+        
+        io.Fonts->Build();
 
         _platform->post_init();
         _platform->set_title(title);
@@ -1079,10 +1086,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _platform->set_frame_capture_enabled(false);
     }
 
-    const Image::Ptr& IMGUIBase::current_frame_buffer() {
-        return _platform->current_frame_buffer();
-    }
-
     void IMGUIBase::set_last_framebuffer(Size2 size) {
         if (size.width > 0 && size.height > 0 
             && (size.width * _dpi_scale != _last_framebuffer_size.width 
@@ -1109,7 +1112,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         set_last_framebuffer(Size2(fw, fh));
         
-        std::unique_lock<std::recursive_mutex> lock(s.lock());
+        auto lock = GUI_LOCK(s.lock());
         auto objects = s.collect();
         _objects_drawn = 0;
         _skipped = 0;

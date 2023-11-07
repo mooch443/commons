@@ -126,7 +126,7 @@ namespace gui {
                 if(_graph == NULL)
                     return;
                 
-                std::lock_guard<std::recursive_mutex> lock(_graph->lock());
+                auto lock = GUI_LOCK(_graph->lock());
                 this->paint(*_graph);
                 
                 auto cache = _graph->root().cached(this);
@@ -135,7 +135,7 @@ namespace gui {
                 
             }, [this]() -> bool {
                 //! new frame function, tells the drawing system whether an update is required
-                std::lock_guard<std::recursive_mutex> lock(_graph->lock());
+                auto lock = GUI_LOCK(_graph->lock());
                 _graph->before_paint(this);
                 
                 auto cache = _graph->root().cached(this);
@@ -168,7 +168,6 @@ namespace gui {
         float get_scale_multiplier();
         void set_background_color(const Color&) override;
         void set_frame_recording(bool v) override;
-        const Image::Ptr& current_frame_buffer() override;
         void loop();
         LoopStatus update_loop() override;
         virtual void paint(DrawStructure& s) override;

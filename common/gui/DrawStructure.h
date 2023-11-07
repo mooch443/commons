@@ -67,6 +67,8 @@ namespace gui {
     public:
         void set_custom_element(derived_ptr<Entangled>&& e);
     };
+
+    #define GUI_LOCK(MUTEX) LOGGED_LOCK(MUTEX)
     
     class DrawStructure {
     public:
@@ -108,10 +110,15 @@ namespace gui {
         std::deque<Section*> _sections;
         std::deque<Dialog*> _dialogs;
         
-        GETTER_NCONST(std::recursive_mutex, lock)
+        LOGGED_MUTEX_VAR_TYPE(std::recursive_mutex, _lock, "DrawStructure::lock");
         std::set<Codes> pressed_keys;
         
         std::vector<Drawable*> results;
+        
+    public:
+        using Mutex_t = decltype(_lock);
+        using Lock_t = LOGGED_LOCK_TYPE <Mutex_t>;
+        Mutex_t& lock() { return _lock; }
         
     public:
         DrawStructure(uint16_t width = 0, uint16_t height = 0, Vec2 scale = Vec2(1, 1))

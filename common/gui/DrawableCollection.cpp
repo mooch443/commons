@@ -3,9 +3,9 @@
 
 namespace gui {
     DrawableCollection::~DrawableCollection() {
-        std::lock_guard<std::recursive_mutex> *guard = NULL;
+        DrawStructure::Lock_t *guard = NULL;
         if(stage())
-            guard = new std::lock_guard<std::recursive_mutex>(stage()->lock());
+            guard = new GUI_LOCK(stage()->lock());
         set_parent(NULL);
         
         if(guard)

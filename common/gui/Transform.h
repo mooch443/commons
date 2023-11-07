@@ -47,6 +47,9 @@ public:
     Vec2 transformPoint(float x, float y) const;
     Vec2 transformPoint(const Vec2& pt) const;
     
+    bool operator==(const Transform&) const noexcept = default;
+    bool operator!=(const Transform&) const noexcept = default;
+    
     Bounds transformRect(const Bounds& bounds) const;
     
     Transform& combine(const Transform& other);

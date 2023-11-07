@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <misc/GlobalSettings.h>
 
 #ifdef __APPLE__
 #include <Availability.h>
@@ -642,7 +643,7 @@ inline void member_construct(const char*) {}
 template<typename Variables, typename callback_fn_t>
 struct CallbackHolder {
     const char *name;
-    std::unordered_map<Variables, callback_fn_t> _callbacks;
+    std::unordered_map<Variables, std::vector<callback_fn_t>> _callbacks;
     CallbackHolder(const char*name) : name(name) {
 #ifndef NDEBUG
         printf("CallbackHolder for '%s' created.\n", name);
@@ -724,15 +725,22 @@ private: \
     inline static CallbackCollection _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
-    template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { /*print("[",#NAM,"] Updating key ", key, " = ", value.valueString());*/ auto it = callbacks().find(M); if(it != callbacks().end()) it->second(key, value); } \
+    template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { \
+        /*print("[",#NAM,"] Updating key ", key, " = ", value.valueString());*/ \
+        auto it = callbacks().find(M); \
+        if(it != callbacks().end()) { \
+            for(auto& fn : it->second) \
+                fn(key, value); \
+        } \
+    } \
     template<Variables M> \
     static const char* name() { \
         return VariableNames[M]; \
     } \
-    static void set_callback(Variables v, callback_fn_t f) { callbacks()[v] = f; } \
+    static void set_callback(Variables v, callback_fn_t f) { callbacks()[v].emplace_back(f); } \
     static void clear_callbacks() { callbacks().clear(); } \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
-    static void variable_changed (sprite::Map::Signal signal, sprite::Map &, const std::string_view &key, const sprite::PropertyType& value) { \
+    static void variable_changed (sprite::Map::Signal, sprite::Map &, const std::string_view &key, const sprite::PropertyType& value) { \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \

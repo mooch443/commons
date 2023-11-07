@@ -43,5 +43,7 @@ namespace cmn {
         //! Iterate custom command-line options that havent been processed already
         decltype(_options)::const_iterator begin() const { return _options.begin(); }
         decltype(_options)::const_iterator end() const { return _options.end(); }
+        
+        void add_setting(std::string name, std::string value);
     };
 }

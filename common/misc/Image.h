@@ -7,11 +7,81 @@
 #include <gui/colors.h>
 
 namespace cmn {
+    class ReallocDeleter {
+    public:
+        void operator()(void* ptr) const {
+            if (ptr) {
+                std::free(ptr);
+            }
+        }
+        
+        static void* realloc(void* ptr, std::size_t new_size) {
+            return std::realloc(ptr, new_size);
+        }
+        
+        static void* malloc(std::size_t size) {
+            return std::malloc(size);
+        }
+    };
+
+    template<typename T>
+    class UniqueReallocPtr {
+    public:
+        UniqueReallocPtr() : ptr_(nullptr, ReallocDeleter()) {}
+        explicit UniqueReallocPtr(T* raw_ptr) : ptr_(raw_ptr, ReallocDeleter()) {}
+
+        T* get() const {
+            return static_cast<T*>(ptr_.get());
+        }
+
+        void reset(T* new_ptr = nullptr) {
+            ptr_.reset(new_ptr);
+        }
+
+        void release() {
+            ptr_.release();
+        }
+
+        void realloc(std::size_t new_size) {
+            T* new_ptr = static_cast<T*>(ReallocDeleter::realloc(ptr_.get(), new_size));
+            if (new_ptr) {
+                ptr_.release();
+                ptr_.reset(new_ptr);
+            }
+        }
+
+        void malloc(std::size_t size) {
+            T* new_ptr = static_cast<T*>(ReallocDeleter::malloc(size));
+            if (new_ptr) {
+                ptr_.reset(new_ptr);
+            }
+        }
+
+        void nullify() {
+            reset(nullptr);
+        }
+            
+        UniqueReallocPtr& operator=(std::nullptr_t) {
+            ptr_ = nullptr;
+            return *this;
+        }
+
+        bool operator==(const UniqueReallocPtr&) const noexcept = default;
+        bool operator!=(const UniqueReallocPtr&) const noexcept = default;
+        bool operator==(std::nullptr_t) const noexcept {
+            return ptr_ == nullptr;
+        }
+        operator bool() const noexcept { return ptr_ != nullptr; }
+
+    private:
+        std::unique_ptr<void, ReallocDeleter> ptr_;
+    };
+
     /**
      * A structure that maps from custom malloc() calls to cv::Mat and back.
      * Also saves an "ID" or index of the image.
      */
-    class Image : public IndexedDataTransport {
+    class Image final {
     public:
         typedef std::chrono::steady_clock clock_;
         typedef std::chrono::duration<double, std::ratio<1> > second_;
@@ -28,18 +98,32 @@ namespace cmn {
             virtual ~CustomData() {}
         };
         
-    private:
-        GETTER_PTR_I(uchar*, data, nullptr)
+    protected:
+        UniqueReallocPtr<uchar> _data;
         GETTER_I(size_t, size, 0)
         GETTER_I(size_t, array_size, 0)
-        GETTER_SETTER_I(timestamp_t, timestamp, 0)
-        GETTER_SETTER_PTR_I(CustomData*, custom_data, nullptr)
+        GETTER_SETTER_I(timestamp_t, timestamp, now())
+        std::unique_ptr<CustomData> _custom_data;
+        GETTER_SETTER_I(long_t, index, -1)
         
     public:
         uint cols = 0, rows = 0, dims = 0;
+        auto data() const { return _data.get(); }
+        const CustomData* custom_data() const { return _custom_data.get(); }
+        CustomData* custom_data() { return _custom_data.get(); }
+        void set_custom_data(CustomData* ptr);
         
     public:
-        Image(Image&&) = delete;
+        Image() = default;
+        Image(Image&&) noexcept;
+
+        Image& operator=(Image&&) noexcept;
+        Image& operator=(const Image& other) noexcept = delete;
+        
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+        ~Image();
+#endif
+        
         Image(const Image& other, long_t index = -1);
         Image(const Image& other, long_t index, timestamp_t timestamp);
         Image(uint rows, uint cols, uint dims, const uchar* datat, int index, timestamp_t timestamp);
@@ -51,9 +135,6 @@ namespace cmn {
         explicit Image(const gpuMat& mat, int index = -1);
         explicit Image(const cv::Mat& mat, int index, timestamp_t timestamp);
         explicit Image(const gpuMat& mat, int index, timestamp_t timestamp);
-
-        Image();
-        ~Image();
         
     public:
         void create(uint rows, uint cols, uint dims, long_t index = -1);
@@ -72,11 +153,6 @@ namespace cmn {
         void create(const Image& other, long_t index, timestamp_t stamp);
 
         void clear();
-        
-        Image& operator=(const Image& other) = delete;
-        Image& operator=(Image&& other) = delete;
-        //Image& operator=(const Image& other);
-        //Image& operator=(const cv::Mat& matrix);
         
         void set(Image&&);
         
@@ -102,21 +178,21 @@ namespace cmn {
         
         void get(cv::Mat& matrix) const;
         cv::Mat get() const;
-        bool empty() const { return _data == NULL; }
+        bool empty() const { return _data == nullptr; }
         Bounds bounds() const { return Bounds(0, 0, static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
         Size2 dimensions() const { return Size2(static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
         
         auto stamp() const { return _timestamp; }//return std::chrono::time_point_cast<std::chrono::microseconds>(_timestamp).time_since_epoch().count(); }
         
         bool operator==(const Image& other) const {
-            return other.cols == cols && other.rows == rows && other.dims == dims && (_data == other._data || (_size == other._size && memcmp(_data, other._data, _size) == 0));
+            return other.cols == cols && other.rows == rows && other.dims == dims && (_data == other._data || (_size == other._size && memcmp(_data.get(), other._data.get(), _size) == 0));
         }
         
         std::string toStr() const;
         static std::string class_name() {
             return "Image";
         }
-        static auto now() {
+        static timestamp_t now() {
             return timestamp_t((timestamp_t::value_type)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count());
         }
         
