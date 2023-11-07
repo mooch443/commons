@@ -621,6 +621,7 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
             throw U_EXCEPTION("Unsupported number of dimensions: ", ptr->dims, " in image ", *ptr);
         }
         
+        assert(width > 0 && height > 0);
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input_format width:width height:height mipmapped:NO];
         textureDescriptor.usage = MTLTextureUsageShaderRead;
     #if TARGET_OS_OSX

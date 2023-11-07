@@ -514,12 +514,14 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
         } else if(props.name == "if") {
             CTimer ctimer("if");
             auto p = props.parse(context, state);
-            bool condition = convert_to_bool(p.parameters.at(0));
-            //print("Condition ", props.parameters.at(0)," => ", condition);
-            if(condition)
-                return Meta::fromStr<Result>(p.parameters.at(1));
-            else
-                return Meta::fromStr<Result>(p.parameters.at(2));
+            if(p.parameters.size() >= 2) {
+                bool condition = convert_to_bool(p.parameters.at(0));
+                //print("Condition ", props.parameters.at(0)," => ", condition);
+                if(condition)
+                    return Meta::fromStr<Result>(p.parameters.at(1));
+                else if(p.parameters.size() == 3)
+                    return Meta::fromStr<Result>(p.parameters.at(2));
+            }
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
             CTimer ctimer("custom var");

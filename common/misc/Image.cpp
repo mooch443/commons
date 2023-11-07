@@ -183,7 +183,7 @@ namespace cmn {
     void Image::set(Image&& other) {
         clear();
         
-        *this = std::move(other);
+        //*this = std::move(other);
         _index = other._index;
         _timestamp = other._timestamp;
         _custom_data = std::move(other._custom_data);

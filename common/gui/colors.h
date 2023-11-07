@@ -117,7 +117,7 @@ public:
     
     constexpr inline Color exposureHSL(float factor) const {
         Color hsl(toHSL());
-        Color rgb(hsl.blue((uint8_t)saturate(hsl.b * factor)).HSL2RGB());
+        Color rgb(hsl.blue((uint8_t)saturate(float(hsl.b) * factor)).HSL2RGB());
         return Color(rgb.r, rgb.g, rgb.b, this->a);
     }
     
@@ -272,7 +272,9 @@ public:
             B = 255.f * Hue_2_RGB( var_1, var_2, H - ( 1 / 3.f ) );
         }
         
-        return Color(uint8_t(R), (uint8_t)saturate(G), (uint8_t)saturate(B));
+        return Color((uint8_t)saturate(R), 
+                     (uint8_t)saturate(G),
+                     (uint8_t)saturate(B));
     }
     
     constexpr float diff(const Color& other) const {

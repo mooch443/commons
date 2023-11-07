@@ -63,7 +63,8 @@ namespace gui {
         typedef std::function<void(Event)> event_handler_yes_t;
         typedef std::shared_ptr<event_handler_t> callback_handle_t;
         typedef std::function<void(void)> delete_function_t;
-        typedef std::shared_ptr<delete_function_t> delete_function_handle_t;
+        typedef std::unique_ptr<delete_function_t> delete_function_ptr_t;
+        typedef const delete_function_t* delete_function_handle_t;
         
         //! A color that is used in Drawables throughout the GUI
         //  as the accent / base color.
@@ -71,7 +72,7 @@ namespace gui {
         
     protected:
         std::unordered_map<EventType, std::vector<callback_handle_t>> _event_handlers;
-        std::vector<delete_function_handle_t> _delete_handlers;
+        std::vector<delete_function_ptr_t> _delete_handlers;
         
         //! Objects that contain cached values for the Base* objects
         //  using the Drawables

@@ -205,13 +205,14 @@ namespace gui {
     }
     
     Drawable::delete_function_handle_t Drawable::on_delete(delete_function_t fn) {
-        auto handle = std::make_shared<delete_function_t>(fn);
-        _delete_handlers.push_back(handle);
-        return handle;
+        _delete_handlers.emplace_back(std::make_unique<delete_function_t>(fn));
+        return _delete_handlers.back().get();
     }
     
     void Drawable::remove_delete_handler(delete_function_handle_t handle) {
-        auto it = std::find(_delete_handlers.begin(), _delete_handlers.end(), handle);
+        auto it = std::find_if(_delete_handlers.begin(), _delete_handlers.end(), [handle](auto& ptr) {
+            return ptr.get() == handle;
+        });
         if(it != _delete_handlers.end()) {
             _delete_handlers.erase(it);
         } else
