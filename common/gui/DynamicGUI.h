@@ -94,7 +94,7 @@ struct PreVarProps {
     
     // Move constructor
     PreVarProps(PreVarProps&& other) noexcept {
-        original = std::move(other.original);
+        original = (other.original);
         optional = other.optional;
         html = other.html;
         
@@ -175,7 +175,7 @@ struct PreAction {
 
     // Move constructor
     PreAction(PreAction&& other) noexcept {
-        original = std::move(other.original);
+        original = (other.original);
         name = std::string_view(original.data() + (other.name.data() - other.original.data()), other.name.size());
         parameters.reserve(other.parameters.size());
         for (const auto& param : other.parameters) {
