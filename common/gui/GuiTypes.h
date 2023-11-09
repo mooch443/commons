@@ -35,7 +35,7 @@ public:
     
 protected:
     const std::vector<Vertex>* _transport;
-    std::shared_ptr<std::vector<Vertex>> _points;
+    std::unique_ptr<std::vector<Vertex>> _points;
     std::vector<Vertex> _original_points;
     GETTER(PrimitiveType, primitive)
     GETTER(bool, size_calculated)
@@ -515,6 +515,7 @@ protected:
         GETTER(std::string, url)
         Ptr _source;
         GETTER(Color, color)
+        GETTER(bool, cut_border)
         
     public:
         ExternalImage() : ExternalImage(Image::Make(), Vec2()) {}
@@ -530,10 +531,12 @@ protected:
             set_pos(pos);
             set_scale(scale);
             set_color(color);
+            _cut_border = false;
         }
         
         _CHANGE_SETTER(url)
         _CHANGE_SETTER(color)
+        _CHANGE_SETTER(cut_border)
         
         virtual const Image* source() const { return _source.get(); }
 /*#ifdef NDEBUG
@@ -567,6 +570,7 @@ protected:
             
             set_url(ptr->_url);
             set_color(ptr->_color);
+            _cut_border = ptr->_cut_border;
             
             if(!(*ptr->_source == *_source)) {
                 std::swap(ptr->_source, _source);

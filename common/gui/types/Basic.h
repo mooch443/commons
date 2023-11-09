@@ -19,12 +19,12 @@ namespace gui {
     }
 
     class Vertex {
-        GETTER_NCONST(Color, color)
+        GETTER_NCONST(ImU32, color)
         GETTER_NCONST(Vec2, position)
         
     public:
         Vertex(float x, float y, const Color& color = Color())
-            : _color(color), _position(x, y)
+            : _color((ImU32)color), _position(x, y)
         {}
         
         template<typename T>
@@ -50,6 +50,10 @@ namespace gui {
         
         bool operator!=(const Vertex& other) const {
             return ! operator==(other);
+        }
+        
+        Color clr() const {
+            return Color(ImColor(_color));
         }
         
         std::ostream &operator <<(std::ostream &os);

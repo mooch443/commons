@@ -73,6 +73,18 @@ public:
 #ifdef HAS_IMGUI
     constexpr Color(const ImColor& c) : Color(uint8_t(c.Value.x * 255), uint8_t(c.Value.y * 255), uint8_t(c.Value.z * 255), uint8_t(c.Value.w * 255)) {}
     operator ImColor() const { return ImColor(r, g, b, a); }
+    explicit constexpr operator ImU32() const {
+/*#define IM_COL32_R_SHIFT    0
+#define IM_COL32_G_SHIFT    8
+#define IM_COL32_B_SHIFT    16
+#define IM_COL32_A_SHIFT    24*/
+        ImU32 out;
+        out  = r << IM_COL32_R_SHIFT;
+        out |= g << IM_COL32_G_SHIFT;
+        out |= b << IM_COL32_B_SHIFT;
+        out |= a << IM_COL32_A_SHIFT;
+        return out;
+    }
 #endif
     
     constexpr uint8_t operator[] (size_t index) const {

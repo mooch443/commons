@@ -93,8 +93,9 @@ namespace gui {
         
         _hovered_slice = -1;
         
-        for(auto&l :_lines)
-            l.color() = Black.alpha(_alpha);
+        for(auto&l :_lines) {
+            l.color() = (ImU32)Black.alpha(_alpha);
+        }
         
         for (unsigned int slice{ 0u }; slice < _slices.size(); ++slice)
         {
@@ -143,6 +144,7 @@ namespace gui {
             }
             
             clr = clr.alpha(saturate(_alpha * 255));
+            auto c = ImU32(ImColor(clr));
             
             _slices[slice].scale = scale;
             
@@ -153,7 +155,7 @@ namespace gui {
                 
                 _vertices[vertex + 0].color() =
                 _vertices[vertex + 1].color() =
-                _vertices[vertex + 2].color() = clr;
+                _vertices[vertex + 2].color() = c;
             }
             
             _lines[slice * 2 + 0].position() =

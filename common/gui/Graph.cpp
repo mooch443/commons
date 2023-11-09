@@ -247,7 +247,7 @@ void Graph::update() {
             if(work->back().y != null.y)
                 work->push_back(Vec2(work->back().x, null.y));
             
-            add<Polygon>(work, vertices.front().color().alpha(50));
+            add<Polygon>(work, vertices.front().clr().alpha(50));
             //auto ptr = new Polygon(work);
             //ptr->set_fill_clr(vertices.front().color().alpha(50));
             //advance(ptr);

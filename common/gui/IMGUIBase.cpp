@@ -1292,7 +1292,7 @@ void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBa
     for (size_t i1 = 0; i1 < count; i1++) {
         const size_t i2 = (i1 + 1) == points_count ? 0 : i1 + 1;
         const auto p2 = order.transform.transformPoint(points[i2].position());
-        const auto col = cvtClr(points[i1].color());
+        const auto col = points[i1].color();
 
         float dx = p2.x - p1.x;
         float dy = p2.y - p1.y;
@@ -1567,13 +1567,23 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 col = (ImColor)static_cast<ExternalImage*>(o)->color();
             
             auto I = list->VtxBuffer.size();
-            list->AddImage(tex_cache->texture()->ptr,
-                           ImVec2(0, 0),
-                           ImVec2(o->width(), o->height()),
-                           ImVec2(0, 0),
-                           ImVec2(tex_cache->texture()->image_width / float(tex_cache->texture()->width),
-                                  tex_cache->texture()->image_height / float(tex_cache->texture()->height)),
-                                  col);
+            if(static_cast<ExternalImage*>(o)->cut_border()) {
+                list->AddImage(tex_cache->texture()->ptr,
+                               ImVec2(0, 0),
+                               ImVec2(o->width()-1, o->height()-1),
+                               ImVec2(0, 0),
+                               ImVec2((tex_cache->texture()->image_width-1) / float(tex_cache->texture()->width),
+                                      (tex_cache->texture()->image_height-1) / float(tex_cache->texture()->height)),
+                               col);
+            } else {
+                list->AddImage(tex_cache->texture()->ptr,
+                               ImVec2(0, 0),
+                               ImVec2(o->width(), o->height()),
+                               ImVec2(0, 0),
+                               ImVec2((tex_cache->texture()->image_width) / float(tex_cache->texture()->width),
+                                      (tex_cache->texture()->image_height) / float(tex_cache->texture()->height)),
+                               col);
+            }
             for (auto i = I; i<list->VtxBuffer.size(); ++i) {
                 list->VtxBuffer[i].pos = transform.transformPoint(list->VtxBuffer[i].pos);
             }

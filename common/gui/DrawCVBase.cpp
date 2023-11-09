@@ -138,7 +138,7 @@ void CVBase::set_window_bounds(Bounds bounds) {
                     Vec2 prev;
                     for(size_t i=0; i<ptr->points().size(); i++) {
                         auto &p = ptr->points().at(i);
-                        auto &c = p.color();
+                        auto c = p.clr();
                         
                         if(i)
 #if CV_MAJOR_VERSION >= 3
@@ -152,7 +152,7 @@ void CVBase::set_window_bounds(Bounds bounds) {
                 } else {
                     for(size_t i=0; i<ptr->points().size(); i++) {
                         auto &p = ptr->points().at(i);
-                        auto &c = p.color();
+                        auto c = p.clr();
                         
 #if CV_MAJOR_VERSION >= 3
                         DEBUG_CV(cv::line(_window, (cv::Point2f)ptr->points().at(i < ptr->points().size()-1 ? i+1 : 0), (cv::Point2f)p.position(), cv::Scalar(c.b, c.g, c.r, c.a), t, cv::LINE_AA));

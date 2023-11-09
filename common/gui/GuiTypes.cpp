@@ -15,7 +15,7 @@
 
 namespace gui {
 VertexArray::VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type)
-    : Drawable(type), _transport(&p), _points(NULL), _primitive(primitive),_size_calculated(false), _thickness(1)
+    : Drawable(type), _transport(&p), _points(nullptr), _primitive(primitive),_size_calculated(false), _thickness(1)
 {
     if(memory == COPY)
         prepare();
@@ -54,7 +54,7 @@ void VertexArray::update_size() {
         //_points->resize(0);
         //_points->insert(_points->end(), _original_points.begin(), _original_points.end());
     } else
-        _points = std::make_shared<std::vector<Vertex>>(_original_points);
+        _points = std::make_unique<std::vector<Vertex>>(_original_points);
     
     if(_points->empty()) {
         set_bounds(Bounds());
@@ -197,8 +197,9 @@ Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, con
 {
     _vertices = std::make_shared<std::vector<Vec2>>(vertices.begin(), vertices.end());
     if(!vertices.empty()) {
-        set_border_clr(vertices.front().color());
-        set_fill_clr(vertices.front().color().alpha(100));
+        auto c = vertices.front().clr();
+        set_border_clr(c);
+        set_fill_clr(c.alpha(100));
     }
     update_size();
 }
@@ -247,8 +248,9 @@ void Polygon::set_vertices(const std::vector<Vec2> &vertices) {
 
 void Polygon::set_vertices(const std::vector<Vertex> &tmp) {
     if(!tmp.empty()) {
-        set_border_clr(tmp.front().color());
-        set_fill_clr(tmp.front().color().alpha(100));
+        auto c = tmp.front().clr();
+        set_border_clr(c);
+        set_fill_clr(c.alpha(100));
     }
     
     std::vector<Vec2> vertices(tmp.begin(), tmp.end());
@@ -431,7 +433,7 @@ void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& 
         Vertex p1(points.at(i));
         
         auto line = p1.position() - last_added_point.position();
-        auto color_diff = p1.color().diff(last_added_point.color()) / 4.f / 255.f;
+        auto color_diff = p1.clr().diff(last_added_point.clr()) / 4.f / 255.f;
         
         auto len = line.length();
         line = line / len;
