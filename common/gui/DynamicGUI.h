@@ -93,7 +93,27 @@ struct PreVarProps {
     }
     
     // Move constructor
-    PreVarProps(PreVarProps&& other) noexcept = default;
+    PreVarProps(PreVarProps&& other) noexcept {
+        original = std::move(other.original);
+        optional = other.optional;
+        html = other.html;
+        
+        // Compute the offset in the original string for 'name'
+        auto offset_name = other.name.data() - other.original.data();
+        name = std::string_view(original.data() + offset_name, other.name.size());
+
+        // Compute the offsets in the original string for 'subs' and 'parameters'
+        subs.resize(other.subs.size());
+        parameters.resize(other.parameters.size());
+        for (size_t i = 0; i < other.subs.size(); ++i) {
+            auto offset = other.subs[i].data() - other.original.data();
+            subs[i] = std::string_view(original.data() + offset, other.subs[i].size());
+        }
+        for (size_t i = 0; i < other.parameters.size(); ++i) {
+            auto offset = other.parameters[i].data() - other.original.data();
+            parameters[i] = std::string_view(original.data() + offset, other.parameters[i].size());
+        }
+    }
     
     std::string toStr() const;
     static std::string class_name() { return "PreVarProps"; }
@@ -154,7 +174,15 @@ struct PreAction {
     }
 
     // Move constructor
-    PreAction(PreAction&& other) noexcept = default;
+    PreAction(PreAction&& other) noexcept {
+        original = std::move(other.original);
+        name = std::string_view(original.data() + (other.name.data() - other.original.data()), other.name.size());
+        parameters.reserve(other.parameters.size());
+        for (const auto& param : other.parameters) {
+            auto offset = param.data() - other.original.data();
+            parameters.emplace_back(original.data() + offset, param.size());
+        }
+    }
 
     // Copy assignment operator
     PreAction& operator=(const PreAction& other) = delete;
