@@ -659,7 +659,9 @@ namespace cmn {
                 
                 if(!key.empty() && (key[0] == '\'' || key[0] == '"') && key[0] == key[key.length()-1])
                     key = key.substr(1, key.length()-2);
-                if(not value.empty() && value.front() == '\"' && value.back() == '\"')
+                if(not value.empty() 
+                    && ((value.front() == '\"' && value.back() == '\"') 
+                        || (value.front() == '\'' && value.back() == '\'')))
                     value = util::unescape(value.substr(1, value.length()-2u));
                 
                 if(map.has(key)) {

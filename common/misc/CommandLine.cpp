@@ -142,7 +142,8 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             }
             
             if((map->is_type<file::Path>(s.name)
-               || map->is_type<std::string>(s.name))
+               || map->is_type<std::string>(s.name)
+                || map->is_type<file::PathArray>(s.name))
                && (value.empty() || !(
                         (value[0] == value[value.length()-1] && value[0] == '\'')
                      || (value[0] == value[value.length()-1] && value[0] == '"')
