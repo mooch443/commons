@@ -108,6 +108,10 @@ std::string PreVarProps::toStr() const {
     return "PreVarProps<"+std::string(name)+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";
 }
 
+std::string Action::toStr() const {
+	return "Action<"+std::string(name)+" parms="+Meta::toStr(parameters)+">";
+}
+
 template<typename T>
     requires (std::convertible_to<T, std::string_view> || std::same_as<T, Pattern>)
 std::string _parse_text(const T& _pattern, const Context& context, State& state) {

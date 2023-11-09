@@ -133,7 +133,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
     
-    if(obj.count("drag") || obj.count("click")) {
+    if(obj.count("drag") || obj.count("click")) {
         auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
         
         ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
