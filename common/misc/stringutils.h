@@ -133,7 +133,38 @@ struct is_const_lvalue_ref<const T&> : std::true_type {};
     std::wstring find_replace(const std::wstring& str, const std::wstring& oldStr, const std::wstring& newStr);
     std::string find_replace(std::string_view str, std::string_view oldStr, std::string_view newStr);
 
-    std::string find_replace(const std::string& str, std::vector<std::tuple<std::string, std::string>>);
+inline std::string find_replace(
+    const std::string_view& subject,
+    const std::vector<std::pair<std::string_view, std::string_view>>& search_replace_pairs) {
+
+    if (subject.empty() || search_replace_pairs.empty()) {
+        return std::string(subject);
+    }
+
+    std::string result;
+    result.reserve(subject.size());
+
+    auto subject_view = std::string_view(subject);
+
+    for (size_t i = 0; i < subject_view.size();) {
+        bool match_found = false;
+        for (const auto& [search, replace] : search_replace_pairs) {
+            auto search_view = std::string_view(search);
+            if (subject_view.substr(i, search_view.size()) == search_view) {
+                result.append(replace);
+                i += search_view.size();
+                match_found = true;
+                break;  // Match found, no need to search further.
+            }
+        }
+
+        if (!match_found) {
+            result += subject_view[i++];
+        }
+    }
+
+    return result;
+}
 
 template<StringLike Str>
 auto ltrim(Str&& s) {

@@ -623,61 +623,61 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          const DefaultSettings& defaults,
                          uint64_t hash)
 {
-    LayoutContext layout(obj, state, defaults, hash);
+    LayoutContext layout(obj, state, context, defaults, hash);
     try {
         Layout::Ptr ptr;
 
         switch (layout.type) {
             case LayoutType::each:
-                ptr = layout.create_object<LayoutType::each>(context);
+                ptr = layout.create_object<LayoutType::each>();
                 break;
             case LayoutType::list:
-                ptr = layout.create_object<LayoutType::list>(context);
+                ptr = layout.create_object<LayoutType::list>();
                 break;
             case LayoutType::condition:
-                ptr = layout.create_object<LayoutType::condition>(context);
+                ptr = layout.create_object<LayoutType::condition>();
                 break;
             case LayoutType::vlayout:
-                ptr = layout.create_object<LayoutType::vlayout>(context);
+                ptr = layout.create_object<LayoutType::vlayout>();
                 break;
             case LayoutType::hlayout:
-                ptr = layout.create_object<LayoutType::hlayout>(context);
+                ptr = layout.create_object<LayoutType::hlayout>();
                 break;
             case LayoutType::gridlayout:
-                ptr = layout.create_object<LayoutType::gridlayout>(context);
+                ptr = layout.create_object<LayoutType::gridlayout>();
                 break;
             case LayoutType::collection:
-                ptr = layout.create_object<LayoutType::collection>(context);
+                ptr = layout.create_object<LayoutType::collection>();
                 break;
             case LayoutType::button:
-                ptr = layout.create_object<LayoutType::button>(context);
+                ptr = layout.create_object<LayoutType::button>();
                 break;
             case LayoutType::circle:
-                ptr = layout.create_object<LayoutType::circle>(context);
+                ptr = layout.create_object<LayoutType::circle>();
                 break;
             case LayoutType::text:
-                ptr = layout.create_object<LayoutType::text>(context);
+                ptr = layout.create_object<LayoutType::text>();
                 break;
             case LayoutType::stext:
-                ptr = layout.create_object<LayoutType::stext>(context);
+                ptr = layout.create_object<LayoutType::stext>();
                 break;
             case LayoutType::rect:
-                ptr = layout.create_object<LayoutType::rect>(context);
+                ptr = layout.create_object<LayoutType::rect>();
                 break;
             case LayoutType::textfield:
-                ptr = layout.create_object<LayoutType::textfield>(context);
+                ptr = layout.create_object<LayoutType::textfield>();
                 break;
             case LayoutType::checkbox:
-                ptr = layout.create_object<LayoutType::checkbox>(context);
+                ptr = layout.create_object<LayoutType::checkbox>();
                 break;
             case LayoutType::settings:
-                ptr = layout.create_object<LayoutType::settings>(context);
+                ptr = layout.create_object<LayoutType::settings>();
                 break;
             case LayoutType::combobox:
-                ptr = layout.create_object<LayoutType::combobox>(context);
+                ptr = layout.create_object<LayoutType::combobox>();
                 break;
             case LayoutType::image:
-                ptr = layout.create_object<LayoutType::image>(context);
+                ptr = layout.create_object<LayoutType::image>();
                 break;
             default:
                 FormatExcept("Unknown layout type: ", layout.type);

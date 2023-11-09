@@ -8,12 +8,12 @@ namespace gui {
     static bool nowindow_updated = false;
     static bool nowindow;
     
-TRange::TRange(std::string n, size_t i, size_t before)
+TRange::TRange(std::string_view n, size_t i, size_t before)
     : range(i, i), name(n), after(0), before(before)
 {
 }
 
-void TRange::close(size_t i, const std::string& text, size_t after) {
+void TRange::close(size_t i, const std::string_view& text, size_t after) {
     range.end = i;
     this->text = text.substr(range.start, range.end - range.start);
     this->after = after;
@@ -24,7 +24,7 @@ bool TRange::operator<(const TRange& other) const {
 }
 
 std::string TRange::toStr() const {
-    return "TRange<"+name+"> "+Meta::toStr(range)+" "+Meta::toStr(subranges)+" '"+text+"'";
+    return "TRange<"+std::string(name)+"> "+Meta::toStr(range)+" "+Meta::toStr(subranges)+" '"+std::string(text)+"'";
 }
     
 std::string TRange::class_name() {
@@ -166,7 +166,7 @@ StaticText::RichString::RichString(const std::string& str, const Font& font, con
     parsed = parse(str);
 }
 
-std::string StaticText::RichString::parse(const std::string &txt) {
+std::string StaticText::RichString::parse(const std::string_view &txt) {
     return utils::find_replace(txt, {
         {"&quot;", "\""},
         {"&apos;", "'"},
@@ -176,7 +176,7 @@ std::string StaticText::RichString::parse(const std::string &txt) {
     });
 }
 
-void StaticText::RichString::convert(std::shared_ptr<Text> text) const {
+void StaticText::RichString::convert(const std::unique_ptr<Text>& text) const {
     text->set_color(clr);
     text->set_font(font);
     text->set_txt(parsed);
@@ -218,7 +218,7 @@ void StaticText::add_shadow() {
     advance_wrap(*_fade_out);
 }
 
-    void StaticText::add_string(std::shared_ptr<RichString> ptr, std::vector<std::shared_ptr<RichString>> &strings, Vec2& offset)
+    void StaticText::add_string(std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>> &strings, Vec2& offset)
     {
         
         /*if(_max_size.y > 0) {
@@ -319,22 +319,26 @@ void StaticText::add_shadow() {
                 offset.x = 0;
                 
                 if(idx) {
-                    auto copy = ptr->str;
-                    ptr->str = copy.substr(0, idx);
-                    ptr->parsed = RichString::parse(ptr->str);
-                    strings.push_back(ptr);
+                    auto& obj = *ptr;
+                    strings.emplace_back(std::move(ptr));
+                    
+                    auto copy = std::string_view(obj.str);
+                    obj.str = copy.substr(0, idx);
+                    obj.parsed = RichString::parse(obj.str);
                     
                     copy = utils::ltrim(copy.substr(idx));
                     
                     // if there is some remaining non-whitespace
                     // string, add it recursively
                     if(!copy.empty()) {
-                        auto tmp = std::make_shared<RichString>(*ptr);
+                        auto tmp = std::make_unique<RichString>();
                         tmp->str = copy;
-                        tmp->parsed = RichString::parse(copy);
-                        tmp->pos.y++;
-                        
-                        add_string(tmp, strings, offset);
+                        tmp->font = obj.font;
+                        tmp->parsed = RichString::parse(tmp->str);
+                        tmp->pos.x = obj.pos.x;
+                        tmp->pos.y = obj.pos.y + 1;
+                        tmp->clr = obj.clr;
+                        add_string(std::move(tmp), strings, offset);
                     }
                     
                     return;
@@ -347,26 +351,24 @@ void StaticText::add_shadow() {
             offset.x += w;
         }
         
-        strings.push_back(ptr);
+        strings.emplace_back(std::move(ptr));
     }
 
 std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     char quote = 0;
-    std::deque<char> brackets;
     
     std::deque<TRange> tags;
     std::vector<TRange> global_tags;
     
     size_t before_pos = 0;
+    int64_t brackets{0};
     
-    std::stringstream tag; // holds current tag when inside one
-    
-    std::unordered_set<std::string> commands {
+    static constexpr std::array<std::string_view, 23> commands {
         "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange"
     };
     
-    for(size_t i=0; i<_txt.size(); ++i) {
-        char c = _txt[i];
+    for(size_t i=0, N = _txt.size(); i<N; ++i) {
+        const char& c = _txt[i];
         
         if(c == '\'' ||c == '"') {
             if(quote == c)
@@ -375,35 +377,37 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 quote = c;
             
         } else if(/*!quote &&*/ c == '<') {
-            if(brackets.empty())
+            if(brackets == 0)
                 before_pos = i;
-            brackets.push_front(c);
+            ++brackets;
             
         } else if(/*!quote &&*/ c == '>') {
-            if(!brackets.empty())
-                brackets.pop_front();
+            if(brackets > 0)
+                --brackets;
             
-            auto s = tag.str();
+            auto s = std::string_view(_txt.c_str() + before_pos + 1, i - before_pos - 1);
             if(!s.empty()) {
-                s = utils::lowercase(s);
-                
                 if(s[0] == '/') {
                     // ending tag
                     if(!tags.empty() && tags.front().name == s.substr(1)) {
-                        auto front = tags.front();
+                        auto front = std::move(tags.front());
                         front.close(before_pos, _txt, i+1);
                         
                         tags.pop_front();
                         if(tags.empty()) {
-                            global_tags.push_back(front);
+                            global_tags.emplace_back(std::move(front));
                         } else {
-                            tags.front().subranges.insert(front);
+                            tags.front().subranges.emplace(std::move(front));
                         }
                         
-                    } else
+                    }
+#ifndef NDEBUG
+                    else
                         print("Cannot pop tag ",s);
+#endif
                 } else {
-                    if(commands.find(s) == commands.end()) {
+                    //std::string l = utils::lowercase(s);
+                    if(not contains(commands, s)) {
                         if(tags.empty()) {
                             global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
                             global_tags.back().close(i+1, _txt, i+1);
@@ -422,11 +426,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 }
             }
         
-            tag.str("");
             before_pos = i+1;
             
-        } else if(!brackets.empty()) {
-            tag << c;
         }
     }
     
@@ -463,7 +464,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         // parse lines individually
         Vec2 offset(0, 0);
         
-        std::vector<std::shared_ptr<RichString>> strings;
+        std::vector<std::unique_ptr<RichString>> strings;
         
         auto global_tags = to_tranges(text());
         
@@ -479,11 +480,11 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         for(auto && tag : global_tags) {
             tag.color = default_clr;
             tag.font = _settings.default_font;
-            queue.push_back(tag);
+            queue.emplace_back(std::move(tag));
         }
         
         while(!queue.empty()) {
-            auto tag = queue.front();
+            auto tag = std::move(queue.front());
             queue.pop_front();
             
             bool breaks_line = false;
@@ -542,7 +543,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(std::make_shared<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    add_string(std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
                 }
                 
                 tag.text = tag.text.substr(sub.after - tag.range.start);
@@ -553,8 +554,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 
                 assert(tag.text.length() == tag.range.length());
                 
-                queue.push_front(tag);
-                queue.push_front(sub);
+                queue.emplace_front(std::move(tag));
+                queue.emplace_front(std::move(sub));
             } else {
                 auto array = utils::split(tag.text, '\n');
                 for(size_t k=0; k<array.size(); ++k) {
@@ -562,7 +563,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(std::make_shared<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    add_string(std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
                 }
                 if(breaks_line) {
                     ++offset.y;
@@ -582,8 +583,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         
         size_t row_start = 0;
         for(size_t i=0; i<texts.size(); i++) {
-            auto text = texts[i];
-            auto s = strings[i];
+            auto &text = texts[i];
+            auto &s = strings[i];
             
             text->set_origin(Vec2(0, 0.5));
             

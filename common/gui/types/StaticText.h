@@ -11,15 +11,15 @@ namespace gui {
     struct TRange {
         Range<size_t> range;
         Font font;
-        std::string name, text;
+        std::string_view name, text;
         std::set<TRange> subranges;
         size_t after;
         size_t before;
         Color color;
         
-        TRange(std::string n = "", size_t i = 0, size_t before = 0);
+        TRange(std::string_view n = {}, size_t i = 0, size_t before = 0);
         
-        void close(size_t i, const std::string& text, size_t after);
+        void close(size_t i, const std::string_view& text, size_t after);
         
         bool operator<(const TRange& other) const;
         
@@ -34,7 +34,7 @@ namespace gui {
         NUMBER_ALIAS(Shadow_t, float)
         
     private:
-        std::vector<std::shared_ptr<Text>> texts;
+        std::vector<std::unique_ptr<Text>> texts;
         std::vector<Vec2> positions;
         Vec2 _org_position;
         derived_ptr<ExternalImage> _fade_out;
@@ -62,9 +62,9 @@ namespace gui {
             
             RichString(const std::string& str = "", const Font& font = Font(), const Vec2& pos = Vec2(), const Color& clr = Color());
             
-            static std::string parse(const std::string& txt);
+            static std::string parse(const std::string_view& txt);
             
-            void convert(std::shared_ptr<Text> text) const;
+            void convert(const std::unique_ptr<Text>& text) const;
         };
         
     public:
@@ -155,7 +155,7 @@ namespace gui {
         void set_margins(const Margins& margin);
         
         void update() override;
-        void add_string(std::shared_ptr<RichString> ptr, std::vector<std::shared_ptr<RichString>>& output, Vec2& offset);
+        void add_string(std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>>& output, Vec2& offset);
         void structure_changed(bool downwards) override;
         virtual void set_size(const Size2& size) override;
         

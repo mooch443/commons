@@ -45,68 +45,6 @@ namespace utils {
         return _find_replace<std::wstring>(str, oldStr, newStr);
     }
 
-    class Trie {
-    public:
-        void insert(const std::string& word, size_t index) {
-            Trie* node = this;
-            for (const auto& ch : word) {
-                if (node->children.find(ch) == node->children.end()) {
-                    node->children[ch] = std::make_unique<Trie>();
-                }
-                node = node->children[ch].get();
-            }
-            node->indices.insert(index);
-        }
-
-        Trie* get_child(char ch) {
-            return children.find(ch) != children.end() ? children[ch].get() : nullptr;
-        }
-
-        const std::set<size_t>& get_indices() const {
-            return indices;
-        }
-
-    private:
-        std::map<char, std::unique_ptr<Trie>> children;
-        std::set<size_t> indices;
-    };
-
-    std::string find_replace(const std::string& str, std::vector<std::tuple<std::string, std::string>> search_strings) {
-        if (str.empty() || search_strings.empty()) {
-            return str;
-        }
-
-        Trie trie;
-        for (size_t i = 0; i < search_strings.size(); ++i) {
-            trie.insert(std::get<0>(search_strings[i]), i);
-        }
-
-        std::string result;
-        result.reserve(str.size());
-        size_t i = 0;
-
-        while (i < str.size()) {
-            Trie* node = &trie;
-            size_t j = i;
-            std::set<size_t> matches;
-
-            while (j < str.size() && (node = node->get_child(str[j]))) {
-                matches.insert(node->get_indices().begin(), node->get_indices().end());
-                ++j;
-            }
-
-            if (!matches.empty()) {
-                size_t match = *matches.begin();
-                result += std::get<1>(search_strings[match]);
-                i += std::get<0>(search_strings[match]).size();
-            } else {
-                result += str[i++];
-            }
-        }
-
-        return result;
-    }
-
     std::string repeat(const std::string& s, size_t N) {
         std::string output;
         output.reserve(s.size() * N);

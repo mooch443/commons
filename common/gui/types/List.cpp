@@ -137,8 +137,8 @@ namespace gui {
         _items = items;
         _selected_rect = NULL;
         
-        std::function<void(std::shared_ptr<Rect>, std::shared_ptr<Item>)>
-        func = [this](std::shared_ptr<Rect>, std::shared_ptr<Item> item) {
+        std::function<void(const std::shared_ptr<Rect>&, const std::shared_ptr<Item>&)>
+        func = [this](const std::shared_ptr<Rect>&, const std::shared_ptr<Item>& item) {
             item->_list = this;
         };
         

@@ -45,8 +45,8 @@ Image::Ptr load_image(const file::Path& path) {
 }
 
 // Initialize from a JSON object
-LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults, uint64_t hash)
- : obj(obj), state(state), _defaults(defaults)
+LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
+ : obj(obj), state(state), context(context), _defaults(defaults)
 {
     if(not obj.contains("type"))
         throw std::invalid_argument("Structure does not contain type information");
@@ -133,17 +133,57 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
     
+    if(obj.count("drag") || obj.count("click")) {
+        auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
+        
+        ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
+            if(event.hover.hovered
+               && _ptr->pressed())
+            {
+                try {
+                    if(auto it = context.actions.find(action.name);
+                       it != context.actions.end())
+                    {
+                        State state;
+                        it->second(action.parse(context, state));
+                    } else
+                        print("Unknown Action: ", action);
+                    
+                } catch(...) {
+                    FormatExcept("error using action ", action);
+                }
+            }
+        });
+        
+        ptr->add_event_handler(EventType::MBUTTON, [action, context = context](Event event) {
+            if(event.mbutton.pressed) {
+                try {
+                    if(auto it = context.actions.find(action.name);
+                       it != context.actions.end())
+                    {
+                        State state;
+                        it->second(action.parse(context, state));
+                    } else
+                        print("Unknown Action: ", action);
+                    
+                } catch(...) {
+                    FormatExcept("error using action ", action);
+                }
+            }
+        });
+    }
+    
     ptr->add_custom_data("object_index", (void*)hash);
     //print("adding object_index to ",ptr->type()," with index ", hash, " for ", (uint64_t)ptr.get());
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::combobox>(const Context&) {
+Layout::Ptr LayoutContext::create_object<LayoutType::combobox>() {
     throw std::invalid_argument("Combobox not implemented.");
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::image>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::image>()
 {
     Image::Ptr img;
     
@@ -195,7 +235,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
 {
     std::vector<Layout::Ptr> children;
     if(obj.count("children")) {
@@ -225,7 +265,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>(const Context& con
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
 {
     std::vector<Layout::Ptr> children;
     
@@ -256,7 +296,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>(const Context& con
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
 {
     std::vector<Layout::Ptr> rows;
     GridLayout::HPolicy halign{GridLayout::HPolicy::LEFT};
@@ -318,7 +358,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context& 
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
 {
     std::vector<Layout::Ptr> children;
     
@@ -339,7 +379,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context& 
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
 {
     Layout::Ptr ptr;
     std::string var;
@@ -404,14 +444,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context& co
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::button>()
 {
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj["action"].get<std::string>());
-        ptr->on_click([action, context](auto){
+        ptr->on_click([action, context = context](auto){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end())
             {
@@ -426,7 +466,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context& cont
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
 {
     std::string text = get(std::string(), "text");
     bool checked = get(false, "checked");
@@ -435,7 +475,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj["action"].get<std::string>());
-        ptr.to<Checkbox>()->on_change([action, context](){
+        ptr.to<Checkbox>()->on_change([action, context=context](){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end()) 
             {
@@ -450,14 +490,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context& co
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
 {
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj["action"].get<std::string>());
-        ptr.to<Textfield>()->on_enter([action, context](){
+        ptr.to<Textfield>()->on_enter([action, context=context](){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end()) 
             {
@@ -472,7 +512,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context& c
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::stext>()
 {
     std::string text = get(std::string(), "text");
     StaticText::FadeOut_t fade_out{get(0.f, "fade_out")};
@@ -493,62 +533,15 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context& context) {
+Layout::Ptr LayoutContext::create_object<LayoutType::rect>() {
     auto ptr = Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
     
-    if(obj.count("action")) {
-        auto action = PreAction::fromStr(obj["action"].get<std::string>());
-        auto context_copy = context;
-        
-        context_copy.variables.insert(VarFunc("mouse", [_ptr = ptr.get()](const VarProps&){
-            return _ptr->parent() && _ptr->parent()->stage() ? _ptr->parent()->stage()->mouse_position() : Vec2();
-        }));
-        
-        ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = std::move(context_copy)](Event event) {
-            if(event.hover.hovered
-               && _ptr->pressed()) 
-            {
-                print("Dragging: ", event.hover.x);
-                try {
-                    if(auto it = context.actions.find(action.name);
-                       it != context.actions.end())
-                    {
-                        State state;
-                        it->second(action.parse(context, state));
-                    } else
-                        print("Unknown Action: ", action);
-                    
-                } catch(...) {
-                    FormatExcept("error using action ", action);
-                }
-            }
-        });
-        
-        /*ptr->on_click([action, context = std::move(context_copy)](auto){
-            try {
-                if(context.actions.contains(action.name)) {
-                    auto copy = action;
-                    for(auto&p : copy.parameters) {
-                        auto c = p;
-                        p = parse_text(p, context);
-                        print(c," => ", p);
-                    }
-                    
-                    context.actions.at(action.name)(copy);
-                } else
-                    print("Unknown Action: ", action);
-                
-            } catch(...) {
-                FormatExcept("error using action ", action);
-            }
-        });*/
-    }
     
     return ptr;
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::text>()
 {
     Text::Shadow_t shadow{get(0.f, "shadow")};
     auto text = get(std::string(), "text");
@@ -556,7 +549,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::circle>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::circle>()
 {
     Layout::Ptr ptr;
     Radius radius {get(5.f, "radius")};
@@ -566,7 +559,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::circle>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
+Layout::Ptr LayoutContext::create_object<LayoutType::each>()
 {
     Layout::Ptr ptr;
     if(obj.count("do")) {
@@ -587,7 +580,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&)
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::list>()
 {
     Layout::Ptr ptr;
     if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
@@ -639,7 +632,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
         };
         
         ptr.to<ScrollableList<DetailItem>>()->set_items(items);
-        ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context](size_t index, const DetailItem &)
+        ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context=context](size_t index, const DetailItem &)
         {
             if(index >= actions.size()) {
                 FormatWarning("Cannot select invalid index: ", index, " from ", actions);
@@ -682,7 +675,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context& contex
 }
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context& context)
+Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
 {
     Layout::Ptr ptr;
     if(obj.count("then")) {

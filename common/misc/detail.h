@@ -627,7 +627,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         }
         return buffer;
     }
-    
+        
     /**
      * T is the destination type, V is a primitive Type that can be copied easily.
      * V has to have a method convert(T&) for assignment.
@@ -636,58 +636,32 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
      * @requires Source type needs a method convert(Target*),
      *           Target needs empty constructor
      */
-    /*template<typename K, typename T = K, typename V>
-    void update_vector_elements(std::vector<K*>& vector,
-                                const std::vector<V*>& compare,
-                                const std::function<void(T*, V*)>& prepare = [](T*,V*){})
-    {
-        // Delete elements from the end of vector if its too long
-        for(size_t i=vector.size()-1; !vector.empty() && i>=compare.size(); i--) {
-            delete vector[i];
-            vector.erase(vector.begin() + i);
+    template<typename T, typename K = T, typename V, class... D, template <typename, class...> class PtrType, class... DV, template <typename, class...> class PtrTypeV>
+    inline void update_vector_elements(std::vector<PtrType<T, D...>>& vector,
+                                       const std::vector<PtrTypeV<V, DV...>>& compare,
+                                       const std::function<void(const PtrType<T, D...>&, const PtrTypeV<V, DV...>&)>& prepare = nullptr) {
+        // Resize vector to match compare, default-constructing new elements as needed
+        if (vector.size() > compare.size()) {
+            vector.resize(compare.size());
         }
-        
-        // set elements in the beginning
-        for(size_t i=0; i<vector.size(); i++) {
-            prepare((T*)vector[i], compare[i]);
-            compare[i]->convert((T*)vector[i]);
-        }
-        
-        // add missing elements
-        for(size_t i=vector.size(); i<compare.size(); i++) {
-            T* obj = new T;
-            vector.push_back(obj);
-            
-            prepare((T*)vector[i], compare[i]);
-            compare[i]->convert((T*)obj);
-        }
-    }*/
-    
-    template<typename K, typename T = K, typename V>
-    inline void update_vector_elements(std::vector<std::shared_ptr<K>>& vector,
-                                const std::vector<std::shared_ptr<V>>& compare,
-                                const std::function<void(std::shared_ptr<K>, std::shared_ptr<V>)>& prepare = nullptr)
-    {
-        // Delete elements from the end of vector if its too long
-        for(int64_t i=int64_t(vector.size())-1; !vector.empty() && i>=(int64_t)compare.size(); i--) {
-            vector.erase(vector.begin() + i);
-        }
-        
-        // set elements in the beginning
-        for(size_t i=0; i<vector.size(); i++) {
-            if(prepare)
+
+        // Prepare and convert existing elements
+        for (size_t i = 0; i < vector.size(); ++i) {
+            if (prepare) {
                 prepare(vector[i], compare[i]);
+            }
             compare[i]->convert(vector[i]);
         }
-        
-        // add missing elements
-        for(size_t i=vector.size(); i<compare.size(); i++) {
-            auto obj = std::make_shared<T>();
-            vector.push_back(obj);
-            
-            if(prepare)
-                prepare(vector[i], compare[i]);
-            compare[i]->convert(obj);
+
+        // Add and prepare missing elements
+        for (size_t i = vector.size(); i < compare.size(); ++i) {
+            PtrType<T, D...> ptr = std::make_unique<K>();
+            vector.emplace_back(std::move(ptr));
+
+            if (prepare) {
+                prepare(vector.back(), compare[i]);
+            }
+            compare[i]->convert(vector.back());
         }
     }
     

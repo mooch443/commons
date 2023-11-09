@@ -62,6 +62,7 @@ class LayoutContext {
 public:
     const nlohmann::json& obj;
     State& state;
+    const Context& context;
     
     DefaultSettings _defaults;
     
@@ -87,10 +88,10 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(const nlohmann::json& obj, State& state, DefaultSettings defaults, uint64_t hash = 0);
+    LayoutContext(const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
     
     template <LayoutType::Class T>
-    Layout::Ptr create_object(const Context&) {
+    Layout::Ptr create_object() {
         static_assert("Template not specialized for this LayoutType");
         return nullptr;
     }
@@ -104,54 +105,54 @@ Image::Ptr load_image(const file::Path& path);
 
 // Specializations
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::combobox>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::combobox>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::image>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::image>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::collection>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::collection>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::settings>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::settings>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::button>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::button>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::textfield>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::textfield>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::stext>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::stext>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::rect>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::rect>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::text>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::text>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::circle>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::circle>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::each>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::each>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::condition>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::condition>();
 
 template <>
-Layout::Ptr LayoutContext::create_object<LayoutType::list>(const Context&);
+Layout::Ptr LayoutContext::create_object<LayoutType::list>();
 
 }

@@ -24,6 +24,7 @@ namespace gui {
         GETTER(std::vector<Drawable*>, current_children)
         GETTER(std::vector<Drawable*>, new_children)
         robin_hood::unordered_set<Drawable*> _currently_removed;
+        robin_hood::unordered_flat_set<Drawable*> _current_wrapped;
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false)
         
@@ -146,6 +147,7 @@ namespace gui {
             if(_index < _current_children.size()) {
                 auto current = _current_children[_index];
                 auto owned = _owned[current];
+                _current_children[_index] = nullptr;
                 
                 if(owned
                    && current
@@ -158,18 +160,23 @@ namespace gui {
                     used_or_deleted = true;
                     //d = current;
                     ptr = static_cast<T*>(current);
+                    //print("add<",type_name<T>(),">: reusing ", hex(ptr), " at ", _index);
 
                 } else {
                     ptr = new T(std::forward<Args>(args)...);
                     if(!owned) {
-                        if(current)
+                        if(current) {
                             _currently_removed.insert(current);
+                            //print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
+                        }
                         //current = ptr;
                         used_or_deleted = true;
 
                     } else {
                         //auto tmp = current;
                         //current = ptr;
+                        //print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
+                        
                         used_or_deleted = true;
                         current->set_parent(NULL);
                         //deinit_child(false, tmp);
@@ -178,12 +185,11 @@ namespace gui {
                     init_child(ptr, _index, true);
                 }
                 
-                _current_children[_index] = nullptr;
-                
             } else {
                 assert(_index == _new_children.size());
                 ptr = new T(std::forward<Args>(args)...);
                 used_or_deleted = true;
+                //print("add<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
                 init_child(ptr, _index, true);
             }
             
@@ -208,9 +214,15 @@ namespace gui {
         void advance_wrap(T &d) {
             Drawable *ptr = &d;
             
+            assert(std::find(_new_children.begin(), _new_children.end(), ptr) == _new_children.end());
+            
             if(_index < _current_children.size()) {
                 auto current = _current_children[_index];
+                _current_children[_index] = nullptr;
+                
                 if(current != ptr) {
+                    //print("wrap<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", ptr);
+                    
                     assert(!contains(_new_children, ptr));
                     if(current && _owned[current]) {
                         current->set_parent(NULL);
@@ -220,22 +232,25 @@ namespace gui {
                     }
                     
                     //current = ptr;
-                    _current_children[_index] = nullptr;
                     init_child(ptr, _index, false);
+                    
+                    _current_wrapped.insert(ptr);
                     
                     // try to see if this object already exists somewhere
                     // in the list after this
-                    typedef decltype(_current_children.begin())::difference_type diff_t;
+                    /*typedef decltype(_current_children.begin())::difference_type diff_t;
                     for(size_t i=_index+1; i<_current_children.size(); i++) {
+                        ++iterations_dumb;
                         if(_current_children[i] == ptr) {
-                            _current_children.erase(_current_children.begin() + (diff_t)i);
+                            print("\tWould clear ", hex(ptr), " from position ", i, " in _current_children");
+                            //_current_children.erase(_current_children.begin() + (diff_t)i);
                             break;
                         }
-                    }
+                    }*/
                 }
                 
             } else {
-                assert(std::find(_new_children.begin(), _new_children.end(), ptr) == _new_children.end());
+                //print("wrap<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
                 assert(_index == _new_children.size());
                 //_children.push_back(ptr);
                 init_child(ptr, _index, false);

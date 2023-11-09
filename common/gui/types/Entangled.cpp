@@ -180,6 +180,8 @@ void Entangled::_set_child(Drawable* ptr, bool , size_t index) {
         _new_children.resize(index + 1);
         _new_children[index] = ptr;
     }
+    
+    //assert(not contains(_current_children, ptr));
 }
 
 void Entangled::on_visibility_change(bool visible) {
@@ -209,47 +211,91 @@ void Entangled::on_visibility_change(bool visible) {
         
         for(size_t i=_index; i < _current_children.size(); ++i) {
             auto tmp = _current_children[i];
+            _current_children[i] = nullptr;
+            
             if(tmp) {
-                tmp->set_parent(NULL);
+                //iterations_smart +=_current_wrapped.empty() ? 0 : log(_current_wrapped.size());
+                if(auto it = _current_wrapped.find(tmp);
+                   it != _current_wrapped.end())
+                {
+                    //print("Ignoring past-end of _current_children: ", hex(tmp));
+                    assert(std::find(_new_children.begin(), _new_children.begin() + _index, tmp) != _new_children.begin() + _index);
+                    _current_wrapped.erase(it);
+                    
+                    if(auto it = _currently_removed.find(tmp);
+                       it != _currently_removed.end()) 
+                    {
+                        _currently_removed.erase(it);
+                    }
+                    continue;
+                }
+                //print("Past end of _current_children: ", hex(tmp));
+                
+#ifndef NDEBUG
+                for(size_t i=0; i<_index; ++i) {
+                    assert(_new_children.at(i) != tmp);
+                }
+#endif
+                
+                bool owned = false;
                 auto it = _owned.find(tmp);
                 if(it != _owned.end()) {
                     if(it->second)
-                        delete tmp;
+                        owned = true;
                     _owned.erase(it);
                 }
-                _current_children[i] = nullptr;
+                
+                tmp->set_parent(NULL);
+                
+                if(owned)
+                    delete tmp;
             }
         }
         
         while(!_currently_removed.empty()) {
             auto d = *_currently_removed.begin();
-            if (!d) {
-                _currently_removed.erase(_currently_removed.begin());
+            _currently_removed.erase(_currently_removed.begin());
+            
+            if (!d)
+                continue;
+            
+            //iterations_smart += log(_current_wrapped.size());
+            if(auto it = _current_wrapped.find(d);
+               it != _current_wrapped.end())
+            {
+                _current_wrapped.erase(it);
+                //print("Ignoring currently_removed: ", hex(d));
                 continue;
             }
+            
+#ifndef NDEBUG
+            //print("Removing ", hex(d));
+            for(size_t i=0; i<_index; ++i) {
+                assert(_new_children.at(i) != d);
+            }
+#endif
+            
+            bool owned = false;
+            auto it = _owned.find(d);
+            if(it != _owned.end()) {
+                if(it->second)
+                    owned = true;
+                _owned.erase(it);
+            }
+            
             d->set_parent(NULL);
             
-            if(!_currently_removed.empty() && *_currently_removed.begin() == d) {
-/*#ifndef NDEBUG
-                FormatWarning("Had to deinit forcefully");
-#endif*/
-                if(d->parent()) {
-                    d->set_parent(nullptr);
-                }
-                
-                auto it = _owned.find(d);
-                if(it != _owned.end()) {
-                    if(it->second)
-                        delete d;
-                    _owned.erase(it);
-                }
-                _currently_removed.erase(_currently_removed.begin());
-            }
+            if(owned)
+                delete d;
         }
         
         _new_children.resize(_index);
         std::swap(_current_children, _new_children);
-            //deinit_child(false, *_currently_removed.begin());
+        _new_children.clear();
+        _current_wrapped.clear();
+        
+        //if(iterations_dumb > 0 || iterations_smart > 0)
+        //    print("Iterations: ", iterations_dumb, " vs. ", iterations_smart, " (", int64_t(iterations_dumb) - int64_t(iterations_smart),")");
         
 #ifndef NDEBUG
         for(auto c : _current_children) {

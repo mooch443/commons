@@ -536,13 +536,13 @@ std::vector<typename T::value_type> percentile(const T& values, const std::initi
 
 template<typename T, typename Q>
     requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
-inline bool contains(const T& s, const Q& value) {
+inline constexpr bool contains(const T& s, const Q& value) {
     return std::find(s.begin(), s.end(), value) != s.end();
 }
 
 template<typename T, typename K>
     requires std::convertible_to<K, T>
-inline bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
+inline constexpr bool contains(const ska::bytell_hash_set<T>& s, const K& value) {
     return s.count(value) > 0;
 }
 

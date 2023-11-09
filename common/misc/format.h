@@ -331,11 +331,19 @@ public:
     //! but ALSO a string operator (since they can apparently
     //! be represented directly AS a string, so they ARE one).
     template<typename T, typename K = cmn::remove_cvref_t<T>>
-        requires (std::convertible_to<K, std::string> || is_explicitly_convertible<K, std::string>)
+        requires (std::convertible_to<K, std::string> 
+                  || is_explicitly_convertible<K, std::string>)
                 && (!std::same_as<K, std::string>)
+                && (!are_the_same<K, std::string_view>)
                 && (!_is_dumb_pointer<T>)
     static std::string parse_value(const T& value) {
         return console_color<string_color, colors>(Meta::toStr(value));
+    }
+    
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
+        requires are_the_same<K, std::string_view>
+    static std::string parse_value(const T& value) {
+        return pretty_text(value);
     }
 
     template<utils::StringLike Str>
@@ -822,6 +830,24 @@ namespace fmt {
     template<typename T> auto yellow(const T& obj) -> _clr<FormatColor::YELLOW, T> { return { obj }; }
     template<typename T> auto cyan(const T& obj) -> _clr<FormatColor::CYAN, T> { return { obj }; }
     template<typename T> auto black(const T& obj) -> _clr<FormatColor::BLACK, T> { return { obj }; }
+}
+
+template<typename T>
+    requires std::integral<T> || std::is_pointer_v<T>
+struct hex_t {
+    static constexpr cmn::FormatColor_t color = ParseValue<>::keyword_color;
+    
+    T value;
+    std::string toStr() const {
+        std::stringstream ss;
+        ss << std::hex << value;
+        return ss.str();
+    }
+};
+
+template<typename T>
+inline auto hex(T value) noexcept {
+    return hex_t<T>{ value };
 }
 
 template<FormatterType type, typename... Args>
