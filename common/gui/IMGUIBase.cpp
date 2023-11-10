@@ -859,9 +859,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
             config.GlyphOffset.y = 0;
             _fonts[Style::Symbols] = load_font(0, "", syms, 0.95, true);
+
+            io.Fonts->Build();
         }
         
-        io.Fonts->Build();
 
         _platform->post_init();
         _platform->set_title(title);
@@ -1576,7 +1577,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                       (tex_cache->texture()->image_height-1) / float(tex_cache->texture()->height)),
                                col);
             } else {*/
-                list->AddImage(tex_cache->texture()->ptr,
+                list->AddImage((ImTextureID)tex_cache->texture()->ptr,
                                ImVec2(0, 0),
                                ImVec2(o->width() - 0.5, o->height() - 0.5),
                                ImVec2(0, 0),
