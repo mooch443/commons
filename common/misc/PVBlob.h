@@ -188,11 +188,11 @@ public:
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
 
-    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold) const;
-    cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold, uint8_t padding = 1) const;
+    cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image, uint8_t padding = 1) const;
 
-    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const;
-    cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image) const;
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, uint8_t padding = 1) const;
+    cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image, uint8_t padding = 1) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
     

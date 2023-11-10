@@ -639,13 +639,13 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
 
-    std::tuple<Vec2, Image::Ptr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum) const {
+    std::tuple<Vec2, Image::Ptr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, uint8_t padding) const {
         auto image = Image::Make();
-        auto pos = equalized_luminance_alpha_image(background, threshold, minimum, maximum, *image);
+        auto pos = equalized_luminance_alpha_image(background, threshold, minimum, maximum, *image, padding);
         return { pos, std::move(image) };
     }
-    Vec2 Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, Image& image) const {
-        Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+    Vec2 Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, Image& image, uint8_t padding) const {
+        Bounds b(bounds().pos()-Vec2(padding), bounds().size()+Vec2(padding));
         b.restrict_to(background.bounds());
         
         image.create(b.height, b.width, 2);
@@ -691,8 +691,8 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return b.pos();
     }
 
-    cmn::Vec2 Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold, Image& image) const {
-        Bounds b(bounds().pos() - Vec2(1), bounds().size() + Vec2(2));
+    cmn::Vec2 Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold, Image& image, uint8_t padding) const {
+        Bounds b(bounds().pos() - Vec2(padding), bounds().size() + Vec2(padding * 2));
         b.restrict_to(background.bounds());
 
         image.create(b.height, b.width, 2);
@@ -728,9 +728,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         return b.pos();
     }
-    std::tuple<Vec2, Image::Ptr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold) const {
+    std::tuple<Vec2, Image::Ptr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold, uint8_t padding) const {
         auto image = Image::Make();
-        Vec2 pos = luminance_alpha_image(background, threshold, *image);
+        Vec2 pos = luminance_alpha_image(background, threshold, *image, padding);
         return { pos, std::move(image) };
     }
     

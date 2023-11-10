@@ -1379,7 +1379,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         return;
     }
     
-    if(!o->was_visible())
+    if(not o->was_visible())
         return;
     
     ++_objects_drawn;
@@ -1578,10 +1578,10 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             } else {*/
                 list->AddImage(tex_cache->texture()->ptr,
                                ImVec2(0, 0),
-                               ImVec2(o->width(), o->height()),
+                               ImVec2(o->width() - 0.5, o->height() - 0.5),
                                ImVec2(0, 0),
-                               ImVec2((tex_cache->texture()->image_width) / float(tex_cache->texture()->width),
-                                      (tex_cache->texture()->image_height) / float(tex_cache->texture()->height)),
+                               ImVec2((o->width() - 0.5) / float(tex_cache->texture()->width),
+                                      (o->height() - 0.5) / float(tex_cache->texture()->height)),
                                col);
             //}
             for (auto i = I; i<list->VtxBuffer.size(); ++i) {
@@ -1616,6 +1616,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             // Non Anti-aliased Stroke
             auto &points = ptr->VertexArray::points();
+            /*    list->AddRect((ImVec2)transform.transformPoint(Vec2()),
+                              (ImVec2)transform.transformPoint(o->size()),
+                              cvtClr(o->was_visible() ? Purple : Green));*/
             RenderNonAntialiasedStroke(points, order, list, ptr->thickness());
             break;
         }
@@ -1732,10 +1735,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         //bool skip = false;
         auto dim = window_dimensions() / _dpi_scale;
         
-        if(!Bounds(0, 0, dim.width-0, dim.height-0).overlaps(bounds)) {
+        if(!Bounds(0, 0, dim.width-0, dim.height-0).overlaps(bounds)
+           && (o->type() != Type::ENTANGLED /*|| dynamic_cast<PlaceinLayout*>(o) == nullptr*/) && (o->type() != Type::SECTION)) {
             ++_skipped;
             return;
-        }
+        } else
         
         o->set_was_visible(true);
 #ifndef NDEBUG

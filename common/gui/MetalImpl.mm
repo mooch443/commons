@@ -694,15 +694,15 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
         if(not d)*/ {
             //static Timing timing("mostly cpu", 0.1);
             //TakeTiming take(timing);
-            if(ptr->cols < tex.image_width
+            /*if(ptr->cols < tex.image_width
                || ptr->rows < tex.image_height)
             {
                 static constexpr auto zeros = create_filled_array<uchar, 4096, 0>();
                 MTLRegion region {
                     { 0, 0, 0 },                   // MTLOrigin
                     { // MTLSize
-                        min(max(ptr->cols, tex.image_width), tex.width),
-                        min(max(ptr->rows, tex.image_height), tex.height),
+                        min(max(ptr->cols + 1, tex.image_width + 1), tex.width),
+                        min(max(ptr->rows + 1, tex.image_height + 1), tex.height),
                         1
                     }
                 };
@@ -733,7 +733,7 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
                                    bytesPerRow:bytesPerRow];
                     }
                 }
-            }
+            }*/
             
             NSUInteger bytesPerRow = ptr->dims * ptr->cols;
             [texture replaceRegion:region
