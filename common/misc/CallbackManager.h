@@ -4,19 +4,22 @@
 
 namespace cmn {
 
-template<typename Argument = std::string_view>
-class CallbackManagerImpl {
+namespace callback {
     template<typename A>
     struct Fn {
         using type = std::function<void(A)>;
     };
 
+    // Specialize Fn for void outside of the CallbackManagerImpl class
     template<>
     struct Fn<void> {
         using type = std::function<void()>;
     };
-    
-    using Fn_t = typename Fn<Argument>::type;
+}
+
+template<typename Argument = std::string_view>
+class CallbackManagerImpl {
+    using Fn_t = typename callback::Fn<Argument>::type;
     
 private:
     std::size_t _nextID = 0; // Counter for generating unique IDs
