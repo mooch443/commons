@@ -32,7 +32,8 @@ void VertexArray::prepare() {
     _original_points = *_transport;
     //_original_points.insert(_original_points.end(), _transport->begin(), _transport->end());
     
-    _points = nullptr;
+    if(_points)
+        _points->clear();
     _transport = NULL;
     
     update_size();
@@ -46,11 +47,14 @@ void VertexArray::confirm_points() {
 }
 
 void VertexArray::update_size() {
-    if(_points && !_points->empty())
-        return;
+    //if(_points && !_points->empty() )
+    //    return;
     
     if(_points) {
-        *_points = _original_points;
+        if(*_points != _original_points)
+            *_points = _original_points;
+        else
+            return;
         //_points->resize(0);
         //_points->insert(_points->end(), _original_points.begin(), _original_points.end());
     } else
@@ -81,6 +85,30 @@ void VertexArray::update_size() {
         set_bounds(Bounds(minimum, maximum));
     }
     _size_calculated = true;
+}
+
+void Line::create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale, float t) {
+    set_scale(scale);
+    set_thickness(t);
+    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color), Vertex(pos1, color));
+}
+void Line::create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY, const Vec2 & scale) {
+    set_scale(scale);
+    set_thickness(t);
+    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color), Vertex(pos1, color));
+}
+
+void VertexArray::create(const std::vector<Vertex>& p, PrimitiveType primitive) {
+    if(_original_points != p || primitive != _primitive) {
+        _original_points.resize(p.size());
+        for(size_t i=0, N = p.size(); i<N; ++i) {
+            _original_points[i] = p[i];
+        }
+        //_points = nullptr;
+        _transport = nullptr;
+        _primitive = primitive;
+        update_size();
+    }
 }
             
 void VertexArray::set_pos(const Vec2 &pos) {

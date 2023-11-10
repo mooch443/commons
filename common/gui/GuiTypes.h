@@ -45,11 +45,28 @@ public:
     VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type = Type::VERTICES);
     virtual ~VertexArray();
     
-    void create(const std::vector<Vertex>& p, PrimitiveType primitive) {
-        if(_original_points != p || primitive != _primitive) {
-            _original_points = p;
-            _points = nullptr;
+    void create(const std::vector<Vertex>& p, PrimitiveType primitive);
+    
+    template<typename... Vs>
+    void create(PrimitiveType primitive, Vs... vertices) {
+        const size_t N = sizeof...(vertices);
+        bool dirty = _original_points.size() != N;
+        if(dirty)
+            _original_points.resize(N);
+        
+        size_t i=0;
+        const auto update = [&](size_t index, auto& v){
+            auto& ptr = _original_points[index];
+            if(ptr != v) {
+                ptr = v;
+                dirty = true;
+            }
+        };
+        (update(i++, vertices), ...);
+        
+        if(dirty || _primitive != primitive) {
             _transport = nullptr;
+            //_points = nullptr;
             _primitive = primitive;
             update_size();
         }
@@ -150,16 +167,8 @@ protected:
             VertexArray::create(p, PrimitiveType::LineStrip);
         }
         
-        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1) {
-            set_scale(scale);
-            set_thickness(t);
-            VertexArray::create(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
-        }
-        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1)) {
-            set_scale(scale);
-            set_thickness(t);
-            VertexArray::create(std::vector<Vertex>{Vertex(pos0, color), Vertex(pos1, color)}, PrimitiveType::LineStrip);
-        }
+        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1);
+        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1));
         
         const std::vector<Vertex>& points() override final;
         std::ostream &operator <<(std::ostream &os) override;
