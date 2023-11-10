@@ -1567,7 +1567,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 col = (ImColor)static_cast<ExternalImage*>(o)->color();
             
             auto I = list->VtxBuffer.size();
-            if(static_cast<ExternalImage*>(o)->cut_border()) {
+            /*if(static_cast<ExternalImage*>(o)->cut_border()) {
                 list->AddImage(tex_cache->texture()->ptr,
                                ImVec2(0, 0),
                                ImVec2(o->width()-1, o->height()-1),
@@ -1575,7 +1575,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                ImVec2((tex_cache->texture()->image_width-1) / float(tex_cache->texture()->width),
                                       (tex_cache->texture()->image_height-1) / float(tex_cache->texture()->height)),
                                col);
-            } else {
+            } else {*/
                 list->AddImage(tex_cache->texture()->ptr,
                                ImVec2(0, 0),
                                ImVec2(o->width(), o->height()),
@@ -1583,7 +1583,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                ImVec2((tex_cache->texture()->image_width) / float(tex_cache->texture()->width),
                                       (tex_cache->texture()->image_height) / float(tex_cache->texture()->height)),
                                col);
-            }
+            //}
             for (auto i = I; i<list->VtxBuffer.size(); ++i) {
                 list->VtxBuffer[i].pos = transform.transformPoint(list->VtxBuffer[i].pos);
             }

@@ -669,6 +669,17 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
         
     }
 
+    template <typename T, std::size_t N, T DefaultValue, std::size_t... I>
+    constexpr std::array<T, N> create_filled_array(std::index_sequence<I...>) {
+        // Use fold expression to initialize the array.
+        return {{(I, DefaultValue)...}};
+    }
+
+    template <typename T, std::size_t N, T DefaultValue>
+    constexpr std::array<T, N> create_filled_array() {
+        return create_filled_array<T, N, DefaultValue>(std::make_index_sequence<N>{});
+    }
+
     void MetalImpl::update_texture(PlatformTexture& tex, const Image * ptr) {
         GLIMPL_CHECK_THREAD_ID();
         
@@ -678,11 +689,112 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
             { 0, 0, 0 },                   // MTLOrigin
             {ptr->cols, ptr->rows, 1} // MTLSize
         };
-        NSUInteger bytesPerRow = ptr->dims * ptr->cols;
-        [texture replaceRegion:region
-            mipmapLevel:0
-              withBytes:ptr->data()
-            bytesPerRow:bytesPerRow];
+        
+        /*bool d = rand() > RAND_MAX / 2;
+        if(not d)*/ {
+            //static Timing timing("mostly cpu", 0.1);
+            //TakeTiming take(timing);
+            if(ptr->cols < tex.image_width
+               || ptr->rows < tex.image_height)
+            {
+                static constexpr auto zeros = create_filled_array<uchar, 4096, 0>();
+                MTLRegion region {
+                    { 0, 0, 0 },                   // MTLOrigin
+                    { // MTLSize
+                        min(max(ptr->cols, tex.image_width), tex.width),
+                        min(max(ptr->rows, tex.image_height), tex.height),
+                        1
+                    }
+                };
+                
+                if(max(region.size.width - ptr->cols, region.size.height - ptr->rows) * ptr->dims < zeros.size())
+                {
+                    if(region.size.width > ptr->cols) {
+                        NSUInteger bytesPerRow = ptr->dims * (region.size.width - ptr->cols);
+                        [texture replaceRegion:
+                         MTLRegion{
+                            { ptr->cols, 0, 0 },
+                            { region.size.width - ptr->cols, ptr->rows, 1 }
+                        }
+                                   mipmapLevel:0
+                                     withBytes:zeros.data()
+                                   bytesPerRow:bytesPerRow];
+                    }
+                    
+                    if(region.size.height > ptr->rows) {
+                        NSUInteger bytesPerRow = ptr->dims * region.size.width;
+                        [texture replaceRegion:
+                         MTLRegion{
+                            { 0, ptr->rows, 0 },
+                            { region.size.width, region.size.height - ptr->rows, 1 }
+                        }
+                                   mipmapLevel:0
+                                     withBytes:zeros.data()
+                                   bytesPerRow:bytesPerRow];
+                    }
+                }
+            }
+            
+            NSUInteger bytesPerRow = ptr->dims * ptr->cols;
+            [texture replaceRegion:region
+                       mipmapLevel:0
+                         withBytes:ptr->data()
+                       bytesPerRow:bytesPerRow];
+        }
+        
+        /*if(d) {
+            //static Timing timing("only gpu", 0.1);
+            //TakeTiming take(timing);
+            if(ptr->cols < tex.image_width
+               || ptr->rows < tex.image_height)
+            {
+                static std::vector<uchar> zeros;
+                MTLRegion region = {
+                    { 0, 0, 0 },                   // MTLOrigin
+                    { // MTLSize
+                        min(max(ptr->cols, tex.image_width), tex.width),
+                        min(max(ptr->rows, tex.image_height), tex.height),
+                        1
+                    }
+                };
+                
+                size_t N = region.size.width * region.size.height * ptr->dims + 1;
+                if(zeros.size() < N) {
+                    zeros.resize(N * 1.25);
+                    //zeros.get().setTo(cv::Scalar(0, 0, 0, 0));
+                    //print("resized zeros to ", zeros.size());
+                }
+                
+                //memset(zeros.data(), 0, zeros.size());
+                auto data = ptr->data();
+                for(uint y = 0; y<ptr->rows; ++y) {
+                    memcpy(zeros.data() + ptr->dims * region.size.width * y, data + ptr->cols * ptr->dims * y, ptr->dims * ptr->cols);
+                }
+                
+                if(region.size.width > ptr->cols) {
+                    //for(size_t w = ptr->cols; w < region.size.width; ++w) {
+                    for(size_t y = 0; y < ptr->rows; ++y) {
+                        memset(zeros.data() + ptr->dims * region.size.width * y + ptr->cols * ptr->dims, 0, (region.size.width - ptr->cols) * ptr->dims);
+                    }
+                    //}
+                }
+                
+                if(region.size.height > ptr->rows) {
+                    for(size_t y = ptr->rows; y < region.size.height; ++y)
+                        memset(zeros.data() + ptr->dims * region.size.width * y, 0, ptr->dims * region.size.width);
+                }
+                
+                auto z = zeros.data();
+                
+                [texture replaceRegion:region mipmapLevel:0 withBytes:z bytesPerRow:ptr->dims * region.size.width];
+            } else {
+                NSUInteger bytesPerRow = ptr->dims * ptr->cols;
+                [texture replaceRegion:region
+                           mipmapLevel:0
+                             withBytes:ptr->data()
+                           bytesPerRow:bytesPerRow];
+            }
+        }*/
         
         tex.image_height = ptr->rows;
         tex.image_width = ptr->cols;
