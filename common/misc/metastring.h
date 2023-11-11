@@ -3,17 +3,18 @@
 #include <commons.pc.h>
 #include <version>
 
+#if __has_include(<charconv>)
+#include <charconv>
+#endif
+
 #ifdef __APPLE__
 #   include <Availability.h>
 #   if __ENVIRONMENT_OS_VERSION_MIN_REQUIRED__ >= __MAC_13_3
 #       define trex_use_std_to_chars
 #   endif
-#elif __cplusplus >= 201703L 
-//&& (defined(__cpp_lib_constexpr_charconv) || defined(__cpp_lib_to_chars))
+#elif __cplusplus >= 201703L && (defined(__cpp_lib_constexpr_charconv) || defined(__cpp_lib_to_chars))
 #   define trex_use_std_to_chars
 #endif
-
-#include <charconv>
 
 namespace cmn {
 
