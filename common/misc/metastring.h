@@ -1,11 +1,23 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <version>
+
+#ifdef __APPLE__
+#   include <Availability.h>
+#   if __ENVIRONMENT_OS_VERSION_MIN_REQUIRED__ >= __MAC_13_3
+#       define trex_use_std_to_chars
+#   endif
+#elif __cplusplus >= 201703L 
+//&& (defined(__cpp_lib_constexpr_charconv) || defined(__cpp_lib_to_chars))
+#   define trex_use_std_to_chars
+#endif
+
 #include <charconv>
 
 namespace cmn {
 
-#if __cplusplus >= 201703L && defined(__cpp_lib_constexpr_charconv)
+#if defined(trex_use_std_to_chars)
 // C++17 and std::to_chars is available
 using std::to_chars;
 using std::to_chars_result;
