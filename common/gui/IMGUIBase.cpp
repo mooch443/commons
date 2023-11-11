@@ -1665,9 +1665,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             if(dynamic_cast<Entangled*>(o->parent()))
                 text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->z_index());//Meta::toStr(o->parent()->bounds());
             else
-                text = Meta::toStr(o->z_index());//Meta::toStr(*(Drawable*)o->parent());
+                text = Meta::toStr(*(Drawable*)o->parent());
         } else
-            text = Meta::toStr(o->z_index());//Meta::toStr(*o);
+            text = Meta::toStr(*o);
         auto font = _fonts.at(Style::Regular);
         auto _font = Font(0.3, Style::Regular);
         
