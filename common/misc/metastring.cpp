@@ -61,7 +61,7 @@ const char* to_readable_errc(const std::errc& error_code) {
         case std::errc::operation_canceled: return "Operation canceled";
         case std::errc::operation_in_progress: return "Operation now in progress";
         case std::errc::operation_not_permitted: return "Operation not permitted";
-        case std::errc::operation_not_supported: return "Operation not supported on socket";
+        //case std::errc::operation_not_supported: return "Operation not supported on socket";
         case std::errc::operation_would_block: return "Operation would block";
         case std::errc::owner_dead: return "Owner dead";
         case std::errc::permission_denied: return "Permission denied";
