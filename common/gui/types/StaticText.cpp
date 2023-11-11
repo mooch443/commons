@@ -101,7 +101,7 @@ void StaticText::set_default_font(Font font) {
             
             // find enclosing rectangle dimensions
             Vec2 m(0);
-            bool hiding_something{false};
+            //bool hiding_something{false};
             
             for(auto& t : texts) {
                 if(t->txt().empty())
@@ -114,8 +114,10 @@ void StaticText::set_default_font(Font font) {
                 if(_settings.max_size.y > 0
                    && t->pos().y + t->size().height * (1 - t->origin().y) > _settings.max_size.y)
                 {
+#ifndef NDEBUG
                     print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y);
-                    hiding_something = true;
+#endif
+                    //hiding_something = true;
                     
                 } else {
                     advance_wrap(*t);
@@ -322,7 +324,7 @@ void StaticText::add_shadow() {
                     auto& obj = *ptr;
                     strings.emplace_back(std::move(ptr));
                     
-                    auto copy = std::string_view(obj.str);
+                    std::string copy = obj.str;
                     obj.str = copy.substr(0, idx);
                     obj.parsed = RichString::parse(obj.str);
                     
@@ -332,7 +334,7 @@ void StaticText::add_shadow() {
                     // string, add it recursively
                     if(!copy.empty()) {
                         auto tmp = std::make_unique<RichString>();
-                        tmp->str = copy;
+                        tmp->str = std::move(copy);
                         tmp->font = obj.font;
                         tmp->parsed = RichString::parse(tmp->str);
                         tmp->pos.x = obj.pos.x;
@@ -531,14 +533,25 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             else print("Unknown tag ",tag.name," in RichText.");
             
             if(!tag.subranges.empty()) {
+                assert(tag.text.data() >= _settings.txt.c_str()
+                       && tag.text.data() + tag.text.length() <= _settings.txt.c_str() + _settings.txt.length());
+                
                 auto sub = *tag.subranges.begin();
                 tag.subranges.erase(tag.subranges.begin());
+                
+                assert(sub.text.data() >= _settings.txt.c_str()
+                       && sub.text.data() + sub.text.length() <= _settings.txt.c_str() + _settings.txt.length());
                 
                 assert(tag.text.length() == tag.range.length());
                 
                 auto bt = tag.text.substr(0, sub.before - tag.range.start);
                 auto array = utils::split(bt, '\n');
                 for(size_t k=0; k<array.size(); ++k) {
+                    if(array[k].data() != nullptr) {
+                        assert(array[k].data() >= _settings.txt.c_str()
+                               && array[k].data() + array[k].length() <= _settings.txt.c_str() + _settings.txt.length());
+                    }
+                    
                     if(k > 0) {
                         ++offset.y;
                         offset.x = 0;
@@ -554,11 +567,21 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 
                 assert(tag.text.length() == tag.range.length());
                 
+                assert(tag.text.data() >= _settings.txt.c_str()
+                       && tag.text.data() + tag.text.length() <= _settings.txt.c_str() + _settings.txt.length());
+                
                 queue.emplace_front(std::move(tag));
                 queue.emplace_front(std::move(sub));
             } else {
+                assert(tag.text.data() >= _settings.txt.c_str()
+                       && tag.text.data() + tag.text.length() <= _settings.txt.c_str() + _settings.txt.length());
                 auto array = utils::split(tag.text, '\n');
                 for(size_t k=0; k<array.size(); ++k) {
+                    if(array[k].data() != nullptr) {
+                        assert(array[k].data() >= _settings.txt.c_str()
+                               && array[k].data() + array[k].length() <= _settings.txt.c_str() + _settings.txt.length());
+                    }
+                    
                     if(k > 0) {
                         ++offset.y;
                         offset.x = 0;
