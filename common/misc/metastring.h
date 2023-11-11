@@ -4,6 +4,58 @@
 #include <charconv>
 
 namespace cmn {
+
+#if __cplusplus >= 201703L && defined(__cpp_lib_constexpr_charconv)
+// C++17 and std::to_chars is available
+using std::to_chars;
+using std::to_chars_result;
+using std::chars_format;
+#else
+struct to_chars_result
+{
+    char* ptr;
+    std::errc ec;
+};
+
+enum class chars_format
+{
+    scientific = 0x1,
+    fixed = 0x2,
+    hex = 0x4,
+    general = fixed | scientific
+};
+
+// Define a custom implementation of to_chars
+template <typename T>
+to_chars_result to_chars(char* first, const char* last, T value) {
+    auto str = std::to_string(value);
+    if (str.size() > static_cast<size_t>(last - first)) {
+        return {first, std::errc::value_too_large};
+    }
+    std::copy(str.begin(), str.end(), first);
+    return {first + str.size(), std::errc{}};
+}
+
+template <typename T>
+to_chars_result to_chars(char* first, const char* last, T value, chars_format format) {
+    if(format == chars_format::general) {
+        return to_chars(first, last, value);
+    }
+    
+    std::stringstream ss;
+    if(format == chars_format::hex)
+        ss << std::hex;
+    else if(format == chars_format::fixed)
+        ss << std::fixed;
+    else if(format == chars_format::scientific)
+        ss << std::scientific;
+    
+    ss << value;
+    auto str = ss.str();
+    std::copy(str.begin(), str.end(), first);
+    return {first + str.size(), std::errc{}};
+}
+#endif
     
 class illegal_syntax : public std::logic_error {
 public:
@@ -198,8 +250,8 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
             return contents;
         }
 
-        // Fallback to std::to_chars for runtime
-        auto result = std::to_chars(contents.data(), contents.data() + contents.size(), value);
+        // Fallback to cmn::to_chars for runtime
+        auto result = cmn::to_chars(contents.data(), contents.data() + contents.size(), value);
         if (result.ec == std::errc{}) {
             *result.ptr = 0;
             return contents;
@@ -219,7 +271,7 @@ std::string to_string(const T& t) {
         return std::string(a.data());
     } else {
         char buffer[128];
-        auto result = std::to_chars(buffer, buffer + sizeof(buffer), t, std::chars_format::fixed);
+        auto result = cmn::to_chars(buffer, buffer + sizeof(buffer), t, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             std::string str{buffer, result.ptr};
             
@@ -270,7 +322,7 @@ constexpr std::string to_string(T value) {
         return std::string(current, end - current);
     } else {
         char buffer[128];
-        auto result = std::to_chars(buffer, buffer + sizeof(buffer), value);
+        auto result = cmn::to_chars(buffer, buffer + sizeof(buffer), value);
         if (result.ec == std::errc{}) {
             return std::string{buffer, result.ptr};
         } else {
