@@ -546,16 +546,16 @@ constexpr std::size_t constexpr_find(const std::array<T, N>& arr, const U& value
 
 template<typename T, typename Q>
     requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
-        && (not is_array_derived<T>::value)
+  //      && (not is_array_derived<T>::value)
 inline constexpr bool contains(const T& s, const Q& value) {
     return std::find(s.begin(), s.end(), value) != s.end();
 }
 
-template<typename T, typename Q>
+/*template<typename T, typename Q>
     requires is_array_derived<T>::value
 inline constexpr bool contains(const T& s, const Q& value) {
     return constexpr_find(s, value) != s.size();
-}
+}*/
 
 template<typename T, typename K>
     requires std::convertible_to<K, T>

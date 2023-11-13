@@ -171,21 +171,94 @@ struct FileSize {
 #pragma region util
 namespace util {
 
+const char* to_readable_errc(const std::errc& error_code);
+
+template<size_t N>
+class ConstexprString {
+private:
+    std::array<char, N> _data{ 0 };
+
+public:
+    constexpr size_t capacity() const noexcept { return N - 1u; }
+    
+    // Constructor from const char array
+    template<size_t M>
+        requires (M < N)
+    constexpr ConstexprString(const char (&arr)[M]) noexcept {
+        for (size_t i = 0; i < M; ++i) {
+            _data[i] = arr[i];
+        }
+        _data[M] = 0;
+    }
+
+    // Constructor from std::array
+    template<size_t M>
+        requires (M<N)
+    constexpr ConstexprString(const std::array<char, M>& arr) noexcept
+        : _data(arr)
+    { }
+
+    constexpr char* data() { return _data.data(); }
+    constexpr const char* data() const { return _data.data(); }
+
+    // Default constructor
+    constexpr ConstexprString() = default;
+
+    // Accessor to get std::string_view
+    constexpr std::string_view view() const {
+        return std::string_view(_data.data());
+    }
+
+    // Other utility methods as needed, e.g., size, operator[], etc.
+    constexpr size_t size() const {
+        return view().length();
+    }
+
+    constexpr char operator[](size_t index) const {
+        return view()[index];
+    }
+
+    constexpr char& operator[](size_t index) {
+        return *(data() + index);
+    }
+
+    template<size_t L>
+    constexpr bool operator==(const ConstexprString<L>& other) const noexcept {
+        return other.view() == view();
+    }
+
+    constexpr bool operator==(const std::string_view& other) const noexcept {
+        return other == view();
+    }
+
+    // Constructor from const char array
+    template<size_t M>
+    constexpr bool operator==(const char (&arr)[M]) const noexcept {
+        return std::string_view(arr, M-1) == view();
+    }
+
+    constexpr explicit operator std::string() const noexcept {
+        return std::string(view());
+    }
+};
+
+using ConstString_t = ConstexprString<128>;
 
 template <typename T>
 requires std::floating_point<T>
-constexpr std::array<char, 128> to_string_floating_point(T value) {
-    std::array<char, 128> contents { 0 }; // Initialize array with null terminators
+constexpr auto to_string(T value) {
+    ConstString_t contents; // Initialize array with null terminators
 
-    if (std::is_constant_evaluated()) {
+    if (std::is_constant_evaluated())
+    {
         if (value != value) {
             const char nan[] = "nan";
-            std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
+            std::copy(std::begin(nan), std::end(nan) - 1, contents.data()); // -1 to exclude null terminator
             return contents;
         }
         if (value == std::numeric_limits<T>::infinity() || value == -std::numeric_limits<T>::infinity()) {
             const char* inf = (value < 0) ? "-inf" : "inf";
-            std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
+            std::copy(inf, inf + std::string_view(inf).length(), contents.data());
             return contents;
         }
 
@@ -219,7 +292,10 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
         // Adjust contents starting point
         auto n = max_digits + 2 - (current - contents.data());
         std::move(current, current + n, contents.data());
-        std::fill(contents.data() + n, contents.data() + contents.size(), 0);
+        for(size_t i = n; i < contents.size(); ++i) {
+            contents[i] = 0;
+        }
+        //std::fill(contents.data() + n, contents.data() + contents.size(), 0);
         
         // Convert fractional part
         std::string_view tmp(contents.data());
@@ -254,53 +330,22 @@ constexpr std::array<char, 128> to_string_floating_point(T value) {
     } else {
         if (std::isnan(value)) {
             const char nan[] = "nan";
-            std::copy(std::begin(nan), std::end(nan) - 1, contents.begin()); // -1 to exclude null terminator
+            std::copy(std::begin(nan), std::end(nan) - 1, contents.data()); // -1 to exclude null terminator
             return contents;
         }
         if (std::isinf(value)) {
             const char* inf = (value < 0) ? "-inf" : "inf";
-            std::copy(inf, inf + std::string_view(inf).length(), contents.begin());
+            std::copy(inf, inf + std::string_view(inf).length(), contents.data());
             return contents;
         }
 
         // Fallback to cmn::to_chars for runtime
-        auto result = cmn::to_chars(contents.data(), contents.data() + contents.size(), value);
+        auto result = std::to_chars(contents.data(), contents.data() + contents.capacity(), value, std::chars_format::fixed);
         if (result.ec == std::errc{}) {
             *result.ptr = 0;
             return contents;
         } else {
             throw std::invalid_argument("Error converting floating point to string");
-        }
-    }
-}
-
-const char* to_readable_errc(const std::errc& error_code);
-
-template <typename T>
-requires std::floating_point<T>
-std::string to_string(const T& t) {
-    if (std::is_constant_evaluated()) {
-        auto a = to_string_floating_point(t);
-        return std::string(a.data());
-    } else {
-        char buffer[128];
-        auto result = cmn::to_chars(buffer, buffer + sizeof(buffer), t, cmn::chars_format::fixed);
-        if (result.ec == std::errc{}) {
-            std::string str{buffer, result.ptr};
-            
-            /*if (auto dotPos = str.find('.'); dotPos != std::string::npos) {
-             // If only zeros follow the dot or the dot is the last character
-             if (str.find_first_not_of('0', dotPos + 1) == std::string::npos) {
-             str.erase(dotPos);  // Remove the dot and all following characters
-             } else {
-             // Trim trailing zeros
-             str.erase(str.find_last_not_of('0') + 1, std::string::npos);
-             }
-             }*/
-            
-            return str;
-        } else {
-            throw std::runtime_error(to_readable_errc(result.ec));
         }
     }
 }
@@ -695,7 +740,7 @@ std::string toStr(const Q& obj) {
 template<class Q>
     requires _is_number<Q>
 std::string toStr(const Q& obj) {
-    return util::to_string(obj);
+    return (std::string)util::to_string(obj);
 }
         
 template<class Q>

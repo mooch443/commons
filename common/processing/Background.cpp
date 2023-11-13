@@ -22,10 +22,6 @@ namespace cmn {
             }
             update_callback();
         });
-        
-        cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
-        cmn::track_background_subtraction = SETTING(track_background_subtraction).value<bool>();
-        update_callback();
     }
     
     Background::~Background() {

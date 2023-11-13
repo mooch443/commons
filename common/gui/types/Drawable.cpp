@@ -84,7 +84,6 @@ namespace gui {
             };
             
             callback = GlobalSettings::map().register_callbacks({"gui_interface_scale"}, update);
-            update("gui_interface_scale");
         }
         return hidden::Global::interface_scale;
     }

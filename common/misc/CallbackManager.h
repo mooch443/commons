@@ -59,6 +59,25 @@ public:
     
     // Call all registered callbacks
     template<typename A = Argument>
+        requires (not std::same_as<A, void> && std::convertible_to<A, Argument>)
+    void call(std::size_t id, A&& arg) const {
+        // Make a copy of the callbacks to avoid potential deadlocks
+        Fn_t callbackCopy;
+        {
+            std::unique_lock lock(_mutex); // Lock the mutex
+            if(auto it = _callbacks.find(id);
+               it != _callbacks.end()) 
+            {
+                callbackCopy = it->second;
+            }
+        }
+        
+        if(callbackCopy)
+            callbackCopy(std::forward<A>(arg));
+    }
+    
+    // Call all registered callbacks
+    template<typename A = Argument>
         requires (std::same_as<A, void>) && (_clean_same<A, Argument>)
     void callAll() const {
         // Make a copy of the callbacks to avoid potential deadlocks

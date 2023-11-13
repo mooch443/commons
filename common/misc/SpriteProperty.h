@@ -146,6 +146,14 @@ namespace cmn {
                 _callbacks.unregisterCallback(id);
             }
             
+            void triggerCallbacks() {
+                _callbacks.callAll(_name);
+            }
+            
+            void triggerCallback(std::size_t id) {
+                _callbacks.call(id, _name);
+            }
+            
             /**
              * Sets the value of the property from a string-serialized object.
              * @param str String representation of the value.

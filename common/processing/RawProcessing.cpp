@@ -312,19 +312,6 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             "tags_enable"
             
         }, callback);
-        
-        callback("enable_difference");
-        callback("enable_absolute_difference");
-        callback("square_brightness");
-        callback("adaptive_threshold_scale");
-        callback("threshold");
-        callback("threshold_maximum");
-        callback("use_closing");
-        callback("closing_size");
-        callback("use_adaptive_threshold");
-        callback("dilation_size");
-        callback("image_invert");
-        callback("tags_enable");
     });
 
     // These two buffers are constantly going to be exchanged

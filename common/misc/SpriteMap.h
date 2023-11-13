@@ -285,6 +285,8 @@ concept Iterable = requires(T obj) {
                     collection._ids[std::string(name)] = operator[](name).get().registerCallback(callback);
                 }
             }
+            
+            trigger_callbacks(collection);
             return collection;
         }
         
@@ -295,6 +297,12 @@ concept Iterable = requires(T obj) {
                 }
             }
             collection._ids.clear();
+        }
+        
+        void trigger_callbacks(const CallbackCollection& collection) {
+            for(auto &[name, id] : collection._ids) {
+                operator[](name).get().triggerCallback(id);
+            }
         }
         
         template<typename T>
@@ -558,7 +566,7 @@ void Reference::operator=(const T& value) {
                 _value = v;
                 
                 guard.unlock();
-                _callbacks.callAll(_name);
+                triggerCallbacks();
             }
             return;
             
@@ -568,7 +576,7 @@ void Reference::operator=(const T& value) {
                 _value = v;
             }
             
-            _callbacks.callAll(_name);
+            triggerCallbacks();
         }
     }
 
