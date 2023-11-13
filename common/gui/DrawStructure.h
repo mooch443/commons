@@ -63,6 +63,7 @@ namespace gui {
         friend class DrawStructure;
         Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth);
         void update(DrawStructure& d) override;
+        void update_sizes(DrawStructure& d);
         
     public:
         void set_custom_element(derived_ptr<Entangled>&& e);

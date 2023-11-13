@@ -167,10 +167,6 @@ void Dialog::set_closed() {
         _layout(std::vector<Layout::Ptr>{_text, _buttons}),
         _callback(callback)
     {
-        Size2 size = Size2(d.width(), d.height());
-        if(!d.dialog_window_size().empty())
-            size = d.dialog_window_size();
-        
         _layout.set(Margins(5, 5, 5, 5));
         _okay->set_size(Size2(gui::Base::default_text_bounds(_okay->txt(), nullptr, _okay->font()).width + 20, 40));
         _okay->set_fill_clr(Color::blend(DarkCyan.exposure(0.5).alpha(110), Green.exposure(0.15)));
@@ -190,9 +186,7 @@ void Dialog::set_closed() {
         _layout.update();
         
         _text->set_max_size(Size2(_title_bg.width() - 50, 0));
-        
-        set_bounds(Bounds(Vec2(size*0.5), Size2(_title_bg.width() + 10,300)));
-        set_origin(Vec2(0.5, 0.5));
+        update_sizes(d);
         
         std::vector<Layout::Ptr> buttons;
         if(_okay)
@@ -273,6 +267,15 @@ void Dialog::set_closed() {
             });
         }
     }
+
+    void Dialog::update_sizes(DrawStructure& d) {
+        Size2 size = Size2(d.width(), d.height());
+        if(!d.dialog_window_size().empty())
+            size = d.dialog_window_size();
+        
+        set_bounds(Bounds(Vec2(size*0.5), Size2(_title_bg.width() + 10,300)));
+        set_origin(Vec2(0.5, 0.5));
+    }
     
     Dialog::~Dialog() {
         /*delete _okay;
@@ -318,7 +321,7 @@ void Dialog::set_closed() {
         //d.wrap_object(*_okay);
         //if(_abort)
         //    d.wrap_object(*_abort);
-        
+        update_sizes(d);
     }
     
     DrawStructure::~DrawStructure() {
