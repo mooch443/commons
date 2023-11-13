@@ -369,7 +369,7 @@ public:
 
         auto is_keyword = [](std::string_view word) {
             auto trimmed = utils::lowercase(utils::trim(word));
-            static const std::vector<std::string_view> keywords{
+            static constexpr std::array<std::string_view, 20> keywords{
                 //"string", "pv",
                 //"path",
                 //"array", "map", "set", "pair",

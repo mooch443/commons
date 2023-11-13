@@ -534,10 +534,27 @@ std::vector<typename T::value_type> percentile(const T& values, const std::initi
     return result;
 }
 
+template<class T> struct is_array_derived : public std::false_type {};
+
+template<class T, size_t Size>
+struct is_array_derived<std::array<T, Size>> : public std::true_type {};
+
+template<typename T, std::size_t N, typename U>
+constexpr std::size_t constexpr_find(const std::array<T, N>& arr, const U& value, std::size_t pos = 0) {
+    return pos == N ? N : (arr[pos] == value ? pos : constexpr_find(arr, value, pos + 1));
+}
+
 template<typename T, typename Q>
     requires (is_container<T>::value || is_queue<T>::value || is_deque<T>::value) && (!is_instantiation<UnorderedVectorSet, T>::value)
+        && (not is_array_derived<T>::value)
 inline constexpr bool contains(const T& s, const Q& value) {
     return std::find(s.begin(), s.end(), value) != s.end();
+}
+
+template<typename T, typename Q>
+    requires is_array_derived<T>::value
+inline constexpr bool contains(const T& s, const Q& value) {
+    return constexpr_find(s, value) != s.size();
 }
 
 template<typename T, typename K>
