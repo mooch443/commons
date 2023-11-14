@@ -152,6 +152,10 @@ namespace gui {
 
         GETTER_I(bool, rendered, false)
         
+        //! Whether or not this object is currenty playing an animation
+        //! (and should thus be re-rendered continously):
+        bool _animating = false;
+        
     protected:
         //! If this is set to true, the next bounds(), rect()
         //  call needs to be (and will be) preceeded by
@@ -337,6 +341,20 @@ namespace gui {
         //  (Also  clickable)
         void set_draggable(bool value = true);
         
+        //! Retrieves whether the object is currently being animated,
+        //! or in the case of Sections, whether any of its children are animated.
+        virtual bool is_animating() noexcept;
+
+        //! Sets whether or not this object is currently animating.
+        void set_animating(bool) noexcept;
+        
+        //! Only returns true if the _current_ object is clickable.
+        //! Not overwritten by sections that also respect childrens
+        //! clickable status.
+        bool immediately_clickable() const noexcept {
+            return _clickable;
+        }
+        
         //! Returns the current rectangle that has been calculated or set
         //  for this object.
         virtual const Bounds& bounds() { return _bounds; }
@@ -433,6 +451,8 @@ namespace gui {
         
         virtual void find(float x, float y, std::vector<Drawable*>& results);
         virtual Drawable* find(const std::string& search);
+        
+        virtual bool is_animating() noexcept override;
         
         virtual void set_stage(DrawStructure*);
         virtual Vec2 stage_scale() const override;

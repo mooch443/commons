@@ -421,6 +421,20 @@ T map_vector(const VarProps& props, auto&& apply) {
     return apply(A);
 }
 
+std::string ShortenText(const std::string& text, size_t maxLength, double positionPercent, const std::string& shortenSymbol = "…") {
+    if (text.length() <= maxLength) {
+        return text;
+    }
+
+    size_t shortenPosition = static_cast<size_t>(positionPercent * maxLength);
+    // Ensure that the shorten position is within the valid range
+    if (shortenPosition > maxLength - 1) {
+        shortenPosition = maxLength - 1;
+    }
+
+    return text.substr(0, shortenPosition) + shortenSymbol + text.substr(text.length() - (maxLength - shortenPosition - 1));
+}
+
 void Context::init() const {
     if(system_variables.empty())
         system_variables = {
@@ -580,6 +594,34 @@ void Context::init() const {
                 } catch(const std::exception& ex) {
                     throw InvalidArgumentException("Cannot parse color ", _color, " and alpha ", _alpha, ": ", ex.what());
                 }
+            }),
+            
+            VarFunc("shorten", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 1 || props.parameters.size() > 3) {
+                    throw InvalidArgumentException("Need one to three arguments for ", props,".");
+                }
+                
+                std::string str = props.first();
+                size_t N = 50;
+                std::string placeholder = "…";
+                if(props.parameters.size() > 1)
+                    N = Meta::fromStr<size_t>(props.parameters.at(1));
+                if(props.parameters.size() > 2)
+                    placeholder = props.last();
+                
+                return ShortenText(str, N, 0.5, placeholder);
+            }),
+            VarFunc("filename", [](const VarProps& props) -> file::Path {
+                if(props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Need one argument for ", props,".");
+                }
+                return file::Path(Meta::fromStr<file::Path>(props.first()).filename());
+            }),
+            VarFunc("basename", [](const VarProps& props) -> file::Path {
+                if(props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Need one argument for ", props,".");
+                }
+                return file::Path(Meta::fromStr<file::Path>(props.first()).filename()).remove_extension();
             })
         };
     

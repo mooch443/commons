@@ -405,12 +405,14 @@ std::string GridInfo::toStr() const {
 
 void GridLayout::init() {
     on_hover([this](Event e){
-        _vertical_rect->set(FillClr{_settings.verticalClr});
-        _horizontal_rect->set(FillClr{_settings.horizontalClr});
-        _last_hover = Vec2(e.hover.x, e.hover.y);
-        //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
-        update_hover();
-        set_content_changed(true);
+        if(immediately_clickable()) {
+            _vertical_rect->set(FillClr{_settings.verticalClr});
+            _horizontal_rect->set(FillClr{_settings.horizontalClr});
+            _last_hover = Vec2(e.hover.x, e.hover.y);
+            //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
+            update_hover();
+            set_content_changed(true);
+        }
     });
     
     update();
@@ -598,7 +600,7 @@ void GridLayout::update() {
         return;
     
     begin();
-    if(hovered()) {
+    if(immediately_clickable() && hovered()) {
         advance_wrap(*_vertical_rect);
         advance_wrap(*_horizontal_rect);
     }

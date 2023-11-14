@@ -774,7 +774,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             config.OversampleH = 5;
             config.OversampleV = 5;
 
-            auto load_font = [&](int no, std::string suffix, const file::Path& path, float scale = 1.0, bool add_all_ranges = false) {
+            auto load_font = [&](int no, std::string suffix, const file::Path& path, std::string ext = ".ttf", float scale = 1.0, bool add_all_ranges = false) {
                 config.FontNo = no;
                 if (no > 0)
                     config.MergeMode = false;
@@ -785,8 +785,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #else
                 static const ImWchar all_ranges[] = {
                     // Range from Basic Latin to Cyrillic Supplement
-                    0x0020, 0x007F,
-                    0x00DF, 0x00DF,  // ß
+                    0x0020, 0x00DF,  // ß
                     0x00F6, 0x00F6,  // ö
                     0x00E4, 0x00E4,  // ä
                     0x00FC, 0x00FC,  // ü
@@ -800,13 +799,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     0x2190, 0x21FF, // Arrows
 
                     // Range from Miscellaneous Technical to Miscellaneous Symbols and Play Symbol
-                    0x2300, 0x23FF, // Miscellaneous Technical
-                    0x2600, 0x26FF, // Miscellaneous Symbols
+                    0x2300, 0x26FF, // Miscellaneous Technical
+                    //0x2600, 0x26FF, // Miscellaneous Symbols
                     0x2700, 0x27BF, // Dingbats
                     0x25B6, 0x25B6, // Play Symbol
-
-                    // CJK Radicals Supplement
-                    0x2E80, 0x2EFF,
+                    0x2B00, 0x2EFF,
 
                     // CJK Symbols and Punctuation to Hiragana and Katakana
                     0x3000, 0x303F, // CJK Symbols and Punctuation
@@ -818,6 +815,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
                     // CJK Unified Ideographs
                     0x4E00, 0x9FFF,
+                    
+                    0x1F300, 0x1F900, // Emoticons (U+1F600 to U+1F64F)
 
                     // Sentinel to indicate end of ranges
                     0x0
@@ -845,7 +844,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if(file::DataLocation::is_registered("app")) {
                 mono = file::DataLocation::parse("app", mono);
             }
-            if (not mono.add_extension("ttf").exists())
+            if (not mono.add_extension("ttc").exists())
                 FormatExcept("Cannot find file ",mono.str());
             
             file::Path syms("fonts/NotoSansSymbols2-Regular");
@@ -855,10 +854,18 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if (not syms.add_extension("ttf").exists())
                 FormatExcept("Cannot find file ",syms.str());
             
-            config.GlyphOffset.y = 2.5;
-            _fonts[Style::Monospace] = load_font(0, "", mono, 0.85);
+            config.GlyphOffset.y = 1.8;
+            config.GlyphOffset.x = -1;
+            _fonts[Style::Monospace] = load_font(0, "", mono, ".ttf", 0.85);
+            _fonts[Style::Monospace | Style::Italic] = load_font(0, "", mono, ".ttf", 0.85);
+            _fonts[Style::Monospace | Style::Bold] = load_font(0, "-Bold", mono, ".ttf", 0.85, true);
+            
+            config.GlyphOffset.y = 3;
+            config.GlyphOffset.x = 0;
+            _fonts[Style::Symbols] = load_font(0, "", syms, ".ttf", 1, true);
+            
+            config.GlyphOffset.x = 0;
             config.GlyphOffset.y = 0;
-            _fonts[Style::Symbols] = load_font(0, "", syms, 0.95, true);
 
             io.Fonts->Build();
         }
@@ -1413,6 +1420,8 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         pushed_rect = true;
     }
     
+    float global_scale = (transform.transformPoint(Vec2(1)) - transform.transformPoint(Vec2(0))).x;
+    
     switch (o->type()) {
         case Type::CIRCLE: {
             auto ptr = static_cast<Circle*>(o);
@@ -1513,16 +1522,17 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 break;
             
             auto font = _fonts.at(ptr->font().style);
+            auto font_scale = ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
             
             if(ptr->shadow() > 0) {
                 list->AddText(font,
-                              ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x),
-                              bds.pos() + Vec2(1.5) * ptr->global_text_scale().x,
+                              font_scale,
+                              (bds.pos() + Vec2((1.5) * global_scale + font->ConfigData->GlyphOffset.y / font_scale)),
                               (ImColor)Color(20, 20, 20, 255 * saturate(ptr->shadow(), 0.f, 1.f)),
                               ptr->txt().c_str());
             }
             list->AddText(font,
-                          ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x),
+                          font_scale,
                           bds.pos(),
                           (ImColor)ptr->color(),
                           ptr->txt().c_str());
@@ -1817,6 +1827,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         // Round
         //size.x = max(0, (float)(int)(size.x - 0.95f));
         size.y = line_spacing(font);
+        //size.y = max(0, (float)(int)(size.y - 0.95f));
         //return text_size;
         //auto size = ImGui::CalcTextSize(text.c_str());
         return Bounds(Vec2(), size);

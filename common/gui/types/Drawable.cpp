@@ -605,6 +605,24 @@ namespace gui {
             }
         });
     }
+
+bool Drawable::is_animating() noexcept {
+    return _animating;
+}
+
+void Drawable::set_animating(bool animating) noexcept {
+    _animating = animating;
+}
+
+bool SectionInterface::is_animating() noexcept {
+    if(Drawable::is_animating())
+        return true;
+    for(auto c : children()) {
+        if(c->is_animating())
+            return true;
+    }
+    return false;
+}
     
     bool Drawable::swap_with(gui::Drawable *d) {
         if(d->type() != type())

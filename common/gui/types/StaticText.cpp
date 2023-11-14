@@ -365,8 +365,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     size_t before_pos = 0;
     int64_t brackets{0};
     
-    static constexpr std::array<std::string_view, 23> commands {
-        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange"
+    static constexpr std::array<std::string_view, 24> commands {
+        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange","cyan"
     };
     
     for(size_t i=0, N = _txt.size(); i<N; ++i) {
@@ -510,6 +510,9 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             else if(tag.name == "orange") {
                 tag.color = mix_colors(tag.color, Orange);
             }
+            else if(tag.name == "cyan") {
+                tag.color = mix_colors(tag.color, Cyan);
+            }
             else if(tag.name == "nr" || tag.name == "number") {
                 tag.color = mix_colors(tag.color, Green);
             }
@@ -618,9 +621,9 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             if(s->pos.y > y) {
                 offset.x = _settings.margins.x;
                 
-                auto current_height = Base::default_line_spacing(prev_font);
+                auto current_height = roundf(Base::default_line_spacing(prev_font) * 0.5);
                 for(size_t j=row_start; j<i; ++j) {
-                    texts[j]->set_pos(Vec2(texts[j]->pos().x, offset.y + current_height * 0.5));
+                    texts[j]->set_pos(Vec2(texts[j]->pos().x, offset.y + current_height));
                 }
                 
                 offset.y += Base::default_line_spacing(prev_font);//sf_line_spacing(s->font);
@@ -636,7 +639,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             text->set_pos(target);
             //advance_wrap(*text);
             
-            offset.x += text->text_bounds().width + text->text_bounds().x;
+            offset.x += roundf(text->text_bounds().width + text->text_bounds().x);
         }
         
         auto current_height = Base::default_line_spacing(prev_font);
