@@ -322,8 +322,7 @@ void Entangled::on_visibility_change(bool visible) {
         }
         
         ma += Vec2(max(0.f, margin.right), max(0.f, margin.bottom));
-        
-        set_size(ma - mi);
+        set_size(ma);
     }
     
     void Entangled::update_bounds() {

@@ -1,5 +1,6 @@
 #include "Section.h"
 #include <gui/DrawStructure.h>
+#include <gui/DrawableCollection.h>
 
 namespace gui {
     ColorWheel Section::wheel;

@@ -569,7 +569,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     fw = fb.width;
     fh = fb.height;
 
-    base->set_last_framebuffer(Size2(fw, fh));
+    //base->set_last_framebuffer(Size2(fw, fh));
 
     //print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
@@ -1673,11 +1673,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         std::string text;
         if(o->parent() && o->parent()->background() == o) {
             if(dynamic_cast<Entangled*>(o->parent()))
-                text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->z_index());//Meta::toStr(o->parent()->bounds());
+                text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
             else
                 text = Meta::toStr(*(Drawable*)o->parent());
         } else
-            text = Meta::toStr(*o);
+            text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds());
         auto font = _fonts.at(Style::Regular);
         auto _font = Font(0.3, Style::Regular);
         

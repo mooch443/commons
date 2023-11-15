@@ -11,6 +11,7 @@
 namespace gui {
     class Base;
     class SectionInterface;
+    class DrawableCollection;
 
     using namespace attr;
     

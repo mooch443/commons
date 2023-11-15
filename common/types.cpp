@@ -4,6 +4,9 @@
 #include <misc/GlobalSettings.h>
 
 namespace cmn {
+IMPLEMENT(blob::Pose::Skeleton::_mutex);
+IMPLEMENT(blob::Pose::Skeleton::_registered);
+
 std::string blob::Prediction::toStr() const {
     std::vector<std::string> meta_classes;
     if(GlobalSettings::has("meta_classes")) {
@@ -15,6 +18,53 @@ std::string blob::Prediction::toStr() const {
     return "pred<null>";
 }
 
+std::string blob::Pose::Skeleton::toStr() const {
+    return "[" + Meta::toStr(name()) + "," + Meta::toStr(_connections) + "]";
+}
+
+std::string blob::Pose::Skeleton::Connection::toStr() const {
+    return "["+Meta::toStr(from) + "," + Meta::toStr(to)+""+Meta::toStr(name)+"]";
+}
+
+blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const std::string &str) {
+    auto parts = util::parse_array_parts(util::truncate(str));
+    if(parts.size() != 2 && parts.size() != 3)
+        throw InvalidArgumentException("Invalid connection: ", str);
+    std::string name = "<unknown>";
+    if(parts.size() > 2) {
+        name = parts.at(2);
+    }
+    return Connection{
+        .from = Meta::fromStr<uint8_t>(parts.at(0)),
+        .to = Meta::fromStr<uint8_t>(parts.at(1)),
+        .name = name
+    };
+}
+
+blob::Pose::Skeleton blob::Pose::Skeleton::fromStr(const std::string &str) {
+    auto outer = util::parse_array_parts(util::truncate(str));
+    if(outer.size() < 2)
+        throw InvalidArgumentException("Invalid skeleton string: ", str);
+
+    auto array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
+    return Skeleton(outer.at(0), std::move(array));
+}
+
+void blob::Pose::Skeleton::add(Skeleton && s) {
+    std::unique_lock guard(_mutex);
+    auto name = s.name();
+    _registered[name] = std::move(s);
+}
+
+blob::Pose::Skeleton blob::Pose::Skeleton::get(const std::string &name) {
+    std::unique_lock guard(_mutex);
+    return _registered.at(name);
+}
+
+bool blob::Pose::Skeleton::exists(const std::string& name) {
+    std::unique_lock guard(_mutex);
+    return _registered.find(name) not_eq _registered.end();
+}
 }
 
 namespace tf {

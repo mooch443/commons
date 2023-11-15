@@ -114,6 +114,58 @@ struct Pose {
         
         [[nodiscard]] float length() const noexcept { return euclidean_distance(A, B); }
     };
+
+    struct Skeleton {
+    public:
+        struct Connection {
+            uint8_t from{0}, to{0};
+            std::string name;
+            std::string toStr() const;
+
+            auto operator<=>(const Connection&) const = default;
+            bool operator==(const Connection& other) const noexcept = default;
+            bool operator!=(const Connection& other) const noexcept = default;
+
+            static std::string class_name() noexcept { return "Connection"; }
+            static Connection fromStr(const std::string&);
+        };
+        
+    protected:
+        static std::mutex _mutex;
+        static std::unordered_map<std::string, Skeleton> _registered;
+        
+        GETTER(std::string, name)
+        GETTER(std::vector<Connection>, connections)
+        
+    public:
+        Skeleton() = default;
+        Skeleton(std::string name, std::vector<Connection>&& connections)
+            : _name(name),
+              _connections(std::move(connections))
+        {}
+
+        std::strong_ordering operator<=>(const Skeleton& other) const {
+            // first compare the name, then the connections (manually)
+            auto cmp = _name <=> other._name;
+            if(cmp != 0)
+                return cmp;
+            for(size_t i = 0; i < _connections.size(); ++i) {
+                cmp = _connections[i] <=> other._connections[i];
+                if(cmp != 0)
+                    return cmp;
+            }
+            return std::strong_ordering::equivalent;
+        }
+        bool operator==(const Skeleton& other) const noexcept = default;
+        bool operator!=(const Skeleton& other) const noexcept = default;
+
+        static Skeleton fromStr(const std::string&);
+        std::string toStr() const;
+        static std::string class_name() noexcept { return "Skeleton"; }
+        static void add(Skeleton&&);
+        static Skeleton get(const std::string&);
+        static bool exists(const std::string& name);
+    };
     
     //! coordinates of the bones
     std::vector<Point> points;

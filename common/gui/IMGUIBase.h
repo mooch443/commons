@@ -50,8 +50,8 @@ namespace gui {
             }
         };
         
-        GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform)
         GETTER(std::unique_ptr<DrawStructure>, graph)
+        GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform)
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area)
         GETTER_I(bool, focussed, true)
@@ -111,7 +111,7 @@ namespace gui {
                   Graph&& window,
                   std::function<bool(DrawStructure&)> custom_loop,
                   std::function<void(DrawStructure&, const gui::Event&)> event_fn)
-        : _custom_loop([this, custom_loop = std::move(custom_loop) ](){ return custom_loop(*_graph); }), _event_fn(event_fn), _title(title)
+        : _event_fn(event_fn), _title(title)
         {
             if constexpr(are_the_same<Graph, Size2>)
                 _graph = std::make_unique<DrawStructure>(window.width, window.height);
@@ -120,6 +120,10 @@ namespace gui {
             } else {
                 static_assert(are_the_same<void, Graph>, "Invalid type of Graph.");
             }
+            
+            _custom_loop = [this, custom_loop = std::move(custom_loop) ](){
+                return custom_loop(*_graph);
+            };
             
             auto ptr = new impl_t([this](){
                 //! draw loop

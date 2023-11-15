@@ -155,8 +155,9 @@ void Dialog::set_closed() {
     
     Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
+        _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 135), SizeLimit(500, 0), Font(0.8f))),
+        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(500, 0), Font(0.8f))),
         _title(attr::Str(title), Font(0.9f, Style::Bold)),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
@@ -167,6 +168,7 @@ void Dialog::set_closed() {
         _layout(std::vector<Layout::Ptr>{_text, _buttons}),
         _callback(callback)
     {
+        set_name("Dialog");
         _layout.set(Margins(5, 5, 5, 5));
         _okay->set_size(Size2(gui::Base::default_text_bounds(_okay->txt(), nullptr, _okay->font()).width + 20, 40));
         _okay->set_fill_clr(Color::blend(DarkCyan.exposure(0.5).alpha(110), Green.exposure(0.15)));
@@ -270,11 +272,30 @@ void Dialog::set_closed() {
 
     void Dialog::update_sizes(DrawStructure& d) {
         Size2 size = Size2(d.width(), d.height());
-        if(!d.dialog_window_size().empty())
+        if(!d.dialog_window_size().empty()) {
+            //cmn::print("dialog ", d.dialog_window_size(), " vs. ", size);
             size = d.dialog_window_size();
+        }
         
-        set_bounds(Bounds(Vec2(size*0.5), Size2(_title_bg.width() + 10,300)));
-        set_origin(Vec2(0.5, 0.5));
+        //set_bounds(Bounds(Vec2(size*0.5), Size2(_title_bg.width() + 10,300)));
+        //
+        /*_text->set(LineClr{Blue});
+        _text->set(FillClr{Red.alpha(50)});
+        _layout.set(LineClr{Green});
+        _buttons->set(LineClr{Purple});*/
+        
+        //_layout.update_layout();
+        //_layout.update();
+        //_text->update();
+        
+        //_layout.auto_size();
+        //_buttons->auto_size();
+        
+        set(LineClr{0,0,0,200});
+        set(FillClr{50,50,50,200});
+        set_origin(Vec2(0.5));
+        set_pos(size * 0.5);
+        auto_size({5,10});
     }
     
     Dialog::~Dialog() {
@@ -286,42 +307,40 @@ void Dialog::set_closed() {
     }
     
     void Dialog::set_parent(SectionInterface* parent) {
-        DrawableCollection::set_parent(parent);
+        Entangled::set_parent(parent);
         
         if(parent && parent->stage()) {
             parent->stage()->select(this);
         }
     }
     
-    void Dialog::update(gui::DrawStructure &d) {
+    void Dialog::update() {
         if(_custom && _layout.children().size() == 2) {
             std::vector<Layout::Ptr> children{_text, _custom, _buttons};
             _layout.set_children(children);
-            _layout.auto_size();
+            //_layout.auto_size();
         }
         
-        d.wrap_object(_title_bg);
+        begin();
+        advance_wrap(_title_bg);
         //d.wrap_object(*_text);
-        d.wrap_object(_title);
+        advance_wrap(_title);
+        advance_wrap(_layout);
+        end();
         
+        _layout.set_origin(Vec2(0.5f, 0));
+        _layout.set_pos(Vec2(0.5f * width(), _layout.pos().y));
         _title.set_pos(_title_bg.size() * 0.5f + Vec2(0, _title_bg.height() * 0.2f));
         
         _layout.set_policy(gui::VerticalLayout::Policy::CENTER);
         _buttons->set_policy(gui::HorizontalLayout::Policy::CENTER);
         
-        d.wrap_object(_layout);
-        
-        _layout.update();
-        _text->update();
-        _layout.set_origin(Vec2(0.5f, 0));
-        _layout.set_pos(Vec2(0.5f * width(), _layout.pos().y));
-        
-        set_size(Size2(width(), _layout.height() + _layout.pos().y + 10));
-        
-        //d.wrap_object(*_okay);
+        //set_size(Size2(width(), _layout.height() + _layout.pos().y + 10));
+        set_scale(_graph.scale().reciprocal() * gui::interface_scale());
+                //d.wrap_object(*_okay);
         //if(_abort)
         //    d.wrap_object(*_abort);
-        update_sizes(d);
+        update_sizes(_graph);
     }
     
     DrawStructure::~DrawStructure() {
@@ -345,8 +364,7 @@ void Dialog::set_closed() {
             if(!dialog_window_size().empty())
                 size = dialog_window_size();
             
-            auto rect = new Rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red});
-            rect->set_origin(Vec2(0.5));
+            auto rect = new Rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red}, Origin{0.5});
             rect->set_clickable(true);
             rect = add_object(rect);
             wrap_object(*_dialogs.front());

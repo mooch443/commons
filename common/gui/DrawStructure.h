@@ -4,7 +4,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/colors.h>
 #include <gui/Section.h>
-#include <gui/DrawableCollection.h>
+#include <gui/types/Entangled.h>
 #include <gui/types/MiscShapes.h>
 #include <gui/types/Layout.h>
 
@@ -15,7 +15,7 @@ namespace gui {
     
     class StaticText;
     class Button;
-    class Dialog : public DrawableCollection {
+    class Dialog : public Entangled {
     public:
         enum Result {
             OKAY,
@@ -29,6 +29,7 @@ namespace gui {
         std::atomic_bool _closed;
         GETTER(Result, result)
         
+        DrawStructure& _graph;
         Rect _title_bg;
         derived_ptr<StaticText> _text;
         Text _title;
@@ -62,7 +63,7 @@ namespace gui {
     protected:
         friend class DrawStructure;
         Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth);
-        void update(DrawStructure& d) override;
+        void update() override;
         void update_sizes(DrawStructure& d);
         
     public:
