@@ -757,10 +757,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         
         int fw, fh;
         //glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
-        auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
+        //auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
+
+        auto fb = get_frame_buffer_size(_platform->window_handle(), 1);
         fw = fb.width;
         fh = fb.height;
-
         set_last_framebuffer(Size2(fw, fh));
         //_last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
         
@@ -844,7 +845,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if(file::DataLocation::is_registered("app")) {
                 mono = file::DataLocation::parse("app", mono);
             }
-            if (not mono.add_extension("ttc").exists())
+            if (not mono.add_extension("ttf").exists())
                 FormatExcept("Cannot find file ",mono.str());
             
             file::Path syms("fonts/NotoSansSymbols2-Regular");

@@ -190,14 +190,14 @@ Path Path::absolute() const {
 #endif
     }
 
-    std::string_view Path::filename() const {
+    std::string Path::filename() const {
         if(empty())
             return _str;
         
         const char *ptr = _str.data() + _str.length() - 1;
         for(; ptr >= _str.data(); ptr--) {
             if(*ptr == OS_SEP)
-                return std::string_view(ptr+1u, size_t(_str.data() + _str.length() - (ptr+1u)));
+                return (std::string)std::string_view(ptr+1u, size_t(_str.data() + _str.length() - (ptr+1u)));
         }
         
         return _str;

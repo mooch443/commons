@@ -10,7 +10,7 @@
 
 namespace gui {
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
-    IMPLEMENT(hidden::Global::interface_scale) = 0;
+    IMPLEMENT(hidden::Global::interface_scale) = 1;
     CallbackCollection callback;
 
     std::string Drawable::toStr() const {

@@ -124,7 +124,7 @@ namespace file {
         [[nodiscard]] bool empty() const noexcept { return _str.empty(); }
         
         //! Returns the last filename, removes the path
-        std::string_view filename() const;
+        std::string filename() const;
         
         //! Returns path, removes last filename
         [[nodiscard]] Path remove_filename() const;
