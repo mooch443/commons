@@ -90,7 +90,7 @@ namespace gui {
         
     protected:
         std::unordered_map<Drawable*, std::tuple<int, Vec2>> _rotation_starts;
-        std::vector<DrawOrder> _draw_order;
+        std::vector<DrawOrder> _draw_order, _above_z;
         
         std::mutex _mutex;
         std::queue<std::function<void()>> _exec_main_queue;
@@ -202,7 +202,7 @@ namespace gui {
         Event toggle_fullscreen(DrawStructure& g) override;
         
     private:
-        void redraw(Drawable* o, std::vector<DrawOrder>& draw_order, bool is_background = false, ImVec4 clip_rect = ImVec4());
+        void redraw(Drawable* o, std::vector<DrawOrder>& draw_order, std::vector<DrawOrder>& above_z, bool is_background = false, ImVec4 clip_rect = ImVec4());
         void draw_element(const DrawOrder& order);
         void event(const gui::Event& e);
         static void update_size_scale(GLFWwindow*);

@@ -15,10 +15,15 @@
 
 namespace gui {
 VertexArray::VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type)
-    : Drawable(type), _transport(&p), _points(nullptr), _primitive(primitive),_size_calculated(false), _thickness(1)
+    : Drawable(type), _transport(&p), _primitive(primitive),_size_calculated(false), _thickness(1)
 {
-    if(memory == COPY)
+    if (memory == COPY) {
         prepare();
+    }
+    else {
+        //print("Passed vector is not copied. Make sure it is not destroyed before this object.");
+        update_size();
+    }
 }
 
 VertexArray::~VertexArray() {
@@ -29,44 +34,39 @@ void VertexArray::prepare() {
     if(!_transport)
         return;
     
+    //print("original = ", _original_points.size(), ", transport = ", _transport->size());
     _original_points = *_transport;
     //_original_points.insert(_original_points.end(), _transport->begin(), _transport->end());
-    
-    if(_points)
-        _points->clear();
-    _transport = NULL;
-    
+    _size_calculated = false;
+    _transport = nullptr;
     update_size();
 }
 
 void VertexArray::confirm_points() {
-    if (_points)
-        _points->clear();
-    _transport = nullptr;
+    _size_calculated = false;
     update_size();
 }
 
 void VertexArray::update_size() {
     //if(_points && !_points->empty() )
     //    return;
-    
-    if(_points) {
-        if(*_points != _original_points)
-            *_points = _original_points;
-        else
-            return;
-        //_points->resize(0);
-        //_points->insert(_points->end(), _original_points.begin(), _original_points.end());
-    } else
-        _points = std::make_unique<std::vector<Vertex>>(_original_points);
-    
-    if(_points->empty()) {
+    if (_size_calculated)
+        return;
+
+    /*if (_points != _original_points)
+    else
+        return;*/
+
+    //_points = _original_points;
+
+    if(_original_points.empty()) {
+        _points.clear();
         set_bounds(Bounds());
     } else {
         Vec2 maximum(-std::numeric_limits<Float2_t>::max()), minimum(std::numeric_limits<Float2_t>::max());
         float x, y;
         
-        for(auto &p : *_points) {
+        for(auto &p : _original_points) {
             x = p.position().x;
             y = p.position().y;
                 
@@ -78,9 +78,12 @@ void VertexArray::update_size() {
         
         maximum.x -= minimum.x;
         maximum.y -= minimum.y;
-                
-        for(auto &p : *_points)
-            p.position() -= minimum;
+         
+        _points.resize(_original_points.size());
+        for (size_t i = 0, N = _original_points.size(); i < N; ++i) {
+            _points[i].color() = _original_points[i].color();
+            _points[i].position() = _original_points[i].position() - minimum;
+        }
         
         set_bounds(Bounds(minimum, maximum));
     }
@@ -97,6 +100,11 @@ void Line::create(const Vec2& pos0, const Vec2& pos1, const Color& color, float 
     set_thickness(t);
     VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color), Vertex(pos1, color));
 }
+void Line::create(const Vec2& pos0, const Color& color0, const Vec2& pos1, const Color& color1, float t, MEMORY, const Vec2& scale) {
+    set_scale(scale);
+    set_thickness(t);
+    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color0), Vertex(pos1, color1));
+}
 
 void VertexArray::create(const std::vector<Vertex>& p, PrimitiveType primitive) {
     if(_original_points != p || primitive != _primitive) {
@@ -104,7 +112,7 @@ void VertexArray::create(const std::vector<Vertex>& p, PrimitiveType primitive) 
         for(size_t i=0, N = p.size(); i<N; ++i) {
             _original_points[i] = p[i];
         }
-        //_points = nullptr;
+        _size_calculated = false;
         _transport = nullptr;
         _primitive = primitive;
         update_size();
@@ -167,16 +175,14 @@ bool VertexArray::swap_with(gui::Drawable *d) {
             if(_original_points != *ptr->_transport) {
                 _original_points.resize(0);
                 _original_points.insert(_original_points.end(), ptr->_transport->begin(), ptr->_transport->end());
-                if(_points)
-                    _points->resize(0);
+                _size_calculated = false;
             }
             
         } else {
             if(_original_points != ptr->_original_points)
             {
                 std::swap(ptr->_original_points, _original_points);
-                if(_points)
-                    _points->resize(0);
+                _size_calculated = false;
             }
         }
         //if(_points)
@@ -360,22 +366,22 @@ bool Polygon::swap_with(Drawable* d) {
 }
 
 std::ostream & Line::operator <<(std::ostream &os) {
-    if(!_points || _points->empty()) {
+    if(_points.empty()) {
         os << "\"S\",[]," << Color() << "," << thickness()*0.75;
         return os;
     }
     
     os << "\"S\",";
     os << "[";
-    for (size_t i=0; i<_points->size(); i++) {
-        auto &p = (*_points)[i];
+    for (size_t i=0; i<_points.size(); i++) {
+        auto &p = _points[i];
         if(i)
             os << ",";
         os << p.position();
         //os << int(p.position().x) << "," << int(p.position().y);
     }
     
-    auto &p = _points->front();
+    auto &p = _points.front();
     os << "], " << p.color() << "," << thickness()*0.75;
     return os;
 }
@@ -501,7 +507,6 @@ void Line::prepare() {
 const std::vector<Vertex>& Line::points() {
     if(_transport)
         throw U_EXCEPTION("Line must be prepare()d before first use.");
-    assert(_points);
     
     auto _s = 1 / _max_scale;
     if(!_processed_points || _process_scale != _s) {
@@ -509,7 +514,7 @@ const std::vector<Vertex>& Line::points() {
             _processed_points = std::make_shared<std::vector<Vertex>>();
         _process_scale = _s;
         
-        reduce_vertex_line(*_points, *_processed_points, _s);
+        reduce_vertex_line(_points, *_processed_points, _s);
     }
     
     return *_processed_points;
@@ -777,15 +782,15 @@ std::ostream & VertexArray::operator <<(std::ostream &os) {
     
     os << "\"" << primitive_type << "\",";
     os << "[";
-    for (size_t i=0; i<_points->size(); i++) {
-        auto &p = (*_points)[i];
+    for (size_t i=0; i<_points.size(); i++) {
+        auto &p = _points[i];
         if(i)
             os << ",";
         os << p.position();
         //os << int(p.position().x) << "," << int(p.position().y);
     }
     
-    auto &p = _points->front();
+    auto &p = _points.front();
     os << "], " << p.color();
     return os;
 }

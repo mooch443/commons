@@ -122,7 +122,7 @@ public:
       @return The value of the stored function when applied to the provided arguments.
     */
     template<typename... Args>
-    constexpr return_type get(Args&&... args) const noexcept {
+    constexpr return_type get(Args&&... args) const {
         return function(std::forward<Args>(args)...);
     }
 };
@@ -160,7 +160,7 @@ public:
       @return The value of the stored function when applied to the provided arguments.
     */
     template<typename T>
-    constexpr T value(_Args&&... args) const noexcept {
+    constexpr T value(_Args&&... args) const {
         using Target_t = const Variable<T, _Args...>*;
         static_assert(std::same_as<const VarBase<_Args...>*, decltype(this)>);
         

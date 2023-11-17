@@ -75,90 +75,117 @@ struct LabeledField {
             object->set(attribute);
             return true;
             
-        } else if(object.is<Circle>()) {
-            if constexpr(takes_attribute<Circle, T>) {
-                object.to<Circle>()->set(attribute);
-                return true;
-            }
-            
-        } else if(object.is<Rect>()) {
-            if constexpr(takes_attribute<Rect, T>) {
-                object.to<Rect>()->set(attribute);
-                return true;
-            }
-            
-        } else if(object.is<Text>()) {
-            if constexpr(takes_attribute<Text, T>) {
-                object.to<Text>()->set(attribute);
-                return true;
-            }
-            
-        } else if(object.is<SectionInterface>()) {
-            if constexpr(takes_attribute<SectionInterface, T>) {
-                object.to<SectionInterface>()->set(attribute);
-                
-            } else if(object.is<Button>()) {
-                if constexpr(takes_attribute<Button, T>) {
-                    object.to<Button>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<Textfield>()) {
-                if constexpr(takes_attribute<Textfield, T>) {
-                    object.to<Textfield>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<Dropdown>()) {
-                if constexpr(takes_attribute<Dropdown, T>) {
-                    object.to<Dropdown>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<List>()) {
-                if constexpr(takes_attribute<List, T>) {
-                    object.to<List>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<ScrollableList<>>()) {
-                if constexpr(takes_attribute<ScrollableList<>, T>) {
-                    object.to<ScrollableList<>>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<ScrollableList<DetailItem>>()) {
-                if constexpr(takes_attribute<ScrollableList<DetailItem>, T>) {
-                    object.to<ScrollableList<DetailItem>>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<Checkbox>()) {
-                if constexpr(takes_attribute<Checkbox, T>) {
-                    object.to<Checkbox>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<Combobox>()) {
-                if constexpr(takes_attribute<Combobox, T>) {
-                    object.to<Combobox>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<Layout>()) {
-                if constexpr(takes_attribute<Layout, T>) {
-                    object.to<Layout>()->set(attribute);
-                    return true;
-                }
-                
-            } else if(object.is<StaticText>()) {
-                if constexpr(takes_attribute<StaticText, T>) {
-                    object.to<StaticText>()->set(attribute);
-                    return true;
-                }
-                
-            }
         }
+
+        switch (object->type()) {
+            case Type::SECTION:
+                if constexpr (takes_attribute<Section, T>) {
+                    object.to<Section>()->set(attribute);
+                }
+                break;
+
+            case Type::ENTANGLED:
+                if constexpr (takes_attribute<Entangled, T>) {
+                    object.to<Entangled>()->set(attribute);
+                    return true;
+                }
+                else if (object.is<Button>()) {
+                    if constexpr (takes_attribute<Button, T>) {
+                        object.to<Button>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<Textfield>()) {
+                    if constexpr (takes_attribute<Textfield, T>) {
+                        object.to<Textfield>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<Dropdown>()) {
+                    if constexpr (takes_attribute<Dropdown, T>) {
+                        object.to<Dropdown>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<List>()) {
+                    if constexpr (takes_attribute<List, T>) {
+                        object.to<List>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<ScrollableList<>>()) {
+                    if constexpr (takes_attribute<ScrollableList<>, T>) {
+                        object.to<ScrollableList<>>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<ScrollableList<DetailItem>>()) {
+                    if constexpr (takes_attribute<ScrollableList<DetailItem>, T>) {
+                        object.to<ScrollableList<DetailItem>>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<Checkbox>()) {
+                    if constexpr (takes_attribute<Checkbox, T>) {
+                        object.to<Checkbox>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<Combobox>()) {
+                    if constexpr (takes_attribute<Combobox, T>) {
+                        object.to<Combobox>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<Layout>()) {
+                    if constexpr (takes_attribute<Layout, T>) {
+                        object.to<Layout>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<StaticText>()) {
+                    if constexpr (takes_attribute<StaticText, T>) {
+                        object.to<StaticText>()->set(attribute);
+                        return true;
+                    }
+                }
+                break;
+            case Type::CIRCLE:
+                if constexpr (takes_attribute<Circle, T>) {
+                    object.to<Circle>()->set(attribute);
+                    return true;
+                }
+                break;
+            case Type::RECT:
+                if constexpr (takes_attribute<Rect, T>) {
+                    object.to<Rect>()->set(attribute);
+                    return true;
+                }
+                break;
+            case Type::VERTICES:
+                if constexpr (takes_attribute<VertexArray, T>) {
+                    object.to<VertexArray>()->set(attribute);
+                    return true;
+                }
+                break;
+            case Type::TEXT:
+                if constexpr (takes_attribute<Text, T>) {
+                    object.to<Text>()->set(attribute);
+                    return true;
+                }
+                break;
+
+            case Type::IMAGE:
+                if constexpr (takes_attribute<ExternalImage, T>) {
+                    object.to<ExternalImage>()->set(attribute);
+                    return true;
+                }
+                break;
+
+            default:
+                break;
+        }
+
         return false;
     }
 };

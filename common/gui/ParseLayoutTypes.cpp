@@ -52,7 +52,10 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Cont
         throw std::invalid_argument("Structure does not contain type information");
     
     auto type_name = utils::lowercase(obj["type"].get<std::string>());
-    type = LayoutType::get(type_name);
+    if (not LayoutType::has(type_name))
+        type = LayoutType::unknown;
+    else
+        type = LayoutType::get(type_name);
     
     if(hash == 0) {
         hash = state._current_index.hash();
@@ -363,7 +366,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
     std::vector<Layout::Ptr> children;
     
     if(obj.count("children")) {
-        IndexScopeHandler handler{state._current_index};
+        //IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
             //print("collection: ", child.dump());
             auto ptr = parse_object(child, context, state, context.defaults);

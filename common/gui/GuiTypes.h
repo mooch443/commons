@@ -34,8 +34,8 @@ public:
     };
     
 protected:
-    const std::vector<Vertex>* _transport;
-    std::unique_ptr<std::vector<Vertex>> _points;
+    const std::vector<Vertex>* _transport{ nullptr };
+    std::vector<Vertex> _points;
     std::vector<Vertex> _original_points;
     GETTER(PrimitiveType, primitive)
     GETTER(bool, size_calculated)
@@ -68,6 +68,7 @@ public:
             _transport = nullptr;
             //_points = nullptr;
             _primitive = primitive;
+            _size_calculated = false;
             update_size();
         }
     }
@@ -75,9 +76,7 @@ public:
     virtual const std::vector<Vertex>& points() {
         if(_transport)
             throw U_EXCEPTION("Vertices must be prepare()d before first use.");
-        assert(_points);
-        
-        return *_points;
+        return _points;
     }
     
     void set_thickness(float t);
@@ -157,7 +156,7 @@ protected:
               _processed_points(NULL), _process_scale(-1),
               _max_scale(1)
         {
-            if(_thickness != 1) set_thickness(t);
+            if(t != 1) set_thickness(t);
             set_scale(scale);
         }
         
@@ -169,7 +168,8 @@ protected:
         
         void create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1);
         void create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1));
-        
+        void create(const Vec2& pos0, const Color& color0, const Vec2& pos1, const Color& color1, float t, MEMORY = MEMORY::COPY, const Vec2& scale = Vec2(1));
+
         const std::vector<Vertex>& points() override final;
         std::ostream &operator <<(std::ostream &os) override;
         decltype(_processed_points) processed_points() const { return _processed_points; }

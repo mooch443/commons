@@ -15,6 +15,7 @@ Map::Map() : _do_print(true) {
 
 Map::Map(const Map& other) {
     _props = other._props;
+    _print_key = other._print_key;
     _do_print = other._do_print;
 }
 
@@ -23,6 +24,20 @@ Map::Map(Map&& other)
       _print_key(std::move(other._print_key)),
       _do_print(std::move(other._do_print))
 { }
+
+Map& Map::operator=(const Map& other) {
+	_props = other._props;
+    _print_key = other._print_key;
+	_do_print = other._do_print;
+	return *this;
+}
+
+Map& Map::operator=(Map&& other) {
+	_props = std::move(other._props);
+	_print_key = std::move(other._print_key);
+	_do_print = std::move(other._do_print);
+	return *this;
+}
 
 Map::~Map() {
     decltype(_shutdown_callbacks) copy;

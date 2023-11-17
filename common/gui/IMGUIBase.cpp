@@ -1129,18 +1129,25 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _type_counts.clear();
 #endif
         _draw_order.clear();
+        _above_z.clear();
         _rotation_starts.clear();
         
         for (size_t i=0; i<objects.size(); i++) {
             auto o =  objects[i];
-            redraw(o, _draw_order);
+
+            size_t prev = _draw_order.size();
+            redraw(o, _draw_order, _above_z);
         }
         
-        std::sort(_draw_order.begin(), _draw_order.end(), [](const auto& A, const auto& B) {
+        std::sort(_above_z.begin(), _above_z.end(), [](const auto& A, const auto& B) {
             return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);
         });
         
         for(auto & order : _draw_order) {
+            draw_element(order);
+        }
+
+        for (auto& order : _above_z) {
             draw_element(order);
         }
         
@@ -1275,6 +1282,36 @@ std::string u8string_to_string(const std::u8string& u8str)
     return str;
 }
 
+uint32_t blendColors(uint32_t color1, uint32_t color2) {
+    if (color1 == color2)
+        return color1;
+
+    // Fast exit for fully transparent colors
+    if ((color1 >> 24) == 0) return color2;
+    if ((color2 >> 24) == 0) return color1;
+
+    // Extract and pre-multiply alpha
+    uint32_t alpha1 = (color1 >> 24) & 0xFF;
+    uint32_t alpha2 = (color2 >> 24) & 0xFF;
+    uint32_t premulAlpha1 = alpha1 + 1;
+    uint32_t premulAlpha2 = alpha2 + 1;
+
+    // Extract colors and pre-multiply by alpha
+    uint32_t rb1 = (color1 & 0xFF00FF) * premulAlpha1;
+    uint32_t rb2 = (color2 & 0xFF00FF) * premulAlpha2;
+    uint32_t g1 = (color1 & 0x00FF00) * premulAlpha1;
+    uint32_t g2 = (color2 & 0x00FF00) * premulAlpha2;
+
+    // Blend colors and alpha
+    uint32_t rb = ((rb1 + rb2) >> 8) & 0xFF00FF;
+    uint32_t g = ((g1 + g2) >> 8) & 0x00FF00;
+    uint32_t blendedAlpha = std::min(255u, alpha1 + alpha2);
+
+    // Combine blended components into a single color
+    return (blendedAlpha << 24) | rb | g;
+}
+
+
 void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBase::DrawOrder& order, ImDrawList* list, float thickness) {
     const auto points_count = points.size();
 
@@ -1301,7 +1338,9 @@ void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBa
     for (size_t i1 = 0; i1 < count; i1++) {
         const size_t i2 = (i1 + 1) == points_count ? 0 : i1 + 1;
         const auto p2 = order.transform.transformPoint(points[i2].position());
-        const auto col = points[i1].color();
+        const auto col1 = points[i1].color();
+        const auto col2 = points[i2].color();
+        //const auto col = blendColors(col1, col2);
 
         float dx = p2.x - p1.x;
         float dy = p2.y - p1.y;
@@ -1310,10 +1349,10 @@ void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBa
         dy *= (thickness * 0.5f);
 
         // Vertex Writing
-        list->_VtxWritePtr[0].pos.x = p1.x + dy; list->_VtxWritePtr[0].pos.y = p1.y - dx; list->_VtxWritePtr[0].uv = uv; list->_VtxWritePtr[0].col = col;
-        list->_VtxWritePtr[1].pos.x = p2.x + dy; list->_VtxWritePtr[1].pos.y = p2.y - dx; list->_VtxWritePtr[1].uv = uv; list->_VtxWritePtr[1].col = col;
-        list->_VtxWritePtr[2].pos.x = p2.x - dy; list->_VtxWritePtr[2].pos.y = p2.y + dx; list->_VtxWritePtr[2].uv = uv; list->_VtxWritePtr[2].col = col;
-        list->_VtxWritePtr[3].pos.x = p1.x - dy; list->_VtxWritePtr[3].pos.y = p1.y + dx; list->_VtxWritePtr[3].uv = uv; list->_VtxWritePtr[3].col = col;
+        list->_VtxWritePtr[0].pos.x = p1.x + dy; list->_VtxWritePtr[0].pos.y = p1.y - dx; list->_VtxWritePtr[0].uv = uv; list->_VtxWritePtr[0].col = col1;
+        list->_VtxWritePtr[1].pos.x = p2.x + dy; list->_VtxWritePtr[1].pos.y = p2.y - dx; list->_VtxWritePtr[1].uv = uv; list->_VtxWritePtr[1].col = col2;
+        list->_VtxWritePtr[2].pos.x = p2.x - dy; list->_VtxWritePtr[2].pos.y = p2.y + dx; list->_VtxWritePtr[2].uv = uv; list->_VtxWritePtr[2].col = col2;
+        list->_VtxWritePtr[3].pos.x = p1.x - dy; list->_VtxWritePtr[3].pos.y = p1.y + dx; list->_VtxWritePtr[3].uv = uv; list->_VtxWritePtr[3].col = col1;
         list->_VtxWritePtr += 4;
 
         // Index Writing
@@ -1710,7 +1749,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     
 }
 
-    void IMGUIBase::redraw(Drawable *o, std::vector<DrawOrder>& draw_order, bool is_background, ImVec4 clip_rect) {
+    void IMGUIBase::redraw(Drawable *o, std::vector<DrawOrder>& draw_order, std::vector<DrawOrder>& above_z, bool is_background, ImVec4 clip_rect) {
         if (!o)
             return;
 
@@ -1762,11 +1801,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             case Type::ENTANGLED: {
                 auto ptr = static_cast<Entangled*>(o);
                 if(ptr->rotation() != 0)
-                    draw_order.emplace_back(DrawOrder::START_ROTATION, draw_order.size(), o, transform, bounds, clip_rect);
+                    draw_order.emplace_back(DrawOrder::START_ROTATION, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
                 
                 auto bg = static_cast<Entangled*>(o)->background();
                 if(bg) {
-                    redraw(bg, draw_order, true, clip_rect);
+                    redraw(bg, draw_order, above_z, true, clip_rect);
                 }
                 
                 assert(!ptr->begun());
@@ -1794,25 +1833,28 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                             }
                         }
                         
-                        redraw(c, draw_order, false, clip_rect);
+                        redraw(c, draw_order, above_z, false, clip_rect);
                     }
                     
                     //draw_order.emplace_back(DrawOrder::POP, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                 } else {
                     for(auto c : ptr->children())
-                        redraw(c, draw_order, false, clip_rect);
+                        redraw(c, draw_order, above_z, false, clip_rect);
                 }
                 
                 if(ptr->rotation() != 0) {
-                    draw_order.emplace_back(DrawOrder::END_ROTATION, draw_order.size(), ptr, transform, bounds, clip_rect);
+                    draw_order.emplace_back(DrawOrder::END_ROTATION, draw_order.size() + above_z.size(), ptr, transform, bounds, clip_rect);
                 }
                 
                 break;
             }
                 
             default:
-                draw_order.emplace_back(DrawOrder::DEFAULT, draw_order.size(), o, transform, bounds, clip_rect);
+                if(o->z_index() != 0)
+                    above_z.emplace_back(DrawOrder::DEFAULT, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                else
+                    draw_order.emplace_back(DrawOrder::DEFAULT, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
                 break;
         }
     }

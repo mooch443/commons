@@ -37,7 +37,8 @@ ENUM_CLASS(LayoutType,
            settings,
            combobox,
            image,
-           list);
+           list,
+           unknown);
 
 struct VarProps {
     std::string name;
@@ -207,12 +208,31 @@ std::pair<std::string, std::shared_ptr<VarBase_t>> VarFunc(const std::string& na
     return std::make_pair(name, std::shared_ptr<VarBase_t>(new Variable(std::forward<Fn>(func))));
 }
 
+class LayoutContext;
+
+struct Pattern {
+    std::string original;
+    std::vector<std::string_view> variables;
+
+    std::string toStr() const;
+    static std::string class_name() { return "Pattern"; }
+};
+
+struct CustomElement {
+	std::string name;
+	std::function<Layout::Ptr(LayoutContext&)> create;
+    std::function<void(Layout::Ptr&, const Context&, State&, const robin_hood::unordered_map<std::string, Pattern>&)> update;
+};
+
 struct Context {
     std::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;
     DefaultSettings defaults;
     
     mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> system_variables;
+
+    std::unordered_map<std::string, CustomElement> custom_elements;
+
     [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(const std::string_view&) const;
     [[nodiscard]] bool has(const std::string_view&) const noexcept;
     
@@ -311,13 +331,6 @@ struct VarCache {
     nlohmann::json _obj;
 };
 
-struct Pattern {
-    std::string original;
-    std::vector<std::string_view> variables;
-    
-    std::string toStr() const;
-    static std::string class_name() { return "Pattern"; }
-};
 
 struct State {
     robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, Pattern>> patterns;
@@ -334,6 +347,8 @@ struct State {
     std::unordered_map<size_t, Timer> _timers;
     
     std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
+    std::unordered_map<size_t, std::string> _customs;
+    std::unordered_map<size_t, Layout::Ptr> _customs_cache;
     
     Index _current_index;
     
@@ -344,7 +359,8 @@ struct State {
           display_fns(other.display_fns),
           ifs(other.ifs),
           _var_cache(other._var_cache),
-          _current_index(other._current_index)
+          _current_index(other._current_index),
+          _customs(other._customs)
     {
         for(auto &[k, body] : other.loops) {
             loops[k] = {

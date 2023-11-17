@@ -670,6 +670,8 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                          uint64_t hash)
 {
     LayoutContext layout(obj, state, context, defaults, hash);
+    hash = layout.hash;
+
     try {
         Layout::Ptr ptr;
 
@@ -726,7 +728,23 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                 ptr = layout.create_object<LayoutType::image>();
                 break;
             default:
-                FormatExcept("Unknown layout type: ", layout.type);
+                if (auto it = context.custom_elements.find(obj["type"].get<std::string>());
+                    it != context.custom_elements.end()) 
+                {
+                    if (state._customs_cache.contains(hash)) {
+                        ptr = state._customs_cache.at(hash);
+                        context.custom_elements.at(state._customs.at(hash))
+                            .update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+                        
+                    } else {
+                        ptr = it->second.create(layout);
+                        it->second
+                            .update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+                        state._customs[hash] = it->first;
+                        state._customs_cache[hash] = ptr;
+                    }
+                } else
+                    FormatExcept("Unknown layout type: ", layout.type);
                 break;
         }
         
@@ -827,6 +845,11 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(hash)) {
         state.display_fns.at(hash)(g);
+    }
+
+    if (state._customs.contains(hash)) {
+        context.custom_elements.at(state._customs.at(hash)).update(o, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+        return false;
     }
     
     //! if statements below
@@ -1128,33 +1151,35 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                 
                 auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
                 
-                IndexScopeHandler handler{state._current_index};
+                //IndexScopeHandler handler{state._current_index};
                 if(vector != obj.cache) {
                     std::vector<Layout::Ptr> ptrs;
-                    obj.cache = vector;
-                    obj.state = std::make_unique<State>();
+                    /*if (not obj.state) {
+                        obj.state = std::make_unique<State>(state);
+                    }*/
                     Context tmp = context;
                     for(auto &v : vector) {
-                        auto previous = obj.state->_variable_values;
+                        auto previous = state._variable_values;
                         tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, *obj.state, context.defaults);
-                        update_objects(g, ptr, tmp, *obj.state);
+                        auto ptr = parse_object(obj.child, tmp, state, context.defaults);
+                        update_objects(g, ptr, tmp, state);
                         ptrs.push_back(ptr);
-                        obj.state->_variable_values = std::move(previous);
+                        state._variable_values = std::move(previous);
                     }
                     
                     o.to<Layout>()->set_children(ptrs);
+                    obj.cache = vector;
                     
                 } else {
                     Context tmp = context;
                     for(size_t i=0; i<obj.cache.size(); ++i) {
-                        auto previous = obj.state->_variable_values;
+                        auto previous = state._variable_values;
                         tmp.variables["i"] = obj.cache[i];
                         auto& p = o.to<Layout>()->objects().at(i);
                         if(p)
-                            update_objects(g, p, tmp, *obj.state);
+                            update_objects(g, p, tmp, state);
                         //p->parent()->stage()->print(nullptr);
-                        obj.state->_variable_values = std::move(previous);
+                        state._variable_values = std::move(previous);
                     }
                 }
             }

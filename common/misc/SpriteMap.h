@@ -231,6 +231,8 @@ concept Iterable = requires(T obj) {
         Map();
         Map(const Map& other);
         Map(Map&& other);
+        Map& operator=(const Map& other);
+        Map& operator=(Map&& other);
         
         ~Map();
         
