@@ -455,8 +455,11 @@ void Context::init() const {
                 if (props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for int: ", props);
                 }
-
-                return static_cast<int64_t>(Meta::fromStr<float>(props.parameters.front()));
+                auto v = Meta::fromStr<float>(props.parameters.front());
+                if(std::isnan(v))
+                    return static_cast<int64_t>(std::numeric_limits<int64_t>::quiet_NaN());
+                else
+                    return static_cast<int64_t>(v);
             }),
             VarFunc("dec", [](const VarProps& props) -> std::string {
                 if (props.parameters.size() != 2) {
