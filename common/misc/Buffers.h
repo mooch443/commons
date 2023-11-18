@@ -8,12 +8,12 @@ concept CallableWith = std::is_invocable_v<Func, Arg>;
 
 template<typename T, typename Construct>
 struct Buffers {
-    static std::mutex& mutex() {
-        static std::mutex m;
+    std::mutex& mutex() {
         return m;
     }
     std::vector<T> _buffers;
     Construct _create{};
+    std::mutex m;
     
     T get(cmn::source_location loc) {
         if(std::unique_lock guard(mutex());

@@ -797,13 +797,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     0x2000, 0x206F, // General Punctuation
                     0x2070, 0x209F, // Superscripts and Subscripts
                     0x20A0, 0x20CF, // Currency Symbols
-                    0x2190, 0x21FF, // Arrows
+                    0x2190, 0x27BF, // Arrows
 
                     // Range from Miscellaneous Technical to Miscellaneous Symbols and Play Symbol
-                    0x2300, 0x26FF, // Miscellaneous Technical
+                    //0x2300, 0x26FF, // Miscellaneous Technical
                     //0x2600, 0x26FF, // Miscellaneous Symbols
-                    0x2700, 0x27BF, // Dingbats
-                    0x25B6, 0x25B6, // Play Symbol
+                    //0x2700, 0x27BF, // Dingbats
+                    //0x25B6, 0x25B6, // Play Symbol
                     0x2B00, 0x2EFF,
 
                     // CJK Symbols and Punctuation to Hiragana and Katakana
