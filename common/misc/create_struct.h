@@ -91,7 +91,7 @@ template<> struct NAM :: AccessEnum<NAM :: Variables:: EVERY_PLAIN_GET_B_NO_COMM
 #define EXPRESS_MEMBER_FUNCTIONS(NAM, TUPLE) IMPL_ACCESS_ENUM(NAM, TUPLE)
 
 #define EXPRESS_MEMBER_TYPES(NAM, TUPLE) using EVERY_PLAIN_GET_B_WITH_T TUPLE = EVERY_PLAIN_GET_A_NO_COMMA TUPLE;
-#define EXPRESS_MEMBER_GETTERS(NAM, TUPLE) []() -> auto& { if(!cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).is_type< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >()) { auto type_name = cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).get().type_name(); throw U_EXCEPTION("Settings type ",type_name," is not '", EVERY_PAIR_GET_A TUPLE ,"' for Variable '", #NAM ,"::", EVERY_PAIR_GET_B TUPLE ,"'."); } return cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).get(); },
+#define EXPRESS_MEMBER_GETTERS(NAM, TUPLE) []() -> auto& { if(!cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).is_type< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >()) { auto type_name = cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).get().type_name(); throw cmn::U_EXCEPTION("Settings type ",type_name," is not '", EVERY_PAIR_GET_A TUPLE ,"' for Variable '", #NAM ,"::", EVERY_PAIR_GET_B TUPLE ,"'."); } return cmn::GlobalSettings::get( EVERY_PAIR_GET_B TUPLE ).get(); },
 
 
 #define STRUCT_CONCATENATE(arg1, arg2)   STRUCT_CONCATENATE1(arg1, arg2)
@@ -676,7 +676,7 @@ public: \
         static Members _members; \
         return _members; \
     } \
-    typedef std::function<void(const std::string_view&, const sprite::PropertyType&)> callback_fn_t; \
+    typedef std::function<void(const std::string_view&, const cmn::sprite::PropertyType&)> callback_fn_t; \
     static auto& callbacks() { \
         static CallbackHolder<Variables, callback_fn_t> _callbacks(#NAM); \
         return _callbacks._callbacks; \
@@ -722,10 +722,10 @@ private: \
         } \
     } \
     inline static std::once_flag flag; \
-    inline static CallbackCollection _callback_id; \
+    inline static cmn::CallbackCollection _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
-    template<Variables M> static void update(std::string_view key, const sprite::PropertyType& value) { \
+    template<Variables M> static void update(std::string_view key, const cmn::sprite::PropertyType& value) { \
         /*print("[",#NAM,"] Updating key ", key, " = ", value.valueString());*/ \
         auto it = callbacks().find(M); \
         if(it != callbacks().end()) { \
@@ -740,19 +740,19 @@ public: \
     static void set_callback(Variables v, callback_fn_t f) { callbacks()[v].emplace_back(f); } \
     static void clear_callbacks() { callbacks().clear(); } \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
-    static void variable_changed (sprite::Map::Signal, sprite::Map &, const std::string_view &key, const sprite::PropertyType& value) { \
+    static void variable_changed (cmn::sprite::Map::Signal, cmn::sprite::Map &, const std::string_view &key, const cmn::sprite::PropertyType& value) { \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
         std::call_once(flag, [](){ \
         _callback_id = cmn::GlobalSettings::map().register_callbacks(NAM :: names(), [](std::string_view name){ \
-                variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+                variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
             }); \
             for(auto &name : NAM :: names()) { \
                 if(cmn::GlobalSettings::map().has(name)) \
-                    variable_changed(sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+                    variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
                 else \
-                    FormatWarning("Cannot find parameter ", name, " in global settings."); \
+                    cmn::FormatWarning("Cannot find parameter ", name, " in global settings."); \
             } \
         }); \
     } \
