@@ -125,7 +125,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     
     switch (_type) {
         case VIDEO: {
-            _video = new Video();
+            _video = new FfmpegVideoCapture("");
             auto npz = file::Path(_filename).replace_extension("npz");
             if(npz.exists()) {
                 try {
@@ -145,7 +145,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                     
                     if(!_video->open(_filename))
                         throw U_EXCEPTION("Opening Video ",_filename," failed.");
-                    _length = _video->length();
+                    _length = Frame_t(_video->length());
                     _video->close();
                 }
                 
@@ -153,7 +153,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                 if(!_video->open(_filename))
                     throw U_EXCEPTION("Opening Video ",_filename," failed.");
                 try {
-                    _length = _video->length();
+                    _length = Frame_t(_video->length());
                 } catch(const std::exception& e) {
                     FormatExcept("Exception while retrieving length of video ", _filename,": ", e.what());
                 }
@@ -171,24 +171,59 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
+bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc) const
+{
+    switch (_type) {
+        case VIDEO: {
+            if (!_video->is_open()) {
+                _video->open(_filename);
+                //_video->set_colored(color);
+            } //else if(_video->colored() != color)
+              //_video->set_colored(color);
+            
+            if (!_video->is_open())
+                throw U_EXCEPTION("Video ",_filename," cannot be opened.");
+            
+            _video->set_frame(frameIndex.get());
+            return _video->read(output);
+        }
+            
+        case IMAGE:
+            if(color == ImageMode::GRAY)
+                cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output.get());
+            else
+                cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output.get());
+            return true;
+            
+        default:
+            throw U_EXCEPTION("Grabbing frame ",frameIndex," from '",_filename,"' failed because the type was unknown.");
+    }
+}
+
 void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video, cmn::source_location loc) const {
     switch (_type) {
-        case VIDEO:
-            if (!_video->isOpened()) {
+        case VIDEO: {
+            if (!_video->is_open()) {
                 _video->open(_filename);
-                _video->set_colored(color);
-            } else if(_video->colored() != color)
-                _video->set_colored(color);
+                //_video->set_colored(color);
+            } //else if(_video->colored() != color)
+              //_video->set_colored(color);
             
-            if (!_video->isOpened())
+            if (!_video->is_open())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
-
-            _video->frame(frameIndex, output, lazy_video, loc);
             
-            assert(output.cols == _video->size().width
-                && output.rows == _video->size().height);
-
+            Image image;
+            _video->set_frame(frameIndex.get());
+            _video->read(image);
+            //_video->frame(frameIndex, image, lazy_video, loc);
+            
+            image.get().copyTo(output);
+            
+            assert(output.cols == _video->dimensions().width
+                   && output.rows == _video->dimensions().height);
+            
             break;
+        }
             
         case IMAGE:
             if(color == ImageMode::GRAY)
@@ -239,10 +274,12 @@ short VideoSource::File::framerate() {
             return -1;
         
     } else {
-        if(!_video->isOpened())
+        bool was_open = _video->is_open();
+        if(not was_open)
             _video->open(_filename);
-        auto fps = _video->framerate();
-        _video->close();
+        auto fps = _video->frame_rate();
+        if(not was_open)
+            _video->close();
         return narrow_cast<short>(fps);
     }
 }
@@ -269,11 +306,15 @@ timestamp_t VideoSource::File::timestamp(Frame_t frameIndex, cmn::source_locatio
 const cv::Size& VideoSource::File::resolution() {
     if(_size.width == 0 && _size.height == 0) {
         switch(_type) {
-            case VIDEO:
-                if(!_video->isOpened())
+            case VIDEO: {
+                bool was_open = _video->is_open();
+                if(not was_open)
                     _video->open(_filename);
-                _size = _video->size();
+                _size = _video->dimensions();
+                if(not was_open)
+                    _video->close();
                 break;
+            }
                 
             case IMAGE: {
                 auto output = cv::imread(_filename, cv::IMREAD_GRAYSCALE);
@@ -587,12 +628,45 @@ void VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
                 }
                 
                 _last_file = f;
-                f->frame(_colors, globalIndex - index, output, _lazy_loader);
+                if(not f->frame(_colors, globalIndex - index, _buffer))
                 
-                if(output.empty())
                     throw U_EXCEPTION("Could not find frame ",globalIndex,"/",length()," in VideoSource.");
-                
+                //f->frame(_colors, globalIndex - index, output, _lazy_loader);
+                _buffer.get().copyTo(output);
                 return;
+            }
+            
+            index += f->length();
+        }
+        
+        throw U_EXCEPTION("Could not find frame ",globalIndex,"/",index," in VideoSource.");
+    }
+}
+
+bool VideoSource::frame(Frame_t globalIndex, Image& output, cmn::source_location loc) {
+    if (!globalIndex.valid()
+        || globalIndex >= _length)
+        throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
+    
+    if(type() == File::Type::IMAGE) {
+        auto f = _files_in_seq.at(globalIndex.get());
+        if(_last_file && _last_file != f)
+            _last_file->close();
+        
+        _last_file = f;
+        return f->frame(_colors, 0_f, output);
+        
+    } else {
+        Frame_t index = 0_f;
+        
+        for (auto f : _files_in_seq) {
+            if (index + f->length() > globalIndex) {
+                if (_last_file && _last_file != f) {
+                    _last_file->close();
+                }
+                
+                _last_file = f;
+                return f->frame(_colors, globalIndex - index, output);
             }
             
             index += f->length();

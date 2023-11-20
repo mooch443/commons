@@ -6,6 +6,7 @@
 #include <file/Path.h>
 #include <video/Video.h>
 #include <file/PathArray.h>
+#include <video/FFmpegVideoCapture.h>
 
 #define VIDEO_SEQUENCE_INVALID_VALUE (-1)
 #define VIDEO_SEQUENCE_UNSPECIFIED_VALUE (-2)
@@ -36,7 +37,8 @@ public:
         GETTER(size_t, index)
         GETTER(std::string, filename)
         Frame_t _length;
-        Video *_video;
+        //Video *_video;
+        FfmpegVideoCapture *_video{nullptr};
         Type _type;
         
         GETTER(std::string, format)
@@ -56,6 +58,7 @@ public:
         const cv::Size& resolution();
         
         void frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+        bool frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) const;
         void close() const;
         Type type() const { return _type; }
         bool has_timestamps() const;
@@ -78,6 +81,7 @@ private:
     cv::Mat _mask;
     bool _has_timestamps = false;
     short _framerate = -1;
+    Image _buffer;
     
 private:
     GETTER_SETTER_I(ImageMode, colors, ImageMode::GRAY)
@@ -106,6 +110,7 @@ public:
     void frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) override;
 #endif
     void frame(Frame_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) override;
+    bool frame(Frame_t globalIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) override;
     const cv::Size& size() const override { return _size; }
     Frame_t length() const override { return _length; }
     const cv::Mat& average() const override { return _average; }
