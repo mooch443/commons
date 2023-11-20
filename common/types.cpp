@@ -23,7 +23,7 @@ std::string blob::Pose::Skeleton::toStr() const {
 }
 
 std::string blob::Pose::Skeleton::Connection::toStr() const {
-    return "["+Meta::toStr(from) + "," + Meta::toStr(to)+""+Meta::toStr(name)+"]";
+    return "["+Meta::toStr(from) + "," + Meta::toStr(to)+","+Meta::toStr(name)+"]";
 }
 
 blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const std::string &str) {
@@ -37,7 +37,7 @@ blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const
     return Connection{
         .from = Meta::fromStr<uint8_t>(parts.at(0)),
         .to = Meta::fromStr<uint8_t>(parts.at(1)),
-        .name = name
+        .name = Meta::fromStr<std::string>(name)
     };
 }
 

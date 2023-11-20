@@ -210,8 +210,10 @@ struct Pose {
             float weight = WeightPolicy::calculate_weight(i, num);
             
             for(size_t j = 0; j < pose.points.size(); ++j) {
-                points[j] += Vec2(pose.points[j]) * weight;
-                weights[j] += weight;
+                if (pose.points[j].x > 0 || pose.points[j].y > 0) {
+					points[j] += Vec2(pose.points[j]) * weight;
+					weights[j] += weight;
+				}
             }
         }
         
@@ -220,9 +222,10 @@ struct Pose {
         
         for(size_t i = 0; i < points.size(); ++i) {
             if(weights[i] == 0.0f) {
-                throw std::runtime_error("Weight sum cannot be zero.");
-            }
-            pose.points[i] = Point(points[i] / weights[i]);
+                pose.points[i] = Point(0, 0);
+                //throw std::runtime_error("Weight sum cannot be zero.");
+            } else
+                pose.points[i] = Point(points[i] / weights[i]);
         }
         
         return pose;

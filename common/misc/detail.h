@@ -684,7 +684,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         class Map;
         //! Parses a JSON object from string {"key": "value", "key2": 123, "key3": ["test","strings"]}
         Map parse_values(std::string str, const SettingsMaps* additional = nullptr);
-        std::set<std::string> parse_values(Map&, std::string, const SettingsMaps* additional = nullptr);
+        std::set<std::string> parse_values(Map&, std::string, const SettingsMaps* additional = nullptr, const std::vector<std::string>& exclude = {});
     }
     
     void set_thread_name(const std::string& name);

@@ -636,7 +636,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(Map& map, std::string str, const SettingsMaps* additional) {
+        std::set<std::string> parse_values(Map& map, std::string str, const SettingsMaps* additional, const std::vector<std::string>& exclude) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -654,6 +654,7 @@ namespace cmn {
                 if(key_value.empty())
 					continue;
                 auto &key = key_value[0];
+
                 std::string value;
                 if(key_value.size() > 1) value = key_value[1];
                 
@@ -663,7 +664,10 @@ namespace cmn {
                     && ((value.front() == '\"' && value.back() == '\"') 
                         || (value.front() == '\'' && value.back() == '\'')))
                     value = util::unescape(value.substr(1, value.length()-2u));
-                
+
+                if (contains(exclude, key))
+                    continue;
+
                 if(map.has(key)) {
                     // try to set with existing type
                     map[key].get().set_value_from_string(value);
