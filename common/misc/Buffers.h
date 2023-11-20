@@ -20,6 +20,11 @@ struct Buffers {
            not _buffers.empty())
         {
             auto ptr = std::move(_buffers.back());
+#ifndef NDEBUG
+            if(not ptr)
+                throw U_EXCEPTION("Failed to get buffer");
+#endif
+
             _buffers.pop_back();
             return ptr;
         }
