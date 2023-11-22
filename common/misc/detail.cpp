@@ -1008,19 +1008,4 @@ namespace cmn {
         return "HorizontalLine("+std::to_string(y)+","+std::to_string(x0)+","+std::to_string(x1)+")";
     }
 
-void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
-    if(output.rows != input.rows
-       || output.cols != input.cols
-       || output.type() != CV_8UC1)
-    {
-        output = cv::Mat::zeros(input.rows, input.cols, CV_8UC1);
-    }
-    
-    for(int y=0; y < input.rows; ++y) {
-        for(int x=0; x < input.cols; ++x) {
-            output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
-        }
-    }
-}
-
 }

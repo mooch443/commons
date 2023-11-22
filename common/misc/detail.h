@@ -491,7 +491,8 @@ namespace cmn {
     }
 
 
-inline uint8_t vec_to_r3g3b2(const cv::Vec3b& bgr) {
+template<typename Vec>
+inline uint8_t vec_to_r3g3b2(const Vec& bgr) {
     return (uint8_t(bgr[0] / 64) << 6)
          | (uint8_t(bgr[1] / 32) << 3)
          | (uint8_t(bgr[2] / 32) << 0);
@@ -515,7 +516,40 @@ inline auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
     }
 }
 
-void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output);
+template<uint8_t channels = 3>
+class ParallelConvertToR3G3B2 : public cv::ParallelLoopBody {
+private:
+    const cv::Mat& input;
+    cv::Mat& output;
+
+public:
+    ParallelConvertToR3G3B2(const cv::Mat& input, cv::Mat& output)
+        : input(input), output(output) {}
+
+    virtual void operator()(const cv::Range& range) const override {
+        static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
+
+        for (int y = range.start; y < range.end; y++) {
+            for (int x = 0; x < input.cols; x++) {
+                if constexpr(channels == 3)
+                    output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
+                else if(channels == 4)
+                    output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec4b>(y, x));
+            }
+        }
+    }
+};
+
+template<uint8_t channels>
+void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
+    if (output.rows != input.rows || output.cols != input.cols || output.type() != CV_8UC1) {
+        output = cv::Mat::zeros(input.rows, input.cols, CV_8UC1);
+    }
+    assert(channels == input.channels());
+    
+    ParallelConvertToR3G3B2<channels> converter(input, output);
+    cv::parallel_for_(cv::Range(0, input.rows), converter);
+}
 
 template<uint8_t channels = 3, uint8_t input_channels = 1>
 void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {

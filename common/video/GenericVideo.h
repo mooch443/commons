@@ -19,7 +19,6 @@ public:
         return dl;
     }
     
-    virtual void frame(Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) = 0;
     virtual bool frame(Frame_t frameIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) = 0;
     #ifdef USE_GPU_MAT
     virtual void frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) = 0;

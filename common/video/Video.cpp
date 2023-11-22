@@ -322,7 +322,12 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         }
         else if(read.channels() > 1) {
             if(_colored == ImageMode::R3G3B2) {
-                convert_to_r3g3b2(read, frame);
+                if(read.channels() == 3)
+                    convert_to_r3g3b2<3>(read, frame);
+                else if(read.channels() == 4)
+                    convert_to_r3g3b2<4>(read, frame);
+                else
+                    throw InvalidArgumentException("Invalid number of channels for RGB/RGBA image.");
             } else {
                 static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
                 if(color_channel >= 3) {

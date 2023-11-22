@@ -14,12 +14,15 @@ FfmpegVideoCapture::FfmpegVideoCapture(const std::string& filePath) {
 }
 
 bool FfmpegVideoCapture::open(const std::string& filePath) {
+    //av_log_set_level(AV_LOG_DEBUG);
     // Allocate format context
     formatContext = avformat_alloc_context();
     if (not formatContext) {
         FormatError("Failed to allocate format context");
         return false;
     }
+
+    //_capture = std::make_unique<cv::VideoCapture>(filePath);
 
     // Open video file
     if (avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr) != 0) {
@@ -48,23 +51,63 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
-        // Check if this hardware type is supported by the codec
-        // You can also apply your own prioritization logic here
-        if (av_hwdevice_ctx_create(&hw_device_ctx, hw_type, nullptr, nullptr, 0) < 0) {
-            FormatWarning("Failed to create a hardware device context: ", hw_type);
-        } else
-            break;
+        print("HW type: ", hw_type);
     }
+
+    //! we will only accept hardware acceleration types that we know are good for us
+    AVHWDeviceType chosenHWType = AV_HWDEVICE_TYPE_NONE;
+
+#if defined(WIN32) || defined(__linux__)
+    static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
+        //AV_HWDEVICE_TYPE_D3D11VA,
+        AV_HWDEVICE_TYPE_CUDA
+    };
+#elif __APPLE__
+    static constexpr std::array<AVHWDeviceType, 1> preferred_devices{
+        AV_HWDEVICE_TYPE_VIDEOTOOLBOX
+    };
+#endif
+
+    for(auto hw_type : preferred_devices) {
+        if (av_hwdevice_ctx_create(&hw_device_ctx, hw_type, nullptr, nullptr, 0) == 0) {
+            chosenHWType = hw_type;
+            break;
+        }
+    }
+
+    if (hw_device_ctx == nullptr) {
+        FormatWarning("Failed to create a hardware device context: ", preferred_devices);
+    }
+
+    /*if(hw_device_ctx == nullptr) {
+        while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
+            // Check if this hardware type is supported by the codec
+            // You can also apply your own prioritization logic here
+            if (av_hwdevice_ctx_create(&hw_device_ctx, hw_type, nullptr, nullptr, 0) < 0) {
+                FormatWarning("Failed to create a hardware device context: ", hw_type);
+            } else
+                break;
+        }
+    }*/
     
     // Get a pointer to the codec for the video stream
     AVCodecParameters* codecParameters = formatContext->streams[videoStreamIndex]->codecpar;
     const AVCodec* codec{nullptr};
-    codec = avcodec_find_decoder(codecParameters->codec_id);
+    if (chosenHWType == AV_HWDEVICE_TYPE_CUDA) {
+        if(codecParameters->codec_id == AV_CODEC_ID_H264)
+            codec = avcodec_find_decoder_by_name("h264_cuvid");
+        else if(codecParameters->codec_id == AV_CODEC_ID_HEVC)
+            codec = avcodec_find_decoder_by_name("hevc_cuvid");
+    }
+    if(not codec)
+        codec = avcodec_find_decoder(codecParameters->codec_id);
+
     if (!codec) {
         FormatError("Unsupported codec id: ", codecParameters->codec_id);
         return false;
     }
 
+    // ffmpeg -y -vsync 0 -hwaccel cuda -hwaccel_output_format cuda -i input.mp4 -c:a copy -c:v h264_nvenc -preset p6 -tune ll -b:v 5M -bufsize 5M -maxrate 10M -qmin 0 -g 250 -bf 3 -b_ref_mode middle -temporal-aq 1 -rc-lookahead 20 -i_qfactor 0.75 -b_qfactor 1.1 output.mp4
     // Allocate codec context
     codecContext = avcodec_alloc_context3(codec);
     if (!codecContext) {
@@ -125,7 +168,9 @@ int FfmpegVideoCapture::frame_rate() const {
 
 int FfmpegVideoCapture::channels() const {
     // Assuming video frames are in a standard format, they have 3 channels (RGB or YUV)
-    return 4;
+    return swsInputFormat == AV_PIX_FMT_RGBA
+        ? 4
+        : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
 }
 
 bool FfmpegVideoCapture::set_frame(uint32_t index) {
@@ -151,6 +196,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     int64_t offset = max(1, frameCount < frameIndex
                                  ? int64_t(frame_rate.num / frame_rate.den / 2)
                                  : int64_t(frame_rate.num / frame_rate.den)) + 1;
+
     
     if(frameIndex > frameCount
        && frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den) + 1)
@@ -166,14 +212,35 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     }
 
     // Convert frame index to a timestamp
-    auto initial_frame = frameCount;
     Timer timer;
-    int64_t timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
+    auto initial_frame = frameCount;
+    int64_t timestamp = -1;
+
+    // find closest keyframe _before_ frameIndex from _keyframes:
+    auto it = _keyframes.lower_bound(frameIndex - 1);
+    if (it != _keyframes.begin()) {
+        if (it == _keyframes.end() || it->first != frameIndex - 1) {
+            // If the lower_bound did not find an exact match, decrement the iterator
+            --it;
+        }
+        // 'it' now points to the closest frame that is less than or equal to the given frame
+        auto keyframe = it->first;
+        if (keyframe < frameIndex
+            && abs(keyframe - frameIndex) < offset) 
+        {
+            print("jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
+            timestamp = it->second;
+        } else
+            print("NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
+    }
+
+    if(timestamp == -1)
+        timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
     print("jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
     
     av_log_set_level(AV_LOG_DEBUG);
     // Seek directly to the calculated timestamp
-    if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_ANY) < 0) {
+    if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
         FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
         return false;
     }
@@ -216,12 +283,15 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             // Convert the pts to a frame index
             int64_t frame_index = av_rescale_q(temp_frame->pts,
                                                time_base,
-                                               AVRational{1, frame_rate.num});
+                                               AVRational{frame_rate.den, frame_rate.num});
             if(frame_index > frameIndex) {
                 count_jumped_frames += frame_index - frameIndex + 1;
             } else {
                 count_jumped_frames += frameIndex - frame_index + 1;
             }
+
+            if(temp_frame->key_frame)
+                _keyframes[frame_index] = temp_frame->pts;
             
             received_frame = frame_index;
             if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {
@@ -279,28 +349,67 @@ bool FfmpegVideoCapture::transfer_frame_to_software(AVFrame* frame) {
     return true;
 }
 
-bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Image& outFrame) {
-    if (!update_sws_context(frame, outFrame.dims))
+template<typename Mat>
+bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
+    uint cols, rows, dims;
+    uint8_t* data;
+
+    if constexpr(std::is_same_v<Mat, cv::Mat>
+              || std::is_same_v<Mat, gpuMat>) 
+    {
+        cols = mat.cols;
+		rows = mat.rows;
+		dims = mat.channels();
+        if constexpr (std::is_same_v<Mat, cv::Mat>) {
+            data = mat.data;
+        }
+	} else {
+		cols = mat.cols;
+		rows = mat.rows;
+		dims = mat.dims;
+		data = mat.data();
+	}
+
+    if (!update_sws_context(frame, dims))
         return false;
 
     uint8_t channels = swsInputFormat == AV_PIX_FMT_RGBA
             ? 4
             : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
-    if (outFrame.cols != (uint)frame->width
-        || outFrame.rows != (uint)frame->height
-        || outFrame.dims != channels)
+    if (cols != (uint)frame->width
+        || rows != (uint)frame->height
+        || dims != channels)
     {
-        outFrame.create(frame->height, frame->width, channels);
+        if constexpr (std::is_same_v<Mat, Image>)
+            mat.create(frame->height, frame->width, channels);
+        else
+            mat.create(frame->height, frame->width, CV_8UC(channels));
+
+        dims = channels;
         print("Created with: ", frame->height, " ", frame->width, " ", channels);
+    }
+
+    if constexpr (std::is_same_v<Mat, gpuMat>) {
+        if (_buffer.dims != dims
+            || _buffer.cols != frame->width
+            || _buffer.rows != frame->height)
+        {
+            _buffer.create(frame->height, frame->width, channels);
+        }
+
+        data = _buffer.data();
     }
     
     //cv::Mat tmp(frame->height, frame->width, CV_8UC3);
-    uint8_t* dest[4] = { outFrame.data() };
-    int dest_linesize[4] = { static_cast<int>(outFrame.cols * outFrame.dims * sizeof(uchar)) };
+    uint8_t* dest[4] = { data };
+    int dest_linesize[4] = { static_cast<int>(frame->width * channels * sizeof(uchar)) };
     sws_scale(swsContext, frame->data, frame->linesize, 0, frame->height, dest, dest_linesize);
 
-    auto str = Meta::toStr(frameCount);
-    cv::putText(outFrame.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
+    if constexpr (std::is_same_v<Mat, gpuMat>) {
+        _buffer.get().copyTo(mat);
+    }
+    //auto str = Meta::toStr(frameCount);
+    //cv::putText(outFrame.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
     return true;
 }
 
@@ -329,6 +438,10 @@ bool FfmpegVideoCapture::update_sws_context(const AVFrame* frame, int dims) {
 bool FfmpegVideoCapture::grab() {
     if (!is_open()) return false;
 
+    /*_capture->grab();
+    ++frameCount;
+    return true;*/
+
     while (av_read_frame(formatContext, pkt) >= 0) {
         if (pkt->stream_index != videoStreamIndex) {
             av_packet_unref(pkt);
@@ -349,6 +462,11 @@ bool FfmpegVideoCapture::grab() {
             break;
         }
 
+        if (frame->key_frame) {
+            _keyframes[frameCount] = frame->pts;
+            print("keyframe ", frameCount, " is ", frame->pts);
+        }
+
         ++frameCount;
         av_frame_unref(frame); // Unref frame after processing
         return true;
@@ -357,8 +475,54 @@ bool FfmpegVideoCapture::grab() {
     return false;
 }
 
-bool FfmpegVideoCapture::read(Image& outFrame) {
+bool FfmpegVideoCapture::read(cv::Mat& mat) {
+    return FfmpegVideoCapture::_read<cv::Mat>(mat);
+}
+
+bool FfmpegVideoCapture::read(cv::UMat& mat) {
+    return FfmpegVideoCapture::_read<cv::UMat>(mat);
+}
+
+bool FfmpegVideoCapture::read(Image& mat) {
+    return FfmpegVideoCapture::_read<Image>(mat);
+}
+
+template<typename Mat>
+bool FfmpegVideoCapture::_read(Mat& outFrame) {
     if (!is_open()) return false;
+
+    /*uint8_t channels = swsInputFormat == AV_PIX_FMT_NONE || swsInputFormat == AV_PIX_FMT_RGBA
+        ? 4
+        : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
+    if (is_in(outFrame.dims, 1, 3, 4))
+        channels = outFrame.dims;
+
+    if (outFrame.cols != (uint)dimensions().width
+        || outFrame.rows != (uint)dimensions().height
+        || outFrame.dims != channels)
+    {
+        outFrame.create(dimensions().height, dimensions().width, channels);
+        print("Created with: ", frame->height, " ", frame->width, " ", channels);
+    }
+
+    cv::Mat mat;
+    _capture->read(mat);
+    ++frameCount;
+
+    if (mat.channels() == channels)
+        mat.copyTo(outFrame.get());
+    else if(mat.channels() == 3 && channels == 4)
+        cv::cvtColor(mat, outFrame.get(), cv::COLOR_BGR2BGRA);
+    else if(mat.channels() == 4 && channels == 3)
+        cv::cvtColor(mat, outFrame.get(), cv::COLOR_BGRA2BGR);
+    else if(mat.channels() == 1 && channels == 3)
+        cv::cvtColor(mat, outFrame.get(), cv::COLOR_GRAY2BGR);
+    else if(mat.channels() == 1 && channels == 4)
+        cv::cvtColor(mat, outFrame.get(), cv::COLOR_GRAY2BGRA);
+    else
+        return false;
+
+    return true;*/
 
     int response;
     while (av_read_frame(formatContext, pkt) >= 0) {
@@ -375,12 +539,26 @@ bool FfmpegVideoCapture::read(Image& outFrame) {
         response = avcodec_receive_frame(codecContext, frame);
         if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
             continue;
-            
-        } else if (response < 0) {
+
+        }
+        else if (response < 0) {
             FormatError("Error while receiving frame from decoder");
             break;
         }
 
+        int64_t timestamp = frame->key_frame ? frame->pts : -1;
+
+/*
+        if constexpr (std::is_same_v<Mat, gpuMat>) {
+            if (frame->hw_frames_ctx) {
+                if (cv::hw_copy_frame_to_umat(frame->hw_frames_ctx, frame, outFrame)) {
+                    ++frameCount;
+                    av_frame_unref(frame); // Unref frame after processing
+                    return true;
+                }
+            }
+        }
+*/
         if (frame->hw_frames_ctx
             && not transfer_frame_to_software(frame))
         {
@@ -388,9 +566,14 @@ bool FfmpegVideoCapture::read(Image& outFrame) {
             return false;
         }
 
-        if (not convert_frame_to_mat(frame, outFrame)) {
+        if (not convert_frame_to_mat<Mat>(frame, outFrame)) {
             FormatError("Error converting frame to cv::Mat.");
             return false;
+        }
+
+        if (timestamp >= 0) {
+            _keyframes[frameCount] = timestamp;
+            print("_read: keyframe ", frameCount, " is ", timestamp);
         }
 
         ++frameCount;
@@ -406,6 +589,8 @@ FfmpegVideoCapture::~FfmpegVideoCapture() {
 }
 
 void FfmpegVideoCapture::close() {
+    _capture = nullptr;
+
     if (pkt) {
         av_packet_free(&pkt);
         pkt = nullptr;

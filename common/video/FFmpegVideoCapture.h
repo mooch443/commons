@@ -9,6 +9,7 @@ extern "C" {
     #include <libavutil/frame.h>
     #include <libavutil/imgutils.h>
     #include <libswscale/swscale.h>
+    #include <libavutil/hwcontext.h>
 }
 
 namespace cmn {
@@ -16,6 +17,8 @@ namespace cmn {
 class FfmpegVideoCapture {
     //Size2 _dimensions;
     //int _channels{-1};
+    std::unique_ptr<cv::VideoCapture> _capture;
+    std::map<int64_t, int64_t> _keyframes;
     
 public:
     FfmpegVideoCapture(const std::string& filePath);
@@ -28,6 +31,8 @@ public:
     int frame_rate() const;
     bool set_frame(uint32_t index);
     bool read(Image& frame);
+    bool read(gpuMat& frame);
+    bool read(cv::Mat& frame);
     bool grab();
     
     void close();
@@ -55,8 +60,14 @@ private:
 
     bool seek_frame(uint32_t frameIndex);
     bool transfer_frame_to_software(AVFrame* frame);
-    bool convert_frame_to_mat(const AVFrame* frame, Image& outFrame);
+
+    template<typename Mat>
+    bool convert_frame_to_mat(const AVFrame* frame, Mat&);
+
     bool update_sws_context(const AVFrame* frame, int dims = 0);
+
+    template<typename Mat>
+    bool _read(Mat& mat);
 };
 
 } // namespace cmn

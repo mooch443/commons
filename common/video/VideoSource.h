@@ -57,7 +57,8 @@ public:
         auto length() const { return _length; }
         const cv::Size& resolution();
         
-        void frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+        void frame(cmn::ImageMode color, Frame_t frameIndex, gpuMat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+        bool frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) const;
         bool frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) const;
         void close() const;
         Type type() const { return _type; }
@@ -109,7 +110,7 @@ public:
 #ifdef USE_GPU_MAT
     void frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) override;
 #endif
-    void frame(Frame_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) override;
+    bool frame(Frame_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current());
     bool frame(Frame_t globalIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) override;
     const cv::Size& size() const override { return _size; }
     Frame_t length() const override { return _length; }
