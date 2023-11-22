@@ -1,5 +1,6 @@
 #pragma once
 #include <commons.pc.h>
+//#undef NDEBUG
 
 namespace cmn {
 

@@ -1041,6 +1041,15 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
             }
         }
         
+        if(pattern.contains("radius")) {
+            try {
+                auto text = Radius{Meta::fromStr<float>(_parse_text(pattern.at("radius"), context, state))};
+                LabeledField::delegate_to_proper_type(text, ptr);
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context ", pattern.at("radius"),": ", e.what());
+            }
+        }
+
         if(ptr.is<ExternalImage>()) {
             if(pattern.contains("path")) {
                 auto img = ptr.to<ExternalImage>();

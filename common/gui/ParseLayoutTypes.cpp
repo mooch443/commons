@@ -139,24 +139,26 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(obj.count("drag") || obj.count("click")) {
         auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
         
-        ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
-            if(event.hover.hovered
-               && _ptr->pressed())
-            {
-                try {
-                    if(auto it = context.actions.find(action.name);
-                       it != context.actions.end())
-                    {
-                        State state;
-                        it->second(action.parse(context, state));
-                    } else
-                        print("Unknown Action: ", action);
-                    
-                } catch(...) {
-                    FormatExcept("error using action ", action);
+        if(obj.count("drag")) {
+            ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
+                if(event.hover.hovered
+                && _ptr->pressed())
+                {
+                    try {
+                        if(auto it = context.actions.find(action.name);
+                        it != context.actions.end())
+                        {
+                            State state;
+                            it->second(action.parse(context, state));
+                        } else
+                            print("Unknown Action: ", action);
+                        
+                    } catch(...) {
+                        FormatExcept("error using action ", action);
+                    }
                 }
-            }
-        });
+            });
+        }
         
         ptr->add_event_handler(EventType::MBUTTON, [action, context = context](Event event) {
             if(event.mbutton.pressed) {
