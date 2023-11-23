@@ -84,6 +84,11 @@ namespace gui {
         const auto& text() const { return _settings.txt; }
         const auto& max_size() const { return _settings.max_size; }
         const auto& font() const { return _settings.default_font; }
+        const auto& text_color() const { return _settings.text_color; }
+        const auto& line_color() const { return _settings.line_color; }
+        const auto& margins() const { return _settings.margins; }
+        const auto& alpha() const { return _settings.alpha; }
+        const auto& fade_out() const { return _settings.fade_out; }
         
     public:
         using Entangled::set;
