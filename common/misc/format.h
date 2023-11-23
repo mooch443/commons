@@ -983,39 +983,45 @@ struct FormatColoredPrefix {
 };
 
 template<typename... Args>
-struct FormatWarning : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...> {
-    FormatWarning(const Args& ...args, cmn::source_location info = cmn::source_location::current())
+struct _FormatWarning : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...> {
+    _FormatWarning(cmn::source_location info, const Args& ...args)
         : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...>(args..., info)
     { }
 };
 
 template<typename... Args>
-FormatWarning(const Args&... args) -> FormatWarning<Args...>;
+_FormatWarning(const Args&... args) -> _FormatWarning<Args...>;
+
+#define FormatWarning(...) _FormatWarning(cmn::source_location::current(), __VA_ARGS__)
 
 template<typename... Args>
-struct FormatError : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR_PREFIX, FormatColor::RED, Args...> {
-    FormatError(const Args& ...args, cmn::source_location info = cmn::source_location::current())
+struct _FormatError : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR_PREFIX, FormatColor::RED, Args...> {
+    _FormatError(cmn::source_location info, const Args& ...args)
         : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::ERROR_PREFIX, FormatColor::RED, Args...>(args..., info)
     { }
 };
 
 template<typename... Args>
-FormatError(const Args&... args) -> FormatError<Args...>;
+_FormatError(const Args&... args) -> _FormatError<Args...>;
+
+#define FormatError(...) _FormatError(cmn::source_location::current(), __VA_ARGS__)
 
 static constexpr const char EXCEPTION_PREFIX[] = "EXCEPT";
 template<typename... Args>
-struct FormatExcept : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...> {
-    FormatExcept(const Args& ...args, cmn::source_location info = cmn::source_location::current())
+struct _FormatExcept : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...> {
+    _FormatExcept(cmn::source_location info, const Args& ...args)
         : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info)
     { }
 };
 
 template<typename... Args>
-FormatExcept(const Args&... args) -> FormatExcept<Args...>;
+_FormatExcept(const Args&... args) -> _FormatExcept<Args...>;
+
+#define FormatExcept(...) _FormatExcept(cmn::source_location::current(), __VA_ARGS__)
 
 template<FormatterType formatter, typename... Args>
-struct U_EXCEPTION : UtilsException {
-    U_EXCEPTION(const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+struct _U_EXCEPTION : UtilsException {
+    _U_EXCEPTION(cmn::source_location info, const Args& ...args) noexcept(false)
         : UtilsException(cmn::format<FormatterType::NONE>(args...))
     {
         FormatColoredPrefix<formatter, PrefixLiterals::EXCEPT, FormatColor::RED, Args...>(args..., info);
@@ -1023,7 +1029,9 @@ struct U_EXCEPTION : UtilsException {
 };
 
 template<FormatterType formatter = FormatterType::UNIX, typename... Args>
-U_EXCEPTION(const Args& ...args) -> U_EXCEPTION<formatter, Args...>;
+_U_EXCEPTION(cmn::source_location loc, const Args& ...args) -> _U_EXCEPTION<formatter, Args...>;
+
+#define U_EXCEPTION(...) _U_EXCEPTION(cmn::source_location::current(), __VA_ARGS__)
 
 class SoftExceptionImpl : public std::exception {
 public:
@@ -1046,16 +1054,16 @@ private:
 };
 
 template< typename... Args>
-struct SoftException : SoftExceptionImpl {
-    SoftException(const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+struct _SoftException : SoftExceptionImpl {
+    _SoftException(cmn::source_location info, const Args& ...args) noexcept(false)
         : SoftExceptionImpl(info, args...)
-    {
-    }
+    { }
 };
 
-
 template<typename... Args>
-SoftException(Args... args) -> SoftException<Args...>;
+_SoftException(cmn::source_location loc, const Args& ...args) -> _SoftException<Args...>;
+
+#define SoftException(...) _SoftException(cmn::source_location::current(), __VA_ARGS__)
 
 template <typename T> struct type_t {};
 template <typename T> inline type_t<T> type{};

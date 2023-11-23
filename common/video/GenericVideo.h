@@ -32,7 +32,7 @@ public:
     virtual const cv::Mat& mask() const = 0;
     virtual bool has_timestamps() const = 0;
     virtual timestamp_t timestamp(Frame_t, cmn::source_location loc = cmn::source_location::current()) const {
-        throw U_EXCEPTION<FormatterType::UNIX, const char*>("Not implemented.", loc);
+        throw _U_EXCEPTION<FormatterType::UNIX, const char*>(loc, "Not implemented.");
     }
     virtual timestamp_t start_timestamp() const {
         throw U_EXCEPTION("Not implemented.");

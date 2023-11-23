@@ -310,13 +310,13 @@ short VideoSource::File::framerate() {
 
 timestamp_t VideoSource::File::timestamp(Frame_t frameIndex, cmn::source_location loc) const {
     if(_type != VIDEO)
-        throw U_EXCEPTION<FormatterType::UNIX, const char*>("Cannot retrieve timestamps from anything else other than videos.", loc);
+        throw _U_EXCEPTION(loc, "Cannot retrieve timestamps from anything else other than videos.");
     
     if(!has_timestamps())
-        throw U_EXCEPTION("No timestamps available for ",_filename,".");
+        throw _U_EXCEPTION(loc, "No timestamps available for ",_filename,".");
     
     if(not frameIndex.valid())
-        throw U_EXCEPTION("Frame index in timestamp() is invalid.");
+        throw _U_EXCEPTION(loc, "Frame index in timestamp() is invalid.");
     
     auto times = _timestamps[frameIndex.get()];
     auto point = std::chrono::duration<double>(times);
