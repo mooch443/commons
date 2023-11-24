@@ -63,8 +63,9 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
         AV_HWDEVICE_TYPE_CUDA
     };
 #elif __APPLE__
-    static constexpr std::array<AVHWDeviceType, 1> preferred_devices{
-        AV_HWDEVICE_TYPE_VIDEOTOOLBOX
+    static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
+        AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
+        AV_HWDEVICE_TYPE_OPENCL
     };
 #endif
 
@@ -252,25 +253,32 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         FormatExcept("Failed to allocate temporary frame for seeking.");
         return false;
     }
-    //av_frame_make_writable(temp_frame);
 
     int received_frame = -1;
     int64_t count_jumped_frames = 0;
+    int tries = 0;
     while (received_frame < static_cast<int>(frameIndex - 1)) {
-        if (av_read_frame(formatContext, pkt) < 0) {
-            FormatExcept("Error reading frame during seeking.");
-            av_frame_free(&temp_frame);
-            return false;
+        int ret = av_read_frame(formatContext, pkt);
+        if (ret < 0) {
+            char errbuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errbuf, AV_ERROR_MAX_STRING_SIZE);
+            FormatExcept("Error reading frame ",frameCount," during seeking: ", errbuf);
+            if(tries++ > 1) {
+                av_frame_free(&temp_frame);
+                return false;
+            } else
+                continue;
         }
 
         if (pkt->stream_index == videoStreamIndex) {
             int response = avcodec_send_packet(codecContext, pkt);
             av_packet_unref(pkt); // Unref packet immediately after sending
             if (response < 0) {
-                FormatError("Error sending packet");
+                FormatError("Error sending frame packet");
                 break;
             }
-
+            
+            av_frame_make_writable(temp_frame);
             response = avcodec_receive_frame(codecContext, temp_frame);
             if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
                 continue;
@@ -308,7 +316,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 print("jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
                 
                 // Seek directly to the calculated timestamp
-                if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_ANY) < 0) {
+                if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
                     FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
                     return false;
                 }

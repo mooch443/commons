@@ -77,6 +77,19 @@ struct decimals_t {
     }
 };
 
+template<utils::StringLike Str>
+struct no_quotes_t {
+    Str str;
+    std::string toStr() const {
+        return (std::string)str;
+    }
+};
+
+template<utils::StringLike T>
+inline auto no_quotes(T&& str) noexcept {
+    return no_quotes_t<T>{ str };
+}
+
 template <std::size_t V, std::size_t N, class I = std::make_integer_sequence<std::size_t, N>>
 struct power;
 

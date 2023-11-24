@@ -362,6 +362,20 @@ std::vector<std::string_view> split(Str s, char c, bool skip_empty = false, bool
 std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty = false, bool trim = false);
 std::vector<std::basic_string_view<typename std::wstring::value_type>> split(std::wstring& s, char c, bool skip_empty = false, bool trim = false);
 
+inline std::string ShortenText(const std::string& text, size_t maxLength, double positionPercent = 0.5, const std::string& shortenSymbol = "…") {
+    if (text.length() <= maxLength) {
+        return text;
+    }
+
+    size_t shortenPosition = static_cast<size_t>(positionPercent * maxLength);
+    // Ensure that the shorten position is within the valid range
+    if (shortenPosition > maxLength - 1) {
+        shortenPosition = maxLength - 1;
+    }
+
+    return text.substr(0, shortenPosition) + shortenSymbol + text.substr(text.length() - (maxLength - shortenPosition - 1));
+}
+
 }
 
 /**

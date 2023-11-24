@@ -89,7 +89,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     for(Frame_t i=length() > 0_f ? length()-1_f : 0_f; i>=0_f; i-=step) {
         frame(i, f);
         
-        assert(f.channels() == 1);
+        assert(f.dims == 1);
         accumulator.add(f.get());
         counted += step;
         

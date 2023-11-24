@@ -887,7 +887,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
             for(auto index : indexes) {
                 try {
                     file->frame(_colors, index, f);
-                    assert(f.channels() == 1);
+                    assert(f.dims == 1);
                     acc.add_threaded(f.get());
                     ++count;
                     

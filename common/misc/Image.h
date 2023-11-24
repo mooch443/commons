@@ -181,7 +181,7 @@ namespace cmn {
         bool empty() const { return _data == nullptr; }
         Bounds bounds() const { return Bounds(0, 0, static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
         Size2 dimensions() const { return Size2(static_cast<Float2_t>(cols), static_cast<Float2_t>(rows)); }
-        
+        auto channels() const noexcept { return dims; }
         auto stamp() const { return _timestamp; }//return std::chrono::time_point_cast<std::chrono::microseconds>(_timestamp).time_since_epoch().count(); }
         
         bool operator==(const Image& other) const {

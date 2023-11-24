@@ -92,16 +92,19 @@ struct Pose {
     struct Point {
         uint16_t x, y;
         
-        Point(const cmn::Vec2& v)
+        constexpr Point(const cmn::Vec2& v)
             : x(narrow_cast<uint16_t>(v.x)),
               y(narrow_cast<uint16_t>(v.y))
         {
             assert(v.x >= 0 && v.y >= 0);
         }
-        Point(uint16_t x, uint16_t y) : x(x), y(y) {}
-        Point() = default;
-        
-        constexpr operator Vec2() const {
+        constexpr Point(uint16_t x, uint16_t y) noexcept : x(x), y(y) {}
+        constexpr Point() noexcept = default;
+        constexpr Point(const Point&) noexcept = default;
+        constexpr Point& operator= (const Point&) noexcept = default;
+        constexpr Point& operator= (Point&&) noexcept = default;
+
+        constexpr operator Vec2() const noexcept {
             return Vec2(x, y);
         }
     };
@@ -185,7 +188,7 @@ struct Pose {
 
     template<typename WeightPolicy, typename T>
         requires requires (T t) { { t(std::size_t{}) } -> std::convertible_to<const Pose&>; }
-    static auto mean(T&& values, std::size_t num) {
+    static auto mean(T&& values, std::size_t num, const std::vector<size_t>& ignore_indexes = {}) {
         if(num == 0) {
             throw std::out_of_range("Number of poses must be greater than zero.");
         }
@@ -221,7 +224,7 @@ struct Pose {
         pose.points.resize(points.size());
         
         for(size_t i = 0; i < points.size(); ++i) {
-            if(weights[i] == 0.0f) {
+            if(weights[i] == 0.0f || contains(ignore_indexes, i)) {
                 pose.points[i] = Point(0, 0);
                 //throw std::runtime_error("Weight sum cannot be zero.");
             } else

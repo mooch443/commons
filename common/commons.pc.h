@@ -144,6 +144,8 @@ template <class T>
 
 using long_t = int32_t;
 
+#define CMN_ASSERT(cond, msg) assert((cond) && (msg))
+
 #ifdef __cpp_lib_source_location
 #include <source_location>
 namespace cmn {
@@ -251,7 +253,26 @@ namespace cmn {
 
 inline void set_thread_name(const std::string& name) {
 #if __APPLE__
-    pthread_setname_np(name.c_str());
+    if(int result = pthread_setname_np(name.c_str());
+       result != 0)
+    {
+        switch (result) {
+            case EINVAL:
+                std::cerr << "Invalid argument (name too long or invalid thread ID).\n";
+                break;
+            case ESRCH:
+                std::cerr << "No such thread found.\n";
+                break;
+            case EPERM:
+                std::cerr << "Operation not permitted (insufficient privileges).\n";
+                break;
+            case ENOMEM:
+                std::cerr << "Out of memory.\n";
+                break;
+            default:
+                std::cerr << "Unknown error.\n";
+        }
+    }
 #elif __linux__
     pthread_setname_np(pthread_self(), name.c_str());
 #elif defined(WIN32)
