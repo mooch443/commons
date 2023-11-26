@@ -395,39 +395,6 @@ void DrawStructure::close_dialogs() {
         std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
         return _dialog(fn, text, title, okay, abort, second, third, fourth);
     }
-
-    Line* DrawStructure::line(const Vec2 &pos0, const Vec2 &pos1, float thickness, const Color& color) {
-        return create<Type::data::values::VERTICES, Line>(std::vector<Vertex>{
-            Vertex(pos0, color),
-            Vertex(pos1, color)
-        }, thickness);
-        /*return add_object(new Line({
-            Vertex(pos0, color),
-            Vertex(pos1, color)
-        }, thickness, Vertices::TRANSPORT));*/
-    }
-    
-    Line* DrawStructure::line(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale) {
-        return create<Type::data::values::VERTICES, Line>(std::vector<Vertex>{
-            Vertex(pos0, color),
-                Vertex(pos1, color)
-        }, 1, Vertices::MEMORY::COPY, scale);
-    }
-    
-    Line* DrawStructure::line(const std::vector<Vec2>& points, float thickness, const Color& color, const Vec2& scale) {
-        std::vector<Vertex> array;
-        array.resize(points.size());
-        for (size_t i = 0; i < points.size(); i++)
-            array[i] = Vertex(points[i], color);
-
-        return create<Type::data::values::VERTICES, Line>(
-            array, thickness, Vertices::MEMORY::TRANSPORT, scale
-            );
-    }
-    
-    Line* DrawStructure::line(const std::vector<Vertex>& points, float thickness) {
-        return create<Type::data::values::VERTICES, Line>(points, thickness);
-    }
     
     Vertices* DrawStructure::vertices(const std::vector<Vec2> &points, const gui::Color &color, PrimitiveType type) {
         std::vector<Vertex> array;

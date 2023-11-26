@@ -410,11 +410,11 @@ void Graph::update() {
 #undef TYPE_IS
     
     for(auto line : _lines) {
-        std::vector<Vertex> positions;
+        Line::Vertices_t positions;
         for(auto &p : line.v) {
             positions.push_back(Vertex(transform_point(p), line.color));
         }
-        add<Line>(positions, line.thickness);
+        add<Line>(positions, Line::Thickness_t{ line.thickness });
     }
     
     if(!_title.txt().empty()) {

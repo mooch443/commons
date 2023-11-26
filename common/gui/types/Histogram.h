@@ -346,6 +346,7 @@ namespace gui {
         }
         
         std::vector<Drawable*>& children() override {
+            using Pt = Line::Point_t;
             if(_needs_update) {
                 //for(auto o : _children)
                 //    delete o;
@@ -363,15 +364,17 @@ namespace gui {
                 Vec2 pos(margin + axes_width + _y_label_width,
                          margin + _title_obj.height() + 5);
                 
-                add<Line>(pos + Vec2(-axes_width * 0.5f, 0),
-                          Vec2(pos.x - axes_width * 0.5f,
-                               size.height - margin - axes_width * 0.5f),
-                          White);
-                add<Line>(pos + Vec2(-axes_width * 0.5f,
-                                    element.y + axes_width * 0.5f),
-                          Vec2(size.width - margin,
-                                pos.y + element.y + axes_width * 0.5f),
-                          White);
+                add<Line>(Pt(pos + Vec2(-axes_width * 0.5f, 0)),
+                          LineClr{ White },
+                          Pt(Vec2(pos.x - axes_width * 0.5f,
+                               size.height - margin - axes_width * 0.5f)),
+                          LineClr{ White });
+                add<Line>(Pt(pos + Vec2(-axes_width * 0.5f,
+                                    element.y + axes_width * 0.5f)),
+                          LineClr{ White },
+                          Pt(Vec2(size.width - margin,
+                                pos.y + element.y + axes_width * 0.5f)),
+                          LineClr{ White });
                 
                 if(!_data.empty()) {
                     //Vec2 pos(size.x + margin + axes_width * 0.5f,
@@ -379,9 +382,10 @@ namespace gui {
                     Vec2 lpos = pos + Vec2(-axes_width * 0.5f, element.y);
                     
                     for(auto text : _y_labels) {
-                        add<Line>(lpos + Vec2(-3, 0),
-                                  lpos + Vec2( 3, 0),
-                                  White);
+                        add<Line>(Pt(lpos + Vec2(-3, 0)),
+                                  LineClr{ White },
+                                  Pt(lpos + Vec2( 3, 0)),
+                                  LineClr{ White });
                         
                         text->set_pos(lpos + Vec2(-3, 0) + Vec2(-text->width()*0.5f - 7, 0));
                         lpos.y -= text_height + 10;
@@ -442,11 +446,12 @@ namespace gui {
                                 last_text.x = text_x;
                                 
                                 // tick on x-axis
-                                add<Line>(Vec2(bar_pos.x + element.x * 0.5f,
+                                add<Line>(Pt(bar_pos.x + element.x * 0.5f,
                                                           bar_pos.y + element.y + axes_width * 0.5f - 3),
-                                          Vec2(bar_pos.x + element.x * 0.5f,
+                                          LineClr{ White },
+                                          Pt(bar_pos.x + element.x * 0.5f,
                                                           bar_pos.y + element.y + axes_width * 0.5f + 3),
-                                          White);
+                                          LineClr{ White });
                                 
                             }
                         }

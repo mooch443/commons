@@ -138,38 +138,82 @@ protected:
     class Line final : public VertexArray {
     public:
         static constexpr auto Class = Type::data::values::LINE;
+        ATTRIBUTE_ALIAS(Point_t, Vec2);
+        ATTRIBUTE_ALIAS(Points_t, std::vector<Vec2>);
+        ATTRIBUTE_ALIAS(Vertices_t, std::vector<Vertex>);
+        NUMBER_ALIAS(Thickness_t, float);
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
         float _process_scale;
         GETTER(float, max_scale)
         
     public:
-        Line(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY memory = COPY)
-            : Line({Vertex(pos0, color), Vertex(pos1, color)}, t, memory)
-        {}
-        Line(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1)
-            : Line({ Vertex(pos0, color), Vertex(pos1, color) }, t, MEMORY::COPY, scale)
-        {}
-        
-        Line(const std::vector<Vertex>& p, float t, MEMORY memory = TRANSPORT, const Vec2& scale = Vec2(1))
-            : VertexArray(p, PrimitiveType::LineStrip, memory, Type::LINE),
-              _processed_points(NULL), _process_scale(-1),
-              _max_scale(1)
+        template<typename... Args> Line(Args... args)
+            : VertexArray({}, PrimitiveType::LineStrip, MEMORY::COPY, Type::LINE)
         {
-            if(t != 1) set_thickness(t);
-            set_scale(scale);
+            create(std::forward<Args>(args)...);
         }
-        
-        void create(const std::vector<Vertex>& p, float t, MEMORY = TRANSPORT, const Vec2& scale = Vec2(1)) {
-            set_thickness(t);
-            set_scale(scale);
-            VertexArray::create(p, PrimitiveType::LineStrip);
-        }
-        
-        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale = Vec2(1), float t = 1);
-        void create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY = MEMORY::COPY, const Vec2&scale = Vec2(1));
-        void create(const Vec2& pos0, const Color& color0, const Vec2& pos1, const Color& color1, float t, MEMORY = MEMORY::COPY, const Vec2& scale = Vec2(1));
 
+        template<typename... Args> void create(Args... args) {
+            set(Thickness_t{ 1 });
+
+            if constexpr (requires { { set(std::forward<Args>(args)...) }->std::same_as<void>; }) {
+                set(std::forward<Args>(args)...);
+            }
+            else {
+				(set(std::forward<Args>(args)), ...);
+            }
+        }
+
+    public:
+        using Drawable::set;
+        void set(const Vertices_t& A) {
+            VertexArray::create(A, PrimitiveType::LineStrip);
+        }
+        void set(const Points_t& A, LineClr clr) {
+            std::vector<Vertex> ps;
+            ps.reserve(A.size());
+            for(auto &a : A)
+				ps.emplace_back(a, clr);
+            VertexArray::create(std::move(ps), PrimitiveType::LineStrip);
+        }
+        void set(Thickness_t t) {
+            set_thickness(t);
+        }
+        void set(LineClr clr) {
+            auto copy = _original_points;
+            for(auto &c : copy)
+                c.color() = ImU32(clr);
+			VertexArray::create(std::move(copy), PrimitiveType::LineStrip);
+		}
+
+        template<typename... Args>
+        void set(Point_t p0, LineClr clr0, Point_t p1, LineClr clr1, Args... args) {
+            std::vector<Vertex> ps;
+            ps.emplace_back(p0, clr0);  // Add the first pair
+            ps.emplace_back(p1, clr1);  // Add the second pair
+
+            auto addVertices = [] <typename... Args>(std::vector<Vertex>&vertices, Point_t pt, LineClr clr, Args... args)
+            {
+                vertices.emplace_back(pt, clr);  // Add the current pair
+
+                if constexpr (sizeof...(args) > 0) {
+                    // Recur for the remaining arguments
+                    addVertices(vertices, args...);
+                }
+            };
+
+            addVertices(ps, args...);
+            VertexArray::create(std::move(ps), PrimitiveType::LineStrip);
+        }
+        void set(Point_t p0, Point_t p1, LineClr clr, Thickness_t t = Thickness_t{1}) {
+            set_thickness(t);
+            VertexArray::create(PrimitiveType::LineStrip, Vertex(p0, clr), Vertex(p1, clr));
+        }
+        void set(Point_t p0, LineClr clr0, Point_t p1, LineClr clr1, Thickness_t t = Thickness_t{ 1 }) {
+            set_thickness(t);
+            VertexArray::create(PrimitiveType::LineStrip, Vertex(p0, clr0), Vertex(p1, clr1));
+        }
         const std::vector<Vertex>& points() override final;
         std::ostream &operator <<(std::ostream &os) override;
         decltype(_processed_points) processed_points() const { return _processed_points; }

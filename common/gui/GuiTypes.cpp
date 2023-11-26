@@ -90,22 +90,6 @@ void VertexArray::update_size() {
     _size_calculated = true;
 }
 
-void Line::create(const Vec2& pos0, const Vec2& pos1, const Color& color, const Vec2& scale, float t) {
-    set_scale(scale);
-    set_thickness(t);
-    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color), Vertex(pos1, color));
-}
-void Line::create(const Vec2& pos0, const Vec2& pos1, const Color& color, float t, MEMORY, const Vec2 & scale) {
-    set_scale(scale);
-    set_thickness(t);
-    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color), Vertex(pos1, color));
-}
-void Line::create(const Vec2& pos0, const Color& color0, const Vec2& pos1, const Color& color1, float t, MEMORY, const Vec2& scale) {
-    set_scale(scale);
-    set_thickness(t);
-    VertexArray::create(PrimitiveType::LineStrip, Vertex(pos0, color0), Vertex(pos1, color1));
-}
-
 void VertexArray::create(const std::vector<Vertex>& p, PrimitiveType primitive) {
     if(_original_points != p || primitive != _primitive) {
         _original_points.resize(p.size());
