@@ -186,22 +186,21 @@ protected:
                 c.color() = ImU32(clr);
 			VertexArray::create(std::move(copy), PrimitiveType::LineStrip);
 		}
+        template<typename... Args>
+        void addVertices(std::vector<Vertex>&vertices, Point_t pt, LineClr clr, Args... args)
+        {
+            vertices.emplace_back(pt, clr);  // Add the current pair
 
+            if constexpr (sizeof...(args) > 0) {
+                // Recur for the remaining arguments
+                addVertices(vertices, args...);
+            }
+        }
         template<typename... Args>
         void set(Point_t p0, LineClr clr0, Point_t p1, LineClr clr1, Args... args) {
             std::vector<Vertex> ps;
             ps.emplace_back(p0, clr0);  // Add the first pair
             ps.emplace_back(p1, clr1);  // Add the second pair
-
-            auto addVertices = [] <typename... Args>(std::vector<Vertex>&vertices, Point_t pt, LineClr clr, Args... args)
-            {
-                vertices.emplace_back(pt, clr);  // Add the current pair
-
-                if constexpr (sizeof...(args) > 0) {
-                    // Recur for the remaining arguments
-                    addVertices(vertices, args...);
-                }
-            };
 
             addVertices(ps, args...);
             VertexArray::create(std::move(ps), PrimitiveType::LineStrip);

@@ -192,47 +192,67 @@ struct Pose {
         if(num == 0) {
             throw std::out_of_range("Number of poses must be greater than zero.");
         }
-        
-        std::vector<Vec2> points(values(0).points.size());
-        std::vector<float> weights(points.size(), 0.0f);
-        
+
+        size_t referenceJointIndex = 0;
+        std::vector<Vec2> relativePoints(values(0).points.size());
+        std::vector<float> weights(relativePoints.size(), 0.0f);
+
+        Vec2 referencePointSum(0, 0);
+        float referenceWeightSum = 0.0f;
+
         for(size_t i = 0; i < num; ++i) {
             const Pose& pose = values(i);
             if(pose.empty())
                 continue;
             
-            if(points.empty()) {
-                points.resize(pose.points.size());
-                weights.resize(points.size());
+            double samples = 0;
+            Vec2 referencePoint;// = pose.points[referenceJointIndex];
+            for(auto &pt : pose.points) {
+                if(pt.x > 0 || pt.y > 0) {
+                    referencePoint += Vec2(pt);
+                    samples++;
+                }
             }
-            
-            if(points.size() not_eq pose.points.size()) {
-                throw OutOfRangeException("Length of skeletons differs for the same individual: ", points.size(), " != ", pose.points.size());
-            }
+            if(samples > 0)
+                referencePoint /= samples;
+            else
+                continue;
             
             float weight = WeightPolicy::calculate_weight(i, num);
-            
+
             for(size_t j = 0; j < pose.points.size(); ++j) {
-                if (pose.points[j].x > 0 || pose.points[j].y > 0) {
-					points[j] += Vec2(pose.points[j]) * weight;
-					weights[j] += weight;
-				}
+                if(pose.points[j].x > 0 || pose.points[j].y > 0) {
+                    Vec2 relativePos = Vec2(pose.points[j]) - referencePoint;
+                    relativePoints[j] += relativePos * weight;
+                    weights[j] += weight;
+                }
             }
+
+            referencePointSum += referencePoint * weight;
+            referenceWeightSum += weight;
         }
+
+        if(referenceWeightSum == 0.0f) {
+            throw std::runtime_error("Reference weight sum cannot be zero.");
+        }
+
+        Vec2 averageReferencePoint = referencePointSum / referenceWeightSum;
         
         Pose pose;
-        pose.points.resize(points.size());
-        
-        for(size_t i = 0; i < points.size(); ++i) {
+        pose.points.resize(relativePoints.size());
+
+        for(size_t i = 0; i < relativePoints.size(); ++i) {
             if(weights[i] == 0.0f || contains(ignore_indexes, i)) {
                 pose.points[i] = Point(0, 0);
-                //throw std::runtime_error("Weight sum cannot be zero.");
-            } else
-                pose.points[i] = Point(points[i] / weights[i]);
+            } else {
+                Vec2 meanRelativePos = relativePoints[i] / weights[i];
+                pose.points[i] = Point((averageReferencePoint + meanRelativePos).clip(0));
+            }
         }
         
         return pose;
     }
+
     
     /**
      * Serializes the Pose object to a byte array.

@@ -155,6 +155,9 @@ namespace cmn {
     constexpr Vector2D clip(Scalar start, Scalar end) const { \
         return Vector2D(saturate(A(), start, end), saturate(B(), start, end)); \
     } \
+    constexpr Vector2D clip(Scalar start) const { \
+        return Vector2D(A() < start ? start : A(), B() < start ? start : B()); \
+    } \
     \
     template<bool K> \
     constexpr Vector2D clip(const Vector2D<Scalar, K>& start, const Vector2D<Scalar, K>& end) const { \
