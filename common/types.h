@@ -233,7 +233,8 @@ struct Pose {
         }
 
         if(referenceWeightSum == 0.0f) {
-            throw std::runtime_error("Reference weight sum cannot be zero.");
+            return Pose{};
+            //throw std::runtime_error("Reference weight sum cannot be zero.");
         }
 
         Vec2 averageReferencePoint = referencePointSum / referenceWeightSum;
