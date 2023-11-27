@@ -141,7 +141,6 @@ endif()
 
 add_dependencies(commons Commons::OpenCV)
 
-#
 set(RESOURCE_COPY_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../fonts
 )
