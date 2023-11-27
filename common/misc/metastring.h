@@ -340,7 +340,7 @@ constexpr auto to_string(T value) {
         }
 
         // Fallback to cmn::to_chars for runtime
-        auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, std::chars_format::fixed);
+        auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             *result.ptr = 0;
             return contents;
