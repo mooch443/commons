@@ -30,7 +30,7 @@ struct Buffers {
             return ptr;
         }
         
-        if constexpr(std::is_invocable_v<Construct, std::source_location&&>)
+        if constexpr(std::is_invocable_v<Construct, cmn::source_location&&>)
             return _create(std::move(loc));
         else
             return _create();
@@ -95,7 +95,7 @@ public:
         }
         
         T ptr;
-        if constexpr(std::is_invocable_v<Construct, std::source_location&&>)
+        if constexpr(std::is_invocable_v<Construct, cmn::source_location&&>)
             ptr = _create(std::move(loc));
         else
             ptr = _create();
