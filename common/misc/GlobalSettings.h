@@ -142,13 +142,13 @@ namespace cmn {
          * Loads parameters from a file.
          * @param filename Name of the file
          */
-        static std::map<std::string, std::string> load_from_file(const std::map<std::string, std::string>& deprecations, const std::string& filename, AccessLevel access);
+        static std::map<std::string, std::string> load_from_file(const std::map<std::string, std::string>& deprecations, const std::string& filename, AccessLevel access, const std::vector<std::string>& exclude = {});
         
         /**
          * Loads parameters from a string.
          * @param str the string
          */
-        static std::map<std::string, std::string> load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false);
+        static std::map<std::string, std::string> load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false, const std::vector<std::string>& exclude = {});
     };
     
     /*namespace detail {

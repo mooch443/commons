@@ -112,15 +112,15 @@ bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
  * Loads parameters from a file.
  * @param filename Name of the file
  */
-std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access) {
-    return load_from_string(deprecations, map(), utils::read_file(filename), access);
+std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude) {
+    return load_from_string(deprecations, map(), utils::read_file(filename), access, false, exclude);
 }
 
 /**
  * Loads parameters from a string.
  * @param str the string
  */
-std::map<std::string, std::string> GlobalSettings::load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations) {
+std::map<std::string, std::string> GlobalSettings::load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude) {
     std::stringstream line;
     std::map<std::string, std::string> rejected;
     
@@ -136,7 +136,9 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                         auto var = (std::string)utils::trim(parts.at(0));
                         auto val = (std::string)utils::trim(parts.at(1));
                         
-                        if(access_level(var) <= access) {
+                        if(access_level(var) <= access
+                           && not contains(exclude, var))
+                        {
                             std::string lower(utils::lowercase(var));
                             auto it = deprecations.find(lower);
                             if(it != deprecations.end()) {
