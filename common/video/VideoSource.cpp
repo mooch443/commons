@@ -185,7 +185,11 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
             
             _video->set_frame(frameIndex.get());
-            return _video->read(output);
+            if(_video->read(output)) {
+                output.set_index(frameIndex.get());
+                return true;
+            }
+            return false;
         }
             
         case IMAGE:
@@ -193,6 +197,7 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
                 cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output.get());
             else
                 cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output.get());
+            output.set_index(frameIndex.get());
             return true;
             
         default:

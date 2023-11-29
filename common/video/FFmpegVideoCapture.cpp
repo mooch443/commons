@@ -368,14 +368,10 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
         cols = mat.cols;
 		rows = mat.rows;
 		dims = mat.channels();
-        if constexpr (std::is_same_v<Mat, cv::Mat>) {
-            data = mat.data;
-        }
 	} else {
 		cols = mat.cols;
 		rows = mat.rows;
 		dims = mat.dims;
-		data = mat.data();
 	}
 
     if (!update_sws_context(frame, dims))
@@ -395,6 +391,22 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
 
         dims = channels;
         print("Created with: ", frame->height, " ", frame->width, " ", channels);
+    }
+    
+    if constexpr(std::is_same_v<Mat, cv::Mat>
+              || std::is_same_v<Mat, gpuMat>)
+    {
+        cols = mat.cols;
+        rows = mat.rows;
+        dims = mat.channels();
+        if constexpr (std::is_same_v<Mat, cv::Mat>) {
+            data = mat.data;
+        }
+    } else {
+        cols = mat.cols;
+        rows = mat.rows;
+        dims = mat.dims;
+        data = mat.data();
     }
 
     if constexpr (std::is_same_v<Mat, gpuMat>) {
