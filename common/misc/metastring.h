@@ -342,7 +342,15 @@ constexpr auto to_string(T value) {
         // Fallback to cmn::to_chars for runtime
         auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
-            *result.ptr = 0;
+            // Trim trailing zeros and possibly the decimal point
+            char* end = result.ptr;
+            while (end > contents.data() && *(end - 1) == '0') {
+                --end;
+            }
+            if (end > contents.data() && *(end - 1) == '.') {
+                --end;  // Remove decimal point if there are no fractional digits
+            }
+            *end = '\0'; // Null-terminate the string at the new end
             return contents;
         } else {
             throw std::invalid_argument("Error converting floating point to string");
