@@ -493,7 +493,7 @@ public:
         height = max(y + height, other.y+other.height) - y;
     }
     
-    static constexpr Bounds combine_all(const std::function<std::optional<Bounds>()>& iterate) {
+    static Bounds combine_all(const std::function<std::optional<Bounds>()>& iterate) {
         Bounds bds(std::numeric_limits<Float2_t>::max(), std::numeric_limits<Float2_t>::max(), 0, 0);
         while(true) {
             auto b = iterate();
