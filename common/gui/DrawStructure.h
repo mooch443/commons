@@ -114,6 +114,7 @@ namespace gui {
         
         LOGGED_MUTEX_VAR_TYPE(std::recursive_mutex, _lock, "DrawStructure::lock");
         std::set<Codes> pressed_keys;
+        std::array<bool, 2> mouse_state;
         
         std::vector<Drawable*> results;
         
@@ -263,6 +264,8 @@ namespace gui {
         Drawable* mouse_move(float x, float y);
         Drawable* mouse_down(bool left_button);
         Drawable* mouse_up(bool left_button);
+        
+        bool is_mouse_down(int button) const;
         
         //! Handles events like mouse move/up/down and returns true if
         //  the given event was handled.

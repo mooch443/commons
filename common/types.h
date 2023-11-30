@@ -107,6 +107,16 @@ struct Pose {
         constexpr operator Vec2() const noexcept {
             return Vec2(x, y);
         }
+        
+        static Point fromStr(const std::string& str) {
+            return Point(Meta::fromStr<Vec2>(str));
+        }
+        static std::string class_name() {
+            return "Pose::Point";
+        }
+        std::string toStr() const {
+            return "["+Meta::toStr(x)+","+Meta::toStr(y)+"]";
+        }
     };
     
     struct Bone {

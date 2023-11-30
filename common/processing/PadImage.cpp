@@ -1,6 +1,46 @@
 #include "PadImage.h"
 
 namespace cmn {
+Vec2 legacy_pad_image(cv::Mat& padded, Size2 output_size) {
+    Vec2 offset;
+    int left = 0, right = 0, top = 0, bottom = 0;
+    if(padded.cols < output_size.width) {
+        left = roundf(output_size.width - padded.cols);
+        right = left / 2;
+        left -= right;
+    }
+    
+    if(padded.rows < output_size.height) {
+        top = roundf(output_size.height - padded.rows);
+        bottom = top / 2;
+        top -= bottom;
+    }
+    
+    if(left || right || top || bottom) {
+        offset.x -= left;
+        offset.y -= top;
+        
+        cv::copyMakeBorder(padded, padded, top, bottom, left, right, cv::BORDER_CONSTANT, 0);
+    }
+    
+    assert(padded.cols >= output_size.width && padded.rows >= output_size.height);
+    if(padded.cols > output_size.width || padded.rows > output_size.height) {
+        left = padded.cols - output_size.width;
+        right = left / 2;
+        left -= right;
+        
+        top = padded.rows - output_size.height;
+        bottom = top / 2;
+        top -= bottom;
+        
+        offset.x += left;
+        offset.y += top;
+        
+        padded(Bounds(left, top, padded.cols - left - right, padded.rows - top - bottom)).copyTo(padded);
+    }
+    return offset;
+}
+
     void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype, bool reset, const cv::Mat& mask, uchar background)
     {
         assert(&input != &output);

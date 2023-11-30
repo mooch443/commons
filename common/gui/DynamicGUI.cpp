@@ -1144,10 +1144,12 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
 {
     if(auto it = state.loops.find(hash); it != state.loops.end()) {
         auto &obj = it->second;
-        if(context.has(obj.variable)) {
-            if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-                
-                auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
+        PreVarProps ps = extractControls(obj.variable);
+        auto props = ps.parse(context, state);
+        
+        if(context.has(props.name)) {
+            if(context.variable(props.name)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+                auto& vector = context.variable(props.name)->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
                 
                 //IndexScopeHandler handler{state._current_index};
                 if(vector != obj.cache) {

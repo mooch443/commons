@@ -492,6 +492,17 @@ public:
         width  = max(x + width,  other.x+other.width) - x;
         height = max(y + height, other.y+other.height) - y;
     }
+    
+    static constexpr Bounds combine_all(const std::function<std::optional<Bounds>()>& iterate) {
+        Bounds bds(std::numeric_limits<Float2_t>::max(), std::numeric_limits<Float2_t>::max(), 0, 0);
+        while(true) {
+            auto b = iterate();
+            if(not b.has_value())
+                break;
+            bds.combine(b.value());
+        }
+        return bds;
+    }
         
     constexpr bool overlaps(const Bounds& other) const {
         const auto r = x + width, oR = other.x + other.width;

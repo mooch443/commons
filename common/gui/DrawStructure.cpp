@@ -590,6 +590,8 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* DrawStructure::mouse_down(bool left_button) {
+        mouse_state[left_button ? 0 : 1] = true;
+        
         float x = _mouse_position.x, y = _mouse_position.y;
         auto d = find(x, y);
         
@@ -608,6 +610,8 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* DrawStructure::mouse_up(bool left_button) {
+        mouse_state[left_button ? 0 : 1] = false;
+        
         if(_selected_object) {
             std::string type(_selected_object->type().name());
             if(dynamic_cast<HasName*>(_selected_object))
@@ -620,6 +624,14 @@ void DrawStructure::close_dialogs() {
         return _selected_object;
     }
     
+    bool DrawStructure::is_mouse_down(int button) const {
+        if(button == 0)
+            return mouse_state[0];
+        else if(button == 1)
+            return mouse_state[1];
+        throw InvalidArgumentException("This is an invalid button.");
+    }
+
     bool DrawStructure::event(Event e) {
         auto lock = GUI_LOCK(_lock);
         Drawable* d = NULL;

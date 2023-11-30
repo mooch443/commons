@@ -14,4 +14,5 @@ namespace cmn {
     }*/
     
     void pad_image(const cv::Mat& input, cv::Mat& output, const Size2& target, int dtype = -1, bool reset = true, const cv::Mat &mask = cv::Mat(), uchar background = 0);
+    Vec2 legacy_pad_image(cv::Mat& padded, Size2 output_size);
 }
