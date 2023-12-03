@@ -342,13 +342,10 @@ constexpr auto to_string(T value) {
         // Fallback to cmn::to_chars for runtime
         auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
-            // Trim trailing zeros and possibly the decimal point
+            // Trim trailing zeros but leave at least one digit after the decimal point
             char* end = result.ptr;
-            while (end > contents.data() && *(end - 1) == '0') {
+            while (end > contents.data() + 2 && *(end - 1) == '0' && *(end - 2) != '.') {
                 --end;
-            }
-            if (end > contents.data() && *(end - 1) == '.') {
-                --end;  // Remove decimal point if there are no fractional digits
             }
             *end = '\0'; // Null-terminate the string at the new end
             return contents;

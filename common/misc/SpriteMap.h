@@ -548,7 +548,10 @@ void Reference::operator=(const T& value) {
     void PropertyType::operator=(const T& value) {
         auto ptr = static_cast<Property<T>*>(this);
         if(ptr->valid()) {
-            *ptr = value;
+            if(ptr->value() != value) {
+                *ptr = value;
+                print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
+            }
             
         } else {
             std::stringstream ss;
