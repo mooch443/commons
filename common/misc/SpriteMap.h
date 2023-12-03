@@ -13,12 +13,6 @@ concept HasNotEqualOperator = requires(T a, T b) {
     class Map;
     class PropertyType;
     
-    struct LockGuard {
-        std::lock_guard<std::mutex> obj;
-        LockGuard(Map*);
-        ~LockGuard();
-    };
-    
     template<typename T>
     class Property;
     
@@ -180,26 +174,34 @@ concept Iterable = requires(T obj) {
         
     protected:
         std::unordered_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
-        ska::bytell_hash_map<std::string, bool> _print_key;
 
         std::atomic<std::size_t> _id_counter{0u};
         std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
-        mutable std::mutex _mutex;
-        GETTER_SETTER_I(bool, do_print, true)
+        mutable LOGGED_MUTEX_VAR(_mutex, "sprite::Lock");
+        GETTER_I(bool, print_by_default, false)
         
     public:
         auto& mutex() const { return _mutex; }
         
-        void dont_print(const std::string& name) {
-            _print_key[name] = false;
+        void do_print(const std::string& name, bool value) {
+            auto guard = LOGGED_LOCK(mutex());
+            if (auto it = _props.find(name);
+                it != _props.end()) 
+            {
+                it->second->set_do_print(value);
+            }
         }
-        
-        void do_print(const std::string& name) {
-            auto it = _print_key.find(name);
-            if(it != _print_key.end())
-                _print_key.erase(it);
-        }
+
+        void set_print_by_default(bool value) {
+            auto guard = LOGGED_LOCK(mutex());
+            if (_print_by_default != value) {
+                _print_by_default = value;
+
+                for(auto &[key, v] : _props)
+                    v->set_do_print(value);
+            }
+		}
 
         /**
          * @brief Registers a shutdown callback function.
@@ -236,14 +238,22 @@ concept Iterable = requires(T obj) {
         
         ~Map();
         
-        bool empty() const { std::unique_lock guard(mutex()); return _props.empty(); }
-        size_t size() const { std::unique_lock guard(mutex()); return _props.size(); }
+        bool empty() const {
+            auto guard = LOGGED_LOCK(mutex());
+            return _props.empty();
+        }
+        size_t size() const {
+            auto guard = LOGGED_LOCK(mutex());
+            return _props.size();
+        }
         
         bool operator==(const Map& other) const {
             if(other.size() != size())
                 return false;
             
-            std::scoped_lock guard(mutex(), other.mutex());
+            auto guard = LOGGED_LOCK(mutex());
+            auto guard2 = LOGGED_LOCK(other.mutex());
+            //std::scoped_lock guard(mutex(), other.mutex());
             auto it0 = other._props.begin();
             auto it1 = _props.begin();
             
@@ -320,7 +330,7 @@ concept Iterable = requires(T obj) {
                     || std::is_lvalue_reference_v<T&&>
                     || std::is_array_v<std::remove_reference_t<T>>
         Reference operator[](T&& name) {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             decltype(_props)::const_iterator it;
 
             if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
@@ -342,7 +352,7 @@ concept Iterable = requires(T obj) {
                     || std::is_lvalue_reference_v<T&&>
                     || std::is_array_v<std::remove_reference_t<T>>
         ConstReference operator[](T&& name) const {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             decltype(_props)::const_iterator it;
 
             if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
@@ -361,7 +371,7 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         Property<T>& get(const std::string_view& name) {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             auto it = _props.find(name);
             if(it != _props.end()) {
 				return (Property<T>&)it->second->toProperty<T>();
@@ -372,7 +382,7 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         Property<T>& get(const std::string_view& name) const {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             auto it = _props.find(name);
             if(it != _props.end()) {
                 return (Property<T>&)it->second->toProperty<T>();
@@ -382,7 +392,7 @@ concept Iterable = requires(T obj) {
         }
         
         bool has(const std::string_view& name) const {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             return _props.contains(name);
         }
         
@@ -436,8 +446,10 @@ concept Iterable = requires(T obj) {
                 property_ = new Property<T>(property.name(), property.value());
                 {
                     auto ptr = Store(property_);
+                    if (print_by_default())
+                        ptr->set_do_print(true);
                     
-                    std::unique_lock guard(mutex());
+                    auto guard = LOGGED_LOCK(mutex());
                     _props[ptr->name()] = ptr;
                 }
             }
@@ -452,12 +464,12 @@ concept Iterable = requires(T obj) {
                 throw PropertyException(e);
             }
             
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             _props.erase(key);
         }
         
         std::vector<std::string> keys() const {
-            std::unique_lock guard(mutex());
+            auto guard = LOGGED_LOCK(mutex());
             std::vector<std::string> result;
             result.reserve(_props.size());
 
@@ -480,7 +492,6 @@ concept Iterable = requires(T obj) {
     
     template<typename T>
     Reference::operator const T() {
-        LockGuard guard(_container);
         Property<T> *tmp = dynamic_cast<Property<T>*>(_type);
         if (tmp) {
             return tmp->value();
@@ -548,10 +559,7 @@ void Reference::operator=(const T& value) {
     void PropertyType::operator=(const T& value) {
         auto ptr = static_cast<Property<T>*>(this);
         if(ptr->valid()) {
-            if(ptr->value() != value) {
-                *ptr = value;
-                print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
-            }
+            *ptr = value;
             
         } else {
             std::stringstream ss;
@@ -569,8 +577,12 @@ void Reference::operator=(const T& value) {
                v != _value)
             {
                 _value = v;
-                
+
                 guard.unlock();
+                
+                if(_do_print)
+                    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
+                    
                 triggerCallbacks();
             }
             return;

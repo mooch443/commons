@@ -20,7 +20,7 @@ std::mutex& GlobalSettings::mutex() {
  */
 
 GlobalSettings::GlobalSettings() {
-    _map.set_do_print(false);
+    _map.set_print_by_default(false);
 }
 
 /**

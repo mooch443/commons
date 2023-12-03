@@ -382,7 +382,7 @@ int main(int argc, char**argv) {
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
     
-    GlobalSettings::map().set_do_print(true);
+    GlobalSettings::map().set_print_by_default(true);
     
     dyn::Modules::add(Modules::Module{
         ._name = "draggable",

@@ -556,7 +556,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     _dropdown->set(ClosesAfterSelect(false));
     _dropdown->set([this](auto, const Dropdown::TextItem& item) {
         // on select
-        _ref.container().set_do_print(true);
+        _ref.container().set_print_by_default(true);
         print("Selecting ", item.name());
         auto path = file::Path(_dropdown->text());
         if(path.is_folder()) {

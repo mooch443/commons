@@ -991,6 +991,7 @@ public:
 
 #define LOGGED_LOCK_TYPE LoggedLock
 #define LOGGED_LOCK(MUTEX) LOGGED_LOCK_TYPE (MUTEX, cmn::source_location::current())
+#define LOGGED_LOCK_VAR_TYPE(TYPE) LOGGED_LOCK_TYPE < LoggedMutex< TYPE > > (cmn::source_location::current())
 #define LOGGED_MUTEX_TYPE LoggedMutex<>
 #define LOGGED_MUTEX(NAME) LOGGED_MUTEX_TYPE (NAME, cmn::source_location::current())
 #define LOGGED_MUTEX_VAR(VAR, NAME) LOGGED_MUTEX_TYPE VAR{NAME, cmn::source_location::current()}
@@ -1000,6 +1001,8 @@ public:
 
 #define LOGGED_LOCK_TYPE std::unique_lock
 #define LOGGED_LOCK(MUTEX) LOGGED_LOCK_TYPE { MUTEX }
+#define LOGGED_LOCK_VAR_TYPE(TYPE) LOGGED_LOCK_TYPE < TYPE > { }
+#define LOGGED_LOCK_VAR(TYPE, MUTEX) LOGGED_LOCK_TYPE < TYPE > { MUTEX }
 #define LOGGED_MUTEX_TYPE std::mutex
 #define LOGGED_MUTEX(NAME) LOGGED_MUTEX_TYPE { }
 #define LOGGED_MUTEX_VAR(VAR, NAME) LOGGED_MUTEX_TYPE VAR{}
