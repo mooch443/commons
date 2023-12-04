@@ -424,12 +424,28 @@ endif()
 
 set(COMMONS_subproject_CMAKE_ARGS "")
 
+# Detect compiler and set flags to disable all warnings
+set(disable_warnings_flags "")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    # GCC specific flags to disable all warnings
+    set(disable_warnings_flags "-w")
+elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    # Clang specific flags to disable all warnings
+    set(disable_warnings_flags "-w")
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    # MSVC specific flags to disable all warnings
+    set(disable_warnings_flags "/W0")
+endif()
+
+set(ORIGINAL_CXX_FLAGS "${ORIGINAL_CXX_FLAGS} ${disable_warnings_flags}")
+set(ORIGINAL_C_FLAGS "${ORIGINAL_C_FLAGS} ${disable_warnings_flags}")
+
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
     -DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}
     -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
     -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
-    -DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}
+    -DCMAKE_C_FLAGS:STRING=${ORIGINAL_C_FLAGS}
     -DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}
     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_C_FLAGS_RELWITHDEBINFO}
     -DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}
@@ -452,7 +468,6 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DPYTHON_EXECUTABLE:FILEPATH=${PYTHON_EXECUTABLE}
     -DPython_ROOT_DIR:FILEPATH=${Python_ROOT_DIR}
     -DPython_FIND_STRATEGY=LOCATION
-
 )
 
 if(APPLE)
