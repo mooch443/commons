@@ -57,7 +57,7 @@ LabeledField::~LabeledField() {
         settings_map().unregister_callbacks(std::move(_callback_id));
 }
 
-LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json& obj)
+LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json&)
     : LabeledField(name),
     _combo(std::make_shared<Combobox>())
 {}
@@ -189,7 +189,7 @@ void LabeledTextField::update() {
     }
 }
 
-LabeledList::LabeledList(const std::string& name, const nlohmann::json& obj, bool invert)
+LabeledList::LabeledList(const std::string& name, const nlohmann::json&, bool invert)
 : LabeledField(name),
 _list(std::make_shared<gui::List>(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
@@ -286,7 +286,7 @@ void LabeledList::update() {
     
 }
 
-LabeledDropDown::LabeledDropDown(const std::string& name, const nlohmann::json& obj)
+LabeledDropDown::LabeledDropDown(const std::string& name, const nlohmann::json&)
 : LabeledField(name),
 _dropdown(std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
@@ -336,7 +336,7 @@ Color LabeledPath::FileItem::color() const {
     return _path.is_folder() ? Color(180, 255, 255, 255) : White;
 }
 
-LabeledPath::LabeledPath(std::string name, const std::string& desc, file::Path path)
+LabeledPath::LabeledPath(std::string name, const std::string&, file::Path path)
     : LabeledField(name),
     _files([](const file::Path& A, const file::Path& B) -> bool {
         return (A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str()); //A.str() == ".." || (A.str() != ".." && ((A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str())));
@@ -549,7 +549,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     // Initialize Dropdown, attach handlers for events
     _dropdown = Layout::Make<CustomDropdown>(attr::Size(300,40));
     _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path or matching pattern...");
-    _dropdown->on_text_changed([this](std::string str){
+    _dropdown->on_text_changed([this](std::string){
         // handle text changed
         updateDropdownItems();
     });
@@ -795,7 +795,7 @@ void LabeledPathArray::updateDropdownItems() {
             }
 
             for (auto& m : matches)
-                m.is_folder(); // cache is_folder
+                (void)m.is_folder(); // cache is_folder
 
             if (ptr->stage()) {
                 auto guard = GUI_LOCK(ptr->stage()->lock());

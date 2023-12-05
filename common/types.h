@@ -203,7 +203,6 @@ struct Pose {
             throw std::out_of_range("Number of poses must be greater than zero.");
         }
 
-        size_t referenceJointIndex = 0;
         std::vector<Vec2> relativePoints(values(0).points.size());
         std::vector<float> weights(relativePoints.size(), 0.0f);
 

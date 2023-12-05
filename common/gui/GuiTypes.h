@@ -138,10 +138,10 @@ protected:
     class Line final : public VertexArray {
     public:
         static constexpr auto Class = Type::data::values::LINE;
-        ATTRIBUTE_ALIAS(Point_t, Vec2);
-        ATTRIBUTE_ALIAS(Points_t, std::vector<Vec2>);
-        ATTRIBUTE_ALIAS(Vertices_t, std::vector<Vertex>);
-        NUMBER_ALIAS(Thickness_t, float);
+        ATTRIBUTE_ALIAS(Point_t, Vec2)
+        ATTRIBUTE_ALIAS(Points_t, std::vector<Vec2>)
+        ATTRIBUTE_ALIAS(Vertices_t, std::vector<Vertex>)
+        NUMBER_ALIAS(Thickness_t, float)
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
         float _process_scale;

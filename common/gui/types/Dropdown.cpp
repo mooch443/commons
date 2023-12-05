@@ -344,7 +344,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
             auto index = FilteredIndex{(long_t)_list->last_hovered_item()};
             if(_filtered_items.contains(index)) {
                 RawIndex raw = _filtered_items.at(index);
-                if(raw.value < _items.size())
+                if(raw.valid() && raw.value < _items.size())
                     return _items.at(raw.value);
             }
             //return (size_t)_list->last_hovered_item() < _list->items().size() ? _list->items().at(_list->last_hovered_item()).value() : TextItem();

@@ -195,8 +195,11 @@ public:
     template<size_t M>
         requires (M<N)
     constexpr ConstexprString(const std::array<char, M>& arr) noexcept
-        : _data(arr)
-    { }
+    {
+        for(size_t i=0; i<M; ++i)
+            _data[i] = arr[i];
+        _data[M] = 0;
+    }
 
     constexpr char* data() { return _data.data(); }
     constexpr const char* data() const { return _data.data(); }
@@ -343,10 +346,12 @@ constexpr auto to_string(T value) {
         auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             // Trim trailing zeros but leave at least one digit after the decimal point
+            assert(utils::contains((const char*)contents.data(), '.'));
             char* end = result.ptr;
-            while (end > contents.data() + 2 && *(end - 1) == '0' && *(end - 2) != '.') {
+            while (end > contents.data() && *(end - 1) == '0')
                 --end;
-            }
+            if(*(end - 1) == '.')
+                --end;
             *end = '\0'; // Null-terminate the string at the new end
             return contents;
         } else {

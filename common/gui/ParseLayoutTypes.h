@@ -41,7 +41,7 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
                  && not are_the_same<file::Path, T>)
     {
         if(o.is_string()) {
-            state.patterns[hash][name] = Pattern{o.template get<std::string>()};
+            state.patterns[hash][name] = Pattern{o.template get<std::string>(), {}};
             return de;
         }
         return Meta::fromStr<T>(o.dump());
@@ -51,7 +51,7 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
     } else {
         auto val = o.template get<std::string>();
         if(utils::contains(val, '{')) {
-            state.patterns[hash][name] = Pattern{val};
+            state.patterns[hash][name] = Pattern{val, {}};
             return de;
         }
         return val;

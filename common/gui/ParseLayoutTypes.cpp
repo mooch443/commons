@@ -69,7 +69,7 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Cont
             size = get(_defaults.size, "size");
         } else {
             //print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.patterns[hash]["size"] = Pattern{"auto"};
+            state.patterns[hash]["size"] = Pattern{"auto", {}};
         }
         
     } else {
@@ -195,7 +195,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
     if(obj.count("path") && obj["path"].is_string()) {
         std::string raw = obj["path"].get<std::string>();
         if(utils::contains(raw, "{")) {
-            state.patterns[hash]["path"] = Pattern{raw};
+            state.patterns[hash]["path"] = Pattern{raw, {}};
             
         } else {
             auto path = file::Path(raw);

@@ -12,7 +12,6 @@
 
 namespace pixel {
     static Image::Ptr debug_greyscale = nullptr;
-    static constexpr auto coord_max_val = std::numeric_limits<coord_t>::max();
 
 struct Row {
     std::vector<int> cache;

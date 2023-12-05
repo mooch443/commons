@@ -26,7 +26,7 @@ Bounds CVBase::get_window_bounds() const {
     throw std::invalid_argument("Method not implemented.");
 }
 
-void CVBase::set_window_bounds(Bounds bounds) {
+void CVBase::set_window_bounds(Bounds) {
     throw std::invalid_argument("Method not implemented.");
 }
 

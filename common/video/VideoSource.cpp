@@ -171,7 +171,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc) const
+bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location) const
 {
     switch (_type) {
         case VIDEO: {
@@ -205,7 +205,7 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
     }
 }
 
-bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location loc) const {
+bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location) const {
     switch (_type) {
     case VIDEO: {
         if (!_video->is_open()) {
@@ -233,7 +233,7 @@ bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
     }
 }
 
-void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& output, bool lazy_video, cmn::source_location loc) const {
+void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& output, bool, cmn::source_location) const {
     switch (_type) {
         case VIDEO: {
             if (!_video->is_open()) {

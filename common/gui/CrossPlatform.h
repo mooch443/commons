@@ -49,7 +49,7 @@ namespace gui {
         virtual void set_icons(const std::vector<file::Path>& ) {}
         virtual void set_open_files_fn(std::function<bool(const std::vector<file::Path>&)> fn) { _fn_open_files = fn; }
         virtual void toggle_full_screen() {}
-        virtual void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)> fn) {}
+        virtual void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)>) {}
         
         GETTER_SETTER(Color, clear_color)
         GETTER_SETTER(bool, frame_capture_enabled)

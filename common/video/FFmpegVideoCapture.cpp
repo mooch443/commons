@@ -214,7 +214,6 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
     // Convert frame index to a timestamp
     Timer timer;
-    auto initial_frame = frameCount;
     int64_t timestamp = -1;
 
     // find closest keyframe _before_ frameIndex from _keyframes:
@@ -298,7 +297,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 count_jumped_frames += frameIndex - frame_index + 1;
             }
 
-            if(temp_frame->key_frame)
+            if(temp_frame->flags & AV_FRAME_FLAG_KEY)
                 _keyframes[frame_index] = temp_frame->pts;
             
             received_frame = frame_index;
@@ -482,7 +481,7 @@ bool FfmpegVideoCapture::grab() {
             break;
         }
 
-        if (frame->key_frame) {
+        if (frame->flags & AV_FRAME_FLAG_KEY) {
             _keyframes[frameCount] = frame->pts;
             print("keyframe ", frameCount, " is ", frame->pts);
         }
@@ -566,7 +565,7 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
             break;
         }
 
-        int64_t timestamp = frame->key_frame ? frame->pts : -1;
+        int64_t timestamp = frame->flags & AV_FRAME_FLAG_KEY ? frame->pts : -1;
 
 /*
         if constexpr (std::is_same_v<Mat, gpuMat>) {
