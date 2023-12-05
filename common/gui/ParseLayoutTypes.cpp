@@ -80,7 +80,7 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Cont
     pos = get(_defaults.pos, "pos");
     origin = get(_defaults.origin, "origin");
     pad = get(_defaults.pad, "pad");
-    name = get(_defaults.name, "name");
+    name = get(std::string(), "name");
     fill = get(_defaults.fill, "fill");
     line = get(_defaults.line, "line");
     clickable = get(_defaults.clickable, "clickable");
@@ -117,8 +117,22 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(clickable)
         ptr->set_clickable(clickable);
     
-    if(not name.empty())
+    if(state.patterns.contains(hash)
+       && state.patterns.at(hash).contains("name")) {
+        auto var = parse_text(state.patterns.at(hash).at("name").original, context, state);
+        name = var;
+    }
+    if(not name.empty()) {
+        print("ptr->name = ", name);
         ptr->set_name(name);
+        
+#ifndef NDEBUG
+        if(state._named_entities.contains(name)
+           && state._named_entities.at(name) != ptr)
+            FormatWarning("Duplicate entry for ", name, ": ", state._named_entities.at(name).get(), " vs. ", ptr.get());
+#endif
+        state._named_entities[name] = ptr;
+    }
     
     if(obj.count("modules")) {
         if(obj["modules"].is_array()) {
@@ -135,6 +149,64 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(pos != Vec2(0)) ptr->set_pos(pos);
     if(size != Vec2(0)) ptr->set_size(size);
     if(origin != Vec2(0)) ptr->set_origin(origin);
+    
+    if(obj.count("hover") || obj.count("unhover")) {
+        auto hover_action = obj.count("hover") ? PreAction::fromStr(obj["hover"].get<std::string>()) : PreAction{};
+        auto unhover_action = obj.count("unhover") ? PreAction::fromStr(obj["unhover"].get<std::string>()) : PreAction{};
+        ptr->add_event_handler(EventType::HOVER, [hover_action, unhover_action, _ptr = ptr.get(), context = context, &state = state](Event e) {
+            if(e.hover.hovered
+               && not hover_action.name.empty())
+            {
+                try {
+                    auto name = parse_text(hover_action.name, context, state);
+                    if(auto it = context.actions.find(name);
+                    it != context.actions.end())
+                    {
+                        State state;
+                        it->second(hover_action.parse(context, state));
+                        
+                    } else if(auto it = state._named_entities.find(name);
+                                 it != state._named_entities.end())
+                    {
+                       if(it->second) {
+                           apply_modifier_to_object(it->first, it->second, hover_action.parse(context, state));
+                       }
+                       
+                    } else {
+                        print("Unknown Action: ", hover_action);
+                    }
+                    
+                } catch(...) {
+                    FormatExcept("error using action ", hover_action);
+                }
+            } else if(not e.hover.hovered
+                      && not unhover_action.name.empty()) 
+            {
+                try {
+                    auto name = parse_text(unhover_action.name, context, state);
+                    if(auto it = context.actions.find(name);
+                    it != context.actions.end())
+                    {
+                        State state;
+                        it->second(unhover_action.parse(context, state));
+                        
+                    } else if(auto it = state._named_entities.find(name);
+                                 it != state._named_entities.end())
+                    {
+                       if(it->second) {
+                           apply_modifier_to_object(it->first, it->second, unhover_action.parse(context, state));
+                       }
+                       
+                    } else {
+                        print("Unknown Action: ", unhover_action);
+                    }
+                    
+                } catch(...) {
+                    FormatExcept("error using action ", unhover_action);
+                }
+            }
+        });
+    }
     
     if(obj.count("drag") || obj.count("click")) {
         auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
@@ -392,7 +464,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         auto input = obj["var"].get<std::string>();
         var = parse_text(input, context, state);
         if(var != input) {
-            state.patterns[hash]["var"] = Pattern{input};
+            state.patterns[hash]["var"] = Pattern{input, {}};
         }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");

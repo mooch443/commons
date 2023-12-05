@@ -18,6 +18,57 @@
 namespace gui {
 namespace dyn {
 
+bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const Action& value) {
+    std::unordered_map<std::string_view, std::function<void(const Layout::Ptr&, const Action&)>, MultiStringHash, MultiStringEqual> applicators {
+        { "pos",
+            [](const Layout::Ptr& ptr, const Action& action) {
+                print("pos = ", action, " for ", ptr.get());
+                LabeledField::delegate_to_proper_type(attr::Loc{Meta::fromStr<Vec2>(action.parameters.back())}, ptr);
+            }
+        },
+        { "fill",
+            [](const Layout::Ptr& ptr, const Action& action) {
+                print("fill = ", action, " for ", ptr.get());
+                LabeledField::delegate_to_proper_type(attr::FillClr{Meta::fromStr<Color>(action.parameters.back())}, ptr);
+            }
+        }
+    };
+    
+    if(auto it = applicators.find(value.parameters.front());
+       it != applicators.end())
+    {
+        it->second(object, value);
+        return true;
+    }
+    
+    return false;
+}
+
+std::optional<std::string> get_modifier_from_object(Drawable* object, const VarProps& value) {
+    std::unordered_map<std::string_view, std::function<std::optional<std::string>(Drawable*)>, MultiStringHash, MultiStringEqual> applicators {
+        { "pos",
+            [](Drawable* ptr) -> std::optional<std::string> {
+                return Meta::toStr(ptr->global_bounds().pos());
+            }
+        },
+        { "fill",
+            [](Drawable* ptr) -> std::optional<std::string> {
+                if(ptr->type() == Type::ENTANGLED || ptr->type() == Type::SECTION)
+                    return Meta::toStr(static_cast<SectionInterface*>(ptr)->bg_fill_color());
+                return std::nullopt;
+            }
+        }
+    };
+    
+    if(auto it = applicators.find(value.parameters.front());
+       it != applicators.end())
+    {
+        return it->second(object);
+    }
+    
+    return std::nullopt;
+}
+
 // Function to skip over nested structures so they don't interfere with our parsing
 auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
     int balance = 1;
@@ -345,9 +396,7 @@ PreVarProps extractControls(const std::string_view& variable) {
 bool Context::has(const std::string_view & name) const noexcept {
     if(variables.contains(name))
         return true;
-    
-    init();
-    return system_variables.contains(name);
+    return system_variables().contains(name);
 }
 
 template<typename T>
@@ -422,8 +471,8 @@ T map_vector(const VarProps& props, auto&& apply) {
 }
 
 void Context::init() const {
-    if(system_variables.empty())
-        system_variables = {
+    if(not _system_variables.has_value())
+        _system_variables = {
             VarFunc("min", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return min(A, B);});
             }),
@@ -623,8 +672,8 @@ const std::shared_ptr<VarBase_t>& Context::variable(const std::string_view & nam
     
     init();
     
-    auto sit = system_variables.find(name);
-    if(sit != system_variables.end())
+    auto sit = system_variables().find(name);
+    if(sit != system_variables().end())
         return sit->second;
     
     throw InvalidArgumentException("Cannot find key ", name, " in variables.");
@@ -830,6 +879,9 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
         } else
             return false;
     }*/
+    
+    if(o) state._current_object = o.get();
+    else state._current_object = nullptr;
     
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(hash)) {
@@ -1162,7 +1214,9 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         auto previous = state._variable_values;
                         tmp.variables["i"] = v;
                         auto ptr = parse_object(obj.child, tmp, state, context.defaults);
-                        update_objects(g, ptr, tmp, state);
+                        if(ptr) {
+                            update_objects(g, ptr, tmp, state);
+                        }
                         ptrs.push_back(ptr);
                         state._variable_values = std::move(previous);
                     }
@@ -1176,8 +1230,9 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         auto previous = state._variable_values;
                         tmp.variables["i"] = obj.cache[i];
                         auto& p = o.to<Layout>()->objects().at(i);
-                        if(p)
+                        if(p) {
                             update_objects(g, p, tmp, state);
+                        }
                         //p->parent()->stage()->print(nullptr);
                         state._variable_values = std::move(previous);
                     }
@@ -1254,6 +1309,12 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     
     //! clear variable state
     state._variable_values.clear();
+    
+    context.system_variables().emplace(VarFunc("hovered", [&state = state](const VarProps&) -> bool {
+        if(state._current_object)
+            return state._current_object->hovered();
+        return false;
+    }));
     
     if(parent) {
         //! check if we need anything more to be done to the objects before adding

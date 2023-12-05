@@ -229,9 +229,14 @@ struct Context {
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;
     DefaultSettings defaults;
     
-    mutable std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> system_variables;
+    mutable std::optional<std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
 
     std::unordered_map<std::string, CustomElement> custom_elements;
+    auto& system_variables() const noexcept {
+        if(not _system_variables.has_value())
+            init();
+        return *_system_variables;
+    }
 
     [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(const std::string_view&) const;
     [[nodiscard]] bool has(const std::string_view&) const noexcept;
@@ -349,6 +354,9 @@ struct State {
     std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
     std::unordered_map<size_t, std::string> _customs;
     std::unordered_map<size_t, Layout::Ptr> _customs_cache;
+    std::unordered_map<std::string, Layout::Ptr, MultiStringHash, MultiStringEqual> _named_entities;
+    
+    Drawable* _current_object{nullptr};
     
     Index _current_index;
     
@@ -359,8 +367,10 @@ struct State {
           display_fns(other.display_fns),
           ifs(other.ifs),
           _var_cache(other._var_cache),
-          _current_index(other._current_index),
-          _customs(other._customs)
+          _customs(other._customs),
+          _named_entities(other._named_entities),
+          _current_object(other._current_object),
+          _current_index(other._current_index)
     {
         for(auto &[k, body] : other.loops) {
             loops[k] = {
@@ -543,6 +553,9 @@ struct CTimer {
 #endif
 };
 
+bool apply_modifier_to_object(std::string_view name, const Layout::Ptr& object, const Action& value);
+std::optional<std::string> get_modifier_from_object(Drawable* object, const VarProps& value);
+
 template<typename ApplyF, typename ErrorF, typename Result = typename cmn::detail::return_type<ApplyF>::type>
 inline auto resolve_variable(const std::string_view& word, const Context& context, State& state, ApplyF&& apply, ErrorF&& error) -> Result {
     auto props = extractControls(word);
@@ -570,7 +583,15 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
             CTimer ctimer("custom var");
             return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
+        } else if(auto it = state._named_entities.find(props.name);
+                  it != state._named_entities.end()) 
+        {
+            auto v = get_modifier_from_object(it->second.get(), props.parse(context, state));
+            if(v.has_value()) {
+                return Meta::fromStr<Result>(v.value());
+            }
         }
+        
     } catch(...) {
         // catch exceptions
     }
