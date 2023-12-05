@@ -775,7 +775,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             config.OversampleH = 5;
             config.OversampleV = 5;
 
-            auto load_font = [&](int no, std::string suffix, const file::Path& path, std::string ext = ".ttf", float scale = 1.0, bool add_all_ranges = false) {
+            auto load_font = [&](int no, std::string suffix, const file::Path& path, std::string = ".ttf", float scale = 1.0, bool = false) {
                 config.FontNo = no;
                 if (no > 0)
                     config.MergeMode = false;

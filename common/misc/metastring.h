@@ -346,13 +346,36 @@ constexpr auto to_string(T value) {
         auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             // Trim trailing zeros but leave at least one digit after the decimal point
-            assert(utils::contains((const char*)contents.data(), '.'));
+            /*if (not utils::contains((const char*)contents.data(), '.')) {
+                *result.ptr = '\0';
+                return contents;
+            }*/
             char* end = result.ptr;
-            while (end > contents.data() && *(end - 1) == '0')
+            while (end > contents.data() + 1 && *(end - 1) == '0')
                 --end;
-            if(*(end - 1) == '.')
-                --end;
-            *end = '\0'; // Null-terminate the string at the new end
+            if(end > contents.data() && *(end - 1) == '.') {
+                /// found the decimal point, zero here and we're done.
+                *(end - 1) = '\0';
+                
+            } else if(end > contents.data()) {
+                /// if we couldn't find a decimal point so far, we may or may
+                /// not have a decimal point in here at all. if we don't then we
+                /// are dealing with an integer essentially. in that case
+                /// we shouldn't cut off _any_ numbers at all.
+                auto ptr = end;
+                while(ptr > contents.data() && *ptr != '.')
+                    --ptr;
+                
+                if(ptr > contents.data() && *ptr == '.') // found decimal pt.
+                {
+                    *end = '\0';
+                } else {
+                    *result.ptr = '\0';
+                }
+                
+            } else {
+                *result.ptr = '\0';
+            }
             return contents;
         } else {
             throw std::invalid_argument("Error converting floating point to string");

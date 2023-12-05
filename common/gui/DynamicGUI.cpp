@@ -213,7 +213,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                                 return settings::htmlify(ret);
                             return ret;
                         } catch(const std::exception& ex) {
-                            FormatExcept("Exception: ", ex.what());
+                            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
                             return modifiers.optional ? "" : "null";
                         }
                     }, [](bool optional) -> std::string {
