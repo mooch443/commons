@@ -297,7 +297,11 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 count_jumped_frames += frameIndex - frame_index + 1;
             }
 
+#ifdef AV_FRAME_FLAG_KEY
             if(temp_frame->flags & AV_FRAME_FLAG_KEY)
+#else
+            if(temp_frame->key_frame == 1)
+#endif
                 _keyframes[frame_index] = temp_frame->pts;
             
             received_frame = frame_index;
@@ -481,7 +485,11 @@ bool FfmpegVideoCapture::grab() {
             break;
         }
 
+#ifdef AV_FRAME_FLAG_KEY
         if (frame->flags & AV_FRAME_FLAG_KEY) {
+#else
+        if (frame->key_frame == 1) {
+#endif
             _keyframes[frameCount] = frame->pts;
             print("keyframe ", frameCount, " is ", frame->pts);
         }
@@ -565,7 +573,11 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
             break;
         }
 
+#ifdef AV_FRAME_FLAG_KEY
         int64_t timestamp = frame->flags & AV_FRAME_FLAG_KEY ? frame->pts : -1;
+#else
+        int64_t timestamp = frame->key_frame == 1 ? frame->pts : -1;
+#endif
 
 /*
         if constexpr (std::is_same_v<Mat, gpuMat>) {
