@@ -60,6 +60,8 @@ public:
     void set(attr::SizeLimit limit);
     void set(attr::Prefix prefix);
     void set(attr::Postfix postfix);
+    void set(ListDims_t dims);
+    void set(LabelDims_t dims);
     
     void set(std::function<void()> on_click) {
         if(on_click)

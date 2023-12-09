@@ -740,11 +740,21 @@ void LabeledPathArray::updateDropdownItems() {
             
             try {
                 file::PathArray pathArray(text);
-
-                if ((file::Path(pathArray.source()).is_folder() && file::Path(_pathArrayCopy.source()) == file::Path(pathArray.source()))
-                    || (not file::Path(pathArray.source()).is_folder()
-                        && not file::Path(_pathArrayCopy.source()).is_folder()
-                        && file::Path(pathArray.source()).remove_filename() == file::Path(_pathArrayCopy.source()).remove_filename()))
+                
+                file::Path source_path(pathArray.source());
+                if(pathArray.size() == 1 && not pathArray.matched_patterns()) {
+                    source_path = pathArray.get_paths().front();
+                }
+                
+                file::Path _source_path(_pathArrayCopy.source());
+                if(_pathArrayCopy.size() == 1 && not _pathArrayCopy.matched_patterns()) {
+                    _source_path = _pathArrayCopy.get_paths().front();
+                }
+                
+                if ((source_path.is_folder() && _source_path == source_path)
+                    || (not source_path.is_folder()
+                        && not _source_path.is_folder()
+                        && source_path.remove_filename() == _source_path.remove_filename()))
                 {
                     print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
                     _pathArrayCopy.set_source(pathArray.source());
@@ -764,7 +774,7 @@ void LabeledPathArray::updateDropdownItems() {
 
                 }
                 else {
-                    file::Path p(text);
+                    file::Path p(pathArray.source());
                     // Handle wildcard matching or parent folder display
                     if (pathArray.matched_patterns()) {
                         // If wildcards are present, filter based on them

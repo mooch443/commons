@@ -205,7 +205,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
             _on_open(_confirmed_file);
     });
     
-    _list->set_font(gui::Font(0.6f, gui::Align::Left));
+    _list->set(ItemFont_t(0.6f, gui::Align::Left));
     
     _base.platform()->set_icons({
         file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon16.png"),

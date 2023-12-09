@@ -6,7 +6,7 @@
 
 namespace gui::dyn {
 
-Font parse_font(const nlohmann::json& obj, Font font = Font(0.75));
+Font parse_font(const nlohmann::json& obj, Font font = Font(0.75), std::string_view name = "font");
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())

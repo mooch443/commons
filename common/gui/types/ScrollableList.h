@@ -4,6 +4,7 @@
 #include <gui/DrawSFBase.h>
 #include <misc/checked_casts.h>
 #include <gui/types/Tooltip.h>
+#include <gui/DrawStructure.h>
 
 namespace gui {
     /*
@@ -36,6 +37,11 @@ namespace gui {
         { t.detail() } -> std::convertible_to<std::string>;
     };
 
+    template<typename T>
+    concept has_disabled = requires(T t) {
+        { t.disabled() } -> std::convertible_to<bool>;
+    };
+
     //! Check compatibility with List class
     template<typename T>
     concept list_compatible_item = requires(T t) {
@@ -48,12 +54,19 @@ namespace gui {
     NUMBER_ALIAS(Foldable_t, bool)
     NUMBER_ALIAS(Folded_t, bool)
     NUMBER_ALIAS(Alternating_t, bool)
-    NUMBER_ALIAS(ItemHeight_t, float)
+    ATTRIBUTE_ALIAS(ItemFont_t, Font)
+    ATTRIBUTE_ALIAS(ItemPadding_t, Vec2)
+    ATTRIBUTE_ALIAS(ListDims_t, Size2)
+    ATTRIBUTE_ALIAS(LabelDims_t, Size2)
+    ATTRIBUTE_ALIAS(LabelFont_t, Font)
 
     template <typename T = std::string>
     requires list_compatible_item<T>
     class ScrollableList : public Entangled {
-        Vec2 item_padding;
+        ItemPadding_t _item_padding;
+        ItemFont_t _item_font{ Font(0.75) };
+        ListDims_t _list_dims;
+        LabelDims_t _label_dims;
         
         template <typename Q = T>
         class Item {
@@ -68,6 +81,7 @@ namespace gui {
         std::vector<Rect*> _rects;
         std::vector<StaticText*> _texts;
         std::vector<Text*> _details;
+        std::unique_ptr<StaticText> _label_text;
 
         StaticText _placeholder_text;
         Tooltip tooltip = Tooltip(nullptr);
@@ -75,7 +89,7 @@ namespace gui {
         std::function<void(size_t, const T&)> _callback;
         OnHover_t _on_hovered;
         
-        GETTER(Font, font)
+        GETTER(LabelFont_t, label_font)
         GETTER(Color, item_color)
         GETTER_I(Color, text_color, White)
         float _line_spacing, _previous_width{-1};
@@ -87,18 +101,23 @@ namespace gui {
         GETTER_I(bool, stays_toggled, false)
         GETTER_I(bool, alternating_rows, false)
         
-        Box _set_box;
         std::map<Drawable*, size_t> rect_to_idx;
         Entangled _list;
         
     public:
         template<typename... Args>
         ScrollableList(Args... args) {
-            _list.set_scroll_enabled(true);
             _list.set_clickable(true);
             
             create(std::forward<Args>(args)...);
-            
+            add_event_handler(SELECT, [this](Event e) {
+                if(not e.select.selected && _foldable) {
+                    if(stage() && (not stage()->selected_object() || (stage()->selected_object() && not stage()->selected_object()->is_child_of(this))))
+                    {
+                        set(Folded_t{true});
+                    }
+                }
+            });
             add_event_handler(HOVER, [this](auto){ this->set_dirty(); });
             add_event_handler(MBUTTON, [this](Event e){
                 this->set_dirty();
@@ -115,9 +134,10 @@ namespace gui {
                             idx = size_t(floorf((o->scroll_offset().y + e.mbutton.y) / _line_spacing));
                         }
                         if(_foldable) {
-                            if(not _list.bounds().contains(Vec2(e.mbutton.x, e.mbutton.y))) {
+                            //if(not _list.bounds().contains(Vec2(e.mbutton.x, e.mbutton.y)))
+                            {
                                 set(Folded_t{true});
-                                return;
+                                //return;
                             }
                         }
                         _last_selected_item = -1;
@@ -140,32 +160,31 @@ namespace gui {
             
             (set(std::forward<Args>(args)), ...);
             
-            _line_spacing = [this] (){
-                if constexpr(has_detail<T>) {
-                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
-                }
-                return Base::default_line_spacing(_font) + item_padding.y * 2;
-            }();
-            
+            update_line_height();
             set_background(_item_color.exposure(0.5));
             _list.set_background(_item_color.exposure(0.5));
             update_items();
         }
         
         void init() {
-            item_padding = {5,5};
-            _item_color = Color(100, 100, 100, 200);
+            set(ItemPadding_t{5,5});
+            set_item_color(Color(100, 100, 100, 200));
+            set(ItemFont_t{ Font(0.75) });
+            set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
-            
-            _line_spacing = [this] (){
-                if constexpr(has_detail<T>) {
-                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
-                }
-                return Base::default_line_spacing(_font) + item_padding.y * 2;
-            }();
+            update_line_height();
             
             set_clickable(true);
-            set_scroll_enabled(true);
+        }
+        
+        void update_line_height() {
+            _line_spacing = [this] (){
+                if constexpr(has_detail<T>) {
+                    return Base::default_line_spacing(_item_font) * 2 + _item_padding.y * 2;
+                }
+                return Base::default_line_spacing(_item_font) + _item_padding.y * 2;
+            }();
+            
         }
         
         ~ScrollableList() {
@@ -193,7 +212,7 @@ namespace gui {
             update_items();
         }
         
-        float line_padding() const {
+        float line_height() const {
             return _line_spacing;
         }
         
@@ -207,10 +226,25 @@ namespace gui {
         void set(TextClr lr) {
             set_text_color(lr);
         }
-        void set(ItemHeight_t height) {
-            if(item_padding.y == height)
+        void set(ItemFont_t font) {
+            if(_item_font == font)
                 return;
-            set_item_padding(Vec2(item_padding.x, height));
+            _item_font = font;
+            
+            update_line_height();
+            
+            if constexpr(has_detail<T>) {
+                auto detail_font = font;
+                detail_font.size *= 0.75;
+                
+                for(auto d : _details) {
+                    if(d)
+                        d->set_font(detail_font);
+                }
+            }
+            
+            _placeholder_text.set_default_font(font);
+            update_line_height();
         }
         void set(Alternating_t alternating) {
             set_alternating(alternating);
@@ -225,12 +259,11 @@ namespace gui {
                     set_scroll_offset(Vec2());
                     set_scroll_enabled(false);
                 }
-                Entangled::set_size(Size(width(), _line_spacing));
+                
             } else {
                 set_scroll_enabled(true);
                 set_scroll_limits(Rangef(), Rangef());
                 set_scroll_offset(Vec2());
-                Entangled::set_size(Size(_set_box.size()));
             }
             set_content_changed(true);
         }
@@ -238,12 +271,6 @@ namespace gui {
             if(_folded == folded)
                 return;
             _folded = folded;
-            if(_foldable) {
-                Entangled::set_size(Size(width(), _line_spacing));
-            } else {
-                print((uint64_t)this, " Setting size = ", _set_box);
-                Entangled::set_size(Size(_set_box.size()));
-            }
             set_content_changed(true);
         }
         void set(Str text) {
@@ -275,7 +302,8 @@ namespace gui {
             Float2_t y = _line_spacing * objs.size();
             Entangled * o = _foldable ? &_list : this;
             if (y + o->scroll_offset().y < 0) {
-                o->set_scroll_offset(Vec2());
+                if(o->scroll_enabled())
+                    o->set_scroll_offset(Vec2());
             }
 
             for (auto& item : objs) {
@@ -306,6 +334,7 @@ namespace gui {
             
             uchar c = (int(text_color.r) + int(text_color.g) + int(text_color.b)) / 3 >= 150 ? 200 : 50;
             _placeholder_text.set(TextClr{c, c, c, text_color.a});
+            set_content_changed(true);
         }
         
         void set_alternating(bool alternate) {
@@ -316,9 +345,40 @@ namespace gui {
             set_content_changed(true);
         }
         
+        void refresh_dims() {
+            update_line_height();
+            if(_foldable) {
+                _list.set_size(Size2(_list_dims.width, _list_dims.height > 0 ? min(_list_dims.height, _items.size() * _line_spacing) : _items.size() * _line_spacing));
+                if(_items.size() * _line_spacing <= _list_dims.height)
+                    _list.set_scroll_enabled(false);
+                else
+                    _list.set_scroll_enabled(true);
+                
+                Entangled::set_size(_label_dims);
+                    
+            } else {
+                Entangled::set_size(_list_dims);
+                set_scroll_enabled(true);
+            }
+        }
+        
         using Entangled::set;
-        void set(const Font& font) {
-            set_font(font);
+        void set(const LabelFont_t& font) {
+            set_label_font(font);
+        }
+        void set(const ListDims_t& dims) {
+            if(dims == _list_dims)
+                return;
+            _list_dims = dims;
+            refresh_dims();
+            set_content_changed(true);
+        }
+        void set(const LabelDims_t& dims) {
+            if(dims == _label_dims)
+                return;
+            
+            _label_dims = dims;
+            set_content_changed(true);
         }
         void set(const Placeholder_t& placeholder) {
             if(_placeholder_text.text() == placeholder)
@@ -329,52 +389,32 @@ namespace gui {
                 set_content_changed(true);
         }
         
-        void set_font(const Font& font) {
-            if(_font == font)
+        void set_label_font(const LabelFont_t& font) {
+            if(_label_font == font)
                 return;
             
-            _line_spacing = [this, font] (){
-                if constexpr(has_detail<T>) {
-                    return Base::default_line_spacing(font) * 2 + item_padding.y * 2;
-                }
-                return Base::default_line_spacing(font) + item_padding.y * 2;
-            }();
-            
-            for(auto t : _texts)
-                t->set_default_font(font);
-            
-            if constexpr(has_detail<T>) {
-                auto detail_font = font;
-                detail_font.size *= 0.75;
-                
-                for(auto d : _details) {
-                    if(d)
-                        d->set_font(detail_font);
-                }
-            }
-            
-            _placeholder_text.set_default_font(font);
+            _label_font = font;
             
             // line spacing may have changed
-            if(_font.size != font.size || _font.style != font.style) {
+            if(_label_font.size != font.size
+               || _label_font.style != font.style)
+            {
                 set_bounds_changed();
             }
             
-            _font = font;
             update_items();
         }
         
-        void set_item_padding(const Vec2& padding) {
-            if(padding == item_padding)
+        void set(const ItemPadding_t& padding) {
+            set_item_padding(padding);
+        }
+        
+        void set_item_padding(const ItemPadding_t& padding) {
+            if(padding == _item_padding)
                 return;
             
-            item_padding = padding;
-            _line_spacing = [this] (){
-                if constexpr(has_detail<T>) {
-                    return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
-                }
-                return Base::default_line_spacing(_font) + item_padding.y * 2;
-            }();
+            _item_padding = padding;
+            update_line_height();
             update_items();
         }
         
@@ -403,12 +443,14 @@ namespace gui {
             if(index == -1)
                 return;
             
-            if(index > last_visible-1) {
-                float fit = index - o->height() / _line_spacing + 1;
-                o->set_scroll_offset(Vec2(0, fit * _line_spacing));
+            if(o->scroll_enabled()) {
+                if(index > last_visible-1) {
+                    float fit = index - o->height() / _line_spacing + 1;
+                    o->set_scroll_offset(Vec2(0, fit * _line_spacing));
+                }
+                else if(index < first_visible)
+                    o->set_scroll_offset(Vec2(0, _line_spacing * index));
             }
-            else if(index < first_visible)
-                o->set_scroll_offset(Vec2(0, _line_spacing * index));
             
             update_items();
             update();
@@ -427,6 +469,11 @@ namespace gui {
         
         void select_item(uint64_t index) {
             if(_items.size() > index && _last_selected_item != index) {
+                if constexpr(has_disabled<T>) {
+                    if(_items.at(index).value().disabled())
+                        return;
+                }
+                
                 _last_selected_item = narrow_cast<long>(index);
                 set_content_changed(true);
                 
@@ -468,16 +515,19 @@ namespace gui {
                     _texts.erase(_texts.begin() + int64_t(N), _texts.end());
                     
                     if constexpr(has_detail<T>) {
-                        if(_details.size() > int64_t(N)) {
+                        if(_details.size() > N) {
                             _details.erase(_details.begin() + int64_t(N), _details.end());
                         }
                     }
                 }
                 
-                auto detail_font = this->detail_font(font());
+                ItemFont_t item_font = _item_font;
+                item_font.align = Align::Left;
+                Font detail_font = this->detail_font(item_font);
+                
                 for(size_t i=0; i<_rects.size(); i++) {
-                    _rects.at(i)->set_size(Size2(width(), item_height));
-                    _texts.at(i)->set_default_font(_font);
+                    _rects.at(i)->set_size(Size2(_list_dims.width, item_height));
+                    _texts.at(i)->set_default_font(item_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
                             _details.at(i)->set_font(detail_font);
@@ -486,7 +536,6 @@ namespace gui {
                 
                 for(size_t i=_rects.size(); i<N; i++) {
                     _rects.push_back(new Rect(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
-                    _rects.back()->set_clickable(true);
                     _rects.back()->on_hover([r = _rects.back(), this](Event e) {
                         if(!e.hover.hovered)
                             return;
@@ -500,7 +549,7 @@ namespace gui {
                         }
                     });
                     
-                    _texts.push_back(new StaticText(attr::Font(_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
+                    _texts.push_back(new StaticText(attr::Font(item_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
                     if constexpr(has_detail<T>) {
                         _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
                     }
@@ -508,7 +557,7 @@ namespace gui {
             }
             
             for(auto &rect : _rects) {
-                rect->set_size(Size2(width(), item_height));
+                rect->set_size(Size2(_list_dims.width, item_height));
             }
             
             set_content_changed(true);
@@ -524,57 +573,35 @@ namespace gui {
         
     public:
         void set_bounds(const Bounds& bounds) override {
-            if(bounds.size() != size())
-                set_content_changed(true);
-            if(bounds != _set_box) {
-                _set_box = bounds;
-                print((uint64_t)this, " _set_box = ", bounds);
-            }
-            if(not _foldable)
-                Entangled::set_bounds(bounds);
-            else
+            set(LabelDims_t{bounds.size()});
+            
+            if(not pos().Equals(bounds.pos())) {
                 Entangled::set_pos(bounds.pos());
+            }
         }
         
-        void set_size(const Size2& bounds) override {
-            if(size() != bounds)
-                set_content_changed(true);
-            if(bounds != _set_box.size()) {
-                _set_box << bounds;
-                print((uint64_t)this, " _set_box = ", bounds);
-            }
-            if(not _foldable)
-                Entangled::set_size(bounds);
+        void set_size(const Size2& size) override {
+            set(LabelDims_t{size});
         }
         
     private:
-        Font detail_font(Font font) const {
+        Font detail_font(ItemFont_t font) const {
             font.size *= 0.7;
-            return font;
+            return Font(font);
         }
         
         void update() override {
+            if(_foldable && not _folded) {
+            }
+            
             if(content_changed()) {
-                const float spacing = [this] (){
-                    if constexpr(has_detail<T>) {
-                        return Base::default_line_spacing(_font) * 2 + item_padding.y * 2;
-                    }
-                    return Base::default_line_spacing(_font) + item_padding.y * 2;
-                }();
+                refresh_dims();
                 
-                if(spacing != _line_spacing || width() != _previous_width) {
-                    _line_spacing = spacing;
+                if(width() != _previous_width) {
                     _previous_width = width();
-                    if(_set_box.height != spacing || _set_box.width != width()) {
-                        //_set_box.height = spacing;
-                        _set_box.width = width();
-                        if(_foldable) {
-                            Entangled::set_size(Size(width(), _line_spacing));
-                            _list.set_scroll_offset(Vec2());
-                        }
-                    }
-                    if(foldable())
-                        _list.set(Size(width(), _set_box.height));
+                    if(_foldable && _list.scroll_enabled())
+                        _list.set_scroll_offset(Vec2());
+                    
                     update_items();
                 }
                 
@@ -582,12 +609,15 @@ namespace gui {
                 
                 if(_foldable && _folded) {
                     begin();
-                    add<Rect>(Box{0.f, 0.f, width(), item_height}, FillClr{
+                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{
                         hovered()
                             ? item_color().exposureHSL(1.5)
                             : item_color()
                     });
-                    add<Text>(Str{_folded_label}, Loc{0, item_height * 0.5f}, Font(_font.size, Align::VerticalCenter));
+                    if(not _label_text)
+                        _label_text = std::make_unique<StaticText>();
+                    _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
+                    advance_wrap(*_label_text);
                     end();
                     
                 } else {
@@ -604,6 +634,10 @@ namespace gui {
                         auto& item = _items[i];
                         const float y = i * item_height;
                         _rects.at(idx)->set_pos(Vec2(0, y));
+                        if constexpr(has_disabled<T>) {
+                            _rects.at(idx)->set_clickable(not item.value().disabled());
+                        } else
+                            _rects.at(idx)->set_clickable(true);
                         
                         _texts.at(idx)->set_txt(item.value());
                         if constexpr(has_detail<T>) {
@@ -615,6 +649,19 @@ namespace gui {
                                 _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
                             else
                                 _texts.at(idx)->set_text_color(_text_color);
+                            
+                        } else if constexpr(has_disabled<T>) {
+                            if(item.value().disabled())
+                                _texts.at(idx)->set_text_color(_text_color.exposureHSL(0.5).alpha(50));
+                            else
+                                _texts.at(idx)->set_text_color(_text_color);
+                            
+                            if constexpr(has_detail<T>) {
+                                if(item.value().disabled())
+                                    _details.at(idx)->set(TextClr{Gray.alpha(50)});
+                                else
+                                    _details.at(idx)->set(TextClr{Gray});
+                            }
                         }
                         
                         if constexpr (has_font_function<T>) {
@@ -625,7 +672,7 @@ namespace gui {
                                 }
                             }
                         } else if constexpr(has_detail<T>) {
-                            _details.at(idx)->set_font(detail_font(font()));
+                            _details.at(idx)->set_font(detail_font(_item_font));
                         }
                         
                         rect_to_idx[_rects.at(idx)] = i;
@@ -637,7 +684,9 @@ namespace gui {
                         }
                         
                         if constexpr(has_detail<T>) {
-                            if(_font.align == Align::Center) {
+                            _texts.at(idx)->set_max_size(Size2(e->width(), item_height * 0.5));
+                            
+                            if(_item_font.align == Align::Center) {
                                 float ycenter = y + item_height * 0.5;
                                 float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
                                 //print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
@@ -652,20 +701,22 @@ namespace gui {
                                     ycenter + _details.at(idx)->height() - middle
                                 });
                                 
-                            } else if(_font.align == Align::Left) {
-                                _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
-                                _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + item_padding);
+                            } else if(_item_font.align == Align::Left) {
+                                _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
+                                _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + _item_padding);
                             } else {
-                                _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y * 0.5));
-                                _details.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                                _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y * 0.5));
+                                _details.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
                             }
                         } else {
-                            if(_font.align == Align::Center)
+                            _texts.at(idx)->set_max_size(Size2(e->width(), item_height));
+                            
+                            if(_item_font.align == Align::Center)
                                 _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
-                            else if(_font.align == Align::Left)
-                                _texts.at(idx)->set_pos(Vec2(0, y) + item_padding);
+                            else if(_item_font.align == Align::Left)
+                                _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
                             else
-                                _texts.at(idx)->set_pos(Vec2(width() - item_padding.x, y + item_padding.y));
+                                _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
                         }
                     }
                     
@@ -677,26 +728,46 @@ namespace gui {
                     
                     e->end();
                     
-                    const float last_y = item_height * (_items.size()-1);
-                    e->set_scroll_limits(Rangef(),
-                                      Rangef(0,
-                                             (e->height() < last_y ? last_y + item_height - e->height() : 0.1f)));
-                    auto scroll = e->scroll_offset();
-                    e->set_scroll_offset(Vec2());
-                    e->set_scroll_offset(scroll);
+                    if(e->scroll_enabled()) {
+                        const float last_y = item_height * (_items.size()-1);
+                        e->set_scroll_limits(Rangef(),
+                                             Rangef(0,
+                                                    (e->height() < last_y ? last_y + item_height - e->height() : 0.1f)));
+                        auto scroll = e->scroll_offset();
+                        e->set_scroll_offset(Vec2());
+                        e->set_scroll_offset(scroll);
+                    }
                     
                     if(_foldable) {
                         begin();
-                        add<Rect>(Box{0.f, 0.f, width(), item_height}, FillClr{
+                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{
                             hovered()
                                 ? item_color().exposureHSL(1.5)
                                 : item_color()
                         });
-                        add<Text>(Str{_folded_label}, Loc{0, item_height * 0.5f}, Font(_font.size, Align::VerticalCenter));
-                        _list.set_size(_set_box.size());
-                        _list.set_pos(Vec2(0, item_height));
-                        _list.set_pos(Vec2(0, -_list.height()));
+                        
+                        if(not _label_text)
+                            _label_text = std::make_unique<StaticText>();
+                        _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
+                        advance_wrap(*_label_text);
+                        
                         advance_wrap(_list);
+                        
+                        float x = width() - _list.width();
+                        auto dims = stage()->dialog_window_size();
+                        if(global_bounds().x + (global_bounds().width - _list.global_bounds().width) < 0) {
+                            x = -pos().x;
+                        } else if(global_bounds().x - x >= dims.width) {
+                            Transform transform = global_transform().getInverse();
+                            auto rect = transform.transformRect(Bounds(Vec2(), dims));
+                            x = rect.width + rect.x - _list.width();
+                        }
+                        
+                        if(global_bounds().y - _list.global_bounds().height < 0) {
+                            _list.set_pos(Vec2(x, height()));
+                        } else
+                            _list.set_pos(Vec2(x, -_list.height()));
+                        
                         end();
                     }
                 }

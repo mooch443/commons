@@ -113,6 +113,8 @@ namespace gui {
         void set_margins(const attr::Margins&);
         virtual void update_layout();
         virtual void auto_size();
+        void set_parent(SectionInterface*) override;
+        void set_content_changed(bool) override;
         
     protected:
         using Entangled::auto_size;
@@ -218,7 +220,6 @@ namespace gui {
         void set_policy(Policy);
         void set(Policy p) { set_policy(p); }
         
-        virtual std::string name() const override { return "VerticalLayout"; }
         void update_layout() override;
         void auto_size() override;
     };

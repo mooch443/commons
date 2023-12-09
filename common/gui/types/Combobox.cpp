@@ -46,6 +46,16 @@ void Combobox::update() {
     _layout.auto_size();
 }
 
+void Combobox::set(ListDims_t dims) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(dims);
+}
+
+void Combobox::set(LabelDims_t dims) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(dims);
+}
+
 void Combobox::set(ParmName name) {
     if(name != _settings.param) {
         _settings.param = name;

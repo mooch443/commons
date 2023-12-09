@@ -450,8 +450,11 @@ T resolve_variable_type(Str _word, const Context& context, State& state) {
         throw U_EXCEPTION("Invalid variable name (is empty).");
     
     if(word.length() > 2
-       && word.front() == '{'
-       && word.back() == '}')
+       && ((word.front() == '{'
+            && word.back() == '}')
+       || (word.front() == '['
+            && word.back() == ']'))
+       )
     {
         word = word.substr(1,word.length()-2);
     }
@@ -570,14 +573,24 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             
         } else if(props.name == "if") {
             CTimer ctimer("if");
-            auto p = props.parse(context, state);
+            VarProps p{
+                .name = std::string(props.name),
+                .optional = props.optional,
+                .html = props.html,
+            };
+            
+            p.parameters.reserve(props.parameters.size());
+            for(auto &pr : props.parameters) {
+                p.parameters.emplace_back((std::string)pr);
+            }
+            
             if(p.parameters.size() >= 2) {
-                bool condition = convert_to_bool(p.parameters.at(0));
+                bool condition = convert_to_bool(parse_text(p.parameters.at(0), context, state));
                 //print("Condition ", props.parameters.at(0)," => ", condition);
                 if(condition)
-                    return Meta::fromStr<Result>(p.parameters.at(1));
+                    return Meta::fromStr<Result>(parse_text(p.parameters.at(1), context, state));
                 else if(p.parameters.size() == 3)
-                    return Meta::fromStr<Result>(p.parameters.at(2));
+                    return Meta::fromStr<Result>(parse_text(p.parameters.at(2), context, state));
             }
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {

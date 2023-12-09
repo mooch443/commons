@@ -276,7 +276,7 @@ namespace gui {
         void remove_child(Drawable* d) override;
         
     public:
-        void set_content_changed(bool c);
+        virtual void set_content_changed(bool c);
         
     private:
         void init_child(Drawable* d, size_t i, bool own);

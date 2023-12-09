@@ -213,70 +213,74 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                 std::size_t start_pos = nesting_start_positions.top();
                 nesting_start_positions.pop();
 
-                std::string_view current_word = pattern.substr(start_pos, i - start_pos);
-                if(current_word.empty()) {
-                    throw InvalidSyntaxException("Empty braces at position ", i);
-                }
-
-                CTimer timer(current_word);
-                std::string resolved_word;
-                if(auto it = state._variable_values.find(current_word);
-                   it != state._variable_values.end())
-                {
-                    resolved_word = it->second;
-                    
-                } else {
-                    resolved_word = resolve_variable(current_word, context, state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
-                        try {
-                            std::string ret;
-                            if(modifiers.subs.empty())
-                                ret = variable.value_string(modifiers);
-                            else if(variable.is<Size2>()) {
-                                if(modifiers.subs.front() == "w")
-                                    ret = Meta::toStr(variable.value<Size2>(modifiers).width);
-                                else if(modifiers.subs.front() == "h")
-                                    ret = Meta::toStr(variable.value<Size2>(modifiers).height);
-                                else
-                                    throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
-                                
-                            } else if(variable.is<Vec2>()) {
-                                if(modifiers.subs.front() == "x")
-                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
-                                else if(modifiers.subs.front() == "y")
-                                    ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
-                                else
-                                    throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
-                                
-                            } else if(variable.is<Range<Frame_t>>()) {
-                                if(modifiers.subs.front() == "start")
-                                    ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start);
-                                else if(modifiers.subs.front() == "end")
-                                    ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
-                                else
-                                    throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
-                                
-                            } else
-                                ret = variable.value_string(modifiers);
-                                //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
-                            //auto str = modifiers.toStr();
-                            //print(str.c_str(), " resolves to ", ret);
-                            if(modifiers.html)
-                                return settings::htmlify(ret);
-                            return ret;
-                        } catch(const std::exception& ex) {
-                            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
-                            return modifiers.optional ? "" : "null";
-                        }
-                    }, [](bool optional) -> std::string {
-                        return optional ? "" : "null";
-                    });
-                    
-                    state._variable_values[std::string(current_word)] = resolved_word;
-                }
                 if(nesting_start_positions.empty()) {
-                    output << resolved_word;
-                } else {
-                    //nesting.top() += resolved_word;
+                    std::string_view current_word = pattern.substr(start_pos, i - start_pos);
+                    if(current_word.empty()) {
+                        throw InvalidSyntaxException("Empty braces at position ", i);
+                    }
+                    
+                    CTimer timer(current_word);
+                    std::string resolved_word;
+                    if(auto it = state._variable_values.find(current_word);
+                       current_word != "hovered"
+                       && it != state._variable_values.end())
+                    {
+                        resolved_word = it->second;
+                        
+                    } else {
+                        resolved_word = resolve_variable(current_word, context, state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                            try {
+                                std::string ret;
+                                if(modifiers.subs.empty())
+                                    ret = variable.value_string(modifiers);
+                                else if(variable.is<Size2>()) {
+                                    if(modifiers.subs.front() == "w")
+                                        ret = Meta::toStr(variable.value<Size2>(modifiers).width);
+                                    else if(modifiers.subs.front() == "h")
+                                        ret = Meta::toStr(variable.value<Size2>(modifiers).height);
+                                    else
+                                        throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
+                                    
+                                } else if(variable.is<Vec2>()) {
+                                    if(modifiers.subs.front() == "x")
+                                        ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
+                                    else if(modifiers.subs.front() == "y")
+                                        ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
+                                    else
+                                        throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
+                                    
+                                } else if(variable.is<Range<Frame_t>>()) {
+                                    if(modifiers.subs.front() == "start")
+                                        ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start);
+                                    else if(modifiers.subs.front() == "end")
+                                        ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
+                                    else
+                                        throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
+                                    
+                                } else
+                                    ret = variable.value_string(modifiers);
+                                //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
+                                //auto str = modifiers.toStr();
+                                //print(str.c_str(), " resolves to ", ret);
+                                if(modifiers.html)
+                                    return settings::htmlify(ret);
+                                return ret;
+                            } catch(const std::exception& ex) {
+                                if(not modifiers.optional)
+                                    FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
+                                return modifiers.optional ? "" : "null";
+                            }
+                        }, [](bool optional) -> std::string {
+                            return optional ? "" : "null";
+                        });
+                        
+                        state._variable_values[std::string(current_word)] = resolved_word;
+                    }
+                    if(nesting_start_positions.empty()) {
+                        output << resolved_word;
+                    } else {
+                        //nesting.top() += resolved_word;
+                    }
                 }
                 
             } else if(ch == '{') {
@@ -317,9 +321,15 @@ VarProps PreVarProps::parse(const Context& context, State& state) const {
     for(auto &s : subs)
         props.subs.emplace_back(s);
     
-    props.parameters.reserve(parameters.size());
-    for(auto &p : parameters) {
-        props.parameters.emplace_back(_parse_text(p, context, state));
+    if(props.name == "if")  {
+        for(auto &p : parameters)
+            props.parameters.emplace_back(p);
+        
+    } else {
+        props.parameters.reserve(parameters.size());
+        for(auto &p : parameters) {
+            props.parameters.emplace_back(_parse_text(p, context, state));
+        }
     }
     
     return props;
@@ -1070,6 +1080,25 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
             }
         }
         
+        if(it->second.contains("max_size")) {
+            try {
+                auto line = Meta::fromStr<Size2>(_parse_text(pattern.at("max_size"), context, state));
+                LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if(it->second.contains("list_size")) {
+            try {
+                auto line = Meta::fromStr<Size2>(_parse_text(pattern.at("list_size"), context, state));
+                LabeledField::delegate_to_proper_type(ListDims_t{line}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        
         if(pattern.contains("text")) {
             try {
                 auto text = Str{_parse_text(pattern.at("text"), context, state)};
@@ -1310,9 +1339,18 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     //! clear variable state
     state._variable_values.clear();
     
-    context.system_variables().emplace(VarFunc("hovered", [&state = state](const VarProps&) -> bool {
-        if(state._current_object)
-            return state._current_object->hovered();
+    context.system_variables().emplace(VarFunc("hovered", [&state = state](const VarProps& props) -> bool {
+        if(props.parameters.empty()) {
+            if(state._current_object)
+                return state._current_object->hovered();
+            
+        } else if(props.parameters.size() == 1) {
+            if(auto it = state._named_entities.find(props.parameters.front());
+               it != state._named_entities.end())
+            {
+                return it->second->hovered();
+            }
+        }
         return false;
     }));
     

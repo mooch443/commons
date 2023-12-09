@@ -37,7 +37,7 @@ std::string Dropdown::TextItem::class_name() {
     }
     
 void Dropdown::init() {
-    _list = std::make_unique<ScrollableList<TextItem>>(Box(0, _bounds.height, _bounds.width, 230), items(), Font(0.6f, Align::Left), [this](size_t s) {
+    _list = std::make_unique<ScrollableList<TextItem>>(Box(0, _bounds.height, _bounds.width, 230), items(), ItemFont_t(0.6f, Align::Left), [this](size_t s) {
         FilteredIndex filtered_index(s); // explicit casting to FilteredIndex
         if(_filtered_items.contains(filtered_index)) {
             _selected_item = RawIndex(_filtered_items.at(filtered_index).value); // Use RawIndex for type safety
@@ -454,7 +454,8 @@ void Dropdown::apply_item_filtering() {
         if(_list->set_items(convert_to_search_name(filtered))) {
             list_changed = true;
             _selected_item = RawIndex();
-            _list->set_scroll_offset(Vec2());
+            if(_list->scroll_enabled())
+                _list->set_scroll_offset(Vec2());
         }
 
     } else {

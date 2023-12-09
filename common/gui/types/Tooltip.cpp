@@ -15,7 +15,7 @@ namespace gui {
         set_text("");
         set_origin(Vec2(0, 1));
         _text.set_clickable(false);
-        set_z_index(2);
+        set_z_index(5);
     }
 
     void Tooltip::set_other(Drawable* other) {

@@ -8,6 +8,17 @@ namespace gui {
         if(not _objects.empty())
             update();
     }
+
+    void Layout::set_parent(SectionInterface *parent) {
+        if(parent != this->parent()) {
+            Entangled::set_parent(parent);
+            set_content_changed(true);
+        }
+    }
+
+void Layout::set_content_changed(bool changed) {
+    Entangled::set_content_changed(changed);
+}
     
     void Layout::update() {
         if(!content_changed())
@@ -274,9 +285,9 @@ void VerticalLayout::auto_size() {
                 static_cast<Layout*>(_c)->update_layout();
             }
 
-            c->update_bounds();
+            _c->update_bounds();
             
-            max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
+            max_width = max(max_width, _c->local_bounds().width + _margins.width + _margins.x);
             assert(not std::isnan(max_width));
         });
         
@@ -406,8 +417,8 @@ std::string GridInfo::toStr() const {
 void GridLayout::init() {
     on_hover([this](Event e){
         if(immediately_clickable()) {
-            _vertical_rect->set(FillClr{_settings.verticalClr});
-            _horizontal_rect->set(FillClr{_settings.horizontalClr});
+            _vertical_rect->set(FillClr{(Color)_settings.verticalClr});
+            _horizontal_rect->set(FillClr{(Color)_settings.horizontalClr});
             _last_hover = Vec2(e.hover.x, e.hover.y);
             //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
             update_hover();
@@ -435,7 +446,7 @@ void GridLayout::set(GridLayout::VPolicy policy) {
 void GridLayout::set(attr::VerticalClr verticalClr) {
     if(verticalClr != _settings.verticalClr) {
         _settings.verticalClr = verticalClr;
-        _vertical_rect->set(FillClr{verticalClr});
+        _vertical_rect->set(FillClr{(Color)verticalClr});
         set_content_changed(true);
     }
 }
@@ -443,7 +454,7 @@ void GridLayout::set(attr::VerticalClr verticalClr) {
 void GridLayout::set(attr::HorizontalClr horizontalClr) {
     if(horizontalClr != _settings.horizontalClr) {
         _settings.horizontalClr = horizontalClr;
-        _horizontal_rect->set(FillClr{horizontalClr});
+        _horizontal_rect->set(FillClr{(Color)horizontalClr});
         set_content_changed(true);
     }
 }

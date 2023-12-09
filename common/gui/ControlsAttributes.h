@@ -16,6 +16,10 @@ inline constexpr bool pack_contains() {
     return std::is_same<T, A>::value ? true : pack_contains<T, Tail...>();
 }
 
+// Concept to check if a type is Vec2 or Size2
+template<typename T>
+concept IsVec2OrSize2 = std::is_same_v<T, Vec2> || std::is_same_v<T, Size2>;
+
 template <class T, class Tag>
 struct AttributeAlias : T {
     using base_type = T;
@@ -31,6 +35,28 @@ struct AttributeAlias : T {
         T::operator=(std::move(copy));
         return *this;
     }
+    
+    // Delete the constructor for Vec2 or Size2
+    template<typename U = T>
+        requires are_the_same<U, Vector2D<Float2_t, false>>
+    constexpr AttributeAlias(const Vector2D<Float2_t, true>& other) = delete;
+
+    template<typename U = T>
+        requires are_the_same<U, Vector2D<Float2_t, true>>
+    constexpr AttributeAlias(const Vector2D<Float2_t, false>& other) = delete;
+    
+    // Delete constructors for other AttributeAlias types
+    template <class OtherType, class OtherTag>
+    //    requires IsVec2OrSize2<T>
+    explicit constexpr AttributeAlias(const AttributeAlias<OtherType, OtherTag>&) = delete;
+
+    template <class OtherType, class OtherTag>
+    //    requires IsVec2OrSize2<T>
+    explicit constexpr AttributeAlias(AttributeAlias<OtherType, OtherTag>&&) = delete;
+    
+    template <class OtherType, class OtherTag>
+    //    requires IsVec2OrSize2<T>
+    constexpr operator AttributeAlias<OtherType, OtherTag>() = delete;
 };
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \

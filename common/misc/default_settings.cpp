@@ -44,6 +44,8 @@ namespace cmn {
         
         inline bool is_number(const std::string& s)
         {
+            if(s == ".")
+                return false;
             return !s.empty() && std::find_if(s.begin(),
                                               s.end(), [](char c) { return !std::isdigit(c) && c!='.'; }) == s.end();
         }
@@ -90,8 +92,11 @@ namespace cmn {
         for(auto c : doc) {
             if(c == '\n') {
                 end_word(0, 0);
-                parsed << "<br/>\n";
-            } else if(is_in(c, '\'', '`', '"', '$')) {
+                parsed << "<br/>";
+            } else if(is_in(c, '\'', '`', '"', '$')
+                      && ((in_string == 0)
+                        || (in_string != 0 && in_string == c)))
+            {
                 bool closing = (in_string == c);
                 if(closing) in_string = 0;
                 else in_string = c;
@@ -107,7 +112,8 @@ namespace cmn {
                     //...
                 } else if(c == '$') {
                     parsed << (in_string == c ? "<h4>" : "</h4>");
-                }
+                } else
+                    parsed << c;
             } else if(in_string == 0) {
                 if(c != '.' && (std::isspace(c) || !std::isalnum(c))) {
                     end_word(c, 0);

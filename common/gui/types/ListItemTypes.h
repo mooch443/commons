@@ -27,9 +27,10 @@ namespace gui {
     class DetailItem {
         GETTER_SETTER(std::string, name)
         GETTER_SETTER(std::string, detail)
+        GETTER_SETTER(bool, disabled)
         
     public:
-        DetailItem(const std::string& name = "", const std::string& detail = "") : _name(name), _detail(detail) {}
+        DetailItem(const std::string& name = "", const std::string& detail = "", bool disabled = false) : _name(name), _detail(detail), _disabled(disabled) {}
         virtual ~DetailItem(){}
         virtual operator std::string() const {
             return _name;

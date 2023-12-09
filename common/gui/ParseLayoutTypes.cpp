@@ -2,9 +2,9 @@
 
 namespace gui::dyn {
 
-Font parse_font(const nlohmann::json& obj, Font font) {
-    if(obj.count("font")) {
-        auto f = obj["font"];
+Font parse_font(const nlohmann::json& obj, Font font, std::string_view name) {
+    if(obj.count(name)) {
+        auto f = obj[name];
         if(f.count("size")) font.size = f["size"].get<float>();
         if(f.count("style")) {
             auto style = f["style"].get<std::string>();
@@ -507,6 +507,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         if(scale != Vec2(1)) ref->set(attr::Scale{scale});
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
+        
+        auto list_size = get(Size2(200,400), "list_size");
+        ref->set(ListDims_t{list_size});
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
         if(max_size != Vec2(0)) ref->set(attr::SizeLimit{max_size});
         ref->set(attr::TextClr{textClr});
@@ -691,16 +694,31 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         
         for(auto &item : child) {
             if(item.is_object()) {
-                auto text = item.contains("text") && item["text"].is_string() ? item["text"].get<std::string>() : "";
-                auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
-                auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
-                
-                actions.push_back(PreAction::fromStr(action));
-                print("list item: ", text, " ", action);
-                items.push_back(DetailItem{
-                    text,
-                    detail
-                });
+                try {
+                    auto text = item.contains("text") && item["text"].is_string() ? item["text"].get<std::string>() : "";
+                    auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
+                    auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
+                    auto disabled = item.contains("disabled") && item["disabled"].is_boolean() ? item["disabled"].get<bool>() : false;
+                    if(item.contains("disabled") && item["disabled"].is_string()) {
+                        disabled = Meta::fromStr<bool>(parse_text(item["disabled"].get<std::string>(), context, state));
+                    }
+                    
+                    actions.push_back(PreAction::fromStr(action));
+                    print("list item: ", text, " ", action);
+                    items.push_back(DetailItem{
+                        text,
+                        detail,
+                        disabled
+                    });
+                    
+                } catch(const std::exception& ex) {
+                    actions.push_back(PreAction());
+                    items.push_back(DetailItem{
+                        "Error",
+                        ex.what(),
+                        true
+                    });
+                }
             }
         }
         
@@ -728,9 +746,22 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     }
     
     if(ptr) {
-        ItemHeight_t item_height{get(float(5), "item_height")};
         auto list = ptr.to<ScrollableList<DetailItem>>();
-        list->set(item_height);
+        
+        ItemPadding_t item_padding{get(Vec2(5), "item_padding")};
+        list->set(item_padding);
+        
+        
+        ListDims_t list_dims{get(Size2(100,200), "list_size")};
+        list->set(list_dims);
+        print("list dims = ", list_dims);
+        
+        ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
+        list->set(item_font);
+        
+        
+        LabelFont_t label_font{parse_font(obj, Font(0.75), "label_font")};
+        list->set(label_font);
         
         Alternating_t alternate{get(false, "alternate")};
         list->set(alternate);

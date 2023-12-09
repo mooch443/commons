@@ -164,6 +164,10 @@ public:
         } else {
             add_path(input);
         }
+        
+        if(_paths.size() <= 1 && not matched_patterns()) {
+            _source = _paths.front().str();
+        }
     }
     
     /**
@@ -178,7 +182,12 @@ public:
         }
     }
     
-    _PathArray(const std::vector<file::Path>& paths) : _source(Meta::toStr(paths)), _paths(paths) {}
+    _PathArray(const std::vector<file::Path>& paths) : _paths(paths) {
+        if(paths.size() == 1) {
+            _source = paths.front().str();
+        } else
+            _source = Meta::toStr(paths);
+    }
     
     /**
      * @brief Three-way comparison operator (spaceship operator).
