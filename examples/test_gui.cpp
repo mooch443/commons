@@ -436,7 +436,7 @@ int main(int argc, char**argv) {
         { "Title4", "d3t4il" },
         { "Title4", "d3t4il" }
     });
-    list.set_font(Font(0.75, Align::Center));
+    list.set(ItemFont_t(0.75, Align::Center));
     
     GridLayout layout;
     layout.set_name("GridLayout");
