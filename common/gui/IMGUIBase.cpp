@@ -141,7 +141,7 @@ class PolyCache : public CacheObject {
             
 #ifndef NDEBUG
             if(_texture) {
-                auto it = all_gpu_texture.find(_texture->ptr);
+                auto it = all_gpu_texture.find((ImTextureID)_texture->ptr);
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
@@ -153,7 +153,7 @@ class PolyCache : public CacheObject {
             
 #ifndef NDEBUG
             if(_texture) {
-                all_gpu_texture.insert(_texture->ptr);
+                all_gpu_texture.insert((ImTextureID)_texture->ptr);
             }
 #endif
         }

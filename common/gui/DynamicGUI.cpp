@@ -1098,6 +1098,27 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
         }
+        if (it->second.contains("list_line")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("list_line"), context, state));
+                LabeledField::delegate_to_proper_type(ListLineClr_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+
+        if (it->second.contains("list_fill")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("list_fill"), context, state));
+                LabeledField::delegate_to_proper_type(ListFillClr_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
         
         if(pattern.contains("text")) {
             try {
@@ -1137,6 +1158,8 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
             }
         }
     }
+
+
     return changed;
 }
 

@@ -59,6 +59,10 @@ namespace gui {
     ATTRIBUTE_ALIAS(ListDims_t, Size2)
     ATTRIBUTE_ALIAS(LabelDims_t, Size2)
     ATTRIBUTE_ALIAS(LabelFont_t, Font)
+    ATTRIBUTE_ALIAS(DetailColor_t, Color)
+    ATTRIBUTE_ALIAS(ListFillClr_t, Color)
+    ATTRIBUTE_ALIAS(ListLineClr_t, Color)
+    ATTRIBUTE_ALIAS(ItemColor_t, Color)
 
     template <typename T = std::string>
     requires list_compatible_item<T>
@@ -67,6 +71,9 @@ namespace gui {
         ItemFont_t _item_font{ Font(0.75) };
         ListDims_t _list_dims;
         LabelDims_t _label_dims;
+        DetailColor_t _detail_color{Gray};
+        ListFillClr_t _list_fill_clr{100,100,100,200};
+        ListLineClr_t _list_line_clr{200,200,200,200};
         
         template <typename Q = T>
         class Item {
@@ -118,7 +125,7 @@ namespace gui {
                     }
                 }
             });
-            add_event_handler(HOVER, [this](auto){ this->set_dirty(); });
+            add_event_handler(HOVER, [this](auto) { set_content_changed(true); });
             add_event_handler(MBUTTON, [this](Event e){
                 this->set_dirty();
                 
@@ -127,11 +134,12 @@ namespace gui {
                         set(Folded_t{false});
                     } else {
                         Entangled * o = _foldable ? &_list : this;
-                        size_t idx;
+                        float idx;
                         if(_foldable) {
-                            idx = size_t(floorf((o->scroll_offset().y - _list.pos().y + e.mbutton.y) / _line_spacing));
+                            idx = (floorf((o->scroll_offset().y - _list.pos().y + e.mbutton.y) / _line_spacing));
+
                         } else {
-                            idx = size_t(floorf((o->scroll_offset().y + e.mbutton.y) / _line_spacing));
+                            idx = (floorf((o->scroll_offset().y + e.mbutton.y) / _line_spacing));
                         }
                         if(_foldable) {
                             //if(not _list.bounds().contains(Vec2(e.mbutton.x, e.mbutton.y)))
@@ -140,8 +148,12 @@ namespace gui {
                                 //return;
                             }
                         }
+
                         _last_selected_item = -1;
-                        select_item(idx);
+                        if (idx >= 0 && idx < _items.size()) {
+                            select_item(idx);
+                        } else
+                            select_item(-1);
                     }
                 }
             });
@@ -162,16 +174,17 @@ namespace gui {
             
             update_line_height();
             set_background(_item_color.exposure(0.5));
-            _list.set_background(_item_color.exposure(0.5));
             update_items();
         }
         
         void init() {
             set(ItemPadding_t{5,5});
-            set_item_color(Color(100, 100, 100, 200));
+            set(ItemColor_t(100, 100, 100, 200));
             set(ItemFont_t{ Font(0.75) });
             set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
+            set(ListFillClr_t{100,100,100,200});
+            set(ListLineClr_t{200,200,200,200});
             update_line_height();
             
             set_clickable(true);
@@ -222,6 +235,24 @@ namespace gui {
         
         void set(OnHover_t hover) {
             _on_hovered = hover;
+        }
+        void set(DetailColor_t clr) {
+            if (_detail_color == clr)
+                return;
+            _detail_color = clr;
+            set_content_changed(true);
+        }
+        void set(ListLineClr_t clr) {
+            if (_list_line_clr == clr)
+                return;
+            _list_line_clr = clr;
+            set_content_changed(true);
+        }
+        void set(ListFillClr_t clr) {
+            if (_list_fill_clr == clr)
+                return;
+            _list_fill_clr = clr;
+            set_content_changed(true);
         }
         void set(TextClr lr) {
             set_text_color(lr);
@@ -319,10 +350,12 @@ namespace gui {
                 return;
             
             set_background(item_color.exposure(0.5));
-            _list.set_background(item_color.exposure(0.5));
             _item_color = item_color;
             set_dirty();
         }
+        void set(const ItemColor_t& item_color) {
+			set_item_color(item_color);
+		}
         
         void set_text_color(const Color& text_color) {
             if(_text_color == text_color)
@@ -551,7 +584,7 @@ namespace gui {
                     
                     _texts.push_back(new StaticText(attr::Font(item_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
                     if constexpr(has_detail<T>) {
-                        _details.push_back(new Text(detail_font, attr::TextClr{Gray}));
+                        _details.push_back(new Text(detail_font, attr::TextClr{ (Color)_detail_color }));
                     }
                 }
             }
@@ -604,16 +637,20 @@ namespace gui {
                     
                     update_items();
                 }
-                
+
+                _list.set_background(_list_fill_clr, _list_line_clr);
+
                 const float item_height = _line_spacing;
+                auto color = pressed() ? 
+                          item_color().exposureHSL(0.5) 
+                        : ((_foldable && not _folded) 
+                            ? item_color().exposureHSL(0.75)
+                            : (not hovered()
+                                ? item_color() : item_color().exposureHSL(1.25)));
                 
                 if(_foldable && _folded) {
                     begin();
-                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{
-                        hovered()
-                            ? item_color().exposureHSL(1.5)
-                            : item_color()
-                    });
+                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ color });
                     if(not _label_text)
                         _label_text = std::make_unique<StaticText>();
                     _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
@@ -658,9 +695,9 @@ namespace gui {
                             
                             if constexpr(has_detail<T>) {
                                 if(item.value().disabled())
-                                    _details.at(idx)->set(TextClr{Gray.alpha(50)});
+                                    _details.at(idx)->set(TextClr{ (Color)_detail_color.alpha(max(10,_detail_color.a * 0.75))});
                                 else
-                                    _details.at(idx)->set(TextClr{Gray});
+                                    _details.at(idx)->set(TextClr{ (Color)_detail_color });
                             }
                         }
                         
@@ -740,11 +777,7 @@ namespace gui {
                     
                     if(_foldable) {
                         begin();
-                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{
-                            hovered()
-                                ? item_color().exposureHSL(1.5)
-                                : item_color()
-                        });
+                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ color });
                         
                         if(not _label_text)
                             _label_text = std::make_unique<StaticText>();
@@ -796,7 +829,7 @@ namespace gui {
                 
                 if(_alternating_rows) {
                     if(idx% 2 == 0)
-                        base_color = base_color.exposureHSL(1.5);
+                        base_color = base_color.exposure(1.5);
                 }
 
                 if (rect->pressed() || (_stays_toggled && (long)rect_to_idx[rect] == _last_selected_item))

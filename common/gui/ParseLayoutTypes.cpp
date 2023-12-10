@@ -123,7 +123,6 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         name = var;
     }
     if(not name.empty()) {
-        print("ptr->name = ", name);
         ptr->set_name(name);
         
 #ifndef NDEBUG
@@ -704,7 +703,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                     }
                     
                     actions.push_back(PreAction::fromStr(action));
-                    print("list item: ", text, " ", action);
+                    //print("list item: ", text, " ", action);
                     items.push_back(DetailItem{
                         text,
                         detail,
@@ -752,19 +751,32 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         list->set(item_padding);
         
         
-        ListDims_t list_dims{get(Size2(100,200), "list_size")};
-        list->set(list_dims);
-        print("list dims = ", list_dims);
-        
         ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
         list->set(item_font);
-        
+
+        ItemColor_t item_color{get(Gray, "item_color")};
+        list->set(item_color);
         
         LabelFont_t label_font{parse_font(obj, Font(0.75), "label_font")};
         list->set(label_font);
         
         Alternating_t alternate{get(false, "alternate")};
         list->set(alternate);
+
+        DetailColor_t detail_color{get(Gray, "detail_color")};
+        list->set(detail_color);
+
+        if (obj.contains("list")) {
+            auto p = obj["list"];
+            if (p.is_object()) {
+                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "list_")};
+                list->set(line_clr);
+                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "list_")};
+                list->set(fill_clr);
+                ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
+                list->set(list_dims);
+            }
+        }
         
         Foldable_t foldable{get(false, "foldable")};
         Folded_t folded{get(false, "folded")};
