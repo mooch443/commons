@@ -112,6 +112,10 @@ public:
     constexpr self_type& operator=(T other) { value = other; return *this; }
     
     constexpr operator T() const { return value; }
+    
+    static self_type fromStr(const std::string& str) { return self_type{ Meta::fromStr<T>(str) }; }
+    std::string toStr() const { return Meta::toStr<T>(value); }
+    static std::string class_name() { return type_name<self_type>(); }
 };
 
 template<typename T> struct _IsNumberAlias : std::false_type {};

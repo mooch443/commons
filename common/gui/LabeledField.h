@@ -10,7 +10,6 @@
 #include <gui/types/List.h>
 #include <file/PathArray.h>
 #include <gui/types/Combobox.h>
-#include <nlohmann/json.hpp>
 
 namespace gui {
 namespace dyn {

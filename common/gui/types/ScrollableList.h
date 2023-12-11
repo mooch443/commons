@@ -179,7 +179,7 @@ namespace gui {
         
         void init() {
             set(ItemPadding_t{5,5});
-            set(ItemColor_t(100, 100, 100, 200));
+            set(ItemColor_t(50,50,50,220));
             set(ItemFont_t{ Font(0.75) });
             set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
@@ -382,9 +382,9 @@ namespace gui {
             update_line_height();
             if(_foldable) {
                 _list.set_size(Size2(_list_dims.width, _list_dims.height > 0 ? min(_list_dims.height, _items.size() * _line_spacing) : _items.size() * _line_spacing));
-                if(_items.size() * _line_spacing <= _list_dims.height)
+                /*if(_items.size() * _line_spacing <= _list_dims.height)
                     _list.set_scroll_enabled(false);
-                else
+                else*/
                     _list.set_scroll_enabled(true);
                 
                 Entangled::set_size(_label_dims);
@@ -659,6 +659,10 @@ namespace gui {
                     
                 } else {
                     Entangled * e = _foldable ? &_list : this;
+                    if(_foldable)
+                        _list.set_z_index(2);
+                    else
+                        _list.set_z_index(0);
                     
                     e->begin();
                     
@@ -769,7 +773,7 @@ namespace gui {
                         const float last_y = item_height * (_items.size()-1);
                         e->set_scroll_limits(Rangef(),
                                              Rangef(0,
-                                                    (e->height() < last_y ? last_y + item_height - e->height() : 0.1f)));
+                                                    (e->height() < last_y ? last_y + item_height - e->height() : 0.f)));
                         auto scroll = e->scroll_offset();
                         e->set_scroll_offset(Vec2());
                         e->set_scroll_offset(scroll);

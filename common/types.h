@@ -30,7 +30,10 @@ DWORD __inline __builtin_ctz32(uint32_t value)
     _BitScanForward(&trailing_zero, value);
     return trailing_zero;
 }
-
+#else
+inline int __builtin_ctz32(uint32_t value) {
+    return __builtin_ctz(value);
+}
 #endif
 
 #include <misc/vec2.h>

@@ -3,7 +3,6 @@
 #include <misc/defines.h>
 #include <misc/metastring.h>
 #include <misc/vec2.h>
-#include <nlohmann/json.hpp>
 #include <file/Path.h>
 #include <file/PathArray.h>
 #include <misc/CallbackManager.h>

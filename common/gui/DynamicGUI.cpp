@@ -496,6 +496,15 @@ void Context::init() const {
 
                 return convert_to_bool(props.parameters.front());
             }),
+            VarFunc("abs", [](const VarProps& props) -> float {
+                if (props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Invalid number of variables for abs: ", props);
+                }
+                auto v = Meta::fromStr<float>(props.parameters.front());
+                if(std::isnan(v))
+                    return v;
+                return fabsf(v);
+            }),
             VarFunc("int", [](const VarProps& props) -> int64_t {
                 if (props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for int: ", props);
@@ -1202,7 +1211,11 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr 
                                     Action _action = action.parse(context, state);
                                     _action.parameters = { Meta::toStr(index) };
                                     if(auto it = gc.actions.find(action.name); it != gc.actions.end()) {
-                                        it->second(_action);
+                                        try {
+                                            it->second(_action);
+                                        } catch(const std::exception& ex) {
+                                            // pass
+                                        }
                                     }
                                 }
                             );

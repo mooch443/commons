@@ -85,6 +85,7 @@ LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Cont
     line = get(_defaults.line, "line");
     clickable = get(_defaults.clickable, "clickable");
     max_size = get(_defaults.max_size, "max_size");
+    zindex = get(ZIndex(0), "z-index");
     
     textClr = get(_defaults.textClr, "color");
     highlight_clr = get(_defaults.highlightClr, "highlight_clr");
@@ -113,6 +114,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     LabeledField::delegate_to_proper_type(attr::Margins{pad}, ptr);
     LabeledField::delegate_to_proper_type(font, ptr);
     LabeledField::delegate_to_proper_type(textClr, ptr);
+    ptr->set(zindex);
     
     if(clickable)
         ptr->set_clickable(clickable);
@@ -754,7 +756,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
         list->set(item_font);
 
-        ItemColor_t item_color{get(Gray, "item_color")};
+        ItemColor_t item_color{get(Color(50,50,50,220), "item_color")};
         list->set(item_color);
         
         LabelFont_t label_font{parse_font(obj, Font(0.75), "label_font")};

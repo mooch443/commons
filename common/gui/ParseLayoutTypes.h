@@ -1,7 +1,6 @@
 #pragma once
 #include <commons.pc.h>
 #include <gui/types/Layout.h>
-#include <nlohmann/json.hpp>
 #include <gui/DynamicGUI.h>
 
 namespace gui::dyn {
@@ -82,6 +81,7 @@ public:
     Font font;
     uint64_t hash;
     LayoutType::Class type;
+    ZIndex zindex;
     
     auto get(auto de, auto name, std::string name_prefix="") {
         return gui::dyn::get(state, obj, de, name, hash, name_prefix);

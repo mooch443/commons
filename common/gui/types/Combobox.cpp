@@ -73,7 +73,7 @@ void Combobox::set(ParmName name) {
         _value->set(_settings.postfix);
         _value->set(_settings.prefix);
         _value->set(attr::Size{
-            _settings.bounds.width * 0.5f,
+            _settings.bounds.width * 0.65f,
             _settings.bounds.height
         });
         //_value->set(_settings.content);
@@ -162,9 +162,9 @@ void Combobox::set(attr::HighlightClr clr) {
 void Combobox::set_bounds(const Bounds& bds) {
     if(not _settings.bounds.Equals(bds)) {
         _settings.bounds = bds;
-        _dropdown->set(attr::Size(bds.width * 0.5f, bds.height));
+        _dropdown->set(attr::Size(bds.width * 0.35f, bds.height));
         if(_value)
-            _value->set(attr::Size(bds.width * 0.5f, bds.height));
+            _value->set(attr::Size(bds.width * 0.65f, bds.height));
         set_content_changed(true);
     }
     Entangled::set_bounds(bds);
@@ -181,9 +181,9 @@ void Combobox::set_pos(const Vec2& p) {
 void Combobox::set_size(const Size2& p) {
     if(not _settings.bounds.size().Equals(p)) {
         _settings.bounds << p;
-        _dropdown->set(attr::Size{p.width * 0.5f, p.height});
+        _dropdown->set(attr::Size{p.width * 0.35f, p.height});
         if(_value)
-            _value->set(attr::Size(p.width * 0.5f, p.height));
+            _value->set(attr::Size(p.width * 0.65f, p.height));
         set_content_changed(true);
     }
     Entangled::set_size(p);
