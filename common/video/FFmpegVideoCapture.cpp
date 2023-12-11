@@ -202,13 +202,18 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     if(frameIndex > frameCount
        && frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den) + 1)
     {
+#ifndef NDEBUG
         print("jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
         Timer timer;
+#endif
         size_t i = 0;
         while(grab() && frameIndex > frameCount) { ++i; }
+        
+#ifndef NDEBUG
         auto e = timer.elapsed();
         if(i > 0 && e > 0)
             print("jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
+#endif
         return frameIndex == frameCount;
     }
 
@@ -227,18 +232,25 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         auto keyframe = it->first;
         if (keyframe < frameIndex
             && abs(keyframe - frameIndex) < offset) 
-        {
+        {            
+#ifndef NDEBUG
             print("jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
+#endif
             timestamp = it->second;
-        } else
+        } 
+#ifndef NDEBUG
+        else
             print("NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
+#endif
     }
 
     if(timestamp == -1)
-        timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
+        timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);    
+
+#ifndef NDEBUG
     print("jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
-    
     av_log_set_level(AV_LOG_DEBUG);
+#endif
     // Seek directly to the calculated timestamp
     if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
         FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
@@ -305,18 +317,24 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 _keyframes[frame_index] = temp_frame->pts;
             
             received_frame = frame_index;
-            if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {
+            if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {  
+#ifndef NDEBUG
                 print("found jumped to frame ", frame_index, " / ", frameIndex);
+#endif
                 break;
-            } else if(frame_index >= frameIndex && timestamp == 0) {
-                print("jumpted to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
+            } else if(frame_index >= frameIndex && timestamp == 0) {                
+#ifndef NDEBUG
+                print("jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
+#endif
                 return false;
                 
             } else if(frame_index >= frameIndex) {
                 auto old_offset = offset;
                 offset = int64_t(offset * 1.5);
-                timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
+                timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
+#ifndef NDEBUG
                 print("jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
+#endif
                 
                 // Seek directly to the calculated timestamp
                 if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
@@ -326,8 +344,10 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 received_frame = int64_t(frameIndex) - offset;
                 avcodec_flush_buffers(codecContext);
                 
-            } else {
+            } else {  
+#ifndef NDEBUG
                 print("jumped to frame ", frame_index, " / ", frameIndex);
+#endif
                 continue;
             }
             
@@ -339,9 +359,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
     // Update internal frame count
     frameCount = frameIndex;
+    
+#ifndef NDEBUG
     auto e = timer.elapsed();
     if(e > 0 && count_jumped_frames > 0)
         print("jump skipped ", count_jumped_frames, " frames in ", e * 1000, "ms => ", double(count_jumped_frames) / e,"fps");
+#endif
 
     return true;
 }
