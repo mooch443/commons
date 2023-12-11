@@ -514,7 +514,9 @@ bool FfmpegVideoCapture::grab() {
         if (frame->key_frame == 1) {
 #endif
             _keyframes[frameCount] = frame->pts;
+#ifndef NDEBUG
             print("keyframe ", frameCount, " is ", frame->pts);
+#endif
         }
 
         ++frameCount;
@@ -627,7 +629,9 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
 
         if (timestamp >= 0) {
             _keyframes[frameCount] = timestamp;
+#ifndef NDEBUG
             print("_read: keyframe ", frameCount, " is ", timestamp);
+#endif
         }
 
         ++frameCount;
