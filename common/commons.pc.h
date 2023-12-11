@@ -89,6 +89,14 @@
 #endif
 
 #include <misc/date.h>
+#ifdef __llvm__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wall"
+#endif
+#include <nlohmann/json.hpp>
+#ifdef __llvm__
+#pragma clang diagnostic pop
+#endif
 
 #ifdef WIN32
 //#define _USE_MATH_DEFINES
