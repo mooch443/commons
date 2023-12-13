@@ -565,13 +565,14 @@ void Reference::operator=(const T& value) {
                 
                 if(_do_print) {
                     if constexpr(requires {
-                        { Meta::toStr(std::declval<T>()) }
-                        -> std::template same_as<std::string>;
-                    })
+                        { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
+                            -> std::template same_as<std::string>;
+                        })
                     {
                         print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
-                    } else
+                    } else {
                         print(no_quotes(name()), "<", no_quotes(type_name<T>()), "> updated.");
+                    }
                 }
                 //if(_do_print)
                 //    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
