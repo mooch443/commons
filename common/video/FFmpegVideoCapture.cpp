@@ -173,7 +173,7 @@ int64_t FfmpegVideoCapture::length() const {
     
     int64_t N = formatContext->streams[videoStreamIndex]->nb_frames;
     if(N <= 0) {
-        static constexpr std::string_view msg{"The video-stream does not provide frame information."};
+        static constexpr std::string_view msg{"The video-stream does not provide exact length information."};
         recovered_error(msg);
         
         double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
