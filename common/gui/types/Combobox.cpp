@@ -124,6 +124,23 @@ void Combobox::set(attr::TextClr clr) {
         set_content_changed(true);
     }
 }
+
+void Combobox::set(ListLineClr_t clr) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(clr);
+}
+void Combobox::set(ListFillClr_t clr) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(clr);
+}
+void Combobox::set(LabelBorderColor_t clr) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(clr);
+}
+void Combobox::set(LabelColor_t clr) {
+    if(_dropdown && _dropdown->list())
+        _dropdown->list()->set(clr);
+}
 void Combobox::set(attr::Str content) {
     if(_settings.content != content) {
         _settings.content = content;

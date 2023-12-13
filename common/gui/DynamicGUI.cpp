@@ -222,8 +222,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     CTimer timer(current_word);
                     std::string resolved_word;
                     if(auto it = state._variable_values.find(current_word);
-                       current_word != "hovered"
-                       && it != state._variable_values.end())
+                       it != state._variable_values.end())
                     {
                         resolved_word = it->second;
                         
@@ -274,7 +273,11 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                             return optional ? "" : "null";
                         });
                         
-                        state._variable_values[std::string(current_word)] = resolved_word;
+                        if(not utils::contains(current_word, "hovered")
+                           && not utils::contains(current_word, "selected"))
+                        {
+                            state._variable_values[std::string(current_word)] = resolved_word;
+                        }
                     }
                     if(nesting_start_positions.empty()) {
                         output << resolved_word;
@@ -1098,6 +1101,47 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
         }
+        
+        if (it->second.contains("item_line")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("item_line"), context, state));
+                LabeledField::delegate_to_proper_type(ItemBorderColor_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if (it->second.contains("item_color")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("item_color"), context, state));
+                LabeledField::delegate_to_proper_type(ItemColor_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if (it->second.contains("label_line")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("label_line"), context, state));
+                LabeledField::delegate_to_proper_type(LabelBorderColor_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if (it->second.contains("label_fill")) {
+            try {
+                auto line = Meta::fromStr<Color>(_parse_text(pattern.at("label_fill"), context, state));
+                LabeledField::delegate_to_proper_type(LabelColor_t{ line }, ptr);
+
+            }
+            catch (const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
         if(it->second.contains("list_size")) {
             try {
                 auto line = Meta::fromStr<Size2>(_parse_text(pattern.at("list_size"), context, state));
@@ -1385,6 +1429,21 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
                it != state._named_entities.end())
             {
                 return it->second->hovered();
+            }
+        }
+        return false;
+    }));
+    
+    context.system_variables().emplace(VarFunc("selected", [&state = state](const VarProps& props) -> bool {
+        if(props.parameters.empty()) {
+            if(state._current_object)
+                return state._current_object->selected();
+            
+        } else if(props.parameters.size() == 1) {
+            if(auto it = state._named_entities.find(props.parameters.front());
+               it != state._named_entities.end())
+            {
+                return it->second->selected();
             }
         }
         return false;

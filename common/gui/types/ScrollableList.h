@@ -63,6 +63,9 @@ namespace gui {
     ATTRIBUTE_ALIAS(ListFillClr_t, Color)
     ATTRIBUTE_ALIAS(ListLineClr_t, Color)
     ATTRIBUTE_ALIAS(ItemColor_t, Color)
+    ATTRIBUTE_ALIAS(ItemBorderColor_t, Color)
+    ATTRIBUTE_ALIAS(LabelColor_t, Color)
+    ATTRIBUTE_ALIAS(LabelBorderColor_t, Color)
 
     template <typename T = std::string>
     requires list_compatible_item<T>
@@ -74,6 +77,8 @@ namespace gui {
         DetailColor_t _detail_color{Gray};
         ListFillClr_t _list_fill_clr{100,100,100,200};
         ListLineClr_t _list_line_clr{200,200,200,200};
+        LabelColor_t _label_fill_clr{100,100,100,200};
+        LabelBorderColor_t _label_line_clr{200,200,200,200};
         
         template <typename Q = T>
         class Item {
@@ -98,6 +103,7 @@ namespace gui {
         
         GETTER(LabelFont_t, label_font)
         GETTER(Color, item_color)
+        GETTER(ItemBorderColor_t, item_line_color)
         GETTER_I(Color, text_color, White)
         float _line_spacing, _previous_width{-1};
         GETTER_SETTER_I(long, last_hovered_item, -1)
@@ -173,18 +179,21 @@ namespace gui {
             (set(std::forward<Args>(args)), ...);
             
             update_line_height();
-            set_background(_item_color.exposure(0.5));
+            //set_background(_item_color.exposure(0.5));
             update_items();
         }
         
         void init() {
             set(ItemPadding_t{5,5});
             set(ItemColor_t(50,50,50,220));
+            set(ItemBorderColor_t(Transparent));
             set(ItemFont_t{ Font(0.75) });
             set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
             set(ListFillClr_t{100,100,100,200});
             set(ListLineClr_t{200,200,200,200});
+            set(LabelColor_t{100,100,100,200});
+            set(LabelBorderColor_t{200,200,200,200});
             update_line_height();
             
             set_clickable(true);
@@ -233,6 +242,8 @@ namespace gui {
             set_items(objs);
         }
         
+        void set(FillClr) override {}
+        void set(LineClr) override {}
         void set(OnHover_t hover) {
             _on_hovered = hover;
         }
@@ -252,6 +263,18 @@ namespace gui {
             if (_list_fill_clr == clr)
                 return;
             _list_fill_clr = clr;
+            set_content_changed(true);
+        }
+        void set(LabelColor_t clr) {
+            if (_label_fill_clr == clr)
+                return;
+            _label_fill_clr = clr;
+            set_content_changed(true);
+        }
+        void set(LabelBorderColor_t clr) {
+            if (_label_line_clr == clr)
+                return;
+            _label_line_clr = clr;
             set_content_changed(true);
         }
         void set(TextClr lr) {
@@ -349,13 +372,19 @@ namespace gui {
             if(_item_color == item_color)
                 return;
             
-            set_background(item_color.exposure(0.5));
+            //set_background(item_color.exposure(0.5));
             _item_color = item_color;
             set_dirty();
         }
         void set(const ItemColor_t& item_color) {
 			set_item_color(item_color);
 		}
+        void set(const ItemBorderColor_t& c) {
+            if(_item_line_color == c)
+                return;
+            _item_line_color = c;
+            set_content_changed(true);
+        }
         
         void set_text_color(const Color& text_color) {
             if(_text_color == text_color)
@@ -391,6 +420,7 @@ namespace gui {
                     
             } else {
                 Entangled::set_size(_list_dims);
+                _list.set_size(_list_dims);
                 set_scroll_enabled(true);
             }
         }
@@ -559,7 +589,7 @@ namespace gui {
                 Font detail_font = this->detail_font(item_font);
                 
                 for(size_t i=0; i<_rects.size(); i++) {
-                    _rects.at(i)->set_size(Size2(_list_dims.width, item_height));
+                    _rects.at(i)->set_size(Size2(_list_dims.width - 2, item_height - 1));
                     _texts.at(i)->set_default_font(item_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
@@ -627,6 +657,7 @@ namespace gui {
             if(_foldable && not _folded) {
             }
             
+            auto border = _item_line_color;
             if(content_changed()) {
                 refresh_dims();
                 
@@ -638,19 +669,25 @@ namespace gui {
                     update_items();
                 }
 
-                _list.set_background(_list_fill_clr, _list_line_clr);
+                if(_foldable) {
+                    _list.set_background(_list_fill_clr, _list_line_clr);
+                    set_background(Transparent, Transparent);
+                } else {
+                    _list.set_background(Transparent, Transparent);
+                    set_background(_list_fill_clr, _list_line_clr);
+                }
 
                 const float item_height = _line_spacing;
                 auto color = pressed() ? 
-                          item_color().exposureHSL(0.5) 
-                        : ((_foldable && not _folded) 
-                            ? item_color().exposureHSL(0.75)
+                          _label_fill_clr.exposureHSL(0.5)
+                        : ((_foldable && not _folded)
+                            ? _label_fill_clr.exposureHSL(0.75)
                             : (not hovered()
-                                ? item_color() : item_color().exposureHSL(1.25)));
+                                ? _label_fill_clr : _label_fill_clr.exposureHSL(1.25)));
                 
                 if(_foldable && _folded) {
                     begin();
-                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ color });
+                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
                     if(not _label_text)
                         _label_text = std::make_unique<StaticText>();
                     _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
@@ -674,7 +711,7 @@ namespace gui {
                     for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
                         auto& item = _items[i];
                         const float y = i * item_height;
-                        _rects.at(idx)->set_pos(Vec2(0, y));
+                        _rects.at(idx)->set_pos(Vec2(1, y + 1));
                         if constexpr(has_disabled<T>) {
                             _rects.at(idx)->set_clickable(not item.value().disabled());
                         } else
@@ -781,7 +818,7 @@ namespace gui {
                     
                     if(_foldable) {
                         begin();
-                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ color });
+                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
                         
                         if(not _label_text)
                             _label_text = std::make_unique<StaticText>();
@@ -842,6 +879,8 @@ namespace gui {
                     rect->set_fillclr(base_color.exposure(1.25f));
                 else
                     rect->set_fillclr(base_color.alpha(50));
+                
+                rect->set_lineclr(border);
             }
 
             if (stage()) {

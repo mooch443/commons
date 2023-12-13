@@ -67,6 +67,10 @@ public:
     void set(attr::Postfix postfix);
     void set(ListDims_t dims);
     void set(LabelDims_t dims);
+    void set(ListLineClr_t clr);
+    void set(ListFillClr_t clr);
+    void set(LabelColor_t clr);
+    void set(LabelBorderColor_t clr);
     
     void set(std::function<void()> on_click) {
         if(on_click)

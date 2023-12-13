@@ -520,12 +520,37 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
         
-        auto list_size = get(Size2(200,400), "list_size");
-        ref->set(ListDims_t{list_size});
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
         if(max_size != Vec2(0)) ref->set(attr::SizeLimit{max_size});
         ref->set(attr::TextClr{textClr});
         ref->set(attr::HighlightClr{highlight_clr});
+        
+        if (obj.contains("label")) {
+            auto p = obj["label"];
+            if (p.is_object()) {
+                auto list = ref->representative().to<Combobox>();
+                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "label_")};
+                list->set(line_clr);
+                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "label_")};
+                list->set(fill_clr);
+                
+                LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
+                list->set(label_font);
+            }
+        }
+        
+        if (obj.contains("list")) {
+            auto p = obj["list"];
+            if (p.is_object()) {
+                auto list = ref->representative().to<Combobox>();
+                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "list_")};
+                list->set(line_clr);
+                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "list_")};
+                list->set(fill_clr);
+                ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
+                list->set(list_dims);
+            }
+        }
         
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
@@ -769,15 +794,27 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
 
         ItemColor_t item_color{get(Color(50,50,50,220), "item_color")};
         list->set(item_color);
-        
-        LabelFont_t label_font{parse_font(obj, Font(0.75), "label_font")};
-        list->set(label_font);
+        ItemBorderColor_t item_line{get(Transparent, "item_line")};
+        list->set(item_line);
         
         Alternating_t alternate{get(false, "alternate")};
         list->set(alternate);
 
         DetailColor_t detail_color{get(Gray, "detail_color")};
         list->set(detail_color);
+        
+        if (obj.contains("label")) {
+            auto p = obj["label"];
+            if (p.is_object()) {
+                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "label_")};
+                list->set(line_clr);
+                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "label_")};
+                list->set(fill_clr);
+                
+                LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
+                list->set(label_font);
+            }
+        }
 
         if (obj.contains("list")) {
             auto p = obj["list"];

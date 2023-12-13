@@ -72,7 +72,12 @@ namespace gui {
     
     void Entangled::update(const std::function<void(Entangled& base)> create) {
         begin();
-        create(*this);
+        try {
+            create(*this);
+        } catch(...) {
+            end();
+            throw;
+        }
         end();
     }
     

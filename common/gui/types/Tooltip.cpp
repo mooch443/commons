@@ -7,7 +7,7 @@ namespace gui {
             _text(SizeLimit(max_width > 0 || !_other
                             ? max_width
                             : _other->width(), -1),
-                Font(0.7),
+                Font(0.6),
                 FillClr{Black.alpha(150)}
             ),
             _max_width(max_width)

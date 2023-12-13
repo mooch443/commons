@@ -369,7 +369,9 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         if(_textfield)
             _textfield->set_size(Size2(width(), height()).div(scale()));
         if(_list) {
-            _list->set_bounds(Bounds(0, _inverted ? -_list->height() : height(), width() / scale().x, _list->height()));
+            //_list->set(LabelDims_t{width() / scale().x, _list->height()});
+            //_list->set(ListDims_t{width() / scale().x, _list->height()});
+            _list->set(Loc(0, _inverted ? -_list->height() : height()));
         }
     }
     
