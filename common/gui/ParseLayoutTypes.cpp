@@ -497,7 +497,18 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             return nullptr;
         }
         
-        cache._value = ref->_ref.get().valueString();
+        if(var.empty()) {
+            // combobox?
+            auto combo = static_cast<LabeledCombobox*>(ref.get());
+            if(combo) {
+                auto parm = combo->_combo->parameter();
+                ref->_ref = settings_map()[parm];
+            }
+        }
+        
+        cache._value = ref->_ref.valid()
+            ? ref->_ref.get().valueString()
+            : "null";
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
         }

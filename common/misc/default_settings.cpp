@@ -264,7 +264,7 @@ namespace cmn {
             if(it != fn.end() && it->second > AccessLevelType::PUBLIC)
                 access_level = it->second.name();
             
-            print_parameter(key, config[key].get().type_name(), value, doc);
+            print_parameter(key, (std::string)config[key].type_name(), value, doc);
         }
         
         return ss.str();

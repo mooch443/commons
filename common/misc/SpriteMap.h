@@ -26,6 +26,10 @@ concept HasNotEqualOperator = requires(T a, T b) {
         : _type(&type), _container(&container)//, _name(name)
         { }
         
+        ConstReference(const Map& container)
+        : _type(nullptr), _container(&container)//, _name(name)
+        { }
+        
         bool operator==(const PropertyType& other) const;
         bool operator==(const ConstReference& other) const { return operator==(other.get()); }
         
@@ -51,7 +55,10 @@ concept HasNotEqualOperator = requires(T a, T b) {
         template<typename T>
         bool is_type() const;
         
-        const PropertyType& get() const { return *_type; }
+        bool valid() const;
+        std::string_view type_name() const;
+        
+        const PropertyType& get() const { if(not _type) throw std::runtime_error("Property is not valid."); return *_type; }
         const Map& container() const { return *_container; }
         
         std::string toStr() const;
@@ -62,8 +69,6 @@ concept HasNotEqualOperator = requires(T a, T b) {
         PropertyType* _type;
         Map* _container;
         GETTER(std::string_view, name)
-        
-        
     public:
         template <typename T,
             std::enable_if_t<
@@ -71,6 +76,13 @@ concept HasNotEqualOperator = requires(T a, T b) {
                 std::is_lvalue_reference_v<T&&>, int> = 0>
         Reference(Map& container, PropertyType& type, T&& name)
             : _type(&type), _container(&container), _name(name) { }
+        template <typename T,
+            std::enable_if_t<
+                std::is_same_v<T, const char*> ||
+                std::is_lvalue_reference_v<T&&>, int> = 0>
+        Reference(Map& container, T&& name)
+            : _type(nullptr), _container(&container), _name(name)
+        { }
 
         // Delete the constructor for r-value std::string
         Reference(Map&, PropertyType&, std::string&&) = delete;
@@ -105,7 +117,10 @@ concept HasNotEqualOperator = requires(T a, T b) {
         template<typename T>
         bool is_type() const;
         
-        PropertyType& get() const { return *_type; }
+        bool valid() const;
+        PropertyType& get() const { if(_type) return *_type; throw std::runtime_error("Property is null."); }
+        std::string_view type_name() const;
+        
         Map& container() const { return *_container; }
 
 		double speed() const;
@@ -170,7 +185,7 @@ concept Iterable = requires(T obj) {
             EXIT
         };
         
-        typedef std::shared_ptr<PropertyType> Store;
+        typedef std::unique_ptr<PropertyType> Store;
         
     protected:
         std::unordered_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
@@ -344,7 +359,7 @@ concept Iterable = requires(T obj) {
             if(it != _props.end())
                 return Reference(*this, *it->second, it->first);
 
-            return Reference(*this, Property<bool>::InvalidProp, name);
+            return Reference(*this, name);
         }
         
         template<typename T>
@@ -366,29 +381,7 @@ concept Iterable = requires(T obj) {
             if(it != _props.end())
                 return ConstReference(*this, *it->second);
 
-            return ConstReference(*this, Property<bool>::InvalidProp);
-        }
-        
-        template<typename T>
-        Property<T>& get(const std::string_view& name) {
-            auto guard = LOGGED_LOCK(mutex());
-            auto it = _props.find(name);
-            if(it != _props.end()) {
-				return (Property<T>&)it->second->toProperty<T>();
-            }
-            
-            return Property<T>::InvalidProp;
-        }
-        
-        template<typename T>
-        Property<T>& get(const std::string_view& name) const {
-            auto guard = LOGGED_LOCK(mutex());
-            auto it = _props.find(name);
-            if(it != _props.end()) {
-                return (Property<T>&)it->second->toProperty<T>();
-            }
-            
-            return Property<T>::InvalidProp;
+            return ConstReference(*this);
         }
         
         bool has(const std::string_view& name) const {
@@ -398,16 +391,12 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         bool is_type(const std::string_view& name, const T&) const {
-            return get<T>(name).valid();
+            return is_type<T>(name);
         }
         
         template<typename T>
         bool is_type(const std::string_view& name) const {
-            return get<T>(name).valid();
-        }
-        
-        bool has(const PropertyType& prop) const {
-            return has(prop.name());
+            return has(name) && operator[](name).is_type<T>();
         }
         
         template<typename T>
@@ -416,42 +405,30 @@ concept Iterable = requires(T obj) {
         }
         
         template<typename T>
-        void operator<<(const std::pair<std::string, const T> pair) {
-            Property<T>& type = get(pair.first);
-            
-            if(type) {
-                type = pair.second;
-                
-            } else {
-                insert(Property<T>(this, pair.first, pair.second));
-            }
-        }
-        
-        template<typename T>
         Property<T>& insert(const std::string_view& name, const T& value) {
-            return insert(Property<T>(name, value));
-        }
-        
-        template<typename T>
-        Property<T>& insert(const Property<T>& property) {
-            Property<T> *property_;
+            if(has(name)) {
+                std::string e = "Property already "+(std::string)name+" already exists.";
+                FormatError(e.c_str());
+                throw PropertyException(e);
+            }
             
+            auto property_ = new Property<T>(name, value);
             {
-                if(has(property)) {
-                    std::string e = "Property already "+((const PropertyType&)property).toStr()+" already exists.";
-                    FormatError(e.c_str());
-                    throw PropertyException(e);
+                auto ptr = Store(property_);
+                if (print_by_default()) {
+                    ptr->set_do_print(true);
+                    if constexpr(requires {
+                        { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
+                            -> std::template same_as<std::string>;
+                        })
+                    {
+                        print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", property_->value());
+                    } else
+                        print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
                 }
                 
-                property_ = new Property<T>(property.name(), property.value());
-                {
-                    auto ptr = Store(property_);
-                    if (print_by_default())
-                        ptr->set_do_print(true);
-                    
-                    auto guard = LOGGED_LOCK(mutex());
-                    _props[ptr->name()] = ptr;
-                }
+                auto guard = LOGGED_LOCK(mutex());
+                _props[ptr->name()] = std::move(ptr);
             }
             
             return *property_;
@@ -487,6 +464,8 @@ concept Iterable = requires(T obj) {
     
     template<typename T>
     Property<T>& Reference::toProperty() const {
+        if(not _type)
+            throw U_EXCEPTION("Property ",name()," is invalid.");
         return _type->toProperty<T>();
     }
     
@@ -497,22 +476,24 @@ concept Iterable = requires(T obj) {
             return tmp->value();
         }
         
-        std::string e = _type->valid()
+        std::string e = not _type || not _type->valid()
             ? "Cannot find variable '" + (std::string)_name + "' of type " + Meta::name<T>() + " in map."
-            : "Cannot cast '" + (std::string)_name + "' of type " + (_type->valid() ? _type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
+            : "Cannot cast '" + (std::string)_name + "' of type " + (_type->valid() ? (std::string)_type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
     
     template<typename T>
     bool Reference::is_type() const {
-        return _type->toProperty<T>().valid();
+        if(not _type)
+            return false;
+        return dynamic_cast<const Property<T>*>(_type) != nullptr;
     }
     
 template<typename T>
     requires (not std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
-    if (_type->valid()) {
+    if (_type && _type->valid()) {
         _type->operator=(value);
         
     }
@@ -524,7 +505,7 @@ void Reference::operator=(const T& value) {
 template<typename T>
     requires (std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
-    if (_type->valid()) {
+    if (_type && _type->valid()) {
         _type->operator=(std::string(value));
         
     }
@@ -552,7 +533,9 @@ void Reference::operator=(const T& value) {
     
     template<typename T>
     bool ConstReference::is_type() const {
-        return _type->toProperty<T>().valid();
+        if(not _type)
+            return false;
+        return dynamic_cast<const Property<T>*>(_type) != nullptr;
     }
 
     template<typename T>
@@ -574,14 +557,24 @@ void Reference::operator=(const T& value) {
     void Property<T>::value(const T& v) {
         if constexpr(HasNotEqualOperator<T>) {
             if(std::unique_lock guard(_property_mutex);
-               v != _value)
+               not _value.has_value() || v != _value)
             {
                 _value = v;
 
                 guard.unlock();
                 
-                if(_do_print)
-                    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
+                if(_do_print) {
+                    if constexpr(requires {
+                        { Meta::toStr(std::declval<T>()) }
+                        -> std::template same_as<std::string>;
+                    })
+                    {
+                        print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
+                    } else
+                        print(no_quotes(name()), "<", no_quotes(type_name<T>()), "> updated.");
+                }
+                //if(_do_print)
+                //    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
                     
                 triggerCallbacks();
             }
@@ -605,7 +598,7 @@ void Reference::operator=(const T& value) {
             other->erase(_name);
 
         std::unique_lock guard(_property_mutex);
-        other->insert(_name, _value);
+        other->insert(_name, value());
     }
 }
 }

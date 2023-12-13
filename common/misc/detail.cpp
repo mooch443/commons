@@ -701,12 +701,12 @@ namespace cmn {
                             break;
                             
                         case VECTOR:
-                            if(!map.has("quiet") || !map.get<bool>("quiet"))
+                            if(!GlobalSettings::is_runtime_quiet())
                                 throw U_EXCEPTION("(Key ",key,") Vector not yet implemented.");
                             break;
                             
                         case INVALID:
-                            if(!map.has("quiet") || !map.get<bool>("quiet"))
+                            if(!GlobalSettings::is_runtime_quiet())
                                 FormatWarning("Data of invalid type ", value," for key ",key);
                             break;
                             

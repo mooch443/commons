@@ -1441,7 +1441,7 @@ void update_tooltips(DrawStructure& graph, State& state) {
     }
     
     Layout::Ptr found = nullptr;
-    std::string name;
+    std::string name{"<null>"};
     std::unique_ptr<sprite::Reference> ref;
     
     for(auto & [key, ptr] : state._text_fields) {
@@ -1452,7 +1452,9 @@ void update_tooltips(DrawStructure& graph, State& state) {
         
         if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {
             found = ptr->representative();
-            name = ptr->_ref.get().name();
+            //if(ptr->representative().is<Combobox>())
+                //ptr->representative().to<Combobox>()-
+            name = ptr->_ref.valid() ? ptr->_ref.name() : "<null>";
             break;
         }
     }

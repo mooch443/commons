@@ -29,6 +29,11 @@ GlobalSettings::GlobalSettings() {
 GlobalSettings::~GlobalSettings() {
 }
 
+bool GlobalSettings::is_runtime_quiet() {
+    const bool quiet = has("quiet") && GlobalSettings::get("quiet").value<bool>();
+    return quiet;
+}
+
 /**
  * Returns a reference to the settings map.
  * @return sprite::Map&
@@ -159,7 +164,8 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                     }
                 }
             } catch(const UtilsException& e) {
-                if(!SETTING(quiet)) {
+                if(GlobalSettings::is_runtime_quiet())
+                {
                     if(str.length() > 150) {
                         auto fr = str.substr(0, 50);
                         auto en = str.substr(str.length() - 50 - 1);

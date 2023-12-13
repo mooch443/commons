@@ -41,15 +41,15 @@ LabeledField::LabeledField(const std::string& name)
     _text->set_font(Font(0.6f));
     _text->set_color(White);
     
-    if(_ref.get().valid()) {
+    if(_ref.valid()) {
         print("Registering callback for ", name);
         _callback_id = settings_map().register_callbacks({name}, [this](auto){update();});
     }
-#ifndef NDEBUG
-    else {
-        print("Ref invalid: ", name);
+//#ifndef NDEBUG
+    else if(not name.empty()) {
+        throw U_EXCEPTION("Ref invalid: ", name);
     }
-#endif
+//#endif
 }
 
 LabeledField::~LabeledField() {
@@ -59,7 +59,10 @@ LabeledField::~LabeledField() {
 
 LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json&)
     : LabeledField(name),
-    _combo(std::make_shared<Combobox>())
+    _combo(std::make_shared<Combobox>(Combobox::OnSelect_t{[this](ParmName name) {
+        _ref = settings_map()[name];
+        update();
+    }}))
 {}
 
 void LabeledCombobox::update() {
@@ -72,6 +75,8 @@ void LabeledField::set_description(std::string desc) {
 
 std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohmann::json& obj, bool invert) {
     if(parm.empty()) {
+        //! this will instantiate the combobox for choosing settings
+        //! so we cant specify a reference - this is for _all_ parameters.
         auto ptr = std::make_unique<LabeledCombobox>("", obj);
         return ptr;
     }

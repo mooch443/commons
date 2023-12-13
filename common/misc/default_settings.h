@@ -40,9 +40,9 @@ namespace cmn {
                 if(!config.has(name))
                     config.insert(name, default_value);
                 else
-                    config.get<T>(name) = default_value;
+                    config[name] = default_value;
                 
-                return config.get<T>(name);
+                return config[name].toProperty<T>();
             }
             
             template<ParameterCategory category, typename T>
@@ -55,9 +55,9 @@ namespace cmn {
                 if(!config.has(name))
                     config.insert(name, default_value);
                 else
-                    config.get<T>(name) = default_value;
+                    config[name] = T(default_value);
                 
-                return config.get<T>(name);
+                return config[name].toProperty<T>();
             }
             
             template<ParameterCategory category, typename T>
@@ -70,9 +70,9 @@ namespace cmn {
                 if(!config.has(name))
                     config.insert(name, default_value);
                 else
-                    config.get<T>(name) = default_value;
+                    config[name] = T(default_value);
                 
-                return config.get<T>(name);
+                return config[name].toProperty<T>();
             }
         };
         

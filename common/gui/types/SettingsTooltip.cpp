@@ -37,7 +37,7 @@ void SettingsTooltip::update() {
             str += "<i>(non-default)</i>\n";
         
         auto ref = GlobalSettings::get(_param);
-        str += "type: " +settings::htmlify(ref.get().type_name()) + "\n";
+        str += "type: " +settings::htmlify(ref.valid() ? (std::string)ref.type_name() : "<invalid>") + "\n";
         if(GlobalSettings::defaults().has(_param)) {
             auto ref = GlobalSettings::defaults().operator[](_param);
             str += "default: " +settings::htmlify(ref.get().valueString()) + "\n";

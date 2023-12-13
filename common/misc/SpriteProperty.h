@@ -73,7 +73,7 @@ namespace cmn {
         class PropertyType {
         protected:
             const std::string _name; ///< Name of the property.
-            bool _valid = false; ///< Flag indicating if the property is valid.
+            const std::string _type_name; ///< Name of the type of the property
             
             // Mutex to ensure thread safety for concurrent access.
             // NOTE: Currently, the mutex is defined but not used in any member functions.
@@ -86,7 +86,6 @@ namespace cmn {
             
             // Lambda functions to allow custom behaviors. These can be overridden as needed.
             std::function<void(const std::string&)> _set_value_from_string; ///< Setter function from string.
-            std::function<std::string()> _type_name = [](){return "unknown";}; ///< Getter for the type name.
             std::function<nlohmann::json()> _to_json = [](){return nlohmann::json();}; ///< Function to serialize property to JSON.
 
             // More lambda functions for enum type properties.
@@ -98,17 +97,15 @@ namespace cmn {
             
         public:
             // Constructors
-            PropertyType() : PropertyType("<invalid>") {
-                _valid = false;
-            }
+            PropertyType(const std::string& type_name) : PropertyType(type_name, "<invalid>") {}
 
             /**
              * Primary constructor for the PropertyType.
              * @param map Pointer to associated map object.
              * @param name Name of the property.
              */
-            PropertyType(const std::string_view& name)
-                : _name(name), _valid(true)
+            PropertyType(const std::string& type_name, const std::string_view& name)
+                : _name(name), _type_name(type_name)
             {
                 // Set default behaviors for lambda functions.
                 _set_value_from_string = [this](const std::string&){
@@ -124,7 +121,7 @@ namespace cmn {
             
             virtual ~PropertyType() = default; ///< Default virtual destructor.
             
-            virtual void copy_to(Map* other) const; ///< Copy function to duplicate this property to another map.
+            virtual void copy_to(Map* other) const = 0; ///< Copy function to duplicate this property to another map.
             
             /**
              * Registers a new callback function and returns its unique ID.
@@ -197,16 +194,10 @@ namespace cmn {
             const std::string& name() const { return _name; }
 
             /**
-             * Sets the validity state of the property.
-             * @param valid The validity state to set.
-             */
-            void valid(bool valid) { _valid = valid; }
-
-            /**
              * Checks the validity state of the property.
              * @return True if valid, false otherwise.
              */
-            bool valid() const { return _valid; }
+            virtual bool valid() const = 0;
             
             /**
              * Serializes the property to a JSON object.
@@ -219,13 +210,18 @@ namespace cmn {
             template<typename T>
             Property<T>& toProperty() {
                 Property<T> *tmp = dynamic_cast<Property<T>*>(this);
-                return tmp ? *tmp : Property<T>::InvalidProp;
+                if(not tmp) {
+                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", cmn::type_name<T>());
+                }
+                return *tmp;
             }
 
             template<typename T>
             const Property<T>& toProperty() const {
                 const Property<T> *tmp = dynamic_cast<const Property<T>*>(this);
-                return tmp ? *tmp : Property<T>::InvalidProp;
+                if(not tmp)
+                    throw PropertyException("Cannot cast "+(std::string)type_name()+" to "+ (std::string)cmn::type_name<T>());
+                return *tmp;
             }
             
             template<typename T>
@@ -269,8 +265,8 @@ namespace cmn {
              * Retrieves the type name of the property.
              * @return The type name.
              */
-            virtual const std::string type_name() const {
-                return _type_name();
+            virtual std::string_view type_name() const {
+                return _type_name;
             }
             
             /**
@@ -288,7 +284,7 @@ namespace cmn {
              * @return A string representing the property.
              */
             std::string toStr() const {
-                return "Property<"+type_name()+">"
+                return "Property<"+(std::string)type_name()+">"
                      + "('" + _name + "'"
                      + ")";
             }
@@ -309,21 +305,17 @@ namespace cmn {
 
         template<class ValueType>
         class Property : public PropertyType {
-        public:
-            static Property<ValueType> InvalidProp;
-            
         protected:
-            ValueType _value;
+            std::optional<ValueType> _value;
             
         public:
-            Property() 
-                : PropertyType(), _value(ValueType())
+            Property() : PropertyType(Meta::name<ValueType>())
             {
                 init();
             }
             
             Property(const std::string_view& name, const ValueType& v = ValueType())
-                : PropertyType(name), _value(v)
+                : PropertyType(Meta::name<ValueType>(), name), _value(v)
             {
                 init();
             }
@@ -335,9 +327,10 @@ namespace cmn {
                     *this = Meta::fromStr<ValueType>(str);
                 };
                 
-                _type_name = [](){ return Meta::name<ValueType>(); };
                 _to_json = [this]() {
-                    return cvt2json(_value);
+                    if(not _value.has_value())
+                        throw PropertyException("No value stored in "+name()+".");
+                    return cvt2json(value());
                 };
                 
                 _is_enum = cmn::is_enum<ValueType>::value;
@@ -361,12 +354,14 @@ namespace cmn {
             
             template<typename K>
             bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
-                return other == _value;
+                return _value.has_value() && other == _value.value();
             }
             
             template<typename K>
             bool equals(const K& other, const typename std::enable_if< std::is_same<cv::Mat, K>::value, K >::type* = NULL) const {
-                return cv::countNonZero(_value != other) == 0;
+                if(not _value.has_value())
+                    return false;
+                return cv::countNonZero(value() != other) == 0;
             }
             
             /*template<typename K>
@@ -375,8 +370,11 @@ namespace cmn {
             }*/
             
             bool operator==(const PropertyType& other) const override {
+                if(not valid() && not other.valid())
+                    return true;
+                
 				const Property& other_ = (const Property<ValueType>&) other;
-                return other_.valid() && equals(other_._value);
+                return other_.valid() && equals(other_.value());
             }
             
             void operator=(const Reference& other);
@@ -387,9 +385,13 @@ namespace cmn {
             void operator=(const ValueType& v) { value(v); }
             void value(const ValueType& v);
             
+            bool valid() const override {
+                return _value.has_value();
+            }
+            
             operator const ValueType() const { return value(); }
-            const ValueType& value() const { return _value; }
-            ValueType& value() { return _value; }
+            const ValueType& value() const { return _value.value(); }
+            ValueType& value() { return _value.value(); }
             std::string valueString() const override { return Meta::toStr<ValueType>(value()); }
             
             std::string toStr() const {
@@ -407,9 +409,6 @@ namespace cmn {
         };
     
     Property(const char*) -> Property<std::string>;
-
-    template<typename T>
-    Property<T> Property<T>::InvalidProp = Property<T>();
     }
 }
             

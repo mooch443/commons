@@ -192,7 +192,7 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
     {
         gui::metal::current_instance = this;
         frameBoundarySemaphore() = dispatch_semaphore_create(1);
-        _gui_macos_blur = SETTING(gui_macos_blur).value<bool>();
+        _gui_macos_blur = GlobalSettings::has("gui_macos_blur") ? SETTING(gui_macos_blur).value<bool>() : false;
         
         GlobalSettings::map().register_callbacks({"gui_macos_blur"}, [this](std::string_view name) {
             _gui_macos_blur = GlobalSettings::map().at(name).value<bool>();

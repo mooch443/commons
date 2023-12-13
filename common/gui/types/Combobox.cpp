@@ -12,6 +12,8 @@ void Combobox::init() {
         auto name = item.name();
         if(settings_map().has(name)) {
             set(ParmName{name});
+            if(_settings.on_select)
+                _settings.on_select(ParmName{name});
         }
         _dropdown->set_opened(false);
     });
@@ -49,6 +51,10 @@ void Combobox::update() {
 void Combobox::set(ListDims_t dims) {
     if(_dropdown && _dropdown->list())
         _dropdown->list()->set(dims);
+}
+
+void Combobox::set(Combobox::OnSelect_t on_select) {
+    _settings.on_select = on_select;
 }
 
 void Combobox::set(LabelDims_t dims) {
@@ -157,6 +163,10 @@ void Combobox::set(attr::HighlightClr clr) {
             _value->set(clr);
         set_content_changed(true);
     }
+}
+
+ParmName Combobox::parameter() const {
+    return ParmName(_settings.param);
 }
 
 void Combobox::set_bounds(const Bounds& bds) {

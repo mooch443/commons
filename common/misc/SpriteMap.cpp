@@ -14,8 +14,10 @@ Map::Map() {
 }
 
 Map::Map(const Map& other) {
-    _props = other._props;
     _print_by_default = other._print_by_default;
+    for(auto &[name, ptr] : other._props) {
+        ptr->copy_to(this);
+    }
 }
 
 Map::Map(Map&& other) 
@@ -24,8 +26,10 @@ Map::Map(Map&& other)
 { }
 
 Map& Map::operator=(const Map& other) {
-	_props = other._props;
     _print_by_default = other._print_by_default;
+    for(auto &[name, ptr] : other._props) {
+        ptr->copy_to(this);
+    }
 	return *this;
 }
 
@@ -51,6 +55,8 @@ Map::~Map() {
     // -------- REFERENCE
     
     std::string Reference::toStr() const {
+        if(not _type)
+            return "null";
         return _type->toStr();
     }
     
@@ -61,8 +67,29 @@ Map::~Map() {
     bool Reference::operator!=(const PropertyType& other) const {
         return get().operator!=(other);
     }
+
+bool Reference::valid() const {
+    return _type && _type->valid();
+}
+
+bool ConstReference::valid() const {
+    return _type && _type->valid();
+}
+
+std::string_view Reference::type_name() const {
+    if(not _type)
+        throw InvalidArgumentException("Reference to an invalid option.");
+    return _type->type_name();
+}
+std::string_view ConstReference::type_name() const {
+    if(not _type)
+        throw InvalidArgumentException("Reference to an invalid option.");
+    return _type->type_name();
+}
     
     std::string ConstReference::toStr() const {
+        if(not _type)
+            return "null";
         return _type->toStr();
     }
     

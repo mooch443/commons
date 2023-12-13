@@ -13,6 +13,8 @@ struct LabeledField;
     
 class Combobox : public Entangled {
 public:
+    ATTRIBUTE_ALIAS(OnSelect_t, std::function<void(ParmName)>)
+    
     struct Settings {
         Bounds bounds = Bounds(0, 0, 100, 33);
         FillClr fill_clr{Drawable::accent_color};
@@ -26,6 +28,8 @@ public:
         attr::Postfix postfix;
         attr::Prefix prefix;
         attr::Str content;
+        
+        OnSelect_t on_select;
     };
     
 protected:
@@ -51,6 +55,7 @@ public:
 public:
     using Entangled::set;
     
+    void set(OnSelect_t);
     void set(attr::Font font);
     void set(attr::FillClr clr) override;
     void set(attr::LineClr clr) override;
@@ -68,6 +73,7 @@ public:
             this->on_click([on_click](auto) { on_click(); });
     }
     void set(ParmName name);
+    ParmName parameter() const;
     
     void set_bounds(const Bounds& bds) override;
     void set_pos(const Vec2& p) override;

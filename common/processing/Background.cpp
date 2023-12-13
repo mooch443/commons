@@ -31,7 +31,7 @@ namespace cmn {
 
     void Background::update_callback() {
 #ifndef NDEBUG
-        if(!SETTING(quiet))
+        if(GlobalSettings::is_runtime_quiet())
             print("Updating static background difference method.");
 #endif
     }
