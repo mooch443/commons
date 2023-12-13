@@ -571,7 +571,7 @@ void Reference::operator=(const T& value) {
                     {
                         print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
                     } else {
-                        print(no_quotes(name()), "<", no_quotes(type_name<T>()), "> updated.");
+                        print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
                     }
                 }
                 //if(_do_print)
