@@ -35,7 +35,7 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
         FormatError("Failed to find stream information");
         return false;
     }
-
+    
     // Find the first video stream
     for (unsigned i = 0; i < formatContext->nb_streams; i++) {
         if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -49,6 +49,14 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
         return false;
     }
 
+    // Calculate duration in seconds
+    AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
+
+    std::cout << "Duration: " << durationInSeconds << " seconds" << std::endl;
+    std::cout << "nb_frames: " << videoStream->nb_frames << std::endl;
+    std::cout << "av_q2d(videoStream->time_base): " << av_q2d(videoStream->time_base)<< " " << videoStream->time_base.num << "/" << videoStream->time_base.den << std::endl;
+    
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
         print("HW type: ", hw_type);
@@ -149,9 +157,32 @@ bool FfmpegVideoCapture::is_open() const {
     return formatContext != nullptr;
 }
 
+void FfmpegVideoCapture::recovered_error(const std::string_view& str) const {
+    if(not _recovered_errors.contains(str))
+        _recovered_errors.insert(str);
+}
+
 int64_t FfmpegVideoCapture::length() const {
     if (!is_open()) return -1;
-    return formatContext->streams[videoStreamIndex]->nb_frames;
+    
+    AVStream *videoStream = videoStreamIndex < int64_t(formatContext->nb_streams)
+        ? formatContext->streams[videoStreamIndex]
+        : nullptr;
+    if(not videoStream)
+        return 0;
+    
+    int64_t N = formatContext->streams[videoStreamIndex]->nb_frames;
+    if(N <= 0) {
+        static constexpr std::string_view msg{"The video-stream does not provide frame information."};
+        recovered_error(msg);
+        
+        double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
+        auto fr = frame_rate();
+        if(fr <= 0)
+            return -1;
+        return ceil(durationInSeconds * float(fr));
+    }
+    return N;
 }
 
 Size2 FfmpegVideoCapture::dimensions() const {
@@ -164,6 +195,34 @@ Size2 FfmpegVideoCapture::dimensions() const {
 
 int FfmpegVideoCapture::frame_rate() const {
     if (!is_open()) return -1;
+    if(codecContext->framerate.num <= 0) {
+        static constexpr std::string_view msg{"The video-stream does not provide frame-rate information."};
+        
+        if(formatContext
+           && formatContext->streams[ videoStreamIndex ]->avg_frame_rate.num > 0)
+        {
+            //1298000/103809
+            auto fr = static_cast<int>(float(formatContext->streams[ videoStreamIndex ]->avg_frame_rate.num) / formatContext->streams[ videoStreamIndex ]->avg_frame_rate.den);
+            if(fr > 0) {
+                recovered_error(msg);
+                return fr;
+            }
+        }
+        
+        if(formatContext
+           && formatContext->streams[ videoStreamIndex ]->r_frame_rate.num > 0)
+        {
+            //1298000/103809
+            auto fr = static_cast<int>(float(formatContext->streams[ videoStreamIndex ]->r_frame_rate.num) / formatContext->streams[ videoStreamIndex ]->r_frame_rate.den);
+            if(fr > 0) {
+                recovered_error(msg);
+                return fr;
+            }
+        }
+        
+        //! cannot retrieve frame rate
+        return -1;
+    }
     return codecContext->framerate.num / codecContext->framerate.den;
 }
 

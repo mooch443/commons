@@ -52,6 +52,10 @@ public:
     public:
         File(File&&);
         
+        std::set<std::string_view> recovered_errors() const {
+            return not _video ? std::set<std::string_view>{} : _video->recovered_errors();
+        }
+        
     public:
         ~File();
         auto length() const { return _length; }
@@ -132,6 +136,15 @@ public:
     virtual void generate_average(cv::Mat &average, uint64_t frameIndex, std::function<void(float)>&& callback = nullptr) override;
     
     virtual std::string toStr() const;
+    
+    std::set<std::string_view> recovered_errors() const {
+        for(auto file : _files_in_seq) {
+            if(file && file->type() == File::Type::VIDEO) {
+                return file->recovered_errors();
+            }
+        }
+        return {};
+    }
 };
 
 #endif

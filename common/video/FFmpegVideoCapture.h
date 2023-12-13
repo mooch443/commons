@@ -19,11 +19,13 @@ class FfmpegVideoCapture {
     //int _channels{-1};
     std::unique_ptr<cv::VideoCapture> _capture;
     std::map<int64_t, int64_t> _keyframes;
+    mutable std::set<std::string_view> _recovered_errors;
     
 public:
     FfmpegVideoCapture(const std::string& filePath);
     ~FfmpegVideoCapture();
 
+    std::set<std::string_view> recovered_errors() const { return _recovered_errors; }
     bool is_open() const;
     int64_t length() const;
     Size2 dimensions() const;
@@ -68,6 +70,9 @@ private:
 
     template<typename Mat>
     bool _read(Mat& mat);
+    
+private:
+    void recovered_error(const std::string_view&) const;
 };
 
 } // namespace cmn
