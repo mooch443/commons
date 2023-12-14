@@ -2,6 +2,7 @@
 #include <gui/DrawSFBase.h>
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
+#include <gui/types/StaticText.h>
 
 #if __has_include ( <GLFW/glfw3.h> )
     #include <GLFW/glfw3.h>
@@ -174,7 +175,12 @@ void Textfield::init() {
         }
     });
 }
-    
+
+Textfield::~Textfield() {
+    if(_placeholder)
+        delete _placeholder;
+}
+
     void Textfield::set_text(const std::string &text) {
         if(text == _settings.text)
             return;
@@ -437,6 +443,20 @@ void Textfield::set_text_color(const Color &c) {
     set_content_changed(true);
 }
 
+void Textfield::set_font(Font font) {
+    font.align = Align::Left;
+    
+    if(_settings.font == font)
+        return;
+    
+    _settings.font = font;
+    _text_display.set_font(font);
+    if(_placeholder)
+        _placeholder->set(font);
+    
+    set_content_changed(true);
+}
+
 void Textfield::set_fill_color(const Color &c) {
     if(c == _settings.fill_color)
         return;
@@ -666,11 +686,11 @@ void Textfield::set_postfix(const std::string &p) {
     
     void Textfield::set_placeholder(const std::string &text) {
         if(!text.empty()) {
-            if(_placeholder && _placeholder->txt() == text)
+            if(_placeholder && _placeholder->text() == text)
                 return;
             
             if(!_placeholder)
-                _placeholder = new Text(Str{text}, TextClr{Gray}, _text_display.font());
+                _placeholder = new StaticText(Str{text}, TextClr{Gray}, _settings.font, Margins{0,0,0,0});
             else
                 _placeholder->set_txt(text);
             

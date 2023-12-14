@@ -405,4 +405,13 @@ namespace gui {
         Entangled::set_bounds(size);
         set_content_changed(true);
     }
+
+void List::set(LabelColor_t clr) {
+    set_accent_color(clr);
+}
+
+void List::set(LabelBorderColor_t clr) {
+    set(LineClr{(Color)clr});
+}
+
 }

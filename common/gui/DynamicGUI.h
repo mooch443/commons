@@ -615,7 +615,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
 }
 
 
-tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path);
+tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const std::string& text);
 
 //! A simple struct that manages properties like the path to where the dyn gui is loaded from,
 //! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
@@ -628,6 +628,7 @@ struct DynamicGUI {
     std::vector<Layout::Ptr> objects;
     Timer last_update;
     bool first_load{true};
+    std::string previous;
     
     void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     

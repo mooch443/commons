@@ -57,6 +57,10 @@ LabeledField::~LabeledField() {
         settings_map().unregister_callbacks(std::move(_callback_id));
 }
 
+std::string LabeledField::toStr() const {
+    return "Field<"+_ref.toStr()+">";
+}
+
 LabeledCombobox::LabeledCombobox(const std::string& name, const nlohmann::json&)
     : LabeledField(name),
     _combo(std::make_shared<Combobox>(Combobox::OnSelect_t{[this](ParmName name) {
@@ -166,6 +170,14 @@ LabeledTextField::LabeledTextField(const std::string& name, const nlohmann::json
     
     update();
     _text_field->on_text_changed([this](){
+        try {
+            //_ref.get().set_value_from_string(_text_field->text());
+            
+        } catch(...) {
+            FormatExcept("Cannot convert ", _text_field->text(), " to ", _ref.get().type_name());
+        }
+    });
+    _text_field->on_enter([this](){
         try {
             _ref.get().set_value_from_string(_text_field->text());
             

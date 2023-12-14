@@ -38,6 +38,8 @@ struct LabeledField {
     LabeledField(const std::string& name);
     virtual ~LabeledField();
     
+    static std::string class_name() { return "Field"; }
+    std::string toStr() const;
     virtual void add_to(std::vector<Layout::Ptr>& v) {
         assert(_text != nullptr);
         if(_text->txt().empty())

@@ -71,6 +71,7 @@ public:
     void set(ListFillClr_t clr);
     void set(LabelColor_t clr);
     void set(LabelBorderColor_t clr);
+    void set(Placeholder_t);
     
     void set(std::function<void()> on_click) {
         if(on_click)

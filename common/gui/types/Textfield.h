@@ -11,6 +11,8 @@ class NumericTextfield;
 template<typename T>
 class MetaTextfield;
 
+class StaticText;
+
 class Textfield : public Entangled {
 public:
     using CheckTextFn = std::function<bool(std::string& text, char inserted, size_t at)>;
@@ -33,7 +35,7 @@ private:
     long_t _cursor_position;
     Rect _cursor = Rect(Box(0,0,2,30));
     Rect _selection_rect = Rect(FillClr{DarkCyan.alpha(100)});
-    Text *_placeholder{nullptr};
+    StaticText *_placeholder{nullptr};
     
     size_t _text_offset{0};
     size_t _display_text_len{0};
@@ -76,6 +78,8 @@ public:
     
     void init();
     
+    virtual ~Textfield();
+    
 public:
     using Entangled::set;
     void set(const Str& text) { set_text(text); }
@@ -89,6 +93,7 @@ public:
     void set(OnEnter_t enter) { on_enter(enter); }
     void set(OnTab_t tab) { on_tab(tab); }
     void set(OnTextChanged_t change) { on_text_changed(change); }
+    void set(Placeholder_t p) { set_placeholder(p); }
     
 public:
     void set_text_color(const Color& c);
@@ -122,19 +127,7 @@ public:
     
     void set_placeholder(const std::string& text);
     void set_text(const std::string& text);
-    void set_font(Font font) {
-        font.align = Align::Left;
-        
-        if(_settings.font == font)
-            return;
-        
-        _settings.font = font;
-        _text_display.set_font(font);
-        if(_placeholder)
-            _placeholder->set_font(font);
-        
-        set_content_changed(true);
-    }
+    void set_font(Font font);
     void set_read_only(bool ro) {
         if(_settings.read_only == ro)
             return;

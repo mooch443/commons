@@ -149,6 +149,10 @@ void Combobox::set(attr::Str content) {
         set_content_changed(true);
     }
 }
+void Combobox::set(Placeholder_t p) {
+    if(_dropdown && _dropdown->textfield())
+        _dropdown->textfield()->set(p);
+}
 void Combobox::set(attr::Prefix prefix) {
     if(_settings.prefix != prefix) {
         _settings.prefix = prefix;

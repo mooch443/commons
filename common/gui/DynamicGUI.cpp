@@ -822,55 +822,42 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
     }
 }
 
-tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const file::Path& path){
-    static Timer timer;
-    if(timer.elapsed() < 0.15) {
-        return tl::unexpected("Have to wait longer to reload.");
-    }
-    timer.reset();
-    
-    auto text = path.read_file();
-    static std::string previous;
-    if(previous != text) {
-        previous = text;
-        DefaultSettings defaults;
+tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const std::string& text){
+    DefaultSettings defaults;
+    try {
+        auto obj = nlohmann::json::parse(text);
+        State state;
         try {
-            auto obj = nlohmann::json::parse(text);
-            State state;
-            try {
-                if(obj.contains("defaults") && obj["defaults"].is_object()) {
-                    auto d = obj["defaults"];
-                    defaults.font = parse_font(d, defaults.font);
-                    if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
-                    if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
-                    if(d.contains("line")) defaults.line = parse_color(d["line"]);
-                    if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
-                    if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
-                    if(d.contains("pad"))
-                        defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
-                    
-                    if(d.contains("vars") && d["vars"].is_object()) {
-                        for(auto &[name, value] : d["vars"].items()) {
-                            defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(value.dump())](const Context& context, State& state) -> std::string {
-                                return _parse_text(value, context, state);
-                            }));
-                        }
+            if(obj.contains("defaults") && obj["defaults"].is_object()) {
+                auto d = obj["defaults"];
+                defaults.font = parse_font(d, defaults.font);
+                if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
+                if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
+                if(d.contains("line")) defaults.line = parse_color(d["line"]);
+                if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
+                if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
+                if(d.contains("pad"))
+                    defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
+                
+                if(d.contains("vars") && d["vars"].is_object()) {
+                    for(auto &[name, value] : d["vars"].items()) {
+                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(value.dump())](const Context& context, State& state) -> std::string {
+                            return _parse_text(value, context, state);
+                        }));
                     }
                 }
-            } catch(const std::exception& ex) {
-                //FormatExcept("Cannot parse layout due to: ", ex.what());
-                //return tl::unexpected(ex.what());
-                throw InvalidSyntaxException(ex.what());
             }
-            return std::make_tuple(defaults, obj["objects"]);
-            
-        } catch(const nlohmann::json::exception& error) {
-            throw InvalidSyntaxException(error.what());
-            //return tl::unexpected(error.what());
+        } catch(const std::exception& ex) {
+            //FormatExcept("Cannot parse layout due to: ", ex.what());
+            //return tl::unexpected(ex.what());
+            throw InvalidSyntaxException(ex.what());
         }
+        return std::make_tuple(defaults, obj["objects"]);
         
-    } else
-        return tl::unexpected("Nothing changed.");
+    } catch(const nlohmann::json::exception& error) {
+        throw InvalidSyntaxException(error.what());
+        //return tl::unexpected(error.what());
+    }
 }
 
 bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state) {
@@ -1004,7 +991,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                     auto &f = state._text_fields.at(hash);
                     auto str = f->_ref.get().valueString();
                     VarCache &cache = state._var_cache[hash];
-                    if(cache._var != var || str != cache._value)
+                    if(cache._var != var /*|| str != cache._value*/)
                     {
                         print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
                         
@@ -1371,7 +1358,13 @@ void DynamicGUI::reload() {
             file::cd(app);
         }
         
-        auto result = load(path);
+        auto text = path.read_file();
+        if(previous != text) {
+            previous = text;
+        } else
+            return;
+            
+        auto result = load(text);
         if(result) {
             state._text_fields.clear();
             
@@ -1491,6 +1484,7 @@ DynamicGUI::operator bool() const {
 void DynamicGUI::clear() {
     graph = nullptr;
     objects.clear();
+    previous.clear();
     state = {};
 }
 

@@ -5,6 +5,7 @@
 #include <gui/types/Basic.h>
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
+#include <gui/ListAttributes.h>
 
 namespace gui {
     class List : public Entangled {
@@ -79,6 +80,8 @@ namespace gui {
                 set_content_changed(true);
             }
         }
+        void set(LabelColor_t);
+        void set(LabelBorderColor_t);
         void set_size(const Size2&) override;
         void set_bounds(const Bounds&) override;
         

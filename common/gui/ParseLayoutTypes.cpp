@@ -516,9 +516,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ref->set(font);
         ref->set(attr::FillClr{fill});
         ref->set(attr::LineClr{line});
+        
+        Placeholder_t placeholder{ get(std::string("Please select..."), "placeholder") };
         if(scale != Vec2(1)) ref->set(attr::Scale{scale});
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
+        
+        ref->set(placeholder);
         
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
         if(max_size != Vec2(0)) ref->set(attr::SizeLimit{max_size});
@@ -528,27 +532,28 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         if (obj.contains("label")) {
             auto p = obj["label"];
             if (p.is_object()) {
-                auto list = ref->representative().to<Combobox>();
-                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "label_")};
-                list->set(line_clr);
-                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "label_")};
-                list->set(fill_clr);
+                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
+                ref->set(line_clr);
+                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
+                ref->set(fill_clr);
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
-                list->set(label_font);
+                ref->set(label_font);
             }
         }
         
         if (obj.contains("list")) {
+            ref->set(LabelColor_t{fill});
+            ref->set(LabelBorderColor_t{line});
+            
             auto p = obj["list"];
             if (p.is_object()) {
-                auto list = ref->representative().to<Combobox>();
-                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "list_")};
-                list->set(line_clr);
-                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "list_")};
-                list->set(fill_clr);
+                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
+                ref->set(line_clr);
+                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
+                ref->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
-                list->set(list_dims);
+                ref->set(list_dims);
             }
         }
         
@@ -806,9 +811,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         if (obj.contains("label")) {
             auto p = obj["label"];
             if (p.is_object()) {
-                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "label_")};
+                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 list->set(line_clr);
-                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "label_")};
+                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 list->set(fill_clr);
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
@@ -819,9 +824,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         if (obj.contains("list")) {
             auto p = obj["list"];
             if (p.is_object()) {
-                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,100), "line", hash, "list_")};
+                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
                 list->set(line_clr);
-                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,100), "fill", hash, "list_")};
+                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
                 list->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
                 list->set(list_dims);
