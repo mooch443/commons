@@ -1,8 +1,16 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <misc/format.h>
 
 namespace cmn {
+
+template <typename T>
+concept ParserAvailable = requires(const T& t) {
+    { cmn::ParseValue<>::parse_value<T>(t) }
+        -> std::same_as<std::string>;
+};
+
 namespace sprite {
     
 template <typename T>
@@ -417,10 +425,7 @@ concept Iterable = requires(T obj) {
                 auto ptr = Store(property_);
                 if (print_by_default()) {
                     ptr->set_do_print(true);
-                    if constexpr(requires {
-                        { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
-                            -> std::template convertible_to<std::string>;
-                        })
+                    if constexpr(ParserAvailable<T>)
                     {
                         print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", property_->value());
                     } else
@@ -564,10 +569,7 @@ void Reference::operator=(const T& value) {
                 guard.unlock();
                 
                 if(_do_print) {
-                    if constexpr(requires {
-                        { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
-                            -> std::template convertible_to<std::string>;
-                        })
+                    if constexpr(ParserAvailable<T>)
                     {
                         print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
                     } else {
