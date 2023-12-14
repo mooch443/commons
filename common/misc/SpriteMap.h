@@ -419,7 +419,7 @@ concept Iterable = requires(T obj) {
                     ptr->set_do_print(true);
                     if constexpr(requires {
                         { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
-                            -> std::template same_as<std::string>;
+                            -> std::template convertible_to<std::string>;
                         })
                     {
                         print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", property_->value());
@@ -566,7 +566,7 @@ void Reference::operator=(const T& value) {
                 if(_do_print) {
                     if constexpr(requires {
                         { ParseValue<FormatterType::UNIX>::parse_value<T>(std::declval<const T&>()) }
-                            -> std::template same_as<std::string>;
+                            -> std::template convertible_to<std::string>;
                         })
                     {
                         print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
