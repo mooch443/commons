@@ -3,6 +3,7 @@
 #include <gui/ParseLayoutTypes.h>
 #include <gui/types/ErrorElement.h>
 #include <misc/default_settings.h>
+#include <gui/ParseLayoutTypes.h>
 
 namespace gui {
 class PathArrayView : public VerticalLayout {
@@ -77,11 +78,17 @@ void LabeledField::set_description(std::string desc) {
     _text->set_txt(desc);
 }
 
-std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohmann::json& obj, bool invert) {
+std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, bool invert) {
+    State state;
+    LayoutContext c({}, state, {}, {});
+    return Make(parm, c, invert);
+}
+
+std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const LayoutContext& context, bool invert) {
     if(parm.empty()) {
         //! this will instantiate the combobox for choosing settings
         //! so we cant specify a reference - this is for _all_ parameters.
-        auto ptr = std::make_unique<LabeledCombobox>("", obj);
+        auto ptr = std::make_unique<LabeledCombobox>("", context.obj);
         return ptr;
     }
     
@@ -94,27 +101,27 @@ std::unique_ptr<LabeledField> LabeledField::Make(std::string parm, const nlohman
         ptr = std::make_unique<LabeledCheckbox>(parm, parm, obj,invert);
         
     } else*/ if(ref.is_type<std::string>()) {
-        ptr = std::make_unique<LabeledTextField>(parm, obj);
+        ptr = std::make_unique<LabeledTextField>(parm, context.obj);
         ptr->representative().to<Textfield>()->set_text(ref.value<std::string>());
     } else if(ref.is_type<int>() || ref.is_type<float>() || ref.is_type<double>()
               || ref.is_type<uint8_t>() || ref.is_type<uint16_t>()
               || ref.is_type<uint64_t>()
               || ref.is_type<timestamp_t>())
     {
-        ptr = std::make_unique<LabeledTextField>(parm, obj);
+        ptr = std::make_unique<LabeledTextField>(parm, context.obj);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
         
     } else if(ref.is_type<file::Path>()) {
         ptr = std::make_unique<LabeledPath>(parm, parm, ref.value<file::Path>());
         
     } else if(ref.is_type<file::PathArray>()) {
-        ptr = std::make_unique<LabeledPathArray>(parm, obj);
+        ptr = std::make_unique<LabeledPathArray>(parm, &context);
         
     } else if(ref.is_type<bool>() || ref.get().is_enum()) {
-        ptr = std::make_unique<LabeledList>(parm, obj, invert);
+        ptr = std::make_unique<LabeledList>(parm, context.obj, invert);
         
     } else {
-        ptr = std::make_unique<LabeledTextField>(parm, obj);
+        ptr = std::make_unique<LabeledTextField>(parm, context.obj);
         ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
         //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
     }
@@ -176,6 +183,15 @@ LabeledTextField::LabeledTextField(const std::string& name, const nlohmann::json
         } catch(...) {
             FormatExcept("Cannot convert ", _text_field->text(), " to ", _ref.get().type_name());
         }
+    });
+    _text_field->add_event_handler(EventType::SELECT, [this](Event e){
+        if(not e.select.selected)
+            try {
+                _ref.get().set_value_from_string(_text_field->text());
+                
+            } catch(...) {
+                FormatExcept("Cannot convert ", _text_field->text(), " to ", _ref.get().type_name());
+            }
     });
     _text_field->on_enter([this](){
         try {
@@ -560,7 +576,7 @@ void LabeledPath::update() {
     }
 }
 
-LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json& obj)
+LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext* context)
     : LabeledField(name)
 {
     // Initialize Dropdown, attach handlers for events
@@ -643,8 +659,10 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
     view->control = _dropdown.get();
     _layout->set_policy(VerticalLayout::Policy::LEFT);
     
-    if(obj.contains("preview") && obj["preview"].is_object()) {
-        auto &text = obj["preview"];
+    if(context->obj.contains("preview")
+       && context->obj["preview"].is_object())
+    {
+        auto &text = context->obj["preview"];
         if(text.contains("font")) {
             Font font = parse_font(text);
             _staticText->set(font);
@@ -659,7 +677,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const nlohmann::json
         }
         if(text.contains("max_size")) {
             try {
-                auto max_size = Meta::fromStr<Size2>(text["max_size"].dump());
+                auto max_size = dyn::get(context->state, text, Size2(-1,-1), "max_size", context->hash, "preview_");
                 _staticText->set(SizeLimit{max_size});
             } catch(const std::exception& ex) {
                 FormatExcept("Invalid format for max_size: ", ex.what());

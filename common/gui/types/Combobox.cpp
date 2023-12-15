@@ -1,5 +1,6 @@
 #include "Combobox.h"
 #include <gui/LabeledField.h>
+#include <gui/ParseLayoutTypes.h>
 
 namespace gui {
 using namespace dyn;
@@ -65,7 +66,8 @@ void Combobox::set(LabelDims_t dims) {
 void Combobox::set(ParmName name) {
     if(name != _settings.param) {
         _settings.param = name;
-        _value = LabeledField::Make(name, nlohmann::json());
+        
+        _value = LabeledField::Make(name);
         if(not dynamic_cast<const LabeledCheckbox*>(_value.get())) {
             _value->set_description("");
         }
@@ -76,6 +78,14 @@ void Combobox::set(ParmName name) {
         _value->set(_settings.font);
         _value->set(_settings.highlight);
         _value->set(_settings.sizeLimit);
+        if(_dropdown && _dropdown->list()) {
+            _value->set(ListLineClr_t{_dropdown->list()->list_line_clr()});
+            _value->set(ListFillClr_t{_dropdown->list()->list_fill_clr()});
+        }
+        _value->set(LabelColor_t{(Color)_settings.fill_clr});
+        _value->set(LabelBorderColor_t{(Color)_settings.line_clr});
+        _value->set(ListDims_t{_settings.bounds.width * 0.65f, 300});
+        _value->set(LabelDims_t{_settings.bounds.width * 0.65f, _settings.bounds.height});
         _value->set(_settings.postfix);
         _value->set(_settings.prefix);
         _value->set(attr::Size{
@@ -128,18 +138,26 @@ void Combobox::set(attr::TextClr clr) {
 void Combobox::set(ListLineClr_t clr) {
     if(_dropdown && _dropdown->list())
         _dropdown->list()->set(clr);
+    if(_value)
+        _value->set(clr);
 }
 void Combobox::set(ListFillClr_t clr) {
     if(_dropdown && _dropdown->list())
         _dropdown->list()->set(clr);
+    if(_value)
+        _value->set(clr);
 }
 void Combobox::set(LabelBorderColor_t clr) {
     if(_dropdown && _dropdown->list())
         _dropdown->list()->set(clr);
+    if(_value)
+        _value->set(clr);
 }
 void Combobox::set(LabelColor_t clr) {
     if(_dropdown && _dropdown->list())
         _dropdown->list()->set(clr);
+    if(_value)
+        _value->set(clr);
 }
 void Combobox::set(attr::Str content) {
     if(_settings.content != content) {

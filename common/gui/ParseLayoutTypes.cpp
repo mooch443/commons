@@ -48,14 +48,16 @@ Image::Ptr load_image(const file::Path& path) {
 LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
  : obj(obj), state(state), context(context), _defaults(defaults)
 {
-    if(not obj.contains("type"))
-        throw std::invalid_argument("Structure does not contain type information");
-    
-    auto type_name = utils::lowercase(obj["type"].get<std::string>());
-    if (not LayoutType::has(type_name))
+    if(not obj.contains("type")) {
+        //throw std::invalid_argument("Structure does not contain type information");
         type = LayoutType::unknown;
-    else
-        type = LayoutType::get(type_name);
+    } else {
+        auto type_name = utils::lowercase(obj["type"].get<std::string>());
+        if (not LayoutType::has(type_name))
+            type = LayoutType::unknown;
+        else
+            type = LayoutType::get(type_name);
+    }
     
     if(hash == 0) {
         hash = state._current_index.hash();
@@ -477,7 +479,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     
     {
         {
-            auto ptr = LabeledField::Make(var, obj, invert);
+            auto ptr = LabeledField::Make(var, *this, invert);
             if(not state._text_fields.contains(hash) or not state._text_fields.at(hash))
             {
                 state._text_fields.emplace(hash, std::move(ptr));

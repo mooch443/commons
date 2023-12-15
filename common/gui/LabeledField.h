@@ -14,6 +14,8 @@
 namespace gui {
 namespace dyn {
 
+class LayoutContext;
+
 template<typename T, typename A>
 concept takes_attribute = requires(T t, A a) {
     { t.set(a) } -> std::same_as<void>;
@@ -66,7 +68,8 @@ struct LabeledField {
             delegate_to_proper_type(attribute, ptr);
     }
     
-    static std::unique_ptr<LabeledField> Make(std::string parm, const nlohmann::json& obj, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(std::string parm, const LayoutContext&, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(std::string parm, bool invert = false);
     
     template<typename T>
     static bool delegate_to_proper_type(const T& attribute, const Layout::Ptr& object)
@@ -244,7 +247,7 @@ public:
 
 struct LabeledPath : public LabeledField {
     class FileItem {
-        GETTER(file::Path, path)
+        GETTER(file::Path, path);
         
     public:
         FileItem(const file::Path& path = "");
@@ -297,7 +300,7 @@ private:
     std::atomic<bool> _should_update{ false };
     
 public:
-    LabeledPathArray(const std::string& name, const nlohmann::json& obj);
+    LabeledPathArray(const std::string& name, const LayoutContext*);
     ~LabeledPathArray();
 
     void updateStaticText(const std::vector<file::Path>&);
