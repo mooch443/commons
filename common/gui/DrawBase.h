@@ -18,7 +18,7 @@ namespace gui {
     
     class Base {
     protected:
-        GETTER(bool, frame_recording)
+        GETTER(bool, frame_recording);
         std::function<Bounds(const std::string&, Drawable*, const Font&)> _previous_line_bounds;
         std::function<uint32_t(const Font&)> _previous_line_spacing;
         Base *_previous_base;

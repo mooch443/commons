@@ -60,10 +60,10 @@ namespace grid {
         //using pixel = std::tuple<float, float, T>;
         
         std::vector<Set_t> grid;
-        GETTER(Vec2, scale)
-        GETTER(Size2, resolution)
-        GETTER(uint, n)
-        GETTER(uint, N)
+        GETTER(Vec2, scale);
+        GETTER(Size2, resolution);
+        GETTER(uint, n);
+        GETTER(uint, N);
         ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:

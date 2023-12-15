@@ -412,7 +412,7 @@ typedef cv::Matx<ScalarType, 4, 4> Mat44;
 #define SQR(X) ((X)*(X))
 
 #define GETTER_CONST(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline TYPE& VAR() const { return _##VAR; } protected:
-#define GETTER(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] const TYPE& VAR() const { return _##VAR; } protected:
+#define GETTER(TYPE, VAR) public: [[nodiscard]] const TYPE& VAR() const { return _##VAR; } protected: TYPE _##VAR
 #define GETTER_I(TYPE, VAR, INIT) protected: TYPE _##VAR = INIT; public: [[nodiscard]] const TYPE& VAR() const { return _##VAR; } protected:
 #define GETTER_NCONST(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline const TYPE& VAR() const { return _##VAR; } [[nodiscard]] inline TYPE& VAR() { return _##VAR; } protected:
 #define GETTER_PTR(TYPE, VAR) protected: TYPE _##VAR; public: [[nodiscard]] inline TYPE VAR() const { return _##VAR; } [[nodiscard]] inline TYPE & VAR() { return _##VAR; } protected:

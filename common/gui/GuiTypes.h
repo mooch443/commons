@@ -37,9 +37,9 @@ protected:
     const std::vector<Vertex>* _transport{ nullptr };
     std::vector<Vertex> _points;
     std::vector<Vertex> _original_points;
-    GETTER(PrimitiveType, primitive)
-    GETTER(bool, size_calculated)
-    GETTER(float, thickness)
+    GETTER(PrimitiveType, primitive);
+    GETTER(bool, size_calculated);
+    GETTER(float, thickness);
     
 public:
     VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type = Type::VERTICES);
@@ -145,7 +145,7 @@ protected:
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
         float _process_scale;
-        GETTER(float, max_scale)
+        GETTER(float, max_scale);
         
     public:
         template<typename... Args> Line(Args... args)
@@ -233,8 +233,8 @@ protected:
     class Polygon : public Drawable {
         GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, vertices)
         GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, relative)
-        GETTER(Color, fill_clr)
-        GETTER(Color, border_clr)
+        GETTER(Color, fill_clr);
+        GETTER(Color, border_clr);
         bool _size_calculated;
     public:
         static constexpr auto Class = Type::data::values::POLYGON;
@@ -564,10 +564,10 @@ protected:
 //#endif
 
     private:
-        GETTER(std::string, url)
+        GETTER(std::string, url);
         Ptr _source;
-        GETTER(Color, color)
-        GETTER(bool, cut_border)
+        GETTER(Color, color);
+        GETTER(bool, cut_border);
         
     public:
         ExternalImage() : ExternalImage(Image::Make(), Vec2()) {}

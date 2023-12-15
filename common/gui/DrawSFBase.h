@@ -86,16 +86,16 @@ namespace gui {
         
         GETTER_NCONST(sf::RenderWindow, window)
         
-        GETTER(float, last_draw_ms)
-        GETTER(size_t, last_draw_repaint)
-        GETTER(size_t, last_draw_added)
-        GETTER(size_t, last_draw_objects)
-        GETTER(bool, is_fullscreen)
-        GETTER(std::string, title)
+        GETTER(float, last_draw_ms);
+        GETTER(size_t, last_draw_repaint);
+        GETTER(size_t, last_draw_added);
+        GETTER(size_t, last_draw_objects);
+        GETTER(bool, is_fullscreen);
+        GETTER(std::string, title);
         sf::VideoMode _video_mode;
         //sf::Shader shader;
-        GETTER(sf::RenderTexture, texture)
-        GETTER(bool, has_texture)
+        GETTER(sf::RenderTexture, texture);
+        GETTER(bool, has_texture);
         //sf::Vector2f texture_size;
         
         GETTER_SETTER(bool, auto_display)

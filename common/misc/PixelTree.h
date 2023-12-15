@@ -107,12 +107,12 @@ namespace pixel {
     
     class Tree {
     protected:
-        GETTER(std::vector<std::shared_ptr<Node>>, nodes)
+        GETTER(std::vector<std::shared_ptr<Node>>, nodes);
         
     public:
         using sides_t = std::vector<Subnode*>;
     protected:
-        GETTER(sides_t, sides)
+        GETTER(sides_t, sides);
         std::vector<Subnode*> _non_full_nodes;
         
     public:

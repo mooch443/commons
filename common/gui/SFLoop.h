@@ -16,7 +16,7 @@ namespace gui {
         std::string _name;
         std::mutex queue_mutex;
         std::queue<std::function<void()>> main_exec_queue;
-        GETTER(Timer, time_since_last_update)
+        GETTER(Timer, time_since_last_update);
         
     public:
         SFLoop(DrawStructure& graph,

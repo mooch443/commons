@@ -8,7 +8,7 @@
 namespace gui {
     /*class Graph;
     class GuiGraph : public Entangled {
-        GETTER(float, alpha)
+        GETTER(float, alpha);
         
     public:
         GuiGraph() : _alpha(0.75) {
@@ -99,15 +99,15 @@ namespace gui {
         
     private:
         std::string _name;
-        GETTER(std::vector<Function>, functions)
+        GETTER(std::vector<Function>, functions);
         std::unordered_map<std::string, std::vector<std::shared_ptr<Circle>>> _gui_points;
         std::vector<GLine> _lines;
         
-        GETTER(Vec2, margin)
-        //GETTER(cv::Size, size)
-        GETTER(Rangef, x_range)
-        GETTER(Rangef, y_range)
-        GETTER(float, zero)
+        GETTER(Vec2, margin);
+        //GETTER(cv::Size, size);
+        GETTER(Rangef, x_range);
+        GETTER(Rangef, y_range);
+        GETTER(float, zero);
         char _xyaxis;
         
         std::vector<std::shared_ptr<Text>> _labels;

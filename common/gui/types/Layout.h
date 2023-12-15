@@ -59,7 +59,7 @@ namespace gui {
         GETTER_NCONST(std::vector<Ptr>, objects)
         
     protected:
-        GETTER(attr::Margins, margins)
+        GETTER(attr::Margins, margins);
         
     public:
         template<typename T, typename... Args>
@@ -154,7 +154,7 @@ namespace gui {
         };
         
     protected:
-        GETTER(Policy, policy)
+        GETTER(Policy, policy);
         
     public:
         template<typename... Args>
@@ -193,7 +193,7 @@ namespace gui {
         };
         
     protected:
-        GETTER(Policy, policy)
+        GETTER(Policy, policy);
         
     public:
         template<typename... Args>
@@ -279,7 +279,7 @@ protected:
         
     } _settings;
     
-    GETTER(GridInfo, grid_info)
+    GETTER(GridInfo, grid_info);
     
     Vec2 _last_hover;
     

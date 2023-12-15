@@ -21,8 +21,8 @@ namespace gui {
     //  PARENT.
     class Entangled : public SectionInterface {
     protected:
-        GETTER(std::vector<Drawable*>, current_children)
-        GETTER(std::vector<Drawable*>, new_children)
+        GETTER(std::vector<Drawable*>, current_children);
+        GETTER(std::vector<Drawable*>, new_children);
         robin_hood::unordered_set<Drawable*> _currently_removed;
         robin_hood::unordered_flat_set<Drawable*> _current_wrapped;
         robin_hood::unordered_map<Drawable*, bool> _owned;
@@ -34,7 +34,7 @@ namespace gui {
         callback_handle_t callback_ptr = nullptr;
         
         //! Scroll values in x and y direction.
-        GETTER(Vec2, scroll_offset)
+        GETTER(Vec2, scroll_offset);
         //! Enables or disables scrolling
         GETTER_I(bool, scroll_enabled, false)
         

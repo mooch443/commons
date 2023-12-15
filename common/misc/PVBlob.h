@@ -47,7 +47,7 @@ class Blob {
     cmn::Bounds _bounds;
     
     std::unique_ptr<std::vector<cmn::HorizontalLine>> _hor_lines;
-    GETTER(Moments, moments)
+    GETTER(Moments, moments);
     
 public:
     static auto Make(auto && ...args) {
@@ -286,7 +286,7 @@ struct CompressedBlob {
     cmn::blob::Prediction pred;
     
 protected:
-    GETTER(std::vector<ShortHorizontalLine>, lines)
+    GETTER(std::vector<ShortHorizontalLine>, lines);
     
     friend struct MemoryStats;
     friend class Output::ResultsFormat;

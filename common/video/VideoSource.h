@@ -34,14 +34,14 @@ public:
     private:
         static std::vector<std::pair<std::string, Type>> _extensions;
         
-        GETTER(size_t, index)
-        GETTER(std::string, filename)
+        GETTER(size_t, index);
+        GETTER(std::string, filename);
         Frame_t _length;
         //Video *_video;
         FfmpegVideoCapture *_video{nullptr};
         Type _type;
         
-        GETTER(std::string, format)
+        GETTER(std::string, format);
         
         std::vector<double> _timestamps;
         cv::Size _size;
@@ -77,8 +77,8 @@ private:
      */
     std::vector<File*> _files_in_seq;
     
-    GETTER(std::string, source)
-    GETTER(file::Path, base)
+    GETTER(std::string, source);
+    GETTER(file::Path, base);
     File* _last_file = nullptr;
     cv::Size _size;
     Frame_t _length = 0_f;

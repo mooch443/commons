@@ -81,16 +81,16 @@ namespace cmn {
             mutable std::mutex _property_mutex;
 
             // The following are getters for specific flags.
-            GETTER(bool, is_array) ///< Indicates if the property is of array type.
-            GETTER(bool, is_enum) ///< Indicates if the property is of enum type.
+            GETTER(bool, is_array); ///< Indicates if the property is of array type.
+            GETTER(bool, is_enum); ///< Indicates if the property is of enum type.
             
             // Lambda functions to allow custom behaviors. These can be overridden as needed.
             std::function<void(const std::string&)> _set_value_from_string; ///< Setter function from string.
             std::function<nlohmann::json()> _to_json = [](){return nlohmann::json();}; ///< Function to serialize property to JSON.
 
             // More lambda functions for enum type properties.
-            GETTER(std::function<std::vector<std::string>()>, enum_values) ///< Getter for the enum values.
-            GETTER(std::function<size_t()>, enum_index) ///< Getter for the index of an enum value.
+            GETTER(std::function<std::vector<std::string>()>, enum_values);///< Getter for the enum values.
+            GETTER(std::function<size_t()>, enum_index);///< Getter for the index of an enum value.
             
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false)

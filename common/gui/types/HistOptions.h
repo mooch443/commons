@@ -9,9 +9,9 @@ namespace gui {
         };
 
         class Filter {
-            GETTER(float, lower)
-            GETTER(float, upper)
-            GETTER(float, bins)
+            GETTER(float, lower);
+            GETTER(float, upper);
+            GETTER(float, bins);
             
         private:
             constexpr Filter(float lower = -1, float upper = -1, float bins = -1)
@@ -25,8 +25,8 @@ namespace gui {
         };
         
         class Display {
-            GETTER(float, max_y)
-            GETTER(float, min_y)
+            GETTER(float, max_y);
+            GETTER(float, min_y);
             
         private:
             constexpr Display(float max_y = -1, float min_y = 0) : _max_y(max_y), _min_y(min_y) {}

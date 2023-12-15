@@ -12,7 +12,7 @@ public:
     using Mat = cv::Mat;
     
 protected:
-    GETTER(averaging_method_t::Class, mode)
+    GETTER(averaging_method_t::Class, mode);
     Mat _accumulator;
     Mat _float_mat;
     Mat _local;

@@ -150,8 +150,8 @@ struct Pose {
         static std::mutex _mutex;
         static std::unordered_map<std::string, Skeleton> _registered;
         
-        GETTER(std::string, name)
-        GETTER(std::vector<Connection>, connections)
+        GETTER(std::string, name);
+        GETTER(std::vector<Connection>, connections);
         
     public:
         Skeleton() = default;

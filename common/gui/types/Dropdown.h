@@ -67,7 +67,7 @@ namespace gui {
         
         class Item {
         protected:
-            GETTER(long, ID)
+            GETTER(long, ID);
             
         public:
             static constexpr long INVALID_ID = -1;
@@ -139,13 +139,13 @@ namespace gui {
         std::function<void(RawIndex, const TextItem&)> _on_select;
         Textfield::OnEnter_t _on_enter;
         
-        GETTER(std::vector<TextItem>, items)
+        GETTER(std::vector<TextItem>, items);
         std::vector<TextItem> _original_items;
         
         GETTER_I(bool, opened, false)
         GETTER_I(Type, type, SEARCH)
         GETTER_I(bool, inverted, false)
-        GETTER(ClosesAfterSelect, closes_after_select)
+        GETTER(ClosesAfterSelect, closes_after_select);
         
         RawIndex _selected_item;
         
@@ -164,8 +164,10 @@ namespace gui {
         void set(Font font) { _textfield->set(font); }
         void set(ListDims_t dims) { if(_list) _list->set(dims); }
         void set(LabelDims_t dims) { if(_list) _list->set(dims); }
-        void set(ListFillClr_t dims) { if(_list) _list->set(FillClr{(Color)dims}); }
-        void set(ListLineClr_t dims) { if(_list) _list->set(LineClr{(Color)dims}); }
+        void set(ListFillClr_t dims) { if(_list) _list->set(dims); }
+        void set(ListLineClr_t dims) { if(_list) _list->set(dims); }
+        void set(LabelColor_t dims) { if(_list) _list->set(dims); }
+        void set(LabelBorderColor_t dims) { if(_list) _list->set(dims); }
         void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }
         void set(const std::vector<TextItem>& options) { set_items(options); }
         void set(const std::vector<std::string>& options) { set_items(std::vector<TextItem>(options.begin(), options.end())); }

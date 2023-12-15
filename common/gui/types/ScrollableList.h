@@ -58,21 +58,21 @@ namespace gui {
         ListDims_t _list_dims;
         LabelDims_t _label_dims;
         DetailColor_t _detail_color{Gray};
-        ListFillClr_t _list_fill_clr{100,100,100,200};
-        ListLineClr_t _list_line_clr{200,200,200,200};
+        GETTER(ListFillClr_t, list_fill_clr){100,100,100,200};
+        GETTER(ListLineClr_t, list_line_clr){200,200,200,200};
         LabelColor_t _label_fill_clr{100,100,100,200};
         LabelBorderColor_t _label_line_clr{200,200,200,200};
         
         template <typename Q = T>
         class Item {
-            GETTER(Q, value)
+            GETTER(Q, value);
             GETTER_SETTER_I(bool, hovered, false)
             
         public:
             Item(T v) : _value(v) { }
         };
         
-        GETTER(std::vector<Item<T>>, items)
+        GETTER(std::vector<Item<T>>, items);
         std::vector<Rect*> _rects;
         std::vector<StaticText*> _texts;
         std::vector<Text*> _details;
@@ -84,9 +84,9 @@ namespace gui {
         std::function<void(size_t, const T&)> _callback;
         OnHover_t _on_hovered;
         
-        GETTER(LabelFont_t, label_font)
-        GETTER(Color, item_color)
-        GETTER(ItemBorderColor_t, item_line_color)
+        GETTER(LabelFont_t, label_font);
+        GETTER(Color, item_color);
+        GETTER(ItemBorderColor_t, item_line_color);
         GETTER_I(Color, text_color, White)
         float _line_spacing, _previous_width{-1};
         GETTER_SETTER_I(long, last_hovered_item, -1)
@@ -745,7 +745,7 @@ namespace gui {
                         }
                         
                         if constexpr(has_detail<T>) {
-                            _texts.at(idx)->set_max_size(Size2(e->width(), item_height * 0.5));
+                            _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5));
                             
                             if(_item_font.align == Align::Center) {
                                 float ycenter = y + item_height * 0.5;
@@ -770,7 +770,7 @@ namespace gui {
                                 _details.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
                             }
                         } else {
-                            _texts.at(idx)->set_max_size(Size2(e->width(), item_height));
+                            _texts.at(idx)->set_max_size(Size2(-1, item_height));
                             
                             if(_item_font.align == Align::Center)
                                 _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));

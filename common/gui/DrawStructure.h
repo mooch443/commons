@@ -27,7 +27,7 @@ namespace gui {
         
     protected:
         std::atomic_bool _closed;
-        GETTER(Result, result)
+        GETTER(Result, result);
         
         DrawStructure& _graph;
         Rect _title_bg;
@@ -36,7 +36,7 @@ namespace gui {
         derived_ptr<Button> _okay;
         derived_ptr<Button> _abort, _second, _third, _fourth;
         derived_ptr<HorizontalLayout> _buttons;
-        GETTER(derived_ptr<Entangled>, custom)
+        GETTER(derived_ptr<Entangled>, custom);
         GETTER_NCONST(VerticalLayout, layout)
         std::function<bool(Result)> _callback;
         
@@ -99,10 +99,10 @@ namespace gui {
         GETTER_PTR(Drawable*, hovered_object)
         GETTER_PTR(Drawable*, selected_object)
 
-        GETTER(uint16_t, width)
-        GETTER(uint16_t, height)
+        GETTER(uint16_t, width);
+        GETTER(uint16_t, height);
         GETTER_I(Vec2, scale, {0})
-        GETTER(std::atomic_bool, changed)
+        GETTER(std::atomic_bool, changed);
         GETTER_SETTER_I(Size2, dialog_window_size, {0})
         GETTER_I(Vec2, mouse_position, {0})
 

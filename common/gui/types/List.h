@@ -46,20 +46,20 @@ namespace gui {
         
         Color _accent_color;
         
-        GETTER(std::vector<std::shared_ptr<Item>>, items)
+        GETTER(std::vector<std::shared_ptr<Item>>, items);
         std::vector<std::shared_ptr<Rect>> _rects;
         std::function<void(List*, const Item&)> _on_click;
         bool _toggle;
         std::shared_ptr<Rect> _selected_rect;
         
-        GETTER(bool, foldable)
-        GETTER(bool, folded)
-        GETTER(long, selected_item)
-        GETTER(bool, multi_select)
-        GETTER(bool, display_selection) // display visually, which item has been selected last (independently of toggle)
+        GETTER(bool, foldable);
+        GETTER(bool, folded);
+        GETTER(long, selected_item);
+        GETTER(bool, multi_select);
+        GETTER(bool, display_selection);// display visually, which item has been selected last (independently of toggle);
         std::function<void()> _on_toggle;
         
-        GETTER(float, row_height)
+        GETTER(float, row_height);
         
     public:
         List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});

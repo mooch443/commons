@@ -83,7 +83,7 @@ private:
     std::vector<T> maxHeap; //NOTE: default max-heap
     
 protected:
-    GETTER(size_t, added)
+    GETTER(size_t, added);
 };
 
 #endif /* MEDIAN_HPP_ */

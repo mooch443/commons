@@ -74,10 +74,10 @@ namespace cmn {
             typedef std::shared_ptr<Curve> Ptr;
             
         protected:
-            GETTER(bool, is_clockwise)
-            GETTER(points_t, points)
+            GETTER(bool, is_clockwise);
+            GETTER(points_t, points);
             
-            GETTER(std::vector<points_t>, derivatives)
+            GETTER(std::vector<points_t>, derivatives);
             scalars_t _curvature;
             
         public:

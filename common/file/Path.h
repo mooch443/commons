@@ -85,7 +85,7 @@ namespace file {
     protected:
         //! The full path without any trailing slashes,
         //  but with file extension and filename
-        GETTER(std::string, str)
+        GETTER(std::string, str);
 
         mutable struct Stat {
             std::optional<bool> exists, is_folder, is_regular;

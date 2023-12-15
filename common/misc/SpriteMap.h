@@ -76,7 +76,7 @@ concept HasNotEqualOperator = requires(T a, T b) {
     private:
         PropertyType* _type;
         Map* _container;
-        GETTER(std::string_view, name)
+        GETTER(std::string_view, name);
     public:
         template <typename T,
             std::enable_if_t<

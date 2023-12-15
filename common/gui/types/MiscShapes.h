@@ -5,9 +5,9 @@
 
 namespace gui {
     class Triangle final : public Entangled {
-        GETTER(Color, fill)
-        GETTER(Color, line)
-        GETTER(std::vector<Vertex>, points)
+        GETTER(Color, fill);
+        GETTER(Color, line);
+        GETTER(std::vector<Vertex>, points);
         
     public:
         Triangle(const Vec2& center, const Size2& size, float angle = 0, const Color& fill = White, const Color& line = Transparent);

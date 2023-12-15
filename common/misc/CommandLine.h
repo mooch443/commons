@@ -6,7 +6,7 @@
 
 namespace cmn {
     class CommandLine {
-        GETTER(file::Path, wd)
+        GETTER(file::Path, wd);
         
     public:
         struct Option {
@@ -19,8 +19,8 @@ namespace cmn {
         };
         
     protected:
-        GETTER(std::vector<Option>, options)
-        GETTER(std::vector<Option>, settings)
+        GETTER(std::vector<Option>, options);
+        GETTER(std::vector<Option>, settings);
         std::map<std::string,std::string> _settings_keys;
         
         void _init(int argc, char** argv, bool no_autoload_settings = false, const std::map<std::string, std::string>& deprecated = {});

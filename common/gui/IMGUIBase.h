@@ -50,10 +50,10 @@ namespace gui {
             }
         };
         
-        GETTER(std::unique_ptr<DrawStructure>, graph)
+        GETTER(std::unique_ptr<DrawStructure>, graph);
         GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform)
         CrossPlatform::custom_function_t _custom_loop;
-        GETTER(Bounds, work_area)
+        GETTER(Bounds, work_area);
         GETTER_I(bool, focussed, true)
         std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
@@ -62,7 +62,7 @@ namespace gui {
 #endif
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
-        GETTER(float, dpi_scale)
+        GETTER(float, dpi_scale);
         float _last_dpi_scale = -1;
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;

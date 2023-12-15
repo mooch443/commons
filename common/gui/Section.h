@@ -12,9 +12,9 @@ namespace gui {
         std::vector<Drawable*> _children;
         ska::bytell_hash_map<Drawable*, SingletonObject*> _wrapped_children;
         
-        GETTER(bool, was_enabled)
-        GETTER(bool, enabled)
-        GETTER(bool, section_clickable)
+        GETTER(bool, was_enabled);
+        GETTER(bool, enabled);
+        GETTER(bool, section_clickable);
         GETTER_SETTER(bool, debug_rects)
         static ColorWheel wheel;
         Color _clr;
@@ -24,7 +24,7 @@ namespace gui {
         Text* stext;
         
     private:
-        //GETTER(Bounds, children_bounds)
+        //GETTER(Bounds, children_bounds);
         
         //! Running index that determines which object is currently expected
         size_t _index;

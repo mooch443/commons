@@ -76,7 +76,7 @@ namespace cmn {
         long_t _array_index;
         long_t _currently_processed;
         
-        GETTER(bool, paused)
+        GETTER(bool, paused);
         
         enum PausedIndex {
             ANALYSIS_THREAD_PAUSED = 0,

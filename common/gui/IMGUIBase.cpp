@@ -65,7 +65,7 @@ class PolyCache : public CacheObject {
 #endif
 
     class TextureCache : public CacheObject {
-        GETTER(TexturePtr, texture)
+        GETTER(TexturePtr, texture);
         GETTER_NCONST(Size2, size)
         GETTER_NCONST(Size2, gpu_size)
         GETTER_PTR(IMGUIBase*, base)

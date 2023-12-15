@@ -14,7 +14,7 @@ namespace gui {
 
 class FileChooser {
     class FileItem {
-        GETTER(file::Path, path)
+        GETTER(file::Path, path);
         
     public:
         FileItem(const file::Path& path = "");
@@ -67,7 +67,7 @@ protected:
     derived_ptr<HorizontalLayout> _tabs_bar;
     std::unordered_map<int, derived_ptr<Tooltip>> _tooltips;
     std::vector<Layout::Ptr> tabs_elements;
-    GETTER(IMGUIBase, base)
+    GETTER(IMGUIBase, base);
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
     
@@ -76,7 +76,7 @@ protected:
     
     std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
     file::Path _selected_file;
-    GETTER(file::Path, confirmed_file)
+    GETTER(file::Path, confirmed_file);
     std::function<void(const file::Path&, std::string)> _callback, _on_select_callback;
     std::function<void(DrawStructure&)> _on_update;
     std::function<bool(file::Path)> _validity;
@@ -85,7 +85,7 @@ protected:
     std::queue<std::function<void()>> _execute;
     std::mutex _execute_mutex;
     std::map<std::string, Settings> _tabs;
-    GETTER(Settings, current_tab)
+    GETTER(Settings, current_tab);
     Settings _default_tab;
     
 public:

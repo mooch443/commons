@@ -24,11 +24,11 @@ namespace gui {
         };
         
     protected:
-        GETTER(Font, font)
-        GETTER(std::vector<Slice>, slices)
-        GETTER(float, radius)
-        GETTER(std::vector<Vertex>, vertices)
-        GETTER(float, alpha)
+        GETTER(Font, font);
+        GETTER(std::vector<Slice>, slices);
+        GETTER(float, radius);
+        GETTER(std::vector<Vertex>, vertices);
+        GETTER(float, alpha);
         
         std::vector<Vertex> _lines;
         std::vector<Vec2> _corners;

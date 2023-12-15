@@ -211,7 +211,7 @@ namespace cmn {
 #endif
         std::mutex _internal_modification;
         
-        GETTER(uint64_t, reading_file_size)
+        GETTER(uint64_t, reading_file_size);
 #if defined(WIN32)
         mappedRegion reg;
 #endif

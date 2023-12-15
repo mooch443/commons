@@ -17,7 +17,7 @@ namespace gui {
     
     class DrawStructure;
     class CacheObject {
-        GETTER(std::atomic_bool, changed)
+        GETTER(std::atomic_bool, changed);
         
     public:
         typedef std::unique_ptr<CacheObject> Ptr;
@@ -117,7 +117,7 @@ namespace gui {
      */
     protected:
         //! Type of this Drawable, indicating how to draw it
-        GETTER(Type::Class, type)
+        GETTER(Type::Class, type);
         
         //! Children will be positioned relative to _parent and
         //  also transmit did_change events.
@@ -132,14 +132,14 @@ namespace gui {
         //! Origin in x/y direction goes from 0 to 1.
         //  If set to 0.5,0.5 the object will be centered
         //  on pos().
-        GETTER(Vec2, origin)
+        GETTER(Vec2, origin);
         
         //! Rotation of the object and all children.
         //  Object is rotated around origin.
-        GETTER(float, rotation)
+        GETTER(float, rotation);
         
         //! This is true, if this object (or one of its parents) has rotation != 0.
-        GETTER(bool, has_global_rotation)
+        GETTER(bool, has_global_rotation);
         
         //! The value of the user-defined rectangle.
         //  (local position / size)
@@ -185,7 +185,7 @@ namespace gui {
         
         //! Sets the scaling of the object.
         //  For sections this also affects all children.
-        GETTER(Vec2, scale)
+        GETTER(Vec2, scale);
         
     /**
      * ------------
@@ -195,17 +195,17 @@ namespace gui {
         
         //! The mouse is currently over this object, or one of
         //  its children.
-        GETTER(bool, hovered)
+        GETTER(bool, hovered);
         
         //! This object has been selected by clicking on it.
-        GETTER(bool, selected)
+        GETTER(bool, selected);
         
         //! Click has been initiated on top of this object and is
         //  still continously pressed (might not be hovering anymore).
-        GETTER(bool, pressed)
+        GETTER(bool, pressed);
         
         //! Indicates whether the object is draggable
-        GETTER(bool, draggable)
+        GETTER(bool, draggable);
         callback_handle_t _drag_handle;
         
         //! If set to true, this means that the object interacts with
@@ -215,7 +215,7 @@ namespace gui {
         
         //! Returns the position, relative to object x/y, where dragging
         //  started. Only valid if _dragged == true.
-        GETTER(Vec2, relative_drag_start)
+        GETTER(Vec2, relative_drag_start);
         GETTER_I(bool, being_dragged, false)
         
         //! Gives a Z-Index for an item. If this is set > 0, then it will be drawn later than items with smaller z indexes
