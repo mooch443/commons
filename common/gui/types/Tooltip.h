@@ -5,8 +5,8 @@
 
 namespace gui {
     class Tooltip : public Entangled {
-        GETTER_PTR(Drawable*, other)
-        GETTER_NCONST(StaticText, text)
+        GETTER_PTR(Drawable*, other);
+        GETTER_NCONST(StaticText, text);
         float _max_width;
         
     public:

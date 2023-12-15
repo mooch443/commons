@@ -26,7 +26,7 @@ namespace gui {
         robin_hood::unordered_set<Drawable*> _currently_removed;
         robin_hood::unordered_flat_set<Drawable*> _current_wrapped;
         robin_hood::unordered_map<Drawable*, bool> _owned;
-        GETTER_I(std::atomic_bool, begun, false)
+        GETTER_I(std::atomic_bool, begun, false);
         
         event_handler_yes_t scrolling = [this](Event e){
             set_scroll_offset(_scroll_offset - Vec2(e.scroll.dx, e.scroll.dy));
@@ -36,15 +36,15 @@ namespace gui {
         //! Scroll values in x and y direction.
         GETTER(Vec2, scroll_offset);
         //! Enables or disables scrolling
-        GETTER_I(bool, scroll_enabled, false)
+        GETTER_I(bool, scroll_enabled, false);
         
-        GETTER_I(Rangef, scroll_limit_x, Rangef(0, FLT_MAX))
-        GETTER_I(Rangef, scroll_limit_y, Rangef(0, FLT_MAX))
+        GETTER_I(Rangef, scroll_limit_x, Rangef(0, FLT_MAX));
+        GETTER_I(Rangef, scroll_limit_y, Rangef(0, FLT_MAX));
         
         //! For delta updates.
         size_t _index = 0;
         
-        GETTER_I(bool, content_changed, true)
+        GETTER_I(bool, content_changed, true);
         bool _content_changed_while_updating = false;
         
     public:

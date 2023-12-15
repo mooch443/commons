@@ -44,7 +44,7 @@ namespace gui {
         static bool is_invalid(float v) {
             return v == invalid();
         }
-        //GETTER_NCONST(GuiGraph, gui_obj)
+        //GETTER_NCONST(GuiGraph, gui_obj);
         
     public:
         enum Type {

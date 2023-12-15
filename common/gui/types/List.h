@@ -12,7 +12,7 @@ namespace gui {
     public:
         class Item {
         protected:
-            GETTER_SETTER(long, ID)
+            GETTER_SETTER(long, ID);
             bool _selected;
             gui::List *_list;
             

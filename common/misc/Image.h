@@ -100,11 +100,11 @@ namespace cmn {
         
     protected:
         UniqueReallocPtr<uchar> _data;
-        GETTER_I(size_t, size, 0)
-        GETTER_I(size_t, array_size, 0)
-        GETTER_SETTER_I(timestamp_t, timestamp, now())
+        GETTER_I(size_t, size, 0);
+        GETTER_I(size_t, array_size, 0);
+        GETTER_SETTER_I(timestamp_t, timestamp, now());
         std::unique_ptr<CustomData> _custom_data;
-        GETTER_SETTER_I(long_t, index, -1)
+        GETTER_SETTER_I(long_t, index, -1);
         
     public:
         uint cols = 0, rows = 0, dims = 0;

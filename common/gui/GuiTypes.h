@@ -231,8 +231,8 @@ protected:
     };
     
     class Polygon : public Drawable {
-        GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, vertices)
-        GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, relative)
+        GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, vertices);
+        GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, relative);
         GETTER(Color, fill_clr);
         GETTER(Color, border_clr);
         bool _size_calculated;

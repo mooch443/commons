@@ -5,7 +5,7 @@
 namespace gui {
     class TextItem : public List::Item {
     protected:
-        GETTER_SETTER(std::string, text)
+        GETTER_SETTER(std::string, text);
         
     public:
         TextItem(const std::string& t = "", long idx = -1, bool selected = false)
@@ -25,9 +25,9 @@ namespace gui {
     };
 
     class DetailItem {
-        GETTER_SETTER(std::string, name)
-        GETTER_SETTER(std::string, detail)
-        GETTER_SETTER(bool, disabled)
+        GETTER_SETTER(std::string, name);
+        GETTER_SETTER(std::string, detail);
+        GETTER_SETTER(bool, disabled);
         
     public:
         DetailItem(const std::string& name = "", const std::string& detail = "", bool disabled = false) : _name(name), _detail(detail), _disabled(disabled) {}

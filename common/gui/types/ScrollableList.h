@@ -66,7 +66,7 @@ namespace gui {
         template <typename Q = T>
         class Item {
             GETTER(Q, value);
-            GETTER_SETTER_I(bool, hovered, false)
+            GETTER_SETTER_I(bool, hovered, false);
             
         public:
             Item(T v) : _value(v) { }
@@ -87,15 +87,15 @@ namespace gui {
         GETTER(LabelFont_t, label_font);
         GETTER(Color, item_color);
         GETTER(ItemBorderColor_t, item_line_color);
-        GETTER_I(Color, text_color, White)
+        GETTER_I(Color, text_color, White);
         float _line_spacing, _previous_width{-1};
-        GETTER_SETTER_I(long, last_hovered_item, -1)
-        GETTER_SETTER_I(bool, foldable, false)
-        GETTER_I(bool, folded, false)
-        GETTER_I(std::string, folded_label, "")
-        GETTER_I(long, last_selected_item, -1)
-        GETTER_I(bool, stays_toggled, false)
-        GETTER_I(bool, alternating_rows, false)
+        GETTER_SETTER_I(long, last_hovered_item, -1);
+        GETTER_SETTER_I(bool, foldable, false);
+        GETTER_I(bool, folded, false);
+        GETTER_I(std::string, folded_label, "");
+        GETTER_I(long, last_selected_item, -1);
+        GETTER_I(bool, stays_toggled, false);
+        GETTER_I(bool, alternating_rows, false);
         
         std::map<Drawable*, size_t> rect_to_idx;
         Entangled _list;

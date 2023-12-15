@@ -11,7 +11,7 @@ class HttpClient {
 protected:
     Httpd _httpd;
     DrawStructure& _gui;
-    GETTER_NCONST(HTMLBase, base)
+    GETTER_NCONST(HTMLBase, base);
     std::function<void(Event)> _event_handler;
     
 public:

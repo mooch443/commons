@@ -61,8 +61,8 @@ namespace cmn {
         destroy_type _destroy_element;
         prepare_type _prepare;
         
-        GETTER_PTR(std::thread*, loading_thread)
-        GETTER_PTR(std::thread*, analysis_thread)
+        GETTER_PTR(std::thread*, loading_thread);
+        GETTER_PTR(std::thread*, analysis_thread);
         
         std::mutex lock;
         

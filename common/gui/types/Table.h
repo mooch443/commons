@@ -13,7 +13,7 @@ namespace gui {
         
         class Row {
         protected:
-            GETTER_SETTER(size_t, index)
+            GETTER_SETTER(size_t, index);
             
         private:
             std::map<size_t, std::string> items;

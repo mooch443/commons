@@ -15,7 +15,7 @@ namespace gui {
         GETTER(bool, was_enabled);
         GETTER(bool, enabled);
         GETTER(bool, section_clickable);
-        GETTER_SETTER(bool, debug_rects)
+        GETTER_SETTER(bool, debug_rects);
         static ColorWheel wheel;
         Color _clr;
         

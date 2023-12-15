@@ -82,7 +82,7 @@ namespace gui {
         std::unordered_map<std::string, std::tuple<void*, std::function<void(void*)>>> _custom_data;
         std::unordered_set<uchar> _custom_tags;
         
-        GETTER_SETTER(std::string, name)
+        GETTER_SETTER(std::string, name);
         
     public:
         void add_custom_data(const std::string& key, void* data, std::function<void(void*)> deleter = [](void*){}) {
@@ -121,7 +121,7 @@ namespace gui {
         
         //! Children will be positioned relative to _parent and
         //  also transmit did_change events.
-        GETTER_PTR(SectionInterface*, parent)
+        GETTER_PTR(SectionInterface*, parent);
         
     /**
      * --------------------------
@@ -146,12 +146,12 @@ namespace gui {
         Bounds _bounds;
         
         //! If this object has been rendered in the last renderpass, this will be set to true.
-        GETTER_SETTER_I(bool, was_visible, false)
+        GETTER_SETTER_I(bool, was_visible, false);
 
         //! If the object is disabled, it will not be displayed.
-        GETTER_I(bool, is_displayed, true)
+        GETTER_I(bool, is_displayed, true);
 
-        GETTER_I(bool, rendered, false)
+        GETTER_I(bool, rendered, false);
         
         //! Whether or not this object is currenty playing an animation
         //! (and should thus be re-rendered continously):
@@ -216,7 +216,7 @@ namespace gui {
         //! Returns the position, relative to object x/y, where dragging
         //  started. Only valid if _dragged == true.
         GETTER(Vec2, relative_drag_start);
-        GETTER_I(bool, being_dragged, false)
+        GETTER_I(bool, being_dragged, false);
         
         //! Gives a Z-Index for an item. If this is set > 0, then it will be drawn later than items with smaller z indexes
         int _z_index = 0;
@@ -470,10 +470,10 @@ namespace gui {
         friend class Drawable;
         friend class DrawableCollection;
         
-        GETTER_PTR(Rect*, background)
-        GETTER_PTR(DrawStructure*, stage)
-        GETTER_I(Color, bg_fill_color, Transparent)
-        GETTER_I(Color, bg_line_color, Transparent)
+        GETTER_PTR(Rect*, background);
+        GETTER_PTR(DrawStructure*, stage);
+        GETTER_I(Color, bg_fill_color, Transparent);
+        GETTER_I(Color, bg_line_color, Transparent);
         
         void update_bounds() override;
         

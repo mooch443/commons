@@ -89,8 +89,8 @@ private:
     Image _buffer;
     
 private:
-    GETTER_SETTER_I(ImageMode, colors, ImageMode::GRAY)
-    GETTER_SETTER_I(bool, lazy_loader, false)
+    GETTER_SETTER_I(ImageMode, colors, ImageMode::GRAY);
+    GETTER_SETTER_I(bool, lazy_loader, false);
     
 public:
     /**

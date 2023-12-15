@@ -28,7 +28,7 @@ namespace gui {
         
         std::function<void()> _after_frame;
         std::function<void(Image::Ptr&&)> _frame_buffer_receiver;
-        GETTER_I(bool, gui_macos_blur, false)
+        GETTER_I(bool, gui_macos_blur, false);
         
     public:
         MetalImpl(std::function<void()> draw, std::function<bool()> new_frame_fn);

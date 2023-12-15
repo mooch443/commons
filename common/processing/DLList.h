@@ -58,8 +58,8 @@ public:
         void receive(std::unique_ptr<Brototype>&& ptr);
     };
     
-    GETTER_NCONST(Cache, cache)
-    GETTER_NCONST(Source, source)
+    GETTER_NCONST(Cache, cache);
+    GETTER_NCONST(Source, source);
     
 public:
     static auto& cmutex() {

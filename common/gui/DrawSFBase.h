@@ -16,9 +16,9 @@ namespace gui {
     };
     
     class SpriteWithTexture : public sf::Drawable {
-        GETTER_NCONST(sf::Sprite, sprite)
-        GETTER_NCONST(sf::Texture, texture)
-        GETTER_SETTER(size_t, timestamp)
+        GETTER_NCONST(sf::Sprite, sprite);
+        GETTER_NCONST(sf::Texture, texture);
+        GETTER_SETTER(size_t, timestamp);
         
     public:
         SpriteWithTexture() : _timestamp(0) {}
@@ -28,8 +28,8 @@ namespace gui {
     };
     
     class SpriteWithRenderTexture : public sf::Drawable {
-        GETTER_NCONST(sf::Sprite, sprite)
-        GETTER_NCONST(sf::RenderTexture, texture)
+        GETTER_NCONST(sf::Sprite, sprite);
+        GETTER_NCONST(sf::RenderTexture, texture);
         
     public:
         SpriteWithRenderTexture(float width, float height) {
@@ -46,7 +46,7 @@ namespace gui {
     public:
         class Cache : public CacheObject {
         protected:
-            GETTER_PTR(sf::Drawable*, tp)
+            GETTER_PTR(sf::Drawable*, tp);
             
         public:
             Cache(sf::Drawable *d);
@@ -57,10 +57,10 @@ namespace gui {
     private:
         class RenderState {
         protected:
-            GETTER_PTR(Drawable*, obj)
-            GETTER_PTR(SFBase::Cache::Ptr, cache)
+            GETTER_PTR(Drawable*, obj);
+            GETTER_PTR(SFBase::Cache::Ptr, cache);
             GETTER_SETTER_PTR(sf::RenderTarget*, target)
-            GETTER_NCONST(sf::RenderStates, render)
+            GETTER_NCONST(sf::RenderStates, render);
             
         private:
             SFBase *_base;
@@ -84,7 +84,7 @@ namespace gui {
             }
         };
         
-        GETTER_NCONST(sf::RenderWindow, window)
+        GETTER_NCONST(sf::RenderWindow, window);
         
         GETTER(float, last_draw_ms);
         GETTER(size_t, last_draw_repaint);
@@ -98,7 +98,7 @@ namespace gui {
         GETTER(bool, has_texture);
         //sf::Vector2f texture_size;
         
-        GETTER_SETTER(bool, auto_display)
+        GETTER_SETTER(bool, auto_display);
 
     public:
         static const sf::Font& font();

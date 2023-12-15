@@ -86,10 +86,10 @@ namespace gui {
         
         class TextItem : public Item {
             std::string _name, _search;
-            GETTER_SETTER(std::string, display)
-            GETTER_PTR_I(void*, custom, nullptr)
-            GETTER_SETTER_I(int, index, Item::INVALID_ID)
-            GETTER_SETTER_I(Color, color, Transparent)
+            GETTER_SETTER(std::string, display);
+            GETTER_PTR_I(void*, custom, nullptr);
+            GETTER_SETTER_I(int, index, Item::INVALID_ID);
+            GETTER_SETTER_I(Color, color, Transparent);
             
         public:
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
@@ -133,18 +133,18 @@ namespace gui {
         };
         
     protected:
-        GETTER_NCONST(std::shared_ptr<Textfield>, textfield)
-        GETTER_NCONST(std::shared_ptr<Button>, button)
-        GETTER_NCONST(std::unique_ptr<ScrollableList<TextItem>>, list)
+        GETTER_NCONST(std::shared_ptr<Textfield>, textfield);
+        GETTER_NCONST(std::shared_ptr<Button>, button);
+        GETTER_NCONST(std::unique_ptr<ScrollableList<TextItem>>, list);
         std::function<void(RawIndex, const TextItem&)> _on_select;
         Textfield::OnEnter_t _on_enter;
         
         GETTER(std::vector<TextItem>, items);
         std::vector<TextItem> _original_items;
         
-        GETTER_I(bool, opened, false)
-        GETTER_I(Type, type, SEARCH)
-        GETTER_I(bool, inverted, false)
+        GETTER_I(bool, opened, false);
+        GETTER_I(Type, type, SEARCH);
+        GETTER_I(bool, inverted, false);
         GETTER(ClosesAfterSelect, closes_after_select);
         
         RawIndex _selected_item;

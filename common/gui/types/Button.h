@@ -24,7 +24,7 @@ namespace gui {
         
     protected:
         Settings _settings;
-        GETTER_I(bool, toggled, false)
+        GETTER_I(bool, toggled, false);
         StaticText _text;
         
     public:

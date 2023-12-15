@@ -202,7 +202,7 @@ concept Iterable = requires(T obj) {
         std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
         mutable LOGGED_MUTEX_VAR(_mutex, "sprite::Lock");
-        GETTER_I(bool, print_by_default, false)
+        GETTER_I(bool, print_by_default, false);
         
     public:
         auto& mutex() const { return _mutex; }

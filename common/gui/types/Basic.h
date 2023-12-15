@@ -19,8 +19,8 @@ namespace gui {
     }
 
     class Vertex {
-        GETTER_NCONST(ImU32, color)
-        GETTER_NCONST(Vec2, position)
+        GETTER_NCONST(ImU32, color);
+        GETTER_NCONST(Vec2, position);
         
     public:
         Vertex(float x, float y, const Color& color = Color())

@@ -22,8 +22,8 @@ inline auto& _emplace_back(auto& array, auto&& obj) {
 //! A pair of a blob and a HorizontalLine
 class Brototype {
 private:
-    GETTER_NCONST(std::vector<Pixel>, pixel_starts)
-    GETTER_NCONST(std::vector<Line_t>, lines)
+    GETTER_NCONST(std::vector<Pixel>, pixel_starts);
+    GETTER_NCONST(std::vector<Line_t>, lines);
     
 public:
     static std::unordered_set<Brototype*> brototypes();

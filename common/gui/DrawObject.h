@@ -14,7 +14,7 @@ namespace gui {
     /*class Object {
     private:
         GETTER(Vec2, pos);
-        GETTER_PTR(Base*, parent)
+        GETTER_PTR(Base*, parent);
         GETTER(std::atomic_bool, changed);
         
     public:

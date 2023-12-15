@@ -17,7 +17,7 @@ namespace gui {
     template<typename T, Options options = Options::NONE, typename V = std::vector<std::vector<T>>>
     class Histogram : public Entangled {
         typedef std::vector<std::vector<T>> VectorType;
-        GETTER_NCONST(VectorType, data)
+        GETTER_NCONST(VectorType, data);
         V _raw_data;
         frange _parsed_range;
         

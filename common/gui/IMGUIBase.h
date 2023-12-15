@@ -51,10 +51,10 @@ namespace gui {
         };
         
         GETTER(std::unique_ptr<DrawStructure>, graph);
-        GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform)
+        GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform);
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area);
-        GETTER_I(bool, focussed, true)
+        GETTER_I(bool, focussed, true);
         std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
 #ifndef NDEBUG

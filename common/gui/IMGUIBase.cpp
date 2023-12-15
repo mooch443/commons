@@ -56,7 +56,7 @@ void clear_cache() {
 }
 
 class PolyCache : public CacheObject {
-    GETTER_NCONST(std::vector<ImVec2>, points)
+    GETTER_NCONST(std::vector<ImVec2>, points);
 };
 
 #ifndef NDEBUG
@@ -66,12 +66,12 @@ class PolyCache : public CacheObject {
 
     class TextureCache : public CacheObject {
         GETTER(TexturePtr, texture);
-        GETTER_NCONST(Size2, size)
-        GETTER_NCONST(Size2, gpu_size)
-        GETTER_PTR(IMGUIBase*, base)
-        GETTER_PTR(CrossPlatform*, platform)
-        GETTER_PTR(Drawable*, object)
-        GETTER_SETTER(uint32_t, channels)
+        GETTER_NCONST(Size2, size);
+        GETTER_NCONST(Size2, gpu_size);
+        GETTER_PTR(IMGUIBase*, base);
+        GETTER_PTR(CrossPlatform*, platform);
+        GETTER_PTR(Drawable*, object);
+        GETTER_SETTER(uint32_t, channels);
         
         //static std::unordered_map<const IMGUIBase*, std::set<const TextureCache*>> _all_textures;
         //static std::mutex _texture_mutex;

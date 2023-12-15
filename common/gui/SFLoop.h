@@ -11,7 +11,7 @@ namespace gui {
         DrawStructure& _graph;
         std::function<void(SFLoop&)> _after_display;
         std::function<void(SFLoop&)> _idle_callback;
-        GETTER_SETTER(bool, please_end)
+        GETTER_SETTER(bool, please_end);
         
         std::string _name;
         std::mutex queue_mutex;

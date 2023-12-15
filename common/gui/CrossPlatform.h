@@ -51,7 +51,7 @@ namespace gui {
         virtual void toggle_full_screen() {}
         virtual void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)>) {}
         
-        GETTER_SETTER(Color, clear_color)
-        GETTER_SETTER(bool, frame_capture_enabled)
+        GETTER_SETTER(Color, clear_color);
+        GETTER_SETTER(bool, frame_capture_enabled);
     };
 }

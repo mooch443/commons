@@ -93,7 +93,7 @@ namespace cmn {
             GETTER(std::function<size_t()>, enum_index);///< Getter for the index of an enum value.
             
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
-            GETTER_SETTER_I(bool, do_print, false)
+            GETTER_SETTER_I(bool, do_print, false);
             
         public:
             // Constructors

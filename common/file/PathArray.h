@@ -51,8 +51,8 @@ public:
     static inline const std::regex pattern{ R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)" };
 
 private:
-    GETTER_SETTER(std::string, source)
-    GETTER_I(bool, matched_patterns, false)
+    GETTER_SETTER(std::string, source);
+    GETTER_I(bool, matched_patterns, false);
 
     mutable bool _has_to_be_filtered{ false };
     mutable std::optional<std::vector<std::string>> _to_be_resolved;

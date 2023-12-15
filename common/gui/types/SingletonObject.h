@@ -4,7 +4,7 @@
 
 namespace gui {
     class HasName {
-        GETTER_SETTER(std::string, name)
+        GETTER_SETTER(std::string, name);
     public:
         HasName(const std::string& name) : _name(name) {}
         virtual ~HasName() {}
@@ -14,7 +14,7 @@ namespace gui {
     
     class SingletonObject : public Drawable {
     protected:
-        GETTER_PTR(Drawable*, ptr)
+        GETTER_PTR(Drawable*, ptr);
         
     public:
         SingletonObject(Drawable *d)

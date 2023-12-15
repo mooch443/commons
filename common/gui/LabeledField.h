@@ -238,7 +238,7 @@ struct LabeledList : public LabeledField {
 };
 
 class CustomDropdown : public gui::Dropdown {
-    GETTER_SETTER(std::function<void()>, update_callback)
+    GETTER_SETTER(std::function<void()>, update_callback);
 public:
     using gui::Dropdown::Dropdown;
 

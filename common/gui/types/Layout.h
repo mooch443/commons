@@ -56,7 +56,7 @@ namespace gui {
         typedef derived_ptr<Drawable> Ptr;
         
     private:
-        GETTER_NCONST(std::vector<Ptr>, objects)
+        GETTER_NCONST(std::vector<Ptr>, objects);
         
     protected:
         GETTER(attr::Margins, margins);

@@ -7,7 +7,7 @@ namespace gui {
     
     class HTMLCache : public CacheObject {
     protected:
-        GETTER_SETTER(std::string, text)
+        GETTER_SETTER(std::string, text);
         
     public:
         HTMLCache() { set_changed(true); }

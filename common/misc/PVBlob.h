@@ -148,13 +148,13 @@ public:
     }
     
 protected:
-    GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels)
-    GETTER_I(uint8_t, flags, 0)
-    GETTER_I(bid, parent_id, pv::bid::invalid)
-    GETTER_I(bid, blob_id, pv::bid::invalid)
-    GETTER_SETTER(bool, tried_to_split)
-    GETTER_SETTER_I(FilterReason, reason, FilterReason::Unknown)
-    GETTER_SETTER(cmn::blob::Prediction, prediction)
+    GETTER_NCONST(cmn::blob::pixel_ptr_t, pixels);
+    GETTER_I(uint8_t, flags, 0);
+    GETTER_I(bid, parent_id, pv::bid::invalid);
+    GETTER_I(bid, blob_id, pv::bid::invalid);
+    GETTER_SETTER(bool, tried_to_split);
+    GETTER_SETTER_I(FilterReason, reason, FilterReason::Unknown);
+    GETTER_SETTER(cmn::blob::Prediction, prediction);
     
     float _recount;
     int32_t _recount_threshold{-1};
