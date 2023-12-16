@@ -11,6 +11,7 @@ FfmpegVideoCapture::FfmpegVideoCapture(const std::string& filePath) {
         // Handle error if opening the file fails
         std::cerr << "Failed to open video file: " << filePath << std::endl;
     }
+    av_log_set_level(AV_LOG_QUIET);
 }
 
 bool FfmpegVideoCapture::open(const std::string& filePath) {
