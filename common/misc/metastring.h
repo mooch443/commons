@@ -932,6 +932,11 @@ template<class Q>
     requires std::floating_point<typename std::remove_cv<Q>::type>
 Q fromStr(const std::string& str)
 {
+#if defined(__clang__)
+    if(!str.empty() && str[0] == '\'' && str.back() == '\'')
+        return static_cast<Q>(std::stod(str.substr(1,str.length()-2)));
+    return static_cast<Q>(std::stod(str));
+#else
     std::string_view sv(str);
     if(!sv.empty() && sv[0] == '\'' && sv.back() == '\'')
         sv = sv.substr(1,sv.length()-2);
@@ -941,6 +946,7 @@ Q fromStr(const std::string& str)
     if (result.ec != std::errc{})
         throw std::runtime_error("Cannot convert value: " + (std::string)sv + " to " + Meta::name<Q>());
     return value;
+#endif
 }
         
 template<class Q>
