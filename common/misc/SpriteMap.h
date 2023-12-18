@@ -7,7 +7,7 @@ namespace cmn {
 
 template <typename T>
 concept ParserAvailable = requires(const T& t) {
-    { cmn::ParseValue<>::parse_value<T>(t) }
+    { cmn::ParseValue<>::parse_value(t) }
         -> std::same_as<std::string>;
 };
 
