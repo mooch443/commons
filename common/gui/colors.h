@@ -425,18 +425,19 @@ class ColorWheel {
         gui::Color(0,85,255)
     };*/
     
-    static constexpr int step = 100;
-    int _hue;
+    static constexpr int64_t step = 100;
+    uint64_t _hue;
     //int _offset;
     
 public:
-    constexpr ColorWheel(uint32_t index = 0) : _index(index), _hue(int(255 + index * (index + 1) * 0.5 * step)) {
-        
-    }
+    constexpr ColorWheel(uint32_t index = 0)
+        : _index(index),
+          _hue(255u + uint64_t(SQR(uint64_t(index)) * 0.5 * step))
+    { }
     constexpr gui::Color next() {
         //if (_index >= sizeof(colors) / sizeof(gui::Color)) {
         
-        const uint8_t s = _hue % 255;
+        const uint8_t s = cmn::narrow_cast<uint8_t>(_hue % uint64_t(255));
         //const uint32_t h = s % 100;
         const gui::Color hsv(s, 255, 255);
         //_hue += step;
