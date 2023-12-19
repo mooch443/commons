@@ -166,7 +166,8 @@ public:
         }
         
         if(_paths.size() <= 1 && not matched_patterns()) {
-            _source = _paths.front().str();
+            if(not _paths.empty())
+                _source = _paths.front().str();
         }
     }
     

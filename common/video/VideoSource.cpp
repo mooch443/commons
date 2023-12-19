@@ -886,7 +886,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     for(auto && [file, indexes] : file_indexes) {
         auto fn = [this, &acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
         {
-            Image f;
+            Image f(size().height, size().width, _colors == ImageMode::RGB ? 3 : 1);
             double count = 0;
             
             for(auto index : indexes) {
