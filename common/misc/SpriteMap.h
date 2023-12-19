@@ -526,7 +526,10 @@ void Reference::operator=(const T& value) {
     
     template<typename T>
     ConstReference::operator const T() const {
-        Property<T> *tmp = dynamic_cast<Property<T>*>(_type);
+        if(not _type)
+            return "const null&";
+        
+        const Property<T> *tmp = dynamic_cast<const Property<T>*>(_type);
         if (tmp) {
             return tmp->value();
         }
