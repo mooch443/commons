@@ -14,24 +14,37 @@ std::string sanitize_filename(const std::string& s) {
     return os.str();
 }
 
-std::string find_basename(const file::PathArray& pathArray) {
-    auto paths = pathArray.get_paths();
+std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
+    auto& paths = pathArray.get_paths();
     
-    if (paths.empty()) {
-        return "";  // Return an empty string if the PathArray is empty
-    }
-    
-    if (paths.size() == 1) {
-        return sanitize_filename((std::string)paths[0].remove_extension().filename());  // Single file, return its name
-    }
+    if (paths.empty())
+        return std::nullopt;  // Return an empty string if the PathArray is empty
     
     auto parent_path = paths[0].remove_filename();
     bool same_parent = std::all_of(paths.begin(), paths.end(),
-                                   [&parent_path](const file::Path& p) { return p.remove_filename() == parent_path; });
+        [&parent_path](const file::Path& p) {
+            return p.remove_filename() == parent_path;
+        });
     
     if (same_parent) {
-        return sanitize_filename((std::string)parent_path.filename());  // All paths share the same parent
+        return parent_path;  // All paths share the same parent
     }
+    
+    return std::nullopt;
+}
+
+std::string find_basename(const file::PathArray& pathArray) {
+    auto& paths = pathArray.get_paths();
+    
+    if (paths.empty())
+        return "";  // Return an empty string if the PathArray is empty
+    
+    if (paths.size() == 1)
+        return sanitize_filename((std::string)paths[0].remove_extension().filename());  // Single file, return its name
+    
+    auto parent_path = find_parent(pathArray);
+    if (parent_path)
+        return sanitize_filename((std::string)parent_path->filename());  // All paths share the same parent
     
     std::string common_prefix = (std::string)paths[0].remove_extension().filename();
     for (const auto& path : paths) {

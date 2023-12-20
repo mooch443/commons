@@ -677,6 +677,12 @@ void Context::init() const {
                 }
                 return file::Path(Meta::fromStr<file::Path>(props.first()).filename());
             }),
+            VarFunc("folder", [](const VarProps& props) -> file::Path {
+                if(props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Need one argument for ", props,".");
+                }
+                return file::Path(Meta::fromStr<file::Path>(props.first()).remove_filename());
+            }),
             VarFunc("basename", [](const VarProps& props) -> file::Path {
                 if(props.parameters.size() != 1) {
                     throw InvalidArgumentException("Need one argument for ", props,".");

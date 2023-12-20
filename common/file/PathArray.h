@@ -228,9 +228,9 @@ public:
         }
 
         if(_paths.empty())
-            return "";
+            return "\"\"";
         if(_paths.size() == 1)
-            return _paths.front().str();
+            return Meta::toStr(_paths.front().str());
         return Meta::toStr(_paths);
     }
     static std::string class_name() {
@@ -372,5 +372,6 @@ using PathArray = _PathArray<>;
 
 std::string sanitize_filename(const std::string& s);
 std::string find_basename(const file::PathArray& pathArray);
+std::optional<file::Path> find_parent(const file::PathArray& pathArray);
 
 }
