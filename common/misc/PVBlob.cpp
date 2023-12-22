@@ -223,7 +223,7 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 }
 
 pv::BlobPtr CompressedBlob::unpack() const {
-    auto flines = std::make_unique<std::vector<HorizontalLine>>();
+    auto flines = pv::buffers().get(source_location::current());
     ShortHorizontalLine::uncompress(*flines, start_y, _lines);
     
     auto ptr = pv::Blob::Make(std::move(flines), nullptr, 0, blob::Prediction{pred});
