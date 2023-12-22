@@ -36,12 +36,12 @@ namespace cmn {
     using coord_t = uint16_t;
     using ptr_safe_t = uint64_t;
     struct HorizontalLine {
-        coord_t y;
         coord_t x0, x1;
+        coord_t y, padding;
         
         constexpr HorizontalLine() noexcept = default;
         constexpr HorizontalLine(coord_t y_, coord_t x0_, coord_t x1_) noexcept
-            : y(y_), x0(x0_), x1(x1_)
+            : x0(x0_), x1(x1_), y(y_), padding(0)
         {
             //assert(x0 <= x1);
         }

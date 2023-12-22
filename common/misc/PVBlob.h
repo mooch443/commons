@@ -10,12 +10,27 @@
 #include <misc/vec2.h>
 #include <misc/bid.h>
 #include <file/DataFormat.h>
+#include <misc/Buffers.h>
+
+// Detect architecture and include appropriate headers
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    #define USE_NEON
+#elif defined(__SSE2__) || defined(__x86_64__) || defined(_M_X64)
+    #define USE_SSE
+#endif
 
 namespace Output {
     class ResultsFormat;
 }
 
 namespace pv {
+
+struct LineMaker {
+    cmn::blob::line_ptr_t operator()() const;
+};
+
+using buffers_t = cmn::Buffers<cmn::blob::line_ptr_t, LineMaker, 5000>;
+buffers_t& buffers();
 
 struct Moments {
     float m[3][3];
@@ -251,7 +266,18 @@ public:
     //! compresses an array of HorizontalLines to an array of ShortHorizontalLines
     static std::vector<ShortHorizontalLine> compress(const std::vector<cmn::HorizontalLine>& lines);
     //! uncompresses an array of ShortHorizontalLines back to HorizontalLines
-    static cmn::blob::line_ptr_t uncompress(uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed);
+#if defined(USE_NEON) || defined(USE_SSE)
+    // if SSE is enabled and its not MSVC
+#if defined(USE_SSE) && !defined(_MSC_VER)
+    __attribute__((target("avx512f"))) static void uncompress(std::vector<cmn::HorizontalLine>& _result, uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed) noexcept;
+    __attribute__((target("default"))) static void uncompress(std::vector<cmn::HorizontalLine>& _result, uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed) noexcept;
+#else
+    static void uncompress(std::vector<cmn::HorizontalLine>& _result, uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed) noexcept;
+    static void uncompress_normal(std::vector<cmn::HorizontalLine>& _result, uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed) noexcept;
+#endif
+#else
+    static void uncompress(std::vector<HorizontalLine>& _result, uint16_t start_y, const std::vector<ShortHorizontalLine>& compressed) noexcept;
+#endif
     
 public:
     constexpr ShortHorizontalLine() : _x0(0), _x1(0) {}

@@ -7,14 +7,139 @@ namespace cmn {
 template <typename Func, typename Arg>
 concept CallableWith = std::is_invocable_v<Func, Arg>;
 
-template<typename T, typename Construct>
-struct Buffers {
-    std::mutex& mutex() {
+template<typename T, size_t _capacity>
+class FixedCapacityVector {
+    size_t _size{0u};
+    std::array<T, _capacity> _data;
+
+public:
+    static constexpr size_t capacity() {
+        return _capacity;
+    }
+    
+    size_t size() const {
+        return _size;
+    }
+    
+    bool empty() const {
+        return _size == 0u;
+    }
+    
+    void push_back(T&& item) {
+        if(_size >= _capacity)
+            throw U_EXCEPTION("Buffer is full");
+        
+        _data[_size++] = std::move(item);
+    }
+
+    void push_back(const T& item) {
+        if(_size >= _capacity)
+            throw U_EXCEPTION("Buffer is full");
+        
+        _data[_size++] = item;
+    }
+
+    T& operator[](size_t index) {
+        if(index >= _size)
+            throw U_EXCEPTION("Index out of bounds");
+        
+        return _data[index];
+    }
+
+    const T& operator[](size_t index) const {
+        if(index >= _size)
+            throw U_EXCEPTION("Index out of bounds");
+        
+        return _data[index];
+    }
+
+    T& back() {
+        if(_size == 0u)
+            throw U_EXCEPTION("Buffer is empty");
+        
+        return _data[_size - 1u];
+    }
+
+    const T& back() const {
+        if(_size == 0u)
+            throw U_EXCEPTION("Buffer is empty");
+        
+        return _data[_size - 1u];
+    }
+
+    T& front() {
+        if(_size == 0u)
+            throw U_EXCEPTION("Buffer is empty");
+        
+        return _data[0];
+    }
+
+    const T& front() const {
+        if(_size == 0u)
+            throw U_EXCEPTION("Buffer is empty");
+        
+        return _data[0];
+    }
+
+    void pop_back() {
+        if(_size == 0u)
+            throw U_EXCEPTION("Buffer is empty");
+        
+        --_size;
+    }
+
+    void clear() {
+        _size = 0u;
+    }
+
+    T* data() {
+        return _data.data();
+    }
+
+    const T* data() const {
+        return _data.data();
+    }
+
+    T* begin() {
+        return _data.data();
+    }
+
+    const T* begin() const {
+        return _data.data();
+    }
+
+    T* end() {
+        return _data.data() + _size;
+    }
+
+    const T* end() const {
+        return _data.data() + _size;
+    }
+};
+
+template<typename T, typename Construct, size_t _max_size = 0>
+class Buffers {
+public:
+    using buffer_t = std::conditional<_max_size != 0, FixedCapacityVector<T, _max_size>, std::vector<T>>::type;
+    
+private:
+    buffer_t _buffers;
+    Construct _create{};
+    mutable std::mutex m;
+    
+public:
+    std::mutex& mutex() const {
         return m;
     }
-    std::vector<T> _buffers;
-    Construct _create{};
-    std::mutex m;
+    
+    static constexpr size_t max_size() {
+        return _max_size;
+    }
+    
+    size_t size() const {
+        std::unique_lock guard(mutex());
+        return _buffers.size();
+    }
     
     T get(cmn::source_location loc) {
         if(std::unique_lock guard(mutex());
@@ -38,8 +163,15 @@ struct Buffers {
     
     void move_back(T&& image) {
         std::unique_lock guard(mutex());
-        if(image)
-            _buffers.emplace_back(std::move(image));
+        if(image) {
+            if(_max_size > 0u
+               && _buffers.size() + 1u >= _max_size)
+            {
+                return; // delete item since we are beyond max
+            }
+                
+            _buffers.push_back(std::move(image));
+        }
     }
 };
 

@@ -3,10 +3,55 @@
 #include <misc/Timer.h>
 #include <misc/create_struct.h>
 
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+    #include <arm_neon.h>
+#elif defined(__SSE2__) || defined(__x86_64__) || defined(_M_X64)
+    #include <emmintrin.h>
+    #include <smmintrin.h>
+    #include <immintrin.h>
+    #if defined(_MSC_VER)
+        #include <intrin.h>
+    #endif
+#endif
+
 namespace pv {
     using namespace cmn;
     using namespace cmn::blob;
 
+    cmn::blob::line_ptr_t LineMaker::operator()() const {
+        /*if(buffers().size() % 1000u == 0) {
+            thread_print("buffer size = ", buffers().size());
+        }*/
+        return std::make_unique<cmn::blob::lines_t>((NoInitializeAllocator<cmn::blob::lines_t::value_type>()));
+    }
+
+    buffers_t& buffers() {
+        static buffers_t* instance = new buffers_t;
+        return *instance; /// no delete in order to avoid cxx_finalize exception
+    }
+
+    // Template function to call a lambda with a compile-time constant index
+    template<typename Lambda, auto Index>
+    constexpr void callLambdaWithIndex(Lambda&& lambda) {
+        lambda.template operator() < Index > ();
+    }
+
+    // Helper structure for compile-time recursion
+    template<int Start, int End>
+    struct LambdaCaller {
+        template<typename Lambda>
+        static constexpr void call(Lambda&& lambda) {
+            callLambdaWithIndex<Lambda, Start>(lambda);
+            LambdaCaller<Start + 1, End>::call(std::forward<Lambda>(lambda));
+        }
+    };
+
+    // Base case for recursion
+    template<int End>
+    struct LambdaCaller<End, End> {
+        template<typename Lambda>
+        static constexpr void call(Lambda&&) {}
+    };
 
 CREATE_STRUCT(PVSettings,
     (float, cm_per_pixel),
@@ -27,6 +72,9 @@ std::mutex all_mutex_blob;
 #endif
 
 Blob::~Blob() {
+    if(_hor_lines) {
+        pv::buffers().move_back(std::move(_hor_lines));
+    }
 #ifdef _DEBUG_MEMORY
     std::lock_guard<std::mutex> guard(all_mutex_blob);
     auto it = all_blobs_map.find(this);
@@ -175,7 +223,9 @@ cmn::Bounds CompressedBlob::calculate_bounds() const {
 }
 
 pv::BlobPtr CompressedBlob::unpack() const {
-    auto flines = ShortHorizontalLine::uncompress(start_y, _lines);
+    auto flines = std::make_unique<std::vector<HorizontalLine>>();
+    ShortHorizontalLine::uncompress(*flines, start_y, _lines);
+    
     auto ptr = pv::Blob::Make(std::move(flines), nullptr, 0, blob::Prediction{pred});
     ptr->set_parent_id((status_byte & 0x2) != 0 ? parent_id : pv::bid::invalid);
     
@@ -237,16 +287,268 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         return ret;
     }
-    
-    blob::line_ptr_t ShortHorizontalLine::uncompress(
-        uint16_t start_y,
-        const std::vector<ShortHorizontalLine>& compressed)
+
+#ifdef USE_NEON
+    __attribute__((target("neon"))) // NEON is required for vld1q_u32
+    //__attribute__((noinline))
+    void ShortHorizontalLine::uncompress(
+            std::vector<cmn::HorizontalLine>& _result,
+            uint16_t start_y,
+            const std::vector<ShortHorizontalLine>& compressed) noexcept // Assuming compressed is a vector of uint32_t
     {
-        auto uncompressed = std::make_unique<std::vector<HorizontalLine>>((NoInitializeAllocator<HorizontalLine>()));
-        uncompressed->resize(compressed.size());
+        //uncompress_normal(_result, start_y, compressed);
+        //return;
+        
+        auto result = &_result;
+        result->resize(compressed.size());
+
+        auto y = start_y;
+        auto uptr = result->data();
+        auto cptr = reinterpret_cast<const uint32_t*>(compressed.data());
+        auto end = cptr + compressed.size() - (compressed.size() % 4); // NEON processes 4 elements per loop with 128-bit vectors
+
+        uint32x4_t x_mask = vdupq_n_u32(0x7FFFFFFF);
+        uint32x4_t eol_mask = vdupq_n_u32(0x80000000);
+        uint32x4_t zeros = vmovq_n_u32(0);
+
+        static_assert(sizeof(ShortHorizontalLine) == 4, "ShortHorizontalLine is not 4 bytes");
+        static_assert(sizeof(HorizontalLine) == sizeof(uint64_t), "HorizontalLine is not 8 bytes");
+
+        for (; cptr < end; cptr += 4, uptr += 4) {
+            uint32x4_t data_vec = vld1q_u32(cptr);
+                    //printf("Loaded data_vec: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(data_vec, 0), vgetq_lane_u32(data_vec, 1), vgetq_lane_u32(data_vec, 2), vgetq_lane_u32(data_vec, 3));
+
+            uint32x4_t X = vandq_u32(data_vec, x_mask);
+            //printf("X coordinates: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(X, 0), vgetq_lane_u32(X, 1), vgetq_lane_u32(X, 2), vgetq_lane_u32(X, 3));
+
+            // Correcting the Low part (x0) extraction:
+            // Narrow the 32-bit values in X to 16-bit values to extract the lower half (x0).
+            // This should properly extract the lower 16 bits.
+            uint16x4_t low_part = vmovn_u32(X);
+            //printf("A: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(low_part, 0), vget_lane_u16(low_part, 1), vget_lane_u16(low_part, 2), vget_lane_u16(low_part, 3));
+            
+            // Correcting the High part (x1) extraction:
+            // First, shift the data right by 16 bits to position the x1 part in the lower 16 bits.
+            // Then, apply a mask to ensure only the lower 15 bits are retained (assuming the 16th bit is not part of x1).
+            // Finally, narrow the result to a 16-bit value.
+            uint32x4_t high_bits_shifted = vshrq_n_u32(X, 16);
+            uint32x4_t high_mask = vdupq_n_u32(0x7FFF); // 15-bit mask for x1.
+            uint16x4_t high_part = vmovn_u32(vandq_u32(high_bits_shifted, high_mask));
+            //printf("B: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(high_part, 0), vget_lane_u16(high_part, 1), vget_lane_u16(high_part, 2), vget_lane_u16(high_part, 3));
+
+            uint32x4_t eol_flags = vshrq_n_u32(vandq_u32(data_vec, eol_mask), 31);
+            uint16x4_t y_values = vdup_n_u16(y); // Update y_values based on the new y
+            coord_t y_increment = vaddvq_u32(eol_flags);// Prepare the y and padding values for all elements
+
+            //printf("EOL flags: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(eol_flags, 0), vgetq_lane_u32(eol_flags, 1), vgetq_lane_u32(eol_flags, 2), vgetq_lane_u32(eol_flags, 3));
+
+            auto accum = [&]<int i>() {
+                // Shift-right eol_flags by 1 bit and add the remaining bits to y_values
+                // Shift elements to the left and introduce zeros from the right
+                eol_flags = vextq_u32(zeros, eol_flags, 3);
+                //printf("EOL update: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(eol_flags, 0), vgetq_lane_u32(eol_flags, 1), vgetq_lane_u32(eol_flags, 2), vgetq_lane_u32(eol_flags, 3));
+
+                y_values = vmovn_u32(vaddq_u32(vmovl_u16(y_values), eol_flags));
+                //printf("Updated y: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(y_values, 0), vget_lane_u16(y_values, 1), vget_lane_u16(y_values, 2), vget_lane_u16(y_values, 3));
+            };
+
+            LambdaCaller<0, 3>::call(accum);
+            //printf("Updated y: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(y_values, 0), vget_lane_u16(y_values, 1), vget_lane_u16(y_values, 2), vget_lane_u16(y_values, 3));
+
+            uint16x4_t A = low_part;
+            uint16x4_t B = high_part;
+            uint16x4_t C = y_values;
+            uint16x4_t D = vdup_n_u16(0);
+
+            //printf("C: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(C, 0), vget_lane_u16(C, 1), vget_lane_u16(C, 2), vget_lane_u16(C, 3));
+
+            // Step 1: Combine A and B
+            uint16x8_t tempAB = vcombine_u16(A, B); // Combine A and B into a single 8x16 vector
+            uint16x4x2_t zippedAB = vzip_u16(vget_low_u16(tempAB), vget_high_u16(tempAB));
+            // Now, zippedAB.val[0] contains A0, B0, A1, B1
+            // And zippedAB.val[1] contains A2, B2, A3, B3
+            //printf("zippedAB.val[0] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedAB.val[0], 0), vget_lane_u16(zippedAB.val[0], 1), vget_lane_u16(zippedAB.val[0], 2), vget_lane_u16(zippedAB.val[0], 3));
+            //printf("zippedAB.val[1] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedAB.val[1], 0), vget_lane_u16(zippedAB.val[1], 1), vget_lane_u16(zippedAB.val[1], 2), vget_lane_u16(zippedAB.val[1], 3));
+
+            // Step 2: Combine C and D
+            uint16x8_t tempCD = vcombine_u16(C, D); // Combine C and D into a single 8x16 vector
+            uint16x4x2_t zippedCD = vzip_u16(vget_low_u16(tempCD), vget_high_u16(tempCD));
+            // Now, zippedCD.val[0] contains C0, D0, C1, D1
+            // And zippedCD.val[1] contains C2, D2, C3, D3
+            //printf("zippedCD.val[0] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedCD.val[0], 0), vget_lane_u16(zippedCD.val[0], 1), vget_lane_u16(zippedCD.val[0], 2), vget_lane_u16(zippedCD.val[0], 3));
+            //printf("zippedCD.val[1] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedCD.val[1], 0), vget_lane_u16(zippedCD.val[1], 1), vget_lane_u16(zippedCD.val[1], 2), vget_lane_u16(zippedCD.val[1], 3));
+
+            // Step 3: Create v0 and v1
+            //uint64x2x2_t v0 = vzipq_u64(vreinterpretq_u64_u16(zippedAB.val[0]), vreinterpretq_u64_u16(zippedCD.val[0]));
+            //uint64x2x2_t v1 = vzipq_u64(vreinterpretq_u64_u16(zippedAB.val[1]), vreinterpretq_u64_u16(zippedCD.val[1]));
+
+            uint16x8_t combinedAB0 = vcombine_u16(zippedAB.val[0], zippedAB.val[1]);
+            uint16x8_t combinedCD0 = vcombine_u16(zippedCD.val[0], zippedCD.val[1]);
+
+            /*uint16_t combinedAB0_arr[8];
+            vst1q_u16(combinedAB0_arr, combinedAB0);
+            printf("combinedAB0 =");
+            for (int i = 0; i < 8; ++i) {
+                printf(" 0x%X", combinedAB0_arr[i]);
+            }
+            printf("\n");
+
+            uint16_t combinedCD0_arr[8];
+            vst1q_u16(combinedCD0_arr, combinedCD0);
+            printf("combinedCD0 =");
+            for (int i = 0; i < 8; ++i) {
+                printf(" 0x%X", combinedCD0_arr[i]);
+            }
+            printf("\n");*/
+
+            uint32x4x2_t interleaved1 = vzipq_u32(vreinterpretq_u32_u16(combinedAB0), vreinterpretq_u32_u16(combinedCD0));
+            uint16x8_t interleaved2 = vreinterpretq_u16_u32(interleaved1.val[0]);
+            uint16x8_t interleaved3 = vreinterpretq_u16_u32(interleaved1.val[1]);
+            uint16x8x2_t _interleaved;
+            _interleaved.val[0] = interleaved2;
+            _interleaved.val[1] = interleaved3;
+            /*printf("_interleaved[0][0:4] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[0], 0), vgetq_lane_u16(_interleaved.val[0], 1), vgetq_lane_u16(_interleaved.val[0], 2), vgetq_lane_u16(_interleaved.val[0], 3));
+            printf("_interleaved[0][4:8] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[0], 4), vgetq_lane_u16(_interleaved.val[0], 5), vgetq_lane_u16(_interleaved.val[0], 6), vgetq_lane_u16(_interleaved.val[0], 7));
+            printf("_interleaved[1][0:4] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[1], 0), vgetq_lane_u16(_interleaved.val[1], 1), vgetq_lane_u16(_interleaved.val[1], 2), vgetq_lane_u16(_interleaved.val[1], 3));
+            printf("_interleaved[1][4:8] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[1], 4), vgetq_lane_u16(_interleaved.val[1], 5), vgetq_lane_u16(_interleaved.val[1], 6), vgetq_lane_u16(_interleaved.val[1], 7));*/
+
+            // Step 4: Store the interleaved results as 64-bit values in pairs of two
+            uint64x2_t interleaved4 = vreinterpretq_u64_u16(_interleaved.val[0]);
+            uint64x2_t interleaved5 = vreinterpretq_u64_u16(_interleaved.val[1]);
+
+            vst1q_u64((uint64_t*)uptr, interleaved4);
+            vst1q_u64((uint64_t*)(uptr + 2), interleaved5);
+
+            y += y_increment;
+            //printf("Updated y: %u\n", y);
+        }
+
+        // Process the remaining elements (if any)
+        for (auto remaining_end = cptr + (compressed.size() % 4); cptr < remaining_end; ++cptr, ++uptr) {
+            //std::cout << "Processing remaining element y=" << y << "\n";
+            uint32_t data = *cptr;
+            uptr->y = y;
+            uptr->x0 = uint16_t(data & 0xFFFF);
+            uptr->x1 = uint16_t((data >> 16) & 0x7FFF);
+            if (data & 0x80000000) y++;
+        }
+        
+        /*auto result2 = uncompress_normal(start_y, compressed);
+        assert(result->size() == result2->size());
+        for(size_t i=0; i<result->size(); ++i) {
+            assert((*result)[i] == (*result2)[i]);
+        }*/
+
+        //return result;
+    }
+
+    // NEON-specific implementation
+#elif defined(USE_SSE)
+
+#if defined(_MSC_VER)
+    void check_cpu_features(bool& use_avx512f) {
+        int cpuInfo[4] = {};
+        __cpuid(cpuInfo, 0);
+
+        if (cpuInfo[0] >= 7) {
+            __cpuidex(cpuInfo, 7, 0);
+            use_avx512f = (cpuInfo[1] & (1 << 16)) != 0;  // Check for AVX-512F support
+        }
+    }
+#endif
+
+#if !defined(_MSC_VER)
+    __attribute__((target("avx512f"))) // AVX512F is required for _mm512_setr_epi64
+#endif
+    blob::line_ptr_t ShortHorizontalLine::uncompress(
+            std::vector<cmn::HorizontalLine>& _result,
+            uint16_t start_y,
+            const std::vector<ShortHorizontalLine>& compressed) noexcept // Assuming compressed is a vector of uint32_t
+    {
+#if defined(_MSC_VER)
+        static bool use_avx512f = false;
+        static std::once_flag cpu_check_flag;  // Global flag for std::call_once
+        std::call_once(cpu_check_flag, check_cpu_features, std::ref(use_avx512f));
+        if (not use_avx512f) {
+            std::cout << "fallback instruction set" << std::endl;
+            return uncompress_normal(start_y, compressed);
+        }
+#endif
+
+        auto result = std::make_unique<std::vector<HorizontalLine>>();
+        result->resize(compressed.size());
+
+        auto y = start_y;
+        auto uptr = result->data();
+        auto cptr = reinterpret_cast<const __m256i*>(compressed.data());
+        auto end = reinterpret_cast<const __m256i*>(compressed.data() + compressed.size() - compressed.size() % 8u); // Processing 4 elements per loop with 256-bit vectors
+
+        const __m256i x_mask = _mm256_set1_epi32(0x7FFFFFFF);
+        const __m256i eol_mask = _mm256_set1_epi32(0x80000000);
+        const __m512i zeros = _mm512_setzero_si512();
+
+        static_assert(sizeof(ShortHorizontalLine) == 4, "ShortHorizontalLine is not 4 bytes");
+        static_assert(sizeof(HorizontalLine) == sizeof(uint64_t), "HorizontalLine is not 8 bytes");
+
+        for (; cptr < end; ++cptr, uptr += 8) {
+            __m256i data_vec = _mm256_loadu_si256(cptr);
+
+            // Extract x0 and x1, interleave with zeros to 512 bits
+            __m256i X = _mm256_and_si256(data_vec, x_mask);
+            __m512i X_512 = _mm512_zextsi256_si512(X);
+
+            __m512i low_part = _mm512_unpacklo_epi32(X_512, zeros);
+            __m512i high_part = _mm512_unpackhi_epi32(X_512, zeros);
+
+            // Now interleave low_part and high_part correctly
+            __m512i interleaved = _mm512_permutex2var_epi64(low_part, _mm512_setr_epi64(0, 1, 8, 9, 2, 3, 10, 11), high_part);
+
+            // Extract eol flags
+            __m256i eol_flags = _mm256_srli_epi32(_mm256_and_si256(data_vec, eol_mask), 31);
+            _mm512_storeu_si512(reinterpret_cast<void*>(uptr), interleaved);
+
+            auto runC = [&]<int i>() {
+                uptr[i].y = y;
+                y += _mm256_extract_epi32(eol_flags, i % 4);
+            };
+
+            LambdaCaller<0, 8>::call(runC);
+        }
+
+        // Process the remaining elements (if any)
+        auto remaining_ptr = reinterpret_cast<const uint32_t*>(cptr);
+        for (auto remaining_end = remaining_ptr + (compressed.size() % 8); remaining_ptr < remaining_end; ++remaining_ptr, ++uptr) {
+            uint32_t data = *remaining_ptr;
+            uptr->y = y;
+            uptr->x0 = uint16_t(data & 0xFFFF);
+            uptr->x1 = uint16_t((data >> 16) & 0x7FFF);
+            if (data & 0x80000000) y++;
+        }
+
+        return result;
+    }
+
+#endif
+
+#if defined(USE_NEON) || defined(_MSC_VER)
+    void ShortHorizontalLine::uncompress_normal(
+        std::vector<cmn::HorizontalLine>& _result,
+        uint16_t start_y,
+        const std::vector<ShortHorizontalLine>& compressed) noexcept
+#else
+#if defined(USE_SSE)
+    __attribute__((target("default")))
+#endif
+    blob::line_ptr_t ShortHorizontalLine::uncompress(
+            std::vector<cmn::HorizontalLine>& _result,
+            uint16_t start_y,
+            const std::vector<ShortHorizontalLine>& compressed) noexcept
+#endif
+    {
+        _result.resize(compressed.size());
         
         auto y = start_y;
-        auto uptr = uncompressed->data();
+        auto uptr = _result.data();
         auto cptr = compressed.data(), end = compressed.data()+compressed.size();
         
         for(; cptr != end; cptr++, uptr++) {
@@ -257,8 +559,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
             if(cptr->eol())
                 y++;
         }
-        
-        return uncompressed;
     }
     
     Blob::Blob()

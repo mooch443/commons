@@ -46,7 +46,8 @@ inline int __builtin_ctz32(uint32_t value) {
 
 namespace cmn {
 namespace blob {
-using line_ptr_t = std::unique_ptr<std::vector<HorizontalLine>>;
+using lines_t = std::vector<HorizontalLine>;
+using line_ptr_t = std::unique_ptr<lines_t>;
 using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
 
 enum class Focus {
