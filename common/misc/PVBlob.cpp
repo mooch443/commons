@@ -209,8 +209,8 @@ bool Blob::operator==(const pv::Blob& other) const {
 }
 
 cmn::Bounds CompressedBlob::calculate_bounds() const {
-    Float2_t max_x = 0, height = 0, min_x = _lines.empty() ? 0 : infinity<Float2_t>();
-    Float2_t x0, x1;
+    int max_x = 0, height = 0, min_x = _lines.empty() ? 0 : infinity<int>();
+    int x0, x1;
     for(auto &line : _lines) {
         x0 = line.x0();
         x1 = line.x1();
@@ -270,6 +270,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
     std::vector<ShortHorizontalLine>
         ShortHorizontalLine::compress(const std::vector<HorizontalLine>& lines)
     {
+#if !defined(USE_NEON)
         std::vector<pv::ShortHorizontalLine> ret((NoInitializeAllocator<pv::ShortHorizontalLine>()));
         ret.resize(lines.size());
         
@@ -284,8 +285,98 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 (rptr-1)->eol(true);
             prev_y = lptr->y;
         }
-        
+
         return ret;
+#else
+        std::vector<ShortHorizontalLine> ret((NoInitializeAllocator<pv::ShortHorizontalLine>()));
+        ret.resize(lines.size());
+
+        // Pointers to the start and end of the input and output vectors
+        auto lptr = reinterpret_cast<const HorizontalLine*>(lines.data());
+        auto end = lptr + lines.size(); // NEON processes 8 elements per loop
+        auto rptr = reinterpret_cast<ShortHorizontalLine*>(ret.data());
+
+        // Initialize previous y to the first element's y, or 0 if empty
+        uint16_t prev_y = lines.empty() ? 0 : lines.front().y;
+
+        // NEON constants
+        const uint16x8_t x_mask = vdupq_n_u16(0x7FFF); // Mask for x values
+        const uint16x8_t eol_mask = vdupq_n_u16(0x8000); // Mask for the EOL flag
+
+        for (; lptr + 8 <= end; lptr += 8, rptr += 8) {
+            // Load 8 HorizontalLines at once
+            uint16_t next_y;
+            if(lptr + 8 < end)
+                next_y = (lptr + 8)->y;
+            else
+                next_y = -1;
+            //printf("Next y = %u\n", next_y);
+            
+            uint16x8x4_t data_vec = vld4q_u16(reinterpret_cast<const uint16_t*>(lptr));
+            //printf("x0 = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(data_vec.val[0], 0), vgetq_lane_u16(data_vec.val[0], 1), vgetq_lane_u16(data_vec.val[0], 2), vgetq_lane_u16(data_vec.val[0], 3), vgetq_lane_u16(data_vec.val[0], 4), vgetq_lane_u16(data_vec.val[0], 5), vgetq_lane_u16(data_vec.val[0], 6), vgetq_lane_u16(data_vec.val[0], 7));
+
+            // Extract x0, x1, and y values
+            uint16x8_t x0_vec = data_vec.val[0];
+            //printf("x0  = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(x0_vec, 0), vgetq_lane_u16(x0_vec, 1), vgetq_lane_u16(x0_vec, 2), vgetq_lane_u16(x0_vec, 3), vgetq_lane_u16(x0_vec, 4), vgetq_lane_u16(x0_vec, 5), vgetq_lane_u16(x0_vec, 6), vgetq_lane_u16(x0_vec, 7));
+
+            uint16x8_t x1_vec = vandq_u16(data_vec.val[1], x_mask);
+            //printf("x1  = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(x1_vec, 0), vgetq_lane_u16(x1_vec, 1), vgetq_lane_u16(x1_vec, 2), vgetq_lane_u16(x1_vec, 3), vgetq_lane_u16(x1_vec, 4), vgetq_lane_u16(x1_vec, 5), vgetq_lane_u16(x1_vec, 6), vgetq_lane_u16(x1_vec, 7));
+
+            uint16x8_t y_vec = data_vec.val[2];
+            //printf("y   = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(y_vec, 0), vgetq_lane_u16(y_vec, 1), vgetq_lane_u16(y_vec, 2), vgetq_lane_u16(y_vec, 3), vgetq_lane_u16(y_vec, 4), vgetq_lane_u16(y_vec, 5), vgetq_lane_u16(y_vec, 6), vgetq_lane_u16(y_vec, 7));
+
+            uint16x8_t shifted_y_vec = vextq_u16(y_vec, vdupq_n_u16(next_y), 1);
+            //printf("y'  = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(shifted_y_vec, 0), vgetq_lane_u16(shifted_y_vec, 1), vgetq_lane_u16(shifted_y_vec, 2), vgetq_lane_u16(shifted_y_vec, 3), vgetq_lane_u16(shifted_y_vec, 4), vgetq_lane_u16(shifted_y_vec, 5), vgetq_lane_u16(shifted_y_vec, 6), vgetq_lane_u16(shifted_y_vec, 7));
+
+            // Calculate EOL flags based on changes in y
+            uint16x8_t eol_flags = vceqq_u16(y_vec, shifted_y_vec);
+            //uint16x8_t eol_flags = vceqq_u16(y_vec, vdupq_n_u16(prev_y));
+            //printf("eol = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(eol_flags, 0), vgetq_lane_u16(eol_flags, 1), vgetq_lane_u16(eol_flags, 2), vgetq_lane_u16(eol_flags, 3), vgetq_lane_u16(eol_flags, 4), vgetq_lane_u16(eol_flags, 5), vgetq_lane_u16(eol_flags, 6), vgetq_lane_u16(eol_flags, 7));
+            
+            eol_flags = vmvnq_u16(eol_flags); // Invert the EOL flags (=> 0xFFFF where y changes)
+            //eol_flags = vshrq_n_u16(eol_flags, 15); // Shift to make it a flag
+            eol_flags = vandq_u16(eol_flags, eol_mask);
+
+            //printf("eol = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(eol_flags, 0), vgetq_lane_u16(eol_flags, 1), vgetq_lane_u16(eol_flags, 2), vgetq_lane_u16(eol_flags, 3), vgetq_lane_u16(eol_flags, 4), vgetq_lane_u16(eol_flags, 5), vgetq_lane_u16(eol_flags, 6), vgetq_lane_u16(eol_flags, 7));
+
+            // Combine x1 and EOL flags
+            x1_vec = vorrq_u16(x1_vec, eol_flags);
+            //printf("x1' = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(x1_vec, 0), vgetq_lane_u16(x1_vec, 1), vgetq_lane_u16(x1_vec, 2), vgetq_lane_u16(x1_vec, 3), vgetq_lane_u16(x1_vec, 4), vgetq_lane_u16(x1_vec, 5), vgetq_lane_u16(x1_vec, 6), vgetq_lane_u16(x1_vec, 7));
+
+            // extract EOL flags back from x1 for testing:
+            //uint16x8_t eol_flags2 = vandq_u16(x1_vec, eol_mask);
+            //eol_flags2 = vshrq_n_u16(eol_flags2, 15);
+            //printf("eol2= {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(eol_flags2, 0), vgetq_lane_u16(eol_flags2, 1), vgetq_lane_u16(eol_flags2, 2), vgetq_lane_u16(eol_flags2, 3), vgetq_lane_u16(eol_flags2, 4), vgetq_lane_u16(eol_flags2, 5), vgetq_lane_u16(eol_flags2, 6), vgetq_lane_u16(eol_flags2, 7));
+
+            uint16x8x2_t tmp = vzipq_u16(x0_vec, x1_vec);
+            //printf("tmp[0,0:8] = {0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(tmp.val[0], 0), vgetq_lane_u16(tmp.val[0], 1), vgetq_lane_u16(tmp.val[0], 2), vgetq_lane_u16(tmp.val[0], 3), vgetq_lane_u16(tmp.val[0], 4), vgetq_lane_u16(tmp.val[0], 5), vgetq_lane_u16(tmp.val[0], 6), vgetq_lane_u16(tmp.val[0], 7));
+
+            // Store the results
+            vst1q_u16(reinterpret_cast<uint16_t*>(rptr), tmp.val[0]);
+            vst1q_u16(reinterpret_cast<uint16_t*>(rptr) + 8, tmp.val[1]);
+
+            // Update prev_y for the next iteration
+            prev_y = (lptr + 7)->y; // Last y value in the current batch
+            //printf("\n");
+
+            //printf("i = %lu\n", std::distance(lines.data(), lptr) + 8);
+        }
+
+        // Handle remaining elements
+        for (; lptr < end; ++lptr, ++rptr) {
+            //printf("Manual %d\n", std::distance(lines.data(), lptr));
+            *rptr = ShortHorizontalLine(lptr->x0, lptr->x1);
+            if (prev_y != lptr->y) {
+                (rptr - 1)->eol(true);
+            }
+            prev_y = lptr->y;
+            ++lptr;
+        }
+
+        ret.back().eol(false);
+
+        return ret;
+#endif
     }
 
 #ifdef USE_NEON
@@ -334,72 +425,38 @@ pv::BlobPtr CompressedBlob::unpack() const {
             uint32x4_t high_bits_shifted = vshrq_n_u32(X, 16);
             uint32x4_t high_mask = vdupq_n_u32(0x7FFF); // 15-bit mask for x1.
             uint16x4_t high_part = vmovn_u32(vandq_u32(high_bits_shifted, high_mask));
-            //printf("B: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(high_part, 0), vget_lane_u16(high_part, 1), vget_lane_u16(high_part, 2), vget_lane_u16(high_part, 3));
 
             uint32x4_t eol_flags = vshrq_n_u32(vandq_u32(data_vec, eol_mask), 31);
             uint16x4_t y_values = vdup_n_u16(y); // Update y_values based on the new y
             coord_t y_increment = vaddvq_u32(eol_flags);// Prepare the y and padding values for all elements
 
-            //printf("EOL flags: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(eol_flags, 0), vgetq_lane_u32(eol_flags, 1), vgetq_lane_u32(eol_flags, 2), vgetq_lane_u32(eol_flags, 3));
-
             auto accum = [&]<int i>() {
                 // Shift-right eol_flags by 1 bit and add the remaining bits to y_values
                 // Shift elements to the left and introduce zeros from the right
                 eol_flags = vextq_u32(zeros, eol_flags, 3);
-                //printf("EOL update: {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u32(eol_flags, 0), vgetq_lane_u32(eol_flags, 1), vgetq_lane_u32(eol_flags, 2), vgetq_lane_u32(eol_flags, 3));
-
                 y_values = vmovn_u32(vaddq_u32(vmovl_u16(y_values), eol_flags));
-                //printf("Updated y: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(y_values, 0), vget_lane_u16(y_values, 1), vget_lane_u16(y_values, 2), vget_lane_u16(y_values, 3));
             };
 
             LambdaCaller<0, 3>::call(accum);
-            //printf("Updated y: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(y_values, 0), vget_lane_u16(y_values, 1), vget_lane_u16(y_values, 2), vget_lane_u16(y_values, 3));
 
             uint16x4_t A = low_part;
             uint16x4_t B = high_part;
             uint16x4_t C = y_values;
             uint16x4_t D = vdup_n_u16(0);
 
-            //printf("C: {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(C, 0), vget_lane_u16(C, 1), vget_lane_u16(C, 2), vget_lane_u16(C, 3));
-
             // Step 1: Combine A and B
             uint16x8_t tempAB = vcombine_u16(A, B); // Combine A and B into a single 8x16 vector
             uint16x4x2_t zippedAB = vzip_u16(vget_low_u16(tempAB), vget_high_u16(tempAB));
-            // Now, zippedAB.val[0] contains A0, B0, A1, B1
-            // And zippedAB.val[1] contains A2, B2, A3, B3
-            //printf("zippedAB.val[0] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedAB.val[0], 0), vget_lane_u16(zippedAB.val[0], 1), vget_lane_u16(zippedAB.val[0], 2), vget_lane_u16(zippedAB.val[0], 3));
-            //printf("zippedAB.val[1] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedAB.val[1], 0), vget_lane_u16(zippedAB.val[1], 1), vget_lane_u16(zippedAB.val[1], 2), vget_lane_u16(zippedAB.val[1], 3));
 
             // Step 2: Combine C and D
             uint16x8_t tempCD = vcombine_u16(C, D); // Combine C and D into a single 8x16 vector
             uint16x4x2_t zippedCD = vzip_u16(vget_low_u16(tempCD), vget_high_u16(tempCD));
             // Now, zippedCD.val[0] contains C0, D0, C1, D1
             // And zippedCD.val[1] contains C2, D2, C3, D3
-            //printf("zippedCD.val[0] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedCD.val[0], 0), vget_lane_u16(zippedCD.val[0], 1), vget_lane_u16(zippedCD.val[0], 2), vget_lane_u16(zippedCD.val[0], 3));
-            //printf("zippedCD.val[1] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vget_lane_u16(zippedCD.val[1], 0), vget_lane_u16(zippedCD.val[1], 1), vget_lane_u16(zippedCD.val[1], 2), vget_lane_u16(zippedCD.val[1], 3));
 
             // Step 3: Create v0 and v1
-            //uint64x2x2_t v0 = vzipq_u64(vreinterpretq_u64_u16(zippedAB.val[0]), vreinterpretq_u64_u16(zippedCD.val[0]));
-            //uint64x2x2_t v1 = vzipq_u64(vreinterpretq_u64_u16(zippedAB.val[1]), vreinterpretq_u64_u16(zippedCD.val[1]));
-
             uint16x8_t combinedAB0 = vcombine_u16(zippedAB.val[0], zippedAB.val[1]);
             uint16x8_t combinedCD0 = vcombine_u16(zippedCD.val[0], zippedCD.val[1]);
-
-            /*uint16_t combinedAB0_arr[8];
-            vst1q_u16(combinedAB0_arr, combinedAB0);
-            printf("combinedAB0 =");
-            for (int i = 0; i < 8; ++i) {
-                printf(" 0x%X", combinedAB0_arr[i]);
-            }
-            printf("\n");
-
-            uint16_t combinedCD0_arr[8];
-            vst1q_u16(combinedCD0_arr, combinedCD0);
-            printf("combinedCD0 =");
-            for (int i = 0; i < 8; ++i) {
-                printf(" 0x%X", combinedCD0_arr[i]);
-            }
-            printf("\n");*/
 
             uint32x4x2_t interleaved1 = vzipq_u32(vreinterpretq_u32_u16(combinedAB0), vreinterpretq_u32_u16(combinedCD0));
             uint16x8_t interleaved2 = vreinterpretq_u16_u32(interleaved1.val[0]);
@@ -407,11 +464,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             uint16x8x2_t _interleaved;
             _interleaved.val[0] = interleaved2;
             _interleaved.val[1] = interleaved3;
-            /*printf("_interleaved[0][0:4] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[0], 0), vgetq_lane_u16(_interleaved.val[0], 1), vgetq_lane_u16(_interleaved.val[0], 2), vgetq_lane_u16(_interleaved.val[0], 3));
-            printf("_interleaved[0][4:8] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[0], 4), vgetq_lane_u16(_interleaved.val[0], 5), vgetq_lane_u16(_interleaved.val[0], 6), vgetq_lane_u16(_interleaved.val[0], 7));
-            printf("_interleaved[1][0:4] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[1], 0), vgetq_lane_u16(_interleaved.val[1], 1), vgetq_lane_u16(_interleaved.val[1], 2), vgetq_lane_u16(_interleaved.val[1], 3));
-            printf("_interleaved[1][4:8] = {0x%X, 0x%X, 0x%X, 0x%X}\n", vgetq_lane_u16(_interleaved.val[1], 4), vgetq_lane_u16(_interleaved.val[1], 5), vgetq_lane_u16(_interleaved.val[1], 6), vgetq_lane_u16(_interleaved.val[1], 7));*/
-
+            
             // Step 4: Store the interleaved results as 64-bit values in pairs of two
             uint64x2_t interleaved4 = vreinterpretq_u64_u16(_interleaved.val[0]);
             uint64x2_t interleaved5 = vreinterpretq_u64_u16(_interleaved.val[1]);
@@ -420,7 +473,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
             vst1q_u64((uint64_t*)(uptr + 2), interleaved5);
 
             y += y_increment;
-            //printf("Updated y: %u\n", y);
         }
 
         // Process the remaining elements (if any)
