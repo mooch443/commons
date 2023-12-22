@@ -460,10 +460,11 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #if !defined(_MSC_VER)
     __attribute__((target("avx512f"))) // AVX512F is required for _mm512_setr_epi64
 #endif
-    blob::line_ptr_t ShortHorizontalLine::uncompress(
-            std::vector<cmn::HorizontalLine>& _result,
+    void ShortHorizontalLine::uncompress(
+            std::vector<cmn::HorizontalLine>& result,
             uint16_t start_y,
-            const std::vector<ShortHorizontalLine>& compressed) noexcept // Assuming compressed is a vector of uint32_t
+            const std::vector<ShortHorizontalLine>& compressed) 
+        noexcept // Assuming compressed is a vector of uint32_t
     {
 #if defined(_MSC_VER)
         static bool use_avx512f = false;
@@ -471,15 +472,15 @@ pv::BlobPtr CompressedBlob::unpack() const {
         std::call_once(cpu_check_flag, check_cpu_features, std::ref(use_avx512f));
         if (not use_avx512f) {
             std::cout << "fallback instruction set" << std::endl;
-            return uncompress_normal(start_y, compressed);
+            uncompress_normal(result, start_y, compressed);
+            return;
         }
 #endif
 
-        auto result = std::make_unique<std::vector<HorizontalLine>>();
-        result->resize(compressed.size());
+        result.resize(compressed.size());
 
         auto y = start_y;
-        auto uptr = result->data();
+        auto uptr = result.data();
         auto cptr = reinterpret_cast<const __m256i*>(compressed.data());
         auto end = reinterpret_cast<const __m256i*>(compressed.data() + compressed.size() - compressed.size() % 8u); // Processing 4 elements per loop with 256-bit vectors
 
@@ -524,8 +525,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
             uptr->x1 = uint16_t((data >> 16) & 0x7FFF);
             if (data & 0x80000000) y++;
         }
-
-        return result;
     }
 
 #endif
