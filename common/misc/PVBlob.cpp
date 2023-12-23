@@ -500,15 +500,18 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #elif defined(USE_SSE)
 
 #if defined(_MSC_VER)
-    void check_cpu_features(bool& use_avx512f) {
+    bool check_cpu_features() {
         int cpuInfo[4] = {};
         __cpuid(cpuInfo, 0);
 
         if (cpuInfo[0] >= 7) {
             __cpuidex(cpuInfo, 7, 0);
-            use_avx512f = (cpuInfo[1] & (1 << 16)) != 0;  // Check for AVX-512F support
+            return (cpuInfo[1] & (1 << 16)) != 0;  // Check for AVX-512F support
         }
+
+        return false;
     }
+    static bool use_avx512f = check_cpu_features();
 #endif
 
 #if !defined(_MSC_VER)
@@ -521,9 +524,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
         noexcept // Assuming compressed is a vector of uint32_t
     {
 #if defined(_MSC_VER)
-        static bool use_avx512f = false;
-        static std::once_flag cpu_check_flag;  // Global flag for std::call_once
-        std::call_once(cpu_check_flag, check_cpu_features, std::ref(use_avx512f));
         if (not use_avx512f) {
             std::cout << "fallback instruction set" << std::endl;
             uncompress_normal(result, start_y, compressed);
@@ -564,7 +564,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 
             auto runC = [&]<int i>() {
                 uptr[i].y = y;
-                y += _mm256_extract_epi32(eol_flags, i % 4);
+                y += _mm256_extract_epi32(eol_flags, i % 8);
             };
 
             LambdaCaller<0, 8>::call(runC);
