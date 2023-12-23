@@ -3,9 +3,9 @@
 #include <misc/Timer.h>
 #include <misc/create_struct.h>
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#if defined(USE_NEON)
     #include <arm_neon.h>
-#elif defined(__SSE2__) || defined(__x86_64__) || defined(_M_X64)
+#elif defined(USE_SSE)
     #include <emmintrin.h>
     #include <smmintrin.h>
     #include <immintrin.h>
