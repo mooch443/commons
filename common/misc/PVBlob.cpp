@@ -592,7 +592,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #if defined(USE_SSE)
     __attribute__((target("default")))
 #endif
-    blob::line_ptr_t ShortHorizontalLine::uncompress(
+    void ShortHorizontalLine::uncompress(
             std::vector<cmn::HorizontalLine>& _result,
             uint16_t start_y,
             const std::vector<ShortHorizontalLine>& compressed) noexcept
