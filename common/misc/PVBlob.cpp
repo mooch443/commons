@@ -270,24 +270,26 @@ pv::BlobPtr CompressedBlob::unpack() const {
     std::vector<ShortHorizontalLine>
         ShortHorizontalLine::compress(const std::vector<HorizontalLine>& lines)
     {
-#if !defined(USE_NEON)
+//#if defined(USE_NEON)
         std::vector<pv::ShortHorizontalLine> ret((NoInitializeAllocator<pv::ShortHorizontalLine>()));
         ret.resize(lines.size());
         
         auto start = lines.data(), end = lines.data() + lines.size();
         auto rptr = ret.data();
         auto prev_y = ret.empty() ? 0 : lines.front().y;
+        *rptr = pv::ShortHorizontalLine(start->x0, start->x1);
+        rptr++;
         
-        for(auto lptr = start; lptr != end; lptr++, rptr++) {
+        for(auto lptr = start + 1; lptr != end; lptr++, rptr++) {
             *rptr = pv::ShortHorizontalLine(lptr->x0, lptr->x1);
             
-            if(prev_y != lptr->y)
-                (rptr-1)->eol(true);
+            //if(prev_y != lptr->y)
+                (rptr-1)->eol(prev_y != lptr->y);
             prev_y = lptr->y;
         }
 
         return ret;
-#else
+/*#else
         std::vector<ShortHorizontalLine> ret((NoInitializeAllocator<pv::ShortHorizontalLine>()));
         ret.resize(lines.size());
 
@@ -376,7 +378,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         ret.back().eol(false);
 
         return ret;
-#endif
+#endif*/
     }
 
 #ifdef USE_NEON
