@@ -121,7 +121,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
     
     if (_type == UNKNOWN)
-        throw U_EXCEPTION("Unknown extension '",extension,"' for file '",_filename,"'.");
+        throw U_EXCEPTION("Unknown extension ",extension," for file '",_filename,"'.");
     
     switch (_type) {
         case VIDEO: {
