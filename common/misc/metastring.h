@@ -458,7 +458,7 @@ auto truncate(const Str& str) {
             return trimmed;
     }
 
-    throw illegal_syntax("Cannot parse array '" + std::string(sv) + "'.");
+    throw illegal_syntax("Cannot parse array " + std::string(sv) + ".");
 }
 
 inline std::string escape(std::string str) {
