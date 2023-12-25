@@ -327,7 +327,7 @@ void VerticalLayout::auto_size() {
             if (_c->type() == Type::ENTANGLED
                 && dynamic_cast<Layout*>(_c))
             {
-                //static_cast<Layout*>(_c)->auto_size();
+                static_cast<Layout*>(_c)->update();
             }
 
             auto bds = _c->local_bounds();
@@ -584,7 +584,7 @@ void GridLayout::update_layout() {
 
         // Update the position of the row itself here if necessary
         // Corrected this part
-        row->auto_size();
+        //row->auto_size();
         row->set_pos({0, y});
         row->set_size({x, row_height});
         

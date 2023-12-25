@@ -163,18 +163,18 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                 try {
                     auto name = parse_text(hover_action.name, context, state);
                     if(auto it = context.actions.find(name);
-                    it != context.actions.end())
+                       it != context.actions.end())
                     {
                         State state;
                         it->second(hover_action.parse(context, state));
                         
                     } else if(auto it = state._named_entities.find(name);
-                                 it != state._named_entities.end())
+                              it != state._named_entities.end())
                     {
-                       if(it->second) {
-                           apply_modifier_to_object(it->first, it->second, hover_action.parse(context, state));
-                       }
-                       
+                        if(it->second) {
+                            apply_modifier_to_object(it->first, it->second, hover_action.parse(context, state));
+                        }
+                        
                     } else {
                         print("Unknown Action: ", hover_action);
                     }
@@ -183,23 +183,23 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     FormatExcept("error using action ", hover_action);
                 }
             } else if(not e.hover.hovered
-                      && not unhover_action.name.empty()) 
+                      && not unhover_action.name.empty())
             {
                 try {
                     auto name = parse_text(unhover_action.name, context, state);
                     if(auto it = context.actions.find(name);
-                    it != context.actions.end())
+                       it != context.actions.end())
                     {
                         State state;
                         it->second(unhover_action.parse(context, state));
                         
                     } else if(auto it = state._named_entities.find(name);
-                                 it != state._named_entities.end())
+                              it != state._named_entities.end())
                     {
-                       if(it->second) {
-                           apply_modifier_to_object(it->first, it->second, unhover_action.parse(context, state));
-                       }
-                       
+                        if(it->second) {
+                            apply_modifier_to_object(it->first, it->second, unhover_action.parse(context, state));
+                        }
+                        
                     } else {
                         print("Unknown Action: ", unhover_action);
                     }
@@ -217,11 +217,11 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         if(obj.count("drag")) {
             ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
                 if(event.hover.hovered
-                && _ptr->pressed())
+                   && _ptr->pressed())
                 {
                     try {
                         if(auto it = context.actions.find(action.name);
-                        it != context.actions.end())
+                           it != context.actions.end())
                         {
                             State state;
                             it->second(action.parse(context, state));
