@@ -128,8 +128,10 @@ struct Source {
             
             ++idx;
             
-            if(idx+1 < _source->_row_y.size()) {
-                size_t idx1 = idx+1 >= _source->_row_offsets.size() ? _source->_ptrs.size() : _source->_row_offsets.at(idx+1);
+            if(idx+1 <= _source->_row_y.size()) {
+                size_t idx1 = idx+1 >= _source->_row_offsets.size()
+                    ? _source->_ptrs.size()
+                    : _source->_row_offsets.at(idx+1);
                 y = _source->_row_y[idx];
                 
                 line_end  = _source->_ptrs.data()  + idx1;

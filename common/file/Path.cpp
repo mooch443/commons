@@ -161,11 +161,16 @@ Path Path::absolute() const {
     Path::Path(const std::string& s)
         : _str(s)
     {
-        // remove trailing slashes
-        while(utils::endsWith(_str, OS_SEP))
-            _str = _str.substr(0, _str.length()-1);
-		for (size_t i = 0; i < _str.length(); ++i)
-			if (_str[i] == NOT_OS_SEP) _str[i] = OS_SEP;
+        for (size_t i = 0; i < _str.length(); ++i)
+            if (_str[i] == NOT_OS_SEP) _str[i] = OS_SEP;
+            
+        if(_str.size() == 1 && _str.front() == OS_SEP) {
+            
+        } else {
+            // remove trailing slashes
+            while(_str.size() > 1 && _str.back() == OS_SEP)
+                _str.pop_back();
+        }
     }
 
     Path::Path(const char* c)
@@ -177,7 +182,8 @@ Path Path::absolute() const {
     {}
 
     Path& Path::operator/=(const Path &other) {
-        _str += other.str();
+        //_str += other.str();
+        *this = *this / other.str();
         return *this;
     }
 
@@ -230,12 +236,34 @@ Path Path::absolute() const {
     }
 
     Path operator/(const Path& lhs, const Path& rhs) {
-        return Path(lhs.str() + OS_SEP + rhs.str());
+        // Handle the case where the right-hand side is an absolute path
+        std::string_view rv(rhs.str());
+        // Check if rhs is an absolute path
+        if (not rv.empty() && rv.front() == OS_SEP) {
+            throw std::invalid_argument("Cannot concatenate an absolute path to the right of any path.");
+        }
+
+        // Remove trailing separator from lhs if present
+        std::string_view lv(lhs.str());
+        if (not lv.empty() && lv.back() == OS_SEP) {
+            lv = lv.substr(0, lv.length() - 1);
+        }
+
+        // Handle the case where lhs or rhs is empty
+        if (lv.empty()) {
+            return Path(std::string(rv));
+        }
+        if (rv.empty()) {
+            return Path(std::string(lv));
+        }
+
+        // Concatenate and return the new path
+        return Path(std::string(lv) + OS_SEP + std::string(rv));
     }
 
-    Path operator+(const Path& lhs, const Path& rhs) {
+    /*Path operator+(const Path& lhs, const Path& rhs) {
         return Path(lhs.str() + rhs.str());
-    }
+    }*/
 
     bool Path::exists() const {
         if (_stat_cache.exists.has_value())
@@ -458,7 +486,9 @@ Path Path::absolute() const {
     //       return false;
 #else
         struct stat path_stat;
-        if (stat(empty() ? "/" : str().c_str(), &path_stat) != 0) {
+        if(empty()
+           || stat(str().c_str(), &path_stat) != 0)
+        {
             // does not exist
         } else
             _stat_cache.is_folder = S_ISDIR(path_stat.st_mode);
@@ -482,7 +512,9 @@ Path Path::absolute() const {
             _stat_cache.is_regular = (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) == 0;
 #else
         struct stat path_stat;
-        if (stat(str().c_str(), &path_stat) != 0) {
+        if (empty()
+            || stat(str().c_str(), &path_stat) != 0)
+        {
             // does not exist
         }
         else _stat_cache.is_regular = S_ISREG(path_stat.st_mode);
@@ -597,13 +629,13 @@ Path Path::absolute() const {
 
     Path Path::replace_extension(std::string_view ext) const {
         auto e = extension();
-        return std::string_view(_str.data(), size_t(max(0, e.data() - _str.data() - 1))) + "." + ext;
+        return (std::string)std::string_view(_str.data(), size_t(max(0, e.data() - _str.data() - 1))) + "." + (std::string)ext;
     }
 
     Path Path::add_extension(std::string_view ext) const {
         auto current = extension();
         if(ext != current)
-            return Path(_str + "." + ext);
+            return Path(_str + "." + (std::string)ext);
         return *this;
     }
     

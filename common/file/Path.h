@@ -182,7 +182,7 @@ namespace file {
     };
 
     Path operator/( const Path& lhs, const Path& rhs );
-    Path operator+( const Path& lhs, const Path& rhs);
+    //Path operator+( const Path& lhs, const Path& rhs);
     
     std::string exec(const char* cmd);
 

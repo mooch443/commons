@@ -256,11 +256,11 @@ void Graph::update() {
         };
         
         float percent;
-        Vec2 previous(invalid());
+        Vec2 previous(GlobalSettings::invalid());
         for(auto &v : vertices) {
             auto p = v.position() - null;
             
-            if(is_invalid(previous.x))
+            if(GlobalSettings::is_invalid(previous.x))
                 work->push_back(Vec2(p.x, 0) + null);
             
             else if(p.y != previous.y && (percent = crosses_zero(p.y, previous.y)) >= 0 && percent <= 1)
@@ -275,7 +275,7 @@ void Graph::update() {
             previous = p;
         }
         
-        if(!is_invalid(previous.x))
+        if(!GlobalSettings::is_invalid(previous.x))
             make_polygon();
     };
     
@@ -326,7 +326,7 @@ void Graph::update() {
         
         Vec2 prev(0, 0);
         float prev_y0 = 0.0f;
-        float prev_x0 = invalid();
+        float prev_x0 = GlobalSettings::invalid();
         
         vertices.clear();
         
@@ -338,7 +338,7 @@ void Graph::update() {
             if (TYPE_IS(DISCRETE) || TYPE_IS(POINTS))
                 x0 = roundf(x0);
             
-            if (!is_invalid(prev_x0) && x0 == prev_x0)
+            if (!GlobalSettings::is_invalid(prev_x0) && x0 == prev_x0)
                 continue;
             
             clr = f._color;
@@ -355,7 +355,7 @@ void Graph::update() {
             float y0 = narrow_cast<float>(f._get_y(x0));
             float y;
             
-            if (is_invalid(y0)) {
+            if (GlobalSettings::is_invalid(y0)) {
                 // no value can be found at this location
                 // just use the previous one and make it visible
                 y = prev_y0;
@@ -371,7 +371,7 @@ void Graph::update() {
             
             if(TYPE_IS(POINTS))
             {
-                if(!is_invalid(y0))
+                if(!GlobalSettings::is_invalid(y0))
                     add<Circle>(Loc(current), Radius(3), LineClr(org_clr));
             }
             
@@ -587,10 +587,10 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         for (auto &f : _functions) {
             auto y0 = f._get_y(x);
             
-            if (is_invalid(y0)) {
+            if (GlobalSettings::is_invalid(y0)) {
                 // no value can be found at this location
                 // just use the previous one and make it visible
-                row.add(invalid());
+                row.add(GlobalSettings::invalid());
                 
             } else {
                 row.add(y0);
@@ -654,10 +654,10 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
         for (auto &f : _functions) {
             auto y0 = f._get_y(x);
             
-            if (is_invalid(y0)) {
+            if (GlobalSettings::is_invalid(y0)) {
                 // no value can be found at this location
                 // just use the previous one and make it visible
-                results[&f].push_back(invalid());
+                results[&f].push_back(GlobalSettings::invalid());
                 
             } else {
                 results[&f].push_back(float(y0));

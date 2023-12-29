@@ -90,79 +90,81 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
     using ToType = typename cmn::remove_cvref<To>::type;
 
     auto str = Meta::toStr(value);
-    
-    // Check if the conversion is between floating-point types or types with the same signedness
-    if constexpr (
-        std::is_floating_point<ToType>::value
-        || (std::is_signed<FromType>::value == std::is_signed<ToType>::value && !std::is_floating_point<FromType>::value)
-        )
+    if constexpr (std::is_floating_point<ToType>::value) {
+        // For floating-point targets, the range check isn't typically necessary for integers,
+        // but you might want to check for extremely large values for completeness.
+        if constexpr (std::is_floating_point<FromType>::value) {
+            // Handling floating-point to floating-point conversions
+            if constexpr (sizeof(FromType) > sizeof(ToType)) {
+                // Check for overflow and underflow
+                if (!std::isfinite(value) || std::isnan(value) ||
+                    value > std::numeric_limits<ToType>::max() || value < std::numeric_limits<ToType>::lowest()) {
+                    return false;
+                }
+
+                // Check for precision loss
+                ToType converted = static_cast<ToType>(value);
+                FromType backConverted = static_cast<FromType>(converted);
+                return value == backConverted || std::abs(value - backConverted) < std::numeric_limits<FromType>::epsilon();
+            }
+            return true;  // No narrowing issues for conversions to larger or same size types
+        }
+        // Here, we'll simply return true to indicate that typical integer values are fine.
+        return true;
+    } else if constexpr (std::is_signed<FromType>::value == std::is_signed<ToType>::value
+                         && !std::is_floating_point<FromType>::value)
     {
         // Print verbose output if enabled
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," (same) = ",str.c_str(),".");
+        FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " (same) = ", str.c_str(), ".");
 #endif
         if constexpr(std::is_signed_v<ToType>)
-            return static_cast<int64_t>(value) <= static_cast<int64_t>(std::numeric_limits<ToType>::max())
-            && static_cast<int64_t>(value) >= static_cast<int64_t>(std::numeric_limits<ToType>::min());
+            return value >= std::numeric_limits<ToType>::min()
+                && value <= std::numeric_limits<ToType>::max();
         else
-            // No narrowing issues, return true
-            return true;
+            return true; // No narrowing issues for unsigned types in this context
     }
     // Check if the conversion is from floating-point to signed integer type
     else if constexpr (std::is_floating_point<FromType>::value && std::is_signed<ToType>::value) {
-        using signed_t = int64_t;
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        auto tstr2 = Meta::name<signed_t>();
-        FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (fs) = ",str.c_str(),".");
+        FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to int64_t and comparing (fs) = ", str.c_str(), ".");
 #endif
-        // Check if the value is within the range of the To type after casting
-        return static_cast<signed_t>(value) >= static_cast<signed_t>(std::numeric_limits<To>::min())
-            && static_cast<signed_t>(value) <= static_cast<signed_t>(std::numeric_limits<To>::max());
+        return value >= static_cast<FromType>(std::numeric_limits<ToType>::min())
+            && value <= static_cast<FromType>(std::numeric_limits<ToType>::max());
     }
     // Check if the conversion is from floating-point to unsigned integer type
     else if constexpr (std::is_floating_point<FromType>::value && std::is_unsigned<ToType>::value) {
-        using unsigned_t = uint64_t;
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        auto tstr2 = Meta::name<unsigned_t>();
-        FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (fs) = ",str.c_str(),".");
+        FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to uint64_t and comparing (fu) = ", str.c_str(), ".");
 #endif
-        // Check if the value is within the range of the To type after casting
         return value >= FromType(0)
-            && static_cast<unsigned_t>(value) <= static_cast<unsigned_t>(std::numeric_limits<To>::max());
+            && value <= static_cast<FromType>(std::numeric_limits<ToType>::max());
     }
     // Check if the conversion is from unsigned integer to signed integer type
     else if constexpr (std::is_unsigned<FromType>::value && std::is_signed<ToType>::value) {
-        // unsigned to signed
-        using signed_t = int64_t;
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        auto tstr2 = Meta::name<signed_t>();
-        FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (us) = ",str.c_str(),".");
+        FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to int64_t and comparing (us) = ", str.c_str(), ".");
 #endif
-        // Check if the value is within the range of the To type after casting
-        return static_cast<signed_t>(value) < static_cast<signed_t>(std::numeric_limits<To>::max());
-
+        return value < static_cast<typename std::make_unsigned<ToType>::type>(std::numeric_limits<ToType>::max());
     }
     else {
         // Expecting signed integer to unsigned integer type conversion
         static_assert(std::is_signed<FromType>::value && std::is_unsigned<ToType>::value, "Expecting signed to unsigned conversion");
-        // signed to unsigned
-        using unsigned_t = typename try_make_unsigned<FromType>::type;
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        auto tstr2 = Meta::name<unsigned_t>();
-        FormatWarning("Narrowing ",tstr0.c_str()," -> ",tstr1.c_str()," | converting to ",tstr2.c_str()," and comparing (su) = ",str.c_str(),".");
+        FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to uint64_t and comparing (su) = ", str.c_str(), ".");
 #endif
-        // Check if the value is within the range of the To type after casting
-        return value >= 0 && static_cast<unsigned_t>(value) <= static_cast<unsigned_t>(std::numeric_limits<To>::max());
+        return value >= FromType(0)
+            && static_cast<typename std::make_unsigned<FromType>::type>(value) <= std::numeric_limits<ToType>::max();
     }
 #else
     // In release mode, don't perform the checks

@@ -435,7 +435,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                  g.clear();
                  g.add_function(gui::Graph::Function("threshold", gui::Graph::Type::DISCRETE, [values](float x) -> float {
                  if(!values.contains(int(x)))
-                 return gui::Graph::invalid();
+                 return GlobalSettings::invalid();
                  return values.at(int(x));
                  }));
                  g.set_zero(0);

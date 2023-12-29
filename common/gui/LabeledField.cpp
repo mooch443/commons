@@ -226,7 +226,7 @@ LabeledList::LabeledList(const std::string& name, const nlohmann::json&, bool in
 : LabeledField(name),
 _list(std::make_shared<gui::List>(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
-  std::string(), std::vector<std::shared_ptr<List::Item>>{}, [this](List* list, const List::Item& item){
+  std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this](List* list, const gui::Item& item){
       auto index = item.ID();
       if(index < 0)
           return;
@@ -257,7 +257,7 @@ _list(std::make_shared<gui::List>(
     
     //_list->textfield()->set_font(Font(0.7f));
     //_list->set(Font(0.7f));
-    std::vector<std::shared_ptr<List::Item>> items;
+    std::vector<std::shared_ptr<gui::Item>> items;
     long index{0};
     if(_ref.is_type<bool>()) {
         items = {
@@ -597,7 +597,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
             _dropdown->select_textfield();
         } else {
             _dropdown->stage()->select(nullptr);
-            _ref.value<file::PathArray>() = file::PathArray(_dropdown->text());
+            _ref = file::PathArray(_dropdown->text());
         }
         updateDropdownItems();
 
@@ -610,7 +610,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
             if(_pathArray.matched_patterns()) {
                 if(dropdown->stage())
                     dropdown->stage()->select(NULL);
-                _ref.value<file::PathArray>() = _pathArray;
+                _ref = _pathArray;
                 
             } else if(not list->items().empty()) {
                 list->select_highlighted_item();
@@ -737,7 +737,7 @@ void LabeledPathArray::asyncUpdateItems() {
 
     _pathArray = std::move(_pathArrayCopy);
     //print("Setting value = ", _pathArray);
-    _ref.value<file::PathArray>() = _pathArray;
+    _ref = _pathArray;
 
     try {
         // Always update _search_items based on _files

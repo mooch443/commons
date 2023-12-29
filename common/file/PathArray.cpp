@@ -35,6 +35,7 @@ std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
 
 std::string find_basename(const file::PathArray& pathArray) {
     auto& paths = pathArray.get_paths();
+    assert(pathArray.source().empty() || not paths.empty());
     
     if (paths.empty())
         return "";  // Return an empty string if the PathArray is empty

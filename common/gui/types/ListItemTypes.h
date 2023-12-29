@@ -1,23 +1,53 @@
 #pragma once
 
-#include <gui/types/List.h>
-
 namespace gui {
-    class TextItem : public List::Item {
+    class List;
+    class Rect;
+
+    class Item {
+    protected:
+        GETTER_SETTER(long, ID);
+        bool _selected;
+        gui::List *_list;
+        
+    protected:
+        friend class List;
+        
+    public:
+        Item(long ID = -1, bool selected = false) : _ID(ID), _selected(selected), _list(NULL) {}
+        virtual ~Item() {}
+        
+        bool operator==(const long& other) const {
+            return _ID == other;
+        }
+        
+        virtual bool operator==(const Item& other) const {
+            return other.ID() == ID();
+        }
+        virtual operator const std::string&() const = 0;
+        virtual void operator=(const Item& other);
+        virtual void set_selected(bool selected) { _selected = selected; }
+        virtual bool selected() const { return _selected; }
+        virtual void update() {}
+        
+        void convert(std::shared_ptr<Rect> r) const;
+    };
+
+    class TextItem : public Item {
     protected:
         GETTER_SETTER(std::string, text);
         
     public:
         TextItem(const std::string& t = "", long idx = -1, bool selected = false)
-            : List::Item(idx, selected), _text(t)
+            : Item(idx, selected), _text(t)
         { }
         
         operator const std::string&() const override {
             return _text;
         }
         
-        void operator=(const gui::List::Item& other) override {
-            gui::List::Item::operator=(other);
+        void operator=(const Item& other) override {
+            Item::operator=(other);
             
             assert(dynamic_cast<const TextItem*>(&other));
             _text = static_cast<const TextItem*>(&other)->_text;
@@ -30,13 +60,11 @@ namespace gui {
         GETTER_SETTER(bool, disabled);
         
     public:
-        DetailItem(const std::string& name = "", const std::string& detail = "", bool disabled = false) : _name(name), _detail(detail), _disabled(disabled) {}
+        DetailItem(const std::string& name = "", const std::string& detail = "", bool disabled = false);
         virtual ~DetailItem(){}
         virtual operator std::string() const {
             return _name;
         }
-        virtual bool operator!=(const DetailItem& other) const {
-            return _name != other._name || _detail != other._detail;
-        }
+        virtual bool operator!=(const DetailItem& other) const;
     };
 }

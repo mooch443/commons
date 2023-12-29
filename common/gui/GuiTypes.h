@@ -567,7 +567,7 @@ protected:
         GETTER(std::string, url);
         Ptr _source;
         GETTER(Color, color);
-        GETTER(bool, cut_border);
+        GETTER(bool, cut_border){false};
         
     public:
         ExternalImage() : ExternalImage(Image::Make(), Vec2()) {}

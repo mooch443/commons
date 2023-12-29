@@ -1,4 +1,7 @@
 #include "ParseLayoutTypes.h"
+#include <gui/LabeledField.h>
+#include <gui/dyn/ParseText.h>
+#include <gui/dyn/Action.h>
 
 namespace gui::dyn {
 

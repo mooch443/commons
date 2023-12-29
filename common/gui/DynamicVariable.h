@@ -1,5 +1,8 @@
 #pragma once
 #include <commons.pc.h>
+#include <misc/useful_concepts.h>
+#include <file/Path.h>
+#include <misc/SpriteMap.h>
 
 namespace gui {
 namespace dyn {
@@ -16,7 +19,7 @@ template<class return_type, typename... arg_types>
 class Variable : public VarBase<arg_types...> {
 private:
     /// Human-readable string representing the type of 'return_type'.
-    static constexpr auto refcode = type_name<return_type>();
+    static constexpr auto refcode = cmn::type_name<return_type>();
     
 protected:
     /// Function that encapsulates the computation or data retrieval.
@@ -34,6 +37,8 @@ public:
         :   VarBase<arg_types...>(refcode),
             function(std::move(fn))
     {
+        using namespace cmn;
+        
         // Lambda to convert the captured function's return value to a string
         value_string = [this]<typename... Args>(Args&&... args) -> std::string {
             if constexpr(_clean_same<std::string, return_type>) {

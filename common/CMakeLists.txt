@@ -1,7 +1,7 @@
 set(RESOURCES_ADDED "")
 
-file(GLOB HDRS video/*.h processing/*.h misc/*.h file/*.h gui/*.h gui/types/*.h *.h)
-file(GLOB SRCS video/*.cpp processing/*.cpp misc/*.cpp file/*.cpp gui/*.cpp gui/types/*.cpp *.cpp)
+file(GLOB HDRS video/*.h processing/*.h misc/*.h file/*.h gui/*.h gui/types/*.h gui/dyn/*.h *.h)
+file(GLOB SRCS video/*.cpp processing/*.cpp misc/*.cpp file/*.cpp gui/*.cpp gui/types/*.cpp gui/dyn/*.cpp *.cpp)
 
 file(GLOB HASH_HDR ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map/*.hpp)
 

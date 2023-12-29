@@ -2,29 +2,6 @@
 #include <misc/Timer.h>
 
 namespace gui {
-    void List::Item::operator=(const Item& other) {
-        _ID = other._ID;
-        if(other.selected())
-            _selected = other.selected();
-    }
-    
-    void List::Item::convert(std::shared_ptr<Rect> r) const {
-        assert(_list);
-        
-        r->clear_event_handlers();
-        r->set_clickable(true);
-        r->add_event_handler(MBUTTON, [this](Event e) {
-            if(e.mbutton.pressed || e.mbutton.button != 0)
-                return;
-            
-            _list->_on_click(_list, *this);
-            _list->toggle_item(_ID);
-        });
-        
-        if(_selected) {
-            _list->_selected_rect = r;
-        }
-    }
 
     List::~List() {
 
@@ -178,7 +155,12 @@ namespace gui {
         
         print("Item ",ID," cannot be found.");
     }
-    
+
+void List::on_click(const Item * item) {
+    if(_on_click)
+        _on_click(this, *item);
+}
+
     void List::toggle_item(long ID) {
         if(!_toggle) {
             set_selected(ID, true);
@@ -406,12 +388,94 @@ namespace gui {
         set_content_changed(true);
     }
 
+void List::set_display_selection(bool v) {
+    if(v == _display_selection)
+        return;
+    
+    _display_selection = v;
+    set_content_changed(true);
+}
+void List::set_toggle(bool toggle) {
+    if(_toggle == toggle)
+        return;
+    
+    _toggle = toggle;
+    set_content_changed(true);
+}
+void List::set_multi_select(bool s) {
+    if(_multi_select == s)
+        return;
+    
+    _multi_select = s;
+    set_content_changed(true);
+}
+void List::set_accent_color(Color color) {
+    if(_accent_color == color)
+        return;
+    
+    _accent_color = color;
+    set_content_changed(true);
+}
+void List::set_foldable(bool f) {
+    if(_foldable == f)
+        return;
+    
+    if(!f && _folded)
+        _folded = false;
+    
+    _foldable = f;
+    set_content_changed(true);
+}
+void List::set_folded(bool f) {
+    if(_folded == f)
+        return;
+    
+    _folded = f;
+    set_content_changed(true);
+    _on_toggle();
+}
+
+void List::set_row_height(float v) {
+    if(_row_height == v)
+        return;
+    
+    _row_height = v;
+    set_content_changed(true);
+}
+
+void List::on_toggle(std::function<void()> fn) {
+    _on_toggle = fn;
+}
+
+void List::set_selected_rect(std::shared_ptr<Rect> r) {
+    _selected_rect = r;
+}
+
+void List::set_title(const std::string& title) {
+    _title.set_txt(title);
+}
+
 void List::set(LabelColor_t clr) {
     set_accent_color(clr);
 }
 
 void List::set(LabelBorderColor_t clr) {
     set(LineClr{(Color)clr});
+}
+
+void List::set(attr::HighlightClr clr) {
+    set_accent_color(clr);
+    //Entangled::set(clr);
+}
+void List::set(attr::Str content) {
+    set_title(content);
+}
+void List::set(Font font) {
+    font.align = Align::Center;
+    if(font != _item_font) {
+        _item_font = font;
+        set_content_changed(true);
+    }
 }
 
 }

@@ -32,18 +32,6 @@ namespace gui {
         static Font title_font;
         
     public:
-        static float& invalid() {
-            static float _invalid = infinity<float>();
-            return _invalid;
-        }
-        
-        static void set_invalid(float v) {
-            invalid() = v;
-        }
-        
-        static bool is_invalid(float v) {
-            return v == invalid();
-        }
         //GETTER_NCONST(GuiGraph, gui_obj);
         
     public:

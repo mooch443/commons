@@ -69,7 +69,8 @@ private:
     void add_path_if_not_empty(const file::Path& path) {
         if (!path.empty()) {
             _paths.push_back(path);
-        }
+        } else
+            FormatWarning("Not adding empty path: ", path);
     }
 
 public:
@@ -150,25 +151,93 @@ public:
      *
      * @param input The input std::string. It can be a path pattern, a single path, or an array of paths.
      */
-    _PathArray(const std::string& input = "")
+    _PathArray() = default;
+    _PathArray(const _PathArray& other) : _PathArray(other.source()) { }
+    _PathArray(_PathArray&& other) 
+        : _source(std::move(other._source)), 
+          _matched_patterns(std::move(other._matched_patterns)),
+          _has_to_be_filtered(std::move(other._has_to_be_filtered)),
+          _to_be_resolved(std::move(other._to_be_resolved)),
+          _paths(std::move(other._paths)),
+          _deferredFileChecks(std::move(other._deferredFileChecks))
+    { }
+    _PathArray& operator=(const _PathArray& other) {
+        _source = other.source();
+        _paths = other._paths;
+        _matched_patterns = other._matched_patterns;
+        _to_be_resolved = other._to_be_resolved;
+        _deferredFileChecks = other._deferredFileChecks;
+        _has_to_be_filtered = other._has_to_be_filtered;
+        return *this;
+    }
+    _PathArray& operator=(_PathArray&& other) {
+        _source = std::move(other._source);
+        _paths = std::move(other._paths);
+        _matched_patterns = std::move(other._matched_patterns);
+        _to_be_resolved = std::move(other._to_be_resolved);
+        _deferredFileChecks = std::move(other._deferredFileChecks);
+        _has_to_be_filtered = std::move(other._has_to_be_filtered);
+        return *this;
+    }
+    
+    template<utils::StringLike T>
+    _PathArray(T&& input)
         : _source(input)
     {
-        if (input.empty()) return;
+        std::string_view sv;
+        
+        if constexpr(std::is_same_v<std::remove_cvref_t<T>, const char*>) {
+            if(not input || *input == 0)
+                return;
+            
+            sv = { input };
+            
+        } else if constexpr(std::is_array_v<std::remove_cvref_t<T>>) {
+            if constexpr(sizeof(T) == 0u) {
+                return;
+            }
+            
+            sv = { reinterpret_cast<const char*>(input), sizeof(T) - 1 };
+            
+        } else {
+            if (input.empty())
+                return;
+            
+            sv = { input };
+        }
         
         // Check if input is an array of paths
-        if (input.front() == '[' && input.back() == ']') {
-            std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>(input);
+        if (sv.front() == '[' && sv.back() == ']') {
+            std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>((std::string)sv);
             for (const auto& path_str : temp_paths) {
                 add_path(path_str);
             }
         } else {
-            add_path(input);
+            add_path((std::string)sv);
         }
         
+        assert(not _paths.empty() || sv.empty());
         if(_paths.size() <= 1 && not matched_patterns()) {
             if(not _paths.empty())
                 _source = _paths.front().str();
         }
+    }
+    
+    _PathArray(const file::Path& input) 
+        : _PathArray(input.str())
+    { }
+
+    _PathArray(const std::vector<std::string>& paths) {
+        for(auto &path : paths) {
+            add_path(path);
+        }
+
+        if(_paths.size() == 1) {
+            _source = _paths.front().str();
+        } else
+            _source = Meta::toStr(_paths);
+
+        assert(not _paths.empty() || _source.empty());
     }
     
     /**
@@ -183,12 +252,12 @@ public:
         }
     }
     
-    _PathArray(const std::vector<file::Path>& paths) : _paths(paths) {
+    /* _PathArray(const std::vector<file::Path>& paths) : _paths(paths) {
         if(paths.size() == 1) {
             _source = paths.front().str();
         } else
             _source = Meta::toStr(paths);
-    }
+    }*/
     
     /**
      * @brief Three-way comparison operator (spaceship operator).

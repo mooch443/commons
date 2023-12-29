@@ -54,6 +54,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
+#include <variant>
 #include <future>
 #include <ostream>
 #include <array>

@@ -65,6 +65,19 @@ namespace cmn {
          */
         ~GlobalSettings();
         
+        static float& invalid() {
+            static float _invalid = infinity<float>();
+            return _invalid;
+        }
+
+        static void set_invalid(float v) {
+            invalid() = v;
+        }
+
+        static bool is_invalid(float v) {
+            return v == invalid();
+        }
+        
         //! return the instance
         static GlobalSettings* instance(GlobalSettings* ptr = nullptr) {
             static std::mutex _mutex;
