@@ -130,11 +130,14 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             load_settings();
     }
     
-    void CommandLine::load_settings(const SettingsMaps* additional, sprite::Map* map) {
+    void CommandLine::load_settings(const SettingsMaps* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
         if(not map)
             map = &GlobalSettings::map();
             
         for(auto &s : _settings) {
+            if(contains(exclude, s.name))
+                continue;
+            
             std::string value = s.value;
             if(value.empty()) {
                 if(map->is_type<bool>(s.name))
@@ -150,9 +153,9 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                   ))
                )
             {
-                sprite::parse_values(*map, "{'"+s.name+"':'"+value+"'}", additional);
+                sprite::parse_values(*map, "{'"+s.name+"':'"+value+"'}", additional, exclude);
             } else
-                sprite::parse_values(*map, "{'"+s.name+"':"+value+"}", additional);
+                sprite::parse_values(*map, "{'"+s.name+"':"+value+"}", additional, exclude);
             _settings_keys[s.name] = value;
         }
     }

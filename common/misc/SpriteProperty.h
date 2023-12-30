@@ -286,7 +286,7 @@ namespace cmn {
             std::string toStr() const {
                 return "Property<"+(std::string)type_name()+">"
                      + "('" + _name + "'"
-                     + ")";
+                     + ") = "+valueString();
             }
         };
         
