@@ -606,7 +606,7 @@ void Reference::operator=(const T& value) {
             std::unique_lock guard(_property_mutex);
             (*other)[_name] = value();
             return;
-        } else
+        } else if(other->has(_name))
             other->erase(_name);
 
         std::unique_lock guard(_property_mutex);
