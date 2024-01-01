@@ -1,5 +1,6 @@
 #include "DataLocation.h"
 #include <misc/detail.h>
+#include <misc/GlobalSettings.h>
 
 namespace file {
 static auto& instance_mutex() {
@@ -28,7 +29,7 @@ DataLocation* DataLocation::instance() {
 	return _instance;
 }
 
-void DataLocation::register_path(std::string purpose, std::function<file::Path (file::Path)> fn)
+void DataLocation::register_path(std::string purpose, std::function<file::Path (const sprite::Map&, file::Path)> fn)
 {
     purpose = utils::trim(utils::lowercase(purpose));
     
@@ -42,7 +43,7 @@ void DataLocation::register_path(std::string purpose, std::function<file::Path (
     ptr->location_funcs.insert({purpose, fn});
 }
 
-void DataLocation::replace_path(std::string purpose, std::function<file::Path (file::Path)> fn)
+void DataLocation::replace_path(std::string purpose, std::function<file::Path (const sprite::Map&, file::Path)> fn)
 {
     purpose = utils::trim(utils::lowercase(purpose));
 
@@ -56,8 +57,8 @@ void DataLocation::replace_path(std::string purpose, std::function<file::Path (f
     ptr->location_funcs.insert({purpose, fn});
 }
 
-file::Path DataLocation::parse(const std::string &purpose, file::Path path) {
-    std::function<file::Path(file::Path)> fn;
+file::Path DataLocation::parse(const std::string &purpose, file::Path path, const sprite::Map* settings) {
+    std::function<file::Path(const sprite::Map&, file::Path)> fn;
     {
         auto ptr = DataLocation::instance();
         std::lock_guard<std::mutex> guard(ptr->location_mutex);
@@ -70,7 +71,7 @@ file::Path DataLocation::parse(const std::string &purpose, file::Path path) {
         fn = it->second;
     }
     
-    return fn(path);
+    return fn(settings ? *settings : GlobalSettings::map(), path);
 }
 
 bool DataLocation::is_registered(std::string purpose) {

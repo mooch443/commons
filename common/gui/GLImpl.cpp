@@ -1,5 +1,5 @@
 #if COMMONS_HAS_OPENGL || defined(__EMSCRIPTEN__)
-#include <types.h>
+#include <commons.pc.h>
 #include <cstdio>
 
 #include <imgui/imgui.h>

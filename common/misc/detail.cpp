@@ -1,5 +1,5 @@
+#include <commons.pc.h>
 #include <misc/detail.h>
-#include <types.h>
 #include <processing/LuminanceGrid.h>
 #include <misc/Image.h>
 #include <gui/colors.h>

@@ -1,13 +1,13 @@
 #ifndef _HISTOGRAM_H
 #define _HISTOGRAM_H
 
+#include <commons.pc.h>
 #include <gui/types/Drawable.h>
 #include <gui/types/Basic.h>
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
 #include <misc/metastring.h>
 #include <gui/types/HistOptions.h>
-#include <types.h>
 #include <valarray>
 #include <misc/Timer.h>
 

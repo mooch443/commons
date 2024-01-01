@@ -521,6 +521,8 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     const Property<T>& ConstReference::toProperty() const {
+        if(not _type)
+            throw U_EXCEPTION("Invalid property.");
         return _type->toProperty<T>();
     }
     
@@ -600,7 +602,11 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void Property<T>::copy_to(Map* other) const {
-        if (other->has(_name))
+        if(other->is_type<T>(std::string_view{_name})) {
+            std::unique_lock guard(_property_mutex);
+            (*other)[_name] = value();
+            return;
+        } else
             other->erase(_name);
 
         std::unique_lock guard(_property_mutex);

@@ -157,7 +157,7 @@ namespace cmn {
          * Loads parameters from a file.
          * @param filename Name of the file
          */
-        static std::map<std::string, std::string> load_from_file(const std::map<std::string, std::string>& deprecations, const std::string& filename, AccessLevel access, const std::vector<std::string>& exclude = {});
+        static std::map<std::string, std::string> load_from_file(const std::map<std::string, std::string>& deprecations, const std::string& filename, AccessLevel access, const std::vector<std::string>& exclude = {}, sprite::Map* = nullptr);
         
         /**
          * Loads parameters from a string.

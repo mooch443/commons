@@ -1,7 +1,7 @@
 #ifndef _BASIC_TYPE_H
 #define _BASIC_TYPE_H
 
-#include <types.h>
+#include <commons.pc.h>
 #include <misc/vec2.h>
 #include <gui/colors.h>
 

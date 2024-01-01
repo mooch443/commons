@@ -28,7 +28,7 @@
 #ifndef _BASE64_H
 #define _BASE64_H
 
-#include <types.h>
+#include <commons.pc.h>
 
 static inline bool is_base64(unsigned char c) {
     return (isalnum(c) || (c == '+') || (c == '/'));

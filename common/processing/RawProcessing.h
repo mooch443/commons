@@ -1,7 +1,7 @@
 #ifndef _RAWPROCESSING_H
 #define _RAWPROCESSING_H
 
-#include <types.h>
+#include <commons.pc.h>
 #include <misc/Blob.h>
 #include <misc/GlobalSettings.h>
 #include <misc/bid.h>

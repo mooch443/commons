@@ -1,7 +1,7 @@
 #ifndef _GRAPH_H
 #define _GRAPH_H
 
-#include <types.h>
+#include <commons.pc.h>
 #include <gui/colors.h>
 #include <gui/DrawStructure.h>
 

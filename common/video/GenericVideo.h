@@ -1,7 +1,7 @@
 #ifndef _GENERIC_VIDEO_H
 #define _GENERIC_VIDEO_H
 
-#include <types.h>
+#include <commons.pc.h>
 #include <misc/CropOffsets.h>
 #include <misc/GlobalSettings.h>
 #include <misc/frame_t.h>

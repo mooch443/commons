@@ -2,7 +2,6 @@
 
 #include <commons.pc.h>
 #include <processing/ListCache.h>
-#include <types.h>
 
 namespace cmn {
     namespace CPULabeling {

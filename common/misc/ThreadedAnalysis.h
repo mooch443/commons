@@ -1,7 +1,7 @@
 #ifndef _THREADEDANALYSIS_H_
 #define _THREADEDANALYSIS_H_
 
-#include <types.h>
+#include <commons.pc.h>
 #include <misc/GlobalSettings.h>
 
 namespace cmn {

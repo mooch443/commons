@@ -1,5 +1,5 @@
+#include "types.h"
 #include <png.h>
-#include <types.h>
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>
 

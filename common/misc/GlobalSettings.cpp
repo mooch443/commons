@@ -117,7 +117,7 @@ bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
  * Loads parameters from a file.
  * @param filename Name of the file
  */
-std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude) {
+std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude, sprite::Map* target) {
     struct G {
         std::string s;
         G(const std::string& name) : s(name) {
@@ -127,7 +127,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map
             DebugHeader("/LOADED ", s);
         }
     } g(filename);
-    return load_from_string(deprecations, map(), utils::read_file(filename), access, false, exclude);
+    return load_from_string(deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude);
 }
 
 /**

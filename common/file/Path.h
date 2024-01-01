@@ -176,7 +176,7 @@ namespace file {
         [[nodiscard]] file::Path absolute() const;
         
         explicit operator std::string() const { return str(); }
-        std::string toStr() const { return str(); }
+        std::string toStr() const { return Meta::toStr<std::string>(str()); }
         static std::string class_name() { return "path"; }
         static file::Path fromStr(const std::string& str);
     };

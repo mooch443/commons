@@ -1,7 +1,7 @@
 #ifndef _EXPORT_H
 #define _EXPORT_H
 
-#include <types.h>
+#include <commons.pc.h>
 #include <file/Path.h>
 #include <misc/GlobalSettings.h>
 #include <misc/SpriteMap.h>
