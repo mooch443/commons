@@ -896,7 +896,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
                     acc.add_threaded(f.get());
                     ++count;
                     
-                    if(long_t(count) % max(1,long_t(samples * 0.1)) == 0) {
+                    if(long_t(count) % max(1,long_t(samples * 0.05)) == 0) {
                         if(callback) {
                             callback(count / samples);
                         }

@@ -288,6 +288,11 @@ namespace cmn {
                      + "('" + _name + "'"
                      + ") = "+valueString();
             }
+            
+            template<typename T>
+            bool is_type() const {
+                return _type_name == cmn::type_name<T>();
+            }
         };
         
         class Reference;
@@ -372,6 +377,9 @@ namespace cmn {
             bool operator==(const PropertyType& other) const override {
                 if(not valid() && not other.valid())
                     return true;
+                
+                if(other.type_name() != type_name())
+                    return false;
                 
 				const Property& other_ = (const Property<ValueType>&) other;
                 return other_.valid() && equals(other_.value());
