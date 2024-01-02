@@ -10,9 +10,6 @@ namespace std {
 namespace cmn {
 namespace sprite {
 
-Map::Map() {
-}
-
 Map::Map(const Map& other) {
     _print_by_default = other._print_by_default;
     for(auto &[name, ptr] : other._props) {

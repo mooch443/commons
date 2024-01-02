@@ -701,13 +701,19 @@ namespace cmn {
                             break;
                             
                         case VECTOR:
-                            if(!GlobalSettings::is_runtime_quiet())
-                                throw U_EXCEPTION("(Key ",key,") Vector not yet implemented.");
+                            if(!GlobalSettings::is_runtime_quiet()) {
+#ifndef NDEBUG
+                                FormatWarning("(Key ",key,") Vector not yet implemented.");
+#endif
+                                continue;
+                            }
                             break;
                             
                         case INVALID:
-                            if(!GlobalSettings::is_runtime_quiet())
+                            if(!GlobalSettings::is_runtime_quiet()) {
                                 FormatWarning("Data of invalid type ", value," for key ",key);
+                                continue;
+                            }
                             break;
                             
                         case BOOL:

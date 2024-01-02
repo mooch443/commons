@@ -253,7 +253,24 @@ concept Iterable = requires(T obj) {
         friend PropertyType;
         
     public:
-        Map();
+        Map() = default;
+        
+        template<typename... Ts>
+            requires (sizeof...(Ts) % 2 == 0 && sizeof...(Ts) > 0)
+        Map(Ts... ts) {
+            insert_helper(std::forward<Ts>(ts)...);
+        }
+        
+    private:
+        template<typename Key, typename Value, typename... Ts>
+        void insert_helper(Key key, Value value, Ts... ts) {
+            operator[](std::forward<Key>(key)) = std::forward<Value>(value);
+            if constexpr(sizeof...(Ts) > 0) {
+                insert_helper(std::forward<Ts>(ts)...);
+            }
+        }
+        
+    public:
         Map(const Map& other);
         Map(Map&& other);
         Map& operator=(const Map& other);

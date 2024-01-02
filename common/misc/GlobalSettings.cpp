@@ -117,7 +117,7 @@ bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
  * Loads parameters from a file.
  * @param filename Name of the file
  */
-std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude, sprite::Map* target) {
+std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude, sprite::Map* target, const sprite::Map* additional) {
     struct G {
         std::string s;
         G(const std::string& name) : s(name) {
@@ -127,14 +127,14 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map
             DebugHeader("/LOADED ", s);
         }
     } g(filename);
-    return load_from_string(deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude);
+    return load_from_string(deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude, additional);
 }
 
 /**
  * Loads parameters from a string.
  * @param str the string
  */
-std::map<std::string, std::string> GlobalSettings::load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude) {
+std::map<std::string, std::string> GlobalSettings::load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude, const sprite::Map* additional) {
     std::stringstream line;
     std::map<std::string, std::string> rejected;
     
@@ -157,13 +157,24 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                             auto it = deprecations.find(lower);
                             if(it != deprecations.end()) {
                                 if(correct_deprecations) {
-                                    auto& obj = map[deprecations.at(lower)].get();
+                                    auto& resolution = deprecations.at(lower);
+                                    if(not map.has(resolution)
+                                       && additional
+                                       && additional->has(resolution))
+                                    {
+                                        additional->at(resolution).get().copy_to(&map);
+                                    }
+                                    
+                                    auto& obj = map[resolution].get();
                                     obj.set_value_from_string(val);
                                 }
                                 
                             } else if(map.has(var)) {
                                 auto& obj = map[var].get();
                                 obj.set_value_from_string(val);
+                            } else if(additional && additional->has(var)) {
+                                additional->at(var).get().copy_to(&map);
+                                map[var].get().set_value_from_string(val);
                             } else {
                                 sprite::parse_values(map,"{"+var+":"+val+"}");
                             }
