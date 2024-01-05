@@ -43,6 +43,7 @@ Here is a simple example that demonstrates the use of dynamic GUI functionality 
 #include <misc/GlobalSettings.h>
 #include <file/DataLocation.h>
 #include <misc/CommandLine.h>
+#include <gui/dyn/Action.h>
 
 using namespace gui;
 using namespace gui::dyn;
@@ -53,7 +54,7 @@ int main(int argc, char**argv) {
     CommandLine::instance().cd_home();
 
     // Register custom data paths
-    file::DataLocation::register_path("app", [](file::Path input) {
+    file::DataLocation::register_path("app", [](const sprite::Map&, file::Path input) {
         return CommandLine::instance().wd() / input;
     });
 
