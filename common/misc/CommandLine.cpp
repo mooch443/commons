@@ -153,9 +153,9 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                   ))
                )
             {
-                sprite::parse_values(*map, "{'"+s.name+"':'"+value+"'}", additional, exclude);
+                sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':'" + value + "'}", additional, exclude);
             } else
-                sprite::parse_values(*map, "{'"+s.name+"':"+value+"}", additional, exclude);
+                sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':" + value + "}", additional, exclude);
             _settings_keys[s.name] = value;
         }
     }

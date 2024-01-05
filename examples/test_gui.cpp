@@ -9,6 +9,7 @@
 #include <gui/types/Button.h>
 
 #include <gui/DynamicGUI.h>
+#include <gui/dyn/Action.h>
 #include <misc/GlobalSettings.h>
 
 #include <file/DataLocation.h>
@@ -212,7 +213,7 @@ int main(int argc, char**argv) {
     CommandLine::init(argc, argv);
     CommandLine::instance().cd_home();
     
-    file::DataLocation::register_path("app", [](file::Path input) {
+    file::DataLocation::register_path("app", [](const sprite::Map&, file::Path input) {
         return CommandLine::instance().wd() / input;
     });
     

@@ -3,6 +3,7 @@
 
 #include <sys/stat.h>
 #include <misc/defines.h>
+#include <misc/useful_concepts.h>
 
 namespace gui {
     class Color;
@@ -716,9 +717,24 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     struct SettingsMaps;
     namespace sprite {
         class Map;
-        //! Parses a JSON object from string {"key": "value", "key2": 123, "key3": ["test","strings"]}
-        Map parse_values(std::string str, const SettingsMaps* additional = nullptr);
-        std::set<std::string> parse_values(Map&, std::string, const SettingsMaps* additional = nullptr, const std::vector<std::string>& exclude = {});
+
+        template<typename T>
+        concept _has_str_method = requires(T t) {
+            { t.str() } -> std::convertible_to<std::string>;
+        };
+
+        struct MapSource {
+            std::string name;
+
+            MapSource(_has_str_method auto&& s) : name(s.str()) { }
+
+            MapSource(utils::StringLike auto&& n) : name(n) { }
+
+            static constexpr std::string_view CMD{"/CMD"}, defaults{"/DEFAULTS"};
+        };
+        //! Parses a JSON-like object from string {"key": "value", "key2": 123, "key3": ["test","strings"]}
+        Map parse_values(MapSource, std::string str, const SettingsMaps* additional = nullptr);
+        std::set<std::string> parse_values(MapSource, Map&, std::string, const SettingsMaps* additional = nullptr, const std::vector<std::string>& exclude = {});
     }
     
     void set_thread_name(const std::string& name);

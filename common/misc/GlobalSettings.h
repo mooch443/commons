@@ -163,7 +163,7 @@ namespace cmn {
          * Loads parameters from a string.
          * @param str the string
          */
-        static std::map<std::string, std::string> load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false, const std::vector<std::string>& exclude = {}, const sprite::Map* additional = nullptr);
+        static std::map<std::string, std::string> load_from_string(sprite::MapSource, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false, const std::vector<std::string>& exclude = {}, const sprite::Map* additional = nullptr);
     };
     
     /*namespace detail {

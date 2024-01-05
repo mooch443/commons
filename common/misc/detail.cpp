@@ -636,7 +636,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(Map& map, std::string str, const SettingsMaps* additional, const std::vector<std::string>& exclude) {
+        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const SettingsMaps* additional, const std::vector<std::string>& exclude) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -737,9 +737,9 @@ namespace cmn {
             return added;
         }
         
-        Map parse_values(std::string str, const SettingsMaps* additional) {
+        Map parse_values(sprite::MapSource source, std::string str, const SettingsMaps* additional) {
             Map map;
-            parse_values(map, str, additional);
+            parse_values(source, map, str, additional);
             return map;
         }
     }

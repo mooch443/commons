@@ -127,14 +127,14 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map
             DebugHeader("/LOADED ", s);
         }
     } g(filename);
-    return load_from_string(deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude, additional);
+    return load_from_string(sprite::MapSource{filename}, deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude, additional);
 }
 
 /**
  * Loads parameters from a string.
  * @param str the string
  */
-std::map<std::string, std::string> GlobalSettings::load_from_string(const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude, const sprite::Map* additional) {
+std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapSource source, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude, const sprite::Map* additional) {
     std::stringstream line;
     std::map<std::string, std::string> rejected;
     
@@ -176,7 +176,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(const std::m
                                 additional->at(var).get().copy_to(&map);
                                 map[var].get().set_value_from_string(val);
                             } else {
-                                sprite::parse_values(map,"{"+var+":"+val+"}");
+                                sprite::parse_values(source, map,"{"+var+":"+val+"}");
                             }
                             
                             rejected.insert({var, val});
