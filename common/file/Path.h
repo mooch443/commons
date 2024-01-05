@@ -4,6 +4,24 @@
 namespace file {
     using namespace cmn;
 
+template<typename T, typename TIter = decltype(std::begin(std::declval<T>())),
+         typename V = decltype(std::end(std::declval<T>()))>
+constexpr auto enumerate(T& iterable) {
+    struct iterator {
+        size_t i;
+        TIter iter;
+        bool operator != (const iterator& other) const { return iter != other.iter; }
+        void operator ++ () { ++i; ++iter; }
+        auto operator * () const { return std::tie(i, *iter); }
+    };
+    struct iterable_wrapper {
+        T& iterable;
+        auto begin() { return iterator{0, std::begin(iterable)}; }
+        auto end() { return iterator{0, std::end(iterable)}; }
+    };
+    return iterable_wrapper{iterable};
+}
+
     class FilePtr {
     public:
         FilePtr() : file_(nullptr) {}
@@ -91,6 +109,7 @@ namespace file {
             std::optional<bool> exists, is_folder, is_regular;
             std::optional<std::string> absolute;
             timestamp_t assigned_at{ 0u };
+            size_t _lastSepPos{std::string::npos};
             bool too_old();
             void update();
         } _stat_cache;
@@ -119,7 +138,20 @@ namespace file {
             return _str != other._str;
         }
         
-        static char os_sep() noexcept;
+        constexpr static char os_sep() noexcept {
+#if WIN32 && !defined(__EMSCRIPTEN__)
+            return '\\';
+#else
+            return '/';
+#endif
+        }
+        constexpr static char not_os_sep() noexcept {
+#if WIN32 && !defined(__EMSCRIPTEN__)
+            return '/';
+#else
+            return '\\';
+#endif
+        }
         [[nodiscard]] bool is_absolute() const noexcept;
         [[nodiscard]] bool empty() const noexcept { return _str.empty(); }
         
@@ -190,6 +222,36 @@ namespace file {
 
     Path cwd();
     void cd(const file::Path&);
+
+    struct UseNotOsSep {};
+
+    template<char separator, typename Container>
+    std::string make_path( Container&& parts) {
+        std::stringstream ss;
+        bool was_empty = true;
+        size_t count{0u};
+        for(const auto &[index, part] : enumerate(parts)) {
+            if(part && *part != '\0') {
+                if(not was_empty || count > 0 || (count == 0 && index > 0))
+                    ss << separator;
+                ss << part;
+                was_empty = false;
+                ++count;
+            } else {
+                was_empty = true;
+            }
+        }
+        return ss.str();
+    }
+
+    template<typename Container = std::initializer_list<const char*>>
+    inline std::string make_path( Container&& parts, UseNotOsSep) {
+        return make_path<file::Path::not_os_sep()>(std::forward<Container>(parts));
+    }
+    template<typename Container = std::initializer_list<const char*>>
+    inline std::string make_path( Container&& parts) {
+        return make_path<file::Path::os_sep()>(std::forward<Container>(parts));
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p);

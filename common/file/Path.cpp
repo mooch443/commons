@@ -49,8 +49,6 @@
 #endif
 
 namespace file {
-    char Path::os_sep() noexcept { return OS_SEP; }
-
 #ifdef USE_STD_FILESYSTEM
 Path Path::absolute() const {
     if(_stat_cache.absolute.has_value() && not _stat_cache.too_old()) {
@@ -159,27 +157,37 @@ Path Path::absolute() const {
     }
 
     Path::Path(const std::string& s)
-        : _str(s)
+        : Path(std::string_view(s))
     {
-        for (size_t i = 0; i < _str.length(); ++i)
-            if (_str[i] == NOT_OS_SEP) _str[i] = OS_SEP;
-            
-        if(_str.size() == 1 && _str.front() == OS_SEP) {
-            
-        } else {
-            // remove trailing slashes
-            while(_str.size() > 1 && _str.back() == OS_SEP)
-                _str.pop_back();
-        }
     }
 
     Path::Path(const char* c)
-        : Path(std::string(c))
+        : Path(std::string_view(c))
     {}
 
     Path::Path(std::string_view sv)
-        : Path(std::string(sv))
-    {}
+        : _str(std::string(sv))
+    {
+        for (size_t i = 0, N = _str.length(); i < N; ++i) {
+            if(i + 1 == N) {
+                // remove trailing slashes
+                while(N > 1 && (_str.back() == OS_SEP || _str.back() == NOT_OS_SEP))
+                {
+                    _str.pop_back();
+                    --N;
+                }
+                
+                break;
+            }
+            
+            if (_str[i] == NOT_OS_SEP) {
+                _str[i] = OS_SEP;
+                _stat_cache._lastSepPos = i;
+            } else if(_str[i] == OS_SEP) {
+                _stat_cache._lastSepPos = i;
+            }
+        }
+    }
 
     Path& Path::operator/=(const Path &other) {
         //_str += other.str();
@@ -413,16 +421,18 @@ Path Path::absolute() const {
 
     std::string_view Path::extension() const {
         if(empty())
-            return std::string_view(_str);
+            return std::string_view();
         
         const char *ptr = &_str.back();
         for(; ptr != _str.data(); --ptr) {
             if (*ptr == '.') {
                 return std::string_view(ptr+1, size_t(&_str.back() - ptr));
+            } else if(*ptr == OS_SEP) {
+                return std::string_view();
             }
         }
         
-        return std::string_view(_str.data() + _str.length() - 1, 0);
+        return std::string_view();
     }
     
     bool Path::has_extension() const {
