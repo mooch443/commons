@@ -701,7 +701,7 @@ namespace cmn {
                             break;
                             
                         case VECTOR:
-                            if(!GlobalSettings::is_runtime_quiet()) {
+                            if(!GlobalSettings::is_runtime_quiet(&map)) {
 #ifndef NDEBUG
                                 FormatWarning("(Key ",key,") Vector not yet implemented.");
 #endif
@@ -710,7 +710,7 @@ namespace cmn {
                             break;
                             
                         case INVALID:
-                            if(!GlobalSettings::is_runtime_quiet()) {
+                            if(!GlobalSettings::is_runtime_quiet(&map)) {
                                 FormatWarning("Data of invalid type ", value," for key ",key);
                                 continue;
                             }

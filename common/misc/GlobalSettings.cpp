@@ -29,9 +29,10 @@ GlobalSettings::GlobalSettings() {
 GlobalSettings::~GlobalSettings() {
 }
 
-bool GlobalSettings::is_runtime_quiet() {
-    const bool quiet = has("quiet") && GlobalSettings::get("quiet").value<bool>();
-    return quiet;
+bool GlobalSettings::is_runtime_quiet(const sprite::Map* ptr) {
+    if(not ptr)
+        ptr = &GlobalSettings::map();
+    return ptr->has("quiet") && ptr->at("quiet").value<bool>();
 }
 
 /**

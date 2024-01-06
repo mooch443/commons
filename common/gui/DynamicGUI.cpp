@@ -156,9 +156,15 @@ T map_vectors(const VarProps& props, auto&& apply) {
 }
 
 template<typename T>
-T map_vector(const VarProps& props, auto&& apply) {
+concept numeric = std::is_arithmetic_v<T> && not are_the_same<T, bool>;
+
+template<typename T, typename Apply>
+    requires requires (T A, Apply apply) {
+        { apply(A) } -> std::convertible_to<T>;
+    }
+T map_vector(const VarProps& props, Apply&& apply) {
     if(props.parameters.size() != 1) {
-        throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
+        throw InvalidArgumentException("Invalid number of variables for ", props);
     }
     
     T A{};
@@ -181,6 +187,44 @@ T map_vector(const VarProps& props, auto&& apply) {
     }
     
     return apply(A);
+}
+
+template<typename T, typename Apply>
+    requires requires (T A, T B, Apply apply) {
+        { apply(A, B) } -> std::convertible_to<T>;
+    }
+T map_vector(const VarProps& props, Apply&& apply) {
+    if(props.parameters.size() != 2) {
+        throw InvalidArgumentException("Invalid number of variables for ", props);
+    }
+    
+    T A{}, B{};
+    
+    try {
+        std::string a(props.parameters.front());
+        std::string b(props.parameters.back());
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<float>(a));
+            B = T(Meta::fromStr<float>(b));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<float>(a));
+            
+            if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
+                B = Meta::fromStr<T>(b);
+            else
+                B = T(Meta::fromStr<float>(b));
+        }
+
+    } catch(const std::exception& ex) {
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
+    }
+    
+    return apply(A, B);
 }
 
 void Context::init() const {
@@ -327,6 +371,9 @@ void Context::init() const {
             VarFunc("round", [](const VarProps& props) -> float {
                 return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
             }),
+            VarFunc("mod", [](const VarProps& props) -> int {
+                return map_vector<int>(props, [](auto& A, auto& B){ return A % B; });
+            }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 if(props.parameters.size() != 2) {
                     throw InvalidArgumentException("Invalid number of variables for at: ", props);
@@ -335,6 +382,13 @@ void Context::init() const {
                 auto index = Meta::fromStr<size_t>(props.parameters.front());
                 auto parts = util::parse_array_parts(util::truncate(props.parameters.at(1)));
                 return parts.at(index);
+            }),
+            VarFunc("array_length", [](const VarProps& props) -> size_t {
+                if(props.parameters.size() != 1) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                auto parts = util::parse_array_parts(util::truncate(props.parameters.at(0)));
+                return parts.size();
             }),
             VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {

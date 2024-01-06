@@ -126,7 +126,7 @@ concept HasNotEqualOperator = requires(T a, T b) {
         bool is_type() const;
         
         bool valid() const;
-        PropertyType& get() const { if(_type) return *_type; throw std::runtime_error("Property is null."); }
+        PropertyType& get() const { if(_type) return *_type; throw std::runtime_error("Property "+std::string(_name)+" does not exist."); }
         std::string_view type_name() const;
         
         Map& container() const { return *_container; }

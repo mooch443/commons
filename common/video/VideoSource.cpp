@@ -783,7 +783,7 @@ short VideoSource::framerate() const {
     return _framerate;
 }
 
-void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(float)>&& callback) {
+void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(float)>&& callback) {
     gpuMat average;
     av.copyTo(average);
     // if there are only a few files, we can use the standard method
@@ -882,9 +882,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
     }
     
     print("file_indexes = ", file_indexes);
+    std::atomic<bool> terminate{false};
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [this, &acc, &callback, samples](File* file, const std::set<Frame_t>& indexes)
+        auto fn = [this, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
         {
             Image f(size().height, size().width, _colors == ImageMode::RGB ? 3 : 1);
             double count = 0;
@@ -898,7 +899,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
                     
                     if(long_t(count) % max(1,long_t(samples * 0.05)) == 0) {
                         if(callback) {
-                            callback(count / samples);
+                            if(not callback(count / samples)) {
+                                terminate = true;
+                                break;
+                            }
                         }
                         print(int(count), " / ", int(samples)," (", file->filename(),")");
                     }
@@ -907,8 +911,8 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
                     FormatWarning("Continuing, but caught an exception processing frame ", index," of '", file->filename(),"' while generating an average.");
                 }
                 
-                if(SETTING(terminate))
-                    return;
+                //if(SETTING(terminate))
+                //    return;
             }
             
             file->close();
@@ -918,6 +922,9 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<void(flo
             pool.enqueue(fn, file, indexes);
         } else
             fn(file, indexes);
+        
+        if(terminate)
+            break;
     }
     
     pool.wait();

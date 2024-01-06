@@ -99,7 +99,7 @@ namespace cmn {
         static sprite::Map& set_defaults();
         static docs_map_t& docs();
         
-        static bool is_runtime_quiet();
+        static bool is_runtime_quiet(const sprite::Map* = nullptr);
         
         //! Returns true if the given key exists.
         static bool has(const std::string& name);

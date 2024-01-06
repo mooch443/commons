@@ -133,7 +133,7 @@ public:
     virtual bool has_mask() const override { return false; }
     virtual const cv::Mat& mask() const override { return _mask; }
     
-    virtual void generate_average(cv::Mat &average, uint64_t frameIndex, std::function<void(float)>&& callback = nullptr) override;
+    virtual void generate_average(cv::Mat &average, uint64_t frameIndex, std::function<bool(float)>&& callback = nullptr) override;
     
     virtual std::string toStr() const;
     

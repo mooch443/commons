@@ -70,7 +70,7 @@ void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask)
     timing.conclude_measure();
 }
 
-void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::function<void(float)>&& callback) {
+void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::function<bool(float)>&& callback) {
     if(length() < 10_f) {
         gpuMat average;
         av.copyTo(average);
@@ -94,8 +94,11 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
         counted += step;
         
         if(counted.get() > float(length().get()) * 0.1) {
-            if(callback)
-                callback(float(samples - i.get()) / float(step.get()));
+            if(callback) {
+                if(not callback(float(samples - i.get()) / float(step.get()))) {
+                    break; // cancel requested by callback
+                }
+            }
             print("generating average: ", (samples - i.get()) / step.get(),"/", int(samples)," step:", step," (frame ", i,")");
             counted = 0_f;
         }
