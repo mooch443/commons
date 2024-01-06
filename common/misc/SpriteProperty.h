@@ -211,7 +211,7 @@ namespace cmn {
             Property<T>& toProperty() {
                 Property<T> *tmp = dynamic_cast<Property<T>*>(this);
                 if(not tmp) {
-                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", cmn::type_name<T>());
+                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", cmn::type_name<T>(), " in ", *this);
                 }
                 return *tmp;
             }
@@ -220,7 +220,7 @@ namespace cmn {
             const Property<T>& toProperty() const {
                 const Property<T> *tmp = dynamic_cast<const Property<T>*>(this);
                 if(not tmp)
-                    throw PropertyException("Cannot cast "+(std::string)type_name()+" to "+ (std::string)cmn::type_name<T>());
+                    throw PropertyException("Cannot cast "+(std::string)type_name()+" to "+ (std::string)cmn::type_name<T>()+ " in " +toStr());
                 return *tmp;
             }
             
