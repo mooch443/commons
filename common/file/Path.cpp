@@ -201,7 +201,7 @@ Path Path::absolute() const {
     
     bool Path::is_absolute() const noexcept {
 #if WIN32
-        return (_str.length() >= 3 && _str[1] == ':');
+        return _str[0] == OS_SEP || (_str.length() >= 3 && _str[1] == ':');
 #else
         return !_str.empty() && _str[0] == OS_SEP;
 #endif
@@ -485,9 +485,9 @@ Path Path::absolute() const {
 
 #if WIN32 && !defined(__EMSCRIPTEN__)
         DWORD ftyp = GetFileAttributesA(str().c_str());
-        /*if (ftyp == INVALID_FILE_ATTRIBUTES) {
+        if (ftyp == INVALID_FILE_ATTRIBUTES) {
             return false;  //something is wrong with your path!
-        }*/
+        }
         if (ftyp & FILE_ATTRIBUTE_DIRECTORY) {
             _stat_cache.is_folder = true;
         }

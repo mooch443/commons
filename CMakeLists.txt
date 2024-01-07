@@ -133,6 +133,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten") #-pthread
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pthread")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -pthread")
     set(CMAKE_CONFIGURATION_TYPES "Release" FORCE)
+    #set(CMAKE_CONFIGURATION_TYPES Debug;Release FORCE)
 endif()
 
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
@@ -1288,6 +1289,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_PTHREADS_PF=OFF
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
     )
+            #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 
 else()
     set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
@@ -1347,7 +1349,9 @@ else()
             -DWITH_OPENEXR=OFF
             -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DCMAKE_BUILD_TYPE=Release
-            -DCMAKE_CONFIGURATION_TYPES:STRING=Release)
+            -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+    )
+            #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 endif()
     set(OPENCV_CMAKE_ARGS ${OPENCV_CMAKE_ARGS} 
                 ${COMMONS_subproject_CMAKE_ARGS}

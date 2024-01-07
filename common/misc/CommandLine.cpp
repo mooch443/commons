@@ -130,7 +130,7 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             load_settings();
     }
     
-    void CommandLine::load_settings(const SettingsMaps* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
+    void CommandLine::load_settings(const sprite::Map* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
         if(not map)
             map = &GlobalSettings::map();
             

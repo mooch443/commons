@@ -252,6 +252,11 @@ constexpr auto enumerate(T& iterable) {
     inline std::string make_path( Container&& parts) {
         return make_path<file::Path::os_sep()>(std::forward<Container>(parts));
     }
+    template<char separator = file::Path::os_sep(), typename... Args>
+    inline std::string make_path(utils::StringLike auto&& first, Args... args) {
+        std::array<const char*, sizeof...(Args) + 1> parts{first, args...};
+        return make_path<separator>(parts);
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p);

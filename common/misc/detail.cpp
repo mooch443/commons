@@ -636,7 +636,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const SettingsMaps* additional, const std::vector<std::string>& exclude) {
+        std::set<std::string> parse_values(MapSource source, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -671,8 +671,8 @@ namespace cmn {
                 if(map.has(key)) {
                     // try to set with existing type
                     map[key].get().set_value_from_string(value);
-                } else if(additional && additional->map.has(key)) {
-                    additional->map[key].get().copy_to(&map);
+                } else if(additional && additional->has(key)) {
+                    additional->at(key).get().copy_to(&map);
                     //[key] = additional->docs.at(key);
                     map[key].get().set_value_from_string(value);
                 } else {
@@ -737,7 +737,7 @@ namespace cmn {
             return added;
         }
         
-        Map parse_values(sprite::MapSource source, std::string str, const SettingsMaps* additional) {
+        Map parse_values(sprite::MapSource source, std::string str, const sprite::Map* additional) {
             Map map;
             parse_values(source, map, str, additional);
             return map;
@@ -1011,7 +1011,7 @@ namespace cmn {
     }
     
     std::string HorizontalLine::toStr() const {
-        return "HorizontalLine("+std::to_string(y)+","+std::to_string(x0)+","+std::to_string(x1)+")";
+        return "HL("+std::to_string(y)+","+std::to_string(x0)+","+std::to_string(x1)+")";
     }
 
 }

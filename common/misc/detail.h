@@ -78,7 +78,7 @@ namespace cmn {
         
         std::string str() const {
             std::stringstream ss;
-            ss << "HL<" << y << ", " << x0 << " - " << x1 << ">";
+            ss << "HL<" << x0 << " - " << x1 << y << ", " << ">";
             return ss.str();
         }
         
@@ -733,8 +733,8 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             static constexpr std::string_view CMD{"/CMD"}, defaults{"/DEFAULTS"};
         };
         //! Parses a JSON-like object from string {"key": "value", "key2": 123, "key3": ["test","strings"]}
-        Map parse_values(MapSource, std::string str, const SettingsMaps* additional = nullptr);
-        std::set<std::string> parse_values(MapSource, Map&, std::string, const SettingsMaps* additional = nullptr, const std::vector<std::string>& exclude = {});
+        Map parse_values(MapSource, std::string str, const sprite::Map* additional = nullptr);
+        std::set<std::string> parse_values(MapSource, Map&, std::string, const sprite::Map* additional = nullptr, const std::vector<std::string>& exclude = {});
     }
     
     void set_thread_name(const std::string& name);

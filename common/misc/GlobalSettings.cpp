@@ -119,15 +119,6 @@ bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
  * @param filename Name of the file
  */
 std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude, sprite::Map* target, const sprite::Map* additional) {
-    struct G {
-        std::string s;
-        G(const std::string& name) : s(name) {
-            DebugHeader("LOADING FROM ", name);
-        }
-        ~G() {
-            DebugHeader("/LOADED ", s);
-        }
-    } g(filename);
     return load_from_string(sprite::MapSource{filename}, deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude, additional);
 }
 
@@ -136,6 +127,16 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map
  * @param str the string
  */
 std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapSource source, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude, const sprite::Map* additional) {
+    /*struct G {
+        std::string s;
+        G(const std::string& name) : s(name) {
+            DebugHeader("// LOADING FROM ", s);
+        }
+        ~G() {
+            DebugHeader("// LOADED ", s);
+        }
+    } g(source.name);*/
+
     std::stringstream line;
     std::map<std::string, std::string> rejected;
     

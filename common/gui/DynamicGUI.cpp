@@ -121,8 +121,8 @@ T map_vectors(const VarProps& props, auto&& apply) {
     T A{}, B{};
     
     try {
-        std::string a(props.parameters.front());
-        std::string b(props.parameters.back());
+        std::string a(utils::trim(props.parameters.front()));
+        std::string b(utils::trim(props.parameters.back()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
             A = T(Meta::fromStr<float>(a));
@@ -170,7 +170,7 @@ T map_vector(const VarProps& props, Apply&& apply) {
     T A{};
     
     try {
-        std::string a(props.parameters.front());
+        std::string a(utils::trim(props.parameters.front()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
             A = T(Meta::fromStr<float>(a));

@@ -22,6 +22,7 @@ namespace cmn {
     
     ENUM_CLASS(AccessLevelType,
         PUBLIC,
+        LOAD,
         STARTUP,
         SYSTEM
     )

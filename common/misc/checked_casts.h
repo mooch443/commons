@@ -87,8 +87,10 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifndef NDEBUG
     using FromType = typename cmn::remove_cvref<From>::type;
     using ToType = typename cmn::remove_cvref<To>::type;
-
+#ifdef _NARROW_PRINT_VERBOSE
     auto str = Meta::toStr(value);
+#endif
+    //print("Checking whether ", value, " can be narrowed to ", Meta::name<ToType>(), " from ", Meta::name<FromType>(), ".");
     if constexpr (std::is_floating_point<ToType>::value) {
         // For floating-point targets, the range check isn't typically necessary for integers,
         // but you might want to check for extremely large values for completeness.
@@ -119,11 +121,11 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
         auto tstr1 = Meta::name<ToType>();
         FormatWarning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " (same) = ", str.c_str(), ".");
 #endif
-        if constexpr(std::is_signed_v<ToType>)
-            return value >= std::numeric_limits<ToType>::min()
-                && value <= std::numeric_limits<ToType>::max();
-        else
-            return true; // No narrowing issues for unsigned types in this context
+        if constexpr(std::is_signed_v<ToType> || sizeof(FromType) > sizeof(ToType))
+                return value >= std::numeric_limits<ToType>::min()
+                    && value <= std::numeric_limits<ToType>::max();
+            else
+                return true; // No narrowing issues for unsigned types in this context
     }
     // Check if the conversion is from floating-point to signed integer type
     else if constexpr (std::is_floating_point<FromType>::value && std::is_signed<ToType>::value) {
