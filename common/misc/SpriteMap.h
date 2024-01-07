@@ -545,15 +545,14 @@ void Reference::operator=(const T& value) {
     
     template<typename T>
     ConstReference::operator const T() const {
-        if(not _type)
-            return "const null&";
-        
         const Property<T> *tmp = dynamic_cast<const Property<T>*>(_type);
         if (tmp) {
             return tmp->value();
         }
         
-        std::string e = "Cannot cast " + _type->toStr() + " to value type "+ Meta::name<T>() +" .";
+        std::string e = not _type || not _type->valid()
+            ? "Cannot find variable of type " + Meta::name<T>() + " in map."
+            : "Cannot cast variable '"+(std::string)_type->name()+"' of type " + (_type->valid() ? (std::string)_type->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
