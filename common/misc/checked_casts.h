@@ -98,15 +98,21 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
             // Handling floating-point to floating-point conversions
             if constexpr (sizeof(FromType) > sizeof(ToType)) {
                 // Check for overflow and underflow
-                if (!std::isfinite(value) || std::isnan(value) ||
-                    value > std::numeric_limits<ToType>::max() || value < std::numeric_limits<ToType>::lowest()) {
+                if (!std::isfinite(value) 
+                    || std::isnan(value)
+                    || value > std::numeric_limits<ToType>::max()
+                    || value < std::numeric_limits<ToType>::lowest()) 
+                {
                     return false;
                 }
 
                 // Check for precision loss
+                constexpr FromType epsilon = std::numeric_limits<FromType>::epsilon();
                 ToType converted = static_cast<ToType>(value);
                 FromType backConverted = static_cast<FromType>(converted);
-                return value == backConverted || std::abs(value - backConverted) < std::numeric_limits<FromType>::epsilon();
+                FromType difference = std::abs(value - backConverted);
+                bool result = value == backConverted || difference <= epsilon;
+                return result;
             }
             return true;  // No narrowing issues for conversions to larger or same size types
         }
@@ -184,7 +190,8 @@ constexpr To narrow_cast(From&& value, struct tag::warn_on_error) noexcept {
 
         auto tstr = Meta::name<To>();
         auto fstr = Meta::name<From>();
-        FormatWarning("Value ",vstr," in narrowing conversion of ",fstr.c_str()," -> ",tstr.c_str()," is not within limits [",lstr.c_str(),",",rstr.c_str(),"].");
+        auto result = check_narrow_cast<To, From>(value);
+        FormatWarning("Value ",vstr," in narrowing conversion of ",fstr.c_str()," -> ",tstr.c_str()," is not within limits [",lstr.c_str(),",",rstr.c_str(),"].", result);
     }
 #endif
     return static_cast<To>(std::forward<From>(value));
