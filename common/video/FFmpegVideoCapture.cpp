@@ -260,7 +260,8 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
     
     if(frameIndex > frameCount
-       && frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den) + 1)
+       && (_disable_jumping
+           || frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den) + 1))
     {
 #ifndef NDEBUG
         print("jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
@@ -389,6 +390,8 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 return false;
                 
             } else if(frame_index >= frameIndex) {
+                // jumped ahead of frameIndex target...
+                // we need to go back further.
                 auto old_offset = offset;
                 offset = int64_t(offset * 1.5);
                 timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
@@ -404,7 +407,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 received_frame = int64_t(frameIndex) - offset;
                 avcodec_flush_buffers(codecContext);
                 
-            } else {  
+            } else {
+                if(frame_index < frameCount && frame_index < frameIndex) {
+                    // we made it _worse_ by jumping. we should not
+                    // keep doing this if the frame is below current:
+                    _disable_jumping = true;
+                }
 #ifndef NDEBUG
                 print("jumped to frame ", frame_index, " / ", frameIndex);
 #endif

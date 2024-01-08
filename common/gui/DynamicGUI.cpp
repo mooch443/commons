@@ -372,7 +372,7 @@ void Context::init() const {
                 return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
             }),
             VarFunc("mod", [](const VarProps& props) -> int {
-                return map_vector<int>(props, [](auto& A, auto& B){ return A % B; });
+                return map_vector<float>(props, [](auto& A, auto& B){ return int(A) % int(B); });
             }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 if(props.parameters.size() != 2) {
@@ -380,15 +380,73 @@ void Context::init() const {
                 }
                 
                 auto index = Meta::fromStr<size_t>(props.parameters.front());
-                auto parts = util::parse_array_parts(util::truncate(props.parameters.at(1)));
-                return parts.at(index);
+                auto trunc = props.parameters.at(1);
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                    return parts.at(index);
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
+                }
+                
+                throw InvalidArgumentException("Needs to be an indexable type.");
             }),
             VarFunc("array_length", [](const VarProps& props) -> size_t {
                 if(props.parameters.size() != 1) {
                     throw InvalidArgumentException("Invalid number of variables for at: ", props);
                 }
-                auto parts = util::parse_array_parts(util::truncate(props.parameters.at(0)));
-                return parts.size();
+                auto trunc = props.parameters.at(0);
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                    return parts.size();
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    return Meta::fromStr<std::string>(trunc).length();
+                }
+                
+                throw InvalidArgumentException("Needs to be an indexable type.");
+            }),
+            VarFunc("substr", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t from = 0;
+                uint32_t to = 0;
+                from = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                if(props.parameters.size() == 3) {
+                    to = Meta::fromStr<uint32_t>(props.parameters.at(1));
+                    if(to > from) {
+                        to -= from;
+                    } else
+                        to = 0;
+                }
+                
+                auto trunc = props.parameters.back();
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                if(trunc.length() <= from)
+                    return "";
+                return trunc.substr(from, to);
+            }),
+            VarFunc("pad_string", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                auto trunc = props.parameters.back();
+
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                
+                if(L == 0)
+                    return trunc;
+                
+                if(trunc.length() < L) {
+                    return trunc + utils::repeat(" ", L - trunc.length());
+                } else
+                    return trunc;
             }),
             VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
