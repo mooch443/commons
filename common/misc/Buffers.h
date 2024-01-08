@@ -146,7 +146,7 @@ public:
            not _buffers.empty())
         {
             auto ptr = std::move(_buffers.back());
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
             if(not ptr)
                 throw U_EXCEPTION("Failed to get buffer");
 #endif
@@ -190,14 +190,14 @@ class ImageBuffers {
     Construct _create{};
     std::mutex m;
     Size2 _image_size;
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
     const char* _name;
     std::unordered_set<typename T::element_type*> _created;
 #endif
 
 public:
     ImageBuffers(const char* name) 
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
         : _name(name) 
 #endif
     {
@@ -205,7 +205,7 @@ public:
     }
     ImageBuffers(const char* name, Size2 size) 
         : _image_size(size)
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
         , _name(name)
 #endif
     {
@@ -217,7 +217,7 @@ public:
            not _buffers.empty())
         {
             auto ptr = std::move(_buffers.back());
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
             if(not ptr)
                 throw U_EXCEPTION("Failed to get buffer");
 #endif
@@ -231,7 +231,7 @@ public:
             ptr = _create(std::move(loc));
         else
             ptr = _create();
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
         if (ptr) {
             std::unique_lock guard(mutex());
             _created.insert(ptr.get());
@@ -249,7 +249,7 @@ public:
     void move_back(T&& image) {
         std::unique_lock guard(mutex());
         if(image) {
-#ifndef NDEBUG
+#ifdef DEBUG_BUFFER_IMAGES
             if (_created.contains(image.get()))
                 _created.erase(image.get());
 

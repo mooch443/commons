@@ -242,8 +242,8 @@ void DataFormat::start_writing(bool overwrite) {
         throw U_EXCEPTION("File already exists ",_filename,".");
     
     f = _filename.fopen("wb");
-    if(!f)
-        throw U_EXCEPTION("Cannot open file ",_filename,".");
+    if (!f)
+        throw U_EXCEPTION("Cannot open file ", _filename, ": ", (const char*)strerror(errno));
     
     _file_offset = 0;
     _open_for_writing = true;
