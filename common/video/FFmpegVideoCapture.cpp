@@ -328,7 +328,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
     int received_frame = -1;
     int64_t count_jumped_frames = 0;
-    int tries = 0;
+    int tries = 0, frame_skips = 1;
     while (received_frame < static_cast<int>(frameIndex - 1)) {
         int ret = av_read_frame(formatContext, pkt);
         if (ret < 0) {
@@ -399,6 +399,8 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 print("jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
 #endif
                 
+                frame_skips++;
+                
                 // Seek directly to the calculated timestamp
                 if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
                     FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
@@ -408,7 +410,9 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 avcodec_flush_buffers(codecContext);
                 
             } else {
-                if(frame_index < frameCount && frame_index < frameIndex) {
+                if(frame_index < frameCount && frame_index < frameIndex
+                   && frame_skips > 1)
+                {
                     // we made it _worse_ by jumping. we should not
                     // keep doing this if the frame is below current:
                     _disable_jumping = true;
