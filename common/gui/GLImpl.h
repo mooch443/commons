@@ -9,7 +9,7 @@
 
 #include <gui/CrossPlatform.h>
 #include <misc/Timer.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 
 struct GLFWwindow;
 

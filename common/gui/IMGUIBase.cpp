@@ -36,7 +36,7 @@
 #endif
 
 #include <misc/checked_casts.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 
 namespace gui {
 

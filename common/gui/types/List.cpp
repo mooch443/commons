@@ -1,5 +1,6 @@
 #include "List.h"
 #include <misc/Timer.h>
+#include <gui/DrawBase.h>
 
 namespace gui {
 
@@ -9,7 +10,7 @@ namespace gui {
     
     List::List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click)
     : //gui::DrawableCollection("List"+std::to_string((long)this)),
-        _title(Str{title}, TextClr(White), Font(0.75, Align::VerticalCenter)),
+        _title(Str{title}, TextClr(White), _label_font),
         _title_background(),
         _accent_color(Drawable::accent_color),
         _on_click(on_click),
@@ -28,6 +29,7 @@ namespace gui {
         set_background(Transparent, Black.alpha(255));
         set_items(items);
         set_clickable(true);
+        //set_scroll_enabled(true);
         
         _title_background.set_clickable(true);
         _title_background.on_click([this](auto) {
@@ -124,10 +126,32 @@ namespace gui {
         if(!_selected_rect)
             _selected_item = -1;
         
-        set_content_changed(true);
+        update_sizes();
         
         if(guard)
             delete guard;
+    }
+
+    void List::update_sizes() {
+        float max_w = {100};
+        Font font{_label_font};
+        font.size = max(font.size, _item_font.size);
+        
+        for(size_t i=0; i<_items.size(); i++) {
+            auto &item = _items.at(i);
+            auto w = Base::default_text_bounds(std::string(*item), this, font).width;
+            print((std::string)*item, " => ", w);
+            if(w > max_w)
+                max_w = w;
+        }
+        
+        //max_w = min(width(), max_w);
+        _max_w = max_w;
+        Entangled::set_size(Size2(_width_limit > 0
+                                  ? min(_width_limit, _max_w + 20)
+                                  : (_max_w + 20),
+                                  height()));
+        set_content_changed(true);
     }
     
     void List::select_item(long ID) {
@@ -258,7 +282,7 @@ void List::on_click(const Item * item) {
                     break;
                 }
             }
-            add<Text>(Str{item_name}, Loc(_title.pos()), TextClr{_title.color()}, _title.font());
+            add<Text>(Str{item_name}, Loc(_title.pos()), TextClr{_title.color()}, _label_font);
         }
     }
     
@@ -277,7 +301,7 @@ void List::on_click(const Item * item) {
             //&& stage()->height() - (gb.y + _items.size() * _row_height * gscale) < gb.y - (gb.y + _items.size() * _row_height * gscale);
         
         if(foldable()) {
-            set_size(Size2(bounds().width, _row_height));//(1 + (_folded ? 0 : _items.size())) * _row_height));
+            Entangled::set_size(Size2(width(), _row_height));//(1 + (_folded ? 0 : _items.size())) * _row_height));
         } else
             set_background(Black.alpha(150));
         
@@ -370,7 +394,12 @@ void List::on_click(const Item * item) {
         end();
     }
 
-    void List::set_size(const Size2& size) {
+    void List::set_size(const Size2& _size) {
+        auto size = _size;
+        if(_size.width != _width_limit)
+            _width_limit = _size.width;
+        size.width = _width_limit > 0 ? min(_width_limit, width()) : _size.width;
+        
         if(size.Equals(_bounds.size()))
             return;
         
@@ -380,12 +409,8 @@ void List::on_click(const Item * item) {
     }
 
     void List::set_bounds(const Bounds& size) {
-        if(size.Equals(_bounds))
-            return;
-        
-        set_row_height(size.height);
-        Entangled::set_bounds(size);
-        set_content_changed(true);
+        set_size(size.size());
+        set_pos(size.pos());
     }
 
 void List::set_display_selection(bool v) {
@@ -470,10 +495,21 @@ void List::set(attr::HighlightClr clr) {
 void List::set(attr::Str content) {
     set_title(content);
 }
-void List::set(Font font) {
+void List::set(ItemFont_t font) {
     font.align = Align::Center;
     if(font != _item_font) {
         _item_font = font;
+        update_sizes();
+        set_content_changed(true);
+    }
+}
+void List::set(LabelFont_t font) {
+    if(font.align != Align::Center)
+        font.align = Align::VerticalCenter;
+    if(font != _label_font) {
+        _label_font = font;
+        _title.set(_label_font);
+        update_sizes();
         set_content_changed(true);
     }
 }

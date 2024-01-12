@@ -163,6 +163,21 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
     void CommandLine::add_setting(std::string name, std::string value) {
         _settings.push_back(Option{.name = name, .value = value});
     }
+            
+    void CommandLine::reset_settings(const std::vector<std::string_view> &exclude) {
+        _settings.erase(std::remove_if(_settings.begin(), _settings.end(), [&](Option& option) -> bool{
+            if(not contains(exclude, option.name))
+                return true;
+            return false;
+        }), _settings.end());
+        
+        for(auto it = _settings_keys.begin(); it != _settings_keys.end(); ) {
+            if(not contains(exclude, it->first)) {
+                it = _settings_keys.erase(it);
+            } else
+                ++it;
+        }
+    }
     
     void CommandLine::cd_home() {
         file::cd(_wd);

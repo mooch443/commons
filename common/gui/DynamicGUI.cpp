@@ -725,11 +725,10 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
         auto &obj = it->second;
         try {
             auto res = resolve_variable_type<bool>(obj.variable, context, state);
+            auto last_condition = (uint64_t)o->custom_data("last_condition");
             if(not res) {
                 if(obj._else) {
-                    auto last_condition = (uint64_t)o->custom_data("last_condition");
                     if(last_condition != 1) {
-                        o->add_custom_data("last_condition", (void*)1);
                         o.to<Layout>()->set_children({obj._else});
                     }
                     update_objects(g, obj._else, context, state);
@@ -741,15 +740,18 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
                     }
                 }
                 
+                if(last_condition != 1) {
+                    o->add_custom_data("last_condition", (void*)1);
+                }
                 return false;
             }
             
-            auto last_condition = (uint64_t)o->custom_data("last_condition");
             if(last_condition != 2) {
                 o->set_is_displayed(true);
                 o->add_custom_data("last_condition", (void*)2);
                 o.to<Layout>()->set_children({obj._if});
             }
+            
             update_objects(g, obj._if, context, state);
             
         } catch(const std::exception& ex) {
@@ -859,6 +861,16 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         }
         
         
+        if(pattern.contains("pad")) {
+            try {
+                auto line = resolve_variable_type<Bounds>(pattern.at("pad"), context, state);
+                LabeledField::delegate_to_proper_type(Margins{line}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        
         if(pattern.contains("pos")) {
             try {
                 auto str = parse_text(pattern.at("pos"), context, state);
@@ -900,6 +912,15 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
         if(it->second.contains("max_size")) {
             try {
                 auto line = Meta::fromStr<Size2>(parse_text(pattern.at("max_size"), context, state));
+                LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if(it->second.contains("preview_max_size")) {
+            try {
+                auto line = Meta::fromStr<Size2>(parse_text(pattern.at("preview_max_size"), context, state));
                 LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
                 
             } catch(const std::exception& e) {

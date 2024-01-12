@@ -208,6 +208,9 @@ namespace cmn {
     std::string toStr() const { \
         return "[" + Meta::toStr(A()) + "," + Meta::toStr(B()) + "]"; \
     } \
+    nlohmann::json to_json() const { \
+        return { A(), B() }; \
+    } \
     \
     static Vector2D fromStr(const std::string& str) \
     { \
@@ -526,6 +529,9 @@ public:
         
     std::string toStr() const {
         return "[" + Meta::toStr(x) + "," + Meta::toStr(y) + "," + Meta::toStr(width) + "," + Meta::toStr(height) + "]";
+    }
+    nlohmann::json to_json() const {
+        return nlohmann::json::array({ x, y, width, height });
     }
     static Bounds fromStr(const std::string& str)
     {

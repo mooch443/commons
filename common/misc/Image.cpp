@@ -1,7 +1,7 @@
 #include "Image.h"
 #include <png.h>
 #include <misc/metastring.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <misc/stacktrace.h>
 
 //#define IMAGE_DEBUG_MEMORY_ALLOC

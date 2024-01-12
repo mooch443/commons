@@ -748,4 +748,62 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     public:
         static gui::Color value(double percent);
     };
+
+
+    template<typename VT>
+    auto cvt2json(const VT & v) -> nlohmann::json {
+        if constexpr (is_numeric<VT>)
+            return nlohmann::json(v);
+        else if constexpr (_clean_same<VT, bool>)
+            return nlohmann::json((bool)v);
+        else if constexpr (is_map<VT>::value) {
+            auto a = nlohmann::json::object();
+            for (auto& [key, i] : v) {
+                if constexpr(std::is_same_v<decltype(key), std::string>)
+                    a[key] = cvt2json(i);
+                else if constexpr(std::is_convertible_v<decltype(key), std::string>)
+                    a[std::string(key)] = cvt2json(i);
+                else
+                    a[Meta::toStr(key)] = cvt2json(i);
+            }
+            return a;
+        }
+        else if constexpr (is_container<VT>::value || is_set<VT>::value) {
+            auto a = nlohmann::json::array();
+            for (const auto& i : v) {
+                a.push_back(cvt2json(i));
+            }
+            return a;
+        }
+        else if constexpr (std::is_same_v<VT, std::string>) {
+            std::string str = v;
+            return nlohmann::json(v.c_str());
+        }
+        else if constexpr (std::is_convertible_v<VT, std::string>) {
+            std::string str = v;
+            return nlohmann::json(v.c_str());
+        }
+        else if constexpr (is_pair<VT>::value) {
+            auto a = nlohmann::json::array();
+            a.push_back(cvt2json(v.first));
+            a.push_back(cvt2json(v.second));
+            return a;
+        }
+        else if constexpr (is_tuple_v<VT>) {
+            auto a = nlohmann::json::array();
+            std::apply([&a](auto&&... args) { ((a.push_back(cvt2json(args))), ...); }, v);
+            return a;
+        }
+        else if constexpr(has_to_json_method<VT>) {
+            return v.to_json();
+        }
+        //auto str = Meta::toStr(v);
+        //return nlohmann::json(str.c_str());
+        
+        else {
+            static_assert(std::same_as<const VT, std::remove_cvref_t<VT>*>, "Cannot convert object to json.");
+        }
+            //throw U_EXCEPTION("Cannot parse JSON for: ", v, " of type ", type_name<VT>());
+    }
+
 }

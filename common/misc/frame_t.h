@@ -136,6 +136,11 @@ public:
     [[nodiscard]] std::string toStr() const {
         return valid() ? Meta::toStr<number_t>(get()) : "null";
     }
+    [[nodiscard]] nlohmann::json to_json() const {
+        if(valid())
+            return nlohmann::json(get());
+        return nullptr;
+    }
     [[nodiscard]] static std::string class_name() {
         return "frame";
     }

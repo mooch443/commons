@@ -87,6 +87,7 @@ public:
 protected:
     void init();
     void update() override;
+    void update_value();
 };
     
 }

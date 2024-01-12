@@ -131,17 +131,19 @@ void StaticText::set_default_font(Font font) {
             }
             
             // subtract position, add margins
-            m = m + _settings.margins.size();
-            if(_settings.max_size.y > 0) {
-                m.y = min(m.y, _settings.max_size.y);
+            if(not m.empty()) {
+                m = m + _settings.margins.size();
+                if(_settings.max_size.y > 0) {
+                    m.y = min(m.y, _settings.max_size.y);
+                }
             }
             set_size(m);
             
             if(_settings.fade_out > 0) {
                 add_shadow();
                 
-            } else
-                _fade_out = nullptr;
+            } //else
+                //_fade_out = nullptr;
             
             if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
                 set_background(bg_fill_color() != Transparent
@@ -365,8 +367,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     size_t before_pos = 0;
     int64_t brackets{0};
     
-    static constexpr std::array<std::string_view, 24> commands {
-        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange","cyan"
+    static constexpr std::array<std::string_view, 25> commands {
+        "h","h1","h2","h3","h4","h5","h6","h7","h8","h9", "i","c","b","string","number","str","nr","keyword","key","ref","a","sym","orange","cyan","small"
     };
     
     for(size_t i=0, N = _txt.size(); i<N; ++i) {
@@ -409,12 +411,15 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
 #endif
                 } else {
                     //std::string l = utils::lowercase(s);
-                    if(not contains(commands, s)) {
+                    //print("command: ", utils::lowercase(s));
+                    //print("all = ", AllColors);
+                    if(not contains(commands, s)
+                       && not contains(AllColors, s))
+                    {
                         if(tags.empty()) {
                             global_tags.push_back(TRange("_", global_tags.empty() ? 0 : global_tags.back().after, global_tags.empty() ? 0 : global_tags.back().range.end));
                             global_tags.back().close(i+1, _txt, i+1);
                         }
-                        
                     } else {
                         if(tags.empty()) {
                             if((global_tags.empty() && before_pos > 0) || !global_tags.empty()) {
@@ -456,7 +461,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         }
         
         const auto default_clr = _settings.text_color;
-        static const auto highlight_clr = DarkCyan;
+        static const auto highlight_clr = LightGray;
         
         //_txt = "a <b>very</b> long text, ja ja i <i>dont know</i> whats <b><i>happening</i></b>, my friend. <b>purple rainbows</b> keep bugging mees!\nthisisaverylongtextthatprobablyneedstobesplitwithouthavinganopportunitytoseparateitsomewhere<a custom tag>with text after";
         //_txt = "<a custom tag>";
@@ -523,17 +528,32 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 if((tag.name.length() == 2 && tag.name[1] >= '0' && tag.name[1] < '9')
                    || tag.name == "h")
                 {
-                    tag.font.size = _settings.default_font.size * (1 + (1 - min(1, (tag.name[1] - '0') / 4.f)));
+                    tag.font.size = _settings.default_font.size * (1 + (1 - saturate(float(tag.name[1] - '0') / 6.f, 0.f, 1.f)));
                     tag.font.style |= Style::Bold;
                     tag.color = mix_colors(tag.color, highlight_clr);
-                    breaks_line = true;
+                    //breaks_line = true;
                 }
+            }
+            else if(tag.name == "small") {
+                tag.font.size = _settings.default_font.size * 0.75;
             }
             else if(tag.name == "ref") {
                 tag.font.style |= Style::Bold;
                 tag.color = mix_colors(tag.color, Gray);
             }
-            else print("Unknown tag ",tag.name," in RichText.");
+            else {
+                bool found = false;
+                for(auto &c : AllColors) {
+                    if(utils::lowercase(tag.name) == utils::lowercase(c.name)) {
+                        tag.color = mix_colors(tag.color, c.color);
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if(not found)
+                    print("Unknown tag ",tag.name," in RichText.");
+            }
             
             if(!tag.subranges.empty()) {
                 assert(tag.text.data() >= _settings.txt.c_str()

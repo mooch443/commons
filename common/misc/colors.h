@@ -1,12 +1,7 @@
 #ifndef _COLORS_H
 #define _COLORS_H
 
-#include "types.h"
-
-#if __has_include ( <imgui/imgui.h> )
-    #define HAS_IMGUI
-    #include <imgui/imgui.h>
-#endif
+#include <commons.pc.h>
 
 namespace gui {
 namespace const_funcs {
@@ -70,7 +65,7 @@ public:
         );
     }
     
-#ifdef HAS_IMGUI
+#if CMN_WITH_IMGUI_INSTALLED
     constexpr Color(const ImColor& c) : Color(uint8_t(c.Value.x * 255), uint8_t(c.Value.y * 255), uint8_t(c.Value.z * 255), uint8_t(c.Value.w * 255)) {}
     operator ImColor() const { return ImColor(r, g, b, a); }
     explicit constexpr operator ImU32() const {
@@ -300,6 +295,9 @@ public:
     std::string toStr() const {
         return "[" + std::to_string(r) + "," + std::to_string(g) + "," + std::to_string(b) + "," + std::to_string(a) + "]";
     }
+    nlohmann::json to_json() const {
+        return {r,g,b,a};
+    }
 
     static Color fromStr(const std::string& str);
     static std::string class_name() { return "color"; }
@@ -340,6 +338,52 @@ constexpr static const Color
            Coral       = Color(255, 127, 80, 255),
         DarkSalmon     = Color(233, 150, 122, 255),
          GoldenRod     = Color(218, 165, 32, 255);
+
+struct ColorPair {
+    Color color;
+    std::string_view name;
+    
+    constexpr operator Color() const {
+        return color;
+    }
+    
+    constexpr bool operator==(const std::string_view& other) const noexcept {
+        return utils::lowercase_equal_to(other, name);
+        //return utils::lowercase(name) == utils::lowercase(other);
+    }
+    
+    std::string toStr() const { return (std::string)name; }
+};
+
+#define DEFINE_COLOR(NAME) ColorPair{ NAME, #NAME }
+constexpr static const auto AllColors = std::array {
+    DEFINE_COLOR(White),
+    DEFINE_COLOR(Black),
+    DEFINE_COLOR(Gray),
+    DEFINE_COLOR(LightGray),
+    DEFINE_COLOR(DarkGray),
+    DEFINE_COLOR(DarkCyan),
+    DEFINE_COLOR(Cyan),
+    DEFINE_COLOR(Yellow),
+    DEFINE_COLOR(Red),
+    DEFINE_COLOR(Blue),
+    DEFINE_COLOR(Green),
+    DEFINE_COLOR(Purple),
+    DEFINE_COLOR(Transparent),
+    DEFINE_COLOR(Orange),
+    DEFINE_COLOR(Lime),
+    DEFINE_COLOR(Magenta),
+    DEFINE_COLOR(Olive),
+    DEFINE_COLOR(Chocolate),
+    DEFINE_COLOR(Teal),
+    DEFINE_COLOR(Maroon),
+    DEFINE_COLOR(Navy),
+    DEFINE_COLOR(LightPink),
+    DEFINE_COLOR(DeepPink),
+    DEFINE_COLOR(Coral),
+    DEFINE_COLOR(DarkSalmon),
+    DEFINE_COLOR(GoldenRod)
+};
 
 constexpr inline Color operator*(const Color& c0, const Color& c1) {
     return Color((uint8_t)saturate((int)c0.r * (int)c1.r),

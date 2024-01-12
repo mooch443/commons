@@ -467,21 +467,24 @@ void GridLayout::set(const std::vector<Layout::Ptr>& objects) {
 void GridLayout::update_hover() {
     for(size_t row = 0; row < _grid_info.numRows; ++row) {
         for(size_t col = 0; col < _grid_info.numCols; ++col) {
-            auto bds = _grid_info.getCellBounds(row, col);
-            if(bds.contains(_last_hover)) {
-                for(size_t r = 0; r < _grid_info.numRows; ++r) {
-                    if(r != row)
-                        bds.combine(_grid_info.getCellBounds(r, col));
+            if(_grid_info.hasCell(row, col)) {
+                auto bds = _grid_info.getCellBounds(row, col);
+                if(bds.contains(_last_hover)) {
+                    for(size_t r = 0; r < _grid_info.numRows; ++r) {
+                        if(r != row)
+                            bds.combine(_grid_info.getCellBounds(r, col));
+                    }
+                    _vertical_rect->set(Box{bds});
+                    
+                    bds = _grid_info.getCellBounds(row, col);
+                    for(size_t c = 0; c < _grid_info.numCols; ++c) {
+                        if(c != col)
+                            bds.combine(_grid_info.getCellBounds(row, c));
+                    }
+                    _horizontal_rect->set(Box{bds});
+                    break;
                 }
-                _vertical_rect->set(Box{bds});
                 
-                bds = _grid_info.getCellBounds(row, col);
-                for(size_t c = 0; c < _grid_info.numCols; ++c) {
-                    if(c != col)
-                        bds.combine(_grid_info.getCellBounds(row, c));
-                }
-                _horizontal_rect->set(Box{bds});
-                break;
             }
         }
     }
@@ -505,6 +508,8 @@ void GridLayout::update_layout() {
                 continue;
 
             Layout* cell = _cell.to<Layout>();
+            cell->auto_size();
+            
             auto cell_bounds = cell->local_bounds();
             
             // Update max dimensions for row and column
@@ -535,7 +540,9 @@ void GridLayout::update_layout() {
         // Reset x-coordinate at the beginning of each new row
         float x = 0;
 
-        float row_height = max_row_heights[row_idx] + margins().height + margins().y;
+        float row_height = max_row_heights[row_idx];
+        if(row_height > 0)
+            row_height += margins().height + margins().y;
         size_t col_idx = 0;  // Column index
 
         for (auto &_cell : row->objects()) {

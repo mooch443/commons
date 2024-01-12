@@ -143,6 +143,9 @@ public:
     constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
     constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
     std::string toStr() const noexcept { return name(); }
+    nlohmann::json to_json() const {
+        return nlohmann::json(name());
+    }
     static std::string class_name() noexcept { return std::string(_names::class_name());}
     
     template<typename T = std::string>

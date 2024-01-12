@@ -145,6 +145,7 @@ struct Pose {
 
             static std::string class_name() noexcept { return "Connection"; }
             static Connection fromStr(const std::string&);
+            nlohmann::json to_json() const;
         };
         
     protected:
@@ -178,6 +179,7 @@ struct Pose {
 
         static Skeleton fromStr(const std::string&);
         std::string toStr() const;
+        nlohmann::json to_json() const;
         static std::string class_name() noexcept { return "Skeleton"; }
         static void add(Skeleton&&);
         static Skeleton get(const std::string&);

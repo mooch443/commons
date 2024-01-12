@@ -244,19 +244,44 @@ template<StringLike Str>
 auto trim(Str&& s) {
     return rtrim(ltrim(std::forward<Str>(s)));
 }
+
+template<typename Char = char>
+constexpr inline Char lowercase_char(Char ch) {
+    return (ch >= 'A' && ch <= 'Z') ? (ch - 'A' + 'a') : ch;
+}
     
-inline bool lowercase_equal_to(const std::string_view& str_view, const char* cstr) {
+template<size_t len_cstr>
+constexpr inline bool lowercase_equal_to(const std::string_view& str_view, const char(&cstr)[len_cstr]) {
     // First check lengths; if they're different, the strings can't be equal
     size_t len_view = str_view.length();
-    size_t len_cstr = std::strlen(cstr); // include <cstring> for std::strlen
+    if (len_view != len_cstr - 1u) {
+        return false;
+    }
+
+    // Compare each character, case-insensitively
+    for (size_t i = 0; i < len_view; ++i) {
+        if (lowercase_char(static_cast<unsigned char>(str_view[i])) !=
+            lowercase_char(static_cast<unsigned char>(cstr[i]))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+constexpr inline bool lowercase_equal_to(const std::string_view& str_view, const std::string_view& other) {
+    // First check lengths; if they're different, the strings can't be equal
+    size_t len_view = str_view.length();
+    size_t len_cstr = other.length();
+    
     if (len_view != len_cstr) {
         return false;
     }
 
     // Compare each character, case-insensitively
     for (size_t i = 0; i < len_view; ++i) {
-        if (std::tolower(static_cast<unsigned char>(str_view[i])) !=
-            std::tolower(static_cast<unsigned char>(cstr[i]))) {
+        if (lowercase_char(static_cast<unsigned char>(str_view[i])) !=
+            lowercase_char(static_cast<unsigned char>(other[i]))) {
             return false;
         }
     }
@@ -265,6 +290,8 @@ inline bool lowercase_equal_to(const std::string_view& str_view, const char* cst
 }
 
 template<typename Str>
+    requires (not std::is_array_v<std::remove_reference_t<Str>>)
+        && (not std::is_pointer_v<std::remove_reference_t<Str>>)
 auto lowercase(Str const& original) {
     using StrDecayed = std::remove_cvref_t<Str>;
     using CharType = typename StrDecayed::value_type;
@@ -280,17 +307,11 @@ auto lowercase(Str const& original) {
     return result;
 }
 
-template<typename Char>
-auto lowercase(const Char* original) {
-    std::basic_string<Char> str(original);
-
-#ifndef WIN32
-    std::transform(str.begin(), str.end(), str.begin(), (int(*)(int))std::tolower);
-#else
-    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-#endif
-
-    return str;
+template<typename CStr>
+    requires (not std::is_array_v<std::remove_reference_t<CStr>>)
+        && (std::same_as<const char*, CStr> || std::same_as<const wchar_t*, CStr>)
+auto lowercase(CStr original) {
+    return utils::lowercase(std::basic_string_view{original});
 }
 
 template<typename Str>

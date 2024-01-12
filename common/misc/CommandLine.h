@@ -45,5 +45,6 @@ namespace cmn {
         decltype(_options)::const_iterator end() const { return _options.end(); }
         
         void add_setting(std::string name, std::string value);
+        void reset_settings(const std::vector<std::string_view>& exclude);
     };
 }

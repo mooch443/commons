@@ -2,7 +2,7 @@
 #define _DRAW_STRUCTURE_H
 
 #include <gui/GuiTypes.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <gui/Section.h>
 #include <gui/types/Entangled.h>
 #include <gui/types/MiscShapes.h>

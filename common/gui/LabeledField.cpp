@@ -651,11 +651,11 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
     });
     
     // Initialize StaticText
-    _staticText = Layout::Make<gui::StaticText>(StaticText::FadeOut_t{1.f});
+    _dropdown->set_preview(Layout::Make<gui::StaticText>(StaticText::FadeOut_t{1.f}));
     
-    _layout = Layout::Make<gui::PathArrayView>(std::vector<Layout::Ptr>{_dropdown, _staticText}, attr::Margins{0, 0, 0, 0});
+    _layout = Layout::Make<gui::PathArrayView>(std::vector<Layout::Ptr>{_dropdown, _dropdown->preview()}, attr::Margins{0, 0, 0, 0});
     auto view = static_cast<PathArrayView*>(_layout.get());
-    view->text = (StaticText*)_staticText.get();
+    view->text = (StaticText*)_dropdown->preview().get();
     view->control = _dropdown.get();
     _layout->set_policy(VerticalLayout::Policy::LEFT);
     
@@ -665,12 +665,16 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
         auto &text = context->obj["preview"];
         if(text.contains("font")) {
             Font font = parse_font(text);
-            _staticText->set(font);
+            _dropdown->preview()->set(font);
+        }
+        if(text.contains("fade_out")) {
+            StaticText::FadeOut_t fade{dyn::get(context->state, text, float(0), "fade_out", context->hash, "preview_")};
+            _dropdown->preview()->set(fade);
         }
         if(text.contains("color")) {
             try {
                 auto color = parse_color(text["color"]);
-                _staticText->set(TextClr{color});
+                _dropdown->preview()->set(TextClr{color});
             } catch(const std::exception& ex) {
                 FormatExcept("Invalid format for color: ", ex.what());
             }
@@ -678,7 +682,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
         if(text.contains("max_size")) {
             try {
                 auto max_size = dyn::get(context->state, text, Size2(-1,-1), "max_size", context->hash, "preview_");
-                _staticText->set(SizeLimit{max_size});
+                _dropdown->set(SizeLimit{max_size});
             } catch(const std::exception& ex) {
                 FormatExcept("Invalid format for max_size: ", ex.what());
             }
@@ -705,15 +709,15 @@ void LabeledPathArray::updateStaticText(const std::vector<file::Path>& matches) 
     std::string pattern = _dropdown->textfield()->text();
     // perform pattern matching using PathArray
     if (matches.empty()) {
-        _staticText->set_txt("No matches found");
+        _dropdown->preview()->set_txt("No matches found");
     } else {
-        _staticText->set_txt(settings::htmlify( Meta::toStr(matches) ));
+        _dropdown->preview()->set_txt(settings::htmlify( Meta::toStr(matches) ));
     }
 }
 
 void LabeledPathArray::add_to(std::vector<Layout::Ptr>& v) {
     assert(_dropdown != nullptr);
-    assert(_staticText != nullptr);
+    //assert(_staticText != nullptr);
     assert(_layout != nullptr);
     v.push_back(_layout);
     //v.push_back(_dropdown);
@@ -775,60 +779,63 @@ void LabeledPathArray::updateDropdownItems() {
             
             try {
                 file::PathArray pathArray(text);
-                
-                file::Path source_path(pathArray.source());
-                if(pathArray.size() == 1 && not pathArray.matched_patterns()) {
-                    source_path = pathArray.get_paths().front();
-                }
-                
-                file::Path _source_path(_pathArrayCopy.source());
-                if(_pathArrayCopy.size() == 1 && not _pathArrayCopy.matched_patterns()) {
-                    _source_path = _pathArrayCopy.get_paths().front();
-                }
-                
-                if ((source_path.is_folder() && _source_path == source_path)
-                    || (not source_path.is_folder()
-                        && not _source_path.is_folder()
-                        && source_path.remove_filename() == _source_path.remove_filename()))
-                {
-                    print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
-                    _pathArrayCopy.set_source(pathArray.source());
-                    return files;
-                }
-
-                if (utils::endsWith(text, file::Path::os_sep())) {
-                    // User is navigating into a folder
-                    matches = pathArray.get_paths();
-                    if (not pathArray.matched_patterns()) {
-                        if (matches.empty() || matches.front().is_folder()) {
-                            auto folder = matches.empty() ? file::Path("/") : matches.front();
-                            auto files = folder.find_files();
-                            matches = { files.begin(), files.end() };
-                        }
+                if(pathArray != file::PathArray("webcam")) {
+                    file::Path source_path(pathArray.source());
+                    if(pathArray.size() == 1 && not pathArray.matched_patterns()) {
+                        source_path = pathArray.get_paths().front();
                     }
-
-                }
-                else {
-                    file::Path p(pathArray.source());
-                    // Handle wildcard matching or parent folder display
-                    if (pathArray.matched_patterns()) {
-                        // If wildcards are present, filter based on them
-                        matches = pathArray.get_paths();
-                    }
-                    else if (p.exists() && p.is_regular())
+                    
+                    file::Path _source_path(_pathArrayCopy.source());
+                    if(_pathArrayCopy.size() == 1 && not _pathArrayCopy.matched_patterns() && not _source_path.empty())
                     {
-                        matches = pathArray.get_paths();
+                        _source_path = _pathArrayCopy.get_paths().front();
                     }
-                    else if (p.exists() && p.is_folder()) {
-                        auto files = p.find_files();
-                        matches = { files.begin(), files.end() };
+                    
+                    if ((source_path.is_folder() && _source_path == source_path)
+                        || (not source_path.is_folder()
+                            && not _source_path.is_folder()
+                            && (source_path.remove_filename() == _source_path.remove_filename()
+                                && not _source_path.empty())))
+                    {
+                        print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
+                        _pathArrayCopy.set_source(pathArray.source());
+                        return files;
+                    }
+                    
+                    if (utils::endsWith(text, file::Path::os_sep())) {
+                        // User is navigating into a folder
+                        matches = pathArray.get_paths();
+                        if (not pathArray.matched_patterns()) {
+                            if (matches.empty() || matches.front().is_folder()) {
+                                auto folder = matches.empty() ? file::Path("/") : matches.front();
+                                auto files = folder.find_files();
+                                matches = { files.begin(), files.end() };
+                            }
+                        }
+                        
                     }
                     else {
-                        // If a separator was deleted, show parent folder contents
-                        auto parentPath = p.remove_filename();
-                        auto parentFiles = parentPath.find_files();
-                        matches = { parentFiles.begin(), parentFiles.end() };
-                        //matches = pathArray.get_paths();
+                        file::Path p(pathArray.source());
+                        // Handle wildcard matching or parent folder display
+                        if (pathArray.matched_patterns()) {
+                            // If wildcards are present, filter based on them
+                            matches = pathArray.get_paths();
+                        }
+                        else if (p.exists() && p.is_regular())
+                        {
+                            matches = pathArray.get_paths();
+                        }
+                        else if (p.exists() && p.is_folder()) {
+                            auto files = p.find_files();
+                            matches = { files.begin(), files.end() };
+                        }
+                        else {
+                            // If a separator was deleted, show parent folder contents
+                            auto parentPath = p.remove_filename();
+                            auto parentFiles = parentPath.find_files();
+                            matches = { parentFiles.begin(), parentFiles.end() };
+                            //matches = pathArray.get_paths();
+                        }
                     }
                 }
 
@@ -866,6 +873,7 @@ void LabeledPathArray::update() {
         return;
 
     if (_ref.value<file::PathArray>().source() != _dropdown->text()) {
+        _dropdown->textfield()->set(Str(_ref.value<file::PathArray>().source()));
         updateDropdownItems();
     }
 }

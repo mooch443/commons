@@ -7,7 +7,7 @@
 #include <misc/ranges.h>
 #include <processing/PadImage.h>
 #include <misc/ThreadPool.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <misc/PVBlob.h>
 #include <gui/DrawCVBase.h>
 #include <gui/Graph.h>

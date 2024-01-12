@@ -1302,3 +1302,45 @@ inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer
 
 }
 
+namespace utils {
+
+template <size_t N>
+constexpr auto lowercase(const char(&input)[N]) {
+    ::cmn::util::ConstString_t result;
+    for (size_t i = 0; i < N; ++i) {
+        result[i] = lowercase_char(static_cast<char>(input[i]));
+    }
+    return result;
+}
+
+inline constexpr auto lowercase(const ::cmn::util::ConstString_t& input) {
+    ::cmn::util::ConstString_t result;
+    const auto L = input.view().length();
+    for (size_t i = 0; i < L; ++i) {
+        result[i] = lowercase_char(input[i]);
+    }
+    result[L] = 0;
+    return result;
+}
+
+template<size_t N>
+constexpr inline bool lowercase_equal_to(const std::string_view& A, const cmn::util::ConstexprString<N>& _B) {
+    const auto B = _B.view();
+    if (A.length() != B.length()) {
+        return false;
+    }
+    if(A.length() > N)
+        return false;
+
+    // Compare each character, case-insensitively
+    for (size_t i = 0; i < B.length(); ++i) {
+        if (lowercase_char(static_cast<unsigned char>(A[i])) !=
+            lowercase_char(static_cast<unsigned char>(B[i]))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+}

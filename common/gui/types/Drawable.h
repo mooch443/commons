@@ -5,7 +5,7 @@
 //#include <gui/types/Basic.h>
 #include <gui/Transform.h>
 #include <gui/Event.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <gui/ControlsAttributes.h>
 
 namespace gui {

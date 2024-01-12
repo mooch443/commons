@@ -10,51 +10,6 @@
 namespace cmn {
     namespace sprite {
         
-        template<typename VT>
-        auto cvt2json(const VT & v) -> nlohmann::json {
-            if constexpr (is_numeric<VT>)
-                return nlohmann::json(v);
-            if constexpr (_clean_same<VT, bool>)
-                return nlohmann::json((bool)v);
-            if constexpr (_clean_same<VT, file::PathArray>) {
-                auto i = v.source();
-                return nlohmann::json(i);
-            }
-            if constexpr (_clean_same<VT, file::Path>) {
-                auto i = v.str();
-                return nlohmann::json(i.c_str());
-            }
-            if constexpr (is_map<VT>::value) {
-                auto a = nlohmann::json::object();
-                for (auto& [key, i] : v) {
-                    if constexpr(std::is_same_v<decltype(key), std::string>)
-                        a[key] = cvt2json(i);
-                    else if constexpr(std::is_convertible_v<decltype(key), std::string>)
-                        a[std::string(key)] = cvt2json(i);
-                    else
-                        a[Meta::toStr(key)] = cvt2json(i);
-				}
-                return a;
-            }
-            if constexpr (is_container<VT>::value) {
-                auto a = nlohmann::json::array();
-                for (const auto& i : v) {
-                    a.push_back(cvt2json(i));
-                }
-                return a;
-            }
-            if constexpr (std::is_same_v<VT, std::string>) {
-                std::string str = v;
-				return nlohmann::json(v.c_str());
-			}
-            if constexpr (std::is_convertible_v<VT, std::string>) {
-                std::string str = v;
-                return nlohmann::json(v.c_str());
-            }
-            nlohmann::json json = Meta::toStr(v);
-            return json;
-        }
-
         class PropertyException : public virtual UtilsException {
         public:
             PropertyException(const std::string& str) : UtilsException(str) { }

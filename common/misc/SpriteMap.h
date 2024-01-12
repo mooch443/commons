@@ -113,7 +113,7 @@ concept HasNotEqualOperator = requires(T a, T b) {
         operator const T();
         
         template<typename T>
-        T& value() const {
+        const T& value() const {
             return toProperty<T>().value();
         }
 

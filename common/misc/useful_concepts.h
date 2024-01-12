@@ -98,6 +98,10 @@ concept _has_tostr_method = requires(const T* t) {
     { t->toStr() } -> std::convertible_to<std::string>;
 };
 template<typename T>
+concept has_to_json_method = requires(const T* t) {
+    { t->to_json() } -> std::convertible_to<nlohmann::json>;
+};
+template<typename T>
 concept _has_fromstr_method = requires() {
     { T::fromStr(std::string()) }
         -> _clean_same<T>;

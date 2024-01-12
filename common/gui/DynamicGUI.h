@@ -1,7 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <file/Path.h>
 #include <gui/types/Layout.h>
 #include <misc/PackLambda.h>

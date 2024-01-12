@@ -2,7 +2,7 @@
 #define _GRAPH_H
 
 #include <commons.pc.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <gui/DrawStructure.h>
 
 namespace gui {

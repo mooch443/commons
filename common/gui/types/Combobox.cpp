@@ -24,7 +24,7 @@ void Combobox::init() {
     _layout.auto_size();
     //set_background(_settings.fill_clr, _settings.line_clr);
     set_bounds(_settings.bounds);
-    set_clickable(true);
+    _layout.set_clickable(true);
 }
 
 void Combobox::update() {
@@ -47,6 +47,7 @@ void Combobox::update() {
     
     _layout.update_layout();
     _layout.auto_size();
+    Entangled::set_size({_layout.width(), height()});
 }
 
 void Combobox::set(ListDims_t dims) {
@@ -72,26 +73,11 @@ void Combobox::set(ParmName name) {
             _value->set_description("");
         }
         
-        _value->set(_settings.fill_clr);
-        _value->set(_settings.line_clr);
-        _value->set(_settings.text_clr);
-        _value->set(_settings.font);
-        _value->set(_settings.highlight);
-        _value->set(_settings.sizeLimit);
-        if(_dropdown && _dropdown->list()) {
-            _value->set(ListLineClr_t{_dropdown->list()->list_line_clr()});
-            _value->set(ListFillClr_t{_dropdown->list()->list_fill_clr()});
-        }
-        _value->set(LabelColor_t{(Color)_settings.fill_clr});
-        _value->set(LabelBorderColor_t{(Color)_settings.line_clr});
-        _value->set(ListDims_t{_settings.bounds.width * 0.65f, 300});
-        _value->set(LabelDims_t{_settings.bounds.width * 0.65f, _settings.bounds.height});
-        _value->set(_settings.postfix);
-        _value->set(_settings.prefix);
-        _value->set(attr::Size{
+        update_value();
+        /*_value->set(attr::Size{
             _settings.bounds.width * 0.65f,
             _settings.bounds.height
-        });
+        });*/
         //_value->set(_settings.content);
         
         set_content_changed(true);
@@ -211,9 +197,10 @@ ParmName Combobox::parameter() const {
 void Combobox::set_bounds(const Bounds& bds) {
     if(not _settings.bounds.Equals(bds)) {
         _settings.bounds = bds;
-        _dropdown->set(attr::Size(bds.width * 0.35f, bds.height));
+        set_size(bds.size());
+        /*_dropdown->set(attr::Size(bds.width * 0.35f, bds.height));
         if(_value)
-            _value->set(attr::Size(bds.width * 0.65f, bds.height));
+            _value->set(attr::Size(bds.width * 0.65f, bds.height));*/
         set_content_changed(true);
     }
     Entangled::set_bounds(bds);
@@ -231,11 +218,35 @@ void Combobox::set_size(const Size2& p) {
     if(not _settings.bounds.size().Equals(p)) {
         _settings.bounds << p;
         _dropdown->set(attr::Size{p.width * 0.35f, p.height});
-        if(_value)
-            _value->set(attr::Size(p.width * 0.65f, p.height));
+        update_value();
         set_content_changed(true);
     }
     Entangled::set_size(p);
+}
+
+void Combobox::update_value() {
+    if(not _value)
+        return;
+    
+    _value->set(attr::Size(_settings.bounds.width * 0.65f, _settings.bounds.height));
+    
+    _value->set(ListDims_t{_settings.bounds.width * 0.65f, 300});
+    _value->set(LabelDims_t{_settings.bounds.width * 0.65f, _settings.bounds.height});
+    
+    _value->set(_settings.fill_clr);
+    _value->set(_settings.line_clr);
+    _value->set(_settings.text_clr);
+    _value->set(_settings.font);
+    _value->set(_settings.highlight);
+    _value->set(_settings.sizeLimit);
+    if(_dropdown && _dropdown->list()) {
+        _value->set(ListLineClr_t{_dropdown->list()->list_line_clr()});
+        _value->set(ListFillClr_t{_dropdown->list()->list_fill_clr()});
+    }
+    _value->set(LabelColor_t{(Color)_settings.fill_clr});
+    _value->set(LabelBorderColor_t{(Color)_settings.line_clr});
+    _value->set(_settings.postfix);
+    _value->set(_settings.prefix);
 }
 
 }

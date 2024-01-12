@@ -3,7 +3,7 @@
 
 #include <commons.pc.h>
 #include <misc/vec2.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 
 namespace gui {
     using namespace cmn;

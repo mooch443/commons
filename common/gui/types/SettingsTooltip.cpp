@@ -25,16 +25,16 @@ void SettingsTooltip::set_parameter(const std::string &name) {
 
 void SettingsTooltip::update() {
     if(content_changed()) {
-        auto str = "<h3>"+_param+"</h3>";
+        auto str = "<h3>"+_param+"</h3>\n";
         auto access = GlobalSettings::access_level(_param);
         if(access > AccessLevelType::PUBLIC) {
-            str += " <i>("+std::string(access.name());
+            str += "access: <i>"+std::string(access.name());
             if(!GlobalSettings::defaults().has(_param))
                 str += ", non-default";
-            str += ")</i>\n";
+            str += "</i>\n";
             
         } else if(!GlobalSettings::defaults().has(_param))
-            str += "<i>(non-default)</i>\n";
+            str += "<i>non-default</i>\n";
         
         auto ref = GlobalSettings::get(_param);
         str += "type: " +settings::htmlify(ref.valid() ? (std::string)ref.type_name() : "<invalid>") + "\n";

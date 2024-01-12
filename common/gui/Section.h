@@ -2,7 +2,7 @@
 
 #include <gui/GuiTypes.h>
 #include <gui/types/SingletonObject.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 
 namespace gui {
     class DrawableCollection;

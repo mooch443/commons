@@ -29,6 +29,20 @@ struct has_set : std::false_type {};
 template<typename Derived, typename AttrType>
 struct has_set<Derived, AttrType, std::void_t<decltype(std::declval<Derived>().derived_set(std::declval<AttrType>()))>> : std::true_type {};
 
+class CustomDropdown : public gui::Dropdown {
+    GETTER_SETTER(std::function<void()>, update_callback);
+    GETTER_SETTER(derived_ptr<StaticText>, preview);
+public:
+    using gui::Dropdown::Dropdown;
+
+    void update() override;
+    
+    using gui::Dropdown::set;
+    void set(SizeLimit limit) {
+        if(_preview)
+            _preview->set(limit);
+    }
+};
 
 struct LabeledField {
     gui::derived_ptr<gui::Text> _text;
@@ -102,6 +116,12 @@ struct LabeledField {
                 else if (object.is<Textfield>()) {
                     if constexpr (takes_attribute<Textfield, T>) {
                         object.to<Textfield>()->set(attribute);
+                        return true;
+                    }
+                }
+                else if (object.is<dyn::CustomDropdown>()) {
+                    if constexpr (takes_attribute<dyn::CustomDropdown, T>) {
+                        object.to<dyn::CustomDropdown>()->set(attribute);
                         return true;
                     }
                 }
@@ -237,14 +257,6 @@ struct LabeledList : public LabeledField {
     Layout::Ptr representative() const override { return _list; }
 };
 
-class CustomDropdown : public gui::Dropdown {
-    GETTER_SETTER(std::function<void()>, update_callback);
-public:
-    using gui::Dropdown::Dropdown;
-
-    void update() override;
-};
-
 struct LabeledPath : public LabeledField {
     class FileItem {
         GETTER(file::Path, path);
@@ -289,7 +301,6 @@ class LabeledPathArray : public LabeledField {
 private:
     gui::derived_ptr<gui::VerticalLayout> _layout;
     gui::derived_ptr<CustomDropdown> _dropdown;
-    gui::derived_ptr<gui::StaticText> _staticText;
     file::PathArray _pathArray;
     file::PathArray _pathArrayCopy;
     std::vector<file::Path> _tmp_files;

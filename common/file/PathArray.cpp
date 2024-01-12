@@ -60,4 +60,5 @@ std::string find_basename(const file::PathArray& pathArray) {
     
     return "mixed_files";  // Default case
 }
+
 }

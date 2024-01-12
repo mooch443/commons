@@ -10,11 +10,14 @@
 namespace gui {
     class List : public Entangled {
     protected:
+        Font _item_font{0.6, Align::Center};
+        Font _label_font{0.6, Align::VerticalCenter};
         gui::Text _title;
         gui::Rect _title_background;
-        Font _item_font{0.6, Align::Center};
         
         Color _accent_color;
+        float _max_w{0};
+        float _width_limit{0};
         
         GETTER(std::vector<std::shared_ptr<Item>>, items);
         std::vector<std::shared_ptr<Rect>> _rects;
@@ -38,7 +41,8 @@ namespace gui {
         using Entangled::set;
         void set(attr::HighlightClr clr);
         void set(attr::Str content);
-        void set(Font font);
+        void set(ItemFont_t font);
+        void set(LabelFont_t font);
         void set(LabelColor_t);
         void set(LabelBorderColor_t);
         void set_size(const Size2&) override;
@@ -66,5 +70,6 @@ namespace gui {
         void update() override;
     private:
         void draw_title();
+        void update_sizes();
     };
 }

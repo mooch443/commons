@@ -111,7 +111,7 @@ namespace cmn {
                 } else if(c == '`') {
                     //...
                 } else if(c == '$') {
-                    parsed << (in_string == c ? "<h4>" : "</h4>");
+                    parsed << (in_string == c ? "<h4>" : "</h4>\n");
                 } else
                     parsed << c;
             } else if(in_string == 0) {

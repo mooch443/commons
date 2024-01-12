@@ -191,6 +191,13 @@ public:
         numRows = bounds.size();
         numCols = numRows > 0 ? bounds[0].size() : 0;
     }
+    
+    bool hasCell(size_t row, size_t col) const {
+        if (row >= gridBounds.size() || col >= gridBounds[row].size()) {
+            return false;
+        }
+        return true;
+    }
 
     // Safe access to individual cell bounds
     Bounds getCellBounds(size_t row, size_t col) const {

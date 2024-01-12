@@ -209,6 +209,7 @@ constexpr auto enumerate(T& iterable) {
         
         explicit operator std::string() const { return str(); }
         std::string toStr() const { return Meta::toStr<std::string>(str()); }
+        nlohmann::json to_json() const;
         static std::string class_name() { return "path"; }
         static file::Path fromStr(const std::string& str);
     };

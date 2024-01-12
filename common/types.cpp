@@ -22,15 +22,30 @@ std::string blob::Pose::Skeleton::toStr() const {
     return "[" + Meta::toStr(name()) + "," + Meta::toStr(_connections) + "]";
 }
 
+nlohmann::json blob::Pose::Skeleton::to_json() const {
+    auto a = nlohmann::json::array();
+    a.push_back(name());
+    a.push_back(cvt2json(connections()));
+    return a;
+}
+
 std::string blob::Pose::Skeleton::Connection::toStr() const {
     return "["+Meta::toStr(from) + "," + Meta::toStr(to)+","+Meta::toStr(name)+"]";
+}
+
+nlohmann::json blob::Pose::Skeleton::Connection::to_json() const {
+    auto a = nlohmann::json::array();
+    a.push_back(from);
+    a.push_back(to);
+    a.push_back(name);
+    return a;
 }
 
 blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const std::string &str) {
     auto parts = util::parse_array_parts(util::truncate(str));
     if(parts.size() != 2 && parts.size() != 3)
         throw InvalidArgumentException("Invalid connection: ", str);
-    std::string name = "<unknown>";
+    std::string name = Meta::toStr<std::string>("<unknown>");
     if(parts.size() > 2) {
         name = parts.at(2);
     }

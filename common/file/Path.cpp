@@ -762,6 +762,10 @@ Path Path::absolute() const {
             FormatError("Cannot change directory to ",path,". ");
         }
     }
+        
+        nlohmann::json Path::to_json() const {
+            return nlohmann::json(c_str());
+        }
 }
 
 std::ostream& operator<<(std::ostream& os, const file::Path& p) {

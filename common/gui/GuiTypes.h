@@ -5,7 +5,7 @@
 
 #include <gui/types/Drawable.h>
 #include <misc/Image.h>
-#include <gui/colors.h>
+#include <misc/colors.h>
 #include <gui/ControlsAttributes.h>
 
 #define CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _settings. NAME ) & NAME) { \

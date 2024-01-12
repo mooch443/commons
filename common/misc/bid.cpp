@@ -15,6 +15,12 @@ std::string bid::toStr() const {
     return Meta::toStr<uint32_t>(_id);
 }
 
+nlohmann::json bid::to_json() const {
+    if(!valid())
+        return nullptr;
+    return nlohmann::json(_id);
+}
+
 bid bid::fromStr(const std::string& str) {
     if(str == "null")
         return pv::bid();

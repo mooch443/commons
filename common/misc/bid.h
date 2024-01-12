@@ -83,34 +83,34 @@ struct bid {
     }
     
     std::string toStr() const;
+    nlohmann::json to_json() const;
     static std::string class_name() { return "blob"; }
     static bid fromStr(const std::string& str);
     
-static uint32_t xy2d(uint16_t x, uint16_t y) {
-    uint32_t hilbert = 0;
-    for (int i = 15; i >= 0; i--) {
-        uint32_t xi = (x & (1 << i)) ? 1 : 0;
-        uint32_t yi = (y & (1 << i)) ? 1 : 0;
+    static uint32_t xy2d(uint16_t x, uint16_t y) {
+        uint32_t hilbert = 0;
+        for (int i = 15; i >= 0; i--) {
+            uint32_t xi = (x & (1 << i)) ? 1 : 0;
+            uint32_t yi = (y & (1 << i)) ? 1 : 0;
 
-        // Interleave the bits in xi and yi to form the next 2 bits of the Hilbert value.
-        uint32_t quadrant = (xi ^ yi) | ((yi ^ 1) << 1);
+            // Interleave the bits in xi and yi to form the next 2 bits of the Hilbert value.
+            uint32_t quadrant = (xi ^ yi) | ((yi ^ 1) << 1);
 
-        // Rotate the current bits of the Hilbert value to the left by 2, and then add the new quadrant value.
-        hilbert = (hilbert << 2) | quadrant;
+            // Rotate the current bits of the Hilbert value to the left by 2, and then add the new quadrant value.
+            hilbert = (hilbert << 2) | quadrant;
 
-        // If the next bit in y is set, flip the current quadrant.
-        if (yi) {
-            hilbert ^= 3; // 3 is 11 in binary
+            // If the next bit in y is set, flip the current quadrant.
+            if (yi) {
+                hilbert ^= 3; // 3 is 11 in binary
+            }
+
+            // If the next bit in x is set, flip the second bit of the current quadrant.
+            if (xi) {
+                hilbert ^= 2; // 2 is 10 in binary
+            }
         }
-
-        // If the next bit in x is set, flip the second bit of the current quadrant.
-        if (xi) {
-            hilbert ^= 2; // 2 is 10 in binary
-        }
+        return hilbert;
     }
-    return hilbert;
-}
-
 
     /**
      * @brief Encodes the given x0, x1, y0, and N values into a unique bid identifier using custom bit allocation.
