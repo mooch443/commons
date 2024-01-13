@@ -465,28 +465,32 @@ void GridLayout::set(const std::vector<Layout::Ptr>& objects) {
 }
 
 void GridLayout::update_hover() {
-    for(size_t row = 0; row < _grid_info.numRows; ++row) {
-        for(size_t col = 0; col < _grid_info.numCols; ++col) {
-            if(_grid_info.hasCell(row, col)) {
-                auto bds = _grid_info.getCellBounds(row, col);
-                if(bds.contains(_last_hover)) {
-                    for(size_t r = 0; r < _grid_info.numRows; ++r) {
-                        if(r != row)
-                            bds.combine(_grid_info.getCellBounds(r, col));
+    try {
+        for(size_t row = 0; row < _grid_info.numRows; ++row) {
+            for(size_t col = 0; col < _grid_info.numCols; ++col) {
+                if(_grid_info.hasCell(row, col)) {
+                    auto bds = _grid_info.getCellBounds(row, col);
+                    if(bds.contains(_last_hover)) {
+                        for(size_t r = 0; r < _grid_info.numRows; ++r) {
+                            if(r != row)
+                                bds.combine(_grid_info.getCellBounds(r, col));
+                        }
+                        _vertical_rect->set(Box{bds});
+                        
+                        bds = _grid_info.getCellBounds(row, col);
+                        for(size_t c = 0; c < _grid_info.numCols; ++c) {
+                            if(c != col)
+                                bds.combine(_grid_info.getCellBounds(row, c));
+                        }
+                        _horizontal_rect->set(Box{bds});
+                        break;
                     }
-                    _vertical_rect->set(Box{bds});
-                    
-                    bds = _grid_info.getCellBounds(row, col);
-                    for(size_t c = 0; c < _grid_info.numCols; ++c) {
-                        if(c != col)
-                            bds.combine(_grid_info.getCellBounds(row, c));
-                    }
-                    _horizontal_rect->set(Box{bds});
-                    break;
                 }
-                
             }
         }
+    } catch(const std::out_of_range& ex) {
+        // invalid row or column index
+        FormatExcept(ex.what());
     }
 }
 
