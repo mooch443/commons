@@ -695,6 +695,7 @@ struct timestamp_t {
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
     static std::string class_name() { return "timestamp"; }
     static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
+    nlohmann::json to_json() const { return valid() ? nlohmann::json{ get() } : nlohmann::json{ nullptr }; }
 };
 }
 
