@@ -514,7 +514,9 @@ namespace gui {
         }
         
         void select_item(uint64_t index) {
-            if(_items.size() > index && _last_selected_item != index) {
+            if(_items.size() > index
+               && static_cast<uint64_t>(_last_selected_item) != index)
+            {
                 if constexpr(has_disabled<T>) {
                     if(_items.at(index).value().disabled())
                         return;

@@ -601,7 +601,9 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             auto first = _files_in_seq.front();
             Image image;
             first->frame(_colors, 0_f, image);
-            if(image.cols != _size.width || image.rows != _size.height) {
+            if(image.cols != sign_cast<uint>(_size.width)
+               || image.rows != sign_cast<uint>(_size.height))
+            {
                 FormatWarning("VideoSource ", prefix + (suffix.empty() ? "" : "%d") + suffix," reports resolution ", _size.width, "x", _size.height, " in metadata, but is actually ", image.cols, "x", image.rows, ". Going with the actual video dimensions for now.");
                 _size = cv::Size(image.cols, image.rows);
             }
@@ -843,7 +845,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     }();
     
     AveragingAccumulator acc;
-    const Frame_t::number_t N_indexes = end_index - start_index + 1;
+    const Frame_t::number_t N_indexes{narrow_cast<Frame_t::number_t>(end_index - start_index + 1)};
     
     Frame_t::number_t samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (L.get() * 0.01f);
     uint64_t step = max(1u, N_indexes < samples

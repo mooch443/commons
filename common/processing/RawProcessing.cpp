@@ -81,7 +81,7 @@ void process_tags(int32_t index,
         // BIT: tags_num_sides
         // now check if the number of sides (lines) in the shape is within
         // acceptable number of sides
-        if (!tags_num_sides.contains(c.size())) {
+        if (!tags_num_sides.contains(narrow_cast<int32_t>(c.size()))) {
             if (show_debug_info) {
                 cv::drawContours(result, cache->contours, index, Color(50, 50, 0, 255));
 
@@ -588,7 +588,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
 
         // calculate in multiple threads (the contours array)
         distribute_indexes([&](auto index, auto start, auto end, auto){
-            process_tags(index, start, end, result, tag_cache, INPUT, inverted_input, _average);
+            process_tags(narrow_cast<int>(index), start, end, result, tag_cache, INPUT, inverted_input, _average);
         }, _contour_pool, tag_cache->contours.begin(), tag_cache->contours.end());
 
         if (show_debug_info) {

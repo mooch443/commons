@@ -24,7 +24,6 @@ bool apply_modifier_to_object(std::string_view name, const derived_ptr<Drawable>
 // Function to skip over nested structures so they don't interfere with our parsing
 auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
     int balance = 1;
-    std::size_t startPos = pos;
     pos++; // Skip the opening char
     while (pos < trimmedStr.size() and balance > 0) {
         if (trimmedStr[pos] == openChar) {

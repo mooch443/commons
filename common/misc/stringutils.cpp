@@ -290,7 +290,7 @@ std::vector<std::string> _split_words(std::string input) {
 // Preprocess the corpus
 PreprocessedData preprocess_corpus(const std::vector<std::string> &corpus) {
     PreprocessedData data;
-    int totalDocs = corpus.size();
+    auto totalDocs = corpus.size();
 
     for (const auto &phrase : corpus) {
         std::unordered_map<std::string, int> localTermFreq;
@@ -338,8 +338,8 @@ int levenshtein_distance(const std::string &s1, const std::string &s2) {
         return levenshtein_distance(s2, s1);
     }
 
-    std::vector<int> prev_row(len2 + 1);
-    std::vector<int> curr_row(len2 + 1);
+    std::vector<size_t> prev_row(len2 + 1);
+    std::vector<size_t> curr_row(len2 + 1);
 
     for (size_t j = 0; j <= len2; j++) {
         prev_row[j] = j;
@@ -349,13 +349,15 @@ int levenshtein_distance(const std::string &s1, const std::string &s2) {
         curr_row[0] = i;
         for (size_t j = 1; j <= len2; j++) {
             int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-            curr_row[j] = cmn::min(prev_row[j] + 1, curr_row[j - 1] + 1, prev_row[j - 1] + cost);
+            curr_row[j] = cmn::min(prev_row[j]     + 1,
+                                   curr_row[j - 1] + 1,
+                                   prev_row[j - 1] + cost);
             // 8===D
         }
         prev_row.swap(curr_row);
     }
 
-    return prev_row[len2];
+    return cmn::narrow_cast<int>(prev_row[len2]);
 }
 
 double cosine_similarity(const std::unordered_map<std::string, double>& a,

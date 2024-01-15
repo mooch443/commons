@@ -4,6 +4,9 @@
 #include <gui/DrawBase.h>
 #include <misc/Timer.h>
 #include <gui/Transform.h>
+#ifndef NDEBUG
+#include <gui/types/Drawable.h>
+#endif
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/fetch.h>

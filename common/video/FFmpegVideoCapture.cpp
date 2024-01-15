@@ -266,9 +266,13 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 #ifndef NDEBUG
         print("jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
         Timer timer;
-#endif
         size_t i = 0;
-        while(grab() && frameIndex > frameCount) { ++i; }
+#endif
+        while(grab() && frameIndex > frameCount) {
+#ifndef NDEBUG
+            ++i;
+#endif
+        }
         
 #ifndef NDEBUG
         auto e = timer.elapsed();
@@ -326,10 +330,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         return false;
     }
 
-    int received_frame = -1;
+    int64_t received_frame = -1;
+#ifndef NDEBUG
     int64_t count_jumped_frames = 0;
+#endif
     int tries = 0, frame_skips = 1;
-    while (received_frame < static_cast<int>(frameIndex - 1)) {
+    while (received_frame < static_cast<int64_t>(frameIndex) - 1) {
         int ret = av_read_frame(formatContext, pkt);
         if (ret < 0) {
             char errbuf[AV_ERROR_MAX_STRING_SIZE];
@@ -364,11 +370,13 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             int64_t frame_index = av_rescale_q(temp_frame->pts,
                                                time_base,
                                                AVRational{frame_rate.den, frame_rate.num});
+#ifndef NDEBUG
             if(frame_index > frameIndex) {
                 count_jumped_frames += frame_index - frameIndex + 1;
             } else {
                 count_jumped_frames += frameIndex - frame_index + 1;
             }
+#endif
 
 #ifdef AV_FRAME_FLAG_KEY
             if(temp_frame->flags & AV_FRAME_FLAG_KEY)
@@ -392,7 +400,9 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             } else if(frame_index >= frameIndex) {
                 // jumped ahead of frameIndex target...
                 // we need to go back further.
+#ifndef NDEBUG
                 auto old_offset = offset;
+#endif
                 offset = int64_t(offset * 1.5);
                 timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
 #ifndef NDEBUG
@@ -509,8 +519,8 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
 
     if constexpr (std::is_same_v<Mat, gpuMat>) {
         if (_buffer.dims != dims
-            || _buffer.cols != frame->width
-            || _buffer.rows != frame->height)
+            || _buffer.cols != static_cast<uint32_t>(frame->width)
+            || _buffer.rows != static_cast<uint32_t>(frame->height))
         {
             _buffer.create(frame->height, frame->width, channels);
         }

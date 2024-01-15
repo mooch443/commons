@@ -95,7 +95,7 @@ namespace gui {
             TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
                 : Item(ID), _name(name), _search(search), _custom(custom)
             {
-                _index = this->ID();
+                _index = narrow_cast<int>(this->ID());
             }
             
             std::string name() const override {

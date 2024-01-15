@@ -165,10 +165,6 @@ static dispatch_semaphore_t& frameBoundarySemaphore() {
     static dispatch_semaphore_t sem;
     return sem;
 }
-static auto& mutex() {
-    static auto m = new LOGGED_MUTEX("MetalImpl::mutex");
-    return *m;
-}
 static auto& shutdown_mutex() {
     static auto _shutdown_mutex = new LOGGED_MUTEX("MetalImpl::shutdown_mutex");
     return *_shutdown_mutex;

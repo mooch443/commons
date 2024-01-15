@@ -1131,12 +1131,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _above_z.clear();
         _rotation_starts.clear();
         
-        for (size_t i=0; i<objects.size(); i++) {
-            auto o =  objects[i];
-
-            size_t prev = _draw_order.size();
+        for(auto &o : objects)
             redraw(o, _draw_order, _above_z);
-        }
         
         std::sort(_above_z.begin(), _above_z.end(), [](const auto& A, const auto& B) {
             return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);

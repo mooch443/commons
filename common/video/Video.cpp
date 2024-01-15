@@ -247,7 +247,7 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
  * @param index
  * @return cv::Mat
  */
-void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location loc) {
+void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc) {
     /*if(_frames.count(index)) {
      return _frames.at(index);
      }*/
@@ -273,7 +273,9 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool lazy, cmn::source_location
         int32_t currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
         //print("Set to ", start, " and get ", currentPos);
         
-        while(start > 0 && currentPos + 1 > index.get()) {
+        while(start > 0 
+              && static_cast<int64_t>(currentPos) + 1 > static_cast<int64_t>(index.get()))
+        {
             start = max(0, start - int32_t(currentPos) + int32_t(index.get()) - 1);
             _cap->set(cv::CAP_PROP_POS_FRAMES, start);
             currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
