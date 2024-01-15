@@ -1,6 +1,6 @@
 #pragma once
-
 #include <commons.pc.h>
+#include <misc/EnumClass.h>
 
 #if defined(WIN32)
 #include <io.h>

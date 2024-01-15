@@ -143,6 +143,10 @@ public:
     constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
     constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
     std::string toStr() const noexcept { return name(); }
+    static self_type fromStr(const std::string& str)
+    {
+        return self_type::get(cmn::Meta::fromStr<std::string>(str));
+    }
     nlohmann::json to_json() const {
         return nlohmann::json(name());
     }

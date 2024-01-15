@@ -21,6 +21,8 @@
 
 
 #include <misc/metastring.h>
+#include <misc/checked_casts.h>
+#include <misc/EnumClass.h>
 #include <misc/format.h>
 #include <misc/vec2.h>
 #include <misc/detail.h>
@@ -98,8 +100,8 @@ struct Pose {
         uint16_t x, y;
         
         constexpr Point(const cmn::Vec2& v)
-            : x(narrow_cast<uint16_t>(v.x)),
-              y(narrow_cast<uint16_t>(v.y))
+            : x(cmn::narrow_cast<uint16_t>(v.x)),
+              y(cmn::narrow_cast<uint16_t>(v.y))
         {
             assert(v.x >= 0 && v.y >= 0);
         }
@@ -114,13 +116,13 @@ struct Pose {
         }
         
         static Point fromStr(const std::string& str) {
-            return Point(Meta::fromStr<Vec2>(str));
+            return Point(cmn::Meta::fromStr<Vec2>(str));
         }
         static std::string class_name() {
             return "Pose::Point";
         }
         std::string toStr() const {
-            return "["+Meta::toStr(x)+","+Meta::toStr(y)+"]";
+            return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
         }
     };
     
@@ -192,7 +194,7 @@ struct Pose {
     
     [[nodiscard]] Bone bone(size_t index) const {
         if(index >= points.size())
-            throw std::out_of_range("Index "+Meta::toStr(index)+" out of range for Pose with "+Meta::toStr(size())+" points.");
+            throw std::out_of_range("Index "+cmn::Meta::toStr(index)+" out of range for Pose with "+cmn::Meta::toStr(size())+" points.");
         return Bone(points, index);
     }
     

@@ -1145,7 +1145,7 @@ Q fromStr(const std::string& str)
     return cv::Range(x, y);
 }
         
-template<typename ValueType, size_t N, typename _names>
+/*template<typename ValueType, size_t N, typename _names>
 Enum<ValueType, N, _names> fromStr(const std::string& str, const Enum<ValueType, N, _names>* =nullptr)
 {
     return Enum<ValueType, N, _names>::get(Meta::fromStr<std::string>(str));
@@ -1155,7 +1155,7 @@ template<class Q>
     requires _clean_same<const Q&, decltype(Q::get(std::string_view()))>
 const Q& fromStr(const std::string& str) {
     return Q::get(Meta::fromStr<std::string>(str));
-}
+}*/
         
 /*template<class Q>
     requires _clean_same<Range<double>, Q>
