@@ -1,5 +1,4 @@
-#include <misc/defines.h>
-#include <misc/vec2.h>
+#include <commons.pc.h>
 #include <misc/Image.h>
 
 namespace cmn {

@@ -1,13 +1,11 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <misc/vec2.h>
 #include <misc/Blob.h>
 #include <processing/Background.h>
 #include <misc/Image.h>
 #include <misc/Grid.h>
 #include <misc/ProximityGrid.h>
-#include <misc/vec2.h>
 #include <misc/bid.h>
 #include <file/DataFormat.h>
 #include <misc/Buffers.h>

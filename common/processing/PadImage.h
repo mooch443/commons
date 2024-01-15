@@ -1,7 +1,6 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <misc/vec2.h>
 
 namespace cmn {
     /*template<int twidth, int theight, uint depth = 1>

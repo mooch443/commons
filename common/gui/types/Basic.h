@@ -2,7 +2,6 @@
 #define _BASIC_TYPE_H
 
 #include <commons.pc.h>
-#include <misc/vec2.h>
 #include <misc/colors.h>
 
 namespace gui {

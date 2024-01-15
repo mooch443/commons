@@ -1,5 +1,6 @@
 #pragma once
 
+#include <commons.pc.h>
 #include <misc/GlobalSettings.h>
 
 namespace cmn {

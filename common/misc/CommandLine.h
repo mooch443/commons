@@ -1,5 +1,6 @@
 #pragma once
 
+#include <commons.pc.h>
 #include <file/Path.h>
 #include <misc/SpriteMap.h>
 #include <misc/GlobalSettings.h>

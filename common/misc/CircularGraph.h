@@ -1,7 +1,6 @@
 #pragma once
 
-#include <misc/vec2.h>
-#include <misc/detail.h>
+#include <commons.pc.h>
 #include <misc/Median.h>
 #include <misc/ranges.h>
 

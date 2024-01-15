@@ -6,7 +6,8 @@
 #ifndef _GLOBALSETTINGS_H
 #define _GLOBALSETTINGS_H
 
-#include "SpriteMap.h"
+#include <commons.pc.h>
+#include <misc/SpriteMap.h>
 
 #ifdef _WIN32
 #undef max

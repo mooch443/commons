@@ -2,7 +2,6 @@
 #include <commons.pc.h>
 #include <gui/dyn/VarProps.h>
 #include <misc/colors.h>
-#include <misc/vec2.h>
 #include <gui/GuiTypes.h>
 
 namespace gui::dyn {

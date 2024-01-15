@@ -1,5 +1,4 @@
 #include "DataLocation.h"
-#include <misc/detail.h>
 #include <misc/GlobalSettings.h>
 
 namespace file {

@@ -1,5 +1,4 @@
 #include <commons.pc.h>
-#include <misc/detail.h>
 #include <processing/LuminanceGrid.h>
 #include <misc/Image.h>
 #include <misc/colors.h>

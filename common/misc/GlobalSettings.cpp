@@ -3,7 +3,6 @@
  */
 
 #include "GlobalSettings.h"
-#include <misc/detail.h>
 using namespace cmn;
 
 void GlobalSettings::set_instance(GlobalSettings* ptr) {

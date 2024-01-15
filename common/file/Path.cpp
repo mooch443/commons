@@ -36,9 +36,7 @@
 #undef __cpp_lib_filesystem
 #endif
 
-#include <misc/checked_casts.h>
 #include <sys/stat.h>
-#include <misc/detail.h>
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/bind.h>

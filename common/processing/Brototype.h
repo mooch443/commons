@@ -1,7 +1,6 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <misc/detail.h>
 #include <processing/HLine.h>
 
 namespace cmn::CPULabeling {
