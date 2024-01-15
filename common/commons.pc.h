@@ -254,6 +254,8 @@ public:
 static_assert(false, "OpenCV version insufficient.");
 #endif
 
+
+#define UNUSED(X) {(void)X;}
 #include <misc/expected.h>
 #include <misc/useful_concepts.h>
 #include <misc/UnorderedVectorSet.h>

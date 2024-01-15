@@ -172,8 +172,6 @@ public:
 { enum { value = sizeof docs_exist(  ) == sizeof( std::array<const char*, num_elements> ) }; }; \
  */
 
-#define UNUSED(X) {(void)X;}
-
 #undef ENUM_CLASS
 #define ENUM_CLASS(NAME, ...) \
 namespace NAME { \
