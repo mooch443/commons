@@ -1,9 +1,5 @@
 #pragma once
-
-#ifndef NDEBUG
-
-#include <misc/format.h>
-#endif
+#include <commons.pc.h>
 
 namespace cmn {
 namespace tag {
