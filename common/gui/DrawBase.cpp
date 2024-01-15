@@ -1,10 +1,26 @@
 #include "DrawBase.h"
 #include <misc/checked_casts.h>
+#include <gui/DrawStructure.h>
+#include <gui/GuiTypes.h>
 
 namespace gui {
     Base *_latest_base = nullptr;
     std::function<Bounds(const std::string&, Drawable*, const Font&)> _restore_line_bounds;
     std::function<uint32_t(const Font&)> _restore_line_spacing;
+
+    Size2 Base::window_dimensions() const { return Size2(-1); }
+
+    Event Base::toggle_fullscreen(DrawStructure&g) {
+        Event e(WINDOW_RESIZED);
+        e.size.width = g.width();
+        e.size.height = g.height();
+        return e;
+    }
+
+    Size2 Base::text_dimensions(const std::string& text, Drawable* obj, const Font& font) {
+        auto size = default_text_bounds(text, obj, font);
+        return Size2(size.pos() + size.size());
+    }
 
     std::function<uint32_t(const Font&)>& line_spacing_fn(){
         static std::function<uint32_t(const Font&)> fn = [](const Font& font) -> uint32_t

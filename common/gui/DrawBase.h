@@ -1,14 +1,17 @@
 #ifndef _DRAW_BASE_H
 #define _DRAW_BASE_H
 
-#include <misc/defines.h>
-
-#include <gui/GuiTypes.h>
-#include <gui/DrawStructure.h>
-#include <misc/Image.h>
+#include <commons.pc.h>
+#include <gui/types/Basic.h>
+#include <gui/Event.h>
+//#include <gui/GuiTypes.h>
+//#include <gui/DrawStructure.h>
 
 namespace gui {
     typedef uint32_t uint;
+    class Drawable;
+    class Text;
+    class DrawStructure;
 
     enum class LoopStatus {
         IDLE,
@@ -40,19 +43,16 @@ namespace gui {
         virtual void set_window_bounds(Bounds) = 0;
         virtual Bounds get_window_bounds() const = 0;
         virtual const std::string& title() const = 0;
-        virtual Size2 window_dimensions() const { return Size2(-1); }
-        virtual Event toggle_fullscreen(DrawStructure&g) { Event e(WINDOW_RESIZED); e.size.width = g.width(); e.size.height = g.height(); return e; }
+        virtual Size2 window_dimensions() const;
+        virtual Event toggle_fullscreen(DrawStructure&g);
         
         virtual float text_width(const Text &text) const;
         virtual float text_height(const Text &text) const;
         
-        static inline Size2 text_dimensions(const std::string& text, Drawable* obj = NULL, const Font& font = Font()) {
-            auto size = default_text_bounds(text, obj, font);
-            return Size2(size.pos() + size.size());
-        }
+        static Size2 text_dimensions(const std::string& text, Drawable* obj = NULL, const Font& font = {});
         
         virtual Bounds text_bounds(const std::string& text, Drawable*, const Font& font);
-        static Bounds default_text_bounds(const std::string& text, Drawable* obj = NULL, const Font& font = Font());
+        static Bounds default_text_bounds(const std::string& text, Drawable* obj = NULL, const Font& font = {});
         static void set_default_text_bounds(std::function<Bounds(const std::string&, Drawable*, const Font&)>);
         
         virtual uint32_t line_spacing(const Font& font);

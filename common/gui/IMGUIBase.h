@@ -3,6 +3,7 @@
 #include "CrossPlatform.h"
 #include <gui/DrawBase.h>
 #include <misc/Timer.h>
+#include <gui/Transform.h>
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/fetch.h>
@@ -105,6 +106,9 @@ namespace gui {
         std::vector<char >font_data;
 #endif
         
+        void draw_loop();
+        bool new_frame_function();
+        
     public:
         template<typename impl_t = default_impl_t, typename Graph = Size2>
         IMGUIBase(std::string title,
@@ -126,28 +130,9 @@ namespace gui {
             };
             
             auto ptr = new impl_t([this](){
-                //! draw loop
-                if(_graph == NULL)
-                    return;
-                
-                auto lock = GUI_LOCK(_graph->lock());
-                this->paint(*_graph);
-                
-                auto cache = _graph->root().cached(this);
-                if(cache)
-                    cache->set_changed(false);
-                
+                draw_loop();
             }, [this]() -> bool {
-                //! new frame function, tells the drawing system whether an update is required
-                auto lock = GUI_LOCK(_graph->lock());
-                _graph->before_paint(this);
-                
-                auto cache = _graph->root().cached(this);
-                if(!cache) {
-                    cache = _graph->root().insert_cache(this, std::make_unique<CacheObject>()).get();
-                }
-                
-                return cache->changed();
+                return new_frame_function();
             });
             
             _platform = std::shared_ptr<impl_t>(ptr);

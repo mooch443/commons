@@ -3,6 +3,7 @@
 #include "DrawBase.h"
 #include <gui/DrawSFBase.h>
 #include <misc/CircularGraph.h>
+#include <gui/types/Entangled.h>
 
 namespace gui {
 VertexArray::VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type)

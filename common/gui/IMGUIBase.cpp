@@ -1929,4 +1929,31 @@ Size2 IMGUIBase::real_dimensions() {
         
         return event;
     }
+
+void IMGUIBase::draw_loop() {
+    //! draw loop
+    if(_graph == NULL)
+        return;
+    
+    auto lock = GUI_LOCK(_graph->lock());
+    this->paint(*_graph);
+    
+    auto cache = _graph->root().cached(this);
+    if(cache)
+        cache->set_changed(false);
+}
+
+bool IMGUIBase::new_frame_function() {
+    //! new frame function, tells the drawing system whether an update is required
+    auto lock = GUI_LOCK(_graph->lock());
+    _graph->before_paint(this);
+    
+    auto cache = _graph->root().cached(this);
+    if(!cache) {
+        cache = _graph->root().insert_cache(this, std::make_unique<CacheObject>()).get();
+    }
+    
+    return cache->changed();
+}
+
 }

@@ -809,4 +809,47 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             //throw U_EXCEPTION("Cannot parse JSON for: ", v, " of type ", type_name<VT>());
     }
 
+template<typename T>
+class GuardedProperty {
+private:
+    mutable std::mutex _mutex;
+    T _property;
+    bool _property_changed;
+
+public:
+    GuardedProperty() : _property_changed(false) {}
+
+    explicit GuardedProperty(const T& initial_value)
+        : _property(initial_value), _property_changed(false) {}
+
+    void set(const T& new_value) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (_property != new_value)
+        {
+            _property = new_value;
+            _property_changed = true;
+        }
+    }
+
+    std::optional<T> getIfChanged() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        if (_property_changed) {
+            _property_changed = false;
+            return _property;
+        }
+        return std::nullopt;
+    }
+
+    T get() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _property_changed = false;
+        return _property;
+    }
+
+    bool hasChanged() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _property_changed;
+    }
+};
+
 }

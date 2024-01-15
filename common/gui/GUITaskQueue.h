@@ -8,3 +8,4 @@ class DrawStructure;
 
 using GUITaskQueue_t = TaskQueue<IMGUIBase*, DrawStructure&>;
 }
+

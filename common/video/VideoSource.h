@@ -114,6 +114,7 @@ public:
 #ifdef USE_GPU_MAT
     void frame(Frame_t globalIndex, gpuMat& output, cmn::source_location loc = cmn::source_location::current()) override;
 #endif
+    using cmn::GenericVideo::frame;
     bool frame(Frame_t globalIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current());
     bool frame(Frame_t globalIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) override;
     const cv::Size& size() const override { return _size; }

@@ -2,6 +2,7 @@
 #define _DRAW_HTML_BASE_H
 
 #include "DrawBase.h"
+#include <gui/types/Drawable.h>
 
 namespace gui {
     

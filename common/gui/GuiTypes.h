@@ -1,7 +1,7 @@
 #ifndef _GUI_TYPES_H
 #define _GUI_TYPES_H
 
-#include <misc/defines.h>
+#include <commons.pc.h>
 
 #include <gui/types/Drawable.h>
 #include <misc/Image.h>

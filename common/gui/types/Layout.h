@@ -282,10 +282,10 @@ public:
     
     virtual std::string name() const override { return "GridLayout"; }
     
-    void update_layout() override;
-    
 private:
     void update_hover();
+    void update_layout() override;
+    void set_parent(SectionInterface*) override;
 };
 
 }

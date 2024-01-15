@@ -636,7 +636,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(MapSource source, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude) {
+        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude) {
             str = utils::trim(str);
             if(str.empty())
                 return {};

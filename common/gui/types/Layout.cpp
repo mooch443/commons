@@ -617,6 +617,12 @@ void GridLayout::update_layout() {
     update_hover();
 }
 
+void GridLayout::set_parent(SectionInterface * p) {
+    set_content_changed(true);
+    Layout::set_parent(p);
+    update();
+}
+
 void GridLayout::update() {
     if(!content_changed())
         return;

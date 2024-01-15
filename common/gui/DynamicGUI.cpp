@@ -444,7 +444,35 @@ void Context::init() const {
                     return trunc;
                 
                 if(trunc.length() < L) {
+                    if(props.parameters.size() == 3) {
+                        auto c = props.parameters.at(1);
+                        return trunc + utils::repeat(c, L - trunc.length());
+                    }
                     return trunc + utils::repeat(" ", L - trunc.length());
+                } else
+                    return trunc;
+            }),
+            VarFunc("padl_string", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                auto trunc = props.parameters.back();
+
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                
+                if(L == 0)
+                    return trunc;
+                
+                if(trunc.length() < L) {
+                    if(props.parameters.size() == 3) {
+                        auto c = props.parameters.at(1);
+                        return utils::repeat(c, L - trunc.length()) + trunc;
+                    }
+                    return utils::repeat(" ", L - trunc.length()) + trunc;
                 } else
                     return trunc;
             }),
@@ -1025,12 +1053,22 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                     auto modified = output.last_modified();
                     auto &entry = state._image_cache[output.str()];
                     Image::Ptr ptr;
-                    if(std::get<0>(entry) != modified) {
+                    if(std::get<0>(entry) != modified)
+                    {
                         ptr = load_image(output);
                         entry = { modified, Image::Make(*ptr) };
+                    } else if(state.chosen_images[hash] != output.str()) {
+                        //ptr = Image::Make(*std::get<1>(entry));
+                        //if(not img->source()
+                        //   || *std::get<1>(entry) != *img->source())
+                        {
+                            img->unsafe_get_source().create(*std::get<1>(entry));
+                            img->updated_source();
+                        }
                     }
                     
                     if(ptr) {
+                        state.chosen_images[hash] = output.str();
                         img->set_source(std::move(ptr));
                     }
                 }
@@ -1190,14 +1228,15 @@ void DynamicGUI::reload() {
         first_load = false;
     
     try {
-        auto cwd = file::cwd().absolute();
-        auto app = file::DataLocation::parse("app").absolute();
-        if(cwd != app) {
+        //auto cwd = file::cwd().absolute();
+        auto p = file::DataLocation::parse("app", path).absolute();
+        //auto app = file::DataLocation::parse("app").absolute();
+        /*if(cwd != app) {
             print("check_module:CWD: ", cwd);
             file::cd(app);
-        }
+        }*/
         
-        auto text = path.read_file();
+        auto text = p.read_file();
         if(previous != text) {
             previous = text;
         } else

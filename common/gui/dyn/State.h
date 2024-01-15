@@ -106,6 +106,7 @@ struct State {
     std::unordered_map<size_t, ListContents> lists;
     std::unordered_map<size_t, ManualListContents> manual_lists;
     std::unordered_map<size_t, IfBody> ifs;
+    std::unordered_map<size_t, std::string> chosen_images;
     
     std::unordered_map<size_t, std::unique_ptr<LabeledField>> _text_fields;
     Layout::Ptr _settings_tooltip;

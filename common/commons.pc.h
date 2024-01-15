@@ -52,6 +52,7 @@
 #include <stdexcept>
 #include <atomic>
 #include <mutex>
+#include <list>
 #include <shared_mutex>
 #include <condition_variable>
 #include <variant>
