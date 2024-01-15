@@ -1,5 +1,5 @@
 #include "colors.h"
-#include <misc/metastring.h>
+
 
 namespace gui {
 

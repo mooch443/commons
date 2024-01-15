@@ -1,5 +1,4 @@
 #include "SVG.h"
-#include <misc/metastring.h>
 
 namespace gui {
 

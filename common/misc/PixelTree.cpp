@@ -1,5 +1,5 @@
 #include "PixelTree.h"
-#include <misc/metastring.h>
+
 #include <misc/Timer.h>
 #include <processing/CPULabeling.h>
 #include <processing/LuminanceGrid.h>

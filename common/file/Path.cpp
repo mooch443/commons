@@ -37,7 +37,6 @@
 #endif
 
 #include <misc/checked_casts.h>
-#include <misc/metastring.h>
 #include <sys/stat.h>
 #include <misc/detail.h>
 

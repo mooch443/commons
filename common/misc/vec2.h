@@ -2,7 +2,7 @@
 
 #include <misc/defines.h>
 #include <misc/checked_casts.h>
-#include <misc/metastring.h>
+
 
 namespace cmn {
     typedef float Float2_t;

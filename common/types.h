@@ -19,6 +19,10 @@
     #endif
 #endif
 
+
+#include <misc/metastring.h>
+#include <misc/format.h>
+#include <misc/vec2.h>
 #include <misc/detail.h>
 
 #ifdef _MSC_VER
@@ -35,8 +39,6 @@ inline int __builtin_ctz32(uint32_t value) {
     return __builtin_ctz(value);
 }
 #endif
-
-#include <misc/vec2.h>
 
 /**
  * ======================
@@ -55,7 +57,6 @@ enum class Focus {
     Left,
     Right
 };
-
 
 // Linear Weighting
 template<Focus Dir>

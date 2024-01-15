@@ -1,6 +1,6 @@
 #pragma once
 #include <misc/defines.h>
-#include <misc/metastring.h>
+
 #include <misc/frame_t.h>
 
 namespace cmn {

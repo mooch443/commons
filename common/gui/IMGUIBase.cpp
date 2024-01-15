@@ -18,7 +18,6 @@
 
 #include <GLFW/glfw3.h>
 
-#include <misc/metastring.h>
 #include <misc/GlobalSettings.h>
 #include <file/DataLocation.h>
 

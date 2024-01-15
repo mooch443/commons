@@ -3,7 +3,6 @@
 #include <file/CSVExport.h>
 #include <gui/DrawSFBase.h>
 #include <misc/cnpy_wrapper.h>
-#include <misc/metastring.h>
 #include <misc/checked_casts.h>
 
 using namespace cmn;

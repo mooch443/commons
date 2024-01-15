@@ -1,7 +1,4 @@
-
-
 #include <commons.pc.h>
-#include <misc/metastring.h>
 #include <misc/checked_casts.h>
 #include "MetalImpl.h"
 

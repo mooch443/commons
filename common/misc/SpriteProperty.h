@@ -1,7 +1,7 @@
 #pragma once
 
 #include <misc/defines.h>
-#include <misc/metastring.h>
+
 #include <misc/vec2.h>
 #include <file/Path.h>
 #include <file/PathArray.h>

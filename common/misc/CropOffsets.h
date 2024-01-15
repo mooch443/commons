@@ -1,6 +1,5 @@
 #pragma once
 
-#include <misc/metastring.h>
 #include <misc/vec2.h>
 
 namespace cmn {

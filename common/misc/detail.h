@@ -2,7 +2,7 @@
 #pragma once
 
 #include <sys/stat.h>
-#include <misc/defines.h>
+#include <misc/metastring.h>
 #include <misc/useful_concepts.h>
 
 namespace gui {
@@ -764,7 +764,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
                 else if constexpr(std::is_convertible_v<decltype(key), std::string>)
                     a[std::string(key)] = cvt2json(i);
                 else
-                    a[Meta::toStr(key)] = cvt2json(i);
+                    a[cmn::Meta::toStr(key)] = cvt2json(i);
             }
             return a;
         }
@@ -798,7 +798,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             return v.to_json();
         }
         else if constexpr(are_the_same<cv::Mat, VT>) {
-            return Meta::toStr(v);
+            return cmn::Meta::toStr(v);
         }
         //auto str = Meta::toStr(v);
         //return nlohmann::json(str.c_str());

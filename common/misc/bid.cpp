@@ -1,5 +1,5 @@
 #include "bid.h"
-#include <misc/metastring.h>
+
 #include <misc/PVBlob.h>
 
 namespace pv {

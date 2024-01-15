@@ -6,7 +6,6 @@
 #include <gui/types/Basic.h>
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
-#include <misc/metastring.h>
 #include <gui/types/HistOptions.h>
 #include <valarray>
 #include <misc/Timer.h>

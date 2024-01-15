@@ -1,6 +1,5 @@
 #include "Image.h"
 #include <png.h>
-#include <misc/metastring.h>
 #include <misc/colors.h>
 #include <misc/stacktrace.h>
 

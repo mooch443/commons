@@ -1,6 +1,5 @@
 #include "CircularGraph.h"
 #include <misc/Timer.h>
-#include <misc/metastring.h>
 
 //#define EXPERIMENTAL_FAST_COSINE
 #ifdef EXPERIMENTAL_FAST_COSINE

@@ -1,5 +1,4 @@
 #include "VarProps.h"
-#include <misc/metastring.h>
 #include <gui/dyn/ParseText.h>
 
 namespace gui::dyn {

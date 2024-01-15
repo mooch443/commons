@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef NDEBUG
-#include <misc/metastring.h>
+
 #include <misc/format.h>
 #endif
 

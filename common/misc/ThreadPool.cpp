@@ -1,5 +1,5 @@
 #include "ThreadPool.h"
-#include <misc/metastring.h>
+
 
 namespace cmn {
     GenericThreadPool::GenericThreadPool(size_t nthreads, const std::string& thread_prefix, std::function<void(std::exception_ptr)> handle_exceptions, std::function<void()> init)

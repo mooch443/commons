@@ -1,5 +1,5 @@
 #include "ProximityGrid.h"
-#include <misc/metastring.h>
+
 #include <misc/ranges.h>
 #include <misc/bid.h>
 

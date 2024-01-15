@@ -1,6 +1,5 @@
 #include "DrawHTMLBase.h"
 #include <misc/Base64.h>
-#include <misc/metastring.h>
 #include <gui/types/StaticText.h>
 #include <gui/DrawStructure.h>
 

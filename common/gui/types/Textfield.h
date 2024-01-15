@@ -1,7 +1,6 @@
 #pragma once
 
 #include <gui/GuiTypes.h>
-#include <misc/metastring.h>
 #include <gui/types/Entangled.h>
 
 namespace gui {

@@ -1,5 +1,4 @@
 #include "Action.h"
-#include <misc/metastring.h>
 #include <gui/dyn/State.h>
 #include <gui/dyn/Context.h>
 #include <gui/dyn/ParseText.h>

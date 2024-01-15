@@ -4,7 +4,6 @@
 #include <gui/dyn/VarProps.h>
 #include <gui/dyn/State.h>
 #include <gui/dyn/CTimer.h>
-#include <misc/metastring.h>
 #include <gui/dyn/Context.h>
 
 namespace gui::dyn {

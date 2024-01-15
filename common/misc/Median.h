@@ -1,7 +1,7 @@
 #ifndef MEDIAN_HPP_
 #define MEDIAN_HPP_
 
-#include <misc/metastring.h>
+#include <commons.pc.h>
 
 template<class T>
 class Median {

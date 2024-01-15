@@ -1,7 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <misc/metastring.h>
+
 #if defined(WIN32)
 #include <io.h>
 #endif

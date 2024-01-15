@@ -3,7 +3,7 @@
 #include <processing/LuminanceGrid.h>
 #include <misc/Image.h>
 #include <misc/colors.h>
-#include <misc/metastring.h>
+
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
 
