@@ -1,4 +1,4 @@
-#include "vec2.h"
+#include <commons.pc.h>
 
 namespace cmn {
     void Bounds::restrict_to(const Bounds& bounds) {

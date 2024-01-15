@@ -7,8 +7,6 @@
 #include <array>
 #include <set>
 
-#include <misc/utilsexception.h>
-
 /**
  * Provides a wrapper for a vector of enum values.
  * Items can be pushed (and are saved only once) and then the list can
