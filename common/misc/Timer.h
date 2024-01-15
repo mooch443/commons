@@ -1,7 +1,7 @@
 #ifndef M_TIMER_H
 #define M_TIMER_H
 
-#include <misc/defines.h>
+#include <commons.pc.h>
 
 namespace cmn {
 class MetaObject;

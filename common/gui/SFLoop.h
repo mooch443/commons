@@ -1,6 +1,6 @@
 #pragma once
 
-#include <misc/defines.h>
+#include <commons.pc.h>
 #include <gui/DrawStructure.h>
 #include <gui/CrossPlatform.h>
 #include <misc/Timer.h>

@@ -1,5 +1,5 @@
 #include "ocl.h"
-#include <misc/defines.h>
+#include <commons.pc.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc11-extensions"
