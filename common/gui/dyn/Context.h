@@ -37,7 +37,7 @@ struct Context {
     
     mutable std::optional<std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
 
-    std::unordered_map<std::string, CustomElement> custom_elements;
+    std::unordered_map<std::string, std::shared_ptr<CustomElement>> custom_elements;
     auto& system_variables() const noexcept {
         if(not _system_variables.has_value())
             init();

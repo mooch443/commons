@@ -822,13 +822,23 @@ public:
     explicit GuardedProperty(const T& initial_value)
         : _property(initial_value), _property_changed(false) {}
 
-    void set(const T& new_value) {
+    bool set(const T& new_value) {
         std::lock_guard<std::mutex> lock(_mutex);
-        if (_property != new_value)
-        {
+        if constexpr(requires (T t) {
+            { t != t } -> std::template convertible_to<bool>;
+        }) {
+            if (_property != new_value)
+            {
+                _property = new_value;
+                _property_changed = true;
+                return true;
+            }
+        } else {
             _property = new_value;
             _property_changed = true;
+            return true;
         }
+        return false;
     }
 
     std::optional<T> getIfChanged() {

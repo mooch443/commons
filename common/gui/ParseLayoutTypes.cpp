@@ -798,6 +798,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         ItemPadding_t item_padding{get(Vec2(5), "item_padding")};
         list->set(item_padding);
         
+        Placeholder_t placeholder{get(std::string(), "placeholder")};
+        list->set(placeholder);
         
         ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
         list->set(item_font);

@@ -279,10 +279,13 @@ void VerticalLayout::auto_size() {
             if (c->type() == Type::SINGLETON)
                 _c = static_cast<const SingletonObject*>(_c)->ptr();
 
-            if (_c->type() == Type::ENTANGLED
-                && dynamic_cast<Layout*>(_c))
+            if (_c->type() == Type::ENTANGLED)
             {
-                static_cast<Layout*>(_c)->update_layout();
+                static_cast<Entangled*>(_c)->before_draw();
+                if(dynamic_cast<Layout*>(_c)) {
+                    static_cast<Layout*>(_c)->update();
+                    static_cast<Layout*>(_c)->auto_size();
+                }
             }
 
             _c->update_bounds();

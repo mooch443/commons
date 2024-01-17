@@ -8,7 +8,9 @@ namespace gui {
                             ? max_width
                             : _other->width(), -1),
                 Font(0.6),
-                FillClr{Black.alpha(150)}
+                FillClr{Black.alpha(220)},
+                LineClr{100,175,250,200},
+                Margins{10,10,10,10}
             ),
             _max_width(max_width)
     {

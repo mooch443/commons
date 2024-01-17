@@ -138,7 +138,7 @@ public:
     }
     
     constexpr auto get() const {
-        return (number_t)_frame.value();
+        return static_cast<number_t>(_frame.value());
     }
     [[nodiscard]] constexpr bool valid() const noexcept {
         /*if constexpr(std::same_as<Base, int32_t>)

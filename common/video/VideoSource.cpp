@@ -193,7 +193,10 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
         }
             
         case IMAGE:
-            if(color == ImageMode::GRAY)
+            assert(output.channels() == required_channels(color));
+            if(color == ImageMode::RGBA)
+                cv::imread(_filename, cv::IMREAD_UNCHANGED).copyTo(output.get());
+            else if(color == ImageMode::GRAY)
                 cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output.get());
             else
                 cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output.get());
@@ -222,7 +225,9 @@ bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
     }
 
     case IMAGE:
-        if (color == ImageMode::GRAY)
+        if(color == ImageMode::RGBA)
+            cv::imread(_filename, cv::IMREAD_UNCHANGED).copyTo(output);
+        else if (color == ImageMode::GRAY)
             cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
         else
             cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output);
@@ -255,7 +260,9 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& outpu
         }
             
         case IMAGE:
-            if(color == ImageMode::GRAY)
+            if(color == ImageMode::RGBA)
+                cv::imread(_filename, cv::IMREAD_UNCHANGED).copyTo(output);
+            else if(color == ImageMode::GRAY)
                 cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
             else
                 cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output);
@@ -889,7 +896,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     for(auto && [file, indexes] : file_indexes) {
         auto fn = [this, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
         {
-            Image f(size().height, size().width, _colors == ImageMode::RGB ? 3 : 1);
+            Image f(size().height, size().width, required_channels(_colors));
             double count = 0;
             
             for(auto index : indexes) {

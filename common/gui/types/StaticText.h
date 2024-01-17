@@ -43,7 +43,6 @@ namespace gui {
             Vec2 max_size{0};
             Margins margins{5, 5, 5, 5};
             Color text_color = White;
-            Color line_color = Transparent;
             Font default_font = Font(0.75);
             std::string txt;
             Alpha alpha{1};
@@ -85,7 +84,7 @@ namespace gui {
         const auto& max_size() const { return _settings.max_size; }
         const auto& font() const { return _settings.default_font; }
         const auto& text_color() const { return _settings.text_color; }
-        const auto& line_color() const { return _settings.line_color; }
+        //const auto& line_color() const { return _settings.line_color; }
         const auto& margins() const { return _settings.margins; }
         const auto& alpha() const { return _settings.alpha; }
         const auto& fade_out() const { return _settings.fade_out; }
@@ -94,7 +93,7 @@ namespace gui {
         using Entangled::set;
         void set(const Str& str) { set_txt(str); }
         void set(TextClr clr) { set_text_color(clr); }
-        void set(LineClr clr) override { set_line_color(clr); }
+        //void set(LineClr clr) override { set_line_color(clr); }
         void set(Font font) { set_default_font(font); }
         void set(SizeLimit limit) { set_max_size(limit); }
         void set(Margins margins) { set_margins(margins); }
@@ -141,13 +140,13 @@ namespace gui {
             update_text();
         }
         
-        void set_line_color(const Color& c) {
+        /*void set_line_color(const Color& c) {
             if(c == _settings.line_color)
                 return;
             
             _settings.line_color = c;
-            set_background(Transparent, _settings.line_color);
-        }
+            set_background(, _settings.line_color);
+        }*/
         
         void set_alpha(const Alpha& c) {
             if(c == _settings.alpha)

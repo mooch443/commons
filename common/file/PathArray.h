@@ -215,7 +215,7 @@ public:
             add_path((std::string)sv);
         }
         
-        assert(not _paths.empty() || sv.empty());
+        assert(not _paths.empty() || sv.empty() || _matched_patterns);
         if(_paths.size() <= 1 && not matched_patterns()) {
             if(not _paths.empty())
                 _source = _paths.front().str();
@@ -286,6 +286,9 @@ public:
     bool operator==(const _PathArray& other) const {
         return other.source()  == source();
     }
+    bool operator!=(const _PathArray& other) const {
+        return other.source() != source();
+    }
     
     static _PathArray fromStr(const std::string& str) {
         return { str };
@@ -295,7 +298,9 @@ public:
             return "PathArray<to be resolved:" + source() + ">";
         }
 
-        if(_paths.empty())
+        if(_matched_patterns && _paths.empty())
+            return _source;
+        else if(_paths.empty())
             return "\"\"";
         if(_paths.size() == 1)
             return Meta::toStr(_paths.front().str());
@@ -324,7 +329,8 @@ public:
     * @param path The path pattern to parse.
     * @return A vector of file::Path objects that match the pattern.
     */
-    static std::vector<file::Path> parse_path(const std::string& path, bool& matched_patterns, auto& to_be_resolved, auto& deferredFileChecks, bool& has_to_be_filtered) {
+    template<typename T>
+    static std::vector<file::Path> parse_path(const std::string& path, bool& matched_patterns, T&& to_be_resolved, auto& deferredFileChecks, bool& has_to_be_filtered) {
         // Define the regex pattern for different types of placeholders in the path
         std::smatch match;
         std::vector<file::Path> parsed_paths;

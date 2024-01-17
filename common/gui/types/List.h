@@ -14,6 +14,7 @@ namespace gui {
         Font _label_font{0.6, Align::VerticalCenter};
         gui::Text _title;
         gui::Rect _title_background;
+        Placeholder_t _placeholder;
         
         Color _accent_color;
         float _max_w{0};
@@ -47,6 +48,7 @@ namespace gui {
         void set(LabelBorderColor_t);
         void set_size(const Size2&) override;
         void set_bounds(const Bounds&) override;
+        void set(Placeholder_t);
         
         void set_display_selection(bool v);
         void set_toggle(bool toggle);

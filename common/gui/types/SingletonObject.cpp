@@ -30,4 +30,8 @@ namespace gui {
         Drawable::clear_parent_dont_check();
         _ptr->clear_parent_dont_check();
     }
+
+bool SingletonObject::is_animating() noexcept {
+    return _ptr->is_animating();
+}
 }

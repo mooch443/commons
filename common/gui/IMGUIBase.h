@@ -187,6 +187,7 @@ namespace gui {
             //_exec_main_queue.push(std::bind([](F& fn){ fn(); }, std::move(fn)));
             return future;
         }
+        void process_main_queue();
         Event toggle_fullscreen(DrawStructure& g) override;
         
     private:

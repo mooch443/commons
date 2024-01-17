@@ -48,7 +48,7 @@ struct Pattern {
 struct CustomElement {
     std::string name;
     std::function<Layout::Ptr(LayoutContext&)> create;
-    std::function<void(Layout::Ptr&, const Context&, State&, const robin_hood::unordered_map<std::string, Pattern>&)> update;
+    std::function<bool(Layout::Ptr&, const Context&, State&, const robin_hood::unordered_map<std::string, Pattern>&)> update;
 };
 
 struct ManualListContents {

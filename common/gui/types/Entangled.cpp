@@ -350,6 +350,16 @@ void Entangled::on_visibility_change(bool visible) {
         if(c)
             SectionInterface::set_bounds_changed();
     }
+
+bool Entangled::is_animating() noexcept {
+    if(Drawable::is_animating())
+        return true;
+    for(auto &c : children()) {
+        if(c->is_animating())
+            return true;
+    }
+    return false;
+}
     
     void Entangled::before_draw() {
         _content_changed_while_updating = false;

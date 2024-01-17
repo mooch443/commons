@@ -57,6 +57,12 @@ struct AttributeAlias : T {
     template <class OtherType, class OtherTag>
     //    requires IsVec2OrSize2<T>
     constexpr operator AttributeAlias<OtherType, OtherTag>() = delete;
+    
+    template<typename K = T>
+        requires cmn::_has_fromstr_method<K>
+    static AttributeAlias fromStr(const std::string& str) {
+        return AttributeAlias{K::fromStr(str)};
+    }
 };
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \

@@ -969,6 +969,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         print("IMGUIBase::init complete");
     }
 
+void IMGUIBase::process_main_queue() {
+    while(!_exec_main_queue.empty()) {
+        (_exec_main_queue.front())();
+        _exec_main_queue.pop();
+    }
+}
+
     IMGUIBase::~IMGUIBase() {
         while(!_exec_main_queue.empty()) {
             (_exec_main_queue.front())();
@@ -1948,7 +1955,7 @@ bool IMGUIBase::new_frame_function() {
         cache = _graph->root().insert_cache(this, std::make_unique<CacheObject>()).get();
     }
     
-    return cache->changed();
+    return cache->changed() || _graph->root().is_animating();
 }
 
 }

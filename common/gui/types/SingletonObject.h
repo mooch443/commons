@@ -42,6 +42,7 @@ namespace gui {
         virtual void set_dirty() final override {
             _ptr->set_dirty();
         }
+        virtual bool is_animating() noexcept override;
         
         virtual void set_parent(SectionInterface*) final override;
         std::ostream& operator<< (std::ostream &os) override;

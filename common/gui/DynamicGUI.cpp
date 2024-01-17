@@ -640,12 +640,12 @@ Layout::Ptr parse_object(const nlohmann::json& obj,
                     if (state._customs_cache.contains(hash)) {
                         ptr = state._customs_cache.at(hash);
                         context.custom_elements.at(state._customs.at(hash))
-                            .update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+                            ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
                         
                     } else {
-                        ptr = it->second.create(layout);
+                        ptr = it->second->create(layout);
                         it->second
-                            .update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+                            ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
                         state._customs[hash] = it->first;
                         state._customs_cache[hash] = ptr;
                     }
@@ -744,7 +744,11 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
     }
 
     if (state._customs.contains(hash)) {
-        context.custom_elements.at(state._customs.at(hash)).update(o, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+        if(not context.custom_elements.at(state._customs.at(hash))->update(o, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{})) {
+            if(update_patterns(hash, o, context, state)) {
+                //changed = true;
+            }
+        }
         return false;
     }
     
@@ -888,6 +892,15 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
             }
         }
         
+        if(it->second.contains("placeholder")) {
+            try {
+                auto placeholder = parse_text(pattern.at("placeholder"), context, state);
+                LabeledField::delegate_to_proper_type(Placeholder_t{placeholder}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
         
         if(pattern.contains("pad")) {
             try {

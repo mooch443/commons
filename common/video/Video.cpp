@@ -297,9 +297,10 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
     //! Read requested frame
     // check whether we already have information on the color
     // channels and dimensions:
-    const uint8_t _required_channels = _colored == ImageMode::RGB ? 3 : 1;
+    const uint8_t _required_channels = required_channels(_colored);
     
     if(_channels == 0) {
+        /// have not detected the number of channels of the video yet:
         if(not _cap->read(read))
             throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
         
@@ -309,10 +310,12 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
         }
         
     } else if(_channels == _required_channels) {
+        /// video has the right number of channels:
         if(not _cap->read(frame))
             throw U_EXCEPTION("Cannot read (1:1) frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
         
     } else if(not _cap->read(read))
+        /// read frame, but returned error
         throw U_EXCEPTION("Cannot read frame ",index," of video ",_filename,". (caller ",loc.file_name(), ":", loc.line(), ")");
     
     if(_colored != ImageMode::RGB) {
@@ -330,6 +333,14 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
                     convert_to_r3g3b2<4>(read, frame);
                 else
                     throw InvalidArgumentException("Invalid number of channels for RGB/RGBA image.");
+            } else if(_colored == ImageMode::RGBA) {
+                if(read.channels() == 3)
+                    cv::cvtColor(read, frame, cv::COLOR_BGR2BGRA);
+                else if(read.channels() == 1)
+                    cv::cvtColor(read, frame, cv::COLOR_GRAY2BGRA);
+                else
+                    throw InvalidArgumentException("Cannot convert ", read.channels(), " channel video to ", _required_channels, " channel images.");
+                
             } else {
                 static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
                 if(color_channel >= 3) {
@@ -356,7 +367,9 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
         }
         
     } else {
-        if(read.channels() == 3) {
+        if(read.channels() == 4) {
+            cv::cvtColor(read, frame, cv::COLOR_BGRA2BGR);
+        } else if(read.channels() == 3) {
             read.copyTo(frame);
         } else if(read.channels() == 1) {
             cv::cvtColor(read, frame, cv::COLOR_GRAY2BGR);

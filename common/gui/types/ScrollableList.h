@@ -785,6 +785,8 @@ namespace gui {
                     
                     if(_items.empty()) {
                         if(not _placeholder_text.text().empty()) {
+                            _placeholder_text.set(Origin{0.5});
+                            _placeholder_text.set(Loc{width() * 0.5f, height() * 0.5f});
                             e->advance_wrap(_placeholder_text);
                         }
                     }

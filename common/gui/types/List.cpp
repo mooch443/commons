@@ -390,6 +390,17 @@ void List::on_click(const Item * item) {
             offset.y += inversion_correct_height;
         }
         
+        if(_items.empty()) {
+            if(not _placeholder.empty()) {
+                auto f = _item_font;
+                f.align = Align::Center;
+                print("size = ", size);
+                add<Text>(Str((std::string)_placeholder),
+                          Loc(size.size() * 0.5),
+                          f, TextClr{LightGray.alpha(200)});
+            }
+        }
+        
         draw_title();
         end();
     }
@@ -439,6 +450,13 @@ void List::set_accent_color(Color color) {
         return;
     
     _accent_color = color;
+    set_content_changed(true);
+}
+void List::set(Placeholder_t placeholder) {
+    if(_placeholder == placeholder)
+        return;
+    
+    _placeholder = placeholder;
     set_content_changed(true);
 }
 void List::set_foldable(bool f) {

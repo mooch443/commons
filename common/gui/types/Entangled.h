@@ -93,11 +93,11 @@ namespace gui {
         }
         
         virtual void clear_children();
-        
+        virtual bool is_animating() noexcept override;
+        virtual void before_draw();
     protected:
         friend class Section;
         
-        virtual void before_draw();
         virtual void update() {}
         
         //using SectionInterface::global_transform;
