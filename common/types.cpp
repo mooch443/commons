@@ -62,7 +62,7 @@ blob::Pose::Skeleton blob::Pose::Skeleton::fromStr(const std::string &str) {
         throw InvalidArgumentException("Invalid skeleton string: ", str);
 
     auto array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
-    return Skeleton(outer.at(0), std::move(array));
+    return Skeleton(Meta::fromStr<std::string>(outer.at(0)), std::move(array));
 }
 
 void blob::Pose::Skeleton::add(Skeleton && s) {
