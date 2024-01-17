@@ -355,7 +355,7 @@ bool Entangled::is_animating() noexcept {
     if(Drawable::is_animating())
         return true;
     for(auto &c : children()) {
-        if(c->is_animating())
+        if(c && c->is_animating())
             return true;
     }
     return false;

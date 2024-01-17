@@ -187,8 +187,10 @@ void Layout::set_content_changed(bool changed) {
     }
 
     void Layout::apply_to_children(const std::function<void (Drawable *)> & fn) {
-        for (auto c : children())
-            _apply_to_children(c, fn);
+        for (auto c : children()) {
+            if(c)
+                _apply_to_children(c, fn);
+        }
     }
     
     void HorizontalLayout::init()
