@@ -574,8 +574,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #else
             auto runC = [&]<int i>() {
                 uptr[i].y = y;
-                static_assert(i % 8 == i);
-                y += _mm256_extract_epi32(eol_flags, i);
+                y += _mm256_extract_epi32(eol_flags, i % 8);
             };
 
             LambdaCaller<0, 8>::call(runC);
