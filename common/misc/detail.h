@@ -825,7 +825,7 @@ public:
     bool set(const T& new_value) {
         std::lock_guard<std::mutex> lock(_mutex);
         if constexpr(requires (T t) {
-            { t != t } -> std::template convertible_to<bool>;
+            { t != t } -> std::convertible_to<bool>;
         }) {
             if (_property != new_value)
             {
