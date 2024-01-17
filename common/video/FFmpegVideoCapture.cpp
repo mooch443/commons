@@ -63,13 +63,15 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
         print("HW type: ", hw_type);
     }
 
+    int hw_start_index = 0;
+retry_codec:
     //! we will only accept hardware acceleration types that we know are good for us
     AVHWDeviceType chosenHWType = AV_HWDEVICE_TYPE_NONE;
 
 #if defined(WIN32) || defined(__linux__)
     static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
-        //AV_HWDEVICE_TYPE_D3D11VA,
-        AV_HWDEVICE_TYPE_CUDA
+        AV_HWDEVICE_TYPE_CUDA,
+        AV_HWDEVICE_TYPE_D3D11VA
     };
 #elif __APPLE__
     static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
@@ -78,12 +80,22 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     };
 #endif
 
+    int i = 0;
     for(auto hw_type : preferred_devices) {
+        if(hw_start_index > i) {
+			++i;
+			continue;
+		}
+
+        ++i;
+
         if (av_hwdevice_ctx_create(&hw_device_ctx, hw_type, nullptr, nullptr, 0) == 0) {
             chosenHWType = hw_type;
             break;
         }
     }
+
+    hw_start_index = i;
 
     if (hw_device_ctx == nullptr) {
         FormatWarning("Failed to create a hardware device context: ", preferred_devices);
@@ -138,6 +150,15 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     
     // Open codec
     if (avcodec_open2(codecContext, codec, nullptr) < 0) {
+        avcodec_free_context(&codecContext);
+
+        codecContext = nullptr;
+        codec = nullptr;
+        if(hw_start_index <= preferred_devices.size()) {
+			FormatWarning("Failed to open codec with hardware acceleration. Retrying with next hardware device.");
+			goto retry_codec;
+		}
+
         FormatError("Failed to open codec");
         return false;
     }
