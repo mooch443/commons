@@ -562,12 +562,24 @@ pv::BlobPtr CompressedBlob::unpack() const {
             __m256i eol_flags = _mm256_srli_epi32(_mm256_and_si256(data_vec, eol_mask), 31);
             _mm512_storeu_si512(reinterpret_cast<void*>(uptr), interleaved);
 
+#if defined(__GNUC__)
+            y += _mm256_extract_epi32(eol_flags, 0);
+            y += _mm256_extract_epi32(eol_flags, 1);
+            y += _mm256_extract_epi32(eol_flags, 2);
+            y += _mm256_extract_epi32(eol_flags, 3);
+            y += _mm256_extract_epi32(eol_flags, 4);
+            y += _mm256_extract_epi32(eol_flags, 5);
+            y += _mm256_extract_epi32(eol_flags, 6);
+            y += _mm256_extract_epi32(eol_flags, 7);
+#else
             auto runC = [&]<int i>() {
                 uptr[i].y = y;
-                y += _mm256_extract_epi32(eol_flags, i % 8);
+                static_assert(i % 8 == i);
+                y += _mm256_extract_epi32(eol_flags, i);
             };
 
             LambdaCaller<0, 8>::call(runC);
+#endif
         }
 
         // Process the remaining elements (if any)
