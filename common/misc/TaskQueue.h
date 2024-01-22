@@ -1,11 +1,12 @@
 #pragma once
 #include <commons.pc.h>
+#include <misc/PackLambda.h>
 
 namespace cmn {
 template<typename... ArgType>
 class TaskQueue {
 public:
-    using TaskFunction = std::function<void(ArgType...)>;
+    using TaskFunction = package::promised<void, ArgType...>;
     
     TaskQueue() : _stop(false) {}
     TaskQueue(const TaskQueue&) = delete;
@@ -25,17 +26,19 @@ public:
 
     template<typename F>
     auto enqueue(F&& f) -> std::future<void> {
-        auto task = std::make_shared<std::packaged_task<void(ArgType...)>>(
+        //auto task = pack<void>(std::forward<F>(f));
+        /*auto task = std::make_unique<std::packaged_task<void(ArgType...)>>(
             std::forward<F>(f)
-        );
-
-        std::future<void> res = task->get_future();
+        );*/
+        TaskFunction task(std::forward<F>(f));
+        std::future<void> res = task.get_future();
         {
             std::unique_lock<std::mutex> lock(_mutex);
             if (_stop) {
                 throw std::runtime_error("enqueue on stopped TaskQueue");
             }
-            _tasks.emplace([task](ArgType&& ...arg) { (*task)(std::forward<ArgType>(arg)...); });
+            _tasks.emplace([task = std::move(task)](ArgType ...arg) { task(arg...);
+            });
         }
         _cond.notify_one();
         return res;

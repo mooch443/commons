@@ -132,6 +132,9 @@ namespace tf {
     }
     
     void ThreadSafety::add(std::string name, const cv::Mat& matrix, std::string label) {
+        if(matrix.empty())
+            throw InvalidArgumentException("Matrix ", name, " with label ",label," was empty.");
+        
 		LockGuard guard;
 
 		assert(matrix.isContinuous());

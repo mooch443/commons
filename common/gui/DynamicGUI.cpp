@@ -230,6 +230,9 @@ T map_vector(const VarProps& props, Apply&& apply) {
 void Context::init() const {
     if(not _system_variables.has_value())
         _system_variables = {
+            VarFunc("time", [](const VarProps&) -> double {
+                return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch()).count()) / 1000.0 / 60.0;
+            }),
             VarFunc("min", [](const VarProps& props) -> float {
                 return map_vectors<float>(props, [](auto&A, auto&B){return min(A, B);});
             }),
