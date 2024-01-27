@@ -271,7 +271,7 @@ Path Path::absolute() const {
         if (_stat_cache.exists.has_value())
             return _stat_cache.exists.value();
 
-        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 100)));
+        //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 50 + 100)));
         _stat_cache.exists = file_exists(_str);
         _stat_cache.assigned_at = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         return _stat_cache.exists.value();

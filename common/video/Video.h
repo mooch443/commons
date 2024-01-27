@@ -21,13 +21,6 @@ namespace cv {
 
 namespace cmn {
 
-enum class ImageMode {
-    GRAY,
-    RGB,
-    R3G3B2,
-    RGBA
-};
-
 inline constexpr uint8_t required_channels(ImageMode mode) {
     switch (mode) {
         case ImageMode::GRAY:

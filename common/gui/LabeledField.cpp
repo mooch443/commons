@@ -432,7 +432,7 @@ LabeledPath::LabeledPath(std::string name, const std::string&, file::Path path)
     });
     
     _dropdown->set(Textfield::OnEnter_t{
-        [list = _dropdown->list().get()](){
+        [list = &_dropdown->list()](){
             if(!list->items().empty()) {
                 list->select_highlighted_item();
             }
@@ -440,7 +440,7 @@ LabeledPath::LabeledPath(std::string name, const std::string&, file::Path path)
     });
     
     _dropdown->set_update_callback([this]() { asyncUpdateItems(); });
-    _dropdown->list()->set(Placeholder_t("Loading..."));
+    _dropdown->list().set(Placeholder_t("Loading..."));
     
     _path = path;
     _dropdown->textfield()->set_text(_path.str());
@@ -604,7 +604,7 @@ LabeledPathArray::LabeledPathArray(const std::string& name, const LayoutContext*
     });
     _dropdown->set(Textfield::OnEnter_t{
         [this, dropdown = _dropdown.to<Dropdown>()](){
-            auto list = dropdown->list().get();
+            auto list = &dropdown->list();
             auto text = _dropdown->text();
             
             if(_pathArray.matched_patterns()) {
@@ -826,15 +826,23 @@ void LabeledPathArray::updateDropdownItems() {
                             matches = pathArray.get_paths();
                         }
                         else if (p.exists() && p.is_folder()) {
-                            auto files = p.find_files();
-                            matches = { files.begin(), files.end() };
+                            try {
+                                auto files = p.find_files();
+                                matches = { files.begin(), files.end() };
+                            } catch(const std::exception& e) {
+                                FormatWarning("Cannot list files inside ", p,": ", e.what());
+                            }
                         }
                         else {
-                            // If a separator was deleted, show parent folder contents
                             auto parentPath = p.remove_filename();
-                            auto parentFiles = parentPath.find_files();
-                            matches = { parentFiles.begin(), parentFiles.end() };
-                            //matches = pathArray.get_paths();
+                            try {
+                                // If a separator was deleted, show parent folder contents
+                                auto parentFiles = parentPath.find_files();
+                                matches = { parentFiles.begin(), parentFiles.end() };
+                                //matches = pathArray.get_paths();
+                            } catch(const std::exception& e) {
+                                FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                            }
                         }
                     }
                 }
@@ -842,8 +850,8 @@ void LabeledPathArray::updateDropdownItems() {
                 //print("items for ", text, " = ", matches, " from ", pathArray);
                 _pathArrayCopy = std::move(pathArray);
             }
-            catch (...) {
-                FormatExcept("Cannot parse ", text, " as PathArray.");
+            catch (const std::exception& e) {
+                FormatExcept("Cannot parse ", text, " as PathArray: ", e.what());
             }
 
             for (auto& m : matches)

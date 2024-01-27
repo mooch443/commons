@@ -801,43 +801,19 @@ pv::BlobPtr CompressedBlob::unpack() const {
             auto local_ptr = _pixels->data();
 #endif
             auto ptr = _pixels->data();
-            if(not Background::track_background_subtraction()) {
+            call_image_mode_function([&]<DifferenceMethod method, ImageMode mode>(){
                 for (auto &line : hor_lines()) {
-                    recount += background.count_above_threshold<DifferenceMethod::none>(line.x0, line.x1, line.y, ptr, threshold);
+                    recount += background.count_above_threshold<method>(line.x0, line.x1, line.y, ptr, threshold);
                     ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
 #ifndef NDEBUG
                     for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                        if(background.is_different<DifferenceMethod::none>(x, line.y, *local_ptr, threshold)) {
+                        if(background.is_different<method, mode>(x, line.y, *local_ptr, threshold)) {
                             local_recount++;
                         }
                     }
 #endif
                 }
-            } else if(Background::track_absolute_difference()) {
-                for (auto &line : hor_lines()) {
-                    recount += background.count_above_threshold<DifferenceMethod::absolute>(line.x0, line.x1, line.y, ptr, threshold);
-                    ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
-#ifndef NDEBUG
-                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                        if(background.is_different<DifferenceMethod::absolute>(x, line.y, *local_ptr, threshold)) {
-                            local_recount++;
-                        }
-                    }
-#endif
-                }
-            } else {
-                for (auto &line : hor_lines()) {
-                    recount += background.count_above_threshold<DifferenceMethod::sign>(line.x0, line.x1, line.y, ptr, threshold);
-                    ptr += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
-#ifndef NDEBUG
-                    for (auto x=line.x0; x<=line.x1; ++x, ++local_ptr) {
-                        if(background.is_different<DifferenceMethod::sign>(x, line.y, *local_ptr, threshold)) {
-                            local_recount++;
-                        }
-                    }
-#endif
-                }
-            }
+            });
             
 #ifndef NDEBUG
             if(recount != local_recount)
@@ -868,7 +844,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return raw_recount(threshold) * SQR(setting(cm_per_pixel));
     }
     
-    template<DifferenceMethod method>
+    template<DifferenceMethod method, ImageMode mode>
     BlobPtr _threshold(Blob& blob, int32_t value, const Background& background) {
         if(blob.pixels() == nullptr)
             throw U_EXCEPTION("Cannot threshold without pixel values.");
@@ -887,7 +863,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             
             for (auto x=line.x0; x<=line.x1; ++x, ++ptr) {
                 assert(ptr < blob.pixels()->data() + blob.pixels()->size());
-                if(background.is_different<method>(x, line.y, *ptr, value)) {
+                if(background.is_different<method, mode>(x, line.y, *ptr, value)) {
                     tmp.x1 = x;
                     tmp_pixels->push_back(*ptr);
                     //blob._recount ++;
@@ -914,11 +890,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
 
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
-        if(not Background::track_background_subtraction())
-            return _threshold<DifferenceMethod::none>(*this, value, background);
-        if(Background::track_absolute_difference())
-            return _threshold<DifferenceMethod::absolute>(*this, value, background);
-        return _threshold<DifferenceMethod::sign>(*this, value, background);
+        return call_image_mode_function([&]<DifferenceMethod method, ImageMode mode>() -> pv::BlobPtr {
+            return _threshold<method, mode>(*this, value, background);
+        });
     }
     
     std::tuple<Vec2, Image::Ptr> Blob::image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
@@ -966,13 +940,13 @@ pv::BlobPtr CompressedBlob::unpack() const {
         float maximum = 0;
         auto ptr = _pixels->data();
         
-        auto work = [&]<DifferenceMethod method>() {
+        auto work = [&]<DifferenceMethod method, ImageMode colors>() {
             for (auto &line : hor_lines()) {
                 //auto image_ptr = image->data() + ((line.y - _y) * image->cols * image->dims + (line.x0 - _x) * image->dims);
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * image->dims;
                 for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr += image->dims) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    value = background.diff<method>(x, line.y, *ptr);
+                    value = background.diff<method, colors>(x, line.y, *ptr);
                     if(background.is_value_different(x, line.y, value, threshold)) {
                         if(maximum < value)
                             maximum = value;
@@ -983,13 +957,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
+        call_image_mode_function(work);
         
         if(maximum > 0) {
             for (auto &line : hor_lines()) {
@@ -1015,7 +983,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         image.create(b.height, b.width, 2);
         std::fill(image.data(), image.data() + image.size(), uchar(0));
         
-        auto work = [&]<DifferenceMethod method>(){
+        auto work = [&]<DifferenceMethod method, ImageMode mode>(){
             auto _x = (coord_t)b.x;
             auto _y = (coord_t)b.y;
             
@@ -1034,7 +1002,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * ptr_safe_t(image.cols) * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
                 for (auto x=line.x0; x<=line.x1; ++x, ++ptr, image_ptr+=2) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    value = background.diff<method>(x, line.y, *ptr);
+                    value = background.diff<method, mode>(x, line.y, *ptr);
                     if(!threshold || background.is_value_different(x, line.y, value, threshold)) {
                         *image_ptr = saturate((float(*ptr) - minimum) * factor);
                         //*image_ptr = *ptr;
@@ -1044,14 +1012,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
-
+        call_image_mode_function(work);
         return b.pos();
     }
 
@@ -1062,7 +1023,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         image.create(b.height, b.width, 2);
         std::fill(image.data(), image.data() + image.size(), uchar(0));
 
-        auto work = [&]<DifferenceMethod method>(){
+        auto work = [&]<DifferenceMethod method, ImageMode mode>(){
             auto _x = (coord_t)b.x;
             auto _y = (coord_t)b.y;
             
@@ -1073,7 +1034,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols * 2 + (ptr_safe_t(line.x0) - ptr_safe_t(_x)) * 2);
                 for (auto x = line.x0; x <= line.x1; ++x, ++ptr, image_ptr += 2) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    value = background.diff<method>(x, line.y, *ptr);
+                    value = background.diff<method, mode>(x, line.y, *ptr);
                     if (!threshold || background.is_value_different(x, line.y, value, threshold)) {
                         *image_ptr = *ptr;
                         *(image_ptr + 1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
@@ -1082,14 +1043,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
-        
+        call_image_mode_function(work);
         return b.pos();
     }
     std::tuple<Vec2, Image::Ptr> Blob::luminance_alpha_image(const cmn::Background& background, int32_t threshold, uint8_t padding) const {
@@ -1109,7 +1063,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto _y = (coord_t)b.y;
         
         
-        auto work = [&]<DifferenceMethod method>(){
+        auto work = [&]<DifferenceMethod method, ImageMode mode>(){
             int32_t value;
             auto ptr = _pixels->data();
             
@@ -1117,21 +1071,14 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
                 for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    value = background.diff<method>(x, line.y, *ptr);
+                    value = background.diff<method, mode>(x, line.y, *ptr);
                     if(!threshold || background.is_value_different(x, line.y, value, threshold))
                         *image_ptr = value;
                 }
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
-        
+        call_image_mode_function(work);
         return {b.pos(), std::move(image)};
     }
     
@@ -1177,26 +1124,19 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
         
-        auto work = [&]<DifferenceMethod method>(){
+        auto work = [&]<DifferenceMethod method, ImageMode mode>(){
             auto ptr = _pixels->data();
             for (auto &line : hor_lines()) {
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
                 for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    if(background.is_value_different(x, line.y, background.diff<method>(x, line.y, *ptr), threshold))
+                    if(background.is_value_different(x, line.y, background.diff<method, mode>(x, line.y, *ptr), threshold))
                         *image_ptr = *ptr;
                 }
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
-        
+        call_image_mode_function(work);
         return {b.pos(), std::move(image)};
     }
     
@@ -1213,28 +1153,21 @@ pv::BlobPtr CompressedBlob::unpack() const {
         if(_pixels == nullptr)
             throw U_EXCEPTION("Cannot generate binary image without pixel values.");
         
-        auto work = [&]<DifferenceMethod method>(){
+        auto work = [&]<DifferenceMethod method, ImageMode mode>(){
             int32_t value;
             auto ptr = _pixels->data();
             for (auto &line : hor_lines()) {
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x));
                 for (auto x=line.x0; x<=line.x1; ++x, ++ptr, ++image_ptr) {
                     assert(ptr < _pixels->data() + _pixels->size());
-                    value = background.diff<method>(x, line.y, *ptr);
+                    value = background.diff<method, mode>(x, line.y, *ptr);
                     if(background.is_value_different(x, line.y, value, threshold))
                         *image_ptr = 255;
                 }
             }
         };
         
-        if(not Background::track_background_subtraction()) {
-            work.operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            work.operator()<DifferenceMethod::absolute>();
-        } else {
-            work.operator()<DifferenceMethod::sign>();
-        }
-        
+        call_image_mode_function(work);
         return {b.pos(), std::move(image)};
     }
     

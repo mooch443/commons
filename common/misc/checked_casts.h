@@ -110,8 +110,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
                 ToType converted = static_cast<ToType>(value);
                 FromType backConverted = static_cast<FromType>(converted);
                 FromType difference = std::abs(value - backConverted);
-                bool result = value == backConverted || difference <= epsilon;
-                return result;
+                return value == backConverted || difference <= epsilon;
             }
             return true;  // No narrowing issues for conversions to larger or same size types
         }

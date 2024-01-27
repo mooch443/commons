@@ -375,17 +375,17 @@ void List::on_click(const Item * item) {
         }
         
         for(size_t i=0; i<_items.size(); i++) {
-            static const auto local = Vec2(0, 0);
-            
+            auto r = _rects.at(i);
+            advance_wrap(*r);
+        }
+        
+        for(size_t i=0; i<_items.size(); i++) {
             auto &item = _items.at(i);
             auto r = _rects.at(i);
 
-            r->set_bounds(Bounds(offset + local,
-                             Vec2(size.width - local.x*2,
-                                  _row_height - local.y*2)));
-            advance_wrap(*r);
+            r->set_bounds(Bounds(offset, Vec2(size.width, _row_height)));
             add<Text>(Str(*item),
-                      Loc(offset+local+Vec2(size.width, _row_height)*0.5f),
+                      Loc(offset + Vec2(size.width, _row_height)*0.5f),
                       _item_font);
             offset.y += inversion_correct_height;
         }
@@ -468,6 +468,10 @@ void List::set_foldable(bool f) {
     
     _foldable = f;
     set_content_changed(true);
+    if(_foldable && not _folded)
+        set_z_index(2);
+    else
+        set_z_index(0);
 }
 void List::set_folded(bool f) {
     if(_folded == f)
@@ -475,6 +479,10 @@ void List::set_folded(bool f) {
     
     _folded = f;
     set_content_changed(true);
+    if(_foldable && not _folded)
+        set_z_index(2);
+    else
+        set_z_index(0);
     _on_toggle();
 }
 

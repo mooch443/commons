@@ -491,6 +491,12 @@ namespace cmn {
         cv::resize(mat, output, cv::Size(), factor, factor, flags);
     }
 
+enum class ImageMode {
+    GRAY,
+    RGB,
+    R3G3B2,
+    RGBA
+};
 
 template<typename Vec>
 inline uint8_t vec_to_r3g3b2(const Vec& bgr) {

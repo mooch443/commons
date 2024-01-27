@@ -644,6 +644,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>()
     std::string text = get(std::string(), "text");
     StaticText::FadeOut_t fade_out{get(0.f, "fade_out")};
     StaticText::Shadow_t shadow{get(0.f, "shadow")};
+    Alpha alpha{get(1.f, "alpha")};
     
     return Layout::Make<StaticText>(
          Str{text},
@@ -655,7 +656,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>()
          shadow,
          attr::Margins(pad),
          attr::Name{text},
-         attr::SizeLimit{max_size}
+         attr::SizeLimit{max_size},
+         alpha
     );
 }
 
@@ -696,8 +698,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
             // all successfull, add collection:
             state.loops[hash] = {
                 .variable = obj["var"].get<std::string>(),
-                .child = child,
-                .state = std::make_unique<State>(state)
+                .child = child//,
+                //.state = std::make_unique<State>(state)
             };
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             ptr->set_name("foreach<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");

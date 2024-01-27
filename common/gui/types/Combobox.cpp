@@ -51,8 +51,8 @@ void Combobox::update() {
 }
 
 void Combobox::set(ListDims_t dims) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(dims);
+    if(_dropdown)
+        _dropdown->list().set(dims);
 }
 
 void Combobox::set(Combobox::OnSelect_t on_select) {
@@ -60,8 +60,8 @@ void Combobox::set(Combobox::OnSelect_t on_select) {
 }
 
 void Combobox::set(LabelDims_t dims) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(dims);
+    if(_dropdown)
+        _dropdown->list().set(dims);
 }
 
 void Combobox::set(ParmName name) {
@@ -122,26 +122,26 @@ void Combobox::set(attr::TextClr clr) {
 }
 
 void Combobox::set(ListLineClr_t clr) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(clr);
+    if(_dropdown)
+        _dropdown->list().set(clr);
     if(_value)
         _value->set(clr);
 }
 void Combobox::set(ListFillClr_t clr) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(clr);
+    if(_dropdown)
+        _dropdown->list().set(clr);
     if(_value)
         _value->set(clr);
 }
 void Combobox::set(LabelBorderColor_t clr) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(clr);
+    if(_dropdown)
+        _dropdown->list().set(clr);
     if(_value)
         _value->set(clr);
 }
 void Combobox::set(LabelColor_t clr) {
-    if(_dropdown && _dropdown->list())
-        _dropdown->list()->set(clr);
+    if(_dropdown)
+        _dropdown->list().set(clr);
     if(_value)
         _value->set(clr);
 }
@@ -239,9 +239,9 @@ void Combobox::update_value() {
     _value->set(_settings.font);
     _value->set(_settings.highlight);
     _value->set(_settings.sizeLimit);
-    if(_dropdown && _dropdown->list()) {
-        _value->set(ListLineClr_t{_dropdown->list()->list_line_clr()});
-        _value->set(ListFillClr_t{_dropdown->list()->list_fill_clr()});
+    if(_dropdown) {
+        _value->set(ListLineClr_t{_dropdown->list().list_line_clr()});
+        _value->set(ListFillClr_t{_dropdown->list().list_fill_clr()});
     }
     _value->set(LabelColor_t{(Color)_settings.fill_clr});
     _value->set(LabelBorderColor_t{(Color)_settings.line_clr});

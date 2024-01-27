@@ -109,6 +109,7 @@ void StaticText::set_default_font(Font font) {
                 
                 // add texts so that dimensions are retrieved
                 t->set_color(t->color().alpha(255 * _settings.alpha));
+                //t->set_color(t->color().alpha((float(t->color().a) / 255.f) * _settings.alpha * 255));
                 t->set(Text::Shadow_t{_settings.shadow});
                 
                 if(_settings.max_size.y > 0
@@ -477,8 +478,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         
         auto mix_colors = [&](const Color& A, const Color& B) {
             //if(A != default_clr)
+            return Color::blend(B.alpha(0.75 * 255), A.alpha(0.25 * 255)).alpha(saturate(A.a * 0.25 + B.a * 0.75, 0, 255));
             return Color::blend(B.alpha(0.75 * 255), A.alpha(0.25 * 255));
-                return B * 0.75 + A * 0.25;
             //else
             //    return B;
         };

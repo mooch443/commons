@@ -39,6 +39,10 @@ public:
     {
         using namespace cmn;
         
+        if constexpr(is_container<return_type>::value) {
+            this->_is_vector = true;
+        }
+        
         // Lambda to convert the captured function's return value to a string
         value_string = [this]<typename... Args>(Args&&... args) -> std::string {
             if constexpr(_clean_same<std::string, return_type>) {
@@ -140,6 +144,7 @@ class VarBase {
 protected:
     /// The type of the derived class, as a string_view.
     const std::string_view type;
+    bool _is_vector{false};
     
 public:
     /// Function that converts the stored value to a string, given arguments of type _Args...
@@ -157,6 +162,14 @@ public:
     template<typename T>
     constexpr bool is() const noexcept {
         return type == type_name<T>();
+    }
+    
+    /**
+      Checks if the derived class holds a variable of type T.
+      @return true if the derived class holds a variable of type T, false otherwise.
+    */
+    constexpr bool is_vector() const noexcept {
+        return this->_is_vector;
     }
     
     /**

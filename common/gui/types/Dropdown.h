@@ -133,9 +133,9 @@ namespace gui {
         };
         
     protected:
-        GETTER_NCONST(std::shared_ptr<Textfield>, textfield);
+        GETTER_NCONST(std::shared_ptr<Textfield>, textfield){std::make_unique<Textfield>()};
         GETTER_NCONST(std::shared_ptr<Button>, button);
-        GETTER_NCONST(std::unique_ptr<ScrollableList<TextItem>>, list);
+        GETTER_NCONST(ScrollableList<TextItem>, list);
         std::function<void(RawIndex, const TextItem&)> _on_select;
         Textfield::OnEnter_t _on_enter;
         
@@ -158,16 +158,19 @@ namespace gui {
         
     public:
         using Entangled::set;
-        void set(TextClr clr) { _textfield->set(clr); _list->set(clr); }
+        void set(TextClr clr) { _textfield->set(clr); _list.set(clr); }
         void set(LineClr clr) override { Entangled::set(clr); _textfield->set(clr); }
         void set(FillClr clr) override { Entangled::set(clr); _textfield->set(clr); }
-        void set(Font font) { _textfield->set(font); }
-        void set(ListDims_t dims) { if(_list) _list->set(dims); }
-        void set(LabelDims_t dims) { if(_list) _list->set(dims); }
-        void set(ListFillClr_t dims) { if(_list) _list->set(dims); }
-        void set(ListLineClr_t dims) { if(_list) _list->set(dims); }
-        void set(LabelColor_t dims) { if(_list) _list->set(dims); }
-        void set(LabelBorderColor_t dims) { if(_list) _list->set(dims); }
+        void set(Font font) {
+            if(_textfield) _textfield->set(font);
+            if(_button) _button->set(font);
+        }
+        void set(ListDims_t dims) { _list.set(dims); }
+        void set(LabelDims_t dims) { _list.set(dims); }
+        void set(ListFillClr_t dims) { _list.set(dims); }
+        void set(ListLineClr_t dims) { _list.set(dims); }
+        void set(LabelColor_t dims) { _list.set(dims); }
+        void set(LabelBorderColor_t dims) { _list.set(dims); }
         void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }
         void set(const std::vector<TextItem>& options) { set_items(options); }
         void set(const std::vector<std::string>& options) { set_items(std::vector<TextItem>(options.begin(), options.end())); }
@@ -193,8 +196,8 @@ namespace gui {
         
         template<typename... Args>
         void create(Args... args) {
-            (set(std::forward<Args>(args)), ...);
             init();
+            (set(std::forward<Args>(args)), ...);
         }
         
         void init();

@@ -72,7 +72,7 @@ struct Row {
 
 #define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 
-    template<DifferenceMethod method>
+    template<DifferenceMethod method, ImageMode colors>
     inline void line_with_grid _____FN_TYPE {
         for(const auto &line : input) {
             coord_t x0;
@@ -80,7 +80,7 @@ struct Row {
             auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
             
             for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-                if(bg->diff<method>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
+                if(bg->diff<method, colors>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
                         lines.emplace_back(line.y, x0, x - 1);
@@ -100,14 +100,14 @@ struct Row {
         }
     }
 
-    template<DifferenceMethod method>
+    template<DifferenceMethod method, ImageMode mode>
     inline void line_without_grid _____FN_TYPE {
         for(const auto &line : input) {
             coord_t x0;
             uchar* start{nullptr};
             
             for (auto x=line.x0; x<=line.x1; ++x, ++px) {
-                if(bg->diff<method>(x, line.y, *px) < threshold) {
+                if(bg->diff<method, mode>(x, line.y, *px) < threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
                         lines.emplace_back(line.y, x0, x - 1);
@@ -205,7 +205,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         //return blob;
         //blob->threshold(threshold, *bg);
         //Timer timer;
-        if(use_closing || blob->pixels()->size() > 1000 * 1000) {
+        /*if(use_closing || blob->pixels()->size() > 1000 * 1000) {
             static gpuMat back;
             cv::Mat local;
             
@@ -256,7 +256,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             }
             
             return blobs;
-        }
+        }*/
         
         //timer.reset();
         auto px = blob->pixels()->data();
@@ -265,22 +265,11 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         lines.reserve(blob->hor_lines().size());
         pixels.reserve(blob->pixels()->size());
         
-        if(bg) {
-            if(not Background::track_background_subtraction()) {
-                line_without_grid<DifferenceMethod::none>(bg, blob->hor_lines(), px, threshold, lines, pixels);
-            } else if(Background::track_absolute_difference()) {
-                if(bg->grid())
-                    line_with_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
-                else
-                    line_without_grid<DifferenceMethod::absolute>(bg, blob->hor_lines(), px, threshold, lines, pixels);
-            } else {
-                if(bg->grid())
-                    line_with_grid<DifferenceMethod::sign>(bg, blob->hor_lines(), px, threshold, lines, pixels);
-                else
-                    line_without_grid<DifferenceMethod::sign>(bg, blob->hor_lines(), px, threshold, lines, pixels);
-            }
-            
-        } else
+        if(bg)
+            call_image_mode_function([&]<DifferenceMethod method, ImageMode mode>(){
+                line_without_grid<method, mode>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            });
+        else
             line_without_bg(bg, blob->hor_lines(), px, threshold, lines, pixels);
         
         auto blobs = CPULabeling::run(lines, pixels, cache);
@@ -638,7 +627,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
     }
     
     template<typename T>
-    inline void add_edge(Tree::sides_t& _sides, T& non_full_nodes, const Edge& edge, const std::vector<std::shared_ptr<Node>>& raw_nodes) {
+    inline void add_edge(Tree::sides_t& _sides, T& non_full_nodes, const Edge& edge, const std::vector<std::unique_ptr<Node>>& raw_nodes) {
         UNUSED(raw_nodes)
         /*auto it = edges.find(edge);
         if(it != edges.end()) {
@@ -810,7 +799,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
 #define CHECK_BORDER(DIR) {if(!IS_SET(DIR)) node->border.insert(DIR); /* else node->neighbors.insert(DIR);*/ }
 #define NAME(DIR) direction_names[ DIR ]
         
-        auto node = std::make_shared<Node>(x, y, neighborhood);
+        auto node = std::make_unique<Node>(x, y, neighborhood);
         //node->position = offset;
         
 #ifdef TREE_WITH_PIXELS
@@ -841,7 +830,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             //node->border.insert(BOTTOM);
         
         //_node_positions[node->index] = node;
-        _nodes.push_back(node);
+        _nodes.push_back(std::move(node));
     }
     
     std::vector<std::shared_ptr<std::vector<Vec2>>> Tree::generate_edges() {

@@ -14,7 +14,7 @@ class LayoutContext;
 struct LoopBody {
     std::string variable;
     nlohmann::json child;
-    std::unique_ptr<State> state;
+    //std::unique_ptr<State> state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
 };
 

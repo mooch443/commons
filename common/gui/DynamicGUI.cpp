@@ -114,9 +114,7 @@ bool Context::has(const std::string_view & name) const noexcept {
 
 template<typename T>
 T map_vectors(const VarProps& props, auto&& apply) {
-    if(props.parameters.size() != 2) {
-        throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
-    }
+    REQUIRE_EXACTLY(2, props);
     
     T A{}, B{};
     
@@ -125,8 +123,9 @@ T map_vectors(const VarProps& props, auto&& apply) {
         std::string b(utils::trim(props.parameters.back()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
-            A = T(Meta::fromStr<float>(a));
-            B = T(Meta::fromStr<float>(b));
+            A = T(Meta::fromStr<double>(a));
+            B = T(Meta::fromStr<double>(b));
+            
         } else if constexpr(are_the_same<bool, T>) {
             A = convert_to_bool(a);
             B = convert_to_bool(b);
@@ -139,12 +138,12 @@ T map_vectors(const VarProps& props, auto&& apply) {
             if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
                 A = Meta::fromStr<T>(a);
             else
-                A = T(Meta::fromStr<float>(a));
+                A = T(Meta::fromStr<double>(a));
             
             if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
                 B = Meta::fromStr<T>(b);
             else
-                B = T(Meta::fromStr<float>(b));
+                B = T(Meta::fromStr<double>(b));
         }
 
     } catch(const std::exception& ex) {
@@ -163,9 +162,7 @@ template<typename T, typename Apply>
         { apply(A) } -> std::convertible_to<T>;
     }
 T map_vector(const VarProps& props, Apply&& apply) {
-    if(props.parameters.size() != 1) {
-        throw InvalidArgumentException("Invalid number of variables for ", props);
-    }
+    REQUIRE_EXACTLY(1, props);
     
     T A{};
     
@@ -173,13 +170,13 @@ T map_vector(const VarProps& props, Apply&& apply) {
         std::string a(utils::trim(props.parameters.front()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
-            A = T(Meta::fromStr<float>(a));
+            A = T(Meta::fromStr<double>(a));
             
         } else {
             if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
                 A = Meta::fromStr<T>(a);
             else
-                A = T(Meta::fromStr<float>(a));
+                A = T(Meta::fromStr<double>(a));
         }
 
     } catch(const std::exception& ex) {
@@ -194,9 +191,7 @@ template<typename T, typename Apply>
         { apply(A, B) } -> std::convertible_to<T>;
     }
 T map_vector(const VarProps& props, Apply&& apply) {
-    if(props.parameters.size() != 2) {
-        throw InvalidArgumentException("Invalid number of variables for ", props);
-    }
+    REQUIRE_EXACTLY(2, props);
     
     T A{}, B{};
     
@@ -205,19 +200,19 @@ T map_vector(const VarProps& props, Apply&& apply) {
         std::string b(props.parameters.back());
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
-            A = T(Meta::fromStr<float>(a));
-            B = T(Meta::fromStr<float>(b));
+            A = T(Meta::fromStr<double>(a));
+            B = T(Meta::fromStr<double>(b));
             
         } else {
             if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
                 A = Meta::fromStr<T>(a);
             else
-                A = T(Meta::fromStr<float>(a));
+                A = T(Meta::fromStr<double>(a));
             
             if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
                 B = Meta::fromStr<T>(b);
             else
-                B = T(Meta::fromStr<float>(b));
+                B = T(Meta::fromStr<double>(b));
         }
 
     } catch(const std::exception& ex) {
@@ -231,45 +226,37 @@ void Context::init() const {
     if(not _system_variables.has_value())
         _system_variables = {
             VarFunc("time", [](const VarProps&) -> double {
-                return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch()).count()) / 1000.0 / 60.0;
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
+                return static_cast<double>(ms.count()) / 1000.0;
             }),
-            VarFunc("min", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return min(A, B);});
+            VarFunc("min", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return min(A, B);});
             }),
-            VarFunc("max", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return max(A, B);});
+            VarFunc("max", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return max(A, B);});
             }),
             VarFunc("bool", [](const VarProps& props) -> bool {
-                if (props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Invalid number of variables for not: ", props);
-                }
-
+                REQUIRE_EXACTLY(1, props);
                 return convert_to_bool(props.parameters.front());
             }),
-            VarFunc("abs", [](const VarProps& props) -> float {
-                if (props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Invalid number of variables for abs: ", props);
-                }
-                auto v = Meta::fromStr<float>(props.parameters.front());
+            VarFunc("abs", [](const VarProps& props) {
+                REQUIRE_EXACTLY(1, props);
+                auto v = Meta::fromStr<double>(props.parameters.front());
                 if(std::isnan(v))
                     return v;
-                return fabsf(v);
+                return fabs(v);
             }),
             VarFunc("int", [](const VarProps& props) -> int64_t {
-                if (props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Invalid number of variables for int: ", props);
-                }
-                auto v = Meta::fromStr<float>(props.parameters.front());
+                REQUIRE_EXACTLY(1, props);
+                
+                auto v = Meta::fromStr<double>(props.parameters.front());
                 if(std::isnan(v))
                     return static_cast<int64_t>(std::numeric_limits<int64_t>::quiet_NaN());
                 else
                     return static_cast<int64_t>(v);
             }),
             VarFunc("dec", [](const VarProps& props) -> std::string {
-                if (props.parameters.size() != 2) {
-                    throw InvalidArgumentException("Invalid number of variables for dec: ", props);
-                }
-
+                REQUIRE_EXACTLY(2, props);
                 float decimals = Meta::fromStr<uint8_t>(props.parameters.front());
                 
                 auto str = props.parameters.back();
@@ -283,9 +270,7 @@ void Context::init() const {
                 return str;
             }),
             VarFunc("not", [](const VarProps& props) -> bool {
-                if(props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Invalid number of variables for not: ", props);
-                }
+                REQUIRE_EXACTLY(1, props);
                 
                 std::string p(props.parameters.front());
                 try {
@@ -296,9 +281,7 @@ void Context::init() const {
                 }
             }),
             VarFunc("equal", [](const VarProps& props) -> bool {
-                if(props.parameters.size() != 2) {
-                    throw InvalidArgumentException("Invalid number of variables for ",props.name,": ", props);
-                }
+                REQUIRE_EXACTLY(2, props);
                 
                 std::string p0(props.parameters.front());
                 std::string p1(props.parameters.back());
@@ -323,29 +306,29 @@ void Context::init() const {
                 }
                 return false;
             }),
-            VarFunc(">", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A > B;});
+            VarFunc(">", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A > B;});
             }),
-            VarFunc(">=", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A >= B;});
+            VarFunc(">=", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A >= B;});
             }),
-            VarFunc("<", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A < B;});
+            VarFunc("<", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A < B;});
             }),
-            VarFunc("<=", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A <= B;});
+            VarFunc("<=", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A <= B;});
             }),
-            VarFunc("+", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A+B;});
+            VarFunc("+", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A+B;});
             }),
-            VarFunc("-", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A-B;});
+            VarFunc("-", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A-B;});
             }),
-            VarFunc("*", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A * B;});
+            VarFunc("*", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A * B;});
             }),
-            VarFunc("/", [](const VarProps& props) -> float {
-                return map_vectors<float>(props, [](auto&A, auto&B){return A / B;});
+            VarFunc("/", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
             }),
             VarFunc("addVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
@@ -371,16 +354,14 @@ void Context::init() const {
             VarFunc("addSize", [](const VarProps& props) -> Size2 {
                 return map_vectors<Size2>(props, [](auto& A, auto& B){ return A + B; });
             }),
-            VarFunc("round", [](const VarProps& props) -> float {
-                return map_vector<float>(props, [](auto& A){ return std::roundf(A); });
+            VarFunc("round", [](const VarProps& props) {
+                return map_vector<double>(props, [](auto& A){ return std::round(A); });
             }),
             VarFunc("mod", [](const VarProps& props) -> int {
-                return map_vector<float>(props, [](auto& A, auto& B){ return int(A) % int(B); });
+                return map_vector<double>(props, [](auto& A, auto& B){ return int64_t(A) % int64_t(B); });
             }),
             VarFunc("at", [](const VarProps& props) -> std::string {
-                if(props.parameters.size() != 2) {
-                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
-                }
+                REQUIRE_EXACTLY(2, props);
                 
                 auto index = Meta::fromStr<size_t>(props.parameters.front());
                 auto trunc = props.parameters.at(1);
@@ -394,9 +375,8 @@ void Context::init() const {
                 throw InvalidArgumentException("Needs to be an indexable type.");
             }),
             VarFunc("array_length", [](const VarProps& props) -> size_t {
-                if(props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
-                }
+                REQUIRE_EXACTLY(1, props);
+                
                 auto trunc = props.parameters.at(0);
                 if(is_in(utils::trim(trunc).front(), '[', '{')) {
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
@@ -481,9 +461,7 @@ void Context::init() const {
             }),
             VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
-                if(props.parameters.size() != 2) {
-                    throw InvalidArgumentException("Invalid number of variables for vectorAdd: ", props);
-                }
+                REQUIRE_EXACTLY(2, props);
                 
                 std::string _color(props.parameters.front());
                 std::string _alpha(props.parameters.back());
@@ -515,21 +493,15 @@ void Context::init() const {
                 return utils::ShortenText(str, N, 0.5, placeholder);
             }),
             VarFunc("filename", [](const VarProps& props) -> file::Path {
-                if(props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Need one argument for ", props,".");
-                }
+                REQUIRE_EXACTLY(1, props);
                 return file::Path(Meta::fromStr<file::Path>(props.first()).filename());
             }),
             VarFunc("folder", [](const VarProps& props) -> file::Path {
-                if(props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Need one argument for ", props,".");
-                }
+                REQUIRE_EXACTLY(1, props);
                 return file::Path(Meta::fromStr<file::Path>(props.first()).remove_filename());
             }),
             VarFunc("basename", [](const VarProps& props) -> file::Path {
-                if(props.parameters.size() != 1) {
-                    throw InvalidArgumentException("Need one argument for ", props,".");
-                }
+                REQUIRE_EXACTLY(1, props);
                 return file::Path(Meta::fromStr<file::Path>(props.first()).filename()).remove_extension();
             })
         };
@@ -915,6 +887,16 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
             }
         }
         
+        if(pattern.contains("alpha")) {
+            try {
+                auto line = resolve_variable_type<float>(pattern.at("alpha"), context, state);
+                LabeledField::delegate_to_proper_type(Alpha{line}, ptr);
+                
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        
         if(pattern.contains("pos")) {
             try {
                 auto str = parse_text(pattern.at("pos"), context, state);
@@ -931,6 +913,13 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                 //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
                 //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 
+            } catch(const std::exception& e) {
+                FormatError("Error parsing context; ", pattern, ": ", e.what());
+            }
+        }
+        if(pattern.contains("origin")) {
+            try {
+                ptr->set_origin(Meta::fromStr<Vec2>(parse_text(pattern.at("origin"), context, state)));
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
             }
@@ -1226,6 +1215,36 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         state._variable_values = std::move(previous);
                     }
                 }
+            }
+            else if(context.variable(props.name)->is_vector()) {
+                auto str = context.variable(props.name)->value_string(props);
+                auto vector = util::parse_array_parts(util::truncate(str));
+                
+                std::vector<Layout::Ptr> ptrs;
+                Context tmp = context;
+                size_t i=0;
+                for(auto &v : vector) {
+                    auto previous = state._variable_values;
+                    //tmp.variables["i"] = v;
+                    tmp.variables["index"] = std::unique_ptr<VarBase_t>{
+                        new Variable([i = i++](const VarProps&) -> size_t {
+                            return i;
+                        })
+                    };
+                    tmp.variables["i"] = std::unique_ptr<VarBase_t>{
+                        new Variable([v](const VarProps&) -> std::string {
+                            return v;
+                        })
+                    };
+                    auto ptr = parse_object(obj.child, tmp, state, context.defaults);
+                    if(ptr) {
+                        update_objects(g, ptr, tmp, state);
+                    }
+                    ptrs.push_back(ptr);
+                    state._variable_values = std::move(previous);
+                }
+                
+                o.to<Layout>()->set_children(ptrs);
             }
         }
         return true;

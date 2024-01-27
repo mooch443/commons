@@ -17,7 +17,7 @@ State::State(const State& other)
         loops[k] = {
             .variable = body.variable,
             .child = body.child,
-            .state = std::make_unique<State>(*body.state),
+            //.state = std::make_unique<State>(*body.state),
             .cache = body.cache
         };
     }

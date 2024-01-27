@@ -11,10 +11,10 @@ namespace cmn {
 namespace sprite {
 
 Map::Map(const Map& other) {
-    _print_by_default = other._print_by_default;
     for(auto &[name, ptr] : other._props) {
         ptr->copy_to(this);
     }
+    _print_by_default = other._print_by_default;
 }
 
 Map::Map(Map&& other) 
@@ -23,10 +23,11 @@ Map::Map(Map&& other)
 { }
 
 Map& Map::operator=(const Map& other) {
-    _print_by_default = other._print_by_default;
+    _print_by_default = false;
     for(auto &[name, ptr] : other._props) {
         ptr->copy_to(this);
     }
+    _print_by_default = other._print_by_default;
 	return *this;
 }
 

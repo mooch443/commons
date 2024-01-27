@@ -44,6 +44,19 @@ sprite::Map& GlobalSettings::map() {
     return instance()->_map;
 }
 
+sprite::Map& GlobalSettings::current_defaults() {
+    if (!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    return instance()->_current_defaults;
+}
+
+void GlobalSettings::set_current_defaults(sprite::Map&& map) {
+    if (!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    instance()->_current_defaults.set_print_by_default(false);
+    instance()->_current_defaults = std::move(map);
+}
+
 const sprite::Map& GlobalSettings::defaults() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
