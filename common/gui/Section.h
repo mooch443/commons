@@ -1,5 +1,6 @@
 #pragma once
 
+#include <commons.pc.h>
 #include <gui/GuiTypes.h>
 #include <gui/types/SingletonObject.h>
 #include <misc/colors.h>

@@ -120,7 +120,7 @@ public:
 template<typename T, typename Construct, size_t _max_size = 0>
 class Buffers {
 public:
-    using buffer_t = std::conditional<_max_size != 0, FixedCapacityVector<T, _max_size>, std::vector<T>>::type;
+    using buffer_t = typename std::conditional<_max_size != 0, FixedCapacityVector<T, _max_size>, std::vector<T>>::type;
     
 private:
     buffer_t _buffers;

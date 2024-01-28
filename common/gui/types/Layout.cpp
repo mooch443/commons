@@ -1,5 +1,6 @@
 #include "Layout.h"
 #include <gui/types/SingletonObject.h>
+#include <gui/GuiTypes.h>
 
 namespace gui {
     void Layout::init() {

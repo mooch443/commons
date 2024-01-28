@@ -1,5 +1,6 @@
 #pragma once
 
+#include <commons.pc.h>
 #include <gui/types/Entangled.h>
 #include <misc/derived_ptr.h>
 

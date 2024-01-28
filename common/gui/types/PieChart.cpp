@@ -1,4 +1,5 @@
 #include "PieChart.h"
+#include <gui/GuiTypes.h>
 
 namespace gui {
     float sign (Vec2 p1, Vec2 p2, Vec2 p3)

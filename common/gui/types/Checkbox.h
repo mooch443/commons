@@ -1,7 +1,9 @@
 #pragma once
 
+#include <commons.pc.h>
 #include <gui/types/Entangled.h>
 #include <gui/DrawSFBase.h>
+#include <gui/GuiTypes.h>
 
 namespace gui {
 class Checkbox : public Entangled {

@@ -1,7 +1,9 @@
 #pragma once
 
-#include <gui/GuiTypes.h>
-#include <set>
+#include <commons.pc.h>
+#include <gui/types/Drawable.h>
+//#include <gui/GuiTypes.h>
+//#include <set>
 #include <misc/ranges.h>
 
 namespace gui {
