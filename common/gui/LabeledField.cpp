@@ -379,6 +379,11 @@ LabeledPath::LabeledPath(std::string name, const std::string&, file::Path path)
     _dropdown = std::make_shared<CustomDropdown>(Box(0, 0, 500, 28));
     _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path...");
     
+    _dropdown->add_event_handler(EventType::SELECT, [&](Event e) {
+        if(not e.select.selected && _ref.valid()) {
+            _dropdown->textfield()->set_text(_ref.value<file::Path>().str());
+        }
+    });
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path = item.name();
         if(path.empty())
