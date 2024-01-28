@@ -274,7 +274,7 @@ struct LabeledPath : public LabeledField {
     
     std::mutex _file_mutex;
     std::future<tl::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
-    std::optional<std::function<file::Path()>> _should_reload;
+    std::optional<std::function<std::optional<file::Path>()>> _should_reload;
     
     gui::derived_ptr<CustomDropdown> _dropdown;
     std::vector<FileItem> _names;
@@ -294,7 +294,7 @@ struct LabeledPath : public LabeledField {
     void change_folder(file::Path);
     Layout::Ptr representative() const override { return _dropdown; }
     void asyncUpdateItems();
-    void asyncRetrieve(std::function<file::Path()>);
+    void asyncRetrieve(std::function<std::optional<file::Path>()>);
 };
 
 class LabeledPathArray : public LabeledField {

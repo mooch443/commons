@@ -452,13 +452,13 @@ LabeledPath::LabeledPath(std::string name, const std::string&, file::Path path)
     _dropdown->auto_size({0,0});
     print("Dropdown -> ", _dropdown->bounds());
     
-    asyncRetrieve([path](){
+    asyncRetrieve([path]() -> std::optional<file::Path>{
         if(path.is_folder())
             return path;
         else if(path.remove_filename().is_folder())
             return path.remove_filename();
         
-        throw std::invalid_argument("Do nothing.");
+        return std::nullopt;
     });
 }
 
@@ -487,7 +487,7 @@ void LabeledPath::asyncUpdateItems() {
     _dropdown->set_items(std::move(items.value()));
 }
 
-void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
+void LabeledPath::asyncRetrieve(std::function<std::optional<file::Path>()> fn) {
     if(_file_retrieval.valid()) {
         if(_file_retrieval.wait_for(std::chrono::milliseconds(10)) != std::future_status::ready)
         {
@@ -498,11 +498,16 @@ void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
         (void)_file_retrieval.get(); // discard
     }
     
-    _file_retrieval = std::async(std::launch::async, [this, copy = _files](std::function<file::Path()> fn) -> tl::expected<std::vector<Dropdown::TextItem>, const char*> {
+    _file_retrieval = std::async(std::launch::async, [this, copy = _files](std::function<std::optional<file::Path>()> fn) -> tl::expected<std::vector<Dropdown::TextItem>, const char*> {
         try {
             //std::this_thread::sleep_for(std::chrono::seconds(1));
-            auto p = fn();
-            if(p.is_folder()) {
+            auto maybe_p = fn();
+            if(not maybe_p)
+                return tl::unexpected("Invalid");
+            
+            auto p = maybe_p.value();
+            if(p.is_folder())
+            {
                 try {
                     try {
                         if(not p.empty())
@@ -533,6 +538,7 @@ void LabeledPath::asyncRetrieve(std::function<file::Path()> fn) {
                     return tl::unexpected(ex.what());
                 }
             }
+            
         } catch(...) { }
         
         return tl::unexpected("");
@@ -561,8 +567,13 @@ std::vector<Dropdown::TextItem> LabeledPath::updated_names(const std::set<file::
     for(auto &f : path) {
         if(f.str() == ".." || !utils::beginsWith((std::string)f.filename(), '.')) {
             //_names.push_back(FileItem(f));
-            search_items.push_back(Dropdown::TextItem(f.str()));
-            search_items.back().set_display(std::string(file::Path(f.str()).filename()));
+            if(f.is_folder()) {
+                search_items.push_back(Dropdown::TextItem(f.str()+std::string(1, file::Path::os_sep())));
+                search_items.back().set_display(std::string(file::Path(f.str()).filename())+std::string(1, file::Path::os_sep()));
+            } else {
+                search_items.push_back(Dropdown::TextItem(f.str()));
+                search_items.back().set_display(std::string(file::Path(f.str()).filename()));
+            }
             //print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
         }
     }
