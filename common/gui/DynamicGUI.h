@@ -88,6 +88,7 @@ struct DynamicGUI {
     Timer last_update;
     bool first_load{true};
     std::string previous;
+    std::future<tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>> read_file_future;
     
     void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     
@@ -95,6 +96,7 @@ struct DynamicGUI {
     void clear();
     
 private:
+    
     void reload();
     static bool update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
     [[nodiscard]] static bool update_loops(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);

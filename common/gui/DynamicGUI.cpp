@@ -1262,27 +1262,34 @@ void DynamicGUI::reload() {
     if(first_load)
         first_load = false;
     
-    try {
-        //auto cwd = file::cwd().absolute();
-        auto p = file::DataLocation::parse("app", path).absolute();
-        //auto app = file::DataLocation::parse("app").absolute();
-        /*if(cwd != app) {
-            print("check_module:CWD: ", cwd);
-            file::cd(app);
-        }*/
+    if(not read_file_future.valid()) {
+        read_file_future = std::async(std::launch::async,
+             [this]() -> tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>
+             {
+                try {
+                    auto p = file::DataLocation::parse("app", path).absolute();
+                    auto text = p.read_file();
+                    if(previous != text) {
+                        previous = text;
+                        return load(text);
+                    }
+                    
+                } catch(const std::invalid_argument&) {
+                } catch(const std::exception& e) {
+                    FormatExcept("Error loading gui layout from file: ", e.what());
+                } catch(...) {
+                    FormatExcept("Error loading gui layout from file");
+                }
+                
+                return tl::unexpected("No news.");
+            });
         
-        auto text = p.read_file();
-        if(previous != text) {
-            previous = text;
-        } else
-            return;
-            
-        auto result = load(text);
-        if(result) {
+    } else if(read_file_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+    {
+        read_file_future.get().transform([&](const auto& result) {
+            auto&& [defaults, layout] = result;
             state._text_fields.clear();
-            
-            auto [defaults, layout] = result.value();
-            context.defaults = defaults;
+            context.defaults = std::move(defaults);
             
             std::vector<Layout::Ptr> objs;
             State tmp;
@@ -1295,16 +1302,10 @@ void DynamicGUI::reload() {
             
             state = std::move(tmp);
             objects = std::move(objs);
-        }
+        });
         
-    } catch(const std::invalid_argument&) {
-    } catch(const std::exception& e) {
-        FormatExcept("Error loading gui layout from file: ", e.what());
-    } catch(...) {
-        FormatExcept("Error loading gui layout from file");
+        last_update.reset();
     }
-    
-    last_update.reset();
 }
 
 void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
