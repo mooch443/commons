@@ -1259,9 +1259,6 @@ void DynamicGUI::reload() {
         return;
     }
     
-    if(first_load)
-        first_load = false;
-    
     if(not read_file_future.valid()) {
         read_file_future = std::async(std::launch::async,
              [this]() -> tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>
@@ -1284,7 +1281,11 @@ void DynamicGUI::reload() {
                 return tl::unexpected("No news.");
             });
         
-    } else if(read_file_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+    }
+    
+    if(read_file_future.valid()
+       && (read_file_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready
+           || first_load))
     {
         read_file_future.get().transform([&](const auto& result) {
             auto&& [defaults, layout] = result;
@@ -1306,6 +1307,9 @@ void DynamicGUI::reload() {
         
         last_update.reset();
     }
+    
+    if(first_load)
+        first_load = false;
 }
 
 void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
@@ -1400,6 +1404,7 @@ void DynamicGUI::clear() {
     objects.clear();
     previous.clear();
     state = {};
+    first_load = true;
 }
 
 void update_tooltips(DrawStructure& graph, State& state) {
