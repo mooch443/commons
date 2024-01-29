@@ -57,8 +57,9 @@ namespace cmn {
     }
 
     uchar* Image::ptr(uint y, uint x) const {
-        assert(y < rows);
-        assert(x < cols);
+        //assert(y < rows);
+        //assert(x < cols);
+        assert((ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims) < size());
         return data() + (ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims);
     }
 
