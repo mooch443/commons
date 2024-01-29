@@ -274,7 +274,8 @@ void Context::init() const {
                 
                 std::string p(props.parameters.front());
                 try {
-                    return not Meta::fromStr<bool>(p);
+                    return not convert_to_bool(p);
+                    //return not Meta::fromStr<bool>(p);
                     
                 } catch(const std::exception& ex) {
                     throw InvalidArgumentException("Cannot parse boolean ", p, ": ", ex.what());
