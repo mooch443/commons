@@ -153,7 +153,7 @@ void Dialog::set_closed() {
     }
 }
     
-    Dialog::Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
+    Dialog::Dialog(DrawStructure& d, std::function<bool(Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
       : _closed(false),
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
@@ -166,7 +166,7 @@ void Dialog::set_closed() {
         _fourth(fourth.empty() ? nullptr : Button::MakePtr(attr::Str(fourth))),
         _buttons(std::make_shared<HorizontalLayout>()),
         _layout(std::vector<Layout::Ptr>{_text, _buttons}),
-        _callback(callback)
+        _callback(std::move(callback))
     {
         set_name("Dialog");
         _layout.set(Margins(5, 5, 5, 5));
@@ -380,10 +380,10 @@ void DrawStructure::close_dialogs() {
     set_dirty(nullptr);
 }
     
-    Dialog* DrawStructure::_dialog(const std::function<bool(Dialog::Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
+    Dialog* DrawStructure::_dialog(std::function<bool(Dialog::Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
         auto guard = GUI_LOCK(_lock);
-        auto d = new Dialog(*this, callback, text, title, okay, abort, second, third, fourth);
+        auto d = new Dialog(*this, std::move(callback), text, title, okay, abort, second, third, fourth);
         d->set_scale(scale().reciprocal());
         _dialogs.push_back(d);
         set_dirty(nullptr);
@@ -393,7 +393,7 @@ void DrawStructure::close_dialogs() {
     Dialog* DrawStructure::dialog(const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
         std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
-        return _dialog(fn, text, title, okay, abort, second, third, fourth);
+        return _dialog(std::move(fn), text, title, okay, abort, second, third, fourth);
     }
     
     Vertices* DrawStructure::vertices(const std::vector<Vec2> &points, const gui::Color &color, PrimitiveType type) {

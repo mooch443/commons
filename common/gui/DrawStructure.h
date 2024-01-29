@@ -62,7 +62,7 @@ namespace gui {
         
     protected:
         friend class DrawStructure;
-        Dialog(DrawStructure& d, const std::function<bool(Result)>& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth);
+        Dialog(DrawStructure& d, std::function<bool(Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth);
         void update() override;
         void update_sizes(DrawStructure& d);
         
@@ -142,23 +142,23 @@ namespace gui {
         ~DrawStructure();
         
     private:
-        Dialog* _dialog(const std::function<bool(Dialog::Result)>& callback, const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
+        Dialog* _dialog(std::function<bool(Dialog::Result)>&& callback, const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
         
     public:
         template<typename F, typename R = typename std::invoke_result_t<F, Dialog::Result>>
         Dialog* dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, void>::value, void> *  = nullptr)
         {
-            std::function<bool(Dialog::Result)> fn = [callback = std::move(callback)](Dialog::Result r) {
+            std::function<bool(Dialog::Result)> fn = [callback = std::move(callback)](Dialog::Result r) mutable {
                 callback(r);
                 return true;
             };
-            return _dialog(fn, text, title, okay, abort, second, third, fourth);
+            return _dialog(std::move(fn), text, title, okay, abort, second, third, fourth);
         }
         
         template<typename F, typename R = typename std::invoke_result_t<F, Dialog::Result>>
         Dialog* dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, bool>::value, void> *  = nullptr)
         {
-            return _dialog(callback, text, title, okay, abort, second, third, fourth);
+            return _dialog(std::forward<F>(callback), text, title, okay, abort, second, third, fourth);
         }
         
         Dialog* dialog(const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");

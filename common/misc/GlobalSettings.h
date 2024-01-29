@@ -43,7 +43,7 @@ namespace cmn {
         /**
          * A map that contains all the settings.
          */
-        sprite::Map _map, _defaults, _current_defaults;
+        sprite::Map _map, _defaults, _current_defaults, _current_defaults_with_config;
         
         /**
          * A map that contains all available documentation for settings.
@@ -99,8 +99,10 @@ namespace cmn {
         static sprite::Map& map();
         static const sprite::Map& defaults();
         static sprite::Map& current_defaults();
+        static sprite::Map& current_defaults_with_config();
         static sprite::Map& set_defaults();
         static void set_current_defaults(sprite::Map&&);
+        static void set_current_defaults_with_config(sprite::Map&&);
         static docs_map_t& docs();
         
         static bool is_runtime_quiet(const sprite::Map* = nullptr);
