@@ -545,13 +545,14 @@ Module* exists(const std::string& name) {
 
 }
 
-Layout::Ptr parse_object(const nlohmann::json& obj,
+Layout::Ptr parse_object(GUITaskQueue_t* gui,
+                         const nlohmann::json& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
                          uint64_t hash)
 {
-    LayoutContext layout(obj, state, context, defaults, hash);
+    LayoutContext layout(gui, obj, state, context, defaults, hash);
     hash = layout.hash;
 
     try {
@@ -682,7 +683,7 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
     }
 }
 
-bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state) {
+bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& o, const Context& context, State& state) {
     auto hash = (std::size_t)o->custom_data("object_index");
     if(not hash) {
         //! if this is a Layout type, need to iterate all children as well:
@@ -691,7 +692,7 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
             auto& objects = layout->objects();
             for(size_t i=0, N = objects.size(); i<N; ++i) {
                 auto& child = objects[i];
-                auto r = update_objects(g, child, context, state);
+                auto r = update_objects(gui, g, child, context, state);
                 if(r) {
                     // objects changed
                     layout->replace_child(i, child);
@@ -721,7 +722,7 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
 
     if (state._customs.contains(hash)) {
         if(not context.custom_elements.at(state._customs.at(hash))->update(o, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{})) {
-            if(update_patterns(hash, o, context, state)) {
+            if(update_patterns(gui, hash, o, context, state)) {
                 //changed = true;
             }
         }
@@ -739,7 +740,7 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
                     if(last_condition != 1) {
                         o.to<Layout>()->set_children({obj._else});
                     }
-                    update_objects(g, obj._else, context, state);
+                    update_objects(gui, g, obj._else, context, state);
                     
                 } else {
                     if(o->is_displayed()) {
@@ -760,7 +761,7 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
                 o.to<Layout>()->set_children({obj._if});
             }
             
-            update_objects(g, obj._if, context, state);
+            update_objects(gui, g, obj._if, context, state);
             
         } catch(const std::exception& ex) {
             FormatError(ex.what());
@@ -770,14 +771,14 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
     }
     
     //! for-each loops below
-    if(update_loops(hash, g, o, context, state))
+    if(update_loops(gui, hash, g, o, context, state))
         return false;
     
     //! did the current object change?
     bool changed{false};
     
     //! fill default fields like fill, line, pos, etc.
-    if(update_patterns(hash, o, context, state)) {
+    if(update_patterns(gui, hash, o, context, state)) {
         changed = true;
     }
     
@@ -787,7 +788,7 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
         auto& objects = layout->objects();
         for(size_t i=0, N = objects.size(); i<N; ++i) {
             auto& child = objects[i];
-            auto r = update_objects(g, child, context, state);
+            auto r = update_objects(gui, g, child, context, state);
             if(r) {
                 // objects changed
                 layout->replace_child(i, child);
@@ -796,11 +797,11 @@ bool DynamicGUI::update_objects(DrawStructure& g, Layout::Ptr& o, const Context&
     }
     
     //! list contents loops below
-    (void)update_lists(hash, g, o, context, state);
+    (void)update_lists(gui, hash, g, o, context, state);
     return changed;
 }
 
-bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
+bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
     bool changed{false};
     
     auto it = state.patterns.find(hash);
@@ -817,14 +818,14 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
                 auto var = parse_text(pattern.at("var"), context, state);
                 if(state._text_fields.contains(hash)) {
                     auto &f = state._text_fields.at(hash);
-                    auto str = f->_ref.get().valueString();
+                    auto str = f->ref().get().valueString();
                     VarCache &cache = state._var_cache[hash];
                     if(cache._var != var /*|| str != cache._value*/)
                     {
                         print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
                         
                         //! replace old object (also updates the cache)
-                        o = parse_object(cache._obj, context, state, context.defaults, hash);
+                        o = parse_object(gui, cache._obj, context, state, context.defaults, hash);
                         
                         field = f.get();
                         changed = true;
@@ -1086,7 +1087,7 @@ bool DynamicGUI::update_patterns(uint64_t hash, Layout::Ptr &o, const Context &c
     return changed;
 }
 
-bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
+bool DynamicGUI::update_lists(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
 {
     if(auto it = state.lists.find(hash); it != state.lists.end()) {
         ListContents &obj = it->second;
@@ -1171,7 +1172,7 @@ bool DynamicGUI::update_lists(uint64_t hash, DrawStructure &, const Layout::Ptr 
     return false;
 }
 
-bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
+bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
 {
     if(auto it = state.loops.find(hash); it != state.loops.end()) {
         auto &obj = it->second;
@@ -1192,9 +1193,9 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                     for(auto &v : vector) {
                         auto previous = state._variable_values;
                         tmp.variables["i"] = v;
-                        auto ptr = parse_object(obj.child, tmp, state, context.defaults);
+                        auto ptr = parse_object(gui, obj.child, tmp, state, context.defaults);
                         if(ptr) {
-                            update_objects(g, ptr, tmp, state);
+                            update_objects(gui, g, ptr, tmp, state);
                         }
                         ptrs.push_back(ptr);
                         state._variable_values = std::move(previous);
@@ -1210,7 +1211,7 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                         tmp.variables["i"] = obj.cache[i];
                         auto& p = o.to<Layout>()->objects().at(i);
                         if(p) {
-                            update_objects(g, p, tmp, state);
+                            update_objects(gui, g, p, tmp, state);
                         }
                         //p->parent()->stage()->print(nullptr);
                         state._variable_values = std::move(previous);
@@ -1237,9 +1238,9 @@ bool DynamicGUI::update_loops(uint64_t hash, DrawStructure &g, const Layout::Ptr
                             return v;
                         })
                     };
-                    auto ptr = parse_object(obj.child, tmp, state, context.defaults);
+                    auto ptr = parse_object(gui, obj.child, tmp, state, context.defaults);
                     if(ptr) {
-                        update_objects(g, ptr, tmp, state);
+                        update_objects(gui, g, ptr, tmp, state);
                     }
                     ptrs.push_back(ptr);
                     state._variable_values = std::move(previous);
@@ -1296,7 +1297,7 @@ void DynamicGUI::reload() {
             std::vector<Layout::Ptr> objs;
             State tmp;
             for(auto &obj : layout) {
-                auto ptr = parse_object(obj, context, tmp, context.defaults);
+                auto ptr = parse_object(gui, obj, context, tmp, context.defaults);
                 if(ptr) {
                     objs.push_back(ptr);
                 }
@@ -1372,7 +1373,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         }
         
         for(auto &obj : objects) {
-            update_objects(*graph, obj, context, state);
+            update_objects(gui, *graph, obj, context, state);
         }
         
     } else {
@@ -1381,13 +1382,13 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             auto copy = objects;
             before_add(copy);
             for(auto &obj : copy) {
-                update_objects(*graph, obj, context, state);
+                update_objects(gui, *graph, obj, context, state);
                 graph->wrap_object(*obj);
             }
             
         } else {
             for(auto &obj : objects) {
-                update_objects(*graph, obj, context, state);
+                update_objects(gui, *graph, obj, context, state);
                 graph->wrap_object(*obj);
             }
         }
@@ -1421,13 +1422,14 @@ void update_tooltips(DrawStructure& graph, State& state) {
         if(not ptr)
             continue;
         
-        ptr->_text->set_clickable(true);
+        ptr->text()->set_clickable(true);
         
         if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {
             found = ptr->representative();
             //if(ptr->representative().is<Combobox>())
                 //ptr->representative().to<Combobox>()-
-            name = ptr->_ref.valid() ? ptr->_ref.name() : "<null>";
+            auto r = ptr->ref();
+            name = r.valid() ? r.name() : "<null>";
             break;
         }
     }

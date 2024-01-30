@@ -4,16 +4,18 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/Layout.h>
 #include <gui/types/Dropdown.h>
+#include <gui/GUITaskQueue.h>
 
 namespace gui {
 
 namespace dyn {
-struct LabeledField;
+class LabeledField;
 }
     
 class Combobox : public Entangled {
 public:
     ATTRIBUTE_ALIAS(OnSelect_t, std::function<void(ParmName)>)
+    GUITaskQueue_t *_gui{nullptr};
     
     struct Settings {
         Bounds bounds = Bounds(0, 0, 100, 33);
@@ -41,7 +43,7 @@ protected:
     
 public:
     template<typename... Args>
-    Combobox(Args... args)
+    Combobox(GUITaskQueue_t* gui, Args... args) : _gui(gui)
     {
         create(std::forward<Args>(args)...);
     }

@@ -10,6 +10,7 @@
 #include <gui/types/List.h>
 #include <file/PathArray.h>
 #include <gui/types/Combobox.h>
+#include <gui/GUITaskQueue.h>
 
 namespace gui {
 namespace dyn {
@@ -44,14 +45,26 @@ public:
     }
 };
 
-struct LabeledField {
-    gui::derived_ptr<gui::Text> _text;
+class LabeledField {
+private:
+    GUITaskQueue_t *_gui{nullptr};
     std::string _docs;
     sprite::Reference _ref;
     CallbackCollection _callback_id;
+    mutable std::mutex _ref_mutex;
+    
+protected:
+    
+    GETTER_NCONST(gui::derived_ptr<gui::Text>, text);
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
-    LabeledField(const std::string& name);
+public:
+    auto ref() const {
+        std::unique_lock guard(_ref_mutex);
+        return _ref;
+    }
+    
+    LabeledField(GUITaskQueue_t*, const std::string& name);
     virtual ~LabeledField();
     
     static std::string class_name() { return "Field"; }
@@ -62,15 +75,19 @@ struct LabeledField {
             return;
         v.push_back(_text);
     }
-    virtual void update() {}
+    
+    void trigger_ref_update();
+    virtual void update_ref_in_main_thread() {}
+    void replace_ref(ParmName name);
+    void replace_docs(const std::string&);
     virtual Layout::Ptr representative() const { return _text; }
     virtual void set_description(std::string);
     
-    LabeledField(LabeledField&&) = default;
+    //LabeledField(LabeledField&&) = default;
     LabeledField(const LabeledField&) = delete;
     
     LabeledField& operator=(const LabeledField&) = delete;
-    LabeledField& operator=(LabeledField&&) = default;
+    //LabeledField& operator=(LabeledField&&) = default;
     
     virtual std::vector<Layout::Ptr> apply_set() const {
         return { representative() };
@@ -82,8 +99,8 @@ struct LabeledField {
             delegate_to_proper_type(attribute, ptr);
     }
     
-    static std::unique_ptr<LabeledField> Make(std::string parm, const LayoutContext&, bool invert = false);
-    static std::unique_ptr<LabeledField> Make(std::string parm, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, const LayoutContext&, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, bool invert = false);
     
     template<typename T>
     static bool delegate_to_proper_type(const T& attribute, const Layout::Ptr& object)
@@ -216,44 +233,43 @@ struct LabeledField {
 
 struct LabeledCombobox : public LabeledField {
     gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(const std::string& name, const nlohmann::json& obj);
+    LabeledCombobox(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_combo);
     }
-    void update() override;
     Layout::Ptr representative() const override { return _combo; }
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
-    LabeledTextField(const std::string& name, const nlohmann::json& obj);
+    LabeledTextField(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_text_field);
         assert(_text_field != nullptr);
     }
-    void update() override;
+    void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override { return _text_field; }
 };
 struct LabeledDropDown : public LabeledField {
     gui::derived_ptr<gui::Dropdown> _dropdown;
-    LabeledDropDown(const std::string& name, const nlohmann::json& obj);
+    LabeledDropDown(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
     }
-    void update() override;
+    void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override { return _dropdown; }
 };
 struct LabeledList : public LabeledField {
     gui::derived_ptr<gui::List> _list;
     bool _invert{false};
-    LabeledList(const std::string& name, const nlohmann::json& obj, bool invert = false);
+    LabeledList(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj, bool invert = false);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_list);
     }
-    void update() override;
+    void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override { return _list; }
 };
 
@@ -284,12 +300,12 @@ struct LabeledPath : public LabeledField {
     std::optional<file::Path> _folder;
     std::function<bool(file::Path)> _validity;
     
-    LabeledPath(std::string name, const std::string& desc, file::Path path);
+    LabeledPath(GUITaskQueue_t*, std::string name, const std::string& desc, file::Path path);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
     }
-    void update() override;
+    void update_ref_in_main_thread() override;
     std::vector<Dropdown::TextItem> updated_names(const std::set<file::Path>& paths);
     void change_folder(file::Path);
     Layout::Ptr representative() const override { return _dropdown; }
@@ -311,13 +327,13 @@ private:
     std::atomic<bool> _should_update{ false };
     
 public:
-    LabeledPathArray(const std::string& name, const LayoutContext*);
+    LabeledPathArray(GUITaskQueue_t*, const std::string& name, const LayoutContext*);
     ~LabeledPathArray();
 
     void updateStaticText(const std::vector<file::Path>&);
     void updateDropdownItems();
     void add_to(std::vector<Layout::Ptr>& v) override;
-    void update() override;
+    void update_ref_in_main_thread() override;
     
     virtual std::vector<Layout::Ptr> apply_set() const override {
         return {
@@ -333,13 +349,13 @@ public:
 struct LabeledCheckbox : public LabeledField {
     gui::derived_ptr<gui::Checkbox> _checkbox;
     bool _invert{false};
-    LabeledCheckbox(const std::string& name, const std::string& desc, const nlohmann::json&, bool invert = false);
+    LabeledCheckbox(GUITaskQueue_t*, const std::string& name, const std::string& desc, const nlohmann::json&, bool invert = false);
     ~LabeledCheckbox();
     void add_to(std::vector<Layout::Ptr>& v) override {
         //LabeledField::add_to(v);
         v.push_back(_checkbox);
     }
-    void update() override;
+    void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override { return _checkbox; }
     void set_description(std::string) override;
 };

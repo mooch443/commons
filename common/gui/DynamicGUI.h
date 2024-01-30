@@ -20,7 +20,7 @@
 namespace gui {
 namespace dyn {
 
-struct LabeledField;
+class LabeledField;
 struct Context;
 struct State;
 struct Action;
@@ -68,7 +68,8 @@ void remove(const std::string& name);
 Module* exists(const std::string& name);
 }
 
-Layout::Ptr parse_object(const nlohmann::json& obj,
+Layout::Ptr parse_object(GUITaskQueue_t*,
+                         const nlohmann::json& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
@@ -79,6 +80,7 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
 //! A simple struct that manages properties like the path to where the dyn gui is loaded from,
 //! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
 struct DynamicGUI {
+    GUITaskQueue_t* gui{nullptr};
     file::Path path;
     DrawStructure* graph{nullptr};
     Context context;
@@ -98,10 +100,10 @@ struct DynamicGUI {
 private:
     
     void reload();
-    static bool update_objects(DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
-    [[nodiscard]] static bool update_loops(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
-    [[nodiscard]] static bool update_lists(uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
-    static bool update_patterns(uint64_t hash, Layout::Ptr& o, const Context& context, State& state);
+    static bool update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
+    [[nodiscard]] static bool update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    [[nodiscard]] static bool update_lists(GUITaskQueue_t* gui, uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
+    static bool update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr& o, const Context& context, State& state);
 };
 
 void update_tooltips(DrawStructure&, State&);

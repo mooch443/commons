@@ -665,7 +665,7 @@ Path Path::absolute() const {
         return 0;
 #else
         try {
-            std::filesystem::copy(srce_file, dest_file);
+            std::filesystem::copy(srce_file, dest_file, std::filesystem::copy_options::overwrite_existing);
             
         } catch(const std::filesystem::filesystem_error& e) {
             FormatExcept("Caught an exception copying '",srce_file,"' to '",dest_file,"': ", e.what());

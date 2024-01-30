@@ -48,8 +48,8 @@ Image::Ptr load_image(const file::Path& path) {
 }
 
 // Initialize from a JSON object
-LayoutContext::LayoutContext(const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
- : obj(obj), state(state), context(context), _defaults(defaults)
+LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
+ : gui(gui), obj(obj), state(state), context(context), _defaults(defaults)
 {
     if(not obj.contains("type")) {
         //throw std::invalid_argument("Structure does not contain type information");
@@ -324,7 +324,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
-            auto ptr = parse_object(child, context, state, context.defaults);
+            auto ptr = parse_object(gui, child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -355,7 +355,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
-            auto ptr = parse_object(child, context, state, context.defaults);
+            auto ptr = parse_object(gui, child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -408,13 +408,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
                         IndexScopeHandler handler{state._current_index};
                         if(cell.is_object()) {
                             // only a single object
-                            auto ptr = parse_object(cell, context, state, context.defaults);
+                            auto ptr = parse_object(gui, cell, context, state, context.defaults);
                             if(ptr)
                                 objects.push_back(ptr);
                             
                         } else {
                             for(auto& obj : cell) {
-                                auto ptr = parse_object(obj, context, state, context.defaults);
+                                auto ptr = parse_object(gui, obj, context, state, context.defaults);
                                 if(ptr) {
                                     objects.push_back(ptr);
                                 }
@@ -449,7 +449,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
         //IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
             //print("collection: ", child.dump());
-            auto ptr = parse_object(child, context, state, context.defaults);
+            auto ptr = parse_object(gui, child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -482,7 +482,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     
     {
         {
-            auto ptr = LabeledField::Make(var, *this, invert);
+            auto ptr = LabeledField::Make(gui, var, *this, invert);
             if(not state._text_fields.contains(hash) or not state._text_fields.at(hash))
             {
                 state._text_fields.emplace(hash, std::move(ptr));
@@ -507,12 +507,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             auto combo = static_cast<LabeledCombobox*>(ref.get());
             if(combo) {
                 auto parm = combo->_combo->parameter();
-                ref->_ref = settings_map()[parm];
+                ref->replace_ref(parm);
             }
         }
         
-        cache._value = ref->_ref.valid()
-            ? ref->_ref.get().valueString()
+        auto r = ref->ref();
+        cache._value = r.valid()
+            ? r.get().valueString()
             : "null";
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
@@ -867,7 +868,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
         if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             IndexScopeHandler handler{state._current_index};
-            auto c = parse_object(child, context, state, context.defaults);
+            auto c = parse_object(gui, child, context, state, context.defaults);
             if(not c)
                 return nullptr;
             
@@ -875,7 +876,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
             
             Layout::Ptr _else;
             if(obj.count("else") && obj["else"].is_object()) {
-                _else = parse_object(obj["else"], context, state, context.defaults);
+                _else = parse_object(gui, obj["else"], context, state, context.defaults);
             }
             
             state.ifs[hash] = IfBody{

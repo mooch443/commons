@@ -59,6 +59,7 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
 
 class LayoutContext {
 public:
+    GUITaskQueue_t *gui{nullptr};
     const nlohmann::json& obj;
     State& state;
     const Context& context;
@@ -88,7 +89,7 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
+    LayoutContext(GUITaskQueue_t*, const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
     
     template <LayoutType::Class T>
     Layout::Ptr create_object() {
