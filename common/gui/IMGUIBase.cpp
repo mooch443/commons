@@ -970,8 +970,17 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     }
 
 void IMGUIBase::process_main_queue() {
+    std::unique_lock guard(_mutex);
     while(!_exec_main_queue.empty()) {
-        (_exec_main_queue.front())();
+        auto p = std::move(_exec_main_queue.front());
+        guard.unlock();
+        try {
+            p();
+        } catch(const std::exception& ex) {
+            FormatExcept("Exception in main queue: ", ex.what());
+            throw;
+        }
+        guard.lock();
         _exec_main_queue.pop();
     }
 }

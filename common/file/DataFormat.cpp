@@ -316,6 +316,10 @@ const char* DataFormat::read_data_fast(uint64_t num_bytes) {
 }
 
 const char* ReadonlyMemoryWrapper::read_data_fast(uint64_t num_bytes) {
+#ifndef NDEBUG
+    if(pos + num_bytes >= _capacity)
+        throw std::out_of_range("Reading across memory boundary.");
+#endif
     const uchar *ptr = _data + pos;
     seek(pos + num_bytes);
     return (const char*)ptr;

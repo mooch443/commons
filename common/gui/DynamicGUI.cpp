@@ -1087,7 +1087,7 @@ bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr
     return changed;
 }
 
-bool DynamicGUI::update_lists(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
+bool DynamicGUI::update_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
 {
     if(auto it = state.lists.find(hash); it != state.lists.end()) {
         ListContents &obj = it->second;
