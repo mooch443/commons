@@ -104,7 +104,7 @@ namespace curves {
                 y0 = y1;
             }
             
-            std::pair<long,bool> prev(0, false);
+            std::pair<float, bool> prev(0.f, false);
             if(!all.empty())
                 prev = all.front();
             if(prev.second) {

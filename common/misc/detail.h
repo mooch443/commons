@@ -499,22 +499,22 @@ enum class ImageMode {
 };
 
 template<typename Vec>
-inline uint8_t vec_to_r3g3b2(const Vec& bgr) {
+constexpr uint8_t vec_to_r3g3b2(const Vec& bgr) {
     return (uint8_t(bgr[0] / 64) << 6)
          | (uint8_t(bgr[1] / 32) << 3)
          | (uint8_t(bgr[2] / 32) << 0);
 }
 
 template<uint8_t channels = 3>
-inline auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
+constexpr auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
     if constexpr(channels == 3) {
-        return cv::Vec3b{
+        return std::array{
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
             static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32)
         };
     } else if constexpr(channels == 4) {
-        return cv::Vec4b{
+        return std::array{
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
             static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32),
@@ -523,42 +523,62 @@ inline auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
     }
 }
 
-template<uint8_t channels = 3>
-class ParallelConvertToR3G3B2 : public cv::ParallelLoopBody {
-private:
-    const cv::Mat& input;
-    cv::Mat& output;
-
-public:
-    ParallelConvertToR3G3B2(const cv::Mat& input, cv::Mat& output)
-        : input(input), output(output) {}
-
-    virtual void operator()(const cv::Range& range) const override {
-        static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
-
-        for (int y = range.start; y < range.end; y++) {
-            for (int x = 0; x < input.cols; x++) {
-                if constexpr(channels == 3)
-                    output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
-                else if(channels == 4)
-                    output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec4b>(y, x));
-            }
-        }
-    }
-};
-
 template<uint8_t channels>
 void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     if (output.rows != input.rows || output.cols != input.cols || output.type() != CV_8UC1) {
         output = cv::Mat::zeros(input.rows, input.cols, CV_8UC1);
     }
     assert(channels == input.channels());
-    
-    ParallelConvertToR3G3B2<channels> converter(input, output);
-    cv::parallel_for_(cv::Range(0, input.rows), converter);
+    static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
+
+    using input_t = std::array<uchar, channels>;
+    using output_t = uchar;
+
+    auto process_row = [&](const cv::Range& range) {
+        for (int y = range.start; y < range.end; y++) {
+            auto input_row = input.ptr<input_t>(y);
+            auto output_row = output.ptr<output_t>(y);
+            for (int x = 0; x < input.cols; ++x) {
+                //if constexpr(channels == 3)
+                output_row[x] = vec_to_r3g3b2(input_row[x]);
+                //output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
+            //else if(channels == 4)
+                //output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec4b>(y, x));
+            }
+        }
+    };
+
+    cv::parallel_for_(cv::Range(0, input.rows), process_row);
 }
 
 template<uint8_t channels = 3, uint8_t input_channels = 1>
+void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
+    using input_t = std::array<uchar, input_channels>;
+    using output_t = std::array<uchar, channels>;
+
+    if (output.rows != input.rows
+        || output.cols != input.cols
+        || output.type() != CV_8UC(channels)) {
+        output = cv::Mat(input.rows, input.cols, CV_8UC(channels));
+    }
+
+    auto process_row = [&](const cv::Range& range) {
+        for (int y = range.start; y < range.end; ++y) {
+            auto input_row = input.ptr<input_t>(y);
+            auto output_row = output.ptr<output_t>(y);
+            for (int x = 0; x < input.cols; ++x) {
+                if constexpr (input_channels == 2)
+                    output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0], input_row[x][1]);
+                else
+                    output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0]);
+            }
+        }
+    };
+
+    cv::parallel_for_(cv::Range(0, input.rows), process_row);
+}
+
+/*template<uint8_t channels = 3, uint8_t input_channels = 1>
 void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     using input_t = cv::Vec<uchar, input_channels>;
     using output_t = cv::Vec<uchar, channels>;
@@ -579,7 +599,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
                 output.at<output_t>(y, x) = r3g3b2_to_vec<channels>(i[0]);
         }
     }
-}
+}*/
     
     // set all mat values at given channel to given value
     inline void setAlpha(cv::Mat &mat, unsigned char value, cv::Scalar only_this = cv::Scalar(0, 0, 0, -1))

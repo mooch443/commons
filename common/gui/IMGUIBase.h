@@ -29,10 +29,14 @@ using default_impl_t = gui::GLImpl;
 #endif
 
 namespace gui {
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
     ENUM_CLASS(Effects, blur)
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
     class IMGUIBase : public Base {
     protected:
