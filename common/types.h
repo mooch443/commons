@@ -24,8 +24,8 @@
 #include <misc/checked_casts.h>
 #include <misc/EnumClass.h>
 #include <misc/format.h>
-#include <misc/vec2.h>
 #include <misc/detail.h>
+#include <misc/vec2.h>
 
 #ifdef _MSC_VER
 #include <intrin.h>

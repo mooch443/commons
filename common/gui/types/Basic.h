@@ -52,7 +52,7 @@ namespace gui {
         }
         
         Color clr() const {
-            return Color(ImColor(_color));
+            return Color(_color);
         }
         
         std::ostream &operator <<(std::ostream &os);

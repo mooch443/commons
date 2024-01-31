@@ -77,7 +77,7 @@ public:
 #define IMPL_ACCESS_ENUM(NAM, TUPLE) \
 template<> struct NAM :: AccessEnum<NAM :: Variables:: EVERY_PLAIN_GET_B_NO_COMMA TUPLE > { \
 	template<typename T, typename std::enable_if<std::is_convertible<T, EVERY_PLAIN_GET_A_NO_COMMA TUPLE >::value, std::nullptr_t>::type = nullptr> \
-	static void set(T v) { set_impl< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >(v, NAM :: impl(). EVERY_PLAIN_GET_B_NO_COMMA TUPLE, NAM :: impl(). STRUCT_CONCATENATE( mutex_ , EXPAND( EVERY_PLAIN_GET_B_NO_COMMA TUPLE )) ); } \
+	static void set(T&& v) { set_impl< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >(std::forward<T>(v), NAM :: impl(). EVERY_PLAIN_GET_B_NO_COMMA TUPLE, NAM :: impl(). STRUCT_CONCATENATE( mutex_ , EXPAND( EVERY_PLAIN_GET_B_NO_COMMA TUPLE )) ); } \
 	static auto get() { return get_impl< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >( NAM :: impl(). EVERY_PLAIN_GET_B_NO_COMMA TUPLE , NAM :: impl(). STRUCT_CONCATENATE( mutex_ , EXPAND( EVERY_PLAIN_GET_B_NO_COMMA TUPLE )) ); } \
 	static auto copy() { return copy_impl< EVERY_PLAIN_GET_A_NO_COMMA TUPLE >( NAM :: impl(). EVERY_PLAIN_GET_B_NO_COMMA TUPLE , NAM :: impl(). STRUCT_CONCATENATE( mutex_ , EXPAND( EVERY_PLAIN_GET_B_NO_COMMA TUPLE )) ); } \
 };
@@ -687,7 +687,7 @@ public: \
     static auto& get(Variables name) { return _getters[name](); } \
     template<Variables M> static auto get() { return AccessEnum<M>::get(); } \
     template<Variables M> static auto copy() { return AccessEnum<M>::copy(); } \
-    template<Variables M, typename T> static void set(T obj) { AccessEnum<M>::set(obj); } \
+    template<Variables M, typename T> static void set(T&& obj) { AccessEnum<M>::set(std::forward<T>(obj)); } \
 private: \
  \
     template<typename T, typename K> \
@@ -712,13 +712,13 @@ private: \
     } \
  \
     template<typename T, typename K> \
-    static inline void set_impl(T v, K& obj, StructMutex_t& mutex) { \
+    static inline void set_impl(T&& v, K& obj, StructMutex_t& mutex) { \
         if constexpr (std::is_same<std::atomic<T>, K>::value) { \
-            obj = v; \
+            obj = std::forward<T>(v); \
         } \
         else { \
             std::unique_lock guard(mutex); \
-            obj = v; \
+            obj = std::forward<T>(v); \
         } \
     } \
     inline static std::once_flag flag; \

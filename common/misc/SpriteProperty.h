@@ -31,7 +31,7 @@ namespace cmn {
             // Mutex to ensure thread safety for concurrent access.
             // NOTE: Currently, the mutex is defined but not used in any member functions.
             // Ensure you lock this mutex in member functions that modify the object's state if they can be called concurrently.
-            mutable std::mutex _property_mutex;
+            mutable std::shared_mutex _property_mutex;
 
             // The following are getters for specific flags.
             GETTER(bool, is_array); ///< Indicates if the property is of array type.
@@ -43,7 +43,7 @@ namespace cmn {
 
             // More lambda functions for enum type properties.
             GETTER(std::function<std::vector<std::string>()>, enum_values);///< Getter for the enum values.
-            GETTER(std::function<size_t()>, enum_index);///< Getter for the index of an enum value.
+            GETTER(std::function<uint32_t()>, enum_index);///< Getter for the index of an enum value.
             
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false);
@@ -67,7 +67,7 @@ namespace cmn {
                 _enum_values = []() -> std::vector<std::string> {
                     throw U_EXCEPTION("PropertyType::enum_values() not initialized.");
                 };
-                _enum_index = []() -> size_t {
+                _enum_index = []() -> uint32_t {
                     throw U_EXCEPTION("PropertyType::enum_index() not initialized");
                 };
             }
@@ -170,14 +170,14 @@ namespace cmn {
             }
 
             template<typename T>
-            const Property<T>& toProperty() const {
+            const Property<T>& toProperty(cmn::source_location loc = cmn::source_location::current()) const {
                 const Property<T> *tmp = dynamic_cast<const Property<T>*>(this);
                 if(not tmp)
-                    throw PropertyException("Cannot cast "+(std::string)type_name()+" to "+ (std::string)cmn::type_name<T>()+ " in " +toStr());
+                    throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
                 return *tmp;
             }
             
-            template<typename T>
+            /*template<typename T>
             operator Property<T>&() {
                 return toProperty<T>();
             }
@@ -190,29 +190,21 @@ namespace cmn {
             template<typename T>
             operator const T&() const {
                 return value<T>();
-            }
+            }*/
             
             template<typename T>
-            const T& value(cmn::source_location loc = cmn::source_location::current()) const {
-                const Property<T>& p = toProperty<T>();
-                if (p.valid())
-                    return p.value();
-                
-                throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
+            auto value(cmn::source_location loc = cmn::source_location::current()) const {
+                return toProperty<T>(loc).value();
             }
             
             /**
              * Converts the property to a specific type.
              * @return The property as the specified type.
              */
-            template<typename T>
-            operator typename std::remove_const<T>::type &() {
-                Property<T>& p = toProperty<T>();
-                if (p.valid())
-                    return p.value();
-
-                throw PropertyException("Cannot cast " + toStr() + " to reference type ("+ Meta::name<T>()+").");
-            }
+            /*template<typename T>
+            operator typename std::remove_const<T>::type () {
+                return toProperty<T>().value();
+            }*/
             
             /**
              * Retrieves the type name of the property.
@@ -264,7 +256,13 @@ namespace cmn {
         template<class ValueType>
         class Property : public PropertyType {
         protected:
-            std::optional<ValueType> _value;
+            static constexpr bool trivial = std::is_trivially_copyable_v<ValueType>;
+            using StoreType = std::conditional_t<
+                trivial,
+                std::atomic<std::optional<ValueType>>,
+                std::optional<ValueType>
+            >;
+            StoreType _value;
             
         public:
             Property() : PropertyType(Meta::name<ValueType>())
@@ -286,9 +284,17 @@ namespace cmn {
                 };
                 
                 _to_json = [this]() {
-                    if(not _value.has_value())
-                        throw PropertyException("No value stored in "+name()+".");
-                    return cvt2json(value());
+                    if constexpr(trivial) {
+                        auto v = _value.load();
+                        if(not v.has_value())
+                            throw PropertyException("No value stored in "+name()+".");
+                        return cvt2json(v.value());
+                    } else {
+                        std::shared_lock guard(_property_mutex);
+                        if(not _value.has_value())
+                            throw PropertyException("No value stored in "+name()+".");
+                        return cvt2json(_value.value());
+                    }
                 };
                 
                 _is_enum = cmn::is_enum<ValueType>::value;
@@ -302,7 +308,9 @@ namespace cmn {
                 auto options = ValueType::Data::str();
                 auto values = std::vector<std::string>(options.begin(), options.end());
                 _enum_values = [values]() { return values; };
-                _enum_index = [this]() -> size_t { return (size_t)this->value().value(); };
+                _enum_index = [this]() -> uint32_t {
+                    return (uint32_t)this->value();
+                };
             }
             
             template<typename T = ValueType>
@@ -312,20 +320,22 @@ namespace cmn {
             
             template<typename K>
             bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
-                return _value.has_value() && other == _value.value();
+                if constexpr(trivial) {
+                    auto v = _value.load();
+                    return v.has_value() && other == v.value();
+                } else {
+                    std::shared_lock guard(_property_mutex);
+                    return _value.has_value() && other == _value.value();
+                }
             }
             
             template<typename K>
             bool equals(const K& other, const typename std::enable_if< std::is_same<cv::Mat, K>::value, K >::type* = NULL) const {
+                std::shared_lock guard(_property_mutex);
                 if(not _value.has_value())
                     return false;
-                return cv::countNonZero(value() != other) == 0;
+                return cv::countNonZero(_value.value() != other) == 0;
             }
-            
-            /*template<typename K>
-            bool equals(const K& other, const typename std::enable_if< ! has_equals<K>::value, K >::type* = NULL) const {
-                return &other == &_value;
-            }*/
             
             bool operator==(const PropertyType& other) const override {
                 if(not valid() && not other.valid())
@@ -335,7 +345,13 @@ namespace cmn {
                     return false;
                 
 				const Property& other_ = (const Property<ValueType>&) other;
-                return other_.valid() && equals(other_.value());
+                return other_.if_value([this](const ValueType& value)
+                    -> bool
+                {
+                    return this->equals(value);
+                }, []() -> bool{
+                    return false;
+                });
             }
             
             void operator=(const Reference& other);
@@ -347,13 +363,57 @@ namespace cmn {
             void value(const ValueType& v);
             
             bool valid() const override {
-                return _value.has_value();
+                if constexpr(trivial)
+                    return _value.load().has_value();
+                else {
+                    std::shared_lock guard(_property_mutex);
+                    return _value.has_value();
+                }
             }
             
-            operator const ValueType() const { return value(); }
-            const ValueType& value() const { return _value.value(); }
-            ValueType& value() { return _value.value(); }
-            std::string valueString() const override { return Meta::toStr<ValueType>(value()); }
+            template<typename If_t,
+                     typename Else_t,
+                     typename R = ::cmn::detail::return_type<If_t>::type>
+                requires requires(If_t _if, Else_t _e, ValueType t) {
+                    { _if(t) } -> std::same_as<R>;
+                    { _e() } -> std::same_as<R>;
+                }
+            R if_value(If_t&& If, Else_t&& Else) const {
+                if constexpr(trivial) {
+                    auto v = _value.load();
+                    if(v.has_value())
+                        return If(v.value());
+                    else
+                        return Else();
+                    
+                } else {
+                    std::shared_lock guard(_property_mutex);
+                    if(_value.has_value()) {
+                        return If(_value.value());
+                    } else {
+                        return Else();
+                    }
+                }
+            }
+            
+            //operator const ValueType() const { return value(); }
+            
+            ValueType value() const {
+                if constexpr(trivial) {
+                    return _value.load().value();
+                } else {
+                    std::shared_lock guard(_property_mutex);
+                    //if constexpr(std::is_trivially_copyable_v<ValueType>)
+                    return _value.value();
+                    //else
+                    //    return
+                    //TransparentLock<ValueType>(_value.value(), std::move(guard));
+                }
+            }
+            //ValueType& value() { return _value.value(); }
+            std::string valueString() const override {
+                return Meta::toStr<ValueType>(value());
+            }
             
             std::string toStr() const {
                 if(!valid())
@@ -379,17 +439,15 @@ namespace cmn {
     namespace sprite {
         template<typename T>
         void Property<T>::operator=(const Reference& other) {
-            std::unique_lock guard(_property_mutex);
             const Property& _other = other.toProperty<T>();
             if (_other)
-                *this = _other;
+                *this = _other.value();
             else
                 throw PropertyException("Cannot assign " + other.toStr() + " to " + this->toStr());
         }
         
         template<typename T>
         void Property<T>::operator=(const PropertyType& other) {
-            std::unique_lock guard(_property_mutex);
             const Property& _other = other.operator const cmn::sprite::Property<T>&();
             if(_other.valid()) {
                 *this = _other.value();

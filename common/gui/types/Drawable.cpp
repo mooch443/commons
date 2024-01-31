@@ -180,6 +180,9 @@ namespace gui {
     }
     
     Drawable::~Drawable() {
+        if(parent() && parent()->stage())
+            parent()->stage()->erase(this);
+        
         for(auto &handle : _delete_handlers) {
             (*handle)();
         }
@@ -746,7 +749,9 @@ bool SectionInterface::is_animating() noexcept {
             auto old = _parent;
             _parent = parent;
             
-            if(old->stage() && (!parent || !parent->stage() || parent->stage() != old->stage()))
+            if(old->stage() 
+               && (!parent || !parent->stage()
+                   || parent->stage() != old->stage()))
                 old->stage()->erase(this);
             old->remove_child(this);
             
@@ -944,6 +949,10 @@ void SectionInterface::set_z_index(int index) {
             delete _background;
             _background = nullptr;
         }
+        
+        if(_stage)
+            _stage->erase(this);
+        clear_cache();
     }
     
     void SectionInterface::update_bounds() {

@@ -1,6 +1,9 @@
 #include <commons.pc.h>
 
 namespace cmn {
+    template struct Vector2D<Float2_t, true>;
+    template struct Vector2D<Float2_t, false>;
+
     void Bounds::restrict_to(const Bounds& bounds) {
         if(x < bounds.x) {
             width = width - (bounds.x - x);

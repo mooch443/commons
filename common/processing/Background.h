@@ -57,7 +57,8 @@ namespace cmn {
     public:
         static bool track_absolute_difference();
         static bool track_background_subtraction();
-        static ImageMode meta_encoding();
+        static meta_encoding_t::data::values meta_encoding();
+        static ImageMode image_mode();
         
     protected:
         Image::Ptr _image;
@@ -140,7 +141,7 @@ namespace cmn {
 
     auto call_image_mode_function(auto&& fn) {
         auto determine_colors = [&]<DifferenceMethod method>() {
-            auto encoding = Background::meta_encoding();
+            auto encoding = Background::image_mode();
             if(encoding == ImageMode::R3G3B2)
                 return fn.template operator()<method, ImageMode::R3G3B2>();
             else if(encoding == ImageMode::GRAY)

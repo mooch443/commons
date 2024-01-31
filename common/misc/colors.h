@@ -33,6 +33,13 @@ public:
           a(alpha)
     {}
     
+    constexpr Color(uint32_t rgba) 
+        : Color((uint8_t)(rgba >> IM_COL32_R_SHIFT), 
+                (uint8_t)(rgba >> IM_COL32_G_SHIFT), 
+                (uint8_t)(rgba >> IM_COL32_B_SHIFT), 
+                (uint8_t)(rgba >> IM_COL32_A_SHIFT))
+    {}
+
     operator cv::Scalar() const {
         return cv::Scalar(r, g, b, a);
     }

@@ -110,7 +110,7 @@ namespace gui {
         std::mutex _end_object_mutex;
         
         std::deque<Section*> _sections;
-        std::deque<Dialog*> _dialogs;
+        std::deque<std::unique_ptr<Dialog>> _dialogs;
         
         LOGGED_MUTEX_VAR_TYPE(std::recursive_mutex, _lock, "DrawStructure::lock");
         std::set<Codes> pressed_keys;

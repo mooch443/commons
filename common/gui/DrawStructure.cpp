@@ -39,7 +39,7 @@ namespace gui {
     static auto error_message_lock = new std::recursive_mutex;
 
     //! Saves recent error messages for display
-    static std::vector<ErrorMessage> error_messages;
+    static auto error_messages = new std::vector<ErrorMessage>;
 
     //! the errorlog debug callback to be released
     static void* debug_callback = nullptr;
@@ -79,9 +79,9 @@ namespace gui {
                     break;
             }
             
-            if(error_messages.size()+1 >= 10)
-                error_messages.erase(error_messages.begin());
-            error_messages.push_back(obj);
+            if(error_messages->size()+1 >= 10)
+                error_messages->erase(error_messages->begin());
+            error_messages->push_back(obj);
         });
     }
 
@@ -101,8 +101,8 @@ namespace gui {
             std::lock_guard lock(*error_message_lock);
             
             Vec2 pos = screen.pos() + Vec2(screen.width - 10, 0);
-            for (size_t i=min(size_t(20), error_messages.size()); i>0; i--) {
-                auto &e = error_messages.at(i-1);
+            for (size_t i=min(size_t(20), error_messages->size()); i>0; i--) {
+                auto &e = error_messages->at(i-1);
                 
                 const size_t max_chars = 150;
                 if(e.msg.length() > max_chars) {
@@ -134,7 +134,7 @@ namespace gui {
                 e.update();
                 
                 if(e.alpha <= 0)
-                    error_messages.erase(error_messages.begin() + int64_t(i - 1));
+                    error_messages->erase(error_messages->begin() + int64_t(i - 1));
             }
         }
     }
@@ -148,8 +148,11 @@ void Dialog::set_closed() {
     _closed = true;
     if(parent()) {
         parent()->set_dirty();
-        if(parent()->stage())
+        if(parent()->stage()) {
+            parent()->stage()->hovered_object() = nullptr;
+            parent()->stage()->selected_object() = nullptr;
             parent()->stage()->set_dirty(nullptr);
+        }
     }
 }
     
@@ -185,10 +188,7 @@ void Dialog::set_closed() {
 
         _title_bg.set_bounds(Bounds(Vec2(5, 10), Size2(max(600, _layout.width() + 20), 60)));
         _layout.set_pos(_title_bg.pos() + Vec2(0, _title_bg.height()));
-        _layout.update();
-        
         _text->set_max_size(Size2(_title_bg.width() - 50, 0));
-        update_sizes(d);
         
         std::vector<Layout::Ptr> buttons;
         if(_okay)
@@ -218,7 +218,6 @@ void Dialog::set_closed() {
         }
         
         set_clickable(true);
-        d.select(this);
         add_event_handler(EventType::KEY, [this](Event e){
             if(e.key.pressed) {
                 if(e.key.code == Codes::Return) {
@@ -295,10 +294,16 @@ void Dialog::set_closed() {
         set(FillClr{50,50,50,200});
         set_origin(Vec2(0.5));
         set_pos(size * 0.5);
+        
+        _layout.update();
+        _layout.auto_size();
+        if(_buttons)
+            _buttons->auto_size();
         auto_size({5,10});
     }
     
     Dialog::~Dialog() {
+        set_closed();
         /*delete _okay;
         if(_abort)
             delete _abort;
@@ -311,6 +316,7 @@ void Dialog::set_closed() {
         
         if(parent && parent->stage()) {
             parent->stage()->select(this);
+            update_sizes(*parent->stage());
         }
     }
     
@@ -328,6 +334,8 @@ void Dialog::set_closed() {
         advance_wrap(_layout);
         end();
         
+        update_sizes(_graph);
+        
         _layout.set_origin(Vec2(0.5f, 0));
         _layout.set_pos(Vec2(0.5f * width(), _layout.pos().y));
         _title.set_pos(_title_bg.size() * 0.5f + Vec2(0, _title_bg.height() * 0.2f));
@@ -340,7 +348,6 @@ void Dialog::set_closed() {
                 //d.wrap_object(*_okay);
         //if(_abort)
         //    d.wrap_object(*_abort);
-        update_sizes(_graph);
     }
     
     DrawStructure::~DrawStructure() {
@@ -350,15 +357,8 @@ void Dialog::set_closed() {
         _root.set_stage(NULL);
         clear();
     }
-    
+
     void DrawStructure::update_dialogs() {
-        if(!_dialogs.empty() && _dialogs.front()->is_closed()) {
-            delete _dialogs.front();
-            _dialogs.pop_front();
-            
-            set_dirty(nullptr);
-        }
-        
         if(!_dialogs.empty()) {
             Size2 size = Size2(width(), height());
             if(!dialog_window_size().empty())
@@ -368,6 +368,11 @@ void Dialog::set_closed() {
             rect->set_clickable(true);
             rect = add_object(rect);
             wrap_object(*_dialogs.front());
+        }
+        
+        if(!_dialogs.empty() && _dialogs.front()->is_closed()) {
+            _dialogs.pop_front();
+            set_dirty(nullptr);
         }
     }
 
@@ -385,7 +390,7 @@ void DrawStructure::close_dialogs() {
         auto guard = GUI_LOCK(_lock);
         auto d = new Dialog(*this, std::move(callback), text, title, okay, abort, second, third, fourth);
         d->set_scale(scale().reciprocal());
-        _dialogs.push_back(d);
+        _dialogs.emplace_back(d);
         set_dirty(nullptr);
         return d;
     }
@@ -538,11 +543,13 @@ void DrawStructure::close_dialogs() {
     }
     
     void DrawStructure::erase(gui::Drawable *d) {
-        if(_selected_object && (_selected_object == d || _selected_object->is_child_of(d)))
-            select(NULL);
+        if(_selected_object 
+           && (_selected_object == d || _selected_object->is_child_of(d)))
+            _selected_object = nullptr;
         
-        if(_hovered_object && (_hovered_object == d || _hovered_object->is_child_of(d)))
-            do_hover(NULL);
+        if(_hovered_object 
+           && (_hovered_object == d || _hovered_object->is_child_of(d)))
+            _hovered_object = nullptr;
     }
     
     void DrawStructure::finalize_section(const std::string& name) {
@@ -708,6 +715,7 @@ void DrawStructure::close_dialogs() {
         if(d == _selected_object)
             return;
         
+        assert(not d || d->is_child_of(&_root));
         Drawable * parent = NULL;
         Drawable * previous = _selected_object;
         _selected_object = d;

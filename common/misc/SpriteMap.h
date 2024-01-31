@@ -56,7 +56,7 @@ concept HasNotEqualOperator = requires(T a, T b) {
         operator const T() const;
         
         template<typename T>
-        const T& value() const {
+        auto value() const {
             return toProperty<T>().value();
         }
         
@@ -113,7 +113,7 @@ concept HasNotEqualOperator = requires(T a, T b) {
         operator const T();
         
         template<typename T>
-        const T& value() const {
+        T value() const {
             return toProperty<T>().value();
         }
 
@@ -444,7 +444,7 @@ concept Iterable = requires(T obj) {
                     ptr->set_do_print(true);
                     if constexpr(ParserAvailable<T>)
                     {
-                        print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", property_->value());
+                        print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
                     } else
                         print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
                 }
@@ -582,25 +582,44 @@ void Reference::operator=(const T& value) {
     template<typename T>
     void Property<T>::value(const T& v) {
         if constexpr(HasNotEqualOperator<T>) {
-            if(std::unique_lock guard(_property_mutex);
-               not _value.has_value() || v != _value)
-            {
-                _value = v;
-
-                guard.unlock();
-                
-                if(_do_print) {
-                    if constexpr(ParserAvailable<T>)
-                    {
-                        print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", value());
-                    } else {
-                        print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
-                    }
-                }
-                //if(_do_print)
-                //    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
+            if constexpr(trivial) {
+                if(not valid() || value() != v)
+                {
+                    _value = v;
                     
-                triggerCallbacks();
+                    if(_do_print) {
+                        if constexpr(ParserAvailable<T>)
+                        {
+                            print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+                        } else {
+                            print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
+                        }
+                    }
+                    
+                    triggerCallbacks();
+                }
+                
+            } else {
+                if(std::unique_lock guard(_property_mutex);
+                   not _value.has_value() || v != _value)
+                {
+                    _value = v;
+                    
+                    guard.unlock();
+                    
+                    if(_do_print) {
+                        if constexpr(ParserAvailable<T>)
+                        {
+                            print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+                        } else {
+                            print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
+                        }
+                    }
+                    //if(_do_print)
+                    //    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
+                    
+                    triggerCallbacks();
+                }
             }
             return;
             
@@ -614,19 +633,26 @@ void Reference::operator=(const T& value) {
         }
     }
 
-
-
     template<typename T>
     void Property<T>::copy_to(Map* other) const {
         if(other->is_type<T>(std::string_view{_name})) {
-            std::unique_lock guard(_property_mutex);
-            (*other)[_name] = value();
+            if constexpr(trivial)
+                (*other)[_name] = _value.load().value();
+            else {
+                std::shared_lock guard(_property_mutex);
+                (*other)[_name] = _value.value();
+            }
             return;
+            
         } else if(other->has(_name))
             other->erase(_name);
 
-        std::unique_lock guard(_property_mutex);
-        other->insert(_name, value());
+        if constexpr(trivial) {
+            other->insert(_name, _value.load().value());
+        } else {
+            std::shared_lock guard(_property_mutex);
+            other->insert(_name, _value.value());
+        }
     }
 }
 }

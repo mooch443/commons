@@ -86,16 +86,24 @@ namespace gui {
         _current_children.clear();
         _new_children.clear();
         
+        if(stage() && stage()->selected_object()
+           && (stage()->selected_object() == this || stage()->selected_object()->is_child_of(this)))
+        {
+            stage()->selected_object() = nullptr;
+        }
+        
+        if(stage() && stage()->hovered_object()
+           && (stage()->hovered_object() == this || stage()->hovered_object()->is_child_of(this)))
+        {
+            stage()->hovered_object() = nullptr;
+        }
+        
+        set_stage(nullptr);
+        
         for(size_t i=0; i<children.size(); i++) {
             if(children[i]) {
-                if (stage() && stage()->selected_object() == children[i])
-                    stage()->select(NULL);
-                if (stage() && stage()->hovered_object() == children[i])
-                    stage()->clear_hover();
-            
                 children[i]->set_parent(NULL);
             }
-            //deinit_child(false, children[i]);
         }
     }
     
@@ -384,6 +392,9 @@ bool Entangled::is_animating() noexcept {
         if(p != _parent) {
             if(p)
                 set_content_changed(true);
+            
+            if(not p)
+                set_stage(nullptr);
             SectionInterface::set_parent(p);
         }
     }
@@ -406,6 +417,21 @@ bool Entangled::is_animating() noexcept {
         
         //if(_begun)
         //    FormatWarning("Deleting child while updating parent.");
+        
+        if(stage()) {
+            if(stage()->selected_object() == d
+               || (stage()->selected_object()
+                   && stage()->selected_object()->is_child_of(d)))
+            {
+                stage()->selected_object() = nullptr;
+            }
+            if(stage()->hovered_object()  == d
+               || (stage()->hovered_object()
+                   && stage()->hovered_object()->is_child_of(d)))
+            {
+                stage()->hovered_object() = nullptr;
+            }
+        }
         
         auto oit = _owned.find(d);
         if(oit != _owned.end()) {

@@ -12,7 +12,10 @@ namespace cmn {
     bool Background::track_background_subtraction() {
         return cmn::track_background_subtraction;
     }
-    ImageMode Background::meta_encoding() {
+    meta_encoding_t::data::values Background::meta_encoding() {
+        return cmn::meta_encoding;
+    }
+    ImageMode Background::image_mode() {
         return cmn::meta_encoding == meta_encoding_t::gray
             ? ImageMode::GRAY
             : ImageMode::R3G3B2;

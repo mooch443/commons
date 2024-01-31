@@ -63,10 +63,11 @@ namespace grid {
         GETTER(Size2, resolution);
         GETTER(uint, n);
         GETTER(uint, N);
-        ska::bytell_hash_map<T, UnorderedVectorSet<uint>> _value_where;
+        size_t _elements{0u};
+        //std::unordered_map<T, UnorderedVectorSet<uint>> _value_where;
         
     public:
-        const decltype(_value_where)& value_where() const { return _value_where; }
+        //const decltype(_value_where)& value_where() const { return _value_where; }
         
         Grid2D() noexcept
             : _scale(1.0f, 1.0f),
@@ -105,7 +106,8 @@ namespace grid {
 
            grid.clear();
            grid.resize(_N);
-           _value_where.clear();
+            _elements = 0;
+           //_value_where.clear();
        }
         
         virtual ~Grid2D() {}
@@ -125,28 +127,34 @@ namespace grid {
         }
         
         template<typename S = Set_t>
-        void insert(float x, float y, T v, typename std::enable_if<is_set<S>::value, void>::type* = nullptr) {
+            requires (is_set<S>::value)
+        void insert(float x, float y, T v) {
             const auto i = idx(x, y);
             assert(i < grid.size());
             grid[i].emplace(x, y, v);
-            _value_where[v].insert(i);
+            ++_elements;
+            //_value_where[v].insert(i);
         }
         
         template<typename S = Set_t>
-        void insert(float x, float y, T v, typename std::enable_if<is_container<S>::value, void>::type* = nullptr) {
+            requires (is_container<S>::value)
+        void insert(float x, float y, T v) {
             const auto i = idx(x, y);
             assert(size_t(i) < grid.size());
             grid[i].emplace_back(x, y, v);
-            _value_where[v].insert(i);
+            ++_elements;
+            //_value_where[v].insert(i);
         }
         
         template<typename S = Set_t>
-        typename Set_t::const_iterator find(const typename decltype(grid)::const_iterator& cell, pixel<T> p, typename std::enable_if<is_set<S>::value, void>::type* = nullptr) const {
+            requires (is_set<S>::value)
+        typename Set_t::const_iterator find(const typename decltype(grid)::const_iterator& cell, pixel<T> p) const {
             return cell->find(p);
         }
         
         template<typename S = Set_t>
-        typename Set_t::const_iterator find(const typename decltype(grid)::const_iterator& cell, pixel<T> p, typename std::enable_if<is_container<S>::value, void>::type* = nullptr) const {
+            requires (is_container<S>::value)
+        typename Set_t::const_iterator find(const typename decltype(grid)::const_iterator& cell, pixel<T> p) const {
             return std::find(cell->begin(), cell->end(), p);
         }
         
@@ -214,35 +222,67 @@ namespace grid {
         }
         
         bool empty() const noexcept {
-            return _value_where.empty();
+           // assert((_elements == 0) == _value_where.empty());
+            return _elements == 0;
+            //return _value_where.empty();
         }
         
         void clear() {
             for(auto &g : grid)
                 g.clear();
-            _value_where.clear();
+            //_value_where.clear();
+            _elements = 0;
         }
         
         void erase(T v) {
-            if(_value_where.empty())
+            if(empty())
                 return;
             
+            /*size_t elements_removed = 0;
+            size_t elements_iterated = 0;
             auto it = _value_where.find(v);
-            if(_value_where.end() == it)
-                return;
-            
-            for(auto i : it->second) {
-                auto &g = grid[i];
-                auto kit = g.begin();
-                for(; kit != g.end(); ) {
-                    if(*kit == v) {
-                        kit = g.erase(kit);
-                    } else
-                        ++kit;
+            if(_value_where.end() != it) {
+                for(auto i : it->second) {
+                    auto &g = grid[i];
+                    auto kit = g.begin();
+                    for(; kit != g.end(); ) {
+                        elements_iterated++;
+                        if(*kit == v) {
+                            ++elements_removed;
+                            //kit = g.erase(kit);
+                            ++kit;
+                        } else
+                            ++kit;
+                    }
                 }
+                
+                _value_where.erase(it);
             }
             
-            _value_where.erase(it);
+            size_t _elements_removed = 0;
+            size_t _elements_iterated = 0;*/
+            for(auto &set : grid) {
+                for(auto it = set.begin(); it != set.end();) {
+                    //++_elements_iterated;
+                    if(*it == v) {
+                        //++_elements_removed;
+                        it = set.erase(it);
+                        assert(_elements >= 1);
+                        --_elements;
+                    } else
+                        ++it;
+                }
+                /*auto it = std::find(set.begin(), set.end(), v);
+                if(it != set.end()) {
+                    set.erase(it);
+                    assert(_elements >= 1);
+                    --_elements;
+                }*/
+            }
+            
+           // print(" removed = ", elements_removed, "  iterated = ", elements_iterated);
+            //print("*removed = ", _elements_removed, " *iterated = ", _elements_iterated);
+            //assert(_elements_removed == elements_removed);
         }
         
         T find(auto v) {
