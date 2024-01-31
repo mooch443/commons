@@ -1190,6 +1190,7 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
                         obj.state = std::make_unique<State>(state);
                     }*/
                     Context tmp = context;
+                    size_t i = 0;
                     for(auto &v : vector) {
                         auto previous = state._variable_values;
                         tmp.variables["i"] = v;
@@ -1199,6 +1200,10 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
                         }
                         ptrs.push_back(ptr);
                         state._variable_values = std::move(previous);
+                        ++i;
+                        if (i >= 500) {
+							break;
+						}
                     }
                     
                     o.to<Layout>()->set_children(ptrs);
@@ -1206,7 +1211,7 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
                     
                 } else {
                     Context tmp = context;
-                    for(size_t i=0; i<obj.cache.size(); ++i) {
+                    for(size_t i=0; i<obj.cache.size() && i < 500; ++i) {
                         auto previous = state._variable_values;
                         tmp.variables["i"] = obj.cache[i];
                         auto& p = o.to<Layout>()->objects().at(i);

@@ -7,6 +7,7 @@
 #include <misc/checked_casts.h>
 #include <misc/Image.h>
 #include <video/AveragingAccumulator.h>
+#include <misc/ranges.h>
 
 using namespace cmn;
 
@@ -815,10 +816,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     auto [start, end] = [this]() -> std::tuple<Frame_t, Frame_t>{
         if(GlobalSettings::has("video_conversion_range")) {
-            auto video_conversion_range = SETTING(video_conversion_range).value<std::pair<long_t, long_t>>();
+            auto video_conversion_range = SETTING(video_conversion_range).value<Range<long_t>>();
             return {
-                video_conversion_range.first > -1 ? min(Frame_t(video_conversion_range.first), length()) : 0_f,
-                video_conversion_range.second > -1 ? min(Frame_t(video_conversion_range.second), length()) : length()
+                video_conversion_range.start > -1 ? min(Frame_t(video_conversion_range.start), length()) : 0_f,
+                video_conversion_range.end > -1 ? min(Frame_t(video_conversion_range.end), length()) : length()
             };
         }
         return {0_f, length()};

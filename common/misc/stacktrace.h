@@ -133,7 +133,7 @@ static inline void print_stacktrace(FILE *out = stderr, unsigned int max_frames 
     for (unsigned int i = 0; i < frames; i++)
     {
         SymFromAddr(process, (DWORD64)(callers_stack[i]), 0, symbol);
-        fprintf(out, "*** %u: %X %s - 0x%X\n", i, callers_stack[i], symbol->Name, symbol->Address);
+        fprintf(out, "*** %u: %p %s - 0x%p\n", i, callers_stack[i], symbol->Name, (void*)symbol->Address);
     }
 
     free(symbol);

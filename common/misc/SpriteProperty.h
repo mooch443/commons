@@ -256,7 +256,11 @@ namespace cmn {
         template<class ValueType>
         class Property : public PropertyType {
         protected:
-            static constexpr bool trivial = std::is_trivially_copyable_v<ValueType>;
+            static constexpr bool trivial = std::is_trivially_copyable_v<ValueType> 
+                && std::is_move_constructible_v<ValueType>
+                && std::is_move_assignable_v<ValueType>
+                && std::is_copy_constructible_v<ValueType>
+                && std::is_copy_assignable_v<ValueType>;
             using StoreType = std::conditional_t<
                 trivial,
                 std::atomic<std::optional<ValueType>>,
