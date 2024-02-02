@@ -139,6 +139,11 @@ if(COMMONS_BUILD_HTTPD)
     add_dependencies(commons Commons::HTTPD)
 endif()
 
+
+if(COMPILER_ID MATCHES "GNU")
+    target_link_libraries(commons PUBLIC atomic)
+endif()
+
 add_dependencies(commons Commons::OpenCV)
 
 set(RESOURCE_COPY_FILES
