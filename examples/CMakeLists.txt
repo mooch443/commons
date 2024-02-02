@@ -6,7 +6,7 @@ add_executable(
 )
 
 target_include_directories(test_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-target_link_libraries(test_gui commons )
+target_link_libraries(test_gui commons)
 
 if(COMMONS_FOR_JS)
     set_target_properties(test_gui PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --preload-file fonts -s ALLOW_MEMORY_GROWTH=1") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
