@@ -26,6 +26,7 @@ endif()
 option(COMMONS_BUILD_GLFW ON)
 option(COMMONS_BUILD_PNG ON)
 option(COMMONS_BUILD_ZIP ON)
+option(COMMONS_BUILD_EXAMPLES ON)
 option(COMMONS_FOR_JS OFF)
 option(COMMONS_BUILD_ZLIB ON)
 option(COMMONS_BUILD_OPENCV ON)
@@ -1566,7 +1567,9 @@ endif()
 
 
 add_subdirectory(common)
-add_subdirectory(examples)
+if(COMMONS_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 
 if(POLICY CMP0114)
   cmake_policy(POP)
