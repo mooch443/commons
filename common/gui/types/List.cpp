@@ -140,7 +140,6 @@ namespace gui {
         for(size_t i=0; i<_items.size(); i++) {
             auto &item = _items.at(i);
             auto w = Base::default_text_bounds(std::string(*item), this, font).width;
-            print((std::string)*item, " => ", w);
             if(w > max_w)
                 max_w = w;
         }

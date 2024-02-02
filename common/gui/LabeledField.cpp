@@ -44,7 +44,6 @@ LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
     _text->set_color(White);
     
     if(_ref.valid()) {
-        print("Registering callback for ", name);
         _callback_id = settings_map().register_callbacks({name}, [this](auto){
             trigger_ref_update();
         });
