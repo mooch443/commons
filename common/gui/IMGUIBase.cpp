@@ -451,11 +451,62 @@ void IMGUIBase::set_window_size(Size2 size) {
     ::gui::set_window_size(_platform->window_handle(), size);
 }
 
+GLFWmonitor* get_monitor_for(GLFWwindow* window) {
+    int x, y;
+    glfwGetWindowPos(window, &x, &y);
+    auto ws = get_window_size(window, 1);
+    
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+    if(not monitor) {
+        int count;
+        auto monitors = glfwGetMonitors(&count);
+        int mx, my, mw, mh;
+#if !defined(__EMSCRIPTEN__)
+        for (int i=0; i<count; ++i) {
+            if(not monitors[i])
+                continue;
+            
+            glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
+#ifndef NDEBUG
+            auto name = glfwGetMonitorName(monitors[i]);
+            print("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
+#endif
+            if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, ws.width-10, ws.height-10))) {
+                monitor = monitors[i];
+                break;
+            }
+        }
+        
+        if(not monitor) {
+            // assume fullscreen?
+            print("No monitor found.");
+        }
+#endif
+    }
+    
+    return monitor;
+}
+
 void IMGUIBase::set_window_bounds(Bounds bounds) {
     auto size = bounds.size();
     auto pos = bounds.pos();
+    auto monitor = get_monitor_for(_platform->window_handle());
+    if(monitor) {
+        int mx, my, mw, mh;
+        glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+        if(my % 500 < 100 && my % 500 > -100)
+            my -= my % 500;
+        
+        pos += Vec2(mx, my);
+    }
 	glfwSetWindowPos(_platform->window_handle(), pos.x, pos.y);
+    
+    if(size.width <= 160)
+        size.width = 160;
+    if(size.height <= 160)
+        size.height = 160;
 	this->set_window_size(size);
+    this->update_size_scale(_platform->window_handle());
 }
 
 Bounds IMGUIBase::get_window_bounds() const {
@@ -484,54 +535,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     
     int x, y;
     glfwGetWindowPos(window, &x, &y);
-    auto ws = get_window_size(window, 1);
     
-    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
-    if(!monitor) {
-        int count;
-        auto monitors = glfwGetMonitors(&count);
-        int mx, my, mw, mh;
-#ifndef NDEBUG
-        //print("Window is at ",x,", ",y," (",mw,"x",mh,").");
-#endif
-        
-#if !defined(__EMSCRIPTEN__)
-        for (int i=0; i<count; ++i) {
-            glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
-#ifndef NDEBUG
-            auto name = glfwGetMonitorName(monitors[i]);
-            print("Monitor '",name,"': ",mx,",",my," ",mw,"x",mh);
-#endif
-            if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, ws.width-10, ws.height-10))) {
-                monitor = monitors[i];
-                break;
-            }
-        }
-        
-        if(!monitor) {
-            // assume fullscreen?
-            print("No monitor found.");
-            return;
-        }
-#else
-
-        // Then call
-        //int width = canvas_get_width();
-        //int height = canvas_get_height();
-        //print("Canvas size: ", width, " ", height);
-#endif
-        
-    } else {
-#if !defined(__EMSCRIPTEN__)
-        int mx, my, mw, mh;
-        glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
-#ifndef NDEBUG
-        print("FS Monitor: ",mx,",",my," ",mw,"x",mh);
-#endif
-#endif
-        //width = canvas_get_width();
-        //height = canvas_get_height();
-    }
+    GLFWmonitor* monitor = get_monitor_for(window);
+    if(not monitor)
+        return; // we cannot continue off screen
+    
+    int mx, my, mw, mh;
+    glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+    base->_work_area = Bounds(mx, my, mw, mh);
     
     float xscale, yscale;
 #if GLFW_HAVE_MONITOR_SCALE
@@ -541,7 +552,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
 
 //#ifndef NDEBUG
-    //print("Content scale: ", xscale,", ",yscale);
+    print("Content scale: ", xscale,"x",yscale, " monitor = ", mx, ",", my, " ", mw, "x", mh);
 //#endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));

@@ -27,6 +27,34 @@ private:
     mutable std::mutex _mutex; // Mutex to ensure thread-safety
     
 public:
+    
+    CallbackManagerImpl() = default;
+    CallbackManagerImpl(CallbackManagerImpl&& other)
+    {
+        std::scoped_lock guard(other._mutex);
+        _nextID = std::move(other._nextID);
+        _callbacks = std::move(other._callbacks);
+    }
+    CallbackManagerImpl(const CallbackManagerImpl& other)
+    {
+        std::scoped_lock guard(other._mutex);
+        _nextID = other._nextID;
+        _callbacks = other._callbacks;
+    }
+    
+    CallbackManagerImpl& operator=(CallbackManagerImpl&& other) {
+        std::scoped_lock guard(_mutex, other._mutex);
+        _nextID = std::move(other._nextID);
+        _callbacks = std::move(other._callbacks);
+        return *this;
+    }
+    CallbackManagerImpl& operator=(const CallbackManagerImpl& other) {
+        std::scoped_lock guard(_mutex, other._mutex);
+        _nextID = other._nextID;
+        _callbacks = other._callbacks;
+        return *this;
+    }
+    
     // Register a new callback and return its unique ID
     std::size_t registerCallback(const Fn_t& callback) {
         std::unique_lock lock(_mutex); // Lock the mutex

@@ -253,7 +253,11 @@ Path Path::absolute() const {
 
         // Handle the case where lhs or rhs is empty
         if (lv.empty()) {
+#if !defined(WIN32)
+            return Path(std::string(1, OS_SEP) + std::string(rv));
+#else
             return Path(std::string(rv));
+#endif
         }
         if (rv.empty()) {
             return Path(std::string(lv));

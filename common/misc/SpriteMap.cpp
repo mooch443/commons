@@ -19,14 +19,29 @@ Map::Map(const Map& other) {
 
 Map::Map(Map&& other) 
     : _props(std::move(other._props)),
-      _print_by_default(std::move(other._print_by_default))
+    _id_counter(other._id_counter.load()),
+    _shutdown_callbacks(std::move(other._shutdown_callbacks)),
+    _print_by_default(std::move(other._print_by_default))
 { }
 
 Map& Map::operator=(const Map& other) {
     _print_by_default = false;
+    
+    std::unordered_map<std::string, CallbackManager> callbacks;
+    for(auto &&[key, value] : _props) {
+        callbacks[key] = value->_callbacks;
+    }
+    _props.clear();
+    
     for(auto &[name, ptr] : other._props) {
         ptr->copy_to(this);
     }
+    
+    for(auto &&[key, c] : callbacks) {
+        if(_props.contains(key))
+            _props[key]->_callbacks = c;
+    }
+    
     _print_by_default = other._print_by_default;
 	return *this;
 }
@@ -34,6 +49,8 @@ Map& Map::operator=(const Map& other) {
 Map& Map::operator=(Map&& other) {
 	_props = std::move(other._props);
     _print_by_default = std::move(other._print_by_default);
+    _shutdown_callbacks = std::move(other._shutdown_callbacks);
+    _id_counter = other._id_counter.load();
 	return *this;
 }
 

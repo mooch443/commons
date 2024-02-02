@@ -48,6 +48,8 @@ namespace cmn {
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false);
             
+            friend class sprite::Map;
+            
         public:
             // Constructors
             PropertyType(const std::string& type_name) : PropertyType(type_name, "<invalid>") {}

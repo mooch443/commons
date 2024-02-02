@@ -101,8 +101,8 @@ namespace cmn {
         static sprite::Map& current_defaults();
         static sprite::Map& current_defaults_with_config();
         static sprite::Map& set_defaults();
-        static void set_current_defaults(sprite::Map&&);
-        static void set_current_defaults_with_config(sprite::Map&&);
+        static void set_current_defaults(const sprite::Map&);
+        static void set_current_defaults_with_config(const sprite::Map&);
         static docs_map_t& docs();
         
         static bool is_runtime_quiet(const sprite::Map* = nullptr);

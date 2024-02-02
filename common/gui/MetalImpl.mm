@@ -323,6 +323,14 @@ id mutexObject = [[NSObject alloc] init];
             //@synchronized (mutexObject) {
                 int width, height;
                 glfwGetFramebufferSize(window, &width, &height);
+            if(width <= 0 || height <= 0) {
+                if(width <= 0)
+                    width = 640;
+                if(height <= 0)
+                    height = 480;
+            }
+            
+            assert(width > 0 && height > 0);
                 
                 {
                     std::unique_lock guard(framebuffer_lock);

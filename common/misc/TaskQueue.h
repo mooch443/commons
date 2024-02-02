@@ -45,8 +45,10 @@ public:
     }
 
     // Call this with the specific argument you want to pass to the tasks
-    void processTasks(ArgType&& ...arg) {
+    bool processTasks(ArgType ...arg) {
         std::unique_lock<std::mutex> lock(_mutex);
+        bool ret = not _tasks.empty();
+        
         while (not _stop && not _tasks.empty()) {
             TaskFunction task = std::move(_tasks.front());
             _tasks.pop();
@@ -67,6 +69,15 @@ public:
                 return !_tasks.empty() || _stop;
             });
         }
+        
+        return ret;
+    }
+    
+    void clear() {
+        std::unique_lock<std::mutex> lock(_mutex);
+        while (not _tasks.empty())
+            _tasks.pop();
+        _cond.notify_all();
     }
 
 private:

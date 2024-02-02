@@ -6,6 +6,6 @@ namespace gui {
 class IMGUIBase;
 class DrawStructure;
 
-using GUITaskQueue_t = TaskQueue<IMGUIBase*, DrawStructure&>;
+using GUITaskQueue_t = TaskQueue<gui::IMGUIBase*, gui::DrawStructure&>;
 }
 

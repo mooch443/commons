@@ -456,15 +456,16 @@ concept Iterable = requires(T obj) {
             return *property_;
         }
         
-        void erase(const std::string& key) {
-            if(not has(key)) {
-                std::string e = "Map does not have key '"+key+"'.";
+        void erase(const std::string_view& key) {
+            auto guard = LOGGED_LOCK(mutex());
+            auto it = _props.find(key);
+            if(it != _props.end())
+                _props.erase(it);
+            else {
+                std::string e = "Map does not have key '"+(std::string)key+"'.";
                 FormatError(e.c_str());
                 throw PropertyException(e);
             }
-            
-            auto guard = LOGGED_LOCK(mutex());
-            _props.erase(key);
         }
         
         std::vector<std::string> keys() const {
@@ -639,7 +640,7 @@ void Reference::operator=(const T& value) {
             if constexpr(trivial)
                 (*other)[_name] = _value.load().value();
             else {
-                std::shared_lock guard(_property_mutex);
+                std::unique_lock guard(_property_mutex);
                 (*other)[_name] = _value.value();
             }
             return;
@@ -650,7 +651,7 @@ void Reference::operator=(const T& value) {
         if constexpr(trivial) {
             other->insert(_name, _value.load().value());
         } else {
-            std::shared_lock guard(_property_mutex);
+            std::unique_lock guard(_property_mutex);
             other->insert(_name, _value.value());
         }
     }
