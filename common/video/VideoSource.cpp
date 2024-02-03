@@ -476,7 +476,7 @@ VideoSource::VideoSource(const file::PathArray& source)
         extension = x.str().substr(1);
         prefix = str.substr(0u, (uint64_t)m.position(1));
         
-        print("Extension ",extension," basename ",prefix);
+        //print("Extension ",extension," basename ",prefix);
         
     } else {
         throw U_EXCEPTION("File extension not found in ",source);
@@ -486,9 +486,9 @@ VideoSource::VideoSource(const file::PathArray& source)
         prefix = "array";
     }
     
-    print("Searching for ",prefix,".",extension);
+    //print("Searching for ",prefix,".",extension);
     _base = file::find_basename(source); //prefix;
-    print("Found _base = ", _base, " for ", source);
+    //print("Found _base = ", _base, " for ", source);
     //_base = source.source();
     
     for(auto &path : source) {

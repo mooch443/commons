@@ -541,7 +541,18 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         return; // we cannot continue off screen
     
     int mx, my, mw, mh;
+#if defined(WIN32)
+    auto video_mode = glfwGetVideoMode(monitor);
+    if (video_mode) {
+        mx = my = 0;
+        mw = video_mode->width;
+        mh = video_mode->height;
+        print("resolution = ", video_mode->width, "x", video_mode->height);
+    }
+    else
+#else
     glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+#endif
     base->_work_area = Bounds(mx, my, mw, mh);
     
     float xscale, yscale;
@@ -651,7 +662,18 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         int width = _graph->width(), height = _graph->height();
         int mx, my, mw, mh;
 #if GLFW_HAVE_MONITOR_SCALE
+    #if defined(WIN32)
+        auto video_mode = glfwGetVideoMode(monitor);
+        if (video_mode) {
+            mx = my = 0;
+            mw = video_mode->width;
+            mh = video_mode->height;
+            print("resolution = ", video_mode->width, "x", video_mode->height);
+        } else
+    #else
         glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+    #endif
+
 #else
         mx = my = 0;
         glfwGetMonitorPhysicalSize(monitor, &mw, &mh);
@@ -665,8 +687,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
 
 #if WIN32
-        my += mh * 0.04; mh -= my;
-        mh *= 0.95; //! task bar
+        //my += mh * 0.04; mh -= my;
+        //mh *= 0.95; //! task bar
 #endif
         
 #ifdef WIN32
