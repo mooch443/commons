@@ -722,12 +722,12 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
             && not transfer_frame_to_software(frame))
         {
             FormatError("Error transferring frame to software format.");
-            return false;
+            break;
         }
 
         if (not convert_frame_to_mat<Mat>(frame, outFrame)) {
             FormatError("Error converting frame to cv::Mat.");
-            return false;
+            break;
         }
 
         if (timestamp >= 0) {
@@ -742,6 +742,15 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
         return true;
     }
 
+    if constexpr (std::is_same_v<Mat, gpuMat>) {
+        outFrame.setTo(0);
+    }
+    else if constexpr(are_the_same<Mat, Image>) {
+        outFrame.set_to(0);
+    }
+    else {
+        outFrame.setTo(0);
+    }
     return false;
 }
 
