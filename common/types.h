@@ -110,6 +110,10 @@ struct Pose {
         constexpr Point(const Point&) noexcept = default;
         constexpr Point& operator= (const Point&) noexcept = default;
         constexpr Point& operator= (Point&&) noexcept = default;
+        
+        bool valid() const noexcept {
+            return x > 0 || y > 0;
+        }
 
         constexpr operator Vec2() const noexcept {
             return Vec2(x, y);
@@ -124,6 +128,8 @@ struct Pose {
         std::string toStr() const {
             return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
         }
+        
+        constexpr static Point invalid() noexcept { return Point{0, 0}; }
     };
     
     struct Bone {
@@ -226,7 +232,7 @@ struct Pose {
             double samples = 0;
             Vec2 referencePoint;// = pose.points[referenceJointIndex];
             for(auto &pt : pose.points) {
-                if(pt.x > 0 || pt.y > 0) {
+                if(pt.valid()) {
                     referencePoint += Vec2(pt);
                     samples++;
                 }
@@ -239,7 +245,7 @@ struct Pose {
             float weight = WeightPolicy::calculate_weight(i, num);
 
             for(size_t j = 0; j < pose.points.size(); ++j) {
-                if(pose.points[j].x > 0 || pose.points[j].y > 0) {
+                if(pose.points[j].valid()) {
                     Vec2 relativePos = Vec2(pose.points[j]) - referencePoint;
                     relativePoints[j] += relativePos * weight;
                     weights[j] += weight;
@@ -262,7 +268,7 @@ struct Pose {
 
         for(size_t i = 0; i < relativePoints.size(); ++i) {
             if(weights[i] == 0.0f || contains(ignore_indexes, i)) {
-                pose.points[i] = Point(0, 0);
+                pose.points[i] = Point::invalid();
             } else {
                 Vec2 meanRelativePos = relativePoints[i] / weights[i];
                 pose.points[i] = Point((averageReferencePoint + meanRelativePos).clip(0));
