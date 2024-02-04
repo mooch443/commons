@@ -529,6 +529,65 @@ Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     return window_size;
 }
 
+Bounds get_work_area(GLFWmonitor* monitor) {
+    int mx, my, mw, mh;
+    mx = my = 0;
+    mw = 640;
+    mh = 480;
+    
+    if(monitor) {
+#if GLFW_HAVE_MONITOR_SCALE
+#if defined(WIN32)
+        auto video_mode = glfwGetVideoMode(monitor);
+        if (video_mode) {
+            mw = video_mode->width;
+            mh = video_mode->height;
+        } else
+#else
+            glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+#endif
+#else
+        auto video_mode = glfwGetVideoMode(monitor);
+        mx = my = 0;
+        if (video_mode) {
+            mw = video_mode->width;
+            mh = video_mode->height;
+        }
+#endif
+    } else {
+        FormatWarning("[GLFW] Cannot get monitor for window.");
+    }
+    return Bounds(mx, my, mw, mh);
+}
+
+void IMGUIBase::center(const Size2 &size) {
+    auto work_area = this->work_area();
+    auto window_size = size.empty()
+        ? Size2(work_area.width * 0.75, work_area.width * 0.75 * 0.7)
+        : size;
+    auto max_height = work_area.height * 0.95;
+    if(window_size.height > max_height) {
+        auto ratio = window_size.width / window_size.height;
+        window_size = Size2(max_height * ratio, max_height);
+    }
+    
+    Bounds bounds(
+        Vec2(),
+        window_size);
+    
+    int offset = (work_area.height - max_height);
+    print("Calculated bounds = ", bounds, " from window size = ", window_size, " and work area = ", work_area, " with offset = ", offset);
+    bounds.restrict_to(Bounds(work_area.size()));
+    bounds << Vec2(work_area.width / 2 - bounds.width / 2,
+                    work_area.height / 2 - bounds.height / 2 + offset);
+    bounds.restrict_to(Bounds(work_area.size()));
+    print("Restricting bounds to work area: ", work_area, " -> ", bounds);
+
+    print("setting bounds = ", bounds);
+    //window()->set_window_size(window_size);
+    set_window_bounds(bounds);
+}
+
 void IMGUIBase::update_size_scale(GLFWwindow* window) {
     auto base = base_pointers.at(window);
     auto lock_guard = GUI_LOCK(base->_graph->lock());
@@ -540,20 +599,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     if(not monitor)
         return; // we cannot continue off screen
     
-    int mx, my, mw, mh;
-#if defined(WIN32)
-    auto video_mode = glfwGetVideoMode(monitor);
-    if (video_mode) {
-        mx = my = 0;
-        mw = video_mode->width;
-        mh = video_mode->height;
-        print("resolution = ", video_mode->width, "x", video_mode->height);
-    }
-    else
-#else
-    glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
-#endif
-    base->_work_area = Bounds(mx, my, mw, mh);
+    base->_work_area = get_work_area(monitor);
     
     float xscale, yscale;
 #if GLFW_HAVE_MONITOR_SCALE
@@ -562,9 +608,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
 
-//#ifndef NDEBUG
-    print("Content scale: ", xscale,"x",yscale, " monitor = ", mx, ",", my, " ", mw, "x", mh);
-//#endif
+#ifndef NDEBUG
+    print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
+#endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
     //auto& io = ImGui::GetIO();
@@ -636,95 +682,24 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         _platform->init();
         
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-        /*int count;
-        auto monitors = glfwGetMonitors(&count);
-        int maximum = 0;
-        GLFWmonitor* choice = glfwGetPrimaryMonitor();
-        for (int i = 0; i < count; ++i) {
-            int width, height;
-            glfwGetMonitorPhysicalSize(monitors[i], &width, &height);
-            if (width * height > maximum) {
-                choice = monitors[i];
-                maximum = width * height;
-            }
-        }
-        
-        if (choice)
-            monitor = choice;*/
-
         float xscale, yscale;
 #if GLFW_HAVE_MONITOR_SCALE
         glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #else
         xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
-        
         int width = _graph->width(), height = _graph->height();
-        int mx, my, mw, mh;
-#if GLFW_HAVE_MONITOR_SCALE
-    #if defined(WIN32)
-        auto video_mode = glfwGetVideoMode(monitor);
-        if (video_mode) {
-            mx = my = 0;
-            mw = video_mode->width;
-            mh = video_mode->height;
-            print("resolution = ", video_mode->width, "x", video_mode->height);
-        } else
-    #else
-        glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
-    #endif
-
-#else
-        mx = my = 0;
-        glfwGetMonitorPhysicalSize(monitor, &mw, &mh);
-#endif
-
-       // print("Received monitor work area with mx:", mx, " my:", my, " mw:", mw, " mh:", mh);
 #if defined(__EMSCRIPTEN__)
         width = canvas_get_width();
         height = canvas_get_height();
         print("Canvas size: ", width, " ", height);
 #endif
 
-#if WIN32
-        //my += mh * 0.04; mh -= my;
-        //mh *= 0.95; //! task bar
-#endif
-        
 #ifdef WIN32
         width *= xscale;
         height *= yscale;
 #endif
-        _work_area = Bounds(mx, my, mw, mh);
-        
-        const float min_size = 250;
-        if(width < min_size) {
-            FormatWarning("Window created smaller than is healthy (<",min_size,"): ", width, "x", height);
-            float ratio = float(height) / float(width);
-            width = min_size;
-            height = int(width * ratio);
-        }
-        
-        if(height < min_size) {
-            FormatWarning("Window created smaller than is healthy (<",min_size,"): ", width, "x", height);
-            float ratio = float(width) / float(height);
-            height = min_size;
-            width = int(ratio * height);
-        }
-        
-        if(width / float(mw) >= height / float(mh)) {
-            if(width > mw) {
-                float ratio = float(height) / float(width);
-                width = mw;
-                height = int(width * ratio);
-            }
-        } else {
-            if(height > mh) {
-                float ratio = float(width) / float(height);
-                height = mh;
-                width = int(ratio * height);
-            }
-        }
+        _work_area = get_work_area(monitor);
         
         if(!_platform->window_handle())
 #ifdef WIN32
@@ -733,18 +708,11 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             _platform->create_window(title.c_str(), width, height);
 #endif
         else {
-#ifndef WIN32
-            ::gui::set_window_size(_platform->window_handle(), Vec2( width, height ));
-            //glfwSetWindowSize(_platform->window_handle(), width, height);
-#endif
             set_title(title);
         }
         
-        glfwSetWindowPos(_platform->window_handle(), mx + (mw - width) / 2, my + (mh - height) / 2);
-#ifdef WIN32
-        ::gui::set_window_size(_platform->window_handle(), Vec2( width, height ));
-        //glfwSetWindowSize(_platform->window_handle(), width, height);
-#endif
+        base_pointers[_platform->window_handle()] = this;
+        center({});
 
         glfwSetDropCallback(_platform->window_handle(), [](GLFWwindow* window, int N, const char** texts){
             std::vector<file::Path> _paths;
@@ -902,14 +870,12 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
             io.Fonts->Build();
         }
-        
 
         _platform->post_init();
         _platform->set_title(title);
         
-        base_pointers[_platform->window_handle()] = this;
         _focussed = true;
-
+        
         glfwSetWindowFocusCallback(_platform->window_handle(), [](GLFWwindow* window, int focus) {
             auto base = base_pointers.at(window);
             base->_focussed = focus == GLFW_TRUE;

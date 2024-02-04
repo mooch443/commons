@@ -155,6 +155,7 @@ namespace gui {
             _graph = std::move(base);
         }*/
         void init(const std::string& title, bool soft = false);
+        void center(const Size2&);
         ~IMGUIBase();
         
         void set_open_files_fn(std::function<bool(const std::vector<file::Path>&)> fn) {
