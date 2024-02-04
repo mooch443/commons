@@ -58,10 +58,12 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     std::cout << "nb_frames: " << videoStream->nb_frames << std::endl;
     std::cout << "av_q2d(videoStream->time_base): " << av_q2d(videoStream->time_base)<< " " << videoStream->time_base.num << "/" << videoStream->time_base.den << std::endl;
     
+#ifndef NDEBUG
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
         print("HW type: ", hw_type);
     }
+#endif
 
     int hw_start_index = 0;
 retry_codec:

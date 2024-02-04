@@ -90,7 +90,9 @@ void ThreadManager::addOnEndCallback(ThreadGroupId group, OnEndMethod onEndMetho
 
 void ManagedThread::loop(const ThreadGroup &group, const ManagedThreadWrapper& thread) {
     set_thread_name(utils::ShortenText(group.name+"::"+thread.name, 50));
+#ifndef NDEBUG
     thread_print("Starting loop ", group.name);
+#endif
     terminationProof = {};
     terminationSignal = false;
     try {
@@ -121,12 +123,14 @@ void ThreadGroup::terminate() {
         return;
     
     started = false;
+#ifndef NDEBUG
     thread_print("Terminating group ", name);
+#endif
     
     for(auto& wrapper : threads) {
         if(wrapper.t) {
             auto f = wrapper.m.terminate();
-            if(f.wait_for(std::chrono::seconds(1)) != std::future_status::ready) {
+            if(f.wait_for(std::chrono::seconds(01)) != std::future_status::ready) {
                 // if the thread is still not terminated after 1 second, print out a message
                 thread_print("Thread in group ", name, " is taking a long time to terminate");
             }
@@ -198,7 +202,9 @@ void ThreadManager::startGroup(ThreadGroupId group) {
                 wrapper.t = std::make_unique<std::thread>([&wrapper, &g] {
                     wrapper.m.loop(*g, wrapper);
                 });
+#ifndef NDEBUG
                 thread_print("Started thread in group ", group);
+#endif
             } else {
                 thread_print("Thread already started in group ", group);
             }
@@ -222,7 +228,9 @@ void ThreadManager::terminate() {
     for(auto it = groups.rbegin(); it != groups.rend(); ++it) {
         it->second->terminate();
     }
+#ifndef NDEBUG
     printThreadTree(lock);
+#endif
 }
 
 void ThreadManager::printThreadTree() {

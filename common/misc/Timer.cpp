@@ -26,7 +26,9 @@ void Timing::start_() {
     for(auto it = _threads.begin(); it != _threads.end();) {
         auto && [tid, info] = *it;
         if (info.timer_since.elapsed() > 10) {
+#ifndef NDEBUG
             cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
+#endif
             it = _threads.erase(it);
         } else
             ++it;
@@ -43,7 +45,9 @@ void Timing::start_measure() {
     for(auto it = _threads.begin(); it != _threads.end();) {
         auto && [tid, info] = *it;
         if (info.timer.elapsed() > 10) {
+#ifndef NDEBUG
             cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
+#endif
             it = _threads.erase(it);
         } else
             ++it;
