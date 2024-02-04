@@ -537,16 +537,14 @@ Bounds get_work_area(GLFWmonitor* monitor) {
     
     if(monitor) {
 #if GLFW_HAVE_MONITOR_SCALE
-#if defined(WIN32)
+#if !defined(__APPLE__)
         auto video_mode = glfwGetVideoMode(monitor);
         if (video_mode) {
             mw = video_mode->width;
             mh = video_mode->height;
-        }
-#else
-        if(not video_mode)
-            glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
+        } else
 #endif
+        glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
 #else
         auto video_mode = glfwGetVideoMode(monitor);
         mx = my = 0;

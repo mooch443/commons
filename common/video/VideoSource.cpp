@@ -479,7 +479,7 @@ VideoSource::VideoSource(const file::PathArray& source)
         //print("Extension ",extension," basename ",prefix);
         
     } else {
-        throw U_EXCEPTION("File extension not found in ",source);
+        throw std::runtime_error("File extension not found in "+source.toStr());
     }
     
     if(prefix.empty()) {
