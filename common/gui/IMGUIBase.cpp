@@ -542,8 +542,9 @@ Bounds get_work_area(GLFWmonitor* monitor) {
         if (video_mode) {
             mw = video_mode->width;
             mh = video_mode->height;
-        } else
+        }
 #else
+        if(not video_mode)
             glfwGetMonitorWorkarea(monitor, &mx, &my, &mw, &mh);
 #endif
 #else
@@ -576,6 +577,9 @@ void IMGUIBase::center(const Size2 &size) {
         window_size);
     
     int offset = (work_area.height - max_height);
+#if !defined(__APPLE__)
+    offset = 0;
+#endif
     print("Calculated bounds = ", bounds, " from window size = ", window_size, " and work area = ", work_area, " with offset = ", offset);
     bounds.restrict_to(Bounds(work_area.size()));
     bounds << Vec2(work_area.width / 2 - bounds.width / 2,
