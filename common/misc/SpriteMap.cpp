@@ -84,6 +84,8 @@ Map::~Map() {
     }
 
 bool Reference::valid() const {
+    if (_container && (not _container->has(_name) || &_container->at(_name).get() != _type))
+        return false;//throw InvalidArgumentException("Reference to an invalid option.");
     return _type && _type->valid();
 }
 

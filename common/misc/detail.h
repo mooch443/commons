@@ -760,7 +760,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         };
         //! Parses a JSON-like object from string {"key": "value", "key2": 123, "key3": ["test","strings"]}
         Map parse_values(MapSource, std::string str, const sprite::Map* additional = nullptr);
-        std::set<std::string> parse_values(MapSource, Map&, std::string, const sprite::Map* additional = nullptr, const std::vector<std::string>& exclude = {});
+        std::set<std::string> parse_values(MapSource, Map&, std::string, const sprite::Map* additional = nullptr, const std::vector<std::string>& exclude = {}, const std::map<std::string, std::string>& deprecations = {});
     }
     
     void set_thread_name(const std::string& name);

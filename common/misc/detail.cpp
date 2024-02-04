@@ -635,7 +635,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude) {
+        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude, const std::map<std::string, std::string>& deprecations) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -663,6 +663,10 @@ namespace cmn {
                     && ((value.front() == '\"' && value.back() == '\"') 
                         || (value.front() == '\'' && value.back() == '\'')))
                     value = util::unescape(value.substr(1, value.length()-2u));
+
+                if (deprecations.contains(key)) {
+                    key = deprecations.at(key);
+                }
 
                 if (contains(exclude, key))
                     continue;
