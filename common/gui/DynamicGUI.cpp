@@ -356,6 +356,14 @@ void Context::init() const {
                 return map_vectors<Size2>(props, [](auto& A, auto& B){ return A + B; });
             }),
             VarFunc("round", [](const VarProps& props) {
+                if(props.parameters.size() > 1) {
+                    auto p = props;
+                    auto decimalPlaces = Meta::fromStr<uint8_t>(props.parameters.back());
+                    double scale = std::pow(10.0, decimalPlaces);
+                    assert(p.parameters.size() > 1);
+                    p.parameters.pop_back();
+                    return map_vector<double>(p, [scale](auto& A){ return std::round(A * scale) / scale; });
+                }
                 return map_vector<double>(props, [](auto& A){ return std::round(A); });
             }),
             VarFunc("mod", [](const VarProps& props) -> int {
