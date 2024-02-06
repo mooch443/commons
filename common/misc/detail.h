@@ -551,7 +551,7 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     cv::parallel_for_(cv::Range(0, input.rows), process_row);
 }
 
-template<uint8_t channels = 3, uint8_t input_channels = 1>
+template<uint8_t channels = 3, uint8_t input_channels = 1, bool generate_alpha = false>
 void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     using input_t = std::array<uchar, input_channels>;
     using output_t = std::array<uchar, channels>;
@@ -569,8 +569,13 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             for (int x = 0; x < input.cols; ++x) {
                 if constexpr (input_channels == 2)
                     output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0], input_row[x][1]);
-                else
-                    output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0]);
+                else {
+                    if constexpr(generate_alpha) {
+                        output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0], input_row[x][0]);
+                    } else {
+                        output_row[x] = r3g3b2_to_vec<channels>(input_row[x][0]);
+                    }
+                }
             }
         }
     };

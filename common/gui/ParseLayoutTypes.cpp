@@ -560,6 +560,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 ref->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
                 ref->set(list_dims);
+                ItemFont_t item_font{parse_font(p, Font(0.75), "font")};
+                ref->set(item_font);
             }
         }
         

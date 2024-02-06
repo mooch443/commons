@@ -227,7 +227,7 @@ void VerticalLayout::auto_size() {
                 static_cast<Layout*>(_c)->update_layout();
             }
 
-            c->update_bounds();
+            _c->update_bounds();
             
             max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
         });
@@ -282,13 +282,10 @@ void VerticalLayout::auto_size() {
             if (c->type() == Type::SINGLETON)
                 _c = static_cast<const SingletonObject*>(_c)->ptr();
 
-            if (_c->type() == Type::ENTANGLED)
+            if (_c->type() == Type::ENTANGLED
+                && dynamic_cast<Layout*>(_c))
             {
-                static_cast<Entangled*>(_c)->before_draw();
-                if(dynamic_cast<Layout*>(_c)) {
-                    static_cast<Layout*>(_c)->update();
-                    static_cast<Layout*>(_c)->auto_size();
-                }
+                static_cast<Layout*>(_c)->update_layout();
             }
 
             _c->update_bounds();
@@ -316,7 +313,10 @@ void VerticalLayout::auto_size() {
             y += local.height + _margins.height;
         });
         
-        set_size(Size2(max_width, max(0.f, y)));
+        if(not Size2(max_width, max(0.f, y)).Equals(size())) {
+            set_size(Size2(max_width, max(0.f, y)));
+            set_content_changed(true);
+        }
     }
 
     void Layout::auto_size() {
