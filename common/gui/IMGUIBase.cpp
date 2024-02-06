@@ -931,7 +931,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if(e.move.x != base->_graph->mouse_position().x
                 || e.move.y != base->_graph->mouse_position().y)
             {
-                print("move");
                 base->event(move);
             }
 
