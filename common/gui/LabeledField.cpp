@@ -473,7 +473,6 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
     _path = path;
     _dropdown->textfield()->set_text(_path.str());
     _dropdown->auto_size({0,0});
-    print("Dropdown -> ", _dropdown->bounds());
     
     asyncRetrieve([path]() -> std::optional<file::Path>{
         if(path.is_folder())
