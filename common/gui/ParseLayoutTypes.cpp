@@ -524,6 +524,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ref->set(attr::LineClr{line});
         
         Placeholder_t placeholder{ get(std::string("Please select..."), "placeholder") };
+        Postfix postfix { get(std::string(), "postfix") };
+        ref->set(postfix);
         if(scale != Vec2(1)) ref->set(attr::Scale{scale});
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
@@ -560,7 +562,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 ref->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
                 ref->set(list_dims);
-                ItemFont_t item_font{parse_font(p, Font(0.75), "font")};
+                ItemFont_t item_font{parse_font(p, Font(0.6), "font")};
                 ref->set(item_font);
             }
         }
