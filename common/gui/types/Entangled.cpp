@@ -329,6 +329,9 @@ void Entangled::on_visibility_change(bool visible) {
             if(!c)
                 continue;
             
+            if(dynamic_cast<const Tooltip*>(c))
+                continue;
+            
             auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
