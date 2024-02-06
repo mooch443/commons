@@ -5,6 +5,19 @@
 #include <misc/colors.h>
 
 namespace cmn {
+template<typename F, typename... Args>
+concept CallableWithArgs = std::is_invocable_v<F, Args...>;
+
+template<typename F, std::size_t N, typename T, std::size_t... I>
+constexpr bool check_callable_with_n_args_impl(F&&, std::index_sequence<I...>) {
+    return CallableWithArgs<F, decltype((void(I), T{}))...>;
+}
+
+template<std::size_t N, typename F, typename T>
+concept CallableWithNArgs = requires (F&& f) {
+    check_callable_with_n_args_impl<F,N,T>(std::forward<F>(f), std::make_index_sequence<N>{});
+};
+
     class ReallocDeleter {
     public:
         void operator()(void* ptr) const {
@@ -164,6 +177,22 @@ namespace cmn {
         
         //! set a whole channel with a generative function
         void set_channel(size_t idx, const std::function<uchar(size_t)>& value);
+        
+        template<uint8_t N, typename F>
+            requires CallableWithNArgs<N, F, uchar>
+        void set_channel(size_t idx, F&& fn) {
+            assert(_data && idx < dims);
+            reset_stamp();
+            
+            auto data = this->data();
+            auto ptr = data;
+            assert(N == dims);
+            for(; ptr<data + _size; ptr+=dims) {
+                [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                    *(ptr + idx) = fn((*(ptr + std::integral_constant<std::size_t, Is>{}))...);
+                }(std::make_index_sequence<N>{});
+            }
+        }
         
         //! pass a 1-dim image and set all channels of `channels` to these values
         void set_channels(const uchar* source, const std::set<uint>&channels);
