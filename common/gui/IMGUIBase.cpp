@@ -896,8 +896,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         });
         glfwSetCursorPosCallback(_platform->window_handle(), [](GLFWwindow* window, double xpos, double ypos) {
             auto base = base_pointers.at(window);
-            if (not base->_focussed)
-                return;
+            //if (not base->_focussed)
+            //    return;
             
             Event e(EventType::MMOVE);
             auto &io = ImGui::GetIO();
@@ -924,15 +924,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
             e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
             e.mbutton.button = GLFW_MOUSE_BUTTON_RIGHT == button ? 1 : 0;
-            
-            Event move(EventType::MMOVE);
-            e.move.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
-            e.move.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
-            if(e.move.x != base->_graph->mouse_position().x
-                || e.move.y != base->_graph->mouse_position().y)
-            {
-                base->event(move);
-            }
 
             base->event(e);
             base->_graph->set_dirty(NULL);
