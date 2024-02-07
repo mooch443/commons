@@ -71,21 +71,20 @@ retry_codec:
     AVHWDeviceType chosenHWType = AV_HWDEVICE_TYPE_NONE;
 
 #if defined(WIN32)
-    static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
+    static constexpr std::array preferred_devices{
         AV_HWDEVICE_TYPE_CUDA,
         AV_HWDEVICE_TYPE_D3D11VA
     };
 #elif __APPLE__
-    static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
+    static constexpr std::array preferred_devices{
         AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
         AV_HWDEVICE_TYPE_OPENCL
     };
 #else
-    static constexpr std::array<AVHWDeviceType, 5> preferred_devices{
+    static constexpr std::array preferred_devices{
         AV_HWDEVICE_TYPE_CUDA,
         AV_HWDEVICE_TYPE_OPENCL,
         AV_HWDEVICE_TYPE_CUVID,
-        AV_HWDEVICE_TYPE_VULKAN,
         AV_HWDEVICE_TYPE_MEDIACODEC
     };
 #endif
