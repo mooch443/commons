@@ -73,7 +73,9 @@ retry_codec:
 #if defined(WIN32)
     static constexpr std::array preferred_devices{
         AV_HWDEVICE_TYPE_CUDA,
-        AV_HWDEVICE_TYPE_D3D11VA
+        AV_HWDEVICE_TYPE_D3D11VA,
+        AV_HWDEVICE_TYPE_DXVA2,
+        AV_HWDEVICE_TYPE_QSV
     };
 #elif __APPLE__
     static constexpr std::array preferred_devices{
