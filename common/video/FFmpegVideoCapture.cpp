@@ -84,8 +84,9 @@ retry_codec:
     static constexpr std::array preferred_devices{
         AV_HWDEVICE_TYPE_CUDA,
         AV_HWDEVICE_TYPE_OPENCL,
-        AV_HWDEVICE_TYPE_CUVID,
-        AV_HWDEVICE_TYPE_MEDIACODEC
+        AV_HWDEVICE_TYPE_VAAPI,
+        AV_HWDEVICE_TYPE_MEDIACODEC,
+        AV_HWDEVICE_TYPE_DXVA2
     };
 #endif
 
