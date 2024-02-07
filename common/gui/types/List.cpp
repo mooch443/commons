@@ -393,7 +393,7 @@ void List::on_click(const Item * item) {
             if(not _placeholder.empty()) {
                 auto f = _item_font;
                 f.align = Align::Center;
-                print("size = ", size);
+                //print("size = ", size);
                 add<Text>(Str((std::string)_placeholder),
                           Loc(size.size() * 0.5),
                           f, TextClr{LightGray.alpha(200)});

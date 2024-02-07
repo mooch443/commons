@@ -70,7 +70,7 @@ retry_codec:
     //! we will only accept hardware acceleration types that we know are good for us
     AVHWDeviceType chosenHWType = AV_HWDEVICE_TYPE_NONE;
 
-#if defined(WIN32) || defined(__linux__)
+#if defined(WIN32)
     static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
         AV_HWDEVICE_TYPE_CUDA,
         AV_HWDEVICE_TYPE_D3D11VA
@@ -79,6 +79,14 @@ retry_codec:
     static constexpr std::array<AVHWDeviceType, 2> preferred_devices{
         AV_HWDEVICE_TYPE_VIDEOTOOLBOX,
         AV_HWDEVICE_TYPE_OPENCL
+    };
+#else
+    static constexpr std::array<AVHWDeviceType, 5> preferred_devices{
+        AV_HWDEVICE_TYPE_CUDA,
+        AV_HWDEVICE_TYPE_OPENCL,
+        AV_HWDEVICE_TYPE_CUVID,
+        AV_HWDEVICE_TYPE_VULKAN,
+        AV_HWDEVICE_TYPE_MEDIACODEC
     };
 #endif
 
