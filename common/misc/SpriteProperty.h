@@ -379,7 +379,7 @@ namespace cmn {
             
             template<typename If_t,
                      typename Else_t,
-                     typename R = ::cmn::detail::return_type<If_t>::type>
+                     typename R = typename ::cmn::detail::return_type<If_t>::type>
                 requires requires(If_t _if, Else_t _e, ValueType t) {
                     { _if(t) } -> std::same_as<R>;
                     { _e() } -> std::same_as<R>;
