@@ -1,6 +1,6 @@
 #pragma once
 #include <commons.pc.h>
-#include <misc/EnumClass.h>
+//#include <misc/EnumClass.h>
 
 #if defined(WIN32)
 #include <io.h>
@@ -15,33 +15,35 @@ namespace print_colors {
     inline static bool dont_print = true;
 }
 
-ENUM_CLASS(FormatColorNames,
-    BLACK, 
-    DARK_BLUE, 
-    DARK_GREEN, 
-    DARK_CYAN, 
+enum class FormatColorNames {
+    BLACK,
+    DARK_BLUE,
+    DARK_GREEN,
+    DARK_CYAN,
     DARK_RED,
     PURPLE,
     DARK_YELLOW,
-    GRAY, 
-    DARK_GRAY, 
-    BLUE, 
-    GREEN, 
-    CYAN, 
-    RED, 
-    PINK, 
+    GRAY,
+    DARK_GRAY,
+    BLUE,
+    GREEN,
+    CYAN,
+    RED,
+    PINK,
     YELLOW,
-    WHITE, 
+    WHITE,
     DARK_PINK,
     LIGHT_CYAN,
     LIGHT_GRAY,
     ORANGE,
-    INVALID);
+    INVALID
+};
 
 //static_assert(std::is_trivial_v<FormatColorNames::Class>, "Trivial enums please.");
 
-using FormatColor_t = FormatColorNames::Class;
-namespace FormatColor = FormatColorNames;
+using FormatColor_t = FormatColorNames;
+//namespace FormatColor = FormatColorNames;
+using FormatColor = FormatColorNames;
 
 enum class FormatterType {
     UNIX,
@@ -156,7 +158,7 @@ struct Formatter {
     template<FormatColor_t value = _value>
         requires (type == FormatterType::TAGS)
     inline static constexpr auto tag() noexcept {
-        return value.value();
+        return value;//.value();
     }
     
     template<FormatColor_t value = _value>
@@ -219,18 +221,18 @@ struct Formatter {
         return std::string("<") + tag() + ">" + s + "</" + tag() + ">";
     }
 
-    template<char value>
+    /*template<char value>
     inline static constexpr auto from_code_to_tag() noexcept {
         if constexpr (value >= FormatColor_t::fields().size()) {
             return FormatColor::BLACK.value();
         }
         return FormatColor::data::values( value - 1 );
-    }
+    }*/
 
-    template<FormatColor::data::values value, bool end_tag = false>
+    template<FormatColor value, bool end_tag = false>
     inline static constexpr auto from_tag_to_code() noexcept {
         if constexpr (end_tag)
-            return char(value) + (char)FormatColor::data::values::INVALID + 1;
+            return char(value) + (char)FormatColor::INVALID + 1;
         else
             return char(value) + 1;
     }

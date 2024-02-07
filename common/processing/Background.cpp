@@ -24,7 +24,7 @@ namespace cmn {
                 else if (name == "meta_encoding") {
                     cmn::meta_encoding = SETTING(meta_encoding).value<meta_encoding_t::Class>().value();
 
-                    print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
+                    //print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
                 }
                 //Background::update_callback();
             });

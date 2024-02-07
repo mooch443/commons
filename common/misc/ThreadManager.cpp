@@ -54,8 +54,10 @@ void ThreadManager::addThread(ThreadGroupId group, const std::string& name, Mana
         .m = std::move(managedThread),
         .name = name
     });
+#ifndef NDEBUG
     cmn::thread_print("Added thread ", group, "::", name.c_str());
     //printThreadTree(lock);
+#endif
 }
 
 ThreadGroupId ThreadManager::registerGroup(const std::string& name, source_location loc) {
@@ -76,7 +78,9 @@ ThreadGroupId ThreadManager::registerGroup(const std::string& name, source_locat
     g->threads.clear();
     g->onEndCallbacks.clear();
     g->started = false;
+#ifndef NDEBUG
     thread_print("Registered group ", group, "::", name.c_str(), " from ", file::Path(loc.file_name()).filename(),":", loc.line());
+#endif
     
     //printThreadTree(lock);
     return g->id;
@@ -85,7 +89,9 @@ ThreadGroupId ThreadManager::registerGroup(const std::string& name, source_locat
 void ThreadManager::addOnEndCallback(ThreadGroupId group, OnEndMethod onEndMethod) {
     std::lock_guard<std::mutex> lock(mtx);
     groups.at(group)->onEndCallbacks.push_back(onEndMethod);
+#ifndef NDEBUG
     thread_print("Added on end callback to group ", group, " (", groups.at(group)->name,")");
+#endif
 }
 
 void ManagedThread::loop(const ThreadGroup &group, const ManagedThreadWrapper& thread) {

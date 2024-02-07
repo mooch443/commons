@@ -142,6 +142,7 @@ public:
     constexpr bool operator==(const ValueType& other) const noexcept { return other == _value; }
     constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
     constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
+    static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN };
     std::string toStr() const noexcept { return name(); }
     static self_type fromStr(const std::string& str)
     {
