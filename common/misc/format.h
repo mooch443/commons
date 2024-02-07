@@ -1,5 +1,6 @@
 #pragma once
 #include <commons.pc.h>
+#include <misc/FormatColor.h>
 //#include <misc/EnumClass.h>
 
 #if defined(WIN32)
@@ -14,36 +15,6 @@ namespace print_colors {
     inline static std::once_flag flag;
     inline static bool dont_print = true;
 }
-
-enum class FormatColorNames {
-    BLACK,
-    DARK_BLUE,
-    DARK_GREEN,
-    DARK_CYAN,
-    DARK_RED,
-    PURPLE,
-    DARK_YELLOW,
-    GRAY,
-    DARK_GRAY,
-    BLUE,
-    GREEN,
-    CYAN,
-    RED,
-    PINK,
-    YELLOW,
-    WHITE,
-    DARK_PINK,
-    LIGHT_CYAN,
-    LIGHT_GRAY,
-    ORANGE,
-    INVALID
-};
-
-//static_assert(std::is_trivial_v<FormatColorNames::Class>, "Trivial enums please.");
-
-using FormatColor_t = FormatColorNames;
-//namespace FormatColor = FormatColorNames;
-using FormatColor = FormatColorNames;
 
 enum class FormatterType {
     UNIX,

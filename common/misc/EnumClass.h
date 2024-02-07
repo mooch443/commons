@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <misc/FormatColor.h>
 
 #define CHOOSE_MAP_START(count) MAP ## count
 
