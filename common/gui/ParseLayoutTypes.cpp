@@ -17,6 +17,8 @@ Font parse_font(const nlohmann::json& obj, Font font, std::string_view name) {
                 font.style = Style::Italic;
             if(style == "regular")
                 font.style = Style::Regular;
+            if(style == "mono")
+                font.style = Style::Monospace;
         }
         if(f.count("align")) {
             auto align = f["align"].get<std::string>();
