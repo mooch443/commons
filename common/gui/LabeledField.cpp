@@ -545,11 +545,13 @@ void LabeledPath::asyncRetrieve(std::function<std::optional<file::Path>()> fn) {
                         _files.insert(files.begin(), files.end());
                     }
                     
-                    if(_dropdown->stage()) {
-                        auto guard = GUI_LOCK(_dropdown->stage()->lock());
-                        _dropdown->set_content_changed(true);
-                        _dropdown->set_dirty();
-                    }
+                    enqueue([weakdown = std::weak_ptr{_dropdown.ptr}](auto, auto&) {
+                        auto dropdown = weakdown.lock();
+                        if(not dropdown)
+                            return;
+                        dropdown->set_content_changed(true);
+                        dropdown->set_dirty();
+                    });
                     
                     return items;
                     
@@ -736,6 +738,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
 LabeledPathArray::~LabeledPathArray() {
     if (_future.valid())
         _future.get(); // finalize future
+    _dropdown = nullptr;
 }
 
 void CustomDropdown::update() {
@@ -813,7 +816,7 @@ void LabeledPathArray::updateDropdownItems() {
     if(_future.valid())
         _should_update = true;
     else {
-        _future = std::async(std::launch::async, [this, text = _dropdown->text(), ptr = _dropdown.get(), files = std::move(_tmp_files)]() {
+        _future = std::async(std::launch::async, [this, text = _dropdown->text(), files = std::move(_tmp_files)]() {
             std::vector<file::Path> matches; // Temporary storage for matched or listed files
             
             try {
@@ -896,13 +899,14 @@ void LabeledPathArray::updateDropdownItems() {
             for (auto& m : matches)
                 (void)m.is_folder(); // cache is_folder
 
-            if (ptr->stage()) {
-                auto guard = GUI_LOCK(ptr->stage()->lock());
-                ptr->set_content_changed(true);
-                ptr->set_dirty();
-                //print("Returning + setting dirty for ", text);
-                return matches;
-            }
+            enqueue([weakdown = std::weak_ptr{_dropdown.ptr}](auto, auto&) {
+                auto dropdown = weakdown.lock();
+                if(not dropdown)
+                    return;
+                dropdown->set_content_changed(true);
+                dropdown->set_dirty();
+            });
+            
             //print("Returning for ", text);
             return matches;
         });

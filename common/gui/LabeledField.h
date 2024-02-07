@@ -54,7 +54,12 @@ private:
     mutable std::mutex _ref_mutex;
     
 protected:
-    
+    auto enqueue(auto fn) {
+        if(_gui) {
+            return _gui->enqueue(std::forward<decltype(fn)>(fn));
+        } else
+            throw U_EXCEPTION("No gui set for enqueue.");
+    }
     GETTER_NCONST(gui::derived_ptr<gui::Text>, text);
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
