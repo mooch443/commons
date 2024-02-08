@@ -694,6 +694,16 @@ struct timestamp_t {
         return timestamp_t(get() * other.get());
     }
     
+    std::string to_date_string() const {
+        if(valid()) {
+            std::time_t t = get() / 1000000;
+            std::tm tm = *std::localtime(&t);
+            std::stringstream ss;
+            ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+            return ss.str();
+        }
+        return "null";
+    }
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
     static std::string class_name() { return "timestamp"; }
     static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
