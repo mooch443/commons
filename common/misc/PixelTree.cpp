@@ -193,7 +193,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
 }
 
 
-    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2)
+    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t /*use_closing*/ = 0, uint8_t /*closing_size*/ = 2)
 #ifdef NDEBUG
         noexcept
 #endif

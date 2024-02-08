@@ -166,7 +166,7 @@ retry_codec:
 
         codecContext = nullptr;
         codec = nullptr;
-        if(hw_start_index <= preferred_devices.size()) {
+        if(sign_cast<size_t>(hw_start_index) <= preferred_devices.size()) {
 			FormatWarning("Failed to open codec with hardware acceleration. Retrying with next hardware device.");
 			goto retry_codec;
 		}
