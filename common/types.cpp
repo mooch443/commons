@@ -8,13 +8,13 @@ IMPLEMENT(blob::Pose::Skeleton::_mutex);
 IMPLEMENT(blob::Pose::Skeleton::_registered);
 
 std::string blob::Prediction::toStr() const {
-    std::vector<std::string> meta_classes;
-    if(GlobalSettings::has("meta_classes")) {
-        meta_classes = SETTING(meta_classes).value<std::vector<std::string>>();
+    std::vector<std::string> detect_classes;
+    if(GlobalSettings::has("detect_classes")) {
+        detect_classes = SETTING(detect_classes).value<std::vector<std::string>>();
     }
     
     if(valid())
-        return (clid < meta_classes.size() ? meta_classes.at(clid) : "unknown<"+Meta::toStr(clid)+">")+"["+dec<2>( p / 255.f * 100.f).toStr()+"%]";
+        return (clid < detect_classes.size() ? detect_classes.at(clid) : "unknown<"+Meta::toStr(clid)+">")+"["+dec<2>( p / 255.f * 100.f).toStr()+"%]";
     return "pred<null>";
 }
 
