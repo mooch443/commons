@@ -696,7 +696,9 @@ struct timestamp_t {
     
     std::string to_date_string() const {
         if(valid()) {
-            std::time_t t = get() / 1000000;
+            auto ms = std::chrono::microseconds(get());
+            auto time = std::chrono::time_point<std::chrono::system_clock>(ms);
+            std::time_t t = std::chrono::system_clock::to_time_t(time);
             std::tm tm = *std::localtime(&t);
             std::stringstream ss;
             ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
