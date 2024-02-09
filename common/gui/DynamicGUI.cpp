@@ -1231,7 +1231,12 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
                     }
                 }
             }
-            else if(context.variable(props.name)->is_vector()) {
+            else if(context.variable(props.name)->is_vector()
+                    || (context.variable(props.name)->is<sprite::Map&>()
+                        && not props.subs.empty()
+                        && context.variable(props.name)->value<sprite::Map&>(props).has(props.subs.front())
+                        && context.variable(props.name)->value<sprite::Map&>(props).at(props.subs.front()).get().is_array()))
+            {
                 auto str = context.variable(props.name)->value_string(props);
                 auto vector = util::parse_array_parts(util::truncate(str));
                 

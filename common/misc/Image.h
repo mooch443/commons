@@ -94,7 +94,7 @@ concept CallableWithNArgs = requires (F&& f) {
      */
     class Image final {
     public:
-        typedef std::chrono::steady_clock clock_;
+        typedef std::chrono::system_clock clock_;
         typedef std::chrono::duration<double, std::ratio<1> > second_;
         using Ptr  = std::unique_ptr<Image>;
         using SPtr = std::shared_ptr<Image>;
@@ -220,7 +220,9 @@ concept CallableWithNArgs = requires (F&& f) {
             return "Image";
         }
         static timestamp_t now() {
-            return timestamp_t((timestamp_t::value_type)std::chrono::time_point_cast<std::chrono::microseconds>(clock_::now()).time_since_epoch().count());
+            return timestamp_t{
+                clock_::now().time_since_epoch()
+            };
         }
         
     private:
