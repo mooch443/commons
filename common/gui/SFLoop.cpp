@@ -40,7 +40,7 @@ namespace gui {
                 }
                 
             } else {
-                auto guard = GUI_LOCK(_graph.lock());
+                //auto guard = GUI_LOCK(_graph.lock());
                 _graph.before_paint((Base*)nullptr);
             }
                 

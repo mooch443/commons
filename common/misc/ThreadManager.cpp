@@ -60,7 +60,7 @@ void ThreadManager::addThread(ThreadGroupId group, const std::string& name, Mana
 #endif
 }
 
-ThreadGroupId ThreadManager::registerGroup(const std::string& name, source_location loc) {
+ThreadGroupId ThreadManager::registerGroup(const std::string& name, [[maybe_unused]] source_location loc) {
     std::unique_lock lock(mtx);
     if(name.empty())
         throw InvalidArgumentException("Name cannot be empty.");

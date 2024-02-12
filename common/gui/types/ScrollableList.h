@@ -55,6 +55,7 @@ namespace gui {
     class ScrollableList : public Entangled {
         ItemPadding_t _item_padding;
         ItemFont_t _item_font{ Font(0.75) };
+        DetailFont_t _detail_font{ Font(0.55) };
         ListDims_t _list_dims;
         LabelDims_t _label_dims;
         DetailColor_t _detail_color{Gray};
@@ -263,6 +264,22 @@ namespace gui {
         void set(TextClr lr) {
             set_text_color(lr);
         }
+        void set(DetailFont_t font) {
+            if(_detail_font == font)
+                return;
+            
+            _detail_font = font;
+            
+            if constexpr(has_detail<T>) {
+                font = detail_font({});
+                for(auto d : _details) {
+                    if(d)
+                        d->set_font(font);
+                }
+            }
+            
+            update_line_height();
+        }
         void set(ItemFont_t font) {
             if(_item_font == font)
                 return;
@@ -271,12 +288,9 @@ namespace gui {
             update_line_height();
             
             if constexpr(has_detail<T>) {
-                auto detail_font = font;
-                detail_font.size *= 0.75;
-                
                 for(auto d : _details) {
                     if(d)
-                        d->set_font(detail_font);
+                        d->set_font(detail_font(font));
                 }
             }
             
@@ -633,9 +647,12 @@ namespace gui {
         }
         
     private:
-        Font detail_font(ItemFont_t font) const {
-            font.size *= 0.7;
-            return Font(font);
+        Font detail_font(ItemFont_t) const {
+            //font.size *= 0.7;
+            //return Font(font);
+            auto copy = _detail_font;
+            copy.align = _item_font.align;
+            return copy;
         }
         
         void update() override {

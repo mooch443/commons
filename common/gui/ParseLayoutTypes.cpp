@@ -812,6 +812,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         
         ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
         list->set(item_font);
+        DetailFont_t detail_font{parse_font(obj, Font(0.55, Align::Center), "detail_font")};
+        list->set(detail_font);
 
         ItemColor_t item_color{get(Color(50,50,50,220), "item_color")};
         list->set(item_color);

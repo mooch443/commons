@@ -351,7 +351,7 @@ void Dialog::set_closed() {
     }
     
     DrawStructure::~DrawStructure() {
-        auto guard = GUI_LOCK(_lock);
+        //auto guard = GUI_LOCK(_lock);
         _selected_object = _hovered_object = nullptr;
         _active_section = nullptr;
         _root.set_stage(NULL);
@@ -377,7 +377,7 @@ void Dialog::set_closed() {
     }
 
 void DrawStructure::close_dialogs() {
-    auto guard = GUI_LOCK(lock());
+    //auto guard = GUI_LOCK(lock());
     if(!_dialogs.empty() && _dialogs.front())
         _dialogs.front()->set_closed();
     _dialogs.clear();
@@ -387,7 +387,7 @@ void DrawStructure::close_dialogs() {
     
     Dialog* DrawStructure::_dialog(std::function<bool(Dialog::Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
     {
-        auto guard = GUI_LOCK(_lock);
+        //auto guard = GUI_LOCK(_lock);
         auto d = new Dialog(*this, std::move(callback), text, title, okay, abort, second, third, fourth);
         d->set_scale(scale().reciprocal());
         _dialogs.emplace_back(d);
@@ -640,7 +640,7 @@ void DrawStructure::close_dialogs() {
     }
 
     bool DrawStructure::event(Event e) {
-        auto lock = GUI_LOCK(_lock);
+        //auto lock = GUI_LOCK(_lock);
         Drawable* d = NULL;
 
         switch(e.type) {

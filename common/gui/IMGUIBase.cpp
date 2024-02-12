@@ -592,7 +592,7 @@ void IMGUIBase::center(const Size2 &size) {
 
 void IMGUIBase::update_size_scale(GLFWwindow* window) {
     auto base = base_pointers.at(window);
-    auto lock_guard = GUI_LOCK(base->_graph->lock());
+    //auto lock_guard = GUI_LOCK(base->_graph->lock());
     
     int x, y;
     glfwGetWindowPos(window, &x, &y);
@@ -1144,7 +1144,7 @@ void IMGUIBase::process_main_queue() {
         
         set_last_framebuffer(Size2(fw, fh));
         
-        auto lock = GUI_LOCK(s.lock());
+        //auto lock = GUI_LOCK(s.lock());
         auto objects = s.collect();
         _objects_drawn = 0;
         _skipped = 0;
@@ -1954,7 +1954,7 @@ void IMGUIBase::draw_loop() {
     if(_graph == NULL)
         return;
     
-    auto lock = GUI_LOCK(_graph->lock());
+    //auto lock = GUI_LOCK(_graph->lock());
     this->paint(*_graph);
     
     auto cache = _graph->root().cached(this);
@@ -1964,7 +1964,7 @@ void IMGUIBase::draw_loop() {
 
 bool IMGUIBase::new_frame_function() {
     //! new frame function, tells the drawing system whether an update is required
-    auto lock = GUI_LOCK(_graph->lock());
+    //auto lock = GUI_LOCK(_graph->lock());
     _graph->before_paint(this);
     
     auto cache = _graph->root().cached(this);

@@ -3,12 +3,12 @@
 
 namespace gui {
     DrawableCollection::~DrawableCollection() {
-        DrawStructure::Lock_t *guard = NULL;
-        if(stage())
-            guard = new GUI_LOCK(stage()->lock());
+        //DrawStructure::Lock_t *guard = NULL;
+        //if(stage())
+        //    guard = new GUI_LOCK(stage()->lock());
         set_parent(NULL);
         
-        if(guard)
-            delete guard;
+        //if(guard)
+        //    delete guard;
     }
 }

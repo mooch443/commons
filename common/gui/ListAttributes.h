@@ -8,6 +8,7 @@ namespace gui {
     NUMBER_ALIAS(Folded_t, bool)
     NUMBER_ALIAS(Alternating_t, bool)
     ATTRIBUTE_ALIAS(ItemFont_t, Font)
+    ATTRIBUTE_ALIAS(DetailFont_t, Font)
     ATTRIBUTE_ALIAS(ItemPadding_t, Vec2)
     ATTRIBUTE_ALIAS(ListDims_t, Size2)
     ATTRIBUTE_ALIAS(LabelDims_t, Size2)

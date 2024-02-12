@@ -367,9 +367,9 @@ namespace gui {
     }
     
     void Section::clear() {
-        DrawStructure::Lock_t *guard = NULL;
-        if(stage())
-            guard = new GUI_LOCK(stage()->lock());
+        //DrawStructure::Lock_t *guard = NULL;
+        //if(stage())
+        //    guard = new GUI_LOCK(stage()->lock());
         
         // Copy first to prevent changing the list while clearing it
         // through any of the deleted children.
@@ -380,14 +380,14 @@ namespace gui {
         for(auto c: copy)
             delete c;
         
-        if(guard)
-            delete guard;
+        //if(guard)
+        //    delete guard;
     }
     
     Section::~Section() {
-        DrawStructure::Lock_t *guard = NULL;
-        if(stage())
-            guard = new GUI_LOCK(stage()->lock());
+        //DrawStructure::Lock_t *guard = NULL;
+        //if(stage())
+        //    guard = new GUI_LOCK(stage()->lock());
         
         if(stage() && stage()->active_section() == this)
             stage()->pop_section();
@@ -411,8 +411,8 @@ namespace gui {
             delete c;
         }
         
-        if(guard)
-            delete guard;
+        //if(guard)
+        //    delete guard;
         
         if(prect)
             delete prect;
