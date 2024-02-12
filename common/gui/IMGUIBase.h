@@ -58,6 +58,7 @@ namespace gui {
             }
         };
         
+        std::once_flag _resize_init_flag;
         GETTER(std::unique_ptr<DrawStructure>, graph);
         GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform);
         CrossPlatform::custom_function_t _custom_loop;

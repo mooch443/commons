@@ -1127,6 +1127,13 @@ void IMGUIBase::process_main_queue() {
     void IMGUIBase::paint(DrawStructure& s) {
         int fw, fh;
         auto window = _platform->window_handle();
+        
+        std::call_once(_resize_init_flag, [this](){
+            auto size = get_window_bounds().size();
+            set_window_size(size + Size2(1,1));
+            set_window_size(size - Size2(1,1));
+        });
+        
         //glfwGetFramebufferSize(window, &fw, &fh);
         auto fb = get_frame_buffer_size(window, 1);
         fw = fb.width;
