@@ -788,10 +788,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #else
                 static const ImWchar all_ranges[] = {
                     // Range from Basic Latin to Cyrillic Supplement
-                    0x0020, 0x00DF,  // ß
-                    0x00F6, 0x00F6,  // ö
-                    0x00E4, 0x00E4,  // ä
-                    0x00FC, 0x00FC,  // ü
+                    0x0000, 0x00FF,  // ö
                     // Range from Cyrillic + Cyrillic Supplement
                     0x0400, 0x052F,
 
