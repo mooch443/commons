@@ -120,7 +120,7 @@ namespace cmn {
                 _paused = pause;
             }
             
-            SETTING(analysis_paused) = pause;
+            SETTING(track_pause) = pause;
             
             //! Wait for the pausing to finish.
             if(std::this_thread::get_id() == _loading_thread->get_id() || std::this_thread::get_id() == _analysis_thread->get_id())
@@ -153,7 +153,7 @@ namespace cmn {
             while(!is_paused())
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             
-            SETTING(analysis_paused) = true;
+            SETTING(track_pause) = true;
         }
         
         bool is_paused() {

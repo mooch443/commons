@@ -1067,9 +1067,27 @@ Q fromStr(const std::string& str)
         auto value_key = util::parse_array_parts(p, ':');
         if(value_key.size() != 2)
             throw std::invalid_argument("Illegal value/key pair: "+p);
-                
+        
+        if constexpr(not utils::StringLike<typename Q::key_type>) {
+            if(value_key[0].size() > 1
+               && is_in(value_key[0].front(), '"', '\'')
+               && value_key[0].front() == value_key[0].back())
+            {
+                value_key[0] = Meta::fromStr<std::string>(value_key[0]);
+            }
+        }
+        
         auto x = Meta::fromStr<typename Q::key_type>(value_key[0]);
         try {
+            if constexpr(not utils::StringLike<typename Q::mapped_type>) {
+                if(value_key[1].size() > 1
+                   && is_in(value_key[1].front(), '"', '\'')
+                   && value_key[1].front() == value_key[1].back())
+                {
+                    value_key[1] = Meta::fromStr<std::string>(value_key[1]);
+                }
+            }
+            
             auto y = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
             r[x] = y;
         } catch(const std::logic_error&) {
