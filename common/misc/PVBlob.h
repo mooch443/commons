@@ -14,7 +14,7 @@
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
     #define USE_NEON
 #elif !defined(__APPLE__) && (defined(__SSE2__) || defined(__x86_64__) || defined(_M_X64))
-    #define USE_SSE
+    //#define USE_SSE
 #endif
 
 namespace Output {
