@@ -563,14 +563,14 @@ pv::BlobPtr CompressedBlob::unpack() const {
             _mm512_storeu_si512(reinterpret_cast<void*>(uptr), interleaved);
 
 #if defined(__GNUC__)
-            y += _mm256_extract_epi32(eol_flags, 0);
-            y += _mm256_extract_epi32(eol_flags, 1);
-            y += _mm256_extract_epi32(eol_flags, 2);
-            y += _mm256_extract_epi32(eol_flags, 3);
-            y += _mm256_extract_epi32(eol_flags, 4);
-            y += _mm256_extract_epi32(eol_flags, 5);
-            y += _mm256_extract_epi32(eol_flags, 6);
-            y += _mm256_extract_epi32(eol_flags, 7);
+            uptr[0].y = y; y += _mm256_extract_epi32(eol_flags, 0);
+            uptr[1].y = y; y += _mm256_extract_epi32(eol_flags, 1);
+            uptr[2].y = y; y += _mm256_extract_epi32(eol_flags, 2);
+            uptr[3].y = y; y += _mm256_extract_epi32(eol_flags, 3);
+            uptr[4].y = y; y += _mm256_extract_epi32(eol_flags, 4);
+            uptr[5].y = y; y += _mm256_extract_epi32(eol_flags, 5);
+            uptr[6].y = y; y += _mm256_extract_epi32(eol_flags, 6);
+            uptr[7].y = y; y += _mm256_extract_epi32(eol_flags, 7);
 #else
             auto runC = [&]<int i>() {
                 uptr[i].y = y;
