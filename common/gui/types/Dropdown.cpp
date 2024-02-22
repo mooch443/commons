@@ -77,7 +77,7 @@ void Dropdown::init() {
                 
                 auto& items = _list.items();
                 FilteredIndex current = _items_to_filtered_items.contains(_selected_item) ? _items_to_filtered_items.at(_selected_item) : FilteredIndex{};
-
+                
                 if (current && size_t(current.value + 1) < items.size()) {
                     // Get the next filtered item
                     if (_filtered_items.contains(FilteredIndex{current.value + 1})) {
@@ -89,7 +89,7 @@ void Dropdown::init() {
                 } else {
                     _selected_item = RawIndex{};
                 }
-
+                
                 if (_items_to_filtered_items.contains(_selected_item)) {
                     _list.highlight_item(_items_to_filtered_items.at(_selected_item).value);
                 } else {
@@ -100,7 +100,7 @@ void Dropdown::init() {
                 _set_open(true);
                 
                 FilteredIndex current = _items_to_filtered_items.contains(_selected_item) ? _items_to_filtered_items.at(_selected_item) : FilteredIndex();
-
+                
                 if (current) {
                     // Find the previous filtered item
                     auto iter = _filtered_items.find(FilteredIndex{current.value - 1});
@@ -113,7 +113,7 @@ void Dropdown::init() {
                 } else {
                     _selected_item = RawIndex{};
                 }
-
+                
                 if (_items_to_filtered_items.contains(_selected_item)) {
                     _list.highlight_item(_items_to_filtered_items.at(_selected_item).value);
                 } else {
@@ -192,15 +192,17 @@ void Dropdown::init() {
     
     set_clickable(true);
     
-    if(_type == SEARCH)
+    if(_type == SEARCH) {
+        
         add_event_handler(SELECT, [this](Event e) {
-            if(not e.select.selected)
+            if(not e.select.selected) {
                 _set_open(e.select.selected);
-            else if(not _opened && selected()) {
+            } else if(not _opened && selected()) {
                 _set_open(true);
             }
         });
     }
+}
 
     Dropdown::~Dropdown() {
         _button = nullptr;
@@ -225,6 +227,8 @@ void Dropdown::init() {
             set_z_index(2);
         } else {
             set_z_index(0);
+            if(selected())
+                if(stage()) stage()->select(nullptr);
         }
         set_content_changed(true);
     }
