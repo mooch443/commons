@@ -538,6 +538,7 @@ Path Path::absolute() const {
         if(!is_regular())
             throw U_EXCEPTION("Cannot delete non-regular file ",str(),".");
         
+        _stat_cache.exists.reset();
         return std::remove(str().c_str()) == 0;
     }
     
@@ -686,7 +687,10 @@ Path Path::absolute() const {
         try {
             std::filesystem::rename(c_str(), to.c_str());
 #endif
+            _stat_cache.exists.reset();
+#ifndef NDEBUG
             assert(!exists() && to.exists());
+#endif
             return true;
 #ifdef __cpp_lib_filesystem
         } catch (std::filesystem::filesystem_error& e) {

@@ -303,7 +303,7 @@ struct FrameRange {
     }
 
     arange<Frame_t> iterable() const {
-        return arange<Frame_t>(start(), end());
+        return arange<Frame_t>(start(), end() + 1_f);
     }
 
     std::string toStr() const {
