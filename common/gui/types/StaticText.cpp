@@ -520,7 +520,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 tag.color = mix_colors(tag.color, Cyan);
             }
             else if(tag.name == "nr" || tag.name == "number") {
-                tag.color = mix_colors(tag.color, Green);
+                tag.color = mix_colors(tag.color, Cyan);
             }
             else if(tag.name == "a") {
                 tag.color = mix_colors(tag.color, Cyan);
