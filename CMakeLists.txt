@@ -1378,6 +1378,12 @@ endif()
 
     set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
 
+    if(APPLE)
+        set(OPENCV_PATCH patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_4.9.patch || echo 1)
+    else()
+        set(OPENCV_PATCH "")
+    endif()
+
     if(UNIX)
         message(STATUS "Using custom configure command CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV")
         ExternalProject_add(CustomOpenCV
@@ -1385,7 +1391,7 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             UPDATE_COMMAND ""
-            PATCH_COMMAND patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_4.9.patch
+            PATCH_COMMAND "${OPENCV_PATCH}"
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
             BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
             INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
@@ -1396,7 +1402,7 @@ endif()
             PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
-            PATCH_COMMAND patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_4.9.patch
+            PATCH_COMMAND "${OPENCV_PATCH}"
             UPDATE_COMMAND ""
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
