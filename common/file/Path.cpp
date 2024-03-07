@@ -256,7 +256,7 @@ Path Path::absolute() const {
 #if !defined(WIN32)
             return Path(std::string(1, OS_SEP) + std::string(rv));
 #else
-            return Path(std::string(rv));
+            return Path(std::string(1, OS_SEP) + std::string(rv));
 #endif
         }
         if (rv.empty()) {
