@@ -903,6 +903,32 @@ void print(const Args & ... args) {
         log_to_callback(format<FormatterType::NONE>(args...));
 }
 
+template<utils::StringLike Prefix, typename... Args>
+void prefixed_print(Prefix&& prefix, const Args & ... args) {
+    static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+    
+    auto str =
+        console_color<bracket_color, FormatterType::UNIX>( "[" )
+        + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
+        + " "
+        + console_color<FormatColor::YELLOW, FormatterType::UNIX>( prefix )
+        + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
+        + format<FormatterType::UNIX>(args...);
+    
+    log_to_terminal(str);
+
+#if COMMONS_FORMAT_LOG_TO_FILE
+    if (has_log_file()) {
+        str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
+            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>";
+        write_log_message(str);
+    }
+#endif
+    if (has_log_callback())
+        log_to_callback(format<FormatterType::NONE>(args...));
+}
+
 template<typename... Args>
 void thread_print(const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
