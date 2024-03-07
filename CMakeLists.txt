@@ -529,8 +529,8 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
         set(GLAD_API "gl=3.2")
     endif()
     ExternalProject_Add(gladex PREFIX gladex
-        GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-        GIT_TAG v0.1.33
+        GIT_REPOSITORY https://github.com/mooch443/glad.git
+        GIT_TAG v0.1.36
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
