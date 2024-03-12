@@ -508,6 +508,14 @@ VideoSource::VideoSource(const file::PathArray& source)
     
     _size = _files_in_seq.at(0)->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
+    
+    if(type() == File::VIDEO) {
+        _framerate = _files_in_seq.at(0)->framerate();
+    } else {
+        //! TODO: Frame rate not being set for image sequences...
+        //! needs check!
+        FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
+    }
 }
 
 void VideoSource::open(const std::string& prefix, const std::string& suffix, const std::string& extension, int seq_start, int seq_end, int padding)

@@ -43,7 +43,8 @@ public:
     virtual ~GenericVideo() {}
     virtual CropOffsets crop_offsets() const;
     
-    void undistort(const gpuMat& disp, gpuMat& image) const;
+    static void undistort(const gpuMat& disp, gpuMat& image);
+    static void undistort(const cv::Mat& disp, cv::Mat& image);
     
     virtual void set_offsets(const CropOffsets&) {
         throw U_EXCEPTION("Not implemented.");
@@ -51,6 +52,8 @@ public:
     
     void processImage(const gpuMat& disp, gpuMat& out, bool do_mask = true) const;
     virtual void generate_average(cv::Mat &average, uint64_t frameIndex, std::function<bool(float)>&& callback = nullptr);
+    
+    static void initialize_undistort(const Size2& size);
 };
 
 }

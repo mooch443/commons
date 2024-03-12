@@ -11,40 +11,59 @@ CropOffsets GenericVideo::crop_offsets() const {
     return SETTING(crop_offsets);
 }
 
-void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) const {
+void GenericVideo::undistort(const cv::Mat &input, cv::Mat &output) {
+    if (not GlobalSettings::map().has("cam_undistort")
+        || not SETTING(cam_undistort))
+    {
+        return;
+    }
+    
+    static cv::Mat map1;
+    static cv::Mat map2;
+    if(map1.empty())
+        GlobalSettings::get("cam_undistort1").value<cv::Mat>().copyTo(map1);
+    if(map2.empty())
+        GlobalSettings::get("cam_undistort2").value<cv::Mat>().copyTo(map2);
+    
+    if(map1.cols == input.cols
+       && map1.rows == input.rows
+       && map2.cols == input.cols
+       && map2.rows == input.rows)
+    {
+        if(!map1.empty() && !map2.empty()) {
+            print("Undistorting ", input.cols,"x",input.rows);
+            cv::remap(input, output, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
+        } else {
+            FormatWarning("remap maps are empty.");
+        }
+    } else {
+        FormatError("Undistortion maps are of invalid size (", map1.cols, "x", map1.rows, " vs ", input.cols, "x", input.rows, ").");
+    }
+}
+
+void GenericVideo::undistort(const gpuMat& disp, gpuMat &image) {
     if (GlobalSettings::map().has("cam_undistort") && SETTING(cam_undistort)) {
-        static cv::Mat map1;
-        static cv::Mat map2;
+        static gpuMat map1;
+        static gpuMat map2;
         if(map1.empty())
             GlobalSettings::get("cam_undistort1").value<cv::Mat>().copyTo(map1);
         if(map2.empty())
             GlobalSettings::get("cam_undistort2").value<cv::Mat>().copyTo(map2);
         
-        if(map1.cols == disp.cols && map1.rows == disp.rows && map2.cols == disp.cols && map2.rows == disp.rows)
+        if(map1.cols == disp.cols 
+           && map1.rows == disp.rows
+           && map2.cols == disp.cols
+           && map2.rows == disp.rows)
         {
             if(!map1.empty() && !map2.empty()) {
                 print("Undistorting ", disp.cols,"x",disp.rows);
-                
-                static gpuMat _map1, _map2;
-                if(_map1.empty())
-                    map1.copyTo(_map1);
-                if(_map2.empty())
-                    map2.copyTo(_map2);
-                
-                static gpuMat input;
-                disp.copyTo(input);
-                
-                cv::remap(input, image, _map1, _map2, cv::INTER_LINEAR, cv::BORDER_DEFAULT);
-                //output.copyTo(image);
+                cv::remap(disp, image, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
             } else {
                 FormatWarning("remap maps are empty.");
             }
         } else {
             FormatError("Undistortion maps are of invalid size (", map1.cols, "x", map1.rows, " vs ", disp.cols, "x", disp.rows, ").");
         }
-        
-        
-        //cv::remap(display, display, map1, map2, cv::INTER_LINEAR, cv::BORDER_DEFAULT);
     }
 }
 
@@ -109,4 +128,36 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     
     auto image = accumulator.finalize();
     image->get().copyTo(av);
+}
+
+void GenericVideo::initialize_undistort(const Size2& size) {
+    cv::Mat map1, map2;
+    
+    auto cam_data = SETTING(cam_matrix).value<std::vector<float>>();
+    cv::Mat cam_matrix = cv::Mat(3, 3, CV_32FC1, cam_data.data());
+    
+    auto undistort_data = SETTING(cam_undistort_vector).value<std::vector<float>>();
+    cv::Mat cam_undistort_vector = cv::Mat(1, 5, CV_32FC1, undistort_data.data());
+    
+    // Adjust the camera matrix to the scale of the new image
+    cam_matrix.at<float>(0, 0) *= size.width; // Scale fx
+    cam_matrix.at<float>(1, 1) *= size.height; // Scale fy
+    cam_matrix.at<float>(0, 2) *= size.width; // Scale cx (principal point x-coordinate)
+    cam_matrix.at<float>(1, 2) *= size.height; // Scale cy (principal point y-coordinate)
+
+    cv::Mat drawtransform = cv::getOptimalNewCameraMatrix(cam_matrix, cam_undistort_vector, size, 1.0, size);
+    print_mat("draw_transform", drawtransform);
+    print_mat("cam", cam_matrix);
+    //drawtransform = SETTING(cam_matrix).value<cv::Mat>();
+    cv::initUndistortRectifyMap(
+                                cam_matrix,
+                                cam_undistort_vector,
+                                cv::Mat(),
+                                drawtransform,
+                                size,
+                                CV_32FC1,
+                                map1, map2);
+    
+    GlobalSettings::map()["cam_undistort1"] = map1;
+    GlobalSettings::map()["cam_undistort2"] = map2;
 }

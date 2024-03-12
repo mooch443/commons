@@ -525,7 +525,10 @@ pv::BlobPtr CompressedBlob::unpack() const {
     {
 #if defined(_MSC_VER)
         if (not use_avx512f) {
-            std::cout << "fallback instruction set" << std::endl;
+            static std::once_flag print_flag;
+            std::call_once(print_flag, []() {
+                std::cout << "[AVX512] Using fallback instruction set." << std::endl;
+            });
             uncompress_normal(result, start_y, compressed);
             return;
         }

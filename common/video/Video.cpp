@@ -458,7 +458,7 @@ const cv::Mat& Video::undistorted_frame(Frame_t index) {
     cv::remap(_input, output, _undistort_maps.first, _undistort_maps.second, cv::INTER_LINEAR, cv::BORDER_DEFAULT);
     output.copyTo(_undistorted_frames[index]);
 #else
-    cv::remap(_input, _undistorted_frames[index], _undistort_maps.first, _undistort_maps.second, cv::INTER_LINEAR, cv::BORDER_DEFAULT);
+    cv::remap(_input, _undistorted_frames[index], _undistort_maps.first, _undistort_maps.second, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
 #endif
     
     return _undistorted_frames[index];
