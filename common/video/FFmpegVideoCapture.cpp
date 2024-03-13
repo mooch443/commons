@@ -459,6 +459,16 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                     // we made it _worse_ by jumping. we should not
                     // keep doing this if the frame is below current:
                     _disable_jumping = true;
+                    av_frame_free(&temp_frame);
+                    
+                    frameCount = frame_index;
+                    while(grab() && frameIndex > frameCount) {
+#ifndef NDEBUG
+                        print("grabbing ", frameIndex," / ", frameCount);
+#endif
+                    }
+                    
+                    return frameCount == frameIndex;
                 }
 #ifndef NDEBUG
                 print("jumped to frame ", frame_index, " / ", frameIndex);

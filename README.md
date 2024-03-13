@@ -62,7 +62,7 @@ int main(int argc, char**argv) {
     bool terminate = false;
     SETTING(app_name) = std::string("test application");
     SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.pt");
-    SETTING(blob_size_ranges) = std::vector<float>{};
+    SETTING(track_size_filter) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
     
@@ -182,7 +182,7 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
             }
           },
           {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40]},
-          {"type":"settings","var":"blob_size_ranges","fill":[50,50,50,125],"size":[300,40]}
+          {"type":"settings","var":"track_size_filter","fill":[50,50,50,125],"size":[300,40]}
       ]},
       { "type": "gridlayout", 
         "pos": [550, 600], 

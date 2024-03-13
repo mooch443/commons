@@ -62,8 +62,8 @@ public:
         if(not cam_matrix
            || not undistort_vector)
         {
-            map1.release();
-            map2.release();
+            map1 = gpuMat{};
+            map2 = gpuMat{};
             assert(map1.empty() && map2.empty());
             return;
         }
