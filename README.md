@@ -62,7 +62,7 @@ int main(int argc, char**argv) {
     bool terminate = false;
     SETTING(app_name) = std::string("test application");
     SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.pt");
-    SETTING(track_size_filter) = std::vector<float>{};
+    SETTING(blob_size_ranges) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
     
@@ -171,6 +171,9 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
         "color":[255,0,255,255],
         "action":"QUIT"
       },
+      {"type":"stext",
+      "text":"{mouse.x} {window_size.w} {video_length} -- {*:{video_length}:{/:{mouse.x}:{window_size.w}}}"
+    },
       {"type": "vlayout", "pad":[5,5,5,5], "children": [
           {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
           { "type":"settings","var": "patharray", 
@@ -205,8 +208,9 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
           [{"type": "text", "text": "app={global.app_name}"}]
         ],
         [
+          [{"type":"settings","var":"gui_frame","fill":[50,50,50,125],"size":[300,40]}],
           [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}],
-          [{"type":"settings","var":"app_name","fill":[50,50,50,125],"size":[300,40]}]
+          [{"type":"button","action":"set:gui_run:true","fill":[50,50,50,125],"size":[300,40]}]
         ]
       ]},
       { "type":"rect","pos":[0,0],"size": [50,50],"fill":[255,0,0,125]},
