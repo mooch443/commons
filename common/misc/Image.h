@@ -3,6 +3,7 @@
 #include <commons.pc.h>
 #include <file/Path.h>
 #include <misc/colors.h>
+//#define IMAGE_DEBUG_MEMORY_ALLOC 1
 
 namespace cmn {
 template<typename F, typename... Args>
@@ -83,6 +84,10 @@ concept CallableWithNArgs = requires (F&& f) {
             return ptr_ == nullptr;
         }
         operator bool() const noexcept { return ptr_ != nullptr; }
+
+        std::string toStr() const {
+            return hex(ptr_.get()).toStr();
+        }
 
     private:
         std::unique_ptr<void, ReallocDeleter> ptr_;

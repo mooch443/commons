@@ -1,6 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 //#undef NDEBUG
+//#define DEBUG_BUFFER_IMAGES 1
 
 namespace cmn {
 
@@ -191,14 +192,14 @@ class ImageBuffers {
     std::mutex m;
     Size2 _image_size;
 #ifdef DEBUG_BUFFER_IMAGES
-    const char* _name;
+    std::string _name;
     std::unordered_set<typename T::element_type*> _created;
 #endif
 
 public:
     ImageBuffers(const char* name) 
 #ifdef DEBUG_BUFFER_IMAGES
-        : _name(name) 
+        : _name(name+hex((uint64_t)this).toStr()) 
 #endif
     {
         UNUSED(name);
@@ -206,7 +207,7 @@ public:
     ImageBuffers(const char* name, Size2 size) 
         : _image_size(size)
 #ifdef DEBUG_BUFFER_IMAGES
-        , _name(name)
+        , _name(name + hex((uint64_t)this).toStr())
 #endif
     {
         UNUSED(name);
@@ -237,7 +238,7 @@ public:
             _created.insert(ptr.get());
 
             if constexpr (std::is_same_v<typename T::element_type, Image>)
-                ptr->set_custom_data(new ImageSource{ _name });
+                ptr->set_custom_data(new ImageSource{ _name.c_str()});
 
             if (_created.size() > 100)
                 thread_print("[", type_name<ImageBuffers>(), "] ", _name, " created ", _created.size(), " images");
@@ -250,8 +251,8 @@ public:
         std::unique_lock guard(mutex());
         if(image) {
 #ifdef DEBUG_BUFFER_IMAGES
-            if (_created.contains(image.get()))
-                _created.erase(image.get());
+            //if (_created.contains(image.get()))
+            //    _created.erase(image.get());
 
             if constexpr (std::same_as<typename T::element_type, Image>) {
                 if (const ImageSource* ptr = dynamic_cast<const ImageSource*>(image->custom_data());
