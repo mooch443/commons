@@ -9,9 +9,10 @@ FfmpegVideoCapture::FfmpegVideoCapture(const std::string& filePath) {
     if (not filePath.empty()
         && not open(filePath)) {
         // Handle error if opening the file fails
-        std::cerr << "Failed to open video file: " << filePath << std::endl;
+        std::cerr << "[FFMPEG] Failed to open video file: " << filePath << std::endl;
     }
     av_log_set_level(AV_LOG_QUIET);
+    //_disable_jumping = true;
 }
 
 bool FfmpegVideoCapture::open(const std::string& filePath) {
@@ -19,7 +20,7 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     // Allocate format context
     formatContext = avformat_alloc_context();
     if (not formatContext) {
-        FormatError("Failed to allocate format context");
+        FormatError("[FFMPEG] Failed to allocate format context");
         return false;
     }
 
@@ -27,13 +28,13 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 
     // Open video file
     if (avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr) != 0) {
-        FormatError("Failed to open video file: ", filePath);
+        FormatError("[FFMPEG] Failed to open video file: ", filePath);
         return false;
     }
 
     // Retrieve stream information
     if (avformat_find_stream_info(formatContext, nullptr) < 0) {
-        FormatError("Failed to find stream information");
+        FormatError("[FFMPEG] Failed to find stream information");
         return false;
     }
     
@@ -46,7 +47,7 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     }
 
     if (videoStreamIndex == -1) {
-        FormatError("Failed to find video stream");
+        FormatError("[FFMPEG] Failed to find video stream");
         return false;
     }
 
@@ -61,7 +62,7 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 #ifndef NDEBUG
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
-        print("HW type: ", hw_type);
+        print("[FFMPEG] HW type: ", hw_type);
     }
 #endif
 
@@ -110,7 +111,7 @@ retry_codec:
     hw_start_index = i;
 
     if (hw_device_ctx == nullptr) {
-        FormatWarning("Failed to create a hardware device context: ", preferred_devices);
+        FormatWarning("[FFMPEG] Failed to create a hardware device context: ", preferred_devices);
     }
 
     /*if(hw_device_ctx == nullptr) {
@@ -137,7 +138,7 @@ retry_codec:
         codec = avcodec_find_decoder(codecParameters->codec_id);
 
     if (!codec) {
-        FormatError("Unsupported codec id: ", codecParameters->codec_id);
+        FormatError("[FFMPEG] Unsupported codec id: ", codecParameters->codec_id);
         return false;
     }
 
@@ -145,13 +146,13 @@ retry_codec:
     // Allocate codec context
     codecContext = avcodec_alloc_context3(codec);
     if (!codecContext) {
-        FormatError("Failed to allocate codec context");
+        FormatError("[FFMPEG] Failed to allocate codec context");
         return false;
     }
 
     // Copy codec parameters to codec context
     if (avcodec_parameters_to_context(codecContext, codecParameters) < 0) {
-        FormatError("Failed to copy codec parameters to codec context");
+        FormatError("[FFMPEG] Failed to copy codec parameters to codec context");
         return false;
     }
     
@@ -167,11 +168,11 @@ retry_codec:
         codecContext = nullptr;
         codec = nullptr;
         if(sign_cast<size_t>(hw_start_index) <= preferred_devices.size()) {
-			FormatWarning("Failed to open codec with hardware acceleration. Retrying with next hardware device.");
+			FormatWarning("[FFMPEG] Failed to open codec with hardware acceleration. Retrying with next hardware device.");
 			goto retry_codec;
 		}
 
-        FormatError("Failed to open codec");
+        FormatError("[FFMPEG] Failed to open codec");
         return false;
     }
     
@@ -179,7 +180,7 @@ retry_codec:
     frame = av_frame_alloc();
     pkt = av_packet_alloc();
     if (!frame || !pkt) {
-        FormatError("Failed to allocate frame or packet");
+        FormatError("[FFMPEG] Failed to allocate frame or packet");
         return false;
     }
 
@@ -297,7 +298,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
            || frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den) + 1))
     {
 #ifndef NDEBUG
-        print("jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
+        print("[FFMPEG] jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
         Timer timer;
         size_t i = 0;
 #endif
@@ -310,7 +311,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 #ifndef NDEBUG
         auto e = timer.elapsed();
         if(i > 0 && e > 0)
-            print("jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
+            print("[FFMPEG] jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
 #endif
         return frameIndex == frameCount;
     }
@@ -332,13 +333,13 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             && abs(keyframe - frameIndex) < offset) 
         {            
 #ifndef NDEBUG
-            print("jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
+            print("[FFMPEG] jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
 #endif
             timestamp = it->second;
         } 
 #ifndef NDEBUG
         else
-            print("NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
+            print("[FFMPEG] NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
 #endif
     }
 
@@ -346,12 +347,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);    
 
 #ifndef NDEBUG
-    print("jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
+    print("[FFMPEG] jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
     av_log_set_level(AV_LOG_DEBUG);
 #endif
     // Seek directly to the calculated timestamp
     if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
-        FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
+        FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
         return false;
     }
     
@@ -359,7 +360,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
     AVFrame* temp_frame = av_frame_alloc();
     if (!temp_frame) {
-        FormatExcept("Failed to allocate temporary frame for seeking.");
+        FormatExcept("[FFMPEG] Failed to allocate temporary frame for seeking.");
         return false;
     }
 
@@ -373,7 +374,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         if (ret < 0) {
             char errbuf[AV_ERROR_MAX_STRING_SIZE];
             av_strerror(ret, errbuf, AV_ERROR_MAX_STRING_SIZE);
-            FormatExcept("Error reading frame ",frameCount," during seeking: ", errbuf);
+            FormatExcept("[FFMPEG] Error reading frame ",frameCount," during seeking: ", errbuf);
             if(tries++ > 1) {
                 av_frame_free(&temp_frame);
                 return false;
@@ -385,7 +386,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             int response = avcodec_send_packet(codecContext, pkt);
             av_packet_unref(pkt); // Unref packet immediately after sending
             if (response < 0) {
-                FormatError("Error sending frame packet");
+                FormatError("[FFMPEG] Error sending frame packet");
                 break;
             }
             
@@ -395,7 +396,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 continue;
                 
             } else if (response < 0) {
-                FormatError("Error while receiving frame from decoder");
+                FormatError("[FFMPEG] Error while receiving frame from decoder");
                 return false;
             }
             
@@ -421,12 +422,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             received_frame = frame_index;
             if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {  
 #ifndef NDEBUG
-                print("found jumped to frame ", frame_index, " / ", frameIndex);
+                print("[FFMPEG] found jumped to frame ", frame_index, " / ", frameIndex);
 #endif
                 break;
             } else if(frame_index >= frameIndex && timestamp == 0) {                
 #ifndef NDEBUG
-                print("jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
+                print("[FFMPEG] jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
 #endif
                 return false;
                 
@@ -439,39 +440,59 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 offset = int64_t(offset * 1.5);
                 timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
 #ifndef NDEBUG
-                print("jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
+                print("[FFMPEG] jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
 #endif
                 
                 frame_skips++;
                 
                 // Seek directly to the calculated timestamp
                 if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
-                    FormatExcept("Error seeking frame to ", frameIndex, " in ", _filePath);
+                    FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
                     return false;
                 }
                 received_frame = int64_t(frameIndex) - offset;
                 avcodec_flush_buffers(codecContext);
                 
             } else {
-                if(frame_index < frameCount && frame_index < frameIndex
+                if(frame_index < frameIndex
+                   && int64_t(frameIndex) - frame_index < 50)
+                {
+                    print("[FFMPEG] We are close enough to ", frameIndex, " by jumping to ", frame_index);
+                    frameCount = frame_index;
+                    while(grab() && frameIndex > frameCount) {
+#ifndef NDEBUG
+                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
+#endif
+                    }
+                    return frameCount == frameIndex;
+                    
+                } else if(frame_index < frameCount && frame_index < frameIndex
                    && frame_skips > 1)
                 {
                     // we made it _worse_ by jumping. we should not
                     // keep doing this if the frame is below current:
                     _disable_jumping = true;
+#ifndef NDEBUG
+                    FormatWarning("[FFMPEG] Disabling jumping since we skipped ", frame_skips, " times and landed at ", frame_index, " when we wanted to hit ", frameIndex, " but were already at ", frameCount);
+#endif
                     av_frame_free(&temp_frame);
+                    
+                    std::call_once(skip_message_flag, [this](){
+                        static constexpr std::string_view msg{"The video-stream seems to have trouble jumping to specific frames."};
+                        recovered_error(msg);
+                    });
                     
                     frameCount = frame_index;
                     while(grab() && frameIndex > frameCount) {
 #ifndef NDEBUG
-                        print("grabbing ", frameIndex," / ", frameCount);
+                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
 #endif
                     }
                     
                     return frameCount == frameIndex;
                 }
 #ifndef NDEBUG
-                print("jumped to frame ", frame_index, " / ", frameIndex);
+                print("[FFMPEG] jumped to frame ", frame_index, " / ", frameIndex);
 #endif
                 continue;
             }

@@ -21,6 +21,7 @@ class FfmpegVideoCapture {
     std::map<int64_t, int64_t> _keyframes;
     bool _disable_jumping{false};
     mutable std::set<std::string_view> _recovered_errors;
+    std::once_flag skip_message_flag;
     
 public:
     FfmpegVideoCapture(const std::string& filePath);

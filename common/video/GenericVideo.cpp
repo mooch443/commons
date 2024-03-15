@@ -24,7 +24,7 @@ void GenericVideo::undistort(const cv::Mat &input, cv::Mat &output)
        && map2.rows == input.rows)
     {
         if(!map1.empty() && !map2.empty()) {
-            print("Undistorting ", input.cols,"x",input.rows);
+            //print("Undistorting ", input.cols,"x",input.rows);
             cv::remap(input, output, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         } else {
             FormatWarning("remap maps are empty.");
@@ -45,7 +45,7 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image)
        && map2.rows == disp.rows)
     {
         if(!map1.empty() && !map2.empty()) {
-            print("Undistorting ", disp.cols,"x",disp.rows);
+            //print("Undistorting ", disp.cols,"x",disp.rows);
             cv::remap(disp, image, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         } else {
             FormatWarning("remap maps are empty.");
