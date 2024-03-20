@@ -457,11 +457,13 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 if(frame_index < frameIndex
                    && int64_t(frameIndex) - frame_index < 50)
                 {
+#ifndef NDEBUG
                     print("[FFMPEG] We are close enough to ", frameIndex, " by jumping to ", frame_index);
+#endif
                     frameCount = frame_index;
                     while(grab() && frameIndex > frameCount) {
 #ifndef NDEBUG
-                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
+                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
 #endif
                     }
                     return frameCount == frameIndex;
