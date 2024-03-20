@@ -9,10 +9,10 @@
 #include <gui/ControlsAttributes.h>
 
 #define CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _settings. NAME ) & NAME) { \
-if ( _settings. NAME == NAME ) return; _settings. NAME = NAME; set_dirty(); }
+if ( _settings. NAME == NAME ) { return; } _settings. NAME = NAME; set_dirty(); }
 
 #define _CHANGE_SETTER(NAME) virtual void set_ ## NAME (const decltype( _ ## NAME ) & NAME) { \
-if ( _ ## NAME == NAME ) return; _ ## NAME = NAME; set_dirty(); }
+if ( _ ## NAME == NAME ) { return; } _ ## NAME = NAME; set_dirty(); }
 
 namespace gui {
     enum class PrimitiveType
