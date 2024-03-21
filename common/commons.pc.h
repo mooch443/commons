@@ -209,7 +209,6 @@ public:
 #include <bytell_hash_map.hpp>
 #include <robin_hood.h>
 
-
 #ifndef CMN_WITH_IMGUI_INSTALLED
     #if __has_include ( <imgui/imgui.h> )
     #include <imgui/imgui.h>

@@ -508,6 +508,19 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/commons/CMakeModules" )
 
+FetchContent_Declare(
+    dialogs
+    GIT_REPOSITORY https://github.com/samhocevar/portable-file-dialogs.git
+    GIT_TAG 0.1.0
+)
+
+FetchContent_GetProperties(pybdialogsind11)
+if(NOT dialogs_POPULATED)
+    FetchContent_Populate(dialogs)
+    #add_subdirectory(${dialogs_SOURCE_DIR} ${dialogs_BINARY_DIR})
+endif()
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      JSON
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1598,6 +1611,8 @@ PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT devel
 INCLUDES DESTINATION include
 )
 
+target_include_directories(commons PUBLIC ${dialogs_SOURCE_DIR})
+message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
 
 if(WIN32)
     if(COMMONS_BUILD_OPENCV)
