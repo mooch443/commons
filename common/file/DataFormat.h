@@ -163,7 +163,18 @@ namespace cmn {
         void resize(uint64_t size, bool move = true) {
             if(size > _capacity) {
                 if(move) {
-                    _data = (uchar*)realloc(_data, size);
+                    auto ptr = (uchar*)realloc(_data, size);
+                    if (ptr) {
+                        _data = ptr;
+                    }
+                    else [[unlikely]] {
+                        if(_data)
+                            free(_data);
+                        _data = nullptr;
+
+                        throw U_EXCEPTION("Failed to allocate memory.");
+                    }
+
                 } else {
                     if(_data)
                         free(_data);

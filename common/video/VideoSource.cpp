@@ -111,7 +111,9 @@ VideoSource::File::File(File&& other)
 
 VideoSource::File::File(size_t index, const std::string& basename, const std::string& extension) : _index(index), _video(NULL), _size(0, 0) {
     _filename = complete_name(basename, extension);
-    
+    if(not file::Path(_filename).is_absolute())
+        _filename = file::Path(_filename).absolute().str();
+
     // check the extension(-type)
     _type = UNKNOWN;
     for (auto ext : _extensions) {
@@ -122,7 +124,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
     
     if (_type == UNKNOWN)
-        throw U_EXCEPTION("Unknown extension ",extension," for file '",_filename,"'.");
+        throw U_EXCEPTION("Unknown extension ",extension," for file ",_filename,".");
     
     switch (_type) {
         case VIDEO: {
@@ -194,35 +196,8 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
         }
             
         case IMAGE: {
-            auto tmp = cv::imread(_filename, cv::IMREAD_UNCHANGED);
-            if(color == ImageMode::R3G3B2) {
-                if(output.channels() != 1)
-                    throw InvalidArgumentException("Cannot convert image to R3G3B2 into target with ", output.channels(), " channels.");
-                
-                cv::Mat out = output.get();
-                if(tmp.channels() == 3)      convert_to_r3g3b2<3>(tmp, out);
-                else if(tmp.channels() == 4) convert_to_r3g3b2<4>(tmp, out);
-                else throw InvalidArgumentException("Invalid number of channels ", tmp.channels(), " to be converted to R3G3B2 format.");
-                
-            } else if(tmp.channels() == output.channels()) {
-                tmp.copyTo(output.get());
-                
-            } else if(tmp.channels() == 1) {
-                switch(output.channels()) {
-                    // case 1 already dealt with
-                    case 3: 
-                        cv::cvtColor(tmp, output.get(), cv::COLOR_GRAY2BGR);
-                        break;
-                    case 4:
-                        cv::cvtColor(tmp, output.get(), cv::COLOR_GRAY2BGRA);
-                        break;
-                        
-                    default:
-                        throw InvalidArgumentException("Unknown color conversion from ", tmp.channels(), " to ", output.channels()," with color mode ", color,".");
-                }
-            } else
-                throw InvalidArgumentException("Unknown number of channels ", tmp.channels()," to be converted to ", output.channels(), " in mode ", color, ".");
-            
+            auto op = output.get();
+            load_image_to_format(color, _filename, op);
             output.set_index(frameIndex.get());
             return true;
         }
@@ -249,12 +224,7 @@ bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
     }
 
     case IMAGE:
-        if(color == ImageMode::RGBA)
-            cv::imread(_filename, cv::IMREAD_UNCHANGED).copyTo(output);
-        else if (color == ImageMode::GRAY)
-            cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
-        else
-            cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output);
+        load_image_to_format(color, _filename, output);
         return true;
 
     default:
@@ -284,12 +254,7 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& outpu
         }
             
         case IMAGE:
-            if(color == ImageMode::RGBA)
-                cv::imread(_filename, cv::IMREAD_UNCHANGED).copyTo(output);
-            else if(color == ImageMode::GRAY)
-                cv::imread(_filename, cv::IMREAD_GRAYSCALE).copyTo(output);
-            else
-                cv::imread(_filename, cv::IMREAD_COLOR).copyTo(output);
+            load_image_to_format(color, _filename, output);
             break;
             
         default:

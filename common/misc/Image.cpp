@@ -483,4 +483,101 @@ namespace cmn {
         cv::resize(input, image, cv::Size(image_size), 0, 0, cv::INTER_AREA);
         return image;
     }
+
+    template<typename MatOut>
+    void load_image_to_format(ImageMode color, const cv::Mat& tmp, MatOut& output) {
+        if (tmp.cols != output.cols || tmp.rows != output.rows) {
+            throw InvalidArgumentException("Cannot convert image to target with different dimensions.");
+        }
+        uint8_t expected_channels = required_channels(color);
+        if (output.channels() != expected_channels) {
+            throw InvalidArgumentException("Cannot convert image to target with different number of channels.");
+        }
+
+        if (color == ImageMode::R3G3B2) {
+            if (output.channels() != 1) {
+                throw InvalidArgumentException("Cannot convert image to R3G3B2 into target with ", output.channels(), " channels.");
+            }
+
+            if constexpr (are_the_same<decltype(output), cv::Mat>) {
+                if (tmp.channels() == 3) {
+                    convert_to_r3g3b2<3>(tmp, output);
+                    return;
+                }
+                else if (tmp.channels() == 4) {
+                    convert_to_r3g3b2<4>(tmp, output);
+                    return;
+                }
+            }
+            else {
+                // gpumat
+                cv::Mat buffer = cv::Mat::zeros(tmp.size(), CV_8UC(output.channels()));
+                if (tmp.channels() == 3) {
+                    convert_to_r3g3b2<3>(tmp, buffer);
+                    buffer.copyTo(output);
+                    return;
+                }
+                else if (tmp.channels() == 4) {
+                    convert_to_r3g3b2<4>(tmp, buffer);
+                    buffer.copyTo(output);
+                    return;
+                }
+            }
+
+        }
+        else if (tmp.channels() == output.channels()) {
+            tmp.copyTo(output);
+            return;
+        }
+        else if (tmp.channels() == 1) {
+            switch (output.channels()) {
+                // case 1 already dealt with because then channels
+                // are the equal between output and input
+            case 3:
+                cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGR);
+                return;
+            case 4:
+                cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGRA);
+                return;
+
+            default:
+                break;
+            }
+        }
+        else if (tmp.channels() == 3) {
+            if (output.channels() == 4) {
+                cv::cvtColor(tmp, output, cv::COLOR_BGR2BGRA);
+                return;
+            } else if(output.channels() == 1) {
+                cv::cvtColor(tmp, output, cv::COLOR_BGR2GRAY);
+                return;
+            }
+
+        } else if (tmp.channels() == 4) {
+            if (output.channels() == 3) {
+                cv::cvtColor(tmp, output, cv::COLOR_BGRA2BGR);
+                return;
+            } else if(output.channels() == 1) {
+                cv::cvtColor(tmp, output, cv::COLOR_BGRA2GRAY);
+                return;
+            }
+        }
+
+        throw InvalidArgumentException("Unknown number of channels ", tmp.channels(), " to be converted to ", output.channels(), " in mode ", color, ".");
+    }
+
+    template void load_image_to_format<cv::Mat>(ImageMode, const cv::Mat&, cv::Mat&);
+    template void load_image_to_format<gpuMat>(ImageMode, const cv::Mat&, gpuMat&);
+
+    template<typename MatOut>
+    void load_image_to_format(ImageMode color, const std::string& path, MatOut& output) {
+        cv::Mat tmp = cv::imread(path, cv::IMREAD_UNCHANGED);
+        if (tmp.empty()) {
+            throw std::runtime_error("Failed to open image at path: " + path);
+        }
+        load_image_to_format(color, tmp, output);
+    }
+
+    template void load_image_to_format<cv::Mat>(ImageMode color, const std::string& path, cv::Mat& output);
+    template void load_image_to_format<gpuMat>(ImageMode color, const std::string& path, gpuMat& output);
 }

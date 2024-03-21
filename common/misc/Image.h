@@ -240,4 +240,10 @@ concept CallableWithNArgs = requires (F&& f) {
     Image::Ptr from_png(const file::Path& path);
     
     cv::Mat restrict_image_keep_ratio(const Size2& max_size, const cv::Mat& input);
+
+    template<typename MatOut>
+    void load_image_to_format(ImageMode color, const std::string& path, MatOut& output);
+
+    template<typename MatOut>
+    void load_image_to_format(ImageMode color, const cv::Mat& tmp, MatOut& output);
 }
