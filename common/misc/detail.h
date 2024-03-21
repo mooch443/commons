@@ -498,20 +498,7 @@ enum class ImageMode {
     RGBA
 };
 
-inline constexpr uint8_t required_channels(ImageMode mode) {
-    switch (mode) {
-        case ImageMode::GRAY:
-        case ImageMode::R3G3B2:
-            return 1;
-        case ImageMode::RGB:
-            return 3;
-        case ImageMode::RGBA:
-            return 4;
-            
-        default:
-            throw U_EXCEPTION("Unknown mode: ", (int)mode);
-    }
-}
+uint8_t required_channels(ImageMode mode);
 
 template<typename Vec>
 constexpr uint8_t vec_to_r3g3b2(const Vec& bgr) {
