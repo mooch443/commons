@@ -862,7 +862,7 @@ void LabeledPathArray::updateDropdownItems() {
                     else {
                         file::Path p(pathArray.source());
                         // Handle wildcard matching or parent folder display
-                        if (pathArray.matched_patterns()) {
+                        if (pathArray.matched_patterns() || pathArray.size() > 1) {
                             // If wildcards are present, filter based on them
                             matches = pathArray.get_paths();
                         }
