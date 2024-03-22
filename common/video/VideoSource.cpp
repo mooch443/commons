@@ -385,7 +385,8 @@ VideoSource::VideoSource(VideoSource&& other)
       _mask(std::move(other._mask)),
       _has_timestamps(other._has_timestamps),
       _framerate(other._framerate),
-      _colors(other._colors)
+      _colors(other._colors),
+      _last_file(nullptr)
 {
     for(auto& f : other._files_in_seq) {
         _files_in_seq.push_back(new File(std::move(*f)));
@@ -494,15 +495,20 @@ VideoSource::VideoSource(const file::PathArray& source)
         throw U_EXCEPTION("Cannot load video sequence ",source," (it is empty).");
     }
     
-    _size = _files_in_seq.at(0)->resolution();
+    _size = _files_in_seq.front()->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
     
     if(type() == File::VIDEO) {
-        _framerate = _files_in_seq.at(0)->framerate();
+        _framerate = _files_in_seq.front()->framerate();
     } else {
         //! TODO: Frame rate not being set for image sequences...
         //! needs check!
         FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
+    }
+    
+    for(auto f : _files_in_seq) {
+        if(f->resolution() != _size)
+            throw U_EXCEPTION(f->filename(), " has a different resolution ", f->resolution(), " than the first, which is ", _size,". Not supporting heterogenous resolutions in VideoSources.");
     }
 }
 
