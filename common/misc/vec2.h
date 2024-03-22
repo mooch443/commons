@@ -227,6 +227,7 @@ struct Vector2D
 template<typename Scalar>
 struct Vector2D<Scalar, true>
 {
+    using self_scalar = Scalar;
     using self_type = Vector2D<Scalar, true>;
     using other_type = Vector2D<Scalar, false>;
     Scalar x{0}, y{0};
@@ -236,6 +237,12 @@ struct Vector2D<Scalar, true>
     constexpr Vector2D(Scalar a) : x(a), y(a) {}
     constexpr Vector2D(Scalar a, Scalar b) : x(a), y(b) {}
     constexpr Vector2D(const other_type& v) : x(v.width), y(v.height) {}
+    
+    template<typename OtherScalar, bool isSize>
+        requires (not std::same_as<OtherScalar, Scalar>)
+    constexpr explicit Vector2D(const Vector2D<OtherScalar, isSize>& other)
+        : x(static_cast<Scalar>(other.A())), y(static_cast<Scalar>(other.B()))
+    { }
 
     constexpr const Scalar& A() const { return x; }
     constexpr const Scalar& B() const { return y; }
@@ -679,10 +686,12 @@ public:
     }
 
 //! LineSegementsIntersect (modified a bunch) from https://www.codeproject.com/Tips/862988/Find-the-Intersection-Point-of-Two-Line-Segments under CPOL (https://www.codeproject.com/info/cpol10.aspx)
-inline std::optional<Vec2> LineSegmentsIntersect(const Vec2& p1, const Vec2& p2, const Vec2& q1, const Vec2& q2)
+template<typename VecType>
+inline std::optional<VecType> LineSegmentsIntersect(const VecType& p1, const VecType& p2, const VecType& q1, const VecType& q2)
 {
     constexpr bool considerCollinearOverlapAsIntersect = false;
-
+    using scalar = VecType::self_scalar;
+    
     const auto r = p2 - p1;
     const auto s = q2 - q1;
     const auto r_cross_s = cross(r, s);
@@ -697,7 +706,7 @@ inline std::optional<Vec2> LineSegmentsIntersect(const Vec2& p1, const Vec2& p2,
             const auto p_minus_q_dot_s = (p1 - q1).dot(s);
             const auto t = q_minus_p_dot_r / r.dot(r);
             if ((0 <= q_minus_p_dot_r && q_minus_p_dot_r <= r.dot(r)) || (0 <= p_minus_q_dot_s && p_minus_q_dot_s <= s.dot(s)))
-                return std::optional<Vec2>(p1 + r * std::clamp(t, 0.0f, 1.0f));
+                return std::optional<VecType>(p1 + r * std::clamp(t, scalar(0.0), scalar(1.0)));
         }
         return std::nullopt;
     }
@@ -709,7 +718,7 @@ inline std::optional<Vec2> LineSegmentsIntersect(const Vec2& p1, const Vec2& p2,
     const auto u = cross(q1_minus_p1, r) / r_cross_s;
 
     if ((0 <= t && t < 1) && (0 <= u && u < 1))
-        return std::optional<Vec2>(p1 + t * r);
+        return std::optional<VecType>(p1 + t * r);
 
     return std::nullopt;
 }

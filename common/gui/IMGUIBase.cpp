@@ -1559,6 +1559,14 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                         }
                     }
                     
+                    if(ptr->show_points()) {
+                        auto clr = cvtClr(ptr->border_clr());
+                        for(auto &pt : *ptr->relative()) {
+                            auto cvt = order.transform.transformPoint(pt);
+                            list->AddCircle(cvt, order.transform.transformPoint(1, 1).x - order.transform.transformPoint(0, 0).x, clr);
+                        }
+                    }
+                    
                 } else if(cache) {
                     o->remove_cache(this);
                 }

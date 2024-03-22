@@ -236,6 +236,7 @@ protected:
         GETTER(Color, fill_clr);
         GETTER(Color, border_clr);
         bool _size_calculated;
+        GETTER(bool, show_points){false};
     public:
         static constexpr auto Class = Type::data::values::POLYGON;
         
@@ -247,6 +248,12 @@ protected:
         void set_border_clr(const Color& clr);
         void set_vertices(const std::vector<Vec2>& vertices);
         void set_vertices(const std::vector<Vertex>& vertices);
+        void set_show_points(bool show_points) {
+            if(show_points == _show_points)
+                return;
+            _show_points = show_points;
+            set_dirty();
+        }
         
         void create(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
         {
