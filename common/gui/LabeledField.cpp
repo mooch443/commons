@@ -36,14 +36,16 @@ sprite::Map& settings_map() {
 }
 
 LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
-    : _gui(gui), _ref(settings_map()[name]), _text(std::make_shared<gui::Text>(Str{name}))
+    : _gui(gui), _ref(name), _text(std::make_shared<gui::Text>(Str{name}))
 {
     //if(name.empty())
     //    throw std::invalid_argument("Name cannot be empty.");
     _text->set_font(Font(0.6f));
     _text->set_color(White);
     
-    if(_ref.valid()) {
+    if(not _ref.empty()
+       && settings_map().at(_ref).valid())
+    {
         _callback_id = settings_map().register_callbacks({name}, [this](auto){
             trigger_ref_update();
         });
@@ -65,7 +67,7 @@ void LabeledField::trigger_ref_update() {
 
 void LabeledField::replace_ref(ParmName name) {
     std::unique_lock guard(_ref_mutex);
-    _ref = settings_map()[name];
+    _ref = name;//settings_map()[name];
     trigger_ref_update();
 }
 
@@ -79,7 +81,7 @@ LabeledField::~LabeledField() {
 }
 
 std::string LabeledField::toStr() const {
-    return "Field<"+ref().toStr()+">";
+    return "Field<"+_ref+">";
 }
 
 LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, const nlohmann::json&)
@@ -157,7 +159,7 @@ _invert(invert)
     _checkbox->on_change([this](){
         try {
             auto r = ref();
-            print("Setting ", ref().toStr(), " before = ", r.get().valueString());
+            print("Setting ", r.toStr(), " before = ", r.get().valueString());
             if(_invert)
                 r.get() = not _checkbox->checked();
             else
@@ -224,10 +226,11 @@ void LabeledTextField::update_ref_in_main_thread() {
         return;
     }
     std::string str;
-    if(ref().is_type<std::string>()) {
-        str = ref().value<std::string>();
+    auto r = ref();
+    if(r.is_type<std::string>()) {
+        str = r.value<std::string>();
     } else {
-        str = ref().get().valueString();
+        str = r.get().valueString();
     }
     /*if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
         str = str.substr(1,str.length()-2);

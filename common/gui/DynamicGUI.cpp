@@ -720,8 +720,9 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
             return false;
     }*/
     
-    if(o) state._current_object = o.get();
-    else state._current_object = nullptr;
+    assert(not o || o.ptr);
+    if(o) state._current_object = std::weak_ptr<Drawable>{o.ptr};
+    else state._current_object.reset();
     
     //! something that needs to be executed before everything runs
     if(state.display_fns.contains(hash)) {
@@ -1352,8 +1353,11 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     
     context.system_variables().emplace(VarFunc("hovered", [&state = state](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
-            if(state._current_object)
-                return state._current_object->hovered();
+            if(auto ptr = state._current_object.lock();
+               ptr != nullptr)
+            {
+                return ptr->hovered();
+            }
             
         } else if(props.parameters.size() == 1) {
             if(auto it = state._named_entities.find(props.parameters.front());
@@ -1367,8 +1371,11 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     
     context.system_variables().emplace(VarFunc("selected", [&state = state](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
-            if(state._current_object)
-                return state._current_object->selected();
+            if(auto ptr = state._current_object.lock();
+               ptr != nullptr)
+            {
+                return ptr->selected();
+            }
             
         } else if(props.parameters.size() == 1) {
             if(auto it = state._named_entities.find(props.parameters.front());

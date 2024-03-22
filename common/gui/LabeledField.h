@@ -49,7 +49,8 @@ class LabeledField {
 private:
     GUITaskQueue_t *_gui{nullptr};
     std::string _docs;
-    sprite::Reference _ref;
+    std::string _ref;
+    //sprite::Reference _ref;
     CallbackCollection _callback_id;
     mutable std::mutex _ref_mutex;
     
@@ -64,9 +65,9 @@ protected:
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
 public:
-    auto ref() const {
+    sprite::Reference ref() const {
         std::unique_lock guard(_ref_mutex);
-        return _ref;
+        return settings_map()[_ref];
     }
     
     LabeledField(GUITaskQueue_t*, const std::string& name);

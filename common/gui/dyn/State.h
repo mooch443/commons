@@ -119,7 +119,7 @@ struct State {
     std::unordered_map<size_t, Layout::Ptr> _customs_cache;
     std::unordered_map<std::string, Layout::Ptr, MultiStringHash, MultiStringEqual> _named_entities;
     
-    Drawable* _current_object{nullptr};
+    std::weak_ptr<Drawable> _current_object;
     
     Index _current_index;
     

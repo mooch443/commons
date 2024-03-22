@@ -70,9 +70,13 @@ Map::~Map() {
     // -------- REFERENCE
     
     std::string Reference::toStr() const {
-        if(not _type)
+        if(auto ptr = _type.lock();
+           not ptr)
+        {
             return "null";
-        return _type->toStr();
+        } else {
+            return ptr->toStr();
+        }
     }
     
     bool Reference::operator==(const PropertyType& other) const {
@@ -84,30 +88,38 @@ Map::~Map() {
     }
 
 bool Reference::valid() const {
-    if (_container && (not _container->has(_name) || &_container->at(_name).get() != _type))
+    auto ptr = _type.lock();
+    return ptr && ptr->valid();
+    /*if (_container && (not _container->has(_name) || &_container->at(_name).get() != _type))
         return false;//throw InvalidArgumentException("Reference to an invalid option.");
-    return _type && _type->valid();
+    return _type && _type->valid();*/
 }
 
 bool ConstReference::valid() const {
-    return _type && _type->valid();
+    auto ptr = _type.lock();
+    return ptr && ptr->valid();
 }
 
 std::string_view Reference::type_name() const {
-    if(not _type)
+    if(auto ptr = _type.lock();
+       not ptr)
+    {
         throw InvalidArgumentException("Reference to an invalid option.");
-    return _type->type_name();
+    } else
+        return ptr->type_name();
 }
 std::string_view ConstReference::type_name() const {
-    if(not _type)
+    auto ptr = _type.lock();
+    if(not ptr)
         throw InvalidArgumentException("Reference to an invalid option.");
-    return _type->type_name();
+    return ptr->type_name();
 }
     
     std::string ConstReference::toStr() const {
-        if(not _type)
+        auto ptr = _type.lock();
+        if(not ptr)
             return "null";
-        return _type->toStr();
+        return ptr->toStr();
     }
     
     bool ConstReference::operator==(const PropertyType& other) const {
