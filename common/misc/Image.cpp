@@ -489,10 +489,14 @@ namespace cmn {
         if (tmp.cols != output.cols || tmp.rows != output.rows) {
             throw InvalidArgumentException("Cannot convert image to target with different dimensions.");
         }
-        uint8_t expected_channels = required_channels(color);
+        /*uint8_t expected_channels = required_channels(color);
         if (output.channels() != expected_channels) {
-            throw InvalidArgumentException("Cannot convert image to target with different number of channels.");
-        }
+            if(output.channels() <= 1
+               && color == ImageMode::RGBA)
+            {
+                throw InvalidArgumentException("Cannot convert image (",expected_channels,") to target with different number of channels (",output.channels(),").");
+            }
+        }*/
 
         if (color == ImageMode::R3G3B2) {
             if (output.channels() != 1) {
