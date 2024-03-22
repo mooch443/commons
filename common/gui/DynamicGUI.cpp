@@ -1275,7 +1275,7 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
 
 void DynamicGUI::reload() {
     if(not first_load
-       && last_update.elapsed() < 0.25)
+       && last_load.elapsed() < 0.25)
     {
         return;
     }
@@ -1336,6 +1336,18 @@ void DynamicGUI::reload() {
 void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
 {
     reload();
+    
+    bool do_update_objects{false};
+    if(not first_update
+       && last_update.elapsed() < 0.01)
+    {
+        //
+    } else {
+        do_update_objects = true;
+    }
+    
+    if(first_update)
+        first_update = false;
     
     if(context.defaults.window_color != Transparent) {
         if(base)
@@ -1398,7 +1410,8 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         }
         
         for(auto &obj : objects) {
-            update_objects(gui, *graph, obj, context, state);
+            if(do_update_objects)
+                update_objects(gui, *graph, obj, context, state);
         }
         
     } else {
@@ -1407,13 +1420,15 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             auto copy = objects;
             before_add(copy);
             for(auto &obj : copy) {
-                update_objects(gui, *graph, obj, context, state);
+                if(do_update_objects)
+                    update_objects(gui, *graph, obj, context, state);
                 graph->wrap_object(*obj);
             }
             
         } else {
             for(auto &obj : objects) {
-                update_objects(gui, *graph, obj, context, state);
+                if(do_update_objects)
+                    update_objects(gui, *graph, obj, context, state);
                 graph->wrap_object(*obj);
             }
         }

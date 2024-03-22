@@ -87,8 +87,8 @@ struct DynamicGUI {
     State state;
     Base* base;
     std::vector<Layout::Ptr> objects;
-    Timer last_update;
-    bool first_load{true};
+    Timer last_load, last_update;
+    bool first_load{true}, first_update{true};
     std::string previous;
     std::future<tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>> read_file_future;
     
