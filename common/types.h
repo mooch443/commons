@@ -110,6 +110,9 @@ struct Pose {
         constexpr Point(const Point&) noexcept = default;
         constexpr Point& operator= (const Point&) noexcept = default;
         constexpr Point& operator= (Point&&) noexcept = default;
+
+        constexpr bool operator==(const Point&) const noexcept = default;
+        constexpr bool operator!=(const Point&) const noexcept = default;
         
         bool valid() const noexcept {
             return x > 0 || y > 0;
@@ -127,6 +130,10 @@ struct Pose {
         }
         std::string toStr() const {
             return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
+        }
+        nlohmann::json to_json() const {
+            // output as [x, y]
+            return {x, y};
         }
         
         constexpr static Point invalid() noexcept { return Point{0, 0}; }
@@ -278,55 +285,25 @@ struct Pose {
         return pose;
     }
 
+    std::string toStr() const;
+    static std::string class_name();
+    static Pose fromStr(const std::string&);
+
+    bool operator==(const Pose& other) const noexcept;
+    nlohmann::json to_json() const;
     
     /**
      * Serializes the Pose object to a byte array.
      * @return A vector containing the serialized byte data.
      */
-    std::vector<uint8_t> serialize() const {
-        // Reserve space for the number of points (size_t) and each point (2 * uint16_t)
-        std::vector<uint8_t> buffer(4 * points.size());
-
-        // Serialize the number of points first, to simplify deserialization
-        size_t offset = 0;
-        
-        // Serialize each point
-        for (const auto& point : points) {
-            *reinterpret_cast<uint16_t*>(&buffer[offset]) = point.x;
-            offset += sizeof(uint16_t);
-            *reinterpret_cast<uint16_t*>(&buffer[offset]) = point.y;
-            offset += sizeof(uint16_t);
-        }
-        
-        return buffer;
-    }
+    std::vector<uint8_t> serialize() const;
 
     /**
      * Deserializes a Pose object from a byte array.
      * @param buffer A vector containing the serialized byte data.
      * @throws std::invalid_argument if the buffer is malformed.
      */
-    static Pose deserialize(const std::vector<uint8_t>& buffer) {
-        // Read the number of points
-        size_t num_points = buffer.size() / 4u;
-
-        Pose pose;
-        // Clear existing points
-        pose.points.clear();
-        pose.points.reserve(num_points);
-
-        // Deserialize each point
-        size_t offset = 0;
-        for (size_t i = 0; i < num_points; ++i) {
-            uint16_t x = *reinterpret_cast<const uint16_t*>(&buffer[offset]);
-            offset += sizeof(uint16_t);
-            uint16_t y = *reinterpret_cast<const uint16_t*>(&buffer[offset]);
-            offset += sizeof(uint16_t);
-            pose.points.emplace_back(Point{x, y});
-        }
-        
-        return pose;
-    }
+    static Pose deserialize(const std::vector<uint8_t>& buffer);
 };
 
 struct Prediction {
