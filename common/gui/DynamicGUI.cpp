@@ -1326,7 +1326,7 @@ void DynamicGUI::reload() {
             objects = std::move(objs);
         });
         
-        last_update.reset();
+        last_load.reset();
     }
     
     if(first_load)
@@ -1435,6 +1435,9 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     }
     
     dyn::update_tooltips(*graph, state);
+
+    if (do_update_objects)
+        last_update.reset();
 }
 
 DynamicGUI::operator bool() const {
