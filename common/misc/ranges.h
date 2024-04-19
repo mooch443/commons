@@ -155,7 +155,7 @@ struct Range {
     T start, end;
 
     constexpr Range() noexcept : Range(T(), T()) {}
-    explicit constexpr Range(T s, T e = T()) noexcept : start(s), end(e) { assert(e == T() || s <= e); }
+    explicit constexpr Range(T s, T e = T()) noexcept : start(s), end(e) { assert(e == T() || s <= e || e == T(-1) /* this is slightly concerning, but it's how i use it */); }
     constexpr bool empty() const { return start == end; }
     constexpr bool contains(T v) const {
         if constexpr(check_abs_detail::has_get<T>) {

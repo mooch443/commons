@@ -17,6 +17,11 @@ void Combobox::init() {
                 _settings.on_select(ParmName{name});
         }
         _dropdown->set_opened(false);
+        if(_value) {
+            auto ptr = _value->representative().get();
+            if(ptr->parent() && ptr->parent()->stage())
+                ptr->parent()->stage()->select(ptr);
+        }
     });
     
     _layout.set(Margins{0, 0, 0, 0});
