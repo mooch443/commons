@@ -369,6 +369,15 @@ void Context::init() const {
             VarFunc("mod", [](const VarProps& props) -> int {
                 return map_vector<double>(props, [](auto& A, auto& B){ return int64_t(A) % int64_t(B); });
             }),
+            VarFunc("empty", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(1, props);
+                auto trunc = utils::trim(props.parameters.front());
+                if(is_in(trunc.front(), '[', '{')) {
+                    return util::parse_array_parts(util::truncate(trunc)).empty();
+                }
+                
+                throw InvalidArgumentException("Argument in ", props, " not indexable.");
+            }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 

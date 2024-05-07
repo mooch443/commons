@@ -283,6 +283,12 @@ public:
     void set_image_size(Size2 size) {
         std::unique_lock guard(mutex());
         _image_size = size;
+        if(not _buffers.empty()) {
+#ifndef NDEBUG
+            FormatWarning("There were already ", _buffers.size(), " images in queue - removing.");
+#endif
+            _buffers.clear();
+        }
     }
 };
 

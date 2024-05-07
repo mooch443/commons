@@ -18,7 +18,7 @@ class FfmpegVideoCapture {
     //Size2 _dimensions;
     //int _channels{-1};
     std::unique_ptr<cv::VideoCapture> _capture;
-    std::map<int64_t, int64_t> _keyframes;
+    //std::map<int64_t, int64_t> _keyframes;
     bool _disable_jumping{false};
     mutable std::set<std::string_view> _recovered_errors;
     std::once_flag skip_message_flag;
