@@ -306,10 +306,45 @@ struct Pose {
     static Pose deserialize(const std::vector<uint8_t>& buffer);
 };
 
+struct SegmentedOutlines {
+    struct Outline {
+        std::vector<int32_t> _points; // has to be divisible by 2 (x,y)
+        bool valid() const { return _points.empty(); }
+        size_t size() const {
+            return _points.size() / 2u; // assume divisible by 2
+        }
+        Vec2 operator[](size_t index) const {
+            return Vec2(_points[index * 2u], _points[index * 2u + 1]);
+        }
+        operator std::vector<Vec2>() const {
+            const size_t N = size();
+            std::vector<Vec2> pts;
+            pts.resize(N);
+            for(size_t index = 0; index < N; ++index)
+                pts[index] = (*this)[index];
+            return pts;
+        }
+    };
+    
+    std::vector<Outline> lines;
+    bool empty() const { return lines.empty(); }
+    void add(const std::vector<Vec2>& pts) {
+        Outline outline;
+        outline._points.resize(pts.size() * 2);
+        for(size_t i=0, N = pts.size(); i<N; ++i) {
+            auto& pt = pts[i];
+            outline._points[i * 2u] = (int32_t(pt.x));
+            outline._points[i * 2u + 1] = (int32_t(pt.y));
+        }
+        lines.emplace_back(std::move(outline));
+    }
+};
+
 struct Prediction {
     uint8_t clid{255u}; // up to 254 classes
     uint8_t p{0u}; // [0,255] -> [0,1]
     blob::Pose pose;
+    blob::SegmentedOutlines outlines;
     
     bool valid() const { return clid < 255u; }
     std::string toStr() const;
