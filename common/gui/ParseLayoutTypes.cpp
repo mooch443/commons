@@ -161,7 +161,11 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(obj.count("hover") || obj.count("unhover")) {
         auto hover_action = obj.count("hover") ? PreAction::fromStr(obj["hover"].get<std::string>()) : PreAction{};
         auto unhover_action = obj.count("unhover") ? PreAction::fromStr(obj["unhover"].get<std::string>()) : PreAction{};
-        ptr->add_event_handler(EventType::HOVER, [hover_action, unhover_action, _ptr = ptr.get(), context = context, &state = state](Event e) {
+        
+        static constexpr auto hover_name = "_hover_handle";
+        auto hover_handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(hover_name);
+        
+        auto handle = ptr->add_event_handler_replace(EventType::HOVER, [hover_action, unhover_action, _ptr = ptr.get(), context = context, &state = state](Event e) {
             if(e.hover.hovered
                && not hover_action.name.empty())
             {
@@ -213,14 +217,19 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     FormatExcept("error using action ", unhover_action);
                 }
             }
-        });
+        }, hover_handle);
+        
+        ptr->add_custom_data(hover_name, (void*)handle.get());
     }
     
     if(obj.count("drag") || obj.count("click")) {
         auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
         
         if(obj.count("drag")) {
-            ptr->add_event_handler(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
+            static constexpr auto handle_name = "_drag_handle";
+            auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+            
+            auto h = ptr->add_event_handler_replace(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
                 if(event.hover.hovered
                    && _ptr->pressed())
                 {
@@ -237,10 +246,14 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         FormatExcept("error using action ", action);
                     }
                 }
-            });
+            }, handle);
+            
+            ptr->add_custom_data(handle_name, (void*)h.get());
         }
         
-        ptr->add_event_handler(EventType::MBUTTON, [action, context = context](Event event) {
+        static constexpr auto handle_name = "_drag_handle";
+        auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+        auto h = ptr->add_event_handler_replace(EventType::MBUTTON, [action, context = context](Event event) {
             if(event.mbutton.pressed) {
                 try {
                     if(auto it = context.actions.find(action.name);
@@ -255,7 +268,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     FormatExcept("error using action ", action);
                 }
             }
-        });
+        }, handle);
+        ptr->add_custom_data(handle_name, (void*)h.get());
     }
     
     ptr->add_custom_data("object_index", (void*)hash);
@@ -892,6 +906,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
                 ._if = c,
                 ._else = _else
             };
+            
+            state._timers[hash] = {};
         }
     }
     return ptr;

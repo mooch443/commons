@@ -635,6 +635,7 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                         ptr = state._customs_cache.at(hash);
                         context.custom_elements.at(state._customs.at(hash))
                             ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
+                        state._timers[hash].reset();
                         
                     } else {
                         ptr = it->second->create(layout);
@@ -642,6 +643,7 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                             ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
                         state._customs[hash] = it->first;
                         state._customs_cache[hash] = ptr;
+                        state._timers[hash].reset();
                     }
                 } else
                     FormatExcept("Unknown layout type: ", layout.type);
@@ -780,6 +782,7 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
             }
             
             update_objects(gui, g, obj._if, context, state);
+            state._timers[hash].reset();
             
         } catch(const std::exception& ex) {
             FormatError(ex.what());
@@ -1445,6 +1448,42 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     
     dyn::update_tooltips(*graph, state);
 
+    if(state._timers.size() > 10000) {
+        std::vector<std::tuple<double, size_t>> sorted_objects;
+        sorted_objects.resize(state._timers.size());
+        for(auto &[h, o] : state._timers) {
+            sorted_objects.push_back({o.elapsed(), h});
+        }
+        std::sort(sorted_objects.begin(), sorted_objects.end());
+        
+        for(auto it = --sorted_objects.end(); it != sorted_objects.begin(); --it) {
+            if(state._timers.size() <= 5000)
+                break;
+            
+            auto [e, h] = *it;
+            
+            print("Deleting object ",h ," that has not been visible for ", e, " seconds.");
+            
+            if(auto kit = state._customs.find(h);
+               kit != state._customs.end())
+            {
+                state._customs.erase(kit);
+                assert(state._customs_cache.contains(h));
+                state._customs_cache.erase(h);
+                
+            } else if(auto fit = state.ifs.find(h);
+                      fit != state.ifs.end())
+            {
+                state.ifs.erase(fit);
+                
+            } else {
+                FormatWarning("Unknown type of object in timers object ", h);
+            }
+            
+            state._timers.erase(h);
+        }
+    }
+    
     if (do_update_objects)
         last_update.reset();
 }
