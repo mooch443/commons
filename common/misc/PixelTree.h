@@ -8,9 +8,7 @@
 
 //#define TREE_WITH_PIXELS
 
-namespace pixel {
-    using namespace cmn;
-    
+namespace cmn::pixel {
     // 8-neighborhood
     enum Direction {
         TOP = 0, TOPR,

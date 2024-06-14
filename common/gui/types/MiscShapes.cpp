@@ -1,6 +1,6 @@
 #include "MiscShapes.h"
 
-namespace gui {
+namespace cmn::gui {
     
     Triangle::Triangle(const Vec2& center,
                        const Size2& size,

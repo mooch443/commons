@@ -3,7 +3,7 @@
 #include <gui/types/StaticText.h>
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     
     HTMLBase::HTMLBase() : _initial_draw(true), _size(1) { }
 

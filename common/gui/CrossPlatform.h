@@ -7,7 +7,7 @@
 
 struct GLFWwindow;
 
-namespace gui {
+namespace cmn::gui {
     struct PlatformTexture {
         void* ptr = nullptr ;
         std::function<void(void**)> deleter;

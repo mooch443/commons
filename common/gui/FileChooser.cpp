@@ -4,7 +4,7 @@
 #include <misc/SpriteMap.h>
 #include <file/DataLocation.h>
 
-namespace gui {
+namespace cmn::gui {
 
 FileChooser::~FileChooser() {
 }

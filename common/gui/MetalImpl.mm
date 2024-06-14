@@ -34,7 +34,7 @@
 
 #define GLIMPL_CHECK_THREAD_ID() check_thread_id( __LINE__ , __FILE__ )
 
-namespace gui {
+namespace cmn::gui {
 struct MetalData {
     id <MTLDevice> device;
     id <MTLCommandQueue> commandQueue;
@@ -64,14 +64,14 @@ bool startup_kind_of_done = false;
 std::string startup_file_to_load = "";
 
 extern "C"{
-    bool forward_load_message(const std::vector<file::Path>& paths){
+    bool forward_load_message(const std::vector<cmn::file::Path>& paths){
         auto str = cmn::Meta::toStr(paths);
         NSString* string = [NSString stringWithCString:str.c_str() encoding:NSASCIIStringEncoding];
         cmn::print("Open file: ", str.c_str());
         
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 250 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             auto cstr = [string cStringUsingEncoding:NSASCIIStringEncoding];
-            auto paths = cmn::Meta::fromStr<std::vector<file::Path>>(cstr);
+            auto paths = cmn::Meta::fromStr<std::vector<cmn::file::Path>>(cstr);
             for(auto it = paths.begin(); it != paths.end(); ) {
                 if(!it->exists()) {
                     it = paths.erase(it);
@@ -79,8 +79,8 @@ extern "C"{
                     ++it;
             }
             
-            if(!paths.empty() && gui::metal::current_instance) {
-                if(!gui::metal::current_instance->open_files(paths)) {
+            if(!paths.empty() && cmn::gui::metal::current_instance) {
+                if(!cmn::gui::metal::current_instance->open_files(paths)) {
                     //! Do not throw message box.
                     //gui::metal::current_instance->message("Cannot open "+std::string(cstr)+".");
                 }
@@ -147,7 +147,7 @@ extern "C"{
 }
 
 - (void)swz_application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames{
-    std::vector<file::Path> paths;
+    std::vector<cmn::file::Path> paths;
     for(size_t i = 0; i < filenames.count; ++i)
         paths.push_back(filenames[i].UTF8String);
     forward_load_message(paths);
@@ -160,7 +160,7 @@ static void glfw_error_callback(int error, const char* description)
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-namespace gui {
+namespace cmn::gui {
 static dispatch_semaphore_t& frameBoundarySemaphore() {
     static dispatch_semaphore_t sem;
     return sem;

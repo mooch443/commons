@@ -1,9 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 
-namespace file {
-    using namespace cmn;
-
+namespace cmn::file {
 template<typename T, typename TIter = decltype(std::begin(std::declval<T>())),
          typename V = decltype(std::end(std::declval<T>()))>
 constexpr auto enumerate(T& iterable) {
@@ -260,4 +258,4 @@ constexpr auto enumerate(T& iterable) {
     }
 }
 
-std::ostream& operator<<(std::ostream& os, const file::Path& p);
+std::ostream& operator<<(std::ostream& os, const cmn::file::Path& p);

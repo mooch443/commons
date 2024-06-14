@@ -1,9 +1,9 @@
 #include "ResolveVariable.h"
 #include <gui/types/Drawable.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
-using namespace cmn;
+
 
 std::optional<std::string> get_modifier_from_object(Drawable* object, const VarProps& value) {
     std::unordered_map<std::string_view, std::function<std::optional<std::string>(Drawable*)>, MultiStringHash, MultiStringEqual> applicators {

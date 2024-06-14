@@ -3,7 +3,7 @@
 
 #include <commons.pc.h>
 
-namespace gui {
+namespace cmn::gui {
 namespace const_funcs {
     //! computes ⌊val⌋, the largest integer value not greater than val
     //! NOTE: not precise for huge values that don't fit into a 64-bit int!
@@ -419,7 +419,6 @@ constexpr inline Color operator+(const Color& c0, const Color& c1) {
                  (uint8_t)saturate((int)c0.b + (int)c1.b),
                  (uint8_t)saturate((int)c0.a + (int)c1.a));
 }
-}
 
 class ColorWheel {
     uint32_t _index;
@@ -485,12 +484,12 @@ public:
         : _index(index),
           _hue(255u + uint64_t(SQR(uint64_t(index)) * 0.5 * step))
     { }
-    constexpr gui::Color next() {
+    constexpr Color next() {
         //if (_index >= sizeof(colors) / sizeof(gui::Color)) {
         
         const uint8_t s = cmn::narrow_cast<uint8_t>(_hue % uint64_t(255));
         //const uint32_t h = s % 100;
-        const gui::Color hsv(s, 255, 255);
+        const Color hsv(s, 255, 255);
         //_hue += step;
         /*if (_hue >= 255) {
          _hue = _hue - 255 + _offset;
@@ -511,5 +510,7 @@ public:
     }
 
 };
+
+}
 
 #endif

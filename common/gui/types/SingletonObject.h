@@ -2,7 +2,7 @@
 
 #include <gui/types/Drawable.h>
 
-namespace gui {
+namespace cmn::gui {
     class HasName {
         GETTER_SETTER(std::string, name);
     public:

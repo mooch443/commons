@@ -37,7 +37,7 @@
 #include <misc/checked_casts.h>
 #include <misc/colors.h>
 
-namespace gui {
+namespace cmn::gui {
 
 
 size_t cache_misses = 0, cache_finds = 0;
@@ -448,7 +448,7 @@ Size2 get_frame_buffer_size(GLFWwindow* window, float r) {
 }
 
 void IMGUIBase::set_window_size(Size2 size) {
-    ::gui::set_window_size(_platform->window_handle(), size);
+    ::cmn::gui::set_window_size(_platform->window_handle(), size);
 }
 
 GLFWmonitor* get_monitor_for(GLFWwindow* window) {
@@ -667,7 +667,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     if (base->_last_dpi_scale != -1 && base->_last_dpi_scale != dpi_scale && dpi_scale > 0) {
         auto p = base->_last_dpi_scale / dpi_scale;
         base->_last_dpi_scale = dpi_scale;
-        ::gui::set_window_size(window, { fw * p, fh * p });
+        ::cmn::gui::set_window_size(window, { fw * p, fh * p });
         //glfwSetWindowSize(window, fw * p, fh * p);
     }
     else {
@@ -1055,7 +1055,7 @@ void IMGUIBase::process_main_queue() {
             if (width != self->_graph->width() || height != self->_graph->height()) {
                 Event event(WINDOW_RESIZED);
 
-                ::gui::set_window_size(self->_platform->window_handle(), Vec2( width, height ));
+                ::cmn::gui::set_window_size(self->_platform->window_handle(), Vec2( width, height ));
                 //glfwSetWindowSize(self->_platform->window_handle(), width, height );
 
                 event.size.width = width;

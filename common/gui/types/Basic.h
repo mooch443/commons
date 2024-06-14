@@ -4,9 +4,7 @@
 #include <commons.pc.h>
 #include <misc/colors.h>
 
-namespace gui {
-    using namespace cmn;
-    
+namespace cmn::gui {
     inline std::ostream & operator <<(std::ostream &os, const Bounds& s) {
         //assert(uint(x) <= USHRT_MAX && uint(y) <= USHRT_MAX);
         uint64_t all = (uint16_t(s.y) & 0xFFFF);

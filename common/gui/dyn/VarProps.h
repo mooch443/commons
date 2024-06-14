@@ -7,7 +7,7 @@ namespace cmn::sprite {
 class Reference;
 }
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 struct Context;
 struct State;

@@ -3,7 +3,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/Entangled.h>
 
-namespace gui {
+namespace cmn::gui {
 template<typename T>
 class NumericTextfield;
 

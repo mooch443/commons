@@ -1,7 +1,7 @@
 #ifndef _HIST_OPTIONS_H
 #define _HIST_OPTIONS_H
 
-namespace gui {
+namespace cmn::gui {
     namespace Hist {
         enum Options {
             NONE = 0,

@@ -3,7 +3,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/types/Entangled.h>
 
-namespace gui {
+namespace cmn::gui {
     class Table : public Entangled {
     public:
         struct Column {

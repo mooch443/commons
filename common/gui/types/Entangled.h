@@ -6,7 +6,7 @@
 //#include <set>
 #include <misc/ranges.h>
 
-namespace gui {
+namespace cmn::gui {
     struct Margin {
         //float left, top,
         float right, bottom;

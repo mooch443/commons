@@ -8,7 +8,7 @@
 #include <gui/ControlsAttributes.h>
 #include <gui/types/StaticText.h>
 
-namespace gui {
+namespace cmn::gui {
     class Button : public Entangled {
     public:
         struct Settings {

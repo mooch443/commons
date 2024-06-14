@@ -12,7 +12,7 @@
 #include <gui/DrawCVBase.h>
 #include <gui/Graph.h>
 
-using namespace cmn;
+namespace cmn {
 
 gpuMat gpu_dilation_element;
 std::shared_mutex mutex;
@@ -597,4 +597,6 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             tf::imshow("result", result);
         }
     }
+}
+
 }

@@ -5,7 +5,7 @@
 #include <gui/types/Button.h>
 #include <gui/types/ScrollableList.h>
 
-namespace gui {
+namespace cmn::gui {
     struct ClosesAfterSelect {
         bool closes{true};
 

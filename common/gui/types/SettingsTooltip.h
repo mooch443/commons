@@ -3,7 +3,7 @@
 #include <gui/types/Tooltip.h>
 #include <misc/GlobalSettings.h>
 
-namespace gui {
+namespace cmn::gui {
 
 class SettingsTooltip : public Tooltip {
     const sprite::Map* map{nullptr};

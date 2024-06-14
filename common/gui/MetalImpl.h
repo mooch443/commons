@@ -6,7 +6,7 @@
 #include <misc/Timer.h>
 struct GLFWwindow;
 
-namespace gui {
+namespace cmn::gui {
     struct MetalData;
 
     class MetalImpl : public CrossPlatform {

@@ -8,7 +8,7 @@
 #include <gui/dyn/ResolveVariable.h>
 #include <gui/dyn/CTimer.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const Action& value) {
     std::unordered_map<std::string_view, std::function<void(const Layout::Ptr&, const Action&)>, MultiStringHash, MultiStringEqual> applicators {

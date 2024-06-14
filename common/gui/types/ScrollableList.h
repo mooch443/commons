@@ -7,7 +7,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/ListAttributes.h>
 
-namespace gui {
+namespace cmn::gui {
     /*
      * Helper concepts (C++20) to determine 
      * whether a given Item type has color / font information attached.

@@ -4,7 +4,7 @@
 #include "DrawBase.h"
 #include "GuiTypes.h"
 
-namespace gui {
+namespace cmn::gui {
     class CVBase : public Base {
         cv::Mat& _window;
         cv::Mat _overlay;

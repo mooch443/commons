@@ -3,7 +3,7 @@
 #include <sstream>
 #include <cctype>
 
-namespace file {
+namespace cmn::file {
 std::string sanitize_filename(const std::string& s) {
     std::ostringstream os;
     for (char c : s) {

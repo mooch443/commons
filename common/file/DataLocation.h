@@ -3,11 +3,11 @@
 #include <commons.pc.h>
 #include <file/Path.h>
 
-namespace file {
+namespace cmn::file {
 
 class DataLocation {
     std::mutex location_mutex;
-    std::map<std::string, std::function<file::Path(const sprite::Map&, file::Path)>> location_funcs;
+    std::map<std::string, std::function<file::Path(const cmn::sprite::Map&, file::Path)>> location_funcs;
 public:
     static void register_path(std::string purpose, std::function<file::Path(const sprite::Map&, file::Path)> fn);
     static void replace_path(std::string purpose, std::function<file::Path(const sprite::Map&, file::Path)> fn);

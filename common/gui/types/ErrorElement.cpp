@@ -1,6 +1,6 @@
 #include "ErrorElement.h"
 
-namespace gui {
+namespace cmn::gui {
 
 void ErrorElement::init() {
     _text = std::make_shared<Text>(Str{"ERROR: element "+name()+" cannot be loaded."});

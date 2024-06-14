@@ -12,7 +12,7 @@
 #include <codecvt>
 #include <type_traits>
 
-namespace utils {
+namespace cmn::utils {
 
 template<typename Str>
 concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
@@ -473,7 +473,7 @@ PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus);
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus);
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData&);
 
-namespace utils {
+namespace cmn::utils {
 
 std::string read_file(const std::string& filename);
     

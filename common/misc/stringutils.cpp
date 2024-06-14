@@ -12,7 +12,7 @@
 #include <file/Path.h>
 #include <misc/checked_casts.h>
 
-namespace utils {
+namespace cmn::utils {
     // Explicitly instantiate the most commonly used forms of the contains function
     template bool contains<std::string, char>(const std::string& str, const char& needle) noexcept;
     template bool contains<std::string, std::string>(const std::string& str, const std::string& needle) noexcept;
@@ -146,7 +146,7 @@ _split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = f
     }
 
     std::string read_file(const std::string& filename) {
-        return file::Path(filename).read_file();
+        return cmn::file::Path(filename).read_file();
     }
 }
 
@@ -275,7 +275,7 @@ std::vector<std::string> split_words(const std::string& str) {
 
 std::vector<std::string> _split_words(std::string input) {
     // Assuming utils::lowercase is defined to convert the string to lowercase
-    input = utils::lowercase(input);
+    input = cmn::utils::lowercase(input);
     
     std::regex word_regex(R"([^\s/\\_\.,;:-]+)");
     std::sregex_token_iterator begin(input.begin(), input.end(), word_regex);

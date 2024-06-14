@@ -4,7 +4,7 @@
 #include <misc/colors.h>
 #include <gui/GuiTypes.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 struct Action;
 struct CustomElement;

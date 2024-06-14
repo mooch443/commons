@@ -5,8 +5,7 @@
 #include <misc/cnpy_wrapper.h>
 #include <misc/checked_casts.h>
 
-using namespace cmn;
-using namespace gui;
+namespace cmn::gui {
 
 enum class Axis {
     X = 1,
@@ -686,3 +685,4 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
     }
 }
 
+}

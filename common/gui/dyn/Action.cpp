@@ -3,8 +3,7 @@
 #include <gui/dyn/Context.h>
 #include <gui/dyn/ParseText.h>
 
-namespace gui::dyn {
-using namespace cmn;
+namespace cmn::gui::dyn {
 
 PreAction PreAction::fromStr(std::string_view str) {
     return create_parse_result<PreAction>(str);

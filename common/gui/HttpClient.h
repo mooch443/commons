@@ -6,7 +6,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/DrawHTMLBase.h>
 
-namespace gui {
+namespace cmn::gui {
 class HttpClient {
 protected:
     Httpd _httpd;

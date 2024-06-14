@@ -31,7 +31,7 @@
  * For more on SFMLs implementation, see https://github.com/SFML/SFML
  */
 
-namespace gui {
+namespace cmn::gui {
 class Transform {
     float m_matrix[16];
     

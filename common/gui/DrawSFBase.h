@@ -6,7 +6,7 @@
 #if WITH_SFML
 #include <SFML/Graphics.hpp>
 
-namespace gui {
+namespace cmn::gui {
     class Path {
     private:
         Path();

@@ -3,7 +3,7 @@
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/Action.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 Font parse_font(const nlohmann::json& obj, Font font, std::string_view name) {
     if(obj.count(name)) {

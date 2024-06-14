@@ -7,7 +7,7 @@
 static std::recursive_mutex cache_lock;
 #endif
 
-namespace gui {
+namespace cmn::gui {
 #if WITH_SFML
     const sf::Font& SFBase::font() {
         static bool _font_loaded = false;

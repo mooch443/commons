@@ -10,7 +10,7 @@
 #include <gui/types/Tooltip.h>
 #include <gui/types/Dropdown.h>
 
-namespace gui {
+namespace cmn::gui {
 
 class FileChooser {
     class FileItem {

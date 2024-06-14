@@ -2,7 +2,7 @@
 #include <commons.pc.h>
 #include <misc/TaskQueue.h>
 
-namespace gui {
+namespace cmn::gui {
 class IMGUIBase;
 class DrawStructure;
 

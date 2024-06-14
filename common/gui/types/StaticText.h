@@ -6,7 +6,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
 
     struct TRange {
         Range<size_t> range;

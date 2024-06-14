@@ -45,7 +45,7 @@
 #include <emscripten/fetch.h>
 #endif
 
-namespace file {
+namespace cmn::file {
 #ifdef USE_STD_FILESYSTEM
 Path Path::absolute() const {
     if(_stat_cache.absolute.has_value() && not _stat_cache.too_old()) {
@@ -770,7 +770,7 @@ Path Path::absolute() const {
         }
 }
 
-std::ostream& operator<<(std::ostream& os, const file::Path& p) {
+std::ostream& operator<<(std::ostream& os, const cmn::file::Path& p) {
     return os << p.str();
 }
 

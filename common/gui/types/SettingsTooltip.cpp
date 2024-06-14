@@ -1,7 +1,7 @@
 #include "SettingsTooltip.h"
 #include <misc/default_settings.h>
 
-namespace gui {
+namespace cmn::gui {
 
 SettingsTooltip::SettingsTooltip(
      Drawable* ptr,

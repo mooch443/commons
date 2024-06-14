@@ -1,7 +1,7 @@
 #include "CSVExport.h"
 #include <fstream>
 
-namespace file {
+namespace cmn::file {
 bool CSVExport::save(const file::Path &filename) const {
     auto &t = table();
     auto &header = t.header();

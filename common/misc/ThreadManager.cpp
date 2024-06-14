@@ -2,7 +2,7 @@
 #include <misc/format.h>
 #include <file/Path.h>
 
-using namespace cmn;
+namespace cmn {
 
 void PersistentCondition::notify() noexcept {
     std::unique_lock g(mtx);
@@ -255,4 +255,6 @@ void ThreadManager::printThreadTree(std::unique_lock<std::mutex> &) {
                 thread_print("   ", fmt::clr<FormatColor::RED>("-"), " Thread ", wrapper.name.c_str());
         }
     }
+}
+
 }

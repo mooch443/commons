@@ -2,7 +2,7 @@
 #include <gui/types/SingletonObject.h>
 #include <gui/GuiTypes.h>
 
-namespace gui {
+namespace cmn::gui {
     void Layout::init() {
         set_content_changed(true);
         //set_background(Red.alpha(125));

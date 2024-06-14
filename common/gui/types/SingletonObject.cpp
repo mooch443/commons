@@ -2,7 +2,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/Section.h>
 
-namespace gui {
+namespace cmn::gui {
     SingletonObject::~SingletonObject() {
         if(_ptr)
             _ptr->set_parent(NULL);

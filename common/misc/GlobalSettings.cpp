@@ -3,7 +3,8 @@
  */
 
 #include "GlobalSettings.h"
-using namespace cmn;
+
+namespace cmn {
 
 void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);
@@ -231,4 +232,6 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
     }
     
     return rejected;
+}
+
 }

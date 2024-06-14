@@ -1320,7 +1320,7 @@ inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer
 
 }
 
-namespace utils {
+namespace cmn::utils {
 
 template <size_t N>
 constexpr auto lowercase(const char(&input)[N]) {

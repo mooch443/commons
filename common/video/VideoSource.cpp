@@ -9,7 +9,7 @@
 #include <video/AveragingAccumulator.h>
 #include <misc/ranges.h>
 
-using namespace cmn;
+namespace cmn {
 
 std::string load_string(const file::Path& npz, const std::string fname) {
     libzip::archive zip(npz.str(), ZIP_RDONLY);
@@ -946,4 +946,6 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     auto mat = image->get();
     assert(mat.type() == CV_8UC1);
     mat.copyTo(av);
+}
+
 }

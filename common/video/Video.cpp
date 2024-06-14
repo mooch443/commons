@@ -16,8 +16,8 @@
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
 
+namespace cmn {
 using namespace cv;
-using namespace cmn;
 
 // Move constructor
 Video::Video(Video&& other) noexcept
@@ -541,4 +541,6 @@ void Video::clear() {
     std::unique_lock guard(_mutex);
     _undistorted_frames.clear();
     _frames.clear();
+}
+
 }

@@ -1,7 +1,7 @@
 #include "State.h"
 #include <gui/LabeledField.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 State::State(const State& other)
     : patterns(other.patterns),

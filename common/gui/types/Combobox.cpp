@@ -2,7 +2,7 @@
 #include <gui/LabeledField.h>
 #include <gui/ParseLayoutTypes.h>
 
-namespace gui {
+namespace cmn::gui {
 using namespace dyn;
 
 void Combobox::init() {

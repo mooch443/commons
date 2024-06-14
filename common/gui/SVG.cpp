@@ -1,6 +1,6 @@
 #include "SVG.h"
 
-namespace gui {
+namespace cmn::gui {
 
 std::string SVG::color2svg(const Color& c) {
     return "rgba(" + Meta::toStr(c.r ) + "," + Meta::toStr(c.g) + "," + Meta::toStr(c.b) + "," + Meta::toStr(c.a ) + ")";

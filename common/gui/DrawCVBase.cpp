@@ -2,7 +2,7 @@
 #include <misc/checked_casts.h>
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     IMPLEMENT(CVBase::_static_pixels);
     
     CVBase::CVBase(cv::Mat& window, const cv::Mat& background)

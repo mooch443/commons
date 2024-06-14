@@ -213,14 +213,14 @@ namespace NAME { \
     template<typename T = std::string > \
     static inline bool has(T name) noexcept { \
         for(size_t i=0; i<data::num_elements; i++) \
-            if(utils::lowercase(name) == utils::lowercase(data::names::str()[i])) return true; \
+            if(cmn::utils::lowercase(name) == cmn::utils::lowercase(data::names::str()[i])) return true; \
         return false; \
     } \
     template<typename T = std::string> \
     static inline const Class& get(T name) { \
         UNUSED(names) \
         for(auto &v : values) \
-            if(utils::lowercase(v.name()) == utils::lowercase(name)) return v; \
+            if(cmn::utils::lowercase(v.name()) == cmn::utils::lowercase(name)) return v; \
         throw std::invalid_argument(std::string("Cannot find value ")+name+" in enum '" + NAME :: data :: name + "' with options "+cmn::Meta::toStr(values)+"." ); \
     } \
     \

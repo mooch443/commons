@@ -5,7 +5,7 @@
 #include <misc/GlobalSettings.h>
 #include <misc/checked_casts.h>
 
-namespace gui {
+namespace cmn::gui {
     struct ErrorMessage {
         std::chrono::time_point<std::chrono::system_clock> time, last;
         std::string msg;

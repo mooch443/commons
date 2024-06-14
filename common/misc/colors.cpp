@@ -1,7 +1,7 @@
 #include "colors.h"
 
 
-namespace gui {
+namespace cmn::gui {
 
 Color Color::fromStr(const std::string& str) {
     auto s = utils::lowercase(str);

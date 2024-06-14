@@ -4,7 +4,7 @@
 #include <misc/GlobalSettings.h>
 #include <misc/Timer.h>
 
-namespace gui {
+namespace cmn::gui {
     constexpr static const Codes html_code_map[128] = {
         Codes::Unknown,
         Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Unknown,  Codes::Unknown,

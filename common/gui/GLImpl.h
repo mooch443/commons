@@ -13,7 +13,7 @@
 
 struct GLFWwindow;
 
-namespace gui {
+namespace cmn::gui {
     class GLImpl : public CrossPlatform {
     protected:
         GLFWwindow *window = nullptr;

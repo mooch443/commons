@@ -1,7 +1,8 @@
 #include "DataLocation.h"
 #include <misc/GlobalSettings.h>
 
-namespace file {
+namespace cmn::file {
+
 static auto& instance_mutex() {
     static auto m = new LOGGED_MUTEX("DataLocation::instance_mutex");
     return *m;

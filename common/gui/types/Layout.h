@@ -4,7 +4,7 @@
 #include <gui/types/Entangled.h>
 #include <misc/derived_ptr.h>
 
-namespace gui {
+namespace cmn::gui {
     class Layout : public Entangled {
     public:
         typedef derived_ptr<Drawable> Ptr;

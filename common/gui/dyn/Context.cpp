@@ -1,7 +1,7 @@
 #include "Context.h"
 #include <gui/dyn/State.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 Context::Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list)
 {

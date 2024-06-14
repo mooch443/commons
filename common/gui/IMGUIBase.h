@@ -23,12 +23,12 @@ static_assert(false, "Need one of those");
 #endif
 
 #if COMMONS_METAL_AVAILABLE
-using default_impl_t = gui::MetalImpl;
+using default_impl_t = cmn::gui::MetalImpl;
 #else
-using default_impl_t = gui::GLImpl;
+using default_impl_t = cmn::gui::GLImpl;
 #endif
 
-namespace gui {
+namespace cmn::gui {
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"

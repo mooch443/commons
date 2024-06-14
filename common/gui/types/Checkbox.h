@@ -5,7 +5,7 @@
 #include <gui/DrawSFBase.h>
 #include <gui/GuiTypes.h>
 
-namespace gui {
+namespace cmn::gui {
 class Checkbox : public Entangled {
 public:
     struct Settings {

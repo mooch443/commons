@@ -6,7 +6,7 @@
 #include <gui/ParseLayoutTypes.h>
 #include <gui/IMGUIBase.h>
 
-namespace gui {
+namespace cmn::gui {
 class PathArrayView : public VerticalLayout {
     using VerticalLayout::VerticalLayout;
 public:
@@ -23,7 +23,7 @@ public:
 };
 }
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 namespace settings_scene {
 GlobalSettings::docs_map_t& temp_docs = GlobalSettings::docs();

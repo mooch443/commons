@@ -2,7 +2,7 @@
 
 #include <gui/ControlsAttributes.h>
 
-namespace gui {
+namespace cmn::gui {
     ATTRIBUTE_ALIAS(OnHover_t, std::function<void(size_t)>)
     NUMBER_ALIAS(Foldable_t, bool)
     NUMBER_ALIAS(Folded_t, bool)

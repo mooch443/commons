@@ -17,7 +17,7 @@
 #include <gui/dyn/Context.h>
 #include <gui/dyn/State.h>
 
-namespace gui {
+namespace cmn::gui {
 namespace dyn {
 
 class LabeledField;

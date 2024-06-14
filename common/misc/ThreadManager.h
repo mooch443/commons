@@ -2,6 +2,8 @@
 #include <commons.pc.h>
 #include <misc/format.h>
 
+namespace cmn {
+
 template<typename T>
 concept ManagedThreadConcept = requires(T a) {
     { a.loop() } -> std::same_as<void>;
@@ -205,3 +207,5 @@ private:
 };
 
 #define REGISTER_THREAD_GROUP(NAME) ThreadManager::getInstance().registerGroup(NAME, cmn::source_location::current())
+
+}

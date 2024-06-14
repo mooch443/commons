@@ -2,7 +2,7 @@
 
 #ifdef __APPLE__
 
-namespace gui {
+namespace cmn::gui {
 class MacProgressBar {
 public:
     static void set_percent(double v);

@@ -5,7 +5,7 @@
 #include <gui/CrossPlatform.h>
 #include <misc/Timer.h>
 
-namespace gui {
+namespace cmn::gui {
     class SFLoop {
         Base* _base;
         DrawStructure& _graph;

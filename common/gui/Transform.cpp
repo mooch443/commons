@@ -29,7 +29,7 @@
  * For more on SFMLs implementation, see https://github.com/SFML/SFML
  */
 
-namespace gui {
+namespace cmn::gui {
     Transform::Transform()
     {
         // Identity matrix

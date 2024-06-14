@@ -3,7 +3,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/Entangled.h>
 
-namespace gui {
+namespace cmn::gui {
     class Triangle final : public Entangled {
         GETTER(Color, fill);
         GETTER(Color, line);

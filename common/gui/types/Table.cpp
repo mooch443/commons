@@ -1,6 +1,6 @@
 #include "Table.h"
 
-namespace gui {
+namespace cmn::gui {
     Table::Table()
         : _default_font(0.75)
     {

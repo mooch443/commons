@@ -1,7 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 
-namespace gui {
+namespace cmn::gui {
 
 template<class Base>
 class derived_ptr {

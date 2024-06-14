@@ -12,7 +12,7 @@
 #include <gui/types/Combobox.h>
 #include <gui/GUITaskQueue.h>
 
-namespace gui {
+namespace cmn::gui {
 namespace dyn {
 
 class LayoutContext;

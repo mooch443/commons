@@ -12,7 +12,7 @@
     #define CMN_CLIPBOARD_CLIP
 #endif
 
-namespace gui {
+namespace cmn::gui {
     constexpr static const float margin = 5;
 
     void set_clipboard(const std::string& text) {

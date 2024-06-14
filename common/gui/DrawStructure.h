@@ -8,7 +8,7 @@
 #include <gui/types/MiscShapes.h>
 #include <gui/types/Layout.h>
 
-namespace gui {
+namespace cmn::gui {
     //! Initializes the GUI error log
     void init_errorlog();
     void deinit_errorlog();

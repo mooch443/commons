@@ -1,6 +1,6 @@
 #include "Checkbox.h"
 
-namespace gui {
+namespace cmn::gui {
     IMPLEMENT(Checkbox::box_size) = Size2(15, 15);
     IMPLEMENT(Checkbox::margin)= float(5);
 

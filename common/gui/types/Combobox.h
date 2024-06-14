@@ -6,7 +6,7 @@
 #include <gui/types/Dropdown.h>
 #include <gui/GUITaskQueue.h>
 
-namespace gui {
+namespace cmn::gui {
 
 namespace dyn {
 class LabeledField;

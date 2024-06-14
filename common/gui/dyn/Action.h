@@ -1,12 +1,12 @@
 #pragma once
 #include <commons.pc.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 struct Context;
 struct State;
 
-#define REQUIRE_EXACTLY(N, props) ::gui::dyn::require_exactly< N >(props, source_location::current())
+#define REQUIRE_EXACTLY(N, props) ::cmn::gui::dyn::require_exactly< N >(props, source_location::current())
 template<size_t N>
 void require_exactly(auto const & props, source_location loc) {
     if(props.parameters.size() != N) {
@@ -14,7 +14,7 @@ void require_exactly(auto const & props, source_location loc) {
     }
 }
 
-#define REQUIRE_AT_LEAST(N, props) ::gui::dyn::require_at_least< N >(props, source_location::current())
+#define REQUIRE_AT_LEAST(N, props) ::cmn::gui::dyn::require_at_least< N >(props, source_location::current())
 template<size_t N>
 void require_at_least(auto const & props, source_location loc) {
     static_assert(N > 0, "We cannot have fewer than zero arguments.");

@@ -3,7 +3,7 @@
 #include <gui/types/Dropdown.h>
 #include <misc/stacktrace.h>
 
-namespace gui {
+namespace cmn::gui {
     Entangled::Entangled(Entangled&& other) noexcept
         : SectionInterface(std::move(other)), // Assuming SectionInterface has a move constructor
           _current_children(std::move(other._current_children)),

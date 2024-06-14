@@ -10,7 +10,7 @@
 #include <valarray>
 #include <misc/Timer.h>
 
-namespace gui {
+namespace cmn::gui {
     using namespace Hist;
     
     template<typename T, Options options = Options::NONE, typename V = std::vector<std::vector<T>>>

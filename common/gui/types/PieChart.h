@@ -4,7 +4,7 @@
 #include <gui/types/Entangled.h>
 #include <gui/DrawSFBase.h>
 
-namespace gui {
+namespace cmn::gui {
     class PieChart : public Entangled {
     public:
         class Slice

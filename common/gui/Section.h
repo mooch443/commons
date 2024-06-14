@@ -5,7 +5,7 @@
 #include <gui/types/SingletonObject.h>
 #include <misc/colors.h>
 
-namespace gui {
+namespace cmn::gui {
     class DrawableCollection;
 
     class Section : public SectionInterface, public HasName {

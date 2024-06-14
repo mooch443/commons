@@ -4,7 +4,7 @@
 #include <gui/types/Layout.h>
 #include <gui/GuiTypes.h>
 
-namespace gui {
+namespace cmn::gui {
 
 class ErrorElement : public Entangled {
 public:

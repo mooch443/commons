@@ -6,7 +6,7 @@
 #include <gui/dyn/CTimer.h>
 #include <gui/dyn/Context.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 std::optional<std::string> get_modifier_from_object(Drawable* object, const VarProps& value);
 

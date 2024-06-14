@@ -2,7 +2,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/DrawableCollection.h>
 
-namespace gui {
+namespace cmn::gui {
     ColorWheel Section::wheel;
 
     void Section::remove_child(Drawable* d) {

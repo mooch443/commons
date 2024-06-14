@@ -3,11 +3,11 @@
 #include <commons.pc.h>
 #include <misc/derived_ptr.h>
 
-namespace gui {
+namespace cmn::gui {
 class Drawable;
 }
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 struct Context;
 struct State;

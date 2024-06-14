@@ -7,7 +7,7 @@
 #include <gui/ListAttributes.h>
 #include <gui/types/ListItemTypes.h>
 
-namespace gui {
+namespace cmn::gui {
     class List : public Entangled {
     protected:
         Font _item_font{0.6, Align::Center};

@@ -3,7 +3,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/List.h>
 
-namespace gui {
+namespace cmn::gui {
 void Item::operator=(const Item& other) {
     _ID = other._ID;
     if(other.selected())

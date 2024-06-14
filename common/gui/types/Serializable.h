@@ -5,7 +5,7 @@
 #include <sstream>
 #include <assert.h>
 
-namespace gui {
+namespace cmn::gui {
     class Serializable {
     public:
         constexpr Serializable() {}

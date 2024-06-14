@@ -4,7 +4,7 @@
 #include <misc/pretty.h>
 #include <gui/Graph.h>
 
-namespace gui {
+namespace cmn::gui {
     static bool nowindow_updated = false;
     static bool nowindow;
     

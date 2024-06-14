@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 #include <AvailabilityMacros.h>
 #endif
 
-using namespace cmn;
+namespace cmn {
 
 #if defined(WIN32)
 
@@ -176,10 +176,10 @@ bool DataFormat::is_write_mode() const {
 }
 
 uint64_t DataFormat::current_offset() const {
-	return _file_offset; 
+	return _file_offset;
 }
 uint64_t DataFormat::tell() const {
-	return current_offset(); /*ftell(f);*/ 
+	return current_offset(); /*ftell(f);*/
 }
 
 void DataFormat::start_reading() {
@@ -571,8 +571,8 @@ void Data::read(CropOffsets& r) {
     read<uint16_t>(h);
 
     r = CropOffsets(
-        float(x) / 8000.f, 
-        float(y) / 8000.f, 
+        float(x) / 8000.f,
+        float(y) / 8000.f,
         1 - float(w) / 8000.f,
         1 - float(h) / 8000.f);
 }
@@ -638,4 +638,6 @@ DataFormat::DataFormat(DataFormat&& other) noexcept
     other._open_for_writing = false;
     other._open_for_modifying = false;
     other._header_written = false;
+}
+
 }

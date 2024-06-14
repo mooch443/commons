@@ -5,7 +5,7 @@
 #include <misc/CircularGraph.h>
 #include <gui/types/Entangled.h>
 
-namespace gui {
+namespace cmn::gui {
 VertexArray::VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type)
     : Drawable(type), _transport(&p), _primitive(primitive),_size_calculated(false), _thickness(1)
 {

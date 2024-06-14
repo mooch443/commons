@@ -8,9 +8,9 @@
 #define PATH_MAX MAX_PATH
 #endif
 
-using namespace file;
-
 namespace cmn {
+using namespace cmn::file;
+
 CommandLine& CommandLine::instance() {
     static CommandLine cmd;
     return cmd;

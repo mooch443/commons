@@ -4,7 +4,7 @@
 #include "DrawBase.h"
 #include <gui/types/Drawable.h>
 
-namespace gui {
+namespace cmn::gui {
     
     class HTMLCache : public CacheObject {
     protected:

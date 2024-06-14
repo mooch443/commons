@@ -5,7 +5,7 @@
 #include <misc/metastring.h>
 #include <misc/useful_concepts.h>
 
-namespace gui {
+namespace cmn::gui {
     class Color;
 }
 

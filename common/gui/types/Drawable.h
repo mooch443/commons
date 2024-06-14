@@ -8,7 +8,7 @@
 #include <misc/colors.h>
 #include <gui/ControlsAttributes.h>
 
-namespace gui {
+namespace cmn::gui {
     class Base;
     class SectionInterface;
     class DrawableCollection;
@@ -66,6 +66,8 @@ namespace gui {
         typedef std::function<void(void)> delete_function_t;
         typedef std::unique_ptr<delete_function_t> delete_function_ptr_t;
         typedef const delete_function_t* delete_function_handle_t;
+        
+        struct replace_t {};
         
         //! A color that is used in Drawables throughout the GUI
         //  as the accent / base color.
@@ -244,7 +246,9 @@ namespace gui {
         void on_click(const event_handler_yes_t& fn);
         callback_handle_t add_event_handler(EventType type, const event_handler_t& fn); // returns handler-id
         callback_handle_t add_event_handler(EventType type, const event_handler_yes_t& fn);
+        callback_handle_t add_event_handler_replace(EventType type, const event_handler_yes_t& fn, const callback_handle_t::element_type*);
         void remove_event_handler(EventType type, const callback_handle_t handler_id);
+        void remove_event_handler_raw(EventType type, const callback_handle_t::element_type* handler_id);
         void clear_event_handlers() {
             _event_handlers.clear();
         }

@@ -8,7 +8,7 @@
 #include <gui/DrawableCollection.h>
 //#define _DEBUG_MEMORY
 
-namespace gui {
+namespace cmn::gui {
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 1;
     CallbackCollection callback;
@@ -432,6 +432,24 @@ namespace gui {
         _event_handlers[type].push_back(handle);
         return handle;
     }
+
+    Drawable::callback_handle_t Drawable::add_event_handler_replace(EventType type, const event_handler_yes_t& fn, const callback_handle_t::element_type* handle) {
+        auto it = _event_handlers.find(type);
+        if(it == _event_handlers.end()) {
+            auto [nit,r] = _event_handlers.insert({type, {}});
+            it = nit;
+        }
+        
+        auto kit = std::find_if(it->second.begin(), it->second.end(), [handle](const auto& A) { return A.get() == handle; });
+        if(kit != it->second.end()) {
+            *(*kit) = [fn](Event e) -> bool { fn(e); return true; };
+            return *kit;
+        }
+        
+        auto _handle = std::make_shared<event_handler_t>([fn](Event e) -> bool { fn(e); return true; });
+        _event_handlers[type].push_back(_handle);
+        return _handle;
+    }
     
     void Drawable::remove_event_handler(gui::EventType type, callback_handle_t handler_id) {
         auto it = _event_handlers.find(type);
@@ -440,6 +458,21 @@ namespace gui {
                 _event_handlers.erase(it);
             else {
                 auto eit = std::find(it->second.begin(), it->second.end(), handler_id);
+                it->second.erase(eit);
+            }
+        }
+    }
+
+    void Drawable::remove_event_handler_raw(
+        EventType type,
+        const callback_handle_t::element_type* handler_id)
+    {
+        auto it = _event_handlers.find(type);
+        if(it != _event_handlers.end()) {
+            if(not handler_id)
+                _event_handlers.erase(it);
+            else {
+                auto eit = std::find_if(it->second.begin(), it->second.end(), [handler_id](const auto& A){ return A.get() == handler_id; });
                 it->second.erase(eit);
             }
         }
@@ -836,7 +869,7 @@ bool SectionInterface::is_animating() noexcept {
         }
     }
     
-    void SectionInterface::set_size(const gui::Size2 &size) {
+    void SectionInterface::set_size(const Size2 &size) {
         if(size != _bounds.size()) {
             auto c = _bounds.size();
             Drawable::set_size(size);

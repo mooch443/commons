@@ -4,8 +4,7 @@
 #include <file/Path.h>
 #include <misc/SpriteMap.h>
 
-namespace gui {
-namespace dyn {
+namespace cmn::gui::dyn {
 
 /// @brief Base class template for Variable.
 template<typename... _Args>
@@ -37,7 +36,6 @@ public:
         :   VarBase<arg_types...>(refcode),
             function(std::move(fn))
     {
-        using namespace cmn;
         
         if constexpr(is_container<return_type>::value) {
             this->_is_vector = true;
@@ -213,5 +211,4 @@ Variable(F&&) -> Variable<R, std::tuple_element_t<0, arg>>;
 template<typename ReturnType, typename ClassType, typename... Args>
 Variable(ReturnType(ClassType::*)(Args...) const) -> Variable<ReturnType, Args...>;
 
-}
 }

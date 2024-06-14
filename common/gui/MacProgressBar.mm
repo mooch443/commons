@@ -70,7 +70,7 @@ static TRexProgressView *sharedProgressView = nil;
 
 @end
 
-namespace gui {
+namespace cmn::gui {
 
 void MacProgressBar::set_percent(double value) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -94,7 +94,7 @@ void MacProgressBar::set_visible(bool visible)
 
 #else
 
-namespace gui {
+namespace cmn::gui {
 
 void MacProgressBar::set_percent(double v) {
     // nothing

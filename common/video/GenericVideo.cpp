@@ -5,7 +5,7 @@
 #include <misc/checked_casts.h>
 #include <video/AveragingAccumulator.h>
 
-using namespace cmn;
+namespace cmn {
 
 CropOffsets GenericVideo::crop_offsets() const {
     return SETTING(crop_offsets);
@@ -116,4 +116,6 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     
     auto image = accumulator.finalize();
     image->get().copyTo(av);
+}
+
 }

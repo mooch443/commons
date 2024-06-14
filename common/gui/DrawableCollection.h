@@ -2,7 +2,7 @@
 
 #include <gui/Section.h>
 
-namespace gui {
+namespace cmn::gui {
     class DrawableCollection : public Section {
     public:
         DrawableCollection(const std::string& name)

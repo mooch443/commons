@@ -3,7 +3,7 @@
 #include <gui/DrawBase.h>
 #include <misc/SpriteMap.h>
 
-namespace gui {
+namespace cmn::gui {
     SFLoop::SFLoop(DrawStructure& graph, Base* base,
            const std::function<void(SFLoop&, gui::LoopStatus)>& custom_loop,
            const std::function<void(SFLoop&)>& after_display,

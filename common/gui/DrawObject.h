@@ -4,7 +4,7 @@
 #include <commons.pc.h>
 #include "DrawStructure.h"
 
-namespace gui {
+namespace cmn::gui {
     class Object {
     public:
         virtual ~Object() {};

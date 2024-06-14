@@ -1,6 +1,6 @@
 #include "Dropdown.h"
 
-namespace gui {
+namespace cmn::gui {
 
 auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
     std::vector<Dropdown::TextItem> result;

@@ -163,8 +163,8 @@ blob::Pose blob::Pose::deserialize(const std::vector<uint8_t>& buffer) {
 
 }
 
-namespace tf {
-    using namespace cmn;
+namespace cmn::tf {
+    
     
     class ThreadSafety {
         static std::mutex _opencv_lock;

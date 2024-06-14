@@ -5,7 +5,7 @@
 #include <misc/colors.h>
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     /*class Graph;
     class GuiGraph : public Entangled {
         GETTER(float, alpha);

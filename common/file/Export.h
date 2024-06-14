@@ -7,7 +7,7 @@
 #include <misc/SpriteMap.h>
 #include <misc/frame_t.h>
 
-namespace file {
+namespace cmn::file {
 
 class Table;
 

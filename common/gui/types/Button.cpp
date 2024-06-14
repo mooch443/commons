@@ -1,7 +1,7 @@
 #include "Button.h"
 #include <gui/DrawSFBase.h>
 
-namespace gui {
+namespace cmn::gui {
 
 void Button::init() {
     set_clickable(true);

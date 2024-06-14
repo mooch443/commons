@@ -18,7 +18,7 @@
 #include <gui/dyn/Action.h>
 #include <regex>
 
-namespace gui {
+namespace cmn::gui {
 namespace dyn {
 
 template<typename T, typename Str>

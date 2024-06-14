@@ -1,6 +1,6 @@
 #include "Export.h"
 
-namespace file {
+namespace cmn::file {
 Table::Table(const std::vector<std::string> &header)
     : _header(header)
 { }

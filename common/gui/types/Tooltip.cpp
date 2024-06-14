@@ -1,7 +1,7 @@
 #include "Tooltip.h"
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     Tooltip::Tooltip(Drawable* other, float max_width)
           : _other(other),
             _text(SizeLimit(max_width > 0 || !_other

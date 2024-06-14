@@ -205,7 +205,7 @@ public:
         UNUSED(name);
     }
     ImageBuffers(const char* name, Size2 size) 
-        : _image_size(size)
+        : _image_size(size.map([](float a) -> float { return int(a); }))
 #ifdef DEBUG_BUFFER_IMAGES
         , _name(name + hex((uint64_t)this).toStr())
 #endif
@@ -282,7 +282,7 @@ public:
 
     void set_image_size(Size2 size) {
         std::unique_lock guard(mutex());
-        _image_size = size;
+        _image_size = size.map([](float a) -> float { return int(a); });
         if(not _buffers.empty()) {
 #ifndef NDEBUG
             FormatWarning("There were already ", _buffers.size(), " images in queue - removing.");

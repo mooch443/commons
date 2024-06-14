@@ -1,4 +1,4 @@
 #include "Serializable.h"
 
-namespace gui {
+namespace cmn::gui {
 }

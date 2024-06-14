@@ -1,8 +1,8 @@
 #include "VarProps.h"
 #include <gui/dyn/ParseText.h>
 
-namespace gui::dyn {
-using namespace cmn;
+namespace cmn::gui::dyn {
+
 
 std::string PreVarProps::toStr() const {
     return "PreVarProps<"+std::string(name)+" parm="+Meta::toStr(parameters)+" subs="+Meta::toStr(subs)+">";

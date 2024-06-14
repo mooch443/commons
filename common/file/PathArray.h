@@ -5,7 +5,7 @@
 #include <misc/format.h>
 #include <regex>
 
-namespace file {
+namespace cmn::file {
 
 // FilesystemInterface that both real and mock classes should implement
 struct FilesystemInterface {

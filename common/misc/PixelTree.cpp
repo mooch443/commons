@@ -10,7 +10,7 @@
 //#define DEBUG_TREE_WALK
 //#define DEBUG_EDGES
 
-namespace pixel {
+namespace cmn::pixel {
     static Image::Ptr debug_greyscale = nullptr;
 
 struct Row {

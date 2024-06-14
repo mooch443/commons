@@ -1,7 +1,7 @@
 #include "DrawableCollection.h"
 #include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     DrawableCollection::~DrawableCollection() {
         //DrawStructure::Lock_t *guard = NULL;
         //if(stage())

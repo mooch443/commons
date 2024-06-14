@@ -7,7 +7,7 @@
 //#include <gui/GuiTypes.h>
 //#include <gui/DrawStructure.h>
 
-namespace gui {
+namespace cmn::gui {
     typedef uint32_t uint;
     class Drawable;
     class Text;

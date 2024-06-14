@@ -3,7 +3,7 @@
 #include <commons.pc.h>
 #include <gui/types/Basic.h>
 
-namespace gui {
+namespace cmn::gui {
 namespace attr {
 
 template <typename T>

@@ -3,7 +3,7 @@
 #include <gui/DrawStructure.h>
 #include <gui/GuiTypes.h>
 
-namespace gui {
+namespace cmn::gui {
     Base *_latest_base = nullptr;
     std::function<Bounds(const std::string&, Drawable*, const Font&)> _restore_line_bounds;
     std::function<uint32_t(const Font&)> _restore_line_spacing;

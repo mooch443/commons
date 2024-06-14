@@ -6,7 +6,7 @@
 #include <gui/dyn/VarProps.h>
 #include <gui/LabeledField.h>
 
-namespace gui::dyn {
+namespace cmn::gui::dyn {
 
 struct State;
 class LayoutContext;

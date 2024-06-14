@@ -116,8 +116,8 @@ namespace cmn {
 #endif
             } // otherwise just be memory-inefficient and leave the array as it is :-)
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-            else
-                print("Reusing ", _size," for ",_array_size," array");
+            //else
+                //print("Reusing ", _size," for ",_array_size," array");
 #endif
         }
         else if(N > 0) {

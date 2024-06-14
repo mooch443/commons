@@ -3,7 +3,7 @@
 
 #include "Export.h"
 
-namespace file {
+namespace cmn::file {
 class CSVExport : public ExportType {
 public:
     CSVExport(const Table& table) : ExportType(table) {}
