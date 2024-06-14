@@ -105,9 +105,9 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, Sta
     }
     font = parse_font(obj, font);
     
-    if(auto it = state._timers.find(hash); it == state._timers.end()) {
+    /*if(auto it = state._timers.find(hash); it == state._timers.end()) {
         state._timers[hash].reset();
-    }
+    }*/
 }
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
