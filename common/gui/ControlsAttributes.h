@@ -167,6 +167,7 @@ NUMBER_ALIAS(Radius, float)
 NUMBER_ALIAS(Rotation, float)
 NUMBER_ALIAS(Alpha, float)
 NUMBER_ALIAS(Checked, bool)
+NUMBER_ALIAS(Folded_t, bool)
 NUMBER_ALIAS(ZIndex, int)
 using Font = gui::Font;
 

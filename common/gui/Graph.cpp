@@ -127,7 +127,9 @@ void Graph::update() {
     }
     
     std::sort(indices.begin(), indices.end(), [highlighted](size_t A, size_t B) -> bool {
-        return !(A == highlighted || (B != highlighted && A < B));
+        if (A == highlighted) return true;   // A should be first if it's highlighted
+        if (B == highlighted) return false;  // B should be first if it's highlighted
+        return A < B;                        // Otherwise, sort normally
     });
     
     add<Vertices>(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,

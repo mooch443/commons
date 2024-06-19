@@ -5,7 +5,7 @@
 namespace cmn::gui {
     ATTRIBUTE_ALIAS(OnHover_t, std::function<void(size_t)>)
     NUMBER_ALIAS(Foldable_t, bool)
-    NUMBER_ALIAS(Folded_t, bool)
+    //NUMBER_ALIAS(Folded_t, bool)
     NUMBER_ALIAS(Alternating_t, bool)
     ATTRIBUTE_ALIAS(ItemFont_t, Font)
     ATTRIBUTE_ALIAS(DetailFont_t, Font)
