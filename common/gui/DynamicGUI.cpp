@@ -1361,6 +1361,14 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     if(first_update)
         first_update = false;
     
+    if(do_update_objects && state._timers.size() > 10000) {
+        first_load = true;
+        if(read_file_future.valid())
+            read_file_future.wait();
+        previous.clear();
+        reload();
+    }
+    
     if(context.defaults.window_color != Transparent) {
         if(base)
             base->set_background_color(context.defaults.window_color);
@@ -1449,7 +1457,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     dyn::update_tooltips(*graph, state);
 
     if(state._timers.size() > 10000) {
-        std::vector<std::tuple<double, size_t>> sorted_objects;
+        /*std::vector<std::tuple<double, size_t>> sorted_objects;
         sorted_objects.resize(state._timers.size());
         for(auto &[h, o] : state._timers) {
             sorted_objects.push_back({o.elapsed(), h});
@@ -1481,7 +1489,8 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             }
             
             state._timers.erase(h);
-        }
+        }*/
+        
     }
     
     if (do_update_objects)
