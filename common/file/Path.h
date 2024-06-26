@@ -194,7 +194,7 @@ constexpr auto enumerate(T& iterable) {
         
         [[nodiscard]] Path replace_extension(std::string_view ext) const;
         [[nodiscard]] Path add_extension(std::string_view ext) const;
-        [[nodiscard]] bool has_extension() const;
+        [[nodiscard]] bool has_extension(std::string_view ext = {}) const;
         [[nodiscard]] Path remove_extension(const std::string& = "") const;
         
         FilePtr fopen(const std::string& access_rights) const;

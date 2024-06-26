@@ -433,8 +433,11 @@ Path Path::absolute() const {
         return std::string_view();
     }
     
-    bool Path::has_extension() const {
-        return !extension().empty();
+    bool Path::has_extension(std::string_view ext) const {
+        if(ext.empty())
+            return not extension().empty();
+        assert(utils::lowercase(ext) == ext);
+        return utils::lowercase(extension()) == ext;
     }
     
     bool Path::create_folder() const {

@@ -468,7 +468,7 @@ VideoSource::VideoSource(const file::PathArray& source)
         //print("Extension ",extension," basename ",prefix);
         
     } else {
-        throw std::runtime_error("File extension not found in "+source.toStr());
+        throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
     }
     
     if(prefix.empty()) {
