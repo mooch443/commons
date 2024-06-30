@@ -7,7 +7,7 @@ template<class Base>
 class derived_ptr {
 public:
     std::shared_ptr<Base> ptr;
-    Base* raw_ptr;
+    Base* raw_ptr{nullptr};
 
     template<typename T>
         requires std::is_base_of_v<Base, T>
@@ -18,7 +18,10 @@ public:
         requires std::is_base_of_v<Base, T>
     derived_ptr(derived_ptr<T>&& share)
         : ptr(std::move(share.ptr)), raw_ptr(std::move(share.raw_ptr))
-    {}
+    {
+        share.ptr = nullptr;
+        share.raw_ptr = nullptr;
+    }
     derived_ptr(const std::shared_ptr<Base>& share = nullptr) : ptr(share), raw_ptr(nullptr) {}
     derived_ptr(Base* raw) : ptr(nullptr), raw_ptr(raw) {}
     

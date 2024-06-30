@@ -104,7 +104,7 @@ void StaticText::set_default_font(Font font) {
             //bool hiding_something{false};
             
             for(auto& t : texts) {
-                if(t->txt().empty())
+                if(not t || t->txt().empty())
                     continue;
                 
                 // add texts so that dimensions are retrieved

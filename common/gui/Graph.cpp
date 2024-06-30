@@ -127,9 +127,13 @@ void Graph::update() {
     }
     
     std::sort(indices.begin(), indices.end(), [highlighted](size_t A, size_t B) -> bool {
-        if (A == highlighted) return true;   // A should be first if it's highlighted
-        if (B == highlighted) return false;  // B should be first if it's highlighted
-        return A < B;                        // Otherwise, sort normally
+        // If one element is highlighted, it should come first
+        if (A == highlighted || B == highlighted) {
+            return A == highlighted;
+        }
+        
+        // If neither is highlighted, use natural ordering
+        return A < B;
     });
     
     add<Vertices>(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,
@@ -352,7 +356,10 @@ void Graph::update() {
             float percentx = (x0-rx.start) / lengthx + x_offset_percent;
             float x = percentx * max_width - y_axis_offset;
             
-            float y0 = narrow_cast<float>(f._get_y(x0));
+            double output = f._get_y(x0);
+            float y0 = GlobalSettings::is_invalid(output)
+                ? GlobalSettings::invalid()
+                : narrow_cast<float>(output);
             float y;
             
             if (GlobalSettings::is_invalid(y0)) {
