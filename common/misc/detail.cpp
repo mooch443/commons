@@ -437,13 +437,6 @@ namespace cmn {
 #endif
 #endif
     
-    inline void _lines_initialize_matrix(cv::Mat& mat, int w, int h, int type = CV_8UC1) {
-        if (mat.empty() || mat.type() != type || mat.rows != h || mat.cols != w)
-            mat = cv::Mat::zeros(h, w, type);
-        else
-            mat = cv::Scalar(0);
-    };
-    
     cv::Rect2i lines_dimensions(const std::vector<HorizontalLine>& lines) {
         float mx = FLT_MAX, my = FLT_MAX,
               px = -FLT_MAX, py = -FLT_MAX;
@@ -464,131 +457,6 @@ namespace cmn {
         h = py - my + 1;
         
         return cv::Rect2i(mx, my, w, h);
-    }
-    
-    void lines2mask(const std::vector<HorizontalLine>& lines, cv::Mat& output_mask, const int value) {
-        auto r = lines_dimensions(lines);
-        _lines_initialize_matrix(output_mask, r.width, r.height);
-        
-        for (auto &l : lines) {
-            for (int x=l.x0; x<=l.x1; x++)
-                output_mask.at<uchar>(l.y - r.y, x - r.x) = value;
-        }
-    }
-    
-    std::pair<cv::Rect2i, size_t> imageFromLines(const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const std::vector<uchar>& pixels, int base_threshold, const LuminanceGrid& grid, const cv::Mat& average, int padding)
-    {
-        auto r = lines_dimensions(lines);
-        r.x -= padding;
-        r.y -= padding;
-        r.width += padding * 2;
-        r.height += padding * 2;
-        
-        // initialize matrices
-        if(output_mask)
-            _lines_initialize_matrix(*output_mask, r.width, r.height);
-        if(output_greyscale)
-            _lines_initialize_matrix(*output_greyscale, r.width, r.height);
-        if(output_differences)
-            _lines_initialize_matrix(*output_differences, r.width, r.height);
-        
-        size_t recount = 0;
-        int c, diff;
-        
-        auto pixels_ptr = pixels.data();
-        for (auto &l : lines) {
-            for (int x=l.x0; x<=l.x1; x++) {
-                c = *pixels_ptr++;
-                diff = min(UCHAR_MAX, cmn::abs(int(average.at<uchar>(l.y,x)) - c));
-                //diff = min(UCHAR_MAX, max(0, int(average->at<uchar>(l.y, x)) - c));
-                
-                if(!base_threshold || diff >= base_threshold * grid.relative_threshold(x, l.y)) {
-                    if(output_mask)
-                        output_mask->at<uchar>(l.y - r.y, x - r.x) = 255;
-                    if(output_greyscale)
-                        output_greyscale->at<uchar>(l.y - r.y, x - r.x) = c;
-                    if(output_differences)
-                        output_differences->at<uchar>(l.y - r.y, x - r.x) = diff;
-                    recount++;
-                }
-            }
-        }
-        
-        return {r, recount};
-    }
-    
-    std::pair<cv::Rect2i, size_t> imageFromLines(const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const std::vector<uchar>* pixels, const int threshold, const Image* average, int padding)
-    {
-        auto r = lines_dimensions(lines);
-        r.x -= padding;
-        r.y -= padding;
-        r.width += padding * 2;
-        r.height += padding * 2;
-        
-        // initialize matrices
-        if(output_mask)
-            _lines_initialize_matrix(*output_mask, r.width, r.height);
-        if(output_greyscale)
-            _lines_initialize_matrix(*output_greyscale, r.width, r.height);
-        if(output_differences)
-            _lines_initialize_matrix(*output_differences, r.width, r.height);
-        
-        uint32_t pos = 0;
-        size_t recount = 0;
-        
-        assert(!output_differences || average);
-        
-        // use individual ifs for cases to have less
-        // jumps in assembler code within the loops
-        if(!threshold) {
-            int c;
-            
-            for (auto &l : lines) {
-                recount += size_t(l.x1) - size_t(l.x0) + 1;
-                
-                for (int x=l.x0; x<=l.x1; x++) {
-                    if(output_mask)
-                        output_mask->at<uchar>(l.y - r.y, x - r.x) = 255;
-                    if(output_greyscale || output_differences) {
-                        c = pixels->at(pos++);
-                        
-                        if(output_greyscale)
-                            output_greyscale->at<uchar>(l.y - r.y, x - r.x) = c;
-                        if(output_differences)
-                            output_differences->at<uchar>(l.y - r.y, x - r.x) = min(UCHAR_MAX, cmn::abs(int(average->at(l.y,x)) - c));
-                            //min(UCHAR_MAX, max(0, int(average->at<uchar>(l.y, x)) - c));
-                    }
-                }
-            }
-            
-        } else {
-            int c, diff;
-            assert(average);
-            assert(threshold);
-            assert(pixels);
-            
-            auto pixels_ptr = pixels->data();
-            for (auto &l : lines) {
-                for (int x=l.x0; x<=l.x1; x++) {
-                    c = *pixels_ptr++;
-                    diff = min(UCHAR_MAX, cmn::abs(int(average->at(l.y,x)) - c));
-                    //diff = min(UCHAR_MAX, max(0, int(average->at<uchar>(l.y, x)) - c));
-                    
-                    if(diff >= threshold) {
-                        if(output_mask)
-                            output_mask->at<uchar>(l.y - r.y, x - r.x) = 255;
-                        if(output_greyscale)
-                            output_greyscale->at<uchar>(l.y - r.y, x - r.x) = c;
-                        if(output_differences)
-                            output_differences->at<uchar>(l.y - r.y, x - r.x) = diff;
-                        recount++;
-                    }
-                }
-            }
-            
-        }
-        
-        return {r, recount};
     }
 }
 
@@ -1020,12 +888,13 @@ namespace cmn {
     uint8_t required_channels(ImageMode mode) {
         switch (mode) {
             case ImageMode::GRAY:
+                return required_channels<ImageMode::GRAY>();
             case ImageMode::R3G3B2:
-                return 1;
+                return required_channels<ImageMode::R3G3B2>();
             case ImageMode::RGB:
-                return 3;
+                return required_channels<ImageMode::RGB>();
             case ImageMode::RGBA:
-                return 4;
+                return required_channels<ImageMode::RGBA>();
                 
             default:
                 throw U_EXCEPTION("Unknown mode: ", (int)mode);

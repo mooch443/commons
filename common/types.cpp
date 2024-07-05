@@ -194,6 +194,12 @@ namespace cmn::tf {
     void imshow(const std::string& name, const cv::Mat& mat, std::string label) {
         ThreadSafety::add(name, mat, label);
     }
+
+    void imshow(const std::string& name, const gpuMat& mat, std::string label) {
+        cv::Mat cpu;
+        mat.copyTo(cpu);
+        ThreadSafety::add(name, cpu, label);
+    }
     
     void show() {
         ThreadSafety::show();

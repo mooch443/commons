@@ -70,16 +70,19 @@ struct Row {
     }
 };
 
-#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
+#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& input, uchar*& px, const uchar* px_end, int threshold, std::vector<HorizontalLine> &lines, std::vector<uchar> &pixels)
 
     template<DifferenceMethod method, ImageMode colors>
     inline void line_with_grid _____FN_TYPE {
+        constexpr uint8_t channels = required_channels<method>();
+        
         for(const auto &line : input) {
             coord_t x0;
             uchar* start{nullptr};
             auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
             
-            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            for (auto x=line.x0; x<=line.x1; ++x, px += channels) {
+                assert(px < px_end);
                 if(bg->diff<method, colors>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
@@ -102,11 +105,15 @@ struct Row {
 
     template<DifferenceMethod method, ImageMode mode>
     inline void line_without_grid _____FN_TYPE {
+        constexpr uint8_t channels = required_channels<mode>();
+        
         for(const auto &line : input) {
             coord_t x0;
             uchar* start{nullptr};
             
-            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            for (auto x=line.x0; x<=line.x1; ++x, px += channels) {
+                assert(px < px_end);
+                
                 if(bg->diff<method, mode>(x, line.y, *px) < threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
@@ -127,14 +134,19 @@ struct Row {
         }
     }
 
+    template<DifferenceMethod method, ImageMode mode>
     inline void line_without_bg _____FN_TYPE {
         UNUSED(bg);
+        
+        constexpr uint8_t channels = required_channels<mode>();
         
         for(const auto &line : input) {
             coord_t x0;
             uchar* start{nullptr};
             
-            for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+            for (auto x=line.x0; x<=line.x1; ++x, px += channels) {
+                assert(px < px_end);
+                
                 if(*px < threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);
@@ -155,9 +167,10 @@ struct Row {
         }
     }
 
-inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob,const std::vector<uchar>& difference_cache, int threshold) {
+inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold) {
     const uchar* px = blob->pixels()->data();
     const uchar* dpx = difference_cache.data();
+    const uint8_t channels = blob->channels();
     
     std::vector<HorizontalLine> lines;
     std::vector<uchar> pixels;
@@ -169,7 +182,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         coord_t x0;
         const uchar* start{nullptr};
         
-        for (auto x=line.x0; x<=line.x1; ++x, ++px) {
+        for (auto x=line.x0; x<=line.x1; ++x, px += channels) {
+            assert(px < blob->pixels()->data() + blob->pixels()->size());
+            
             if(*dpx++ < threshold) {
                 if(start) {
                     pixels.insert(pixels.end(), start, px);
@@ -189,7 +204,16 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         }
     }
     
-    return CPULabeling::run(lines, pixels, cache);
+#ifndef NDEBUG
+    auto blobs = CPULabeling::run(lines, pixels, cache, channels);
+    for(auto &pair : blobs) {
+        assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_rgb) == blob->is_rgb());
+        assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
+    }
+    return blobs;
+#else
+    return CPULabeling::run(lines, pixels, cache, channels);
+#endif
 }
 
 
@@ -260,20 +284,29 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         
         //timer.reset();
         auto px = blob->pixels()->data();
+        auto px_end = px + blob->pixels()->size();
         std::vector<HorizontalLine> lines;
         std::vector<uchar> pixels;
         lines.reserve(blob->hor_lines().size());
         pixels.reserve(blob->pixels()->size());
         
+        const ImageMode mode = blob->is_rgb()
+            ? ImageMode::RGB
+            : (blob->is_r3g3b2() ? ImageMode::R3G3B2 : ImageMode::GRAY);
+        
         if(bg)
-            call_image_mode_function([&]<DifferenceMethod method, ImageMode mode>(){
-                line_without_grid<method, mode>(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            call_image_mode_function(mode, [&]<DifferenceMethod method, ImageMode mode>(){
+                line_without_grid<method, mode>(bg, blob->hor_lines(), px, px_end, threshold, lines, pixels);
             });
         else
-            line_without_bg(bg, blob->hor_lines(), px, threshold, lines, pixels);
+            call_image_mode_function(mode, [&]<DifferenceMethod method, ImageMode mode>(){
+                line_without_bg<method, mode>(bg, blob->hor_lines(), px, px_end, threshold, lines, pixels);
+            });
         
-        auto blobs = CPULabeling::run(lines, pixels, cache);
+        auto blobs = CPULabeling::run(lines, pixels, cache, blob->channels());
         for(auto &pair : blobs) {
+            assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_rgb) == blob->is_rgb());
+            assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
             pair.pred = blob->prediction();
         }
         return blobs;
@@ -293,17 +326,24 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             }
         }
         
-        if(found)
-            return pv::Blob::Make(
-                    std::move(found->lines),
-                    std::move(found->pixels),
-                    found->extra_flags,
-                    blob::Prediction{blob->prediction()});
+        if(found) {
+            auto r = pv::Blob::Make(
+                              std::move(found->lines),
+                              std::move(found->pixels),
+                              found->extra_flags,
+                              blob::Prediction{blob->prediction()});
+            assert(r->is_rgb() == blob->is_rgb());
+            assert(r->is_r3g3b2() == blob->is_r3g3b2());
+            return r;
+        }
         
+        uint8_t extra_flags = 0;
+        pv::Blob::set_flag(extra_flags, pv::Blob::Flags::is_rgb, blob->is_rgb());
+        pv::Blob::set_flag(extra_flags, pv::Blob::Flags::is_r3g3b2, blob->is_r3g3b2());
         return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
                 std::make_unique<std::vector<uchar>>(),
-                0,
+                extra_flags,
                 blob::Prediction{blob->prediction()});
         //auto ptr = pv::Blob::Make(lines, pixels);
         //return ptr;

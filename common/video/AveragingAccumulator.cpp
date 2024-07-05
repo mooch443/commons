@@ -31,8 +31,9 @@ void AveragingAccumulator::add_threaded(const Mat& f) {
 
 template<bool threaded>
 void AveragingAccumulator::_add(const Mat &f) {
-    assert(f.channels() == 1);
-    assert(f.type() == CV_8UC1);
+    const uint8_t channels = f.channels();
+    assert(channels == 1 || channels == 3);
+    assert(f.type() == CV_8UC1 || f.type() == CV_8UC3);
 
     {
         std::unique_ptr<std::lock_guard<std::mutex>> guard;
@@ -43,14 +44,14 @@ void AveragingAccumulator::_add(const Mat &f) {
         // initialization code
         if(_accumulator.empty()) {
             _size = Size2(f.cols, f.rows);
-            _accumulator = cv::Mat::zeros((int)_size.height, (int)_size.width, _mode == averaging_method_t::mean ? CV_32FC1 : CV_8UC1);
+            _accumulator = cv::Mat::zeros((int)_size.height, (int)_size.width, _mode == averaging_method_t::mean ? CV_32FC(channels) : CV_8UC(channels));
             if(_mode == averaging_method_t::min)
                 _accumulator.setTo(255);
             
             if(_mode == averaging_method_t::mode) {
                 spatial_histogram.resize(size_t(f.cols) * size_t(f.rows));
                 for(uint64_t i=0; i<spatial_histogram.size(); ++i) {
-                    std::fill(spatial_histogram.at(i).begin(), spatial_histogram.at(i).end(), 0);
+                    std::fill(spatial_histogram.at(i).begin(), spatial_histogram.at(i).end(), RGB{0, 0, 0});
                     spatial_mutex.push_back(std::make_unique<std::mutex>());
                 }
             }
@@ -58,7 +59,7 @@ void AveragingAccumulator::_add(const Mat &f) {
     }
     
     if(_mode == averaging_method_t::mean) {
-        f.convertTo(_float_mat, CV_32FC1);
+        f.convertTo(_float_mat, CV_32FC(channels));
         
         if constexpr(threaded) {
             std::lock_guard guard(_accumulator_mutex);
@@ -70,24 +71,41 @@ void AveragingAccumulator::_add(const Mat &f) {
         
     } else if(_mode == averaging_method_t::mode) {
         assert(f.isContinuous());
-        assert(f.type() == CV_8UC1);
+        assert(f.type() == CV_8UC(channels));
         
+        /// TODO: multiple channels will have weird results here
         const uchar* ptr = (const uchar*)f.data;
-        const auto end = f.data + f.cols * f.rows;
         auto array_ptr = spatial_histogram.data();
+        const auto end = spatial_histogram.data() + f.cols * f.rows;
         auto mutex_ptr = spatial_mutex.begin();
         
         assert(spatial_histogram.size() == uint64_t(f.cols) * uint64_t(f.rows));
         if constexpr(threaded) {
-            for (; ptr != end; ++ptr, ++array_ptr, ++mutex_ptr) {
+            for (; array_ptr != end; ptr += channels, ++array_ptr, ++mutex_ptr) {
                 (*mutex_ptr)->lock(); //TODO: this is a performance culprit (locking/unlocking)
-                ++((*array_ptr)[*ptr]);
+                if(channels == 1) {
+                    ++(*array_ptr)[*(ptr + 0)][0];
+                } else {
+                    assert(channels == 3);
+                    ++(*array_ptr)[*(ptr + 0)][0];
+                    ++(*array_ptr)[*(ptr + 1)][1];
+                    ++(*array_ptr)[*(ptr + 2)][2];
+                }
+                
                 (*mutex_ptr)->unlock();
             }
             
         } else {
-            for (; ptr != end; ++ptr, ++array_ptr)
-                ++((*array_ptr)[*ptr]);
+            for (; array_ptr != end; ptr += channels, ++array_ptr) {
+                if(channels == 1) {
+                    ++(*array_ptr)[*(ptr + 0)][0];
+                } else {
+                    assert(channels == 3);
+                    ++(*array_ptr)[*(ptr + 0)][0];
+                    ++(*array_ptr)[*(ptr + 1)][1];
+                    ++(*array_ptr)[*(ptr + 2)][2];
+                }
+            }
         }
         
     } else if(_mode == averaging_method_t::max) {
@@ -110,25 +128,44 @@ void AveragingAccumulator::_add(const Mat &f) {
 
 std::unique_ptr<cmn::Image> AveragingAccumulator::finalize() {
     std::lock_guard guard(_accumulator_mutex);
-    auto image = std::make_unique<cmn::Image>(_accumulator.rows, _accumulator.cols, 1);
+    auto image = std::make_unique<cmn::Image>(_accumulator.rows, _accumulator.cols, _accumulator.channels());
     
     if(_mode == averaging_method_t::mean) {
-        cv::divide(_accumulator, cv::Scalar(count), _local);
-        _local.convertTo(image->get(), CV_8UC1);
+        cv::divide(_accumulator, double(count), _local);
+        _local.convertTo(image->get(), CV_8UC(_local.channels()));
         
     } else if(_mode == averaging_method_t::mode) {
-        _accumulator.copyTo(image->get());
+        //_accumulator.copyTo(image->get());
         
         auto ptr = image->data();
-        const auto end = image->data() + image->cols * image->rows;
         auto array_ptr = spatial_histogram.data();
+        const auto end = spatial_histogram.data() + uint64_t(image->cols) * uint64_t(image->rows);
         
-        for (; ptr != end; ++ptr, ++array_ptr) {
-            *ptr = std::distance(array_ptr->begin(), std::max_element(array_ptr->begin(), array_ptr->end()));
+        const uint8_t channels = image->channels();
+        for (; array_ptr != end; ptr += channels, ++array_ptr) {
+            if(channels == 1) {
+                *ptr = std::distance(array_ptr->begin(), std::max_element(array_ptr->begin(), array_ptr->end(), [](const RGB& A, const RGB& B) {
+                    return A[0] < B[0];
+                }));
+            } else {
+                /// this is very inefficient
+                assert(channels == 3);
+                *(ptr + 0) = std::distance(array_ptr->begin(), std::max_element(array_ptr->begin(), array_ptr->end(), [](const RGB& A, const RGB& B) {
+                    return A[0] < B[0];
+                }));
+                *(ptr + 1) = std::distance(array_ptr->begin(), std::max_element(array_ptr->begin(), array_ptr->end(), [](const RGB& A, const RGB& B) {
+                    return A[1] < B[1];
+                }));
+                *(ptr + 2) = std::distance(array_ptr->begin(), std::max_element(array_ptr->begin(), array_ptr->end(), [](const RGB& A, const RGB& B) {
+                    return A[2] < B[2];
+                }));
+            }
         }
         
     } else
         _accumulator.copyTo(image->get());
+    
+    tf::imshow("acc_average", image->get());
     
     return image;
 }

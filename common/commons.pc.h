@@ -525,7 +525,7 @@ void foreach(Func callback, T &v, Args... args) {
 }
 
 template<typename First, typename ... T>
-bool is_in(First &&first, T && ... t)
+constexpr bool is_in(First &&first, T && ... t)
 {
     return ((first == t) || ...);
 }

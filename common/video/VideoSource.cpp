@@ -895,6 +895,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     print("file_indexes = ", file_indexes);
     std::atomic<bool> terminate{false};
+    std::vector<std::future<void>> futures;
     
     for(auto && [file, indexes] : file_indexes) {
         auto fn = [this, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
@@ -905,7 +906,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
             for(auto index : indexes) {
                 try {
                     file->frame(_colors, index, f);
-                    assert(f.dims == 1);
+                    assert(f.dims == 1 || f.dims == 3);
                     acc.add_threaded(f.get());
                     ++count;
                     
@@ -931,7 +932,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
         };
         
         if(file_indexes.size() > 1) {
-            pool.enqueue(fn, file, indexes);
+            futures.emplace_back(pool.enqueue(fn, file, indexes));
         } else
             fn(file, indexes);
         
@@ -939,12 +940,15 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
             break;
     }
     
-    pool.wait();
+    //pool.wait();
+    for(auto & f : futures)
+        f.get();
+    
     _last_file = NULL;
     
     auto image = acc.finalize();
     auto mat = image->get();
-    assert(mat.type() == CV_8UC1);
+    assert(mat.type() == CV_8UC(mat.channels()));
     mat.copyTo(av);
 }
 

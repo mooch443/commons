@@ -8,6 +8,7 @@
 
 namespace cmn {
 	class RawProcessing;
+    class LuminanceGrid;
 }
 
 struct TagCache {
@@ -27,6 +28,7 @@ struct TagCache {
 class cmn::RawProcessing {
     gpuMat _buffer0, _buffer1, diff;
     gpuMat _floatb0, _floatb1, _polygon;
+    gpuMat _grey_average;
     const gpuMat* _average;
     const gpuMat* _float_average;
     

@@ -211,7 +211,7 @@ void process_tags(int32_t index,
                 
                 // convert to pixels and lines, pre-resize the array though
                 auto lines = std::make_unique<cmn::blob::line_ptr_t::element_type>(l.rows);
-                auto pixels = std::make_unique<cmn::blob::pixel_ptr_t::element_type>(size_t(l.rows) * size_t(l.cols));
+                auto pixels = std::make_unique<cmn::blob::pixel_ptr_t::element_type>(size_t(l.rows) * size_t(l.cols) * size_t(l.channels()));
 
                 std::copy(l.ptr(), l.ptr() + pixels->size(), pixels->begin());
     #ifndef NDEBUG
@@ -229,7 +229,10 @@ void process_tags(int32_t index,
                 return std::make_unique<pv::Blob>(
                         std::move(lines),
                         std::move(pixels),
-                        pv::Blob::flag(pv::Blob::Flags::is_tag) | pv::Blob::flag(pv::Blob::Flags::is_instance_segmentation),
+                        pv::Blob::flag(pv::Blob::Flags::is_tag)
+                            | pv::Blob::flag(pv::Blob::Flags::is_instance_segmentation)
+                            | (l.channels() == 3
+                                ? pv::Blob::flag(pv::Blob::Flags::is_rgb) : 0),
                         blob::Prediction{});
             };
             
@@ -257,7 +260,7 @@ RawProcessing::RawProcessing(const gpuMat &average, const gpuMat *float_average,
 { }
 
 void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& input, cv::Mat& output, TagCache* tag_cache) {
-    assert(input.type() == CV_8UC1);
+    assert(input.type() == CV_8UC1 || input.type() == CV_8UC3);
 
     static bool enable_diff = SETTING(enable_difference);
     static bool enable_abs_diff = SETTING(enable_absolute_difference);
@@ -329,8 +332,8 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); } void()
 //#endif
 
-    assert(_average->type() == CV_8UC1);
-    assert(_buffer0.type() == CV_8UC1);
+    assert(_average->type() == CV_8UC(input.channels()));
+    //assert(_buffer0.empty() || _buffer0.type() == CV_8UC(input.channels()));
     
     if (_average->empty()) {
         throw U_EXCEPTION("Average image is empty.");
@@ -340,10 +343,21 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     // would be inverted already (so we need to do the same with the
     // input).
     // Also, copy to GPU in the same step.
-    if (image_invert)
-        cv::subtract(cv::Scalar(255), input, *INPUT);
-    else
+    if(input.channels() == 3) {
+        assert(_average->channels() == 3);
+        if(_grey_average.empty())
+            cv::cvtColor(*_average, _grey_average, cv::COLOR_BGR2GRAY);
+        
+        cv::cvtColor(input, *INPUT, cv::COLOR_BGR2GRAY);
+        if(image_invert)
+            CALLCV(cv::subtract(255.0, *INPUT, *OUTPUT));
+        
+    } else if (image_invert) {
+        cv::subtract(255.0, input, *INPUT);
+        
+    } else {
         input.copyTo(*INPUT);
+    }
 
     if(blur_difference) {
         if (enable_abs_diff) {
@@ -365,12 +379,26 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     } else {
         
         if (enable_diff) {
-            if (enable_abs_diff) {
-                CALLCV(cv::absdiff(*INPUT, *_average, *OUTPUT));
+            tf::imshow("INPUT", *INPUT);
+            
+            if(_average->channels() == 1) {
+                if (enable_abs_diff) {
+                    CALLCV(cv::absdiff(*INPUT, *_average, *OUTPUT));
+                }
+                else {
+                    CALLCV(cv::subtract(*_average, *INPUT, *OUTPUT));
+                }
+            } else {
+                if (enable_abs_diff) {
+                    CALLCV(cv::absdiff(*INPUT, _grey_average, *OUTPUT));
+                }
+                else {
+                    CALLCV(cv::subtract(_grey_average, *INPUT, *OUTPUT));
+                }
             }
-            else {
-                CALLCV(cv::subtract(*_average, *INPUT, *OUTPUT));
-            }
+            
+            tf::imshow("grey_average", _grey_average);
+            tf::imshow("subtracted", *INPUT);
             
             if(tags_enable)
                 INPUT->copyTo(_floatb0);
@@ -515,8 +543,53 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     // use the generated thresholded image as a mask
     // for the original input (so we can later retrieve
     // greyscale), and copy to output.
-    cv::bitwise_and(*INPUT, input, *OUTPUT);
-    OUTPUT->copyTo(output);
+    if(input.channels() == 3) {
+        /*gpuMat mask;
+        std::vector<gpuMat> channels;
+        cv::split(*OUTPUT, channels);
+        
+        
+        cv::Mat cpu;
+        channels.front().copyTo(cpu);
+        tf::imshow("B", cpu);
+        
+        channels.at(1).copyTo(cpu);
+        tf::imshow("G", cpu);
+        
+        channels.back().copyTo(cpu);
+        tf::imshow("R", cpu);
+        
+        cv::bitwise_or(channels.front(), channels.back(), mask);
+        cv::bitwise_or(mask, channels.at(1), mask);
+        
+        mask.copyTo(cpu);
+        tf::imshow("mask", cpu);
+        input.copyTo(output, mask);*/
+        //tf::imshow("mask", *INPUT);
+        
+        std::vector<gpuMat> channels;
+        cv::split(input, channels);
+        
+        gpuMat B, G, R;
+        cv::bitwise_and(*INPUT, channels.front(), B);
+        cv::bitwise_and(*INPUT, channels.at(1), G);
+        cv::bitwise_and(*INPUT, channels.back(), R);
+        
+        //tf::imshow("B", B);
+        //tf::imshow("G", G);
+        //tf::imshow("R", R);
+        
+        cv::merge(std::vector<gpuMat>{B, G, R}, output);
+        //OUTPUT->copyTo(output);
+        //input.copyTo(output, *INPUT);
+        
+    } else {
+        cv::bitwise_and(*INPUT, input, *OUTPUT);
+        OUTPUT->copyTo(output);
+    }
+        
+    //tf::imshow("input", input);
+    //tf::imshow("output", output);
     
     // BIT: tags_enable
     // This will only be traversed if we need to recognize tags

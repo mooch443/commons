@@ -85,7 +85,7 @@ void Source::init(const cv::Mat& image, bool enable_threads) {
     static GenericThreadPool pool(max(1u, cmn::hardware_concurrency()), "extract_lines");
     
     assert(image.cols < USHRT_MAX && image.rows < USHRT_MAX);
-    assert(image.type() == CV_8UC1);
+    assert(image.type() == CV_8UC1 || image.type() == CV_8UC3);
     assert(image.isContinuous());
     
     clear();
@@ -174,8 +174,14 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
     source->reserve(RESERVE);
 
     const int64_t step = image.step.p[0];
+    const int64_t step_px = image.step.p[1];
+    
     start = image.ptr(rstart);
-    end_ptr = start + image.cols;
+    end_ptr = image.ptr(rstart + 1);
+    
+    const ptr_safe_t channels = image.channels();
+    assert(end_ptr == start + ptr_safe_t(image.cols) * step_px);
+    //end_ptr = start + image.cols;
 
     for(coord_t i = rstart; i < rend; ++i, start += step, end_ptr += step) {
         //start = image.ptr(i);
@@ -183,30 +189,47 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
         auto ptr = start;
         
         // walk columns
-        for(; ptr != end_ptr; ++ptr) {
+        for(coord_t col = 0; ptr != end_ptr; ptr += step_px, ++col) {
             if(prev) {
-                // previous is set, but current is not?
-                // (the last hline just ended)
-                auto lL = ptr_safe_t(ptr - start) - 1 - ptr_safe_t(current.x0());
-                if(!*ptr || lL >= Line_t::bit_size_x1) {
+                /// previous is set, now check the current pixel
+                /// to see if our hline ended (check all channels):
+                /// (we also say it has ended when it is getting too long)
+                auto lL = col - 1 - ptr_safe_t(current.x0());
+                bool is_px_set = lL >= Line_t::bit_size_x1;
+                if(not is_px_set) {
+                    for(int64_t p = 0; p < step_px; ++p) {
+                        if(*(ptr + p)) {
+                            is_px_set = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if(not is_px_set) {
+                    /// but current is not set,
+                    /// (the last hline just ended)
                     assert(ptr >= start);
-                    assert(coord_t(ptr - start) >= 1);
+                    assert(col >= 1);
                     
-                    current.x1(ptr_safe_t(ptr - start) - 1);
-                    source->push_back(current, start + current.x0());
+                    current.x1(col - 1);
+                    source->push_back(current, start + current.x0() * step_px);
                     
                     prev = false;
                 }
                 
-            } else if(*ptr) {// !prev && curr (hline starts)
-                coord_t col = coord_t(ptr - start);
-                current = Line_t(col, col, i);
-                //current.y(i);
-                //current.x0(col);
-                //current.y = i;
-                //current.x0 = col;
-                
-                prev = true;
+            } else {
+                for(int64_t p = 0; p < step_px; ++p) {
+                    if(*(ptr + p)) {// !prev && curr (hline starts)
+                        current = Line_t(col, col, i);
+                        //current.y(i);
+                        //current.x0(col);
+                        //current.y = i;
+                        //current.x0 = col;
+                        
+                        prev = true;
+                        break;
+                    }
+                }
             }
         }
         
@@ -216,7 +239,7 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
             assert(current.x0() <= source->lw - 1);
             current.x1(source->lw - 1);
             //current.x1 = source->lw - 1;
-            source->push_back(current, start + current.x0());
+            source->push_back(current, start + current.x0() * step_px);
             prev = false;
         }
     }

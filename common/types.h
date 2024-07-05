@@ -387,6 +387,7 @@ constexpr int CV_MAX_THICKNESS = 32767;
 
 namespace cmn::tf {
     void imshow(const std::string& name, const cv::Mat& mat, std::string label = "");
+    void imshow(const std::string& name, const gpuMat& mat, std::string label = "");
     void show();
     void waitKey(std::string name);
 }

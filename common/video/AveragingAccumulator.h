@@ -20,7 +20,9 @@ protected:
     Size2 _size;
     
     std::mutex _accumulator_mutex;
-    std::vector<std::array<uint8_t, 256>> spatial_histogram;
+    
+    using RGB = std::array<uint32_t, 3>;
+    std::vector<std::array<RGB, 256>> spatial_histogram;
     std::vector<std::unique_ptr<std::mutex>> spatial_mutex;
     
 public:

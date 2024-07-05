@@ -9,6 +9,8 @@ namespace cmn::gui {
     class Color;
 }
 
+#include <misc/matharray.h>
+
 namespace cmn {
     class Image;
 
@@ -133,20 +135,6 @@ namespace cmn {
     template <class T, class U>
     bool operator!=(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return false; }
     
-    //! Converts a lines array to a mask or greyscale (or both).
-    //  requires pixels to contain actual greyscale values
-    std::pair<cv::Rect2i, size_t> imageFromLines(const std::vector<HorizontalLine>& lines,
-                                                 cv::Mat* output_mask,
-                                                 cv::Mat* output_greyscale = NULL,
-                                                 cv::Mat* output_differences = NULL,
-                                                 const std::vector<uchar>* pixels = NULL,
-                                                 const int threshold = 0,
-                                                 const Image* average = NULL,
-                                                 int padding = 0);
-    
-    class LuminanceGrid;
-    std::pair<cv::Rect2i, size_t> imageFromLines(const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const std::vector<uchar>& pixels, int base_threshold, const LuminanceGrid& grid, const cv::Mat& average, int padding);
-    
     /**
      * Converts a lines array to a mask or greyscale.
      * Expects pixels to contain difference values instead of actual greyscale.
@@ -160,17 +148,6 @@ namespace cmn {
      const cv::Mat* average = NULL);*/
     
     cv::Rect2i lines_dimensions(const std::vector<HorizontalLine>& lines);
-    void lines2mask(const std::vector<HorizontalLine>& lines, cv::Mat& output_mask, const int value = 255);
-    
-    inline std::pair<cv::Rect2i, size_t> lines2greyscale(const std::vector<HorizontalLine>& lines, cv::Mat& output_greyscale, const std::vector<uchar>* pixels, const int threshold = 0, const Image* average = NULL)
-    {
-        return imageFromLines(lines, NULL, &output_greyscale, NULL, pixels, threshold, average);
-    }
-    
-    inline std::pair<cv::Rect2i, size_t> lines2mask(const std::vector<HorizontalLine>& lines, cv::Mat& output_mask, const std::vector<uchar>* pixels, const int threshold = 0, const Image* average = NULL)
-    {
-        return imageFromLines(lines, &output_mask, NULL, NULL, pixels, threshold, average);
-    }
     
     template <typename T = double>
     T normalize_angle(T angle) {
@@ -245,8 +222,9 @@ namespace cmn {
     {
         return (start + (end - start) * percent);
     }
-    
+
     template<typename K, typename T = K>
+        requires (not is_rgb_array<K>::value)
     constexpr inline T saturate(K val, T min = 0, T max = 255) {
         return std::clamp(T(val), min, max);
     }
@@ -500,6 +478,28 @@ enum class ImageMode {
 
 uint8_t required_channels(ImageMode mode);
 
+template<ImageMode mode>
+consteval uint8_t required_channels() noexcept {
+    if constexpr(mode == ImageMode::GRAY
+                 || mode == ImageMode::R3G3B2)
+    {
+        return 1;
+        
+    } else if constexpr(mode == ImageMode::RGB) {
+        return 3;
+        
+    } else if constexpr(mode == ImageMode::RGBA) {
+        return 4;
+        
+    } else {
+        static_assert(is_in(mode,
+                            ImageMode::GRAY,
+                            ImageMode::R3G3B2,
+                            ImageMode::RGB,
+                            ImageMode::RGBA), "Unknown mode.");
+    }
+}
+
 template<typename Vec>
 constexpr uint8_t vec_to_r3g3b2(const Vec& bgr) {
     return (uint8_t(bgr[0] / 64) << 6)
@@ -510,13 +510,13 @@ constexpr uint8_t vec_to_r3g3b2(const Vec& bgr) {
 template<uint8_t channels = 3>
 constexpr auto r3g3b2_to_vec(const uint8_t& r3g3b2, const uint8_t alpha = 255) {
     if constexpr(channels == 3) {
-        return std::array{
+        return RGBArray{
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
             static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32)
         };
     } else if constexpr(channels == 4) {
-        return std::array{
+        return MathArray<uchar, 4>{
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 6) & 3) * 64),
             static_cast<unsigned char>(((uint8_t(r3g3b2) >> 3) & 7) * 32),
             static_cast<unsigned char>((uint8_t(r3g3b2) & 7) * 32),
@@ -533,7 +533,7 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     assert(channels == input.channels());
     static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
 
-    using input_t = std::array<uchar, channels>;
+    using input_t = RGBArray;
     using output_t = uchar;
 
     auto process_row = [&](const cv::Range& range) {
@@ -555,8 +555,8 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
 
 template<uint8_t channels = 3, uint8_t input_channels = 1, bool generate_alpha = false>
 void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
-    using input_t = std::array<uchar, input_channels>;
-    using output_t = std::array<uchar, channels>;
+    using input_t = MathArray<uchar, input_channels>;
+    using output_t = MathArray<uchar, channels>;
 
     if (output.rows != input.rows
         || output.cols != input.cols

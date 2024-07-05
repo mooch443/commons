@@ -114,19 +114,8 @@ public:
         std::sort(_hor_lines->begin(), _hor_lines->end(), std::less<cmn::HorizontalLine>());
     }
     
-    std::unique_ptr<std::vector<uchar>> calculate_pixels(const cv::Mat& background) const {
-        auto res = std::make_unique<std::vector<uchar>>();
-        res->resize(num_pixels());
-        auto ptr = res->data();
-        
-        for(auto &hl : *_hor_lines) {
-            for (ushort x=hl.x0; x<=hl.x1; ++x, ++ptr) {
-                assert(ptr < res->data() + res->size());
-                *ptr = background.at<uchar>(hl.y, x);
-            }
-        }
-        return res;
-    }
+    std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cmn::Background& background) const;
+    std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cv::Mat& background) const;
     
     bool properties_ready() const { return _properties.ready; }
     
@@ -145,11 +134,19 @@ public:
     enum class Flags {
         split = 1,
         is_tag = 2,
-        is_instance_segmentation = 4
+        is_instance_segmentation = 4,
+        is_rgb = 5,
+        is_r3g3b2 = 6
     };
     
-    static void set_flag(uint8_t &flags, Flags flag, bool v) {
+    static constexpr void set_flag(uint8_t &flags, Flags flag, bool v) {
         flags ^= (-uint8_t(v) ^ flags) & (1UL << uint8_t(flag));
+    }
+    
+    static constexpr uint8_t get_only_flag(Flags flag, bool v) {
+        uint8_t flags = 0;
+        set_flag(flags, flag, v);
+        return flags;
     }
 
     static bool is_flag(uint8_t flags, Flags flag) {
@@ -192,20 +189,30 @@ public:
     
     bool is_tag() const;
     bool is_instance_segmentation() const;
+    bool is_rgb() const;
+    bool is_r3g3b2() const;
     void set_tag(bool);
     void set_instance_segmentation(bool);
+    void set_rgb(bool);
+    void set_r3g3b2(bool);
+    
+    uint8_t channels() const;
+    cmn::meta_encoding_t::Class encoding() const;
+    cmn::InputInfo input_info() const;
     
     BlobPtr threshold(int32_t value, const cmn::Background& background);
-    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> color_image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> gray_image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
 
-    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold, uint8_t padding = 1) const;
-    cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image, uint8_t padding = 1) const;
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> luminance_alpha_image(const cmn::Background& background, int32_t threshold, uint8_t padding = 1, cmn::OutputInfo = {.channels = 2, .encoding = cmn::meta_encoding_t::gray}) const;
+    cmn::Vec2 luminance_alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image, uint8_t padding = 1,cmn::OutputInfo = {.channels = 2, .encoding = cmn::meta_encoding_t::gray}) const;
 
-    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, uint8_t padding = 1) const;
-    cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image, uint8_t padding = 1) const;
+    [[deprecated("Please use the non-moving version instead.")]] std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, uint8_t padding = 1, cmn::OutputInfo = {.channels = 2, .encoding = cmn::meta_encoding_t::gray}) const;
+    cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image, uint8_t padding = 1, cmn::OutputInfo = {.channels = 2, .encoding = cmn::meta_encoding_t::gray}) const;
+    
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
     
@@ -326,7 +333,9 @@ public:
                     | (uint8_t(val.parent_id().valid()) << 1)
                     | (uint8_t(val.tried_to_split())    << 2)
                     | (uint8_t(val.is_tag())            << 3)
-                    | (uint8_t(val.is_instance_segmentation()) << 4);
+                    | (uint8_t(val.is_instance_segmentation()) << 4)
+                    | (uint8_t(val.is_rgb()) << 5)
+                    | (uint8_t(val.is_r3g3b2()) << 6);
         _lines = ShortHorizontalLine::compress(val.hor_lines());
         start_y = val.lines()->empty() ? 0 : val.lines()->front().y;
     }
@@ -334,6 +343,8 @@ public:
     bool split() const { return status_byte & 0x1; }
     bool is_tag() const { return (status_byte >> 3) & 1u; }
     bool is_instance_segmentation() const { return (status_byte >> 4) & 1u; }
+    bool is_rgb() const { return (status_byte >> 5) & 1u; }
+    bool is_r3g3b2() const { return (status_byte >> 6) & 1u; }
     cmn::Bounds calculate_bounds() const;
         
     pv::BlobPtr unpack() const;

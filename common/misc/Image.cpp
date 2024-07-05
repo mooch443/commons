@@ -59,8 +59,11 @@ namespace cmn {
     uchar* Image::ptr(uint y, uint x) const {
         //assert(y < rows);
         //assert(x < cols);
-        assert((ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims) <= size());
-        return data() + (ptr_safe_t(x) * dims + ptr_safe_t(y) * ptr_safe_t(cols) * dims);
+        assert((ptr_safe_t(x) * ptr_safe_t(dims)
+                + ptr_safe_t(y) * ptr_safe_t(cols) * ptr_safe_t(dims)) <= size());
+        
+        return data() + (ptr_safe_t(x) * ptr_safe_t(dims)
+                         + ptr_safe_t(y) * ptr_safe_t(cols) * ptr_safe_t(dims));
     }
 
     void Image::set_pixel(uint x, uint y, const gui::Color& color) const {

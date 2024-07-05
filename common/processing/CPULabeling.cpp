@@ -162,10 +162,11 @@ void merge_lines(Source::RowRef &previous_vector,
     }
 }
 
-blobs_t run_fast(List_t* blobs)
+blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
 {
     blobs_t result;
     auto& source = blobs->source();
+    const uint8_t initial_flags = pv::Blob::get_only_flag(pv::Blob::Flags::is_rgb, channels == 3);
     
     if(source.empty())
         return {};
@@ -221,7 +222,9 @@ blobs_t run_fast(List_t* blobs)
         if(!it->obj || it->obj->empty())
             continue;
         
-        result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), std::make_unique<std::vector<uchar>>());
+        result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), 
+                            std::make_unique<std::vector<uchar>>(),
+                            initial_flags);
         
         auto &lines = result.back().lines;
         auto &pixels = result.back().pixels;
@@ -232,7 +235,7 @@ blobs_t run_fast(List_t* blobs)
             L += ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1);
         }
         
-        pixels->resize(L);
+        pixels->resize(L * channels);
         auto LLines = it->obj->lines().size();
         lines->resize(LLines);
         
@@ -260,7 +263,7 @@ blobs_t run_fast(List_t* blobs)
             if(pixels) {
                 assert(*px);
                 auto start = *px;
-                auto end = start + (ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1));
+                auto end = start + ((ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1))) * channels;
                 
                 //! HOTSPOT
                 pixel = std::copy(start, end, pixel);
@@ -303,7 +306,7 @@ blobs_t run(const cv::Mat &image, bool enable_threads) {
     DLList list;
     list.source().init(image, enable_threads);
     
-    blobs_t results = run_fast(&list);
+    blobs_t results = run_fast(&list, image.channels());
     //List_t::to_cache(std::move(list));
     return results;
 }
@@ -312,13 +315,13 @@ blobs_t run(const cv::Mat &image, ListCache_t& cache, bool enable_threads) {
     //auto list = List_t::from_cache();
     //DLList list;
     cache.obj->source().init(image, enable_threads);
-    return run_fast(cache.obj);
+    return run_fast(cache.obj, image.channels());
     //List_t::to_cache(std::move(list));
     //return results;
 }
 
 // called by user
-blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, ListCache_t& cache)
+blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, ListCache_t& cache, uint8_t channels)
 {
     auto px = pixels.data();
     //list.clear();
@@ -340,7 +343,7 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
                 list.source().push_back(line, pxcopy);
 
                 copy.x0 += Line_t::bit_size_x1 + 1;
-                pxcopy += Line_t::bit_size_x1 + 1;
+                pxcopy += (Line_t::bit_size_x1 + 1) * ptr_safe_t(channels);
             }
 
             //print("converting ", *it, " to shorter lines: ", copy);
@@ -350,13 +353,13 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
             list.source().push_back((*it), px);
 
         if(px)
-            px += ptr_safe_t(it->x1) - ptr_safe_t(it->x0) + ptr_safe_t(1);
+            px += (ptr_safe_t(it->x1) - ptr_safe_t(it->x0) + ptr_safe_t(1)) * ptr_safe_t(channels);
     }
 
-    return run_fast(&list);
+    return run_fast(&list, channels);
 }
 
-blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels)
+blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, uint8_t channels)
 {
     if(lines.empty())
         return {};
@@ -364,7 +367,7 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
     ListCache_t cache;
     //auto list = List_t::from_cache();
     //List_t::to_cache(std::move(list));
-    return run(lines, pixels, cache);
+    return run(lines, pixels, cache, channels);
 }
 
 }
