@@ -379,7 +379,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     } else {
         
         if (enable_diff) {
-            tf::imshow("INPUT", *INPUT);
+            //tf::imshow("INPUT", *INPUT);
             
             if(_average->channels() == 1) {
                 if (enable_abs_diff) {
@@ -397,8 +397,9 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 }
             }
             
-            tf::imshow("grey_average", _grey_average);
-            tf::imshow("subtracted", *INPUT);
+            //if(not _grey_average.empty())
+            //    tf::imshow("grey_average", _grey_average);
+            //tf::imshow("subtracted", *INPUT);
             
             if(tags_enable)
                 INPUT->copyTo(_floatb0);
@@ -656,7 +657,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         
         if (show_debug_info) {
             inverted_input.copyTo(local);
-            tf::imshow("inverted", local);
+            //tf::imshow("inverted", local);
         }
 
         // calculate in multiple threads (the contours array)
@@ -667,7 +668,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         if (show_debug_info) {
             //resize_image(result, 0.5, cv::INTER_LINEAR);
             cv::cvtColor(result, result, cv::COLOR_BGRA2RGBA);
-            tf::imshow("result", result);
+            //tf::imshow("result", result);
         }
     }
 }
