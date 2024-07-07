@@ -100,9 +100,12 @@ namespace cmn {
             }
             
         } else if constexpr(output.channels == 3) {
-            return RGBArray{*input_data, *input_data, *input_data};
+            return RGBArray{*(input_data + 0), *(input_data + 1), *(input_data + 2)};
             
         } else if constexpr(output.channels == 1) {
+            if constexpr(output.is_r3g3b2()) {
+                return vec_to_r3g3b2(RGBArray{*(input_data + 0), *(input_data + 1), *(input_data + 2)});
+            }
             return bgr2gray(input_data);
         }
     }
