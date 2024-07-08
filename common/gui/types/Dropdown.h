@@ -225,6 +225,7 @@ namespace cmn::gui {
         const std::string& text() const;
         TextItem selected_item() const;
         TextItem hovered_item() const;
+        std::optional<TextItem> currently_hovered_item() const;
         void select_item(RawIndex index);
         bool has_selection() const;
         RawIndex filtered_item_index(FilteredIndex index) const;

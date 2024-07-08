@@ -32,6 +32,12 @@ void Combobox::init() {
     _layout.set_clickable(true);
 }
 
+std::optional<Dropdown::TextItem> Combobox::last_hovered_item() const {
+    if(not _dropdown)
+        return std::nullopt;
+    return _dropdown->currently_hovered_item();
+}
+
 void Combobox::update() {
     if(not content_changed())
         return;

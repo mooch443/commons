@@ -91,6 +91,29 @@ LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, c
     }}))
 {}
 
+std::optional<std::string> LabeledCombobox::selected_parameter() const {
+    if(_combo && _combo->hovered()) {
+        auto item = _combo->parameter();
+        if(not item.empty()) {
+            return item;
+        }
+    }
+    
+    return std::nullopt;
+}
+
+std::optional<std::string> LabeledCombobox::highlighted_parameter() const {
+    if(_combo && _combo->hovered()) {
+        
+        auto item = _combo->last_hovered_item();
+        if(item.has_value()) {
+            return item.value().name();
+        }
+    }
+    
+    return std::nullopt;
+}
+
 void LabeledField::set_description(std::string desc) {
     _text->set_txt(desc);
 }

@@ -95,6 +95,7 @@ namespace cmn::gui {
         GETTER_I(bool, folded, false);
         GETTER_I(std::string, folded_label, "");
         GETTER_I(long, last_selected_item, -1);
+        GETTER_I(long, currently_highlighted_item, -1);
         GETTER_I(bool, stays_toggled, false);
         GETTER_I(bool, alternating_rows, false);
         
@@ -348,6 +349,7 @@ namespace cmn::gui {
             
             _last_selected_item = -1;
             _last_hovered_item = -1;
+            _currently_highlighted_item = -1;
             _items.clear();
 
             Float2_t y = _line_spacing * objs.size();
@@ -518,6 +520,7 @@ namespace cmn::gui {
             first_visible = floorf(o->scroll_offset().y / _line_spacing);
             last_visible = min(_items.size()-1.0f, floorf((o->scroll_offset().y + o->height()) / _line_spacing));
             _last_hovered_item = index;
+            _currently_highlighted_item = index;
             
             //draw_structure()->do_hover(_rects.at(index - first_visible));
             
@@ -599,14 +602,20 @@ namespace cmn::gui {
                 for(size_t i=_rects.size(); i<N; i++) {
                     _rects.push_back(new Rect(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
                     _rects.back()->on_hover([r = _rects.back(), this](Event e) {
-                        if(!e.hover.hovered)
-                            return;
                         if(rect_to_idx.count(r)) {
                             auto idx = rect_to_idx.at(r);
-                            if(_last_hovered_item != (long)idx) {
-                                _last_hovered_item = long(idx);
-                                if(_on_hovered)
-                                    _on_hovered(idx);
+                            if(!e.hover.hovered) {
+                                if(_currently_highlighted_item == (long)idx) {
+                                    _currently_highlighted_item = -1;
+                                }
+                                return;
+                            } else {
+                                if(_last_hovered_item != (long)idx) {
+                                    _last_hovered_item = long(idx);
+                                    _currently_highlighted_item = long(idx);
+                                    if(_on_hovered)
+                                        _on_hovered(idx);
+                                }
                             }
                         }
                     });

@@ -229,6 +229,8 @@ void Dropdown::init() {
             set_z_index(0);
             if(selected())
                 if(stage()) stage()->select(nullptr);
+            if(hovered())
+                if(stage()) stage()->do_hover(nullptr);
         }
         set_content_changed(true);
     }
@@ -353,6 +355,19 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         }
         return TextItem::invalid_item();
     }
+
+std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
+    if(_list.currently_highlighted_item() != -1) {
+        auto index = FilteredIndex{(long_t)_list.currently_highlighted_item()};
+        if(_filtered_items.contains(index)) {
+            RawIndex raw = _filtered_items.at(index);
+            if(raw.valid() && static_cast<size_t>(raw.value) < _items.size())
+                return _items.at(raw.value);
+        }
+        //return (size_t)_list.last_hovered_item() < _list.items().size() ? _list.items().at(_list.last_hovered_item()).value() : TextItem();
+    }
+    return std::nullopt;
+}
     
     void Dropdown::update_bounds() {
         if(!bounds_changed())

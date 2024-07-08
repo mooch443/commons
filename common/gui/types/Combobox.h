@@ -86,6 +86,8 @@ public:
     void set_pos(const Vec2& p) override;
     void set_size(const Size2& p) override;
     
+    std::optional<Dropdown::TextItem> last_hovered_item() const;
+    
 protected:
     void init();
     void update() override;

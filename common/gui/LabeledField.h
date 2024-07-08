@@ -245,6 +245,8 @@ struct LabeledCombobox : public LabeledField {
         v.push_back(_combo);
     }
     Layout::Ptr representative() const override { return _combo; }
+    std::optional<std::string> highlighted_parameter() const;
+    std::optional<std::string> selected_parameter() const;
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
