@@ -71,6 +71,11 @@ namespace cmn {
         }
     };
 
+    static constexpr OutputInfo DIFFERENCE_OUTPUT_FORMAT {
+        .channels = 1u,
+        .encoding = cmn::meta_encoding_t::gray
+    };
+
     constexpr inline uint8_t bgr2gray(const RGBArray& bgr) noexcept {
         return saturate(float(bgr[0]) * 0.114 + float(bgr[1]) * 0.587 + float(bgr[2]) * 0.299, 0, 255);
     }
@@ -89,6 +94,9 @@ namespace cmn {
                 if constexpr(output.channels == 3) {
                     return r3g3b2_to_vec(*input_data);
                 } else if constexpr(output.channels == 1) {
+                    if constexpr(output.is_r3g3b2()) {
+                        return *input_data;
+                    }
                     return bgr2gray(r3g3b2_to_vec(*input_data));
                 }
                 
@@ -96,7 +104,11 @@ namespace cmn {
                 return RGBArray{*input_data, *input_data, *input_data};
                 
             } else if constexpr(output.channels == 1) {
-                return *input_data;
+                if constexpr(output.is_r3g3b2()) {
+                    return vec_to_r3g3b2(RGBArray{*input_data, *input_data, *input_data});
+                } else {
+                    return *input_data;
+                }
             }
             
         } else if constexpr(output.channels == 3) {
@@ -105,15 +117,59 @@ namespace cmn {
         } else if constexpr(output.channels == 1) {
             if constexpr(output.is_r3g3b2()) {
                 return vec_to_r3g3b2(RGBArray{*(input_data + 0), *(input_data + 1), *(input_data + 2)});
+            } else {
+                return bgr2gray(input_data);
             }
-            return bgr2gray(input_data);
         }
     }
 
-    template<DifferenceMethod method, ImageMode colors, typename Pixel>
+template<InputInfo input, OutputInfo output>
+constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
+    auto pixel_value = diffable_pixel_value<input, output>(input_data);
+
+    uchar grey_value;
+    if constexpr(output.channels == 3) {
+        grey_value = bgr2gray(pixel_value);
+    } else if constexpr(output.is_r3g3b2()) {
+        grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
+    } else {
+        grey_value = pixel_value;
+    }
+    
+    return std::make_tuple(pixel_value, grey_value);
+}
+
+    template<OutputInfo output, typename Pixel>
+        requires (std::same_as<Pixel, RGBArray> || std::is_integral_v<Pixel>)
+    constexpr void write_pixel_value(uchar* image_ptr, Pixel value) {
+        //static_assert(is_in(input.channels, 3, 1), "Need input to have either 3 or 1 channels.");
+        static_assert(is_in(output.channels, 3, 1), "Need output to have either 3 or 1 channels.");
+        
+        if constexpr(std::is_integral_v<Pixel>) {
+            if constexpr(output.channels == 1) {
+                *image_ptr = value;
+                
+            } else {
+                static_assert(output.channels == 3, "Expecting 3 output channels here.");
+                *image_ptr = *(image_ptr + 1) = *(image_ptr + 2) = value;
+            }
+            
+        } else if constexpr(std::same_as<Pixel, RGBArray>) {
+            if constexpr(output.channels == 3) {
+                *(image_ptr + 0) = value[0];
+                *(image_ptr + 1) = value[1];
+                *(image_ptr + 2) = value[2];
+            } else {
+                static_assert(output.channels == 1, "Expecting one output channel.");
+                *(image_ptr) = bgr2gray(value);
+            }
+        }
+    }
+
+    template<OutputInfo output, DifferenceMethod method, typename Pixel>
     struct DifferenceImpl {
         static int convert_to_grayscale(int r3g3b2) {
-            if constexpr(colors == ImageMode::R3G3B2) {
+            if constexpr(output.is_r3g3b2()) {
                 return bgr2gray(r3g3b2_to_vec<3>((uint8_t)r3g3b2));
             } else
                 return r3g3b2;
@@ -148,7 +204,7 @@ namespace cmn {
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod::absolute && not is_rgb_array<Pixel>::value)
         inline int operator()(int source, int value) const {
-            if constexpr(colors == ImageMode::R3G3B2) {
+            if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
                 source = convert_to_grayscale(source);
             }
@@ -158,7 +214,7 @@ namespace cmn {
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod::sign && not is_rgb_array<Pixel>::value)
         inline int operator()(int source, int value) const {
-            if constexpr(colors == ImageMode::R3G3B2) {
+            if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
                 source = convert_to_grayscale(source);
             }
@@ -168,7 +224,7 @@ namespace cmn {
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod::none && not is_rgb_array<Pixel>::value)
         inline int operator()(int, int value) const {
-            if constexpr(colors == ImageMode::R3G3B2) {
+            if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
             }
             return value;
@@ -179,7 +235,7 @@ namespace cmn {
     public:
         static bool track_absolute_difference();
         static bool track_background_subtraction();
-        static meta_encoding_t::data::values meta_encoding();
+        static meta_encoding_t::Class meta_encoding();
         static ImageMode image_mode();
         
     protected:
@@ -194,20 +250,20 @@ namespace cmn {
         Background(Image::Ptr&& image, LuminanceGrid* grid);
         ~Background();
         
-        template<DifferenceMethod method, ImageMode colors, typename Pixel>
+        template<OutputInfo output, DifferenceMethod method, typename Pixel>
         auto diff(coord_t x, coord_t y, Pixel value) const {
             if constexpr(is_rgb_array<Pixel>::value) {
                 static_assert(value.size() == 3, "Need three channels.");
                 auto index = (ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_image->cols)) * _image->channels();
                 if(_image->channels() == 1) {
                     auto grey = _image->data()[index];
-                    if(colors == ImageMode::R3G3B2)
-                        return DifferenceImpl<method, colors, Pixel>{}(r3g3b2_to_vec(grey), value);
+                    if constexpr(output.is_r3g3b2())
+                        return DifferenceImpl<output, method, Pixel>{}(r3g3b2_to_vec(grey), value);
                     else
-                        return DifferenceImpl<method, colors, Pixel>{}(RGBArray{grey,grey,grey}, value);
+                        return DifferenceImpl<output, method, Pixel>{}(RGBArray{grey,grey,grey}, value);
                 } else {
                     assert(_image->channels() == 3);
-                    return DifferenceImpl<method, colors, Pixel>{}(RGBArray{
+                    return DifferenceImpl<output, method, Pixel>{}(RGBArray{
                         _image->data()[index],
                         _image->data()[index+1],
                         _image->data()[index+2]
@@ -215,22 +271,27 @@ namespace cmn {
                 }
                 
             } else {
-                return DifferenceImpl<method, colors, Pixel>{}(_grey_image->data()[ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_grey_image->cols)], value);
+                return DifferenceImpl<output, method, Pixel>{}(_grey_image->data()[ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_grey_image->cols)], value);
             }
         }
         
-        template<DifferenceMethod method, ImageMode colors, typename Pixel>
+        template<OutputInfo output, DifferenceMethod method, typename Pixel>
         bool is_different(coord_t x, coord_t y, Pixel value, int threshold) const {
-            return is_value_different<Pixel>(x, y, diff<method, colors, Pixel>(x, y, value), threshold);
+            return is_value_different<output, Pixel>(x, y, diff<output, method, Pixel>(x, y, value), threshold);
         }
         
-        template<typename Pixel>
+        template<OutputInfo output, typename Pixel>
         bool is_value_different(coord_t x, coord_t y, Pixel value, int threshold) const {
             assert(x < _image->cols && y < _image->rows);
             if constexpr(is_rgb_array<Pixel>::value) {
                 return bgr2gray(value) >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
-            } else
-                return value >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
+            } else {
+                if constexpr(output.is_r3g3b2()) {
+                    return bgr2gray(r3g3b2_to_vec(value)) >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
+                } else {
+                    return value >= (_grid ? _grid->relative_threshold(x, y) : 1) * threshold;
+                }
+            }
         }
         
         template<DifferenceMethod method, InputInfo input>
@@ -359,41 +420,40 @@ namespace cmn {
     }
 
     auto call_image_mode_function(const auto& fn) {
-        auto determine_colors = [&]<DifferenceMethod method>() {
-            auto encoding = Background::image_mode();
-            if(encoding == ImageMode::R3G3B2)
-                return fn.template operator()<method, ImageMode::R3G3B2>();
-            else if(encoding == ImageMode::GRAY)
-                return fn.template operator()<method, ImageMode::GRAY>();
-            else if(encoding == ImageMode::RGB)
-                return fn.template operator()<method, ImageMode::RGB>();
-            else if(encoding == ImageMode::RGBA)
-                return fn.template operator()<method, ImageMode::RGBA>();
-            else
-                throw InvalidArgumentException("Invalid color mode for image.");
-        };
-        
         if(not Background::track_background_subtraction()) {
-            return determine_colors.template operator()<DifferenceMethod::none>();
+            return fn.template operator()<DifferenceMethod::none>();
         } else if(Background::track_absolute_difference()) {
-            return determine_colors.template operator()<DifferenceMethod::absolute>();
+            return fn.template operator()<DifferenceMethod::absolute>();
         } else {
-            return determine_colors.template operator()<DifferenceMethod::sign>();
+            return fn.template operator()<DifferenceMethod::sign>();
         }
     }
 
 /// when the number of output channels is known:
 struct KnownOutputType {};
 template<OutputInfo output>
+auto call_image_mode_function(KnownOutputType, auto&& fn) {
+    static_assert(is_in(output.channels, 1, 3), "Output channels need to be either 1 or 3.");
+    
+    if(not Background::track_background_subtraction()) {
+        return fn.template operator()<output, DifferenceMethod::none>();
+    } else if(Background::track_absolute_difference()) {
+        return fn.template operator()<output, DifferenceMethod::absolute>();
+    } else {
+        return fn.template operator()<output, DifferenceMethod::sign>();
+    }
+}
+
+template<OutputInfo output>
 auto call_image_mode_function(InputInfo input, KnownOutputType, const auto& fn) {
     static_assert(is_in(output.channels, 1, 3), "Output channels need to be either 1 or 3.");
-    auto determine_in = [&]<DifferenceMethod method, ImageMode mode>() {
+    auto determine_in = [&]<OutputInfo, DifferenceMethod method>() {
         return call_single_image_info(input, [&]<InputInfo i>(){
-            return fn.template operator()<i, output, method, mode>();
+            return fn.template operator()<i, output, method>();
         });
     };
     
-    call_image_mode_function(determine_in);
+    call_image_mode_function<output>(KnownOutputType{}, determine_in);
 }
 
 template<typename Info>
@@ -435,43 +495,26 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
         throw InvalidArgumentException("Invalid number of output channels: ", info);
 }
 
-    auto call_image_mode_function(InputInfo input, OutputInfo output, const auto& fn) {
-        auto determine_in = [&]<OutputInfo o, DifferenceMethod method, ImageMode mode>() {
-            return call_single_image_info(input, [&]<InputInfo i>(){
-                return fn.template operator()<i, o, method, mode>();
-            });
-        };
-        
-        auto determine_out = [&]<DifferenceMethod method, ImageMode mode>() {
-            return call_single_image_info(output, [&]<OutputInfo o>(){
-                return determine_in.template operator()<o, method, mode>();
-            });
-        };
-        
-        call_image_mode_function(determine_out);
+    auto call_image_mode_function(OutputInfo o, auto&& fn) {
+        return call_single_image_info(o, [&]<OutputInfo output>{
+            if(not Background::track_background_subtraction()) {
+                return fn.template operator()<output, DifferenceMethod::none>();
+            } else if(Background::track_absolute_difference()) {
+                return fn.template operator()<output, DifferenceMethod::absolute>();
+            } else {
+                return fn.template operator()<output, DifferenceMethod::sign>();
+            }
+        });
     }
 
-    auto call_image_mode_function(ImageMode encoding, auto&& fn) {
-        auto determine_colors = [&]<DifferenceMethod method>() {
-            if(encoding == ImageMode::R3G3B2)
-                return fn.template operator()<method, ImageMode::R3G3B2>();
-            else if(encoding == ImageMode::GRAY)
-                return fn.template operator()<method, ImageMode::GRAY>();
-            else if(encoding == ImageMode::RGB)
-                return fn.template operator()<method, ImageMode::RGB>();
-            else if(encoding == ImageMode::RGBA)
-                return fn.template operator()<method, ImageMode::RGBA>();
-            else
-                throw InvalidArgumentException("Invalid color mode for image.");
+    auto call_image_mode_function(InputInfo input, OutputInfo output, const auto& fn) {
+        auto determine_in = [&]<OutputInfo o, DifferenceMethod method>() {
+            return call_single_image_info(input, [&]<InputInfo i>(){
+                return fn.template operator()<i, o, method>();
+            });
         };
         
-        if(not Background::track_background_subtraction()) {
-            return determine_colors.template operator()<DifferenceMethod::none>();
-        } else if(Background::track_absolute_difference()) {
-            return determine_colors.template operator()<DifferenceMethod::absolute>();
-        } else {
-            return determine_colors.template operator()<DifferenceMethod::sign>();
-        }
+        return call_image_mode_function(output, determine_in);
     }
 
 }

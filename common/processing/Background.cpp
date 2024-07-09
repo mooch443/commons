@@ -40,9 +40,9 @@ namespace cmn {
         return //cmn::meta_encoding != meta_encoding_t::rgb8 &&
                  cmn::track_background_subtraction;
     }
-    meta_encoding_t::data::values Background::meta_encoding() {
+    meta_encoding_t::Class Background::meta_encoding() {
         check_callbacks();
-        return cmn::meta_encoding;
+        return cmn::meta_encoding_t::Class{cmn::meta_encoding};
     }
     ImageMode Background::image_mode() {
         check_callbacks();
@@ -132,7 +132,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     auto pixels_ptr = pixels ? pixels->data() : nullptr;
     
     auto work_pixels = [&]<bool has_image, bool has_differences, bool has_pixels, 
-                           InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>()
+                           InputInfo input, OutputInfo output, DifferenceMethod method>()
     {
         for (auto &l : lines) {
             for (int x=l.x0; x<=l.x1; x++, pixels_ptr += input.channels) {
@@ -146,10 +146,10 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                         value = diffable_pixel_value<input, output>(pixels_ptr);
                     }
                     if((not pixel_is_set && base_threshold > 0) || has_differences) {
-                        diff = background->diff<method, mode>(x, l.y, value);
+                        diff = background->diff<output, method>(x, l.y, value);
                     }
                     
-                    pixel_is_set = pixel_is_set || background->is_value_different(x, l.y, diff, base_threshold);
+                    pixel_is_set = pixel_is_set || background->is_value_different<output>(x, l.y, diff, base_threshold);
                 }
                 
                 if(pixel_is_set) {
@@ -193,35 +193,35 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
         }
     };
     
-    auto work_image = [&]<bool has_differences, bool has_pixels, InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+    auto work_image = [&]<bool has_differences, bool has_pixels, InputInfo input, OutputInfo output, DifferenceMethod method>() {
         if(output_greyscale) {
             if constexpr(has_pixels) {
-                return work_pixels.template operator()<true, has_differences, has_pixels, input, output, method, mode>();
+                return work_pixels.template operator()<true, has_differences, has_pixels, input, output, method>();
             } else {
                 throw InvalidArgumentException("Cannot output images without pixels.");
             }
             
         } else {
-            return work_pixels.template operator()<false, has_differences, has_pixels, input, output, method, mode>();
+            return work_pixels.template operator()<false, has_differences, has_pixels, input, output, method>();
         }
     };
     
-    auto work_threshold = [&]<bool has_pixels, InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+    auto work_threshold = [&]<bool has_pixels, InputInfo input, OutputInfo output, DifferenceMethod method>() {
         if(output_differences) {
             if constexpr(has_pixels) {
-                return work_image.template operator()<true, has_pixels, input, output, method, mode>();
+                return work_image.template operator()<true, has_pixels, input, output, method>();
             } else {
                 throw InvalidArgumentException("Cannot output differences without pixels.");
             }
             
         } else {
-            return work_image.template operator()<false, has_pixels, input, output, method, mode>();
+            return work_image.template operator()<false, has_pixels, input, output, method>();
         }
     };
     
-    auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+    auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
         if(pixels) {
-            return work_threshold.template operator()<true, input, output, method, mode>();
+            return work_threshold.template operator()<true, input, output, method>();
             
         } else {
             if(output_differences)
@@ -229,7 +229,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
             if(output_greyscale)
                 throw InvalidArgumentException("Cannot output images without pixels.");
             
-            return work_threshold.template operator()<false, input, output, method, mode>();
+            return work_threshold.template operator()<false, input, output, method>();
         }
     };
     

@@ -478,9 +478,14 @@ void List::set_folded(bool f) {
     
     _folded = f;
     set_content_changed(true);
-    if(_foldable && not _folded)
+    if(_foldable && not _folded) {
         set_z_index(2);
-    else
+        
+        if(foldable() && hovered()) {
+            if(stage())
+                stage()->do_hover(nullptr);
+        }
+    } else
         set_z_index(0);
     _on_toggle();
 }

@@ -826,7 +826,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         res->resize(num_pixels() * output.channels);
         auto ptr = res->data();
         
-        call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+        call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod>() {
             static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
             
             for(auto &hl : *_hor_lines) {
@@ -859,7 +859,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         res->resize(num_pixels() * output.channels);
         auto ptr = res->data();
         
-        call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+        call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod>() {
             static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
             
             for(auto &hl : *_hor_lines) {
@@ -925,7 +925,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 .encoding = meta_encoding_t::gray
             };
             
-            call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>(){
+            call_image_mode_function<output>(input, KnownOutputType{}, [&]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
                 for (auto &line : hor_lines()) {
                     const auto L = (ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1) * input.channels;
                     recount += background.count_above_threshold<method, input>(line.x0, line.x1, line.y, std::span(ptr, ptr + L), threshold);
@@ -933,7 +933,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 #ifndef NDEBUG
                     for (auto x=line.x0; x<=line.x1; ++x, local_ptr += input.channels) {
                         auto value = diffable_pixel_value<input, output>(local_ptr);
-                        if(background.is_different<method, mode>(x, line.y, value, threshold)) {
+                        if(background.is_different<output, method>(x, line.y, value, threshold)) {
                             local_recount++;
                         }
                     }
@@ -970,7 +970,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return raw_recount(threshold) * SQR(setting(cm_per_pixel));
     }
     
-    template<DifferenceMethod method, ImageMode mode>
+    template<OutputInfo output, DifferenceMethod method>
     BlobPtr _threshold(Blob& blob, int32_t value, const Background& background) {
         if(blob.pixels() == nullptr)
             throw U_EXCEPTION("Cannot threshold without pixel values.");
@@ -982,31 +982,36 @@ pv::BlobPtr CompressedBlob::unpack() const {
         HorizontalLine tmp;
         auto tmp_pixels = std::make_unique<std::vector<uchar>>();
         tmp_pixels->reserve(blob.pixels()->size());
-        const auto channels = blob.channels();
+        const auto input = blob.input_info();
+        //OutputInfo output;
+        //output = input;
         
-        for (auto &line : blob.hor_lines()) {
-            tmp.x0 = line.x0;
-            tmp.y = line.y;
-            
-            for (auto x=line.x0; x<=line.x1; ++x, ptr += channels) {
-                assert(ptr < blob.pixels()->data() + blob.pixels()->size());
-                if(background.is_different<method, mode>(x, line.y, *ptr, value)) {
-                    tmp.x1 = x;
-                    tmp_pixels->push_back(*ptr);
-                    //blob._recount ++;
-                    
-                } else {
-                    if(x > tmp.x0) {
-                        lines->push_back(tmp);
+        call_image_mode_function<output>(input, KnownOutputType{}, [&]<InputInfo input, OutputInfo, DifferenceMethod>()
+        {
+            for (auto &line : blob.hor_lines()) {
+                tmp.x0 = line.x0;
+                tmp.y = line.y;
+                
+                for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels) {
+                    assert(ptr < blob.pixels()->data() + blob.pixels()->size());
+                    if(background.is_different<output, method>(x, line.y, *ptr, value)) {
+                        tmp.x1 = x;
+                        tmp_pixels->push_back(*ptr);
+                        //blob._recount ++;
+                        
+                    } else {
+                        if(x > tmp.x0) {
+                            lines->push_back(tmp);
+                        }
+                        tmp.x0 = x + 1;
                     }
-                    tmp.x0 = x + 1;
+                }
+                
+                if(tmp.x1 == line.x1) {
+                    lines->push_back(tmp);
                 }
             }
-            
-            if(tmp.x1 == line.x1) {
-                lines->push_back(tmp);
-            }
-        }
+        });
         
         return Blob::Make(
             std::move(lines),
@@ -1017,8 +1022,10 @@ pv::BlobPtr CompressedBlob::unpack() const {
     }
 
     BlobPtr Blob::threshold(int32_t value, const Background& background) {
-        return call_image_mode_function([&]<DifferenceMethod method, ImageMode mode>() -> pv::BlobPtr {
-            return _threshold<method, mode>(*this, value, background);
+        OutputInfo output;
+        output = input_info();
+        return call_image_mode_function(input_info(), output, [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() -> pv::BlobPtr {
+            return _threshold<output, method>(*this, value, background);
         });
     }
     
@@ -1050,7 +1057,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         auto ptr = _pixels->data();
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode colors>() {
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
             for (auto &line : hor_lines()) {
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x)) * output.channels;
                 for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += output.channels) {
@@ -1100,7 +1107,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         auto ptr = _pixels->data();
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode colors>() {
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
 #ifndef NDEBUG
             if(input != output)
                 throw InvalidArgumentException("This method is designed to output exactly the same encoding + channels as the input.");
@@ -1145,7 +1152,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         float maximum = 0;
         auto ptr = _pixels->data();
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode colors>()
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>()
         {
             for (auto &line : hor_lines()) {
                 //auto image_ptr = image->data() + ((line.y - _y) * image->cols * out_channels + (line.x0 - _x) * out_channels);
@@ -1154,36 +1161,14 @@ pv::BlobPtr CompressedBlob::unpack() const {
                     /// *out_channels* == 4, *output_channels* == 3
                     /// need to account for that here ^
                     assert(ptr < _pixels->data() + _pixels->size());
-                    auto value = diffable_pixel_value<input, output>(ptr);
-                    uchar grey_value;
-                    if constexpr(output.channels == 1)
-                        grey_value = value;
-                    else
-                        grey_value = bgr2gray(value);
-                    
-                    auto diff_value = background.diff<method, colors>(x, line.y, grey_value);
-                    
-                    if(background.is_value_different(x, line.y, value, threshold)) {
-                        if(maximum < diff_value)
-                            maximum = diff_value;
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                    auto diff = background.diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value);
+                    if(background.is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, line.y, diff, threshold)) {
+                        if(maximum < diff)
+                            maximum = diff;
                         
-                        if constexpr(input.channels == 1) {
-                            if constexpr(output.channels == 1) {
-                                *image_ptr = *(image_ptr+1) = *(image_ptr+2) = value;
-                                
-                            } else if constexpr(output.channels == 3) {
-                                *(image_ptr + 0) = value[0];
-                                *(image_ptr + 1) = value[1];
-                                *(image_ptr + 2) = value[2];
-                            }
-                            
-                        } else if constexpr(input.channels == 3) {
-                            *(image_ptr + 0) = value[0];
-                            *(image_ptr + 1) = value[1];
-                            *(image_ptr + 2) = value[2];
-                        }
-                        
-                        *(image_ptr+3) = diff_value;
+                        write_pixel_value<output>(image_ptr, pixel_value);
+                        *(image_ptr + output.channels) = diff;
                     }
                 }
             }
@@ -1238,7 +1223,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         auto ptr = _pixels->data();
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>()
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>()
         {
             /// this is the real depth of the output image
             /// (which is output.channels + alpha channel)
@@ -1249,18 +1234,11 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += target_channels_alpha) {
                     assert(ptr < _pixels->data() + _pixels->size());
                     
-                    auto pixel_value = diffable_pixel_value<input, output>(ptr);
-                    
-                    auto value = background.diff<method, mode>(x, line.y, pixel_value);
-                    uchar grey_value;
-                    if constexpr(output.channels == 3) {
-                        grey_value = bgr2gray(pixel_value);
-                    } else {
-                        grey_value = value;
-                    }
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                    auto diff = background.diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value);
                     
                     if(threshold == 0
-                       || background.is_value_different(x, line.y, value, threshold))
+                       || background.is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, line.y, diff, threshold))
                     {
                         if constexpr(output.channels == 3) {
                             for(uint8_t p = 0; p < output.channels; ++p)
@@ -1271,7 +1249,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
                         }
                         
                         /// also set the alpha channel
-                        *(image_ptr + output.channels) = saturate(int32_t(255 - SQR(1 - grey_value / 255.0) * 255.0));
+                        *(image_ptr + output.channels) = saturate(int32_t(255 - SQR(1 - diff / 255.0) * 255.0));
                     }
                 }
             }
@@ -1301,7 +1279,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto _y = (coord_t)b.y;
         auto ptr = _pixels->data();
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>(){
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
             static_assert(is_in(input.channels, 1, 3), "Must be 1 or 3 channels.");
             constexpr auto target_channels = output.channels + 1;
             
@@ -1310,50 +1288,14 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 for (auto x = line.x0; x <= line.x1; ++x, ptr += input.channels, image_ptr += target_channels) {
                     assert(ptr < _pixels->data() + _pixels->size());
                     
-                    auto value = diffable_pixel_value<input, output>(ptr);
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                    auto diff = background.diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value);
                     
                     if (threshold == 0
-                        || background.is_value_different(x, line.y, value, threshold))
+                        || background.is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, line.y, diff, threshold))
                     {
-                        if constexpr(output.channels == 1) {
-                            /// first set the output luminance:
-                            *image_ptr = value;
-                            
-                            /// then generate the alpha channel from the
-                            /// diff value:
-                            value = background.diff<method, mode>(x, line.y, value);
-                            *(image_ptr + 1) = saturate(int32_t(255 - SQR(1 - value / 255.0) * 255.0) * 2);
-                            
-                        } else {
-                            static_assert(target_channels == 4);
-                            if constexpr(input.channels == 3) {
-                                *(image_ptr + 0) = *(ptr + 0);
-                                *(image_ptr + 1) = *(ptr + 1);
-                                *(image_ptr + 2) = *(ptr + 2);
-                                
-                            } else if constexpr(input.channels == 1) {
-                                if constexpr(input.is_r3g3b2()) {
-                                    auto v = r3g3b2_to_vec(*ptr);
-                                    *(image_ptr + 0) = v[0];
-                                    *(image_ptr + 1) = v[1];
-                                    *(image_ptr + 2) = v[2];
-                                    
-                                } else {
-                                    *(image_ptr + 0) = *(ptr + 0);
-                                    *(image_ptr + 1) = *(ptr + 0);
-                                    *(image_ptr + 2) = *(ptr + 0);
-                                }
-                                
-                            } else
-                                throw InvalidArgumentException("Invalid number of channels for ", *this, " luminance_alpha_image with ", target_channels, " target channels.");
-                            
-                            /// then generate the alpha channel from the
-                            /// diff value:
-                            value = background.diff<method, mode>(x, line.y, value);
-                            
-                            auto grey_diff = bgr2gray(value);
-                            *(image_ptr + 3) = saturate(int32_t(255 - SQR(1 - grey_diff / 255.0) * 255.0) * 2);
-                        }
+                        write_pixel_value<output>(image_ptr, pixel_value);
+                        *(image_ptr + output.channels) = saturate(int32_t(255 - SQR(1 - diff / 255.0) * 255.0) * 2);
                     }
                 }
             }
@@ -1388,7 +1330,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         std::fill(image->data(), image->data() + image->size(), uchar(0));
         
         call_image_mode_function(input, output,
-            [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>()
+            [&]<InputInfo input, OutputInfo output, DifferenceMethod method>()
             {
                 static_assert(is_in(input.channels, 1, 3), "Must be 1 or 3 channels.");
                 static_assert(is_in(output.channels, 1, 3), "Must be 1 or 3 channels.");
@@ -1399,20 +1341,13 @@ pv::BlobPtr CompressedBlob::unpack() const {
                     for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += output.channels) {
                         assert(ptr < _pixels->data() + _pixels->size());
                         
-                        auto value = diffable_pixel_value<input, output>(ptr);
-                        value = background.diff<method, mode>(x, line.y, value);
+                        auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                        auto diff = background.diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value);
                         
-                        if(threshold == 0
-                           || background.is_value_different(x, line.y, value, threshold))
+                        if (threshold == 0
+                            || background.is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, line.y, diff, threshold))
                         {
-                            if constexpr(output.channels == 1) {
-                                *image_ptr = value;
-                                
-                            } else if constexpr(output.channels == 3) {
-                                *(image_ptr + 0) = value[0];
-                                *(image_ptr + 1) = value[1];
-                                *(image_ptr + 2) = value[2];
-                            }
+                            write_pixel_value<output>(image_ptr, pixel_value);
                         }
                     }
                 }
@@ -1429,7 +1364,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         output = input;
         
         call_image_mode_function(input, output,
-            [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>() {
+            [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
             static_assert(is_in(input.channels, 1, 3), "Must be 1 or 3 channels.");
             static_assert(is_in(output.channels, 1, 3), "Must be 1 or 3 channels.");
             
@@ -1486,7 +1421,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>(){
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
             static_assert(is_in(input.channels, 3, 1), "Must be 1 or 3 channels.");
             static_assert(is_in(output.channels, 1, 3), "Must be 1 or 3 channels.");
             
@@ -1496,16 +1431,12 @@ pv::BlobPtr CompressedBlob::unpack() const {
                 for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, ++image_ptr) {
                     assert(ptr < _pixels->data() + _pixels->size());
                     
-                    auto value = diffable_pixel_value<input, output>(ptr);
-                    if(background.is_value_different(x, line.y, background.diff<method, mode>(x, line.y, value), threshold)) {
-                        if constexpr(output.channels == 1) {
-                            *image_ptr = *ptr;
-                            
-                        } else if constexpr(output.channels == 3) {
-                            *(image_ptr + 0) = value[0];
-                            *(image_ptr + 1) = value[1];
-                            *(image_ptr + 2) = value[2];
-                        }
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                    if (threshold == 0
+                        || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold))
+                    {
+                    //if(background.is_value_different<output>(x, line.y, background.diff<output, method>(x, line.y, value), threshold)) {
+                        write_pixel_value<output>(image_ptr, pixel_value);
                     }
                 }
             }
@@ -1533,7 +1464,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         if(_pixels == nullptr)
             throw U_EXCEPTION("Cannot generate binary image without pixel values.");
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method, ImageMode mode>(){
+        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
             static_assert(is_in(input.channels, 3, 1), "Must be 1 or 3 channels.");
             
             int32_t value;
@@ -1543,8 +1474,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
                     assert(ptr < _pixels->data() + _pixels->size());
                     
                     value = diffable_pixel_value<input, output>(ptr);
-                    value = background.diff<method, mode>(x, line.y, value);
-                    if(background.is_value_different(x, line.y, value, threshold))
+                    //value = background.diff<output, method>(x, line.y, value);
+                    if(background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, value, threshold))
+                    //if(background.is_value_different<output>(x, line.y, value, threshold))
                         *image_ptr = 255;
                 }
             }

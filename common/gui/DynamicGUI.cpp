@@ -1524,13 +1524,33 @@ void update_tooltips(DrawStructure& graph, State& state) {
         
         ptr->text()->set_clickable(true);
         
-        if(ptr->representative()->hovered() && (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))) {
-            found = ptr->representative();
+        if(ptr->representative()->is_displayed() && ptr->representative()->hovered() /*&& (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))*/) {
+            //found = ptr->representative();
+            if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
+                auto p = dynamic_cast<const LabeledCombobox*>(ptr.get());
+                auto hname = p->highlighted_parameter();
+                if(hname.has_value()) {
+                    //print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
+                    name = hname.value();
+                    found = ptr->representative();
+                    break;
+                } else {
+                    //print("This is a labeled combobox: ", graph.hovered_object(), " with nothing highlighted.");
+                    hname = p->selected_parameter();
+                    if(hname.has_value()) {
+                        name = hname.value();
+                        found = ptr->representative();
+                        break;
+                    }
+                }
+            } else {
+                found = ptr->representative();
+                auto r = ptr->ref();
+                name = r.valid() ? r.name() : "<null>";
+                break;
+            }
             //if(ptr->representative().is<Combobox>())
                 //ptr->representative().to<Combobox>()-
-            auto r = ptr->ref();
-            name = r.valid() ? r.name() : "<null>";
-            break;
         }
     }
     

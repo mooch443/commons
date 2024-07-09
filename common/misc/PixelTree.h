@@ -127,6 +127,6 @@ namespace cmn::pixel {
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1, -1));
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1,-1));
 
-    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
+    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background, const Rangel& size_range = Rangel(-1,-1));
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
 }

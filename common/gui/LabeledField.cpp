@@ -292,6 +292,11 @@ _list(std::make_shared<gui::List>(
       } catch(...) {}
       
       list->set_folded(true);
+      if(list->stage()) {
+          if(list->hovered()) {
+              list->stage()->do_hover(nullptr);
+          }
+      }
   })),
     _invert(invert)
 {
