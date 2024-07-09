@@ -173,7 +173,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
     pixels.reserve(blob->pixels()->size());
     lines.reserve(blob->hor_lines().size());
     
-    print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
+    //print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
     
     for(const auto &line : blob->hor_lines()) {
         coord_t x0;
