@@ -826,7 +826,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
         }
         return {0_f, length()};
     }();
-    const auto L = max(start, end) - start;
+    const auto L = max(start, end) - min(start, end);
     if (L < 10_f) {
         processImage(average, average);
         return;
@@ -864,9 +864,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     auto frames_per_file =
         max(1_f,
             N_indexes < samples
-                ? (L / Frame_t(N_indexes)
+                ? 1_f
+                : (L / Frame_t(N_indexes)
                     / (L / Frame_t{samples}))
-                : 1_f);
+            );
     
     print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
     
@@ -882,13 +883,12 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     for(uint64_t i=start_index; i<=end_index; i+=step) {
         auto file = _files_in_seq.at(i);
         //file_indexes[file].insert(0_f);
-        const auto step = max(1_f, file->length() / frames_per_file);
-        for(Frame_t j=start.try_sub(index); j <file->length() && j + index < end; j+=step) {
+        const auto substep = max(1_f, file->length() / frames_per_file);
+        for(Frame_t j=start.try_sub(index); j <file->length() && j + index < end; j+=substep) {
             if(j + index >= start) {
                 file_indexes[file].insert(j);
             }
         }
-        
         
         index += file->length();
     }
@@ -896,23 +896,24 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     print("file_indexes = ", file_indexes);
     std::atomic<bool> terminate{false};
     std::vector<std::future<void>> futures;
+    std::atomic<size_t> count = 0;
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [this, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
+        auto fn = [this, &count, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
         {
             Image f(size().height, size().width, required_channels(_colors));
-            double count = 0;
             
             for(auto index : indexes) {
                 try {
                     file->frame(_colors, index, f);
                     assert(f.dims == 1 || f.dims == 3);
-                    acc.add_threaded(f.get());
+                    //acc.add_threaded(f.get());
+                    acc.add(f.get());
                     ++count;
                     
                     if(long_t(count) % max(1,long_t(samples * 0.05)) == 0) {
                         if(callback) {
-                            if(not callback(count / samples)) {
+                            if(not callback(double(count.load()) / samples)) {
                                 terminate = true;
                                 break;
                             }
@@ -931,9 +932,9 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
             file->close();
         };
         
-        if(file_indexes.size() > 1) {
-            futures.emplace_back(pool.enqueue(fn, file, indexes));
-        } else
+        //if(file_indexes.size() > 1) {
+        //    futures.emplace_back(pool.enqueue(fn, file, indexes));
+        //} else
             fn(file, indexes);
         
         if(terminate)

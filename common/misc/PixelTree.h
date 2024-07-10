@@ -140,7 +140,7 @@ namespace cmn::pixel {
             auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
             
             for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
-                assert(px < px_end);
+                //assert(px < px_end);
                 if(bg->diff<output, method>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
                     if(start) {
                         pixels.insert(pixels.end(), start, px);

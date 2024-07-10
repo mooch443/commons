@@ -76,13 +76,13 @@ void AveragingAccumulator::_add(const Mat &f) {
         /// TODO: multiple channels will have weird results here
         const uchar* ptr = (const uchar*)f.data;
         auto array_ptr = spatial_histogram.data();
-        const auto end = spatial_histogram.data() + f.cols * f.rows;
+        const auto end = spatial_histogram.data() + uint64_t(f.cols) * uint64_t(f.rows);
         auto mutex_ptr = spatial_mutex.begin();
         
         assert(spatial_histogram.size() == uint64_t(f.cols) * uint64_t(f.rows));
         if constexpr(threaded) {
             for (; array_ptr != end; ptr += channels, ++array_ptr, ++mutex_ptr) {
-                (*mutex_ptr)->lock(); //TODO: this is a performance culprit (locking/unlocking)
+                //(*mutex_ptr)->lock(); //TODO: this is a performance culprit (locking/unlocking)
                 if(channels == 1) {
                     ++(*array_ptr)[*(ptr + 0)][0];
                 } else {
@@ -92,7 +92,7 @@ void AveragingAccumulator::_add(const Mat &f) {
                     ++(*array_ptr)[*(ptr + 2)][2];
                 }
                 
-                (*mutex_ptr)->unlock();
+                //(*mutex_ptr)->unlock();
             }
             
         } else {
