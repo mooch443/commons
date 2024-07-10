@@ -359,22 +359,7 @@ struct Pair {
     Prediction pred;
     
     Pair() = default;
-    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0, Prediction&& pred = {})
-        : lines(std::move(lines)),
-          pixels(std::move(pixels)),
-          extra_flags(extra_flags),
-          pred(std::move(pred))
-    {}
-    /*Pair& operator=(Pair&& other) {
-        if(!lines) {
-            lines = std::move(other.lines);
-            pixels = std::move(other.pixels);
-        } else {
-            *lines = std::move(*other.lines);
-            *pixels = std::move(*other.pixels);
-        }
-        return *this;
-    }*/
+    Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0, Prediction&& pred = {});
 };
 }
 

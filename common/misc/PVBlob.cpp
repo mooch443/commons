@@ -1124,17 +1124,10 @@ pv::BlobPtr CompressedBlob::unpack() const {
             }
         };
         
-        InputInfo input{
-            .channels = channels,
-            .encoding = encoding()
-        };
+        OutputInfo output;
+        output = input_info();
         
-        OutputInfo output{
-            .channels = channels,
-            .encoding = encoding()
-        };
-        
-        call_image_mode_function(input, output, work);
+        call_image_mode_function(input_info(), output, work);
         return {b.pos(), std::move(image)};
     }
     

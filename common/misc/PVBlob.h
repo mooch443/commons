@@ -148,6 +148,11 @@ public:
         set_flag(flags, flag, v);
         return flags;
     }
+    
+    static constexpr uint8_t copy_flags(const pv::Blob& blob) {
+        return  pv::Blob::get_only_flag(pv::Blob::Flags::is_rgb, blob.is_rgb())
+              | pv::Blob::get_only_flag(pv::Blob::Flags::is_r3g3b2, blob.is_r3g3b2());
+    }
 
     static bool is_flag(uint8_t flags, Flags flag) {
         return (flags >> uint8_t(flag)) & 1u;

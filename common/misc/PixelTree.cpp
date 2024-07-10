@@ -204,24 +204,13 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         }
     }
     
-#ifndef NDEBUG
     auto blobs = CPULabeling::run(lines, pixels, cache, channels);
     for(auto &pair : blobs) {
-        assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_rgb) == blob->is_rgb());
-        if(blob->is_r3g3b2())
-            pv::Blob::set_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2, true);
+        pair.extra_flags |= pv::Blob::copy_flags(*blob);
+        pair.pred = blob->prediction();
         //assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
     }
     return blobs;
-#else
-    auto blobs = CPULabeling::run(lines, pixels, cache, channels);
-    for(auto &pair : blobs) {
-        assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_rgb) == blob->is_rgb());
-        if(blob->is_r3g3b2())
-            pv::Blob::set_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2, true);
-    }
-    return blobs;
-#endif
 }
 
 
@@ -316,9 +305,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         
         auto blobs = CPULabeling::run(lines, pixels, cache, blob->channels());
         for(auto &pair : blobs) {
-            assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_rgb) == blob->is_rgb());
-            if(blob->is_r3g3b2())
-                pv::Blob::set_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2, true);
+            pair.extra_flags |= pv::Blob::copy_flags(*blob);
             //assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
             pair.pred = blob->prediction();
         }
@@ -351,8 +338,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         }
         
         uint8_t extra_flags = 0;
-        pv::Blob::set_flag(extra_flags, pv::Blob::Flags::is_rgb, blob->is_rgb());
-        pv::Blob::set_flag(extra_flags, pv::Blob::Flags::is_r3g3b2, blob->is_r3g3b2());
+        extra_flags |= pv::Blob::copy_flags(*blob);
         return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
                 std::make_unique<std::vector<uchar>>(),

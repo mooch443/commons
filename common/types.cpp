@@ -2,10 +2,20 @@
 #include <png.h>
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>
+#include <misc/PVBlob.h>
 
 namespace cmn {
 IMPLEMENT(blob::Pose::Skeleton::_mutex);
 IMPLEMENT(blob::Pose::Skeleton::_registered);
+
+blob::Pair::Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags, Prediction&& pred)
+    : lines(std::move(lines)),
+      pixels(std::move(pixels)),
+      extra_flags(extra_flags),
+      pred(std::move(pred))
+{
+    assert(not this->pixels || this->pixels->size() % (pv::Blob::is_flag(extra_flags, pv::Blob::Flags::is_rgb) ? 3 : 1) == 0);
+}
 
 std::string blob::Prediction::toStr() const {
     std::vector<std::string> detect_classes;
