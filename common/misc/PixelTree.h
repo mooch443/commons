@@ -129,4 +129,97 @@ namespace cmn::pixel {
 
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background, const Rangel& size_range = Rangel(-1,-1));
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
+
+#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, std::vector<uchar> &pixels)
+
+    template<InputInfo input, OutputInfo output, DifferenceMethod method>
+    inline void line_with_grid _____FN_TYPE {
+        for(const auto &line : lines) {
+            coord_t x0;
+            uchar* start{nullptr};
+            auto threshold_ptr = bg->grid()->thresholds().data() + ptr_safe_t(line.x0) + ptr_safe_t(line.y) * ptr_safe_t(bg->grid()->bounds().width);
+            
+            for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                assert(px < px_end);
+                if(bg->diff<output, method>(x, line.y, *px) < (*threshold_ptr++) * threshold) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        result.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+        
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                result.emplace_back(line.y, x0, line.x1);
+            }
+        }
+    }
+
+    template<InputInfo input, OutputInfo output, DifferenceMethod method>
+    inline void line_without_grid _____FN_TYPE {
+        for(const auto &line : lines) {
+            coord_t x0;
+            uchar* start{nullptr};
+            
+            for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                //assert(px < px_end);
+                
+                auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
+                if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold)) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        result.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+        
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                result.emplace_back(line.y, x0, line.x1);
+            }
+        }
+    }
+
+    template<InputInfo input, OutputInfo output, DifferenceMethod method>
+    inline void line_without_bg _____FN_TYPE {
+        UNUSED(bg);
+        
+        for(const auto &line : lines) {
+            coord_t x0;
+            uchar* start{nullptr};
+            
+            for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                //assert(px < px_end);
+                
+                if(*px < threshold) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        result.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+        
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                result.emplace_back(line.y, x0, line.x1);
+            }
+        }
+    }
+#undef _____FN_TYPE
 }
