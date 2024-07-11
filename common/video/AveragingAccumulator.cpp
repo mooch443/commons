@@ -165,7 +165,7 @@ std::unique_ptr<cmn::Image> AveragingAccumulator::finalize() {
     } else
         _accumulator.copyTo(image->get());
     
-    tf::imshow("acc_average", image->get());
+    //tf::imshow("acc_average", image->get());
     
     return image;
 }
