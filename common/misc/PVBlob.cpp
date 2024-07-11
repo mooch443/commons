@@ -245,61 +245,6 @@ pv::BlobPtr CompressedBlob::unpack() const {
     return ptr;
 }
 
-    bool Blob::split() const {
-        return Blob::is_flag(_flags, Flags::split);
-    }
-
-    void Blob::set_split(bool split) {
-        Blob::set_flag(_flags, Flags::split, split);
-    }
-
-    bool Blob::is_tag() const {
-        return Blob::is_flag(_flags, Flags::is_tag);
-    }
-
-    bool Blob::is_instance_segmentation() const {
-        return Blob::is_flag(_flags, Flags::is_instance_segmentation);
-    }
-
-    void Blob::set_tag(bool v) {
-        Blob::set_flag(_flags, Flags::is_tag, v);
-    }
-
-    void Blob::set_instance_segmentation(bool v) {
-        Blob::set_flag(_flags, Flags::is_instance_segmentation, v);
-    }
-
-    bool Blob::is_rgb() const {
-        return Blob::is_flag(_flags, Flags::is_rgb);
-    }
-    void Blob::set_rgb(bool is_rgb) {
-        Blob::set_flag(_flags, Flags::is_rgb, is_rgb);
-    }
-
-    bool Blob::is_r3g3b2() const {
-        return Blob::is_flag(_flags, Flags::is_r3g3b2);
-    }
-    void Blob::set_r3g3b2(bool is_r3g3b2) {
-        Blob::set_flag(_flags, Flags::is_r3g3b2, is_r3g3b2);
-    }
-
-    cmn::InputInfo Blob::input_info() const {
-        return InputInfo{
-            .channels = channels(),
-            .encoding = encoding()
-        };
-    }
-    uint8_t Blob::channels() const {
-        return is_rgb() ? 3 : 1;
-    }
-    cmn::meta_encoding_t::Class Blob::encoding() const {
-        if(is_r3g3b2())
-            return meta_encoding_t::r3g3b2;
-        
-        return is_rgb()
-            ? meta_encoding_t::rgb8
-            : meta_encoding_t::gray;
-    }
 
     std::vector<ShortHorizontalLine>
         ShortHorizontalLine::compress(const std::vector<HorizontalLine>& lines)

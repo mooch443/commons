@@ -154,7 +154,7 @@ public:
               | pv::Blob::get_only_flag(pv::Blob::Flags::is_r3g3b2, blob.is_r3g3b2());
     }
 
-    static bool is_flag(uint8_t flags, Flags flag) {
+    static constexpr bool is_flag(uint8_t flags, Flags flag) {
         return (flags >> uint8_t(flag)) & 1u;
     }
     
@@ -190,20 +190,35 @@ public:
     
     ~Blob();
     
-    bool split() const;
+    constexpr bool split() const { return Blob::is_flag(_flags, Flags::split); }
+
+    constexpr bool is_tag() const { return Blob::is_flag(_flags, Flags::is_tag); }
+    constexpr void set_tag(bool v) { Blob::set_flag(_flags, Flags::is_tag, v); }
     
-    bool is_tag() const;
-    bool is_instance_segmentation() const;
-    bool is_rgb() const;
-    bool is_r3g3b2() const;
-    void set_tag(bool);
-    void set_instance_segmentation(bool);
-    void set_rgb(bool);
-    void set_r3g3b2(bool);
+    constexpr bool is_instance_segmentation() const { return Blob::is_flag(_flags, Flags::is_instance_segmentation); }
+    constexpr void set_instance_segmentation(bool v) { Blob::set_flag(_flags, Flags::is_instance_segmentation, v); }
     
-    uint8_t channels() const;
-    cmn::meta_encoding_t::Class encoding() const;
-    cmn::InputInfo input_info() const;
+    constexpr bool is_rgb() const { return Blob::is_flag(_flags, Flags::is_rgb); }
+    constexpr void set_rgb(bool is_rgb) { Blob::set_flag(_flags, Flags::is_rgb, is_rgb); }
+    constexpr bool is_r3g3b2() const { return Blob::is_flag(_flags, Flags::is_r3g3b2); }
+    constexpr void set_r3g3b2(bool is_r3g3b2) { Blob::set_flag(_flags, Flags::is_r3g3b2, is_r3g3b2); }
+    
+    constexpr uint8_t channels() const { return is_rgb() ? 3 : 1; }
+    
+    constexpr cmn::InputInfo input_info() const {
+        return cmn::InputInfo{
+            .channels = channels(),
+            .encoding = encoding()
+        };
+    }
+    constexpr cmn::meta_encoding_t::Class encoding() const {
+        if(is_r3g3b2())
+            return cmn::meta_encoding_t::r3g3b2;
+        
+        return is_rgb()
+            ? cmn::meta_encoding_t::rgb8
+            : cmn::meta_encoding_t::gray;
+    }
     
     BlobPtr threshold(int32_t value, const cmn::Background& background);
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> color_image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
@@ -254,7 +269,7 @@ protected:
     friend class cmn::DataFormat;
     friend class cmn::DataPackage;
     
-    void set_split(bool);
+    constexpr void set_split(bool split) { Blob::set_flag(_flags, Flags::split, split); }
     void set_parent_id(const bid& parent_id);
     void init();
 };
