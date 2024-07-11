@@ -948,7 +948,9 @@ bool SectionInterface::is_animating() noexcept {
     void SectionInterface::on_visibility_change(bool visible) {
         Drawable::on_visibility_change(visible);
         
+#ifndef NDEBUG
         Print(" visibility of ", this, " changed to ", visible);
+#endif
 
         // only propagate to children if the visibility is deactivated
         // since the children will not necessarily be visible if the parent
