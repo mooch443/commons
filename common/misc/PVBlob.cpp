@@ -718,7 +718,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _flags |= flags;
         assert(not _pixels || _pixels->size() == (is_rgb() ? 3 : 1) * num_pixels());
         if(is_tag())
-            print("This blob is a tag ", *this);
+            Print("This blob is a tag ", *this);
         //assert(required_channels(Background::image_mode()) == (is_rgb() ? 3 : 1));
     }
     /*Blob::Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels)
@@ -794,7 +794,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             _parent_id = bid::invalid;
         
         if(!_parent_id.valid() && split)
-            print("Parent has to be set correctly in order to split blobs (",blob_id(),").");
+            Print("Parent has to be set correctly in order to split blobs (",blob_id(),").");
     }
     
     void Blob::set_parent_id(const bid& parent_id) {
@@ -804,7 +804,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
     
     void Blob::force_set_recount(int32_t threshold, float value) {
         if(threshold && _recount_threshold == threshold) {
-            //print("Not forcing recount of ",blob_id()," because it has already been calculated.");
+            //Print("Not forcing recount of ",blob_id()," because it has already been calculated.");
             return;
         }
         

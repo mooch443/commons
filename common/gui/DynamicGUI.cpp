@@ -63,7 +63,7 @@ T resolve_variable_type(Str _word, const Context& context, State& state) {
                     FormatWarning("Retrieving invalid property (", modifiers, ") from map with keys ", tmp.keys(), ".");
                     return false;
                 }
-                //print(ref.get().name()," = ", ref.get().valueString(), " with ", ref.get().type_name());
+                //Print(ref.get().name()," = ", ref.get().valueString(), " with ", ref.get().type_name());
                 if(ref.template is_type<T>()) {
                     return ref.get().template value<T>();
                 } else if(ref.is_type<std::string>()) {
@@ -718,11 +718,11 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
                 }
             }
         } else {
-            //print("Object ", *o, " has no hash and is thus not updated.");
+            //Print("Object ", *o, " has no hash and is thus not updated.");
         }
         return false;
     }
-    //print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
+    //Print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
     
     /*if(auto it = state._timers.find(hash); it != state._timers.end()) {
         if(it->second.elapsed() > 0.01) {
@@ -832,7 +832,7 @@ bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr
         if(state._text_fields.contains(hash))
             field = state._text_fields.at(hash).get();
         
-        //print("Found pattern ", pattern, " at index ", hash);
+        //Print("Found pattern ", pattern, " at index ", hash);
         
         if(it->second.contains("var")) {
             try {
@@ -843,7 +843,7 @@ bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr
                     VarCache &cache = state._var_cache[hash];
                     if(cache._var != var /*|| str != cache._value*/)
                     {
-                        print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
+                        Print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
                         
                         //! replace old object (also updates the cache)
                         o = parse_object(gui, cache._obj, context, state, context.defaults, hash);
@@ -934,7 +934,7 @@ bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr
             try {
                 ptr->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context, state)));
                 //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
-                //print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
+                //Print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
                 
             } catch(const std::exception& e) {
                 FormatError("Error parsing context; ", pattern, ": ", e.what());
@@ -1142,7 +1142,7 @@ bool DynamicGUI::update_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &, c
                         {
                             obj.on_select_actions[index] = std::make_tuple(
                                 index, [&gc = gc, ptr = o.get(), index = index, action = action, context](){
-                                    print("Clicked item at ", index, " with action ", action);
+                                    Print("Clicked item at ", index, " with action ", action);
                                     State state;
                                     Action _action = action.parse(context, state);
                                     _action.parameters = { Meta::toStr(index) };
@@ -1239,7 +1239,7 @@ bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure 
                         if(p) {
                             update_objects(gui, g, p, tmp, state);
                         }
-                        //p->parent()->stage()->print(nullptr);
+                        //p->parent()->stage()->Print(nullptr);
                         state._variable_values = std::move(previous);
                     }
                 }
@@ -1348,6 +1348,44 @@ void DynamicGUI::reload() {
 void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
 {
     reload();
+    
+    /*if(state.ifs.size() > 3000) {
+        for(auto it = state.ifs.begin(); it != state.ifs.end() && state.ifs.size() > 2000;) {
+            if(it->second._if
+               && not it->second._if->is_displayed()
+               && (not it->second._else || not it->second._else->is_displayed()))
+            {
+                it = state.ifs.erase(it);
+            } else
+                ++it;
+        }
+        
+        while(state.ifs.size() > 2000) {
+            state.ifs.erase(state.ifs.begin());
+        }
+    }
+    
+    if(state._customs_cache.size() > 5000) {
+        std::vector<std::tuple<double, size_t>> sorted_objects;
+        sorted_objects.resize(state._timers.size());
+        for(auto &[h, o] : state._timers) {
+            sorted_objects.push_back({o.elapsed(), h});
+        }
+        std::sort(sorted_objects.begin(), sorted_objects.end());
+        
+        for(auto it = --sorted_objects.end(); it != sorted_objects.begin(); --it ) {
+            if(state._customs_cache.size() <= 3000)
+                break;
+            
+            auto& [e, h] = *it;
+            
+            Print("Deleting object ",h ," that has not been visible for ", e, " seconds.");
+
+            state._timers.erase(h);
+            state._customs.erase(h);
+            state._customs_cache.erase(h);
+        }
+    }*/
     
     bool do_update_objects{false};
     if(not first_update
@@ -1470,7 +1508,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             
             auto [e, h] = *it;
             
-            print("Deleting object ",h ," that has not been visible for ", e, " seconds.");
+            Print("Deleting object ",h ," that has not been visible for ", e, " seconds.");
             
             if(auto kit = state._customs.find(h);
                kit != state._customs.end())
@@ -1530,12 +1568,12 @@ void update_tooltips(DrawStructure& graph, State& state) {
                 auto p = dynamic_cast<const LabeledCombobox*>(ptr.get());
                 auto hname = p->highlighted_parameter();
                 if(hname.has_value()) {
-                    //print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
+                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
                     name = hname.value();
                     found = ptr->representative();
                     break;
                 } else {
-                    //print("This is a labeled combobox: ", graph.hovered_object(), " with nothing highlighted.");
+                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with nothing highlighted.");
                     hname = p->selected_parameter();
                     if(hname.has_value()) {
                         name = hname.value();

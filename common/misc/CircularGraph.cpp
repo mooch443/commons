@@ -219,17 +219,17 @@ namespace cmn {
                 for (auto &range : ranges) {
                     if(range.end > left_border && range.end < peak.position.x) {
                         left_border = range.end;
-                        //print("\tExtending left border to ", left_border);
+                        //Print("\tExtending left border to ", left_border);
                     }
                     
                     if(range.start < right_border && range.start > peak.position.x) {
                         right_border = range.start;
-                        //print("\tExtending right border to ", right_border);
+                        //Print("\tExtending right border to ", right_border);
                     }
                 }
                 
                 range_t search_range(left_border, right_border);
-                //print("Search_range for ",peak.position.x," is ",search_range.start,"-",search_range.end,". *prev=",*prev," after=",*after);
+                //Print("Search_range for ",peak.position.x," is ",search_range.start,"-",search_range.end,". *prev=",*prev," after=",*after);
                 
                 auto copy_left = prev;
                 scalar_t last_y = peak.position.y;
@@ -311,7 +311,7 @@ namespace cmn {
                 peak.width = search_range.length();
                 peak.range = range_t(index_left, index_right);
                 
-                //print("Avoiding range ", peak.range.start,"-",peak.range.end);
+                //Print("Avoiding range ", peak.range.start,"-",peak.range.end);
                 ranges.push_back(peak.range);
             }
             

@@ -162,14 +162,14 @@ namespace cmn::gui {
                     used_or_deleted = true;
                     //d = current;
                     ptr = static_cast<T*>(current);
-                    //print("add<",type_name<T>(),">: reusing ", hex(ptr), " at ", _index);
+                    //Print("add<",type_name<T>(),">: reusing ", hex(ptr), " at ", _index);
 
                 } else {
                     ptr = new T(std::forward<Args>(args)...);
                     if(!owned) {
                         if(current) {
                             _currently_removed.insert(current);
-                            //print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
+                            //Print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
                         }
                         //current = ptr;
                         used_or_deleted = true;
@@ -177,7 +177,7 @@ namespace cmn::gui {
                     } else {
                         //auto tmp = current;
                         //current = ptr;
-                        //print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
+                        //Print("add<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
                         
                         used_or_deleted = true;
                         current->set_parent(NULL);
@@ -191,7 +191,7 @@ namespace cmn::gui {
                 assert(_index == _new_children.size());
                 ptr = new T(std::forward<Args>(args)...);
                 used_or_deleted = true;
-                //print("add<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
+                //Print("add<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
                 init_child(ptr, _index, true);
             }
             
@@ -223,7 +223,7 @@ namespace cmn::gui {
                 _current_children[_index] = nullptr;
                 
                 if(current != ptr) {
-                    //print("wrap<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", ptr);
+                    //Print("wrap<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", ptr);
                     
                     assert(!contains(_new_children, ptr));
                     if(current && _owned[current]) {
@@ -244,7 +244,7 @@ namespace cmn::gui {
                     for(size_t i=_index+1; i<_current_children.size(); i++) {
                         ++iterations_dumb;
                         if(_current_children[i] == ptr) {
-                            print("\tWould clear ", hex(ptr), " from position ", i, " in _current_children");
+                            Print("\tWould clear ", hex(ptr), " from position ", i, " in _current_children");
                             //_current_children.erase(_current_children.begin() + (diff_t)i);
                             break;
                         }
@@ -252,7 +252,7 @@ namespace cmn::gui {
                 }
                 
             } else {
-                //print("wrap<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
+                //Print("wrap<",type_name<T>(),">: inserting new ", hex(ptr), " at ", _index);
                 assert(_index == _new_children.size());
                 //_children.push_back(ptr);
                 init_child(ptr, _index, false);

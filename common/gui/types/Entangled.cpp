@@ -231,7 +231,7 @@ void Entangled::on_visibility_change(bool visible) {
                 if(auto it = _current_wrapped.find(tmp);
                    it != _current_wrapped.end())
                 {
-                    //print("Ignoring past-end of _current_children: ", hex(tmp));
+                    //Print("Ignoring past-end of _current_children: ", hex(tmp));
                     assert(std::find(_new_children.begin(), _new_children.begin() + _index, tmp) != _new_children.begin() + _index);
                     _current_wrapped.erase(it);
                     
@@ -242,7 +242,7 @@ void Entangled::on_visibility_change(bool visible) {
                     }
                     continue;
                 }
-                //print("Past end of _current_children: ", hex(tmp));
+                //Print("Past end of _current_children: ", hex(tmp));
                 
 #ifndef NDEBUG
                 for(size_t i=0; i<_index; ++i) {
@@ -277,12 +277,12 @@ void Entangled::on_visibility_change(bool visible) {
                it != _current_wrapped.end())
             {
                 _current_wrapped.erase(it);
-                //print("Ignoring currently_removed: ", hex(d));
+                //Print("Ignoring currently_removed: ", hex(d));
                 continue;
             }
             
 #ifndef NDEBUG
-            //print("Removing ", hex(d));
+            //Print("Removing ", hex(d));
             for(size_t i=0; i<_index; ++i) {
                 assert(_new_children.at(i) != d);
             }
@@ -308,7 +308,7 @@ void Entangled::on_visibility_change(bool visible) {
         _current_wrapped.clear();
         
         //if(iterations_dumb > 0 || iterations_smart > 0)
-        //    print("Iterations: ", iterations_dumb, " vs. ", iterations_smart, " (", int64_t(iterations_dumb) - int64_t(iterations_smart),")");
+        //    Print("Iterations: ", iterations_dumb, " vs. ", iterations_smart, " (", int64_t(iterations_dumb) - int64_t(iterations_smart),")");
         
 #ifndef NDEBUG
         for(auto c : _current_children) {

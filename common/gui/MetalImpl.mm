@@ -67,7 +67,7 @@ extern "C"{
     bool forward_load_message(const std::vector<cmn::file::Path>& paths){
         auto str = cmn::Meta::toStr(paths);
         NSString* string = [NSString stringWithCString:str.c_str() encoding:NSASCIIStringEncoding];
-        cmn::print("Open file: ", str.c_str());
+        cmn::Print("Open file: ", str.c_str());
         
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 250 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             auto cstr = [string cStringUsingEncoding:NSASCIIStringEncoding];
@@ -577,7 +577,7 @@ id mutexObject = [[NSObject alloc] init];
             dispatch_semaphore_signal(frameBoundarySemaphore());
         
         /*if(_draw_timer.elapsed() >= 1) {
-            print(_draw_calls," draw_calls / s");
+            Print(_draw_calls," draw_calls / s");
             _draw_calls = 0;
             _draw_timer.reset();
         }*/
@@ -763,7 +763,7 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
                 if(zeros.size() < N) {
                     zeros.resize(N * 1.25);
                     //zeros.get().setTo(cv::Scalar(0, 0, 0, 0));
-                    //print("resized zeros to ", zeros.size());
+                    //Print("resized zeros to ", zeros.size());
                 }
                 
                 //memset(zeros.data(), 0, zeros.size());

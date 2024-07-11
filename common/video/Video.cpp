@@ -271,7 +271,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
         int32_t start = index.try_sub(1_f).get();
         _cap->set(cv::CAP_PROP_POS_FRAMES, start);
         int32_t currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-        //print("Set to ", start, " and get ", currentPos);
+        //Print("Set to ", start, " and get ", currentPos);
         
         while(start > 0 
               && static_cast<int64_t>(currentPos) + 1 > static_cast<int64_t>(index.get()))
@@ -279,7 +279,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
             start = max(0, start - int32_t(currentPos) + int32_t(index.get()) - 1);
             _cap->set(cv::CAP_PROP_POS_FRAMES, start);
             currentPos = _cap->get(cv::CAP_PROP_POS_FRAMES);
-            //print("Retrieving ", start, " and get ", currentPos, " (",index,"): ", int32_t(currentPos) - int32_t(index.get()));
+            //Print("Retrieving ", start, " and get ", currentPos, " (",index,"): ", int32_t(currentPos) - int32_t(index.get()));
         }
         /*if(_cap)
             delete _cap;
@@ -290,7 +290,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
         
         for(; _last_index+1_f < index; ++_last_index) {
             _cap->grab();
-            //print("* #Skipping ", _last_index, " (",index,")");
+            //Print("* #Skipping ", _last_index, " (",index,")");
         }
     }
     
@@ -349,7 +349,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
                         cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
                         extractu8(read, frame, color_channel % 3);
                         
-                    } else print("Cannot copy to read frame with ",read.channels()," channels.");
+                    } else Print("Cannot copy to read frame with ",read.channels()," channels.");
                 } else {
                     if(frame.cols != read.cols || frame.rows != read.rows || frame.type() != CV_8UC1) {
                         frame = cv::Mat(read.rows, read.cols, CV_8UC1);
@@ -387,7 +387,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
     //cv::putText(frame, Meta::toStr(_last_index), Vec2(10,20), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
     //cv::putText(frame, Meta::toStr(_cap->get(cv::CAP_PROP_POS_FRAMES)), Vec2(10,40), cv::FONT_HERSHEY_PLAIN, 1.5, cv::Scalar(255,255,255,255));
     
-    //print("_last_index == ", _last_index, " for index ", index, " reading ", _cap->get(cv::CAP_PROP_POS_FRAMES));
+    //Print("_last_index == ", _last_index, " for index ", index, " reading ", _cap->get(cv::CAP_PROP_POS_FRAMES));
 }
 
 /**

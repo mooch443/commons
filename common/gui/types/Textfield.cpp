@@ -93,7 +93,7 @@ void Textfield::init() {
                     auto root = q.front();
                     q.pop_front();
                     
-                    //print("* searching ", (uint64_t)root, " name=", root->name());
+                    //Print("* searching ", (uint64_t)root, " name=", root->name());
                     
                     for(auto c : root->children()) {
                         if(c->type() == Type::SINGLETON)
@@ -112,12 +112,12 @@ void Textfield::init() {
                     }
                 }
                 
-                //print("* searching for ", (uint64_t)this);
+                //Print("* searching for ", (uint64_t)this);
                 std::vector<uint64_t> ptrs;
                 for(auto t : textfields) {
                     ptrs.push_back((uint64_t)t);
                 }
-                //print("  all textfields: ", ptrs);
+                //Print("  all textfields: ", ptrs);
                 
                 if(index.has_value()) {
                     if(textfields.size() >= index.value() && index.value() > 0) {
@@ -301,10 +301,10 @@ Textfield::~Textfield() {
                 if(system) {
                     if(!_selection.empty()) {
                         auto sub = text().substr(_selection.first, _selection.last - _selection.first);
-                        print("Copying ", sub);
+                        Print("Copying ", sub);
                         set_clipboard(sub);
                     } else {
-                        print("Copying ", text());
+                        Print("Copying ", text());
                         set_clipboard(text());
                     }
                     return true;
@@ -315,7 +315,7 @@ Textfield::~Textfield() {
                 if(system) {
                     std::string paste = get_clipboard();
                     if(!paste.empty()) {
-                        print("Pasting ", paste);
+                        Print("Pasting ", paste);
                         
                         std::string copy = text();
                         auto before = _cursor_position;

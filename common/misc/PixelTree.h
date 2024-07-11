@@ -132,7 +132,7 @@ namespace cmn::pixel {
 
 #define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, std::vector<uchar> &pixels)
 
-    template<InputInfo input, OutputInfo output, DifferenceMethod method>
+    /*template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_with_grid _____FN_TYPE {
         for(const auto &line : lines) {
             coord_t x0;
@@ -159,7 +159,7 @@ namespace cmn::pixel {
                 result.emplace_back(line.y, x0, line.x1);
             }
         }
-    }
+    }*/
 
     template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_without_grid _____FN_TYPE {

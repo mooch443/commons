@@ -24,7 +24,7 @@ void GenericVideo::undistort(const cv::Mat &input, cv::Mat &output)
        && map2.rows == input.rows)
     {
         if(!map1.empty() && !map2.empty()) {
-            //print("Undistorting ", input.cols,"x",input.rows);
+            //Print("Undistorting ", input.cols,"x",input.rows);
             cv::remap(input, output, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         } else {
             FormatWarning("remap maps are empty.");
@@ -45,7 +45,7 @@ void GenericVideo::undistort(const gpuMat& disp, gpuMat &image)
        && map2.rows == disp.rows)
     {
         if(!map1.empty() && !map2.empty()) {
-            //print("Undistorting ", disp.cols,"x",disp.rows);
+            //Print("Undistorting ", disp.cols,"x",disp.rows);
             cv::remap(disp, image, map1, map2, cv::INTER_LINEAR, cv::BORDER_CONSTANT);
         } else {
             FormatWarning("remap maps are empty.");
@@ -86,7 +86,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     }
     AveragingAccumulator accumulator;
     
-    print("Generating average for frame ", frameIndex," (method='",accumulator.mode().name(),"')...");
+    Print("Generating average for frame ", frameIndex," (method='",accumulator.mode().name(),"')...");
     
     float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.1f);
     const Frame_t step = Frame_t(narrow_cast<uint>(max(1, length().get() / samples)));
@@ -106,7 +106,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
                     break; // cancel requested by callback
                 }
             }
-            print("generating average: ", (samples - i.get()) / step.get(),"/", int(samples)," step:", step," (frame ", i,")");
+            Print("generating average: ", (samples - i.get()) / step.get(),"/", int(samples)," step:", step," (frame ", i,")");
             counted = 0_f;
         }
         

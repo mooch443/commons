@@ -83,7 +83,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
     pixels.reserve(blob->pixels()->size());
     lines.reserve(blob->hor_lines().size());
     
-    //print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
+    //Print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
     
     for(const auto &line : blob->hor_lines()) {
         coord_t x0;
@@ -515,7 +515,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
 /*#ifndef NDEBUG
         {
             int h = blob->bounds().height;
-            print("Height: ", h,", lines: ",caches.size());
+            Print("Height: ", h,", lines: ",caches.size());
             cv::Mat image = cv::Mat::zeros(h+2, blob->bounds().width+2, CV_8UC4);
             
             using namespace gui;
@@ -537,9 +537,9 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
         try {
             interp = tree.generate_edges();
         } catch(const std::invalid_argument& e) {
-            print("Error");
-            print(blob->blob_id(),": ", e.what(), " ", blob->pixels()->size());
-            print(*blob->pixels(), "\n", blob->hor_lines(), "\n\n");
+            Print("Error");
+            Print(blob->blob_id(),": ", e.what(), " ", blob->pixels()->size());
+            Print(*blob->pixels(), "\n", blob->hor_lines(), "\n\n");
         }
         
         return interp;
@@ -818,7 +818,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             }
             ss << "]";
             auto str = ss.str();
-            print("Pixel at ", offset.x,",", offset.y," has borders: ",str);*/
+            Print("Pixel at ", offset.x,",", offset.y," has borders: ",str);*/
             
             for (uchar i=0; i<node->border.size(); ++i) {
                 if(!node->border[i])
@@ -861,7 +861,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                     if(opposite >= max_val) opposite -= max_val;
                     
                     auto v = offset + vectors[(size_t)left];
-                    //print("\t",NAME(left)," is set. add ",v.x,",",v.y," (",NAME(left)," with sides ",NAME(border)," -> ",NAME(opposite)," ",vectors[left].x,",",vectors[left].y,")");
+                    //Print("\t",NAME(left)," is set. add ",v.x,",",v.y," (",NAME(left)," with sides ",NAME(border)," -> ",NAME(opposite)," ",vectors[left].x,",",vectors[left].y,")");
                     auto ptr = linear_search(LEAF_INDEX(v), _nodes);
                     if(ptr)
                         add_edge(_sides, _non_full_nodes, Edge(border, (Direction)opposite, node.get(), ptr), _nodes);
@@ -890,7 +890,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         */
                         
                         auto v = offset + vectors[left_left];
-                        //print("\t",NAME(left)," is not set, but ",NAME(left_left)," is. adding long route ",NAME(border)," -> (",v.x,",",v.y,") ",NAME(border));
+                        //Print("\t",NAME(left)," is not set, but ",NAME(left_left)," is. adding long route ",NAME(border)," -> (",v.x,",",v.y,") ",NAME(border));
                         
                         auto ptr = linear_search(LEAF_INDEX(v), _nodes);
                         if(ptr)
@@ -906,7 +906,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                         
                         */
                         
-                        //print("\t",NAME(left)," and ",NAME(left_left)," are not set. adding inner connection with ",NAME(border)," -> ",NAME(left_left));
+                        //Print("\t",NAME(left)," and ",NAME(left_left)," are not set. adding inner connection with ",NAME(border)," -> ",NAME(left_left));
                         add_edge(_sides, _non_full_nodes, Edge(border, (Direction)left_left, node.get(), node.get()), _nodes);
                     }
                 }
@@ -957,7 +957,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         
         cv::Mat output = cv::Mat::zeros((bounds.height+margin.y*2) * scale, (bounds.width+margin.x*2) * scale, CV_8UC3);
         
-        print("Dimensions: ",bounds.x,",",bounds.y," ",bounds.width,"x",bounds.height," (",output.cols,"x",output.rows,")");
+        Print("Dimensions: ",bounds.x,",",bounds.y," ",bounds.width,"x",bounds.height," (",output.cols,"x",output.rows,")");
         
         using namespace gui;
 #endif

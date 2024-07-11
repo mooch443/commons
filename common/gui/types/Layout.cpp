@@ -89,7 +89,7 @@ void Layout::set_content_changed(bool changed) {
 
     void Layout::update_layout() {
         //if(name() != "Entangled")
-        //    print(name(), " updating.");
+        //    Print(name(), " updating.");
         //auto_size();
     }
 
@@ -158,7 +158,7 @@ void Layout::set_content_changed(bool changed) {
             _objects.erase(it);
             return;
         }
-        //print("Cannot find object ",ptr);
+        //Print("Cannot find object ",ptr);
     }
     
     void Layout::set_margins(const attr::Margins &margins) {
@@ -178,7 +178,7 @@ void Layout::set_content_changed(bool changed) {
 
     void Layout::_apply_to_children(Drawable* ptr, const std::function<void (Drawable *)> & fn) {
         if (PlaceinLayout* placein = dynamic_cast<PlaceinLayout*>(ptr)) {
-            //print("Placein with ", placein->children().size(), " children.");
+            //Print("Placein with ", placein->children().size(), " children.");
             for (auto child : placein->children())
                 _apply_to_children(child, fn);
             
@@ -426,7 +426,7 @@ void GridLayout::init() {
             _vertical_rect->set(FillClr{(Color)_settings.verticalClr});
             _horizontal_rect->set(FillClr{(Color)_settings.horizontalClr});
             _last_hover = Vec2(e.hover.x, e.hover.y);
-            //print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
+            //Print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
             update_hover();
             set_content_changed(true);
         }
@@ -589,10 +589,10 @@ void GridLayout::update_layout() {
             
             cell->set_pos({cell_x, cell_y});
             
-            //print("cell(",col_idx,",",row_idx,") coordinates ", cell, " -> row_height=", row_height, " @ ", cell->pos()," with margins=", _margins, " and size=", cell->size(), " vs rowbounds=", rowBounds.back());
+            //Print("cell(",col_idx,",",row_idx,") coordinates ", cell, " -> row_height=", row_height, " @ ", cell->pos()," with margins=", _margins, " and size=", cell->size(), " vs rowbounds=", rowBounds.back());
             /*for(auto c : cell->children()) {
                 if(c)
-                    print("\t",*c, " ", c->pos());
+                    Print("\t",*c, " ", c->pos());
             }*/
 
             x += max_col_widths[col_idx] + margins().width;

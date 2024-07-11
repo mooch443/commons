@@ -84,7 +84,7 @@ void CVBase::set_window_bounds(Bounds) {
             small.copyTo(big, split[3](Bounds(mx, my, w, h)));
             
         } else {
-            print("Didnt draw ", pos, " ", mat.cols, "x", mat.rows,". in window ",_window.cols, "x", _window.rows);
+            Print("Didnt draw ", pos, " ", mat.cols, "x", mat.rows,". in window ",_window.cols, "x", _window.rows);
         }
     }
     

@@ -116,7 +116,7 @@ void StaticText::set_default_font(Font font) {
                    && t->pos().y + t->size().height * (1 - t->origin().y) > _settings.max_size.y)
                 {
 #ifndef NDEBUG
-                    print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y, ": ", t->txt());
+                    Print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y, ": ", t->txt());
 #endif
                     //hiding_something = true;
                     
@@ -228,7 +228,7 @@ void StaticText::add_shadow() {
         
         /*if(_max_size.y > 0) {
             if(ptr->pos.y * Base::default_line_spacing(_default_font) >= _max_size.y ) {
-                print("Cutting off ", ptr->str, "  at ", ptr->pos, " with max size ", _max_size);
+                Print("Cutting off ", ptr->str, "  at ", ptr->pos, " with max size ", _max_size);
                 return;
             }
         }*/
@@ -408,12 +408,12 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                     }
 #ifndef NDEBUG
                     else
-                        print("Cannot pop tag ",s);
+                        Print("Cannot pop tag ",s);
 #endif
                 } else {
                     //std::string l = utils::lowercase(s);
-                    //print("command: ", utils::lowercase(s));
-                    //print("all = ", AllColors);
+                    //Print("command: ", utils::lowercase(s));
+                    //Print("all = ", AllColors);
                     if(not contains(commands, s)
                        && not contains(AllColors, s))
                     {
@@ -553,7 +553,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 }
                 
                 if(not found)
-                    print("Unknown tag ",tag.name," in RichText.");
+                    Print("Unknown tag ",tag.name," in RichText.");
             }
             
             if(!tag.subranges.empty()) {

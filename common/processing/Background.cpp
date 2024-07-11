@@ -24,7 +24,7 @@ namespace cmn {
                 else if (name == "meta_encoding") {
                     cmn::meta_encoding = SETTING(meta_encoding).value<meta_encoding_t::Class>().value();
 
-                    //print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
+                    //Print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
                 }
                 //Background::update_callback();
             });
@@ -54,7 +54,7 @@ namespace cmn {
     }
 
     Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
-        : _image(std::move(image)), _grid(grid), _bounds(_image->bounds())
+        : _image(std::move(image)), /*_grid(grid),*/ _bounds(_image->bounds())
     {
         if(_image->channels() == 3) {
             _grey_image = Image::Make(_image->rows, _image->cols, 1);
@@ -72,7 +72,7 @@ namespace cmn {
     void Background::update_callback() {
 #ifndef NDEBUG
         if(GlobalSettings::is_runtime_quiet())
-            print("Updating static background difference method.");
+            Print("Updating static background difference method.");
 #endif
     }
     

@@ -89,7 +89,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
     auto str = Meta::toStr(value);
 #endif
-    //print("Checking whether ", value, " can be narrowed to ", Meta::name<ToType>(), " from ", Meta::name<FromType>(), ".");
+    //Print("Checking whether ", value, " can be narrowed to ", Meta::name<ToType>(), " from ", Meta::name<FromType>(), ".");
     if constexpr (std::is_floating_point<ToType>::value) {
         // For floating-point targets, the range check isn't typically necessary for integers,
         // but you might want to check for extremely large values for completeness.

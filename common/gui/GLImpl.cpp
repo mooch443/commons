@@ -206,7 +206,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     
     // Create window with graphics context
-    print("Creating window with dimensions ", width, "x", height, " and title ", std::string(title));
+    Print("Creating window with dimensions ", width, "x", height, " and title ", std::string(title));
     window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
         throw U_EXCEPTION("[GL] Cannot create GLFW window.");
@@ -231,9 +231,9 @@ void GLImpl::create_window(const char* title, int width, int height) {
 #endif
     
     if OPENGL3_CONDITION
-        print("Using OpenGL3.2 (seems supported, ", (const char*)glGetString(GL_VERSION),").");
+        Print("Using OpenGL3.2 (seems supported, ", (const char*)glGetString(GL_VERSION),").");
     else
-        print("Using OpenGL2.1 (", (const char*)glGetString(GL_VERSION),")");
+        Print("Using OpenGL2.1 (", (const char*)glGetString(GL_VERSION),")");
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -261,7 +261,7 @@ void GLImpl::create_window(const char* title, int width, int height) {
     RefreshTitleBarThemeColor(native);
 #endif
 
-    print("Init complete.");
+    Print("Init complete.");
 }
 
 GLFWwindow* GLImpl::window_handle() {
@@ -338,7 +338,7 @@ LoopStatus GLImpl::update_loop(const std::function<bool()>& custom_loop) {
     }
     
     /*if(draw_timer.elapsed() >= 1) {
-        print(draw_calls," draw_calls / s");
+        Print(draw_calls," draw_calls / s");
         draw_calls = 0;
         draw_timer.reset();
     }*/
@@ -589,7 +589,7 @@ TexturePtr GLImpl::texture(const Image * ptr) {
 #else
     glTexImage2D(GL_TEXTURE_2D, 0, output_type, width, height, 0, input_type, GL_UNSIGNED_BYTE, empty.data()); checkGLError();
 
-    //print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
+    //Print("updating texture ",ptr->cols, "x", ptr->rows, " -> input:", input_type, " size:", ptr->size(), " - dims:", ptr->dimensions(), " capacity:", capacity, " (",width,"x",height,")");
     glTexSubImage2D(GL_TEXTURE_2D,0,0,0, (GLsizei)ptr->cols, (GLsizei)ptr->rows, input_type, GL_UNSIGNED_BYTE, ptr->data()); checkGLError();
 #endif
     glBindTexture(GL_TEXTURE_2D, 0); checkGLError();

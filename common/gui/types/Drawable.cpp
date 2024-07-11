@@ -144,7 +144,7 @@ namespace cmn::gui {
             }
             
             //str = Meta::toStr(copy);
-            print(copy.size()," objects maybe garbage");
+            Print(copy.size()," objects maybe garbage");
             
             if(!copy.empty()) {
                 auto ten = copy.begin();
@@ -154,7 +154,7 @@ namespace cmn::gui {
                     auto && [_, object] = *ten;
                     auto && [timer, r, t] = all_drawables.at(object);
                     auto trace = resolve_stacktrace({r, t});
-                    print(trace);
+                    Print(trace);
                 }
             }
             
@@ -255,9 +255,9 @@ namespace cmn::gui {
         
 #ifndef NDEBUG
         if(scale.empty())
-            print("Scale is zero.");
+            Print("Scale is zero.");
         if(std::isnan(scale.x) || std::isinf(scale.x) || std::isnan(scale.y) || std::isinf(scale.y))
-            print("NaN or Inf in set_scale.");
+            Print("NaN or Inf in set_scale.");
 #endif
         _scale = scale;
     }
@@ -948,7 +948,7 @@ bool SectionInterface::is_animating() noexcept {
     void SectionInterface::on_visibility_change(bool visible) {
         Drawable::on_visibility_change(visible);
         
-        print(" visibility of ", this, " changed to ", visible);
+        Print(" visibility of ", this, " changed to ", visible);
 
         // only propagate to children if the visibility is deactivated
         // since the children will not necessarily be visible if the parent

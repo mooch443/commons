@@ -88,7 +88,7 @@ namespace cmn::gui {
     void DrawStructure::draw_log_messages(Bounds screen) {
         if (screen.empty()) {
             auto scale = this->scale().reciprocal();
-            //cmn::print("scale: ", scale, " dims: ", Size2(this->width(), this->height()));
+            //cmn::Print("scale: ", scale, " dims: ", Size2(this->width(), this->height()));
             //scale = Vec2(1);
             auto dim = Size2(this->width(), this->height()).mul(scale * gui::interface_scale());
             screen = Bounds(Vec2(), dim);
@@ -272,7 +272,7 @@ void Dialog::set_closed() {
     void Dialog::update_sizes(DrawStructure& d) {
         Size2 size = Size2(d.width(), d.height());
         if(!d.dialog_window_size().empty()) {
-            //cmn::print("dialog ", d.dialog_window_size(), " vs. ", size);
+            //cmn::Print("dialog ", d.dialog_window_size(), " vs. ", size);
             size = d.dialog_window_size();
         }
         
@@ -479,10 +479,10 @@ void DrawStructure::close_dialogs() {
         return _root.remove_wrapped(d);
     }
     
-    void DrawStructure::print(const Base* base) {
+    void DrawStructure::Print(const Base* base) {
         auto str = _root.toString(base);
-        cmn::print("String\n", str);
-        cmn::print("Length: ", collect().size());
+        cmn::Print("String\n", str);
+        cmn::Print("Length: ", collect().size());
     }
     
     std::vector<Drawable*> DrawStructure::collect() {
@@ -528,7 +528,7 @@ void DrawStructure::close_dialogs() {
                         
                         parent->children().insert(parent->children().begin() + (int64_t)parent->_index, s);
 #ifndef NDEBUG
-                        cmn::print("Moved section ",name," (",parent->_index,")");
+                        cmn::Print("Moved section ",name," (",parent->_index,")");
 #endif
                     }
                     

@@ -726,7 +726,7 @@ private: \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
     template<Variables M> static void update(std::string_view key, const cmn::sprite::PropertyType& value) { \
-        /*print("[",#NAM,"] Updating key ", key, " = ", value.valueString());*/ \
+        /*Print("[",#NAM,"] Updating key ", key, " = ", value.valueString());*/ \
         auto it = callbacks().find(M); \
         if(it != callbacks().end()) { \
             for(auto& fn : it->second) \

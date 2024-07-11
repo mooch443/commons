@@ -247,13 +247,13 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         for(auto & [l, px] : *it->obj) {
             assert((l)->y() >= y);
             //if(ptr_safe_t(l->x1()) - ptr_safe_t(l->x0()) >= 63)
-                //print("Line is of suspicious length: ", *l);
+                //Print("Line is of suspicious length: ", *l);
                 
             if(current > lines->data()
                && (current - 1)->x1 + 1 == l->x0()
                && (current - 1)->y == l->y())
             {
-                //print("Could merge lines ", *l, " and ", *(current-1));
+                //Print("Could merge lines ", *l, " and ", *(current-1));
                 (current-1)->x1 = l->x1();
                 --LLines;
             } else {
@@ -282,7 +282,7 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
     
 #if defined(DEBUG_MEM)
     if(!Brototype::brototypes().empty())
-        print("Still have ",Brototype::brototypes().size()," brototypes in memory");
+        Print("Still have ",Brototype::brototypes().size()," brototypes in memory");
     
     source._nodes.clear();
     
@@ -291,7 +291,7 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         
         std::lock_guard guard(Node_t::mutex());
         if(!Node_t::created_nodes().empty())
-            print("Still have ",Node_t::created_nodes().size()," nodes in memory");
+            Print("Still have ",Node_t::created_nodes().size()," nodes in memory");
     }
     
     Brototype::brototypes().clear();
@@ -339,14 +339,14 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
             auto copy = *it;
             while(ptr_safe_t(copy.x1) - ptr_safe_t(copy.x0) > Line_t::bit_size_x1) {
                 Line_t line(copy.x0, copy.x0 + Line_t::bit_size_x1, copy.y);
-                //print("converting ", *it, " to shorter lines: ", line.x0(), ",", line.x1(), ";", line.y());
+                //Print("converting ", *it, " to shorter lines: ", line.x0(), ",", line.x1(), ";", line.y());
                 list.source().push_back(line, pxcopy);
 
                 copy.x0 += Line_t::bit_size_x1 + 1;
                 pxcopy += (Line_t::bit_size_x1 + 1) * ptr_safe_t(channels);
             }
 
-            //print("converting ", *it, " to shorter lines: ", copy);
+            //Print("converting ", *it, " to shorter lines: ", copy);
             list.source().push_back(copy, pxcopy);
 
         } else

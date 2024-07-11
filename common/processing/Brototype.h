@@ -9,10 +9,10 @@ class DLList;
 
 inline auto& _emplace_back(auto& array, auto&& obj) {
     const auto N = array.size();
-    //print("capacity = ", N, " vs ", array.capacity());
+    //Print("capacity = ", N, " vs ", array.capacity());
     if(array.capacity() <= N) {
         array.reserve(max(64u, N * 2));
-        //print("Had to reserve ", N, " -> ", array.capacity());
+        //Print("Had to reserve ", N, " -> ", array.capacity());
     }
         
     return array.emplace_back(std::move(obj));

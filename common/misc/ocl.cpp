@@ -39,7 +39,7 @@ namespace ocl {
             static bool printed = false;
             
             if(!printed) {
-                cmn::print("Using CUDA device:");
+                cmn::Print("Using CUDA device:");
                 cv::cuda::printCudaDeviceInfo(0);
                 printed = true;
             }

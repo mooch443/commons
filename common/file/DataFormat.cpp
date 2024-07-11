@@ -56,7 +56,7 @@ int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t len
     /* create or open file */
     if (!create) {
         assert(path.exists());
-        print("Opening for reading...");
+        Print("Opening for reading...");
         hFile = CreateFile ( path.c_str(), GENERIC_READ,
             FILE_SHARE_READ, &sa, OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL, NULL);
@@ -341,7 +341,7 @@ uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
                 throw U_EXCEPTION("Cannot write ",num_bytes," bytes to disk (",_filename,") since there is not enough empty space available on disk (",space.available,").");
         } catch(const fs::filesystem_error& ex)
         {
-            print("An exception occurred while handling another exception: '",ex.what(),"'.");
+            Print("An exception occurred while handling another exception: '",ex.what(),"'.");
         }
 #endif
 #endif

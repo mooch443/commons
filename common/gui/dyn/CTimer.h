@@ -35,7 +35,7 @@ struct CTimer {
         field.samples++;
         
         if(field.samples % 10000 == 0) {
-            print("! [", _name, "] ", field);
+            Print("! [", _name, "] ", field);
             field.count /= double(field.samples);
             field.samples = 1;
         }

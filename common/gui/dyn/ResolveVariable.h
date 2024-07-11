@@ -37,7 +37,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             
             if(p.parameters.size() >= 2) {
                 bool condition = convert_to_bool(parse_text(p.parameters.at(0), context, state));
-                //print("Condition ", props.parameters.at(0)," => ", condition);
+                //Print("Condition ", props.parameters.at(0)," => ", condition);
                 if(condition)
                     return Meta::fromStr<Result>(parse_text(p.parameters.at(1), context, state));
                 else if(p.parameters.size() == 3)

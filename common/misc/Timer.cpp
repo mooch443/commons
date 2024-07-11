@@ -26,7 +26,7 @@ void Timing::start_() {
     for(auto it = _threads.begin(); it != _threads.end();) {
         auto && [tid, info] = *it;
         if (info.timer_since.elapsed() > 10) {
-            cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
+            cmn::Print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
             it = _threads.erase(it);
         } else
             ++it;
@@ -43,7 +43,7 @@ void Timing::start_measure() {
     for(auto it = _threads.begin(); it != _threads.end();) {
         auto && [tid, info] = *it;
         if (info.timer.elapsed() > 10) {
-            cmn::print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
+            cmn::Print("Deleting timer for tid ", &tid," (", _name.c_str(),", ", _threads.size()," threads known)");
             it = _threads.erase(it);
         } else
             ++it;
@@ -73,7 +73,7 @@ double Timing::conclude_measure(double elapsed) {
     
     bool exchange = true;
     if(info.initial_frame.compare_exchange_strong(exchange, false)) {
-        cmn::print("-- (", sample_count,") ", _name," initial frame took ", info.timer.elapsed() * 1000,"ms");
+        cmn::Print("-- (", sample_count,") ", _name," initial frame took ", info.timer.elapsed() * 1000,"ms");
         sample_count++;
         return -1;
     }
@@ -90,7 +90,7 @@ double Timing::conclude_measure(double elapsed) {
     if (all_elapsed / _threads.size() >= _print_threshold
         && info.timingCount > 0)
     {
-        cmn::print("-- (", sample_count,") ", _name.c_str()," took ", cmn::dec<4>(double(info.averageTime) / double(info.timingCount) * 1000),"ms and ",cmn::dec<4>(info.stimingCount == 0 ? 0.0 : double(info.averageTimeSince) / double(info.stimingCount)*1000.0),"ms between");
+        cmn::Print("-- (", sample_count,") ", _name.c_str()," took ", cmn::dec<4>(double(info.averageTime) / double(info.timingCount) * 1000),"ms and ",cmn::dec<4>(info.stimingCount == 0 ? 0.0 : double(info.averageTimeSince) / double(info.stimingCount)*1000.0),"ms between");
         
         for(auto && [id, inf] : _threads) {
             if(inf.timingCount > 0) {

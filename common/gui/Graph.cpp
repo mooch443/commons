@@ -607,7 +607,7 @@ void Graph::export_data(const std::string &filename, std::function<void(float)> 
         
 #ifndef NDEBUG
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000) {
-            print(x, "/",int(rx.end)," done");
+            Print(x, "/",int(rx.end)," done");
         }
 #endif
         
@@ -673,7 +673,7 @@ void Graph::save_npz(const std::string &filename, std::function<void(float)> *pe
         
 #ifndef NDEBUG
         if (int(x)%print_step == 0 && rx.end - rx.start > 10000 && !quiet) {
-            print(x, "/", int(rx.end)," done");
+            Print(x, "/", int(rx.end)," done");
         }
 #endif
         

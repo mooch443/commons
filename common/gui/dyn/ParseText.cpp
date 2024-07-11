@@ -14,13 +14,13 @@ bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const
     std::unordered_map<std::string_view, std::function<void(const Layout::Ptr&, const Action&)>, MultiStringHash, MultiStringEqual> applicators {
         { "pos",
             [](const Layout::Ptr& ptr, const Action& action) {
-                print("pos = ", action, " for ", ptr.get());
+                Print("pos = ", action, " for ", ptr.get());
                 LabeledField::delegate_to_proper_type(attr::Loc{Meta::fromStr<Vec2>(action.parameters.back())}, ptr);
             }
         },
         { "fill",
             [](const Layout::Ptr& ptr, const Action& action) {
-                print("fill = ", action, " for ", ptr.get());
+                Print("fill = ", action, " for ", ptr.get());
                 LabeledField::delegate_to_proper_type(attr::FillClr{Meta::fromStr<Color>(action.parameters.back())}, ptr);
             }
         }
@@ -133,7 +133,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                                     ret = variable.value_string(modifiers);
                                 //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
                                 //auto str = modifiers.toStr();
-                                //print(str.c_str(), " resolves to ", ret);
+                                //Print(str.c_str(), " resolves to ", ret);
                                 if(modifiers.html)
                                     return settings::htmlify(ret);
                                 return ret;
@@ -231,7 +231,7 @@ PreVarProps extractControls(const std::string_view& variable) {
         props.subs[i - 1] = r[i];
     }
 
-    //print("Initial parameters = ", props.parameters);
+    //Print("Initial parameters = ", props.parameters);
     //for(auto &p : props.parameters) {
         // parse parameters here
         // if the parameter seems to be a string (quotes '"), use parse_text(text, context) function to parse it

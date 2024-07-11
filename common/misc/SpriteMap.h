@@ -321,7 +321,7 @@ concept Iterable = requires(T obj) {
             
             for(; it0 != other._props.end(); ++it0, ++it1) {
                 if(!(it0->first == it1->first) || !(*it0->second == *it1->second)) {
-                    print(it0->first," != ",it1->first," || ");
+                    Print(it0->first," != ",it1->first," || ");
                     return false;
                 }
             }
@@ -466,9 +466,9 @@ concept Iterable = requires(T obj) {
                     ptr->set_do_print(true);
                     if constexpr(ParserAvailable<T>)
                     {
-                        print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
+                        Print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
                     } else
-                        print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
+                        Print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
                 }
                 
                 auto guard = LOGGED_LOCK(mutex());
@@ -628,9 +628,9 @@ void Reference::operator=(const T& value) {
                     if(_do_print) {
                         if constexpr(ParserAvailable<T>)
                         {
-                            print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+                            Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
                         } else {
-                            print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
+                            Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
                         }
                     }
                     
@@ -648,13 +648,13 @@ void Reference::operator=(const T& value) {
                     if(_do_print) {
                         if constexpr(ParserAvailable<T>)
                         {
-                            print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+                            Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
                         } else {
-                            print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
+                            Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
                         }
                     }
                     //if(_do_print)
-                    //    print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
+                    //    Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
                     
                     triggerCallbacks();
                 }

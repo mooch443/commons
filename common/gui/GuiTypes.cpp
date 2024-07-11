@@ -13,7 +13,7 @@ VertexArray::VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, 
         prepare();
     }
     else {
-        //print("Passed vector is not copied. Make sure it is not destroyed before this object.");
+        //Print("Passed vector is not copied. Make sure it is not destroyed before this object.");
         update_size();
     }
 }
@@ -26,7 +26,7 @@ void VertexArray::prepare() {
     if(!_transport)
         return;
     
-    //print("original = ", _original_points.size(), ", transport = ", _transport->size());
+    //Print("original = ", _original_points.size(), ", transport = ", _transport->size());
     _original_points = *_transport;
     //_original_points.insert(_original_points.end(), _transport->begin(), _transport->end());
     _size_calculated = false;

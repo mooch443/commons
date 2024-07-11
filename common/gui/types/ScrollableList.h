@@ -778,7 +778,7 @@ namespace cmn::gui {
                             if(_item_font.align == Align::Center) {
                                 float ycenter = y + item_height * 0.5;
                                 float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
-                                //print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
+                                //Print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
                                 
                                 _texts.at(idx)->set_pos(Vec2{
                                     (width() - _texts.at(idx)->width()) * 0.5f,

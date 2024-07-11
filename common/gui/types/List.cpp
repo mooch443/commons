@@ -176,7 +176,7 @@ namespace cmn::gui {
             }
         }
         
-        print("Item ",ID," cannot be found.");
+        Print("Item ",ID," cannot be found.");
     }
 
 void List::on_click(const Item * item) {
@@ -292,7 +292,7 @@ void List::on_click(const Item * item) {
         auto gb = global_bounds();
         
         //if(!folded())
-        //print(stage()->height(), " -> ", (gb.y + _items.size() * _row_height * gscale), "  @ position ", gb," -> ", 
+        //Print(stage()->height(), " -> ", (gb.y + _items.size() * _row_height * gscale), "  @ position ", gb," -> ", 
         //    stage()->height() - (gb.y + _items.size() * _row_height * gscale));
         const bool inverted = foldable() && stage() 
             //&& gb.y + (_items.size()) * _row_height * gscale >= stage()->height() / stage()->scale().y
@@ -393,7 +393,7 @@ void List::on_click(const Item * item) {
             if(not _placeholder.empty()) {
                 auto f = _item_font;
                 f.align = Align::Center;
-                //print("size = ", size);
+                //Print("size = ", size);
                 add<Text>(Str((std::string)_placeholder),
                           Loc(size.size() * 0.5),
                           f, TextClr{LightGray.alpha(200)});

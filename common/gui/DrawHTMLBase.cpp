@@ -127,7 +127,7 @@ namespace cmn::gui {
             ss << "]";
             
             if(dynamic_cast<HasName*>(d))
-                print("Sending ", dynamic_cast<HasName*>(d)->name());
+                Print("Sending ", dynamic_cast<HasName*>(d)->name());
             
             if(cache) {
                 cache->set_text(ss.str());
@@ -153,7 +153,7 @@ namespace cmn::gui {
                     _ss << object_str;
                 }
             } catch(const UtilsException& e) {
-                print("Skipping object that generated an error.");
+                Print("Skipping object that generated an error.");
             }
         }
         

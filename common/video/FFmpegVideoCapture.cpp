@@ -64,7 +64,7 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 #ifndef NDEBUG
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
-        print("[FFMPEG] HW type: ", hw_type);
+        Print("[FFMPEG] HW type: ", hw_type);
     }
 #endif
 
@@ -307,7 +307,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
            || frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den / 4) + 1))
     {
 #ifndef NDEBUG
-        print("[FFMPEG] jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
+        Print("[FFMPEG] jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
         Timer timer;
         size_t i = 0;
 #endif
@@ -320,12 +320,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 #ifndef NDEBUG
         auto e = timer.elapsed();
         if(i > 0 && e > 0)
-            print("[FFMPEG] jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
+            Print("[FFMPEG] jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
 #endif
         return frameIndex == frameCount;
     } else {
 #ifndef NDEBUG
-        print("[FFMPEG] jump seeking not good, seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
+        Print("[FFMPEG] jump seeking not good, seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
 #endif
     }
 
@@ -346,13 +346,13 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             && abs(keyframe - frameIndex) < offset) 
         {            
 #ifndef NDEBUG
-            print("[FFMPEG] jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
+            Print("[FFMPEG] jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
 #endif
             timestamp = it->second;
         } 
 #ifndef NDEBUG
         else
-            print("[FFMPEG] NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
+            Print("[FFMPEG] NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
 #endif
     }
 
@@ -360,7 +360,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
 
 #ifndef NDEBUG
-    print("[FFMPEG] jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " from ", frameCount," frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
+    Print("[FFMPEG] jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " from ", frameCount," frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
     av_log_set_level(AV_LOG_DEBUG);
 #endif
     // Seek directly to the calculated timestamp
@@ -435,12 +435,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             received_frame = frame_index;
             if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {  
 #ifndef NDEBUG
-                print("[FFMPEG] found jumped to frame ", frame_index, " / ", frameIndex);
+                Print("[FFMPEG] found jumped to frame ", frame_index, " / ", frameIndex);
 #endif
                 break;
             } else if(frame_index >= frameIndex && timestamp == 0) {                
 #ifndef NDEBUG
-                print("[FFMPEG] jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
+                Print("[FFMPEG] jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
 #endif
                 return false;
                 
@@ -453,7 +453,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 offset = int64_t(offset * 1.5);
                 timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
 #ifndef NDEBUG
-                print("[FFMPEG] jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
+                Print("[FFMPEG] jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
 #endif
                 
                 frame_skips++;
@@ -471,12 +471,12 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                    && int64_t(frameIndex) - frame_index < 50)
                 {
 #ifndef NDEBUG
-                    print("[FFMPEG] We are close enough to ", frameIndex, " by jumping to ", frame_index);
+                    Print("[FFMPEG] We are close enough to ", frameIndex, " by jumping to ", frame_index);
 #endif
                     frameCount = frame_index;
                     while(grab() && frameIndex > frameCount) {
 #ifndef NDEBUG
-                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
+                        Print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
 #endif
                     }
                     return frameCount == frameIndex;
@@ -501,14 +501,14 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                     frameCount = frame_index;
                     while(grab() && frameIndex > frameCount) {
 #ifndef NDEBUG
-                        print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
+                        Print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
 #endif
                     }
                     
                     return frameCount == frameIndex;
                 }
 #ifndef NDEBUG
-                print("[FFMPEG] jumped to frame ", frame_index, " / ", frameIndex);
+                Print("[FFMPEG] jumped to frame ", frame_index, " / ", frameIndex);
 #endif
                 continue;
             }
@@ -525,7 +525,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 #ifndef NDEBUG
     auto e = timer.elapsed();
     if(e > 0 && count_jumped_frames > 0)
-        print("jump skipped ", count_jumped_frames, " frames in ", e * 1000, "ms => ", double(count_jumped_frames) / e,"fps");
+        Print("jump skipped ", count_jumped_frames, " frames in ", e * 1000, "ms => ", double(count_jumped_frames) / e,"fps");
 #endif
 
     return true;
@@ -578,7 +578,7 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
             mat.create(frame->height, frame->width, CV_8UC(channels));
 
         dims = channels;
-        print("Created with: ", frame->height, " ", frame->width, " ", channels);
+        Print("Created with: ", frame->height, " ", frame->width, " ", channels);
     }
     
     if constexpr(std::is_same_v<Mat, cv::Mat>
@@ -677,7 +677,7 @@ bool FfmpegVideoCapture::grab() {
 #endif
             _keyframes[frameCount] = frame->pts;
 #ifndef NDEBUG
-            print("keyframe ", frameCount, " is ", frame->pts);
+            Print("keyframe ", frameCount, " is ", frame->pts);
 #endif
         }*/
 
@@ -716,7 +716,7 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
         || outFrame.dims != channels)
     {
         outFrame.create(dimensions().height, dimensions().width, channels);
-        print("Created with: ", frame->height, " ", frame->width, " ", channels);
+        Print("Created with: ", frame->height, " ", frame->width, " ", channels);
     }
 
     cv::Mat mat;
@@ -793,7 +793,7 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
         /*if (timestamp >= 0) {
             _keyframes[frameCount] = timestamp;
 #ifndef NDEBUG
-            print("_read: keyframe ", frameCount, " is ", timestamp);
+            Print("_read: keyframe ", frameCount, " is ", timestamp);
 #endif
         }*/
 

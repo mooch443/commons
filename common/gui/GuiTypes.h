@@ -559,7 +559,7 @@ protected:
         public:
             ReturnRef(ExternalImage* source) : source(source) {}
             ~ReturnRef() {
-                print("Destructed");
+                Print("Destructed");
                 source->clear_cache(); source->set_dirty();
             }
             operator Image& () {

@@ -80,7 +80,7 @@ namespace cmn {
         
         std::string str() const {
             std::stringstream ss;
-            ss << "HL<" << x0 << " - " << x1 << y << ", " << ">";
+            ss << "HL<" << y << " " << x0 << "," << x1 << ">";
             return ss.str();
         }
         
@@ -119,7 +119,7 @@ namespace cmn {
         
         //redefine the construct function (hiding the base-class version):
         /*void construct( pointer p, const_reference cr) {
-         print("Construct called!");
+         Print("Construct called!");
          //else, do nothing.
          };*/
         

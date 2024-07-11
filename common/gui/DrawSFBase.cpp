@@ -92,12 +92,12 @@ namespace cmn::gui {
             _video_mode = sf::VideoMode(_window.getSize().x, _window.getSize().y);
             
             auto modes = sf::VideoMode::getFullscreenModes();
-            print("Supported:");
+            Print("Supported:");
             for(auto &mode: modes)
-                print(mode.width,"x",mode.height,"@ ",mode.bitsPerPixel);
+                Print(mode.width,"x",mode.height,"@ ",mode.bitsPerPixel);
             
             auto mode = modes.front();
-            print("using (first) mode: ", mode.width,"x", mode.height," @ ",mode.bitsPerPixel);
+            Print("using (first) mode: ", mode.width,"x", mode.height," @ ",mode.bitsPerPixel);
             _window.create(mode, _title, sf::Style::Fullscreen);
             _window.setView(sf::View(sf::FloatRect(0, 0, mode.width, mode.height)));
             _window.setActive(false);
@@ -270,7 +270,7 @@ namespace cmn::gui {
         if(_has_texture) {
             if(_texture.getSize().x != _window.getView().getSize().x * 2 || _texture.getSize().y != _window.getView().getSize().y * 2) {
                 _texture.create(_window.getView().getSize().x * 2, _window.getView().getSize().y * 2, sf::ContextSettings(0, 0, 8));
-                print("Updated texture ", _texture.getSize());
+                Print("Updated texture ", _texture.getSize());
             }
             
             _texture.clear(Transparent);

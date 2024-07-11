@@ -880,7 +880,7 @@ inline std::string current_time_string() {
 }
 
 template<typename... Args>
-void print(const Args & ... args) {
+void Print(const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
     
     auto str =
@@ -1131,15 +1131,15 @@ template<typename... Args>
 void DebugHeader(const Args& ...args) {
     std::string str = format<FormatterType::NONE>(args...);
     auto line = utils::repeat("-", str.length());
-    print(line.c_str());
-    print(args...);
-    print(line.c_str());
+    Print(line.c_str());
+    Print(args...);
+    Print(line.c_str());
 }
 
 
 template<typename... Args>
 void DebugCallback(const Args& ...args) {
-    print<Args...>(args...);
+    Print<Args...>(args...);
 }
 
 

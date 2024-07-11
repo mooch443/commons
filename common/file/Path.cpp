@@ -699,7 +699,7 @@ Path Path::absolute() const {
         } catch (std::filesystem::filesystem_error& e) {
             // do nothing
     #ifndef NDEBUG
-            print("Filesystem error: '",e.what(),"'");
+            Print("Filesystem error: '",e.what(),"'");
     #endif
 #endif
         }
@@ -762,7 +762,7 @@ Path Path::absolute() const {
 #else
         if (!chdir(path.c_str()))
 #endif
-            print("Changed directory to ", path," (", path.absolute(), ").");
+            Print("Changed directory to ", path," (", path.absolute(), ").");
         else {
             FormatError("Cannot change directory to ",path,". ");
         }

@@ -280,8 +280,8 @@ namespace grid {
                 }*/
             }
             
-           // print(" removed = ", elements_removed, "  iterated = ", elements_iterated);
-            //print("*removed = ", _elements_removed, " *iterated = ", _elements_iterated);
+           // Print(" removed = ", elements_removed, "  iterated = ", elements_iterated);
+            //Print("*removed = ", _elements_removed, " *iterated = ", _elements_iterated);
             //assert(_elements_removed == elements_removed);
         }
         

@@ -785,7 +785,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v2.11.1")
+set(pybind11_version_tag "v2.13.1")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -1287,6 +1287,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_EXAMPLES=OFF
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_IPP_IW=OFF
+            -DWITH_OBSENSOR=OFF
             -DBUILD_PACKAGE=OFF
             -DBUILD_PERF_TESTS=OFF
             -DBUILD_SHARED_LIBS=OFF
@@ -1331,6 +1332,7 @@ else()
             -DWITH_FFMPEG:BOOL=TRUE
             -DWITH_MSMF:BOOL=FALSE
             -DWITH_IPP:BOOL=FALSE
+            -DWITH_OBSENSOR=OFF
             -DWITH_GTK:BOOL=FALSE
             -DWITH_CAIRO:BOOL=FALSE
             -DWITH_PNG:BOOL=TRUE

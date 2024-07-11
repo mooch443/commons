@@ -327,7 +327,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     // These macros exchange them:
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 /*#ifndef NDEBUG
-    #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows); } void()
+    #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); Print("(",__FILENAME__,":",__LINE__,") ",#X,": ",INPUT->cols,"x",INPUT->rows," vs. ",OUTPUT->cols,"x",OUTPUT->rows); } void()
 #else*/
     #define CALLCV( X ) { X; std::swap(INPUT, OUTPUT); } void()
 //#endif
@@ -607,7 +607,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         
         /*if(show_debug_info) {
             INPUT->copyTo(local);
-            print(getImgType(local.type()));
+            Print(getImgType(local.type()));
             tf::imshow("only_bg_invert", local);
         }*/
 

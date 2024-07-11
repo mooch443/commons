@@ -89,7 +89,7 @@ namespace cmn {
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
     Image::~Image() {
         if (_data) {
-            print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
+            Print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
         }
     }
 #endif
@@ -110,7 +110,7 @@ namespace cmn {
                     _array_size = N;
 
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-                print("Realloc of image ",this->cols,"x",this->rows,"x",this->dims," to ",cols,"x",rows,"x",dims," (",_array_size," >= ",N,")");
+                Print("Realloc of image ",this->cols,"x",this->rows,"x",this->dims," to ",cols,"x",rows,"x",dims," (",_array_size," >= ",N,")");
 #endif
                 _data.realloc(_array_size * sizeof(uchar));
 #ifndef NDEBUG
@@ -120,7 +120,7 @@ namespace cmn {
             } // otherwise just be memory-inefficient and leave the array as it is :-)
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
             //else
-                //print("Reusing ", _size," for ",_array_size," array");
+                //Print("Reusing ", _size," for ",_array_size," array");
 #endif
         }
         else if(N > 0) {
@@ -132,7 +132,7 @@ namespace cmn {
 
             _data.malloc(_array_size * sizeof(uchar));
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-            print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
+            Print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
             //print_stacktrace(stdout);
 #endif
         }

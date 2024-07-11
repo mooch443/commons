@@ -75,7 +75,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, Sta
         if(obj.contains("size")) {
             size = get(_defaults.size, "size");
         } else {
-            //print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
+            //Print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
             state.patterns[hash]["size"] = Pattern{"auto", {}};
         }
         
@@ -111,7 +111,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, Sta
 }
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
-    //print("Calculating hash for index ", hash, " ", (uint64_t)ptr.get());
+    //Print("Calculating hash for index ", hash, " ", (uint64_t)ptr.get());
     if(type != LayoutType::settings) {
         if(line != Transparent)
             LabeledField::delegate_to_proper_type(attr::LineClr{line}, ptr);
@@ -145,7 +145,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(obj.count("modules")) {
         if(obj["modules"].is_array()) {
             for(auto mod : obj["modules"]) {
-                print("module ", mod.get<std::string>());
+                Print("module ", mod.get<std::string>());
                 auto m = Modules::exists(mod.get<std::string>());
                 if(m)
                     m->_apply(hash, state, ptr);
@@ -185,7 +185,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         }
                         
                     } else {
-                        print("Unknown Action: ", hover_action);
+                        Print("Unknown Action: ", hover_action);
                     }
                     
                 } catch(...) {
@@ -210,7 +210,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         }
                         
                     } else {
-                        print("Unknown Action: ", unhover_action);
+                        Print("Unknown Action: ", unhover_action);
                     }
                     
                 } catch(...) {
@@ -240,7 +240,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                             State state;
                             it->second(action.parse(context, state));
                         } else
-                            print("Unknown Action: ", action);
+                            Print("Unknown Action: ", action);
                         
                     } catch(...) {
                         FormatExcept("error using action ", action);
@@ -262,7 +262,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         State state;
                         it->second(action.parse(context, state));
                     } else
-                        print("Unknown Action: ", action);
+                        Print("Unknown Action: ", action);
                     
                 } catch(...) {
                     FormatExcept("error using action ", action);
@@ -273,7 +273,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     }
     
     ptr->add_custom_data("object_index", (void*)hash);
-    //print("adding object_index to ",ptr->type()," with index ", hash, " for ", (uint64_t)ptr.get());
+    //Print("adding object_index to ",ptr->type()," with index ", hash, " for ", (uint64_t)ptr.get());
 }
 
 template <>
@@ -464,7 +464,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
     if(obj.count("children")) {
         //IndexScopeHandler handler{state._current_index};
         for(auto &child : obj["children"]) {
-            //print("collection: ", child.dump());
+            //Print("collection: ", child.dump());
             auto ptr = parse_object(gui, child, context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
@@ -606,7 +606,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
                 State state;
                 it->second(action.parse(context, state));
             } else
-                print("Unknown Action: ", action);
+                Print("Unknown Action: ", action);
         });
     }
     
@@ -630,7 +630,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
                 State state;
                 it->second(action.parse(context, state));
             } else
-                print("Unknown Action: ", action);
+                Print("Unknown Action: ", action);
         });
     }
     
@@ -652,7 +652,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
                 State state;
                 it->second(action.parse(context, state));
             } else
-                print("Unknown Action: ", action);
+                Print("Unknown Action: ", action);
         });
     }
     
@@ -715,7 +715,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
     if(obj.count("do")) {
         auto child = obj["do"];
         if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
-            //print("collection: ", child.dump());
+            //Print("collection: ", child.dump());
             // all successfull, add collection:
             state.loops[hash] = {
                 .variable = obj["var"].get<std::string>(),
@@ -736,7 +736,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
         auto child = obj["template"];
         if(child.is_object()) {
-            //print("collection: ", child.dump());
+            //Print("collection: ", child.dump());
             // all successfull, add collection:
             state.lists[hash] = {
                 .variable = obj["var"].get<std::string>(),
@@ -774,7 +774,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                     }
                     
                     actions.push_back(PreAction::fromStr(action));
-                    //print("list item: ", text, " ", action);
+                    //Print("list item: ", text, " ", action);
                     items.push_back(DetailItem{
                         text,
                         detail,
@@ -809,7 +809,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                it != context.actions.end())
             {
                 State state;
-                //print("Selecting ", actions.at(index));
+                //Print("Selecting ", actions.at(index));
                 it->second(action.parse(context, state));
             }
         });

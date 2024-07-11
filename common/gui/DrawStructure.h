@@ -176,7 +176,7 @@ namespace cmn::gui {
         std::vector<Drawable*> collect();
         bool is_key_pressed(Codes code) const;
         
-        void print(const Base*);
+        void Print(const Base*);
         
         void wrap_object(Drawable& d);
         void register_end_object(Drawable& d);
@@ -339,9 +339,9 @@ namespace cmn::gui {
         
         void set_active_section(Section* section) {
             /*if(!section)
-                print("active_section = empty");
+                Print("active_section = empty");
             else
-                print("Setting active_section = '", section->HasName::name(),"'");*/
+                Print("Setting active_section = '", section->HasName::name(),"'");*/
             _active_section = section;
         }
         

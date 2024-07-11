@@ -134,7 +134,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                 try {
                     static bool message = false;
                     if(!message) {
-                        print("Found timestamps for file ", npz.str(),".");
+                        Print("Found timestamps for file ", npz.str(),".");
                         message = true;
                     }
                     
@@ -411,19 +411,19 @@ VideoSource::VideoSource(VideoSource&& other)
         extension = x.str().substr(1);
         prefix = source.substr(0u, (uint64_t)m.position(1));
         
-        print("Extension ",extension," basename ",prefix);
+        Print("Extension ",extension," basename ",prefix);
         
     } else {
         throw U_EXCEPTION("File extension not found in ",source);
     }
     
-    print("Searching for ",prefix,".",extension);
+    Print("Searching for ",prefix,".",extension);
     _base = prefix;
     
     if(std::regex_search (prefix,m,rplaceholder)) {
         auto x = m[0];
         auto s = x.str();
-        print("Match ",s);
+        Print("Match ",s);
         
         auto L = s.length();
         auto p = (uint64_t)m.position();
@@ -441,7 +441,7 @@ VideoSource::VideoSource(VideoSource&& other)
         number_length = std::stoi(split[0]);
         suffix = prefix.substr(p + L);
         prefix = prefix.substr(0u, p);
-        print("match ",s," at ",p," with nr ",number_length,". suffix = ", suffix);
+        Print("match ",s," at ",p," with nr ",number_length,". suffix = ", suffix);
     }
     
     if(number_length != -1) {
@@ -465,7 +465,7 @@ VideoSource::VideoSource(const file::PathArray& source)
         extension = x.str().substr(1);
         prefix = str.substr(0u, (uint64_t)m.position(1));
         
-        //print("Extension ",extension," basename ",prefix);
+        //Print("Extension ",extension," basename ",prefix);
         
     } else {
         throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
@@ -475,9 +475,9 @@ VideoSource::VideoSource(const file::PathArray& source)
         prefix = "array";
     }
     
-    //print("Searching for ",prefix,".",extension);
+    //Print("Searching for ",prefix,".",extension);
     _base = file::find_basename(source); //prefix;
-    //print("Found _base = ", _base, " for ", source);
+    //Print("Found _base = ", _base, " for ", source);
     //_base = source.source();
     
     for(auto &path : source) {
@@ -531,7 +531,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
         std::string base(file::Path(prefix).is_folder() ? "" : file::Path(prefix).filename());
-        print("Trying to find the last file (starting at ", seq_start,") pattern ", base+"%"+Meta::toStr(padding)+"d"+suffix+"."+extension, "...");
+        Print("Trying to find the last file (starting at ", seq_start,") pattern ", base+"%"+Meta::toStr(padding)+"d"+suffix+"."+extension, "...");
         
         _files_in_seq.reserve(10000);
         
@@ -557,17 +557,17 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             }
             
             if(i%10000 == 0)
-                print("Finding file ", i," (",_files_in_seq.size()," found)...");
+                Print("Finding file ", i," (",_files_in_seq.size()," found)...");
             if(SETTING(terminate))
                 break;
             
         } while (true);
         
-        print("Last number was ", i-1);
+        Print("Last number was ", i-1);
         _files_in_seq.shrink_to_fit();
         
     } else {
-        print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
+        Print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
@@ -580,7 +580,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             _length += f->length();
             
             if(type() != File::Type::IMAGE && i % 50 == 0)
-                print(i, "/", seq_end);
+                Print(i, "/", seq_end);
             
             if(SETTING(terminate))
                 break;
@@ -621,7 +621,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
     }
     
-    print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
+    Print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
     _base = prefix+(suffix.empty() ? "" : "."+suffix);
     
     if(type() == File::VIDEO) {
@@ -805,7 +805,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     }*/
     
     // if there are many files, we should use only the first part of each video
-    print("Generating multi-file average...");
+    Print("Generating multi-file average...");
     
     gpuMat float_mat, f, ref;
     std::vector<gpuMat> vec;
@@ -814,7 +814,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     if(GlobalSettings::has("averaging_method"))
         method = SETTING(averaging_method).value<averaging_method_t::Class>();
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
-    print("Use averaging method: '", method.name(),"'");
+    Print("Use averaging method: '", method.name(),"'");
     
     auto [start, end] = [this]() -> std::tuple<Frame_t, Frame_t>{
         if(GlobalSettings::has("video_conversion_range")) {
@@ -869,13 +869,13 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
                     / (L / Frame_t{samples}))
             );
     
-    print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
+    Print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");
     std::map<File*, std::set<Frame_t>> file_indexes;
     
-    print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
+    Print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
     
     std::mutex mutex;
     GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
@@ -893,7 +893,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
         index += file->length();
     }
     
-    print("file_indexes = ", file_indexes);
+    Print("file_indexes = ", file_indexes);
     std::atomic<bool> terminate{false};
     std::vector<std::future<void>> futures;
     std::atomic<size_t> count = 0;
@@ -918,7 +918,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
                                 break;
                             }
                         }
-                        print(int(count), " / ", int(samples)," (", file->filename(),")");
+                        Print(int(count), " / ", int(samples)," (", file->filename(),")");
                     }
                     
                 } catch (const UtilsException& e) {

@@ -128,7 +128,7 @@ class PolyCache : public CacheObject {
                             if(it != all_gpu_texture.end()) {
                                 all_gpu_texture.erase(it);
                             } else
-                                print("Cannot find GPU texture of ",cache);
+                                Print("Cannot find GPU texture of ",cache);
 #endif
                             ptr = nullptr;
                             //base->clear_texture(std::move(ptr));
@@ -144,7 +144,7 @@ class PolyCache : public CacheObject {
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
-                    print("Cannot find GPU texture of ",this);
+                    Print("Cannot find GPU texture of ",this);
             }
 #endif
             
@@ -469,7 +469,7 @@ GLFWmonitor* get_monitor_for(GLFWwindow* window) {
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifndef NDEBUG
             auto name = glfwGetMonitorName(monitors[i]);
-            print("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
+            Print("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
 #endif
             if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, ws.width-10, ws.height-10))) {
                 monitor = monitors[i];
@@ -479,7 +479,7 @@ GLFWmonitor* get_monitor_for(GLFWwindow* window) {
         
         if(not monitor) {
             // assume fullscreen?
-            print("No monitor found.");
+            Print("No monitor found.");
         }
 #endif
     }
@@ -525,7 +525,7 @@ Size2 frame_buffer_scale(GLFWwindow* window, float r) {
     if (window_size.width > 0 && window_size.height > 0)
         DisplayFramebufferScale = fb.div(window_size);
 
-    //print("Size: ", DisplaySize, " Scale: ", DisplayFramebufferScale);
+    //Print("Size: ", DisplaySize, " Scale: ", DisplayFramebufferScale);
     return window_size;
 }
 
@@ -578,14 +578,14 @@ void IMGUIBase::center(const Size2 &size) {
 #if !defined(__APPLE__)
     offset = 0;
 #endif
-    print("Calculated bounds = ", bounds, " from window size = ", window_size, " and work area = ", work_area, " with offset = ", offset);
+    Print("Calculated bounds = ", bounds, " from window size = ", window_size, " and work area = ", work_area, " with offset = ", offset);
     bounds.restrict_to(Bounds(work_area.size()));
     bounds << Vec2(work_area.width / 2 - bounds.width / 2,
                     work_area.height / 2 - bounds.height / 2 + offset);
     bounds.restrict_to(Bounds(work_area.size()));
-    print("Restricting bounds to work area: ", work_area, " -> ", bounds);
+    Print("Restricting bounds to work area: ", work_area, " -> ", bounds);
 
-    print("setting bounds = ", bounds);
+    Print("setting bounds = ", bounds);
     //window()->set_window_size(window_size);
     set_window_bounds(bounds);
 }
@@ -611,7 +611,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
 
 #ifndef NDEBUG
-    print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
+    Print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
 #endif
     
     float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
@@ -640,14 +640,14 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
     //base->set_last_framebuffer(Size2(fw, fh));
 
-    //print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
+    //Print("Framebuffer scale: ", fw, "x", fh, "@", base->_dpi_scale, " graph scale: ", base->_graph->scale());
     
     {
         base->_graph->set_size(Size2(fw, fh).mul(base->_dpi_scale));
 
         //int ww, wh;
         //glfwGetWindowSize(window, &ww, &wh);
-        //print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
+        //Print("Window size: ", ww, "x", wh, " -> ", fw, "x", fh, " previous:", base->_last_dpi_scale);
         
         Event e(EventType::WINDOW_RESIZED);
 #if __APPLE__
@@ -694,7 +694,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #if defined(__EMSCRIPTEN__)
         width = canvas_get_width();
         height = canvas_get_height();
-        print("Canvas size: ", width, " ", height);
+        Print("Canvas size: ", width, " ", height);
 #endif
 
 #ifdef WIN32
@@ -749,7 +749,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
         float dpi_scale = 1 / max(xscale, yscale);
 #if defined(__EMSCRIPTEN__)
-        //print("dpi:",emscripten_get_device_pixel_ratio());
+        //Print("dpi:",emscripten_get_device_pixel_ratio());
         dpi_scale = 0.5;
         //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
         //io.FontGlobalScale = 1.f / dpi_scale;
@@ -783,7 +783,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     config.MergeMode = false;
                 auto full = path.str() + suffix + ".ttf";
 #if defined(__EMSCRIPTEN__)
-                print("Loading font...");
+                Print("Loading font...");
                 auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale * scale, &config);
 #else
                 static const ImWchar all_ranges[] = {
@@ -944,7 +944,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         });
         glfwSetWindowSizeCallback(_platform->window_handle(), [](GLFWwindow* window, int width, int height)
         {
-            //print("Updating size callback: ", width, "x", height);
+            //Print("Updating size callback: ", width, "x", height);
                 //width /= 2;
                 //height /= 2;
             static int prev_width = 0, prev_height = 0;
@@ -964,7 +964,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             IMGUIBase::update_size_scale(window);
         });
 
-        print("IMGUIBase::init complete");
+        Print("IMGUIBase::init complete");
     }
 
 void IMGUIBase::process_main_queue() {
@@ -1003,7 +1003,7 @@ void IMGUIBase::process_main_queue() {
                 else if(c->type() == Type::ENTANGLED)
                     q.push((SectionInterface*)c);
                 else {
-                    print("Clear cache on ", *c);
+                    Print("Clear cache on ", *c);
                     c->clear_cache();
                 }
             }
@@ -1041,7 +1041,7 @@ void IMGUIBase::process_main_queue() {
 #if defined(__EMSCRIPTEN__)
         emscripten_set_main_loop_arg([](void *data) {
             //static Timer timer;
-            //print("Frame timing ", timer.elapsed());
+            //Print("Frame timing ", timer.elapsed());
             //timer.reset();
 
             static std::once_flag flag;
@@ -1114,7 +1114,7 @@ void IMGUIBase::process_main_queue() {
                 || size.height * _dpi_scale != _last_framebuffer_size.height))
         {
 #ifndef NDEBUG
-            //print("Changed framebuffer size to ", fw,"x",fh);
+            //Print("Changed framebuffer size to ", fw,"x",fh);
 #endif
             _last_framebuffer_size = size.mul(_dpi_scale);
             _graph->set_dialog_window_size(window_dimensions().div(_graph->scale()) * gui::interface_scale());
@@ -1170,7 +1170,7 @@ void IMGUIBase::process_main_queue() {
 #ifndef NDEBUG
         if(_last_debug_print.elapsed() > 60) {
             auto str = Meta::toStr(_type_counts);
-            print(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
+            Print(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
             _last_debug_print.reset();
         }
 #endif
@@ -1530,7 +1530,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     }
                 }
                 
-                //print("points size = ", points.size(), " vs. ", ptr->relative()->size());
+                //Print("points size = ", points.size(), " vs. ", ptr->relative()->size());
                 
                 if(points.size() >= 3) {
                     points.push_back(points.front());
@@ -1938,7 +1938,7 @@ Size2 IMGUIBase::real_dimensions() {
     Event IMGUIBase::toggle_fullscreen(DrawStructure &graph) {
         static int _wndPos[2];
         
-        print("Enabling full-screen.");
+        Print("Enabling full-screen.");
         _platform->toggle_full_screen();
         
         Event event(WINDOW_RESIZED);

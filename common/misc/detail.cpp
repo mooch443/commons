@@ -600,10 +600,10 @@ namespace cmn {
                 added.insert(key);
             }
             
-            /*print("Added: ", added);
+            /*Print("Added: ", added);
             for(auto key : added) {
                 auto c = map[key].get().valueString();
-                print(key.c_str(), " = ", c.c_str());
+                Print(key.c_str(), " = ", c.c_str());
             }*/
             return added;
         }
@@ -882,7 +882,7 @@ namespace cmn {
     }
     
     std::string HorizontalLine::toStr() const {
-        return "HL("+std::to_string(y)+","+std::to_string(x0)+","+std::to_string(x1)+")";
+        return "HL("+std::to_string(y)+" "+std::to_string(x0)+","+std::to_string(x1)+")";
     }
 
     uint8_t required_channels(ImageMode mode) {

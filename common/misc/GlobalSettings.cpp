@@ -220,7 +220,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
                         
                         str = fr + " [...] " + en;
                     }
-                    print("Line ", str," cannot be loaded. (",std::string(e.what()),")");
+                    Print("Line ", str," cannot be loaded. (",std::string(e.what()),")");
                 }
             }
             

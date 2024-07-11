@@ -14,7 +14,7 @@ public:
     Drawable* control{nullptr};
     void update_layout() override {
         //set(LineClr{Red});
-        //print("Updating layout.");
+        //Print("Updating layout.");
         if(text && control) {
             //text->set(SizeLimit{control->width(), control->height()});
         }
@@ -182,13 +182,13 @@ _invert(invert)
     _checkbox->on_change([this](){
         try {
             auto r = ref();
-            print("Setting ", r.toStr(), " before = ", r.get().valueString());
+            Print("Setting ", r.toStr(), " before = ", r.get().valueString());
             if(_invert)
                 r.get() = not _checkbox->checked();
             else
                 r.get() = _checkbox->checked();
             
-            print("Setting setting ",r.toStr(), " = ",r.get().valueString(), " with ",_checkbox->checked()," and invert = ", _invert);
+            Print("Setting setting ",r.toStr(), " = ",r.get().valueString(), " with ",_checkbox->checked()," and invert = ", _invert);
             
         } catch(...) {}
     });
@@ -196,7 +196,7 @@ _invert(invert)
 
 void LabeledCheckbox::update_ref_in_main_thread() {
     _checkbox->set_checked(_invert ? not ref().value<bool>() : ref().value<bool>());
-    print("Checkbox for ", ref().get().name(), " is ", _checkbox->checked());
+    Print("Checkbox for ", ref().get().name(), " is ", _checkbox->checked());
 }
 
 void LabeledCheckbox::set_description(std::string desc) {
@@ -442,7 +442,7 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
         
         if(!_validity || _validity(path))
         {
-            print("Selected ", path, " item.name()=",item.name(), " display_name=", item.display_name());
+            Print("Selected ", path, " item.name()=",item.name(), " display_name=", item.display_name());
             
             ref().get() = path;
             
@@ -629,7 +629,7 @@ std::vector<Dropdown::TextItem> LabeledPath::updated_names(const std::set<file::
                 search_items.push_back(Dropdown::TextItem(f.str()));
                 search_items.back().set_display(std::string(file::Path(f.str()).filename()));
             }
-            //print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
+            //Print("* adding ", _search_items.back().name(), " | ", _search_items.back().display_name());
         }
     }
     //_list->set_items(_names);
@@ -643,7 +643,7 @@ void LabeledPath::update_ref_in_main_thread() {
     
     auto r = ref();
     if(r.value<file::Path>() != file::Path(_dropdown->textfield()->text())) {
-        //print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
+        //Print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
         _dropdown->textfield()->set_text(r.value<file::Path>().str());
     }
 }
@@ -662,7 +662,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     _dropdown->set([this](auto, const Dropdown::TextItem& item) {
         // on select
         ref().container().set_print_by_default(true);
-        print("Selecting ", item.name());
+        Print("Selecting ", item.name());
         auto path = file::Path(_dropdown->text());
         if(path.is_folder()) {
             _dropdown->textfield()->set_text(_dropdown->text()+file::Path::os_sep());
@@ -699,7 +699,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
             if(not _dropdown->items().empty()) {
                 auto dropdown = _dropdown.to<Dropdown>();
                 //auto index = dropdown->hovered_item().index();
-                //print("_selected_item ", dropdown->selected_item().index()," / hovered_item = ", index);
+                //Print("_selected_item ", dropdown->selected_item().index()," / hovered_item = ", index);
                 //if(index != Dropdown::Item::INVALID_ID) {
                 //    dropdown->select_item(index);
                 //} else
@@ -709,7 +709,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
                 }
                 
                 auto path = dropdown->selected_item().name();
-                print("selected ", dropdown->selected_item(), " at ", index, " => path=", path);
+                Print("selected ", dropdown->selected_item(), " at ", index, " => path=", path);
                 if(file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
                 {
                     _dropdown->textfield()->set_text(path+file::Path::os_sep());
@@ -813,7 +813,7 @@ void LabeledPathArray::asyncUpdateItems() {
     }
 
     _pathArray = std::move(_pathArrayCopy);
-    //print("Setting value = ", _pathArray);
+    //Print("Setting value = ", _pathArray);
     ref() = _pathArray;
 
     try {
@@ -870,7 +870,7 @@ void LabeledPathArray::updateDropdownItems() {
                             && (source_path.remove_filename() == _source_path.remove_filename()
                                 && not _source_path.empty())))
                     {
-                        print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
+                        Print(_pathArrayCopy.source(), " is essentially the same as ", pathArray.source(), ", using our results here for ", _pathArrayCopy.source(), ".");
                         _pathArrayCopy.set_source(pathArray.source());
                         return files;
                     }
@@ -920,7 +920,7 @@ void LabeledPathArray::updateDropdownItems() {
                     }
                 }
 
-                //print("items for ", text, " = ", matches, " from ", pathArray);
+                //Print("items for ", text, " = ", matches, " from ", pathArray);
                 _pathArrayCopy = std::move(pathArray);
             }
             catch (const std::exception& e) {
@@ -938,7 +938,7 @@ void LabeledPathArray::updateDropdownItems() {
                 dropdown->set_dirty();
             });
             
-            //print("Returning for ", text);
+            //Print("Returning for ", text);
             return matches;
         });
 

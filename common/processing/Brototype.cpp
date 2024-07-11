@@ -9,7 +9,7 @@ std::unordered_set<Brototype*> Brototype::brototypes() {
 }
 
 Brototype::Brototype() {
-   // print("Allocating.");
+   // Print("Allocating.");
 #if defined(DEBUG_MEM)
     std::lock_guard guard(mutex());
     brototypes().insert(this);
@@ -19,7 +19,7 @@ Brototype::Brototype() {
 Brototype::Brototype(const Line_t& line, const uchar* px)
     : _pixel_starts({px}), _lines({line})
 {
-    //print("Allocating.");
+    //Print("Allocating.");
 #if defined(DEBUG_MEM)
     std::lock_guard guard(mutex());
     brototypes().insert(this);
@@ -27,7 +27,7 @@ Brototype::Brototype(const Line_t& line, const uchar* px)
 }
 
 Brototype::~Brototype() {
-    //print("Deallocating.");
+    //Print("Deallocating.");
 #if defined(DEBUG_MEM)
     std::lock_guard guard(mutex());
     brototypes().erase(this);
@@ -96,7 +96,7 @@ void Brototype::move_to_cache(List_t* list, typename std::unique_ptr<Brototype>&
         return;
     }
     
-    //print("Had ", node->lines().size(), " upon clear.");
+    //Print("Had ", node->lines().size(), " upon clear.");
 
     node->lines().clear();
     node->pixel_starts().clear();

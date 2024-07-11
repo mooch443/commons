@@ -274,7 +274,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     
     void Dropdown::select_item(RawIndex index) {
         //if(static_cast<size_t>(index.value) < items().size())
-        //    print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
+        //    Print("Selecting item ", items().at(index.value), " at index ", index.value, " with filtered ", filtered_items, ". items_to_filtered = ", items_to_filtered_items);
 
         if (index.value >= 0 && _items_to_filtered_items.contains(index)) {
             if (auto iter = _items_to_filtered_items.find(index);
@@ -291,7 +291,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         }
 
         if (_selected_item.value != index.value) {
-            print("Setting _selected_item = ", _selected_item.value, " from ", index.value, " in ", (uint64_t)this);
+            Print("Setting _selected_item = ", _selected_item.value, " from ", index.value, " in ", (uint64_t)this);
             set_dirty();
         }
     }
