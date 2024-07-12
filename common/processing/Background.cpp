@@ -61,6 +61,12 @@ namespace cmn {
             cv::Mat output = ptr->get();
             convert_from_r3g3b2(_image->get(), output);
             _image = std::move(ptr);
+            
+        } else if(encoding == meta_encoding_t::gray) {
+            auto ptr = Image::Make(_image->rows, _image->cols, 3);
+            cv::Mat output = ptr->get();
+            cv::cvtColor(_image->get(), output, cv::COLOR_GRAY2BGR);
+            _image = std::move(ptr);
         }
         
         if(_image->channels() == 3) {
