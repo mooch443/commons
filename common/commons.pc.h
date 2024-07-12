@@ -709,6 +709,11 @@ struct timestamp_t {
     static std::string class_name() { return "timestamp"; }
     static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
     nlohmann::json to_json() const { return valid() ? nlohmann::json{ get() } : nlohmann::json{ nullptr }; }
+    
+    static timestamp_t now() {
+        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+        return timestamp_t(std::chrono::time_point_cast<std::chrono::microseconds>(now).time_since_epoch().count());
+    }
 };
 }
 

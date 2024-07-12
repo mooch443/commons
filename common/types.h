@@ -328,6 +328,9 @@ struct SegmentedOutlines {
     
     std::vector<Outline> lines;
     bool empty() const { return lines.empty(); }
+    void add(Outline&& outline) {
+        lines.emplace_back(std::move(outline));
+    }
     void add(const std::vector<Vec2>& pts) {
         Outline outline;
         outline._points.resize(pts.size() * 2);
