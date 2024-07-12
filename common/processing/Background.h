@@ -249,7 +249,7 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
         CallbackCollection _callback;
         
     public:
-        Background(Image::Ptr&& image, LuminanceGrid* grid);
+        Background(Image::Ptr&& image, meta_encoding_t::Class encoding);
         ~Background();
         
         template<OutputInfo output, DifferenceMethod method, typename Pixel>

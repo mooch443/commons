@@ -533,7 +533,7 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     assert(channels == input.channels());
     static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
 
-    using input_t = RGBArray;
+    using input_t = MathArray<uchar, channels>;
     using output_t = uchar;
 
     auto process_row = [&](const cv::Range& range) {

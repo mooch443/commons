@@ -53,9 +53,16 @@ namespace cmn {
                 : ImageMode::R3G3B2);
     }
 
-    Background::Background(Image::Ptr&& image, LuminanceGrid *grid)
+    Background::Background(Image::Ptr&& image, meta_encoding_t::Class encoding)
         : _image(std::move(image)), /*_grid(grid),*/ _bounds(_image->bounds())
     {
+        if(encoding == meta_encoding_t::r3g3b2) {
+            auto ptr = Image::Make(_image->rows, _image->cols, 3);
+            cv::Mat output = ptr->get();
+            convert_from_r3g3b2(_image->get(), output);
+            _image = std::move(ptr);
+        }
+        
         if(_image->channels() == 3) {
             _grey_image = Image::Make(_image->rows, _image->cols, 1);
             cv::cvtColor(_image->get(), _grey_image->get(), cv::COLOR_BGR2GRAY);

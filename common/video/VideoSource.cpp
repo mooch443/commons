@@ -8,6 +8,7 @@
 #include <misc/Image.h>
 #include <video/AveragingAccumulator.h>
 #include <misc/ranges.h>
+#include <processing/Background.h>
 
 namespace cmn {
 
@@ -806,6 +807,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     // if there are many files, we should use only the first part of each video
     Print("Generating multi-file average...");
+    OutputInfo output{
+        .channels = static_cast<uint8_t>(_colors == ImageMode::GRAY ? 1u : 3u),
+        .encoding = _colors == ImageMode::GRAY ? meta_encoding_t::gray : meta_encoding_t::rgb8
+    };
     
     gpuMat float_mat, f, ref;
     std::vector<gpuMat> vec;
@@ -898,9 +903,9 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     std::atomic<size_t> count = 0;
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [this, &count, &acc, &callback, samples, &terminate](File* file, const std::set<Frame_t>& indexes)
+        auto fn = [this, &count, &acc, &callback, samples, &terminate, output](File* file, const std::set<Frame_t>& indexes)
         {
-            Image f(size().height, size().width, required_channels(_colors));
+            Image f(size().height, size().width, output.channels);
             
             for(auto index : indexes) {
                 try {
@@ -948,6 +953,15 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     auto image = acc.finalize();
     auto mat = image->get();
+    
+    if(_colors == ImageMode::R3G3B2) {
+        cv::Mat output;
+        convert_to_r3g3b2<3>(mat, output);
+        output.copyTo(av);
+        assert(mat.type() == CV_8UC(mat.channels()));
+        return;
+    }
+    
     assert(mat.type() == CV_8UC(mat.channels()));
     mat.copyTo(av);
 }
