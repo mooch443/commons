@@ -864,10 +864,9 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     auto frames_per_file =
         max(1_f,
             N_indexes < samples
-                ? 1_f
-                : (L / Frame_t(N_indexes)
+                ? (L / Frame_t(N_indexes)
                     / (L / Frame_t{samples}))
-            );
+                : 1_f);
     
     Print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
     
@@ -907,8 +906,8 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
                 try {
                     file->frame(_colors, index, f);
                     assert(f.dims == 1 || f.dims == 3);
-                    //acc.add_threaded(f.get());
-                    acc.add(f.get());
+                    acc.add_threaded(f.get());
+                    //acc.add(f.get());
                     ++count;
                     
                     if(long_t(count) % max(1,long_t(samples * 0.05)) == 0) {
@@ -932,9 +931,9 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
             file->close();
         };
         
-        //if(file_indexes.size() > 1) {
-        //    futures.emplace_back(pool.enqueue(fn, file, indexes));
-        //} else
+        if(file_indexes.size() > 1) {
+            futures.emplace_back(pool.enqueue(fn, file, indexes));
+        } else
             fn(file, indexes);
         
         if(terminate)
