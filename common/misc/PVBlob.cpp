@@ -1039,9 +1039,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
             if(background->image().channels() == channels) {
                 background->image().get()(b).copyTo(image->get());
             } else if(background->image().channels() == 1) {
-                cv::cvtColor(background->image().get(), image->get(), cv::COLOR_GRAY2BGR);
+                cv::cvtColor(background->image().get()(b), image->get(), cv::COLOR_GRAY2BGR);
             } else if(channels == 1) {
-                cv::cvtColor(background->image().get(), image->get(), cv::COLOR_BGR2GRAY);
+                cv::cvtColor(background->image().get()(b), image->get(), cv::COLOR_BGR2GRAY);
             } else
                 throw InvalidArgumentException("Background and blob are in incompatible combined formats: ", background->image(), " vs. ", *image);
         }
