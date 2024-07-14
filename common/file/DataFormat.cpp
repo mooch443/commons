@@ -286,7 +286,7 @@ uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
         {
             std::lock_guard<std::mutex> guard(_internal_modification);
             if(_file_offset + num_bytes > _reading_file_size)
-               throw U_EXCEPTION("Out of range ",_file_offset+num_bytes);
+                throw U_EXCEPTION("Reading out of range (",FileSize{ _file_offset+num_bytes },") in ", filename(),". This file might be broken or of incompatible format.");
             
             offset = _file_offset;
             _file_offset += num_bytes;
