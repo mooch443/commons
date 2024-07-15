@@ -303,7 +303,7 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
         }
         
         template<OutputInfo output, typename Pixel>
-        bool is_value_different(coord_t, coord_t, Pixel value, int threshold) const {
+        bool is_value_different([[maybe_unused]] coord_t x, [[maybe_unused]] coord_t y, Pixel value, int threshold) const {
             assert(x < _image->cols && y < _image->rows);
             if constexpr(is_rgb_array<Pixel>::value) {
                 return bgr2gray(value) >= /*(_grid ? _grid->relative_threshold(x, y) : 1) * */threshold;
