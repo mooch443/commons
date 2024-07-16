@@ -692,7 +692,7 @@ Path Path::absolute() const {
 #endif
             _stat_cache.exists.reset();
 #ifndef NDEBUG
-            assert(!exists() && to.exists());
+            assert(!exists() && file::Path(to.str()).exists());
 #endif
             return true;
 #ifdef __cpp_lib_filesystem

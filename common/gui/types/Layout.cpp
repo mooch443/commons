@@ -37,6 +37,8 @@ void Layout::set_content_changed(bool changed) {
     }
     
     void Layout::add_child(size_t pos, Layout::Ptr ptr) {
+        assert(ptr != nullptr);
+        
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it != _objects.end()) {
             if(it == _objects.begin() + pos || it == _objects.begin() + pos - 1)
@@ -56,6 +58,8 @@ void Layout::set_content_changed(bool changed) {
     }
 
     void Layout::replace_child(size_t pos, Layout::Ptr ptr) {
+        assert(ptr != nullptr);
+        
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it != _objects.end()) {
             size_t index = std::distance(_objects.begin(), it);
@@ -74,6 +78,8 @@ void Layout::set_content_changed(bool changed) {
     }
 
     void Layout::add_child(Layout::Ptr ptr) {
+        assert(ptr != nullptr);
+        
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if (it != _objects.end()) {
             if (it == _objects.begin() + _objects.size() - 1)
@@ -103,6 +109,8 @@ void Layout::set_content_changed(bool changed) {
         bool dirty = false;
         
         for(auto&& obj : objects) {
+            assert(obj != nullptr);
+            
             auto it = std::find(_objects.begin(), _objects.end(), obj);
             next.emplace_back(std::move(obj));
             
@@ -134,6 +142,9 @@ void Layout::set_content_changed(bool changed) {
 
     void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
         std::vector<Layout::Ptr> copy(objects);
+        for(auto &ptr : objects) {
+            assert(ptr != nullptr);
+        }
         set_children(std::move(copy));
     }
     
@@ -478,14 +489,14 @@ void GridLayout::update_hover() {
                     auto bds = _grid_info.getCellBounds(row, col);
                     if(bds.contains(_last_hover)) {
                         for(size_t r = 0; r < _grid_info.numRows; ++r) {
-                            if(r != row)
+                            if(r != row && _grid_info.hasCell(r, col))
                                 bds.combine(_grid_info.getCellBounds(r, col));
                         }
                         _vertical_rect->set(Box{bds});
                         
                         bds = _grid_info.getCellBounds(row, col);
                         for(size_t c = 0; c < _grid_info.numCols; ++c) {
-                            if(c != col)
+                            if(c != col && _grid_info.hasCell(row, c))
                                 bds.combine(_grid_info.getCellBounds(row, c));
                         }
                         _horizontal_rect->set(Box{bds});

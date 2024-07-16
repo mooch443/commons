@@ -1562,7 +1562,10 @@ void update_tooltips(DrawStructure& graph, State& state) {
         
         ptr->text()->set_clickable(true);
         
-        if(ptr->representative()->is_displayed() && ptr->representative()->hovered() /*&& (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))*/) {
+        if(ptr->representative()->parent()
+           && ptr->representative()->parent()->stage()
+           && ptr->representative()->hovered() /*&& (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))*/)
+        {
             //found = ptr->representative();
             if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
                 auto p = dynamic_cast<const LabeledCombobox*>(ptr.get());
@@ -1596,10 +1599,19 @@ void update_tooltips(DrawStructure& graph, State& state) {
         ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
     }
 
-    if(found && ref) {
-        state._settings_tooltip.to<SettingsTooltip>()->set_parameter(name);
-        state._settings_tooltip.to<SettingsTooltip>()->set_other(found.get());
-        graph.wrap_object(*state._settings_tooltip);
+    if(found && ref && found->hovered()) {
+        //auto ptr = state._settings_tooltip.to<SettingsTooltip>();
+        //if(ptr && ptr->other()
+        //   && (not ptr->other()->parent() || not ptr->other()->parent()->stage()))
+        {
+            // dont draw
+            //state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
+        } //else {
+            state._settings_tooltip.to<SettingsTooltip>()->set_parameter(name);
+            state._settings_tooltip.to<SettingsTooltip>()->set_other(found.get());
+            graph.wrap_object(*state._settings_tooltip);
+        //}
+        
     } else {
         state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
     }
