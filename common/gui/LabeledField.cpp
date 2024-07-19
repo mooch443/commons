@@ -84,12 +84,23 @@ std::string LabeledField::toStr() const {
     return "Field<"+_ref+">";
 }
 
-LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, const nlohmann::json&)
-    : LabeledField(gui, name),
-    _combo(std::make_shared<Combobox>(gui, Combobox::OnSelect_t{[this](ParmName name) {
-        replace_ref(name);
-    }}))
-{}
+LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, State& state, const nlohmann::json&)
+    : LabeledField(gui, name)
+{
+    if(state._last_settings_box != nullptr
+       && not state._last_settings_box->is_staged())
+    {
+        _combo = state._last_settings_box;
+        _combo->set(Combobox::OnSelect_t{[this](ParmName name) {
+            replace_ref(name);
+        }});
+    } else {
+        _combo = std::make_shared<Combobox>(gui, Combobox::OnSelect_t{[this](ParmName name) {
+            replace_ref(name);
+        }});
+        state._last_settings_box = _combo;
+    }
+}
 
 std::optional<std::string> LabeledCombobox::selected_parameter() const {
     if(_combo && _combo->hovered()) {
@@ -121,14 +132,15 @@ void LabeledField::set_description(std::string desc) {
 std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::string parm, bool invert) {
     State state;
     LayoutContext c(gui, {}, state, {}, {});
-    return Make(gui, parm, c, invert);
+    assert(not parm.empty());
+    return Make(gui, parm, state, c, invert);
 }
 
-std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::string parm, const LayoutContext& context, bool invert) {
+std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::string parm, State& state, const LayoutContext& context, bool invert) {
     if(parm.empty()) {
         //! this will instantiate the combobox for choosing settings
         //! so we cant specify a reference - this is for _all_ parameters.
-        auto ptr = std::make_unique<LabeledCombobox>(gui, "", context.obj);
+        auto ptr = std::make_unique<LabeledCombobox>(gui, "", state, context.obj);
         return ptr;
     }
     

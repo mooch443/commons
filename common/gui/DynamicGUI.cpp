@@ -1325,12 +1325,31 @@ void DynamicGUI::reload() {
             state._text_fields.clear();
             context.defaults = std::move(defaults);
             
-            std::vector<Layout::Ptr> objs;
             State tmp;
+            auto last_selected = graph->selected_object();
+            if(state._last_settings_box) {
+                tmp._last_settings_box = std::move(state._last_settings_box);
+                tmp._settings_was_selected = graph->selected_object() ? (graph->selected_object()->is_child_of(tmp._last_settings_box.get()) || graph->selected_object() == tmp._last_settings_box.get()) : false;
+            }
+            
+            std::vector<Layout::Ptr> objs;
+            objects.clear();
+            
+            state = {};
+            
             for(auto &obj : layout) {
                 auto ptr = parse_object(gui, obj, context, tmp, context.defaults);
                 if(ptr) {
                     objs.push_back(ptr);
+                }
+            }
+            
+            if(tmp._settings_was_selected)
+            {
+                //if(tmp._settings_tooltip->is_staged()) 
+                {
+                    Print("Is staged.");
+                    tmp._mark_for_selection = last_selected;
                 }
             }
             
@@ -1493,6 +1512,20 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     }
     
     dyn::update_tooltips(*graph, state);
+    
+    if(state._mark_for_selection) {
+        if(state._mark_for_selection->is_child_of(&graph->root())) {
+#ifndef NDEBUG
+            Print("Had to reselect object ", state._mark_for_selection, " after reloading the GUI.");
+#endif
+            graph->select(state._mark_for_selection);
+            state._mark_for_selection = nullptr;
+        } else {
+#ifndef NDEBUG
+            FormatWarning("Marked for selection, but unvailable: ", state._mark_for_selection);
+#endif
+        }
+    }
 
     if(state._timers.size() > 10000) {
         /*std::vector<std::tuple<double, size_t>> sorted_objects;

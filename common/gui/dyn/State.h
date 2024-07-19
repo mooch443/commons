@@ -120,6 +120,9 @@ struct State {
     std::unordered_map<std::string, Layout::Ptr, MultiStringHash, MultiStringEqual> _named_entities;
     
     std::weak_ptr<Drawable> _current_object;
+    derived_ptr<Combobox> _last_settings_box;
+    bool _settings_was_selected{false};
+    Drawable* _mark_for_selection{nullptr};
     
     Index _current_index;
     

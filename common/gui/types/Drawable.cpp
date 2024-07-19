@@ -764,6 +764,10 @@ bool SectionInterface::is_animating() noexcept {
             on_visibility_change(render);
 		}
     }
+
+    bool Drawable::is_staged() const {
+        return parent() && parent()->stage();
+    }
     
     void Drawable::set_parent(gui::SectionInterface *parent) {
         if(_parent == parent)

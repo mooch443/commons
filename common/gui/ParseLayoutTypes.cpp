@@ -498,7 +498,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     
     {
         {
-            auto ptr = LabeledField::Make(gui, var, *this, invert);
+            auto ptr = LabeledField::Make(gui, var, state, *this, invert);
             if(not state._text_fields.contains(hash) or not state._text_fields.at(hash))
             {
                 state._text_fields.emplace(hash, std::move(ptr));

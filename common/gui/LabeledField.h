@@ -16,6 +16,7 @@ namespace cmn::gui {
 namespace dyn {
 
 class LayoutContext;
+struct State;
 
 template<typename T, typename A>
 concept takes_attribute = requires(T t, A a) {
@@ -105,7 +106,7 @@ public:
             delegate_to_proper_type(attribute, ptr);
     }
     
-    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, const LayoutContext&, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, State&, const LayoutContext&, bool invert = false);
     static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, bool invert = false);
     
     template<typename T>
@@ -239,7 +240,7 @@ public:
 
 struct LabeledCombobox : public LabeledField {
     gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
+    LabeledCombobox(GUITaskQueue_t*, const std::string& name, State&, const nlohmann::json& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_combo);

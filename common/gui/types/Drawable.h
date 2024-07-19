@@ -280,6 +280,9 @@ namespace cmn::gui {
         void set_is_displayed(bool displayed);
         void set_rendered(bool render);
         
+        /// returns true if this object is currently displayed on screen somewhere (i.e. has a parent + the parent has a stage)
+        bool is_staged() const;
+        
         //! Returns true if the object has been changed for any base or
         //  the specified one
         bool is_dirty(const Base* base = NULL) const;

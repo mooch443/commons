@@ -11,6 +11,8 @@ State::State(const State& other)
       _customs(other._customs),
       _named_entities(other._named_entities),
       _current_object(other._current_object),
+      _last_settings_box(other._last_settings_box),
+      _settings_was_selected(other._settings_was_selected),
       _current_index(other._current_index)
 {
     for(auto &[k, body] : other.loops) {
