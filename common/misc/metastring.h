@@ -177,31 +177,67 @@ template<size_t N>
 class ConstexprString {
 private:
     std::array<char, N> _data{ 0 };
+    size_t _length{ 0 };
 
 public:
     constexpr size_t capacity() const noexcept { return N - 1u; }
-    
+
     // Constructor from const char array
     template<size_t M>
-        requires (M < N)
-    constexpr ConstexprString(const char (&arr)[M]) noexcept {
-        for (size_t i = 0; i < M; ++i) {
+        requires (M <= N)
+    constexpr ConstexprString(const char (&arr)[M]) noexcept : _length(M - 1) {
+        _length = M - 1;
+        for (size_t i = 0; i < M - 1; ++i) {
+            if(arr[i] == 0) {
+                _length = i;
+                break;
+            }
             _data[i] = arr[i];
         }
-        _data[M] = 0;
     }
 
     // Constructor from std::array
     template<size_t M>
-        requires (M<N)
-    constexpr ConstexprString(const std::array<char, M>& arr) noexcept
-    {
-        for(size_t i=0; i<M; ++i)
-            _data[i] = arr[i];
-        _data[M] = 0;
+        requires (M <= N)
+    constexpr ConstexprString(const std::array<char, M>& arr) noexcept : _length(M - 1) {
+        _length = M - 1;
+        for (size_t i = 0; i < M - 1; ++i) {
+            if(arr[i] == 0) {
+                _length = i;
+                break;
+            } else
+                _data[i] = arr[i];
+        }
     }
 
-    constexpr char* data() { return _data.data(); }
+    // Constructor from another ConstexprString and applies a function
+    template<size_t M, typename Func>
+    constexpr ConstexprString(const ConstexprString<M>& other, Func&& func) noexcept {
+        static_assert(M <= N, "Source string size exceeds destination capacity");
+        _length = other.size();
+        for (size_t i = 0; i < other.size(); ++i) {
+            if(other[i] == 0) {
+                break;
+            }
+            _data[i] = func(other[i]);
+        }
+        _data[_length] = 0;
+    }
+
+    // Constructor from const char array and applies a function
+    template<size_t M, typename Func>
+    constexpr ConstexprString(const char (&arr)[M], Func&& func) noexcept : _length(M - 1) {
+        static_assert(M <= N, "Source string size exceeds destination capacity");
+        _length = M - 1;
+        for (size_t i = 0; i < M - 1; ++i) {
+            if(arr[i] == 0) {
+                _length = i;
+                break;
+            }
+            _data[i] = func(arr[i]);
+        }
+    }
+
     constexpr const char* data() const { return _data.data(); }
 
     // Default constructor
@@ -209,25 +245,16 @@ public:
 
     // Accessor to get std::string_view
     constexpr std::string_view view() const {
-        return std::string_view(_data.data());
+        return std::string_view(_data.data(), _length);
     }
 
     // Other utility methods as needed, e.g., size, operator[], etc.
     constexpr size_t size() const {
-        return view().length();
+        return _length;
     }
 
     constexpr char operator[](size_t index) const {
         return view()[index];
-    }
-
-    constexpr char& operator[](size_t index) {
-        return *(data() + index);
-    }
-
-    template<size_t L>
-    constexpr bool operator==(const ConstexprString<L>& other) const noexcept {
-        return other.view() == view();
     }
 
     constexpr bool operator==(const std::string_view& other) const noexcept {
@@ -237,11 +264,106 @@ public:
     // Constructor from const char array
     template<size_t M>
     constexpr bool operator==(const char (&arr)[M]) const noexcept {
-        return std::string_view(arr, M-1) == view();
+        return std::string_view(arr, M - 1) == view();
     }
 
     constexpr explicit operator std::string() const noexcept {
         return std::string(view());
+    }
+
+    constexpr operator std::string_view() const noexcept {
+        return view();
+    }
+
+    // Append method
+    template<size_t L>
+    constexpr auto append(const ConstexprString<L>& other) const {
+        static_assert(L <= N, "Resulting string exceeds capacity");
+
+        ConstexprString<N> result;
+        result._length = _length + other._length;
+
+        for (size_t i = 0; i < _length; ++i) {
+            result._data[i] = _data[i];
+        }
+
+        for (size_t j = 0; j < other._length; ++j) {
+            result._data[_length + j] = other[j];
+        }
+
+        result._data[result._length] = 0;
+        return result;
+    }
+
+    template<size_t M>
+    constexpr auto append(const char (&arr)[M]) const {
+        constexpr size_t arr_length = M - 1;
+        constexpr size_t new_length = N - 1;
+        static_assert(M < N, "Resulting string exceeds capacity");
+
+        ConstexprString<N> result;
+        result._length = _length + arr_length;
+
+        for (size_t i = 0; i < _length; ++i) {
+            result._data[i] = _data[i];
+        }
+
+        for (size_t j = 0; j < arr_length; ++j) {
+            result._data[_length + j] = arr[j];
+        }
+
+        result._data[result._length] = 0;
+        return result;
+    }
+
+    // Fill method
+    template<char Filler>
+    constexpr auto fill() const {
+        ConstexprString<N> result(*this);
+        for (size_t i = 0; i < result._length; ++i) {
+            result._data[i] = Filler;
+        }
+        return result;
+    }
+
+    // Apply method for function with only input character
+    template <typename Func>
+    constexpr auto apply(Func&& func) const {
+        if constexpr (std::is_invocable_v<Func, char>) {
+            ConstexprString<N> result(*this);
+            for (size_t i = 0; i < result._length; ++i) {
+                result._data[i] = func(result._data[i]);
+            }
+            return result;
+        } else if constexpr (std::is_invocable_v<Func, size_t, char>) {
+            ConstexprString<N> result(*this);
+            for (size_t i = 0; i < result._length; ++i) {
+                result._data[i] = func(i, result._data[i]);
+            }
+            return result;
+        } else {
+            static_assert(!sizeof(Func), "Unsupported function signature");
+        }
+    }
+
+    // Apply method over the entire capacity
+    template <typename Func>
+    constexpr auto apply_to_capacity(Func&& func) const {
+        if constexpr (std::is_invocable_v<Func, char>) {
+            ConstexprString<N> result(*this);
+            for (size_t i = 0; i < N; ++i) {
+                result._data[i] = func(result._data[i]);
+            }
+            return result;
+        } else if constexpr (std::is_invocable_v<Func, size_t, char>) {
+            ConstexprString<N> result(*this);
+            for (size_t i = 0; i < N; ++i) {
+                result._data[i] = func(i, result._data[i]);
+            }
+            return result;
+        } else {
+            static_assert(!sizeof(Func), "Unsupported function signature");
+        }
     }
 };
 
@@ -249,9 +371,9 @@ using ConstString_t = ConstexprString<128>;
 
 template <typename T>
 requires std::floating_point<T>
-constexpr auto to_string(T value) {
-    ConstString_t contents; // Initialize array with null terminators
-
+constexpr ConstString_t to_string(T value) {
+    std::array<char, 128> contents{0}; // Initialize array with null terminators
+    
     if (std::is_constant_evaluated())
     {
         if (value != value) {
@@ -293,16 +415,15 @@ constexpr auto to_string(T value) {
         }
         
         // Adjust contents starting point
-        auto n = max_digits + 2 - (current - contents.data());
-        std::move(current, current + n, contents.data());
-        for(size_t i = n; i < contents.size(); ++i) {
-            contents[i] = 0;
-        }
+        auto n = max_digits + 2 - (current - contents.data() + 1);
+        //std::fill(contents.data(), contents.data() + contents.size(), 0);
+
+        std::array<char, 128> copy{0};
+        std::copy(current, current + n, copy.data());
         //std::fill(contents.data() + n, contents.data() + contents.size(), 0);
         
         // Convert fractional part
-        std::string_view tmp(contents.data());
-        char* fraction_start = contents.data() + tmp.size();
+        char* fraction_start = copy.data() + n;
         *fraction_start = '.';
         char* fraction_current = fraction_start + 1;
 
@@ -329,7 +450,7 @@ constexpr auto to_string(T value) {
             *fraction_start = '\0'; // If the fractional part is all zeros, remove it.
         }
         
-        return contents;
+        return ConstString_t{copy};
     } else {
         if (std::isnan(value)) {
             const char nan[] = "nan";
@@ -343,7 +464,7 @@ constexpr auto to_string(T value) {
         }
 
         // Fallback to cmn::to_chars for runtime
-        auto result = cmn::to_chars(contents.data(), contents.data() + contents.capacity(), value, cmn::chars_format::fixed);
+        auto result = cmn::to_chars(contents.data(), contents.data() + contents.size(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             // Trim trailing zeros but leave at least one digit after the decimal point
             /*if (not utils::contains((const char*)contents.data(), '.')) {
@@ -376,7 +497,7 @@ constexpr auto to_string(T value) {
             } else {
                 *result.ptr = '\0';
             }
-            return contents;
+            return ConstString_t{contents};
         } else {
             throw std::invalid_argument("Error converting floating point to string");
         }
@@ -1324,21 +1445,11 @@ namespace cmn::utils {
 
 template <size_t N>
 constexpr auto lowercase(const char(&input)[N]) {
-    ::cmn::util::ConstString_t result;
-    for (size_t i = 0; i < N; ++i) {
-        result[i] = lowercase_char(static_cast<char>(input[i]));
-    }
-    return result;
+    return ::cmn::util::ConstString_t(input, [](char c) { return lowercase_char(static_cast<int>(c)); });
 }
 
 inline constexpr auto lowercase(const ::cmn::util::ConstString_t& input) {
-    ::cmn::util::ConstString_t result;
-    const auto L = input.view().length();
-    for (size_t i = 0; i < L; ++i) {
-        result[i] = lowercase_char(input[i]);
-    }
-    result[L] = 0;
-    return result;
+    return ::cmn::util::ConstString_t(input, [](char c) { return lowercase_char(static_cast<int>(c)); });
 }
 
 template<size_t N>

@@ -144,6 +144,9 @@ public:
     constexpr bool contains(T value) const { return value >= first && value < last; }
     constexpr bool empty() const { return first == last; }
     constexpr size_t size() const { return num_steps(); }
+    
+    std::string toStr() const { return "["+std::to_string(first)+","+std::to_string(last)+"]"; }
+    static std::string class_name() { return "arange<"+(std::string)type_name<T>()+">"; }
 };
 
 typedef arange<int> irange;
