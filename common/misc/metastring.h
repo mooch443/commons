@@ -254,7 +254,13 @@ public:
     }
 
     constexpr char operator[](size_t index) const {
-        return view()[index];
+        if (std::is_constant_evaluated()) {
+            return _data[index];
+        } else {
+            if(index >= _length)
+                throw std::out_of_range("Out of range access to ConstexprString.");
+            return _data[index];
+        }
     }
 
     constexpr bool operator==(const std::string_view& other) const noexcept {
@@ -298,7 +304,6 @@ public:
     template<size_t M>
     constexpr auto append(const char (&arr)[M]) const {
         constexpr size_t arr_length = M - 1;
-        constexpr size_t new_length = N - 1;
         static_assert(M < N, "Resulting string exceeds capacity");
 
         ConstexprString<N> result;
@@ -319,51 +324,61 @@ public:
     // Fill method
     template<char Filler>
     constexpr auto fill() const {
-        ConstexprString<N> result(*this);
-        for (size_t i = 0; i < result._length; ++i) {
-            result._data[i] = Filler;
-        }
+        ConstexprString<N> result;
+        std::fill(result._data.begin(), result._data.end(), Filler);
+        if constexpr(Filler == 0) {
+            result._length = 0;
+        } else
+            result._length = N;
         return result;
     }
 
     // Apply method for function with only input character
     template <typename Func>
+        requires (std::is_invocable_v<Func, char>
+               || std::is_invocable_v<Func, size_t, char>)
     constexpr auto apply(Func&& func) const {
-        if constexpr (std::is_invocable_v<Func, char>) {
-            ConstexprString<N> result(*this);
-            for (size_t i = 0; i < result._length; ++i) {
-                result._data[i] = func(result._data[i]);
+        ConstexprString<N> result;
+        result._length = _length;
+        
+        for (size_t i = 0; i < _length; ++i) {
+            if constexpr (std::is_invocable_v<Func, char>) {
+                result._data[i] = func(_data[i]);
+            } else {
+                static_assert(std::is_invocable_v<Func, size_t, char>);
+                result._data[i] = func(i, _data[i]);
             }
-            return result;
-        } else if constexpr (std::is_invocable_v<Func, size_t, char>) {
-            ConstexprString<N> result(*this);
-            for (size_t i = 0; i < result._length; ++i) {
-                result._data[i] = func(i, result._data[i]);
+            
+            if(result._data[i] == 0) {
+                result._length = i;
+                break;
             }
-            return result;
-        } else {
-            static_assert(!sizeof(Func), "Unsupported function signature");
         }
+        return result;
     }
 
     // Apply method over the entire capacity
     template <typename Func>
+        requires (std::is_invocable_v<Func, char>
+               || std::is_invocable_v<Func, size_t, char>)
     constexpr auto apply_to_capacity(Func&& func) const {
-        if constexpr (std::is_invocable_v<Func, char>) {
-            ConstexprString<N> result(*this);
-            for (size_t i = 0; i < N; ++i) {
-                result._data[i] = func(result._data[i]);
+        ConstexprString<N> result;
+        result._length = N;
+        
+        for (size_t i = 0; i < N; ++i) {
+            if constexpr (std::is_invocable_v<Func, char>) {
+                result._data[i] = func(_data[i]);
+            } else {
+                static_assert(std::is_invocable_v<Func, size_t, char>);
+                result._data[i] = func(i, _data[i]);
             }
-            return result;
-        } else if constexpr (std::is_invocable_v<Func, size_t, char>) {
-            ConstexprString<N> result(*this);
-            for (size_t i = 0; i < N; ++i) {
-                result._data[i] = func(i, result._data[i]);
+                
+            if(result._data[i] == 0) {
+                result._length = i;
+                break;
             }
-            return result;
-        } else {
-            static_assert(!sizeof(Func), "Unsupported function signature");
         }
+        return result;
     }
 };
 
