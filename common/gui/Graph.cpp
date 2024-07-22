@@ -129,7 +129,7 @@ void Graph::update() {
     std::sort(indices.begin(), indices.end(), [highlighted](size_t A, size_t B) -> bool {
         // If one element is highlighted, it should come first
         if (A == highlighted || B == highlighted) {
-            return A == highlighted;
+            return B != highlighted;
         }
         
         // If neither is highlighted, use natural ordering

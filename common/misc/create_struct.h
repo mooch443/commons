@@ -745,8 +745,8 @@ public: \
     } \
     static inline void init() { \
         std::call_once(flag, [](){ \
-        _callback_id = cmn::GlobalSettings::map().register_callbacks(NAM :: names(), [](std::string_view name){ \
-                variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+            _callback_id = cmn::GlobalSettings::map().register_callbacks(NAM :: names(), [](std::string_view name){ \
+                    variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
             }); \
             for(auto &name : NAM :: names()) { \
                 if(cmn::GlobalSettings::map().has(name)) \
