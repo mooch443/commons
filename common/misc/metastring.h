@@ -175,6 +175,8 @@ const char* to_readable_errc(const std::errc& error_code);
 
 template<size_t N>
 class ConstexprString {
+public:
+    static constexpr size_t Size = N;
 private:
     std::array<char, N> _data{ 0 };
     size_t _length{ 0 };
@@ -521,10 +523,10 @@ constexpr ConstString_t to_string(T value) {
 
 template<typename T>
 requires std::integral<T>
-constexpr std::string to_string(T value) {
+constexpr ConstString_t to_string(T value) {
     if (std::is_constant_evaluated()) {
         // For simplicity, we'll assume a maximum of 20 chars for int64_t (and its negative sign).
-        std::array<char, 21> buffer;
+        std::array<char, 21> buffer{0};
         char* end = buffer.data() + 20;
         *end = '\0';
         char* current = end;
@@ -546,12 +548,15 @@ constexpr std::string to_string(T value) {
             } while (value != 0);
         }
         
-        return std::string(current, end - current);
+        std::array<char, 21> result{0};
+        std::copy(current, end, result.data());
+        return ConstString_t{result}; //std::string(current, end - current);
     } else {
-        char buffer[128];
+        char buffer[128] = {0};
         auto result = cmn::to_chars(buffer, buffer + sizeof(buffer), value);
         if (result.ec == std::errc{}) {
-            return std::string{buffer, result.ptr};
+            *result.ptr = 0;
+            return ConstString_t{buffer};
         } else {
             throw std::invalid_argument("Error converting to string");
         }
