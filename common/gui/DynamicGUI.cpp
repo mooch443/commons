@@ -1346,9 +1346,10 @@ void DynamicGUI::reload() {
             
             if(tmp._settings_was_selected)
             {
-                //if(tmp._settings_tooltip->is_staged()) 
+                if(tmp._settings_tooltip
+                   && tmp._settings_tooltip->is_staged())
                 {
-                    Print("Is staged.");
+                    //Print("Is staged.");
                     tmp._mark_for_selection = last_selected;
                 }
             }
@@ -1476,7 +1477,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         return false;
     }));
     
-    static Timing timing("dyn::update", 0.1);
+    static Timing timing("dyn::update", 10);
     
     if(TakeTiming take(timing);
        parent)

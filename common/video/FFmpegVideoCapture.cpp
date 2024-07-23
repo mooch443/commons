@@ -278,259 +278,103 @@ int FfmpegVideoCapture::channels() const {
         : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
 }
 
-bool FfmpegVideoCapture::set_frame(uint32_t index) {
-    if (!is_open()) return false;
-    return seek_frame(index);
+void FfmpegVideoCapture::log_packet(const AVPacket *pkt) {
+    AVRational *time_base = &formatContext->streams[pkt->stream_index]->time_base;
+    std::cout << "Packet - pts:" << av_ts2str(pkt->pts) << " pts_time:" << av_ts2timestr(pkt->pts, time_base)
+              << " dts:" << av_ts2str(pkt->dts) << " dts_time:" << av_ts2timestr(pkt->dts, time_base)
+              << " duration:" << pkt->duration << " duration_time:" << av_ts2timestr(pkt->duration, time_base)
+              << " stream_index:" << pkt->stream_index << std::endl;
+}
+
+std::string FfmpegVideoCapture::error_to_string(int response) {
+    char errbuf[AV_ERROR_MAX_STRING_SIZE];
+    av_strerror(response, errbuf, sizeof(errbuf));
+    return std::string(errbuf);
 }
 
 bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
-    // Convert frame index to a timestamp
-    if(frameCount == frameIndex)
-        return true;
+    static Timing timing("ffmpeg::seek_frame");
+    TakeTiming take(timing);
+    
+    // If the desired frame is already the current frame, no need to seek
+    //if(frameCount == frameIndex)
+    //    return true;
     
     AVRational time_base = formatContext->streams[videoStreamIndex]->time_base;
-    AVRational frame_rate = formatContext->streams[videoStreamIndex]->r_frame_rate;
+    AVRational frame_rate = av_guess_frame_rate(formatContext, formatContext->streams[videoStreamIndex], nullptr);
 
-    // Source time base: each unit is one frame
-    AVRational src_tb = {frame_rate.den, frame_rate.num};
-
-    // Destination time base: stream's time base
-    AVRational dst_tb = time_base;
+    // Calculate the keyframe interval
+    int keyframe_interval = formatContext->streams[videoStreamIndex]->avg_frame_rate.num / formatContext->streams[videoStreamIndex]->avg_frame_rate.den;
     
-    //int64_t offset = max(1, int64_t(codecContext->gop_size) + 1);
-    int64_t offset = max(1, frameCount < frameIndex
-                                 ? int64_t(frame_rate.num / frame_rate.den / 4)
-                                 : int64_t(frame_rate.num / frame_rate.den)) + 1;
+    int64_t received_frame = -1;
     
-    if(frameIndex > frameCount
-       && (_disable_jumping
-           || frameIndex < frameCount + int64_t(frame_rate.num / frame_rate.den / 4) + 1))
+    // Determine if we should seek or decode sequentially
+    if (frameCount < static_cast<int64_t>(frameIndex)
+        && abs(static_cast<int64_t>(frameIndex) - frameCount) <= keyframe_interval)
     {
-#ifndef NDEBUG
-        Print("[FFMPEG] jump seeking might be good seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
-        Timer timer;
-        size_t i = 0;
-#endif
-        while(grab() && frameIndex > frameCount) {
-#ifndef NDEBUG
-            ++i;
-#endif
+        received_frame = frameCount;
+        
+    } else {
+        // If far away, seek directly to the calculated timestamp
+        int64_t timestamp = av_rescale_q(max(0, static_cast<int64_t>(frameIndex)), av_inv_q(frame_rate), time_base);
+
+        if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
+            FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
+            return false;
         }
         
-#ifndef NDEBUG
-        auto e = timer.elapsed();
-        if(i > 0 && e > 0)
-            Print("[FFMPEG] jumped grabbing ", i, " frames in ", e * 1000, "ms => ", double(i) / double(e),"fps");
-#endif
-        return frameIndex == frameCount;
-    } else {
-#ifndef NDEBUG
-        Print("[FFMPEG] jump seeking not good, seeking from ", frameCount, " to ", frameIndex,": ", frame_rate.num / frame_rate.den,"fps.");
-#endif
+        // Need to flush the buffer manually
+        avcodec_flush_buffers(codecContext);
     }
 
-    // Convert frame index to a timestamp
-    Timer timer;
-    int64_t timestamp = -1;
-
-    // find closest keyframe _before_ frameIndex from _keyframes:
-    /*auto it = _keyframes.lower_bound(frameIndex - 1);
-    if (it != _keyframes.begin()) {
-        if (it == _keyframes.end() || it->first != frameIndex - 1) {
-            // If the lower_bound did not find an exact match, decrement the iterator
-            --it;
+    while (received_frame < static_cast<int64_t>(frameIndex)) {
+        int response = av_read_frame(formatContext, pkt);
+        if(response < 0) {
+            FormatExcept("[FFMPEG] Error reading frame ", frameCount, ": ", error_to_string(response));
+            return false;
         }
-        // 'it' now points to the closest frame that is less than or equal to the given frame
-        auto keyframe = it->first;
-        if (keyframe < frameIndex
-            && abs(keyframe - frameIndex) < offset) 
-        {            
-#ifndef NDEBUG
-            Print("[FFMPEG] jump seeking from ", frameCount, " to ",frameIndex," (known keyframe=", keyframe, "): ", frame_rate.num / frame_rate.den, "fps.");
-#endif
-            timestamp = it->second;
-        } 
-#ifndef NDEBUG
-        else
-            Print("[FFMPEG] NOT jump seeking from ", frameCount, " to ", frameIndex," (keyframe=", keyframe, "): ", offset, " > ", abs(keyframe - frameIndex), " to ", frameIndex);
-#endif
-    }
-
-    if(timestamp == -1)*/
-        timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);
-
-#ifndef NDEBUG
-    Print("[FFMPEG] jumping to timestamp = ", timestamp, " for frameindex ",frameIndex, " from ", frameCount," frame_rate=",frame_rate.num,"/", frame_rate.den, " dst.num=", dst_tb.num, " dst.den=", dst_tb.den, " gop=", codecContext->gop_size, " with offset=", offset);
-    av_log_set_level(AV_LOG_DEBUG);
-#endif
-    // Seek directly to the calculated timestamp
-    if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
-        FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
-        return false;
-    }
-    
-    avcodec_flush_buffers(codecContext);
-
-    AVFrame* temp_frame = av_frame_alloc();
-    if (!temp_frame) {
-        FormatExcept("[FFMPEG] Failed to allocate temporary frame for seeking.");
-        return false;
-    }
-
-    int64_t received_frame = -1;
-#ifndef NDEBUG
-    int64_t count_jumped_frames = 0;
-#endif
-    int tries = 0, frame_skips = 1;
-    while (received_frame < static_cast<int64_t>(frameIndex) - 1) {
-        int ret = av_read_frame(formatContext, pkt);
-        if (ret < 0) {
-            char errbuf[AV_ERROR_MAX_STRING_SIZE];
-            av_strerror(ret, errbuf, AV_ERROR_MAX_STRING_SIZE);
-            FormatExcept("[FFMPEG] Error reading frame ",frameCount," during seeking: ", errbuf);
-            if(tries++ > 1) {
-                av_frame_free(&temp_frame);
-                return false;
-            } else
-                continue;
-        }
-
-        if (pkt->stream_index == videoStreamIndex) {
-            int response = avcodec_send_packet(codecContext, pkt);
-            av_packet_unref(pkt); // Unref packet immediately after sending
-            if (response < 0) {
-                FormatError("[FFMPEG] Error sending frame packet");
-                break;
-            }
-            
-            av_frame_make_writable(temp_frame);
-            response = avcodec_receive_frame(codecContext, temp_frame);
-            if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-                continue;
-                
-            } else if (response < 0) {
-                FormatError("[FFMPEG] Error while receiving frame from decoder");
-                return false;
-            }
-            
-            // Convert the pts to a frame index
-            int64_t frame_index = av_rescale_q(temp_frame->pts,
-                                               time_base,
-                                               AVRational{frame_rate.den, frame_rate.num});
-#ifndef NDEBUG
-            if(frame_index > frameIndex) {
-                count_jumped_frames += frame_index - frameIndex + 1;
-            } else {
-                count_jumped_frames += frameIndex - frame_index + 1;
-            }
-#endif
-/*
-#ifdef AV_FRAME_FLAG_KEY
-            if(temp_frame->flags & AV_FRAME_FLAG_KEY)
-#else
-            if(temp_frame->key_frame == 1)
-#endif
-                _keyframes[frame_index] = temp_frame->pts;
-*/
-            received_frame = frame_index;
-            if (frame_index == static_cast<int>(max(1u, frameIndex) - 1)) {  
-#ifndef NDEBUG
-                Print("[FFMPEG] found jumped to frame ", frame_index, " / ", frameIndex);
-#endif
-                break;
-            } else if(frame_index >= frameIndex && timestamp == 0) {                
-#ifndef NDEBUG
-                Print("[FFMPEG] jumped to ",frame_index," when trying to get ", frameIndex, " but timestamp == 0");
-#endif
-                return false;
-                
-            } else if(frame_index >= frameIndex) {
-                // jumped ahead of frameIndex target...
-                // we need to go back further.
-#ifndef NDEBUG
-                auto old_offset = offset;
-#endif
-                offset = int64_t(offset * 1.5);
-                timestamp = av_rescale_q(max(0, int64_t(frameIndex) - offset), src_tb, dst_tb);  
-#ifndef NDEBUG
-                Print("[FFMPEG] jumping back further (got:",frame_index," for offset=",old_offset,"): offset=", offset, " timestamp=", timestamp, "  for frame=", frameIndex);
-#endif
-                
-                frame_skips++;
-                
-                // Seek directly to the calculated timestamp
-                if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_FRAME) < 0) {
-                    FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
-                    return false;
-                }
-                received_frame = int64_t(frameIndex) - offset;
-                avcodec_flush_buffers(codecContext);
-                
-            } else {
-                if(frame_index < frameIndex
-                   && int64_t(frameIndex) - frame_index < 50)
-                {
-#ifndef NDEBUG
-                    Print("[FFMPEG] We are close enough to ", frameIndex, " by jumping to ", frame_index);
-#endif
-                    frameCount = frame_index;
-                    while(grab() && frameIndex > frameCount) {
-#ifndef NDEBUG
-                        Print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
-#endif
-                    }
-                    return frameCount == frameIndex;
-                    
-                } else if(frame_index < frameCount 
-                          && frame_index < frameIndex
-                          && frame_skips > 5)
-                {
-                    // we made it _worse_ by jumping. we should not
-                    // keep doing this if the frame is below current:
-                    _disable_jumping = true;
-#ifndef NDEBUG
-                    FormatWarning("[FFMPEG] Disabling jumping since we skipped ", frame_skips, " times and landed at ", frame_index, " when we wanted to hit ", frameIndex, " but were already at ", frameCount);
-#endif
-                    av_frame_free(&temp_frame);
-                    
-                    std::call_once(skip_message_flag, [this](){
-                        static constexpr std::string_view msg{"The video-stream seems to have trouble jumping to specific frames."};
-                        recovered_error(msg);
-                    });
-                    
-                    frameCount = frame_index;
-                    while(grab() && frameIndex > frameCount) {
-#ifndef NDEBUG
-                        Print("[FFMPEG] grabbing ", frameIndex," / ", frameCount);
-#endif
-                    }
-                    
-                    return frameCount == frameIndex;
-                }
-#ifndef NDEBUG
-                Print("[FFMPEG] jumped to frame ", frame_index, " / ", frameIndex);
-#endif
-                continue;
-            }
-            
-        } else
+        
+        log_packet(pkt);
+        
+        if(pkt->stream_index != videoStreamIndex
+           || avcodec_send_packet(codecContext, pkt) != 0)
+        {
             av_packet_unref(pkt);
+            continue;
+        }
+        
+        av_packet_unref(pkt);
+
+        while (true) {
+            response = avcodec_receive_frame(codecContext, frame);
+            
+            if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+                break; // Exit the loop to read the next packet
+            } else if (response < 0) {
+                FormatExcept("[FFMPEG] Error while receiving frame ", frameCount, " from decoder: ", error_to_string(response));
+                return false;
+            }
+            
+            received_frame = av_rescale_q(frame->pts, time_base, av_inv_q(frame_rate));
+            
+            if(received_frame == static_cast<int64_t>(frameIndex)) {
+                /// This is exactly the frame that we wanted:
+                frameCount = frameIndex;
+                return true;
+                
+            } else if (received_frame > static_cast<int64_t>(frameIndex)) {
+                FormatWarning("Here we land on a frame that is larger than we wanted: ", received_frame, " > ", static_cast<int64_t>(frameIndex));
+                frameCount = received_frame;
+                av_frame_unref(frame);
+                return false;
+            }
+
+            av_frame_unref(frame);
+        }
     }
 
-    av_frame_free(&temp_frame);
-
-    // Update internal frame count
-    frameCount = frameIndex;
-    
-#ifndef NDEBUG
-    auto e = timer.elapsed();
-    if(e > 0 && count_jumped_frames > 0)
-        Print("jump skipped ", count_jumped_frames, " frames in ", e * 1000, "ms => ", double(count_jumped_frames) / e,"fps");
-#endif
-
-    return true;
+    return false;
 }
-
 
 bool FfmpegVideoCapture::transfer_frame_to_software(AVFrame* frame) {
     if (!sw_frame) {
@@ -616,8 +460,12 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
     if constexpr (std::is_same_v<Mat, gpuMat>) {
         _buffer.get().copyTo(mat);
     }
-    //auto str = Meta::toStr(frameCount);
-    //cv::putText(outFrame.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
+    auto str = Meta::toStr(frameCount);
+    if constexpr(std::is_same_v<Mat, Image>) {
+        cv::putText(mat.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
+    } else {
+        cv::putText(mat, str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
+    }
     return true;
 }
 
@@ -643,163 +491,55 @@ bool FfmpegVideoCapture::update_sws_context(const AVFrame* frame, int dims) {
     return true;
 }
 
-bool FfmpegVideoCapture::grab() {
-    if (!is_open()) return false;
-
-    /*_capture->grab();
-    ++frameCount;
-    return true;*/
-
-    while (av_read_frame(formatContext, pkt) >= 0) {
-        if (pkt->stream_index != videoStreamIndex) {
-            av_packet_unref(pkt);
-            continue;
-        }
-
-        int response = avcodec_send_packet(codecContext, pkt);
-        av_packet_unref(pkt); // Unref packet immediately after sending
-        if (response < 0)
-            break;
-
-        response = avcodec_receive_frame(codecContext, frame);
-        if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-            continue;
-            
-        } else if (response < 0) {
-            FormatError("Error while receiving frame from decoder");
-            break;
-        }
-/*
-#ifdef AV_FRAME_FLAG_KEY
-        if (frame->flags & AV_FRAME_FLAG_KEY) {
-#else
-        if (frame->key_frame == 1) {
-#endif
-            _keyframes[frameCount] = frame->pts;
-#ifndef NDEBUG
-            Print("keyframe ", frameCount, " is ", frame->pts);
-#endif
-        }*/
-
-        ++frameCount;
-        av_frame_unref(frame); // Unref frame after processing
-        return true;
-    }
-
-    return false;
+bool FfmpegVideoCapture::read(uint32_t frameIndex, cv::Mat& mat) {
+    return FfmpegVideoCapture::_read<cv::Mat>(frameIndex, mat);
 }
 
-bool FfmpegVideoCapture::read(cv::Mat& mat) {
-    return FfmpegVideoCapture::_read<cv::Mat>(mat);
+bool FfmpegVideoCapture::read(uint32_t frameIndex, cv::UMat& mat) {
+    return FfmpegVideoCapture::_read<cv::UMat>(frameIndex, mat);
 }
 
-bool FfmpegVideoCapture::read(cv::UMat& mat) {
-    return FfmpegVideoCapture::_read<cv::UMat>(mat);
-}
-
-bool FfmpegVideoCapture::read(Image& mat) {
-    return FfmpegVideoCapture::_read<Image>(mat);
+bool FfmpegVideoCapture::read(uint32_t frameIndex, Image& mat) {
+    return FfmpegVideoCapture::_read<Image>(frameIndex, mat);
 }
 
 template<typename Mat>
-bool FfmpegVideoCapture::_read(Mat& outFrame) {
-    if (!is_open()) return false;
-
-    /*uint8_t channels = swsInputFormat == AV_PIX_FMT_NONE || swsInputFormat == AV_PIX_FMT_RGBA
-        ? 4
-        : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
-    if (is_in(outFrame.dims, 1, 3, 4))
-        channels = outFrame.dims;
-
-    if (outFrame.cols != (uint)dimensions().width
-        || outFrame.rows != (uint)dimensions().height
-        || outFrame.dims != channels)
+bool FfmpegVideoCapture::decode_frame(Mat& outFrame) {
+    if (frame->hw_frames_ctx
+        && not transfer_frame_to_software(frame))
     {
-        outFrame.create(dimensions().height, dimensions().width, channels);
-        Print("Created with: ", frame->height, " ", frame->width, " ", channels);
+        FormatError("Error transferring frame to software format.");
+        return false;
     }
+    
+    if (not convert_frame_to_mat<Mat>(frame, outFrame)) {
+        FormatError("Error converting frame to cv::Mat.");
+        return false;
+    }
+    
+    return true;
+}
 
-    cv::Mat mat;
-    _capture->read(mat);
-    ++frameCount;
-
-    if (mat.channels() == channels)
-        mat.copyTo(outFrame.get());
-    else if(mat.channels() == 3 && channels == 4)
-        cv::cvtColor(mat, outFrame.get(), cv::COLOR_BGR2BGRA);
-    else if(mat.channels() == 4 && channels == 3)
-        cv::cvtColor(mat, outFrame.get(), cv::COLOR_BGRA2BGR);
-    else if(mat.channels() == 1 && channels == 3)
-        cv::cvtColor(mat, outFrame.get(), cv::COLOR_GRAY2BGR);
-    else if(mat.channels() == 1 && channels == 4)
-        cv::cvtColor(mat, outFrame.get(), cv::COLOR_GRAY2BGRA);
-    else
+template<typename Mat>
+bool FfmpegVideoCapture::_read(uint32_t frameIndex, Mat& outFrame) {
+    if (!is_open())
         return false;
 
-    return true;*/
-    
-    static Timing timing("read_frame");
-    TakeTiming take(timing);
-
-    int response;
-    while (av_read_frame(formatContext, pkt) >= 0) {
-        if (pkt->stream_index != videoStreamIndex) {
-            av_packet_unref(pkt);
-            continue;
+    static Timing timing("ffmpeg::read_frame");
+    if(seek_frame(frameIndex)) {
+        TakeTiming take(timing);
+        
+        if(frameCount == frameIndex) {
+            /// we already received it!
+            auto result = decode_frame(outFrame);
+            av_frame_unref(frame);
+            return result;
         }
-
-        response = avcodec_send_packet(codecContext, pkt);
-        av_packet_unref(pkt); // Unref packet immediately after sending
-        if (response < 0)
-            break;
-
-        response = avcodec_receive_frame(codecContext, frame);
-        if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-            continue;
-
-        }
-        else if (response < 0) {
-            FormatError("Error while receiving frame from decoder");
-            break;
-        }
-/*
-#ifdef AV_FRAME_FLAG_KEY
-        int64_t timestamp = frame->flags & AV_FRAME_FLAG_KEY ? frame->pts : -1;
-#else
-        int64_t timestamp = frame->key_frame == 1 ? frame->pts : -1;
-#endif
- 
-        if constexpr (std::is_same_v<Mat, gpuMat>) {
-            if (frame->hw_frames_ctx) {
-                if (cv::hw_copy_frame_to_umat(frame->hw_frames_ctx, frame, outFrame)) {
-                    ++frameCount;
-                    av_frame_unref(frame); // Unref frame after processing
-                    return true;
-                }
-            }
-        }
-*/
-        if (frame->hw_frames_ctx
-            && not transfer_frame_to_software(frame))
-        {
-            FormatError("Error transferring frame to software format.");
-            break;
-        }
-
-        if (not convert_frame_to_mat<Mat>(frame, outFrame)) {
-            FormatError("Error converting frame to cv::Mat.");
-            break;
-        }
-        /*if (timestamp >= 0) {
-            _keyframes[frameCount] = timestamp;
+        
 #ifndef NDEBUG
-            Print("_read: keyframe ", frameCount, " is ", timestamp);
+        FormatExcept("Was unable to load ", frameIndex, " - instead have ", frameCount, ".");
 #endif
-        }*/
-
-        ++frameCount;
-        av_frame_unref(frame); // Unref frame after processing
-        return true;
+        return false;
     }
 
     if constexpr (std::is_same_v<Mat, gpuMat>) {
@@ -811,6 +551,7 @@ bool FfmpegVideoCapture::_read(Mat& outFrame) {
     else {
         outFrame.setTo(0);
     }
+    
     return false;
 }
 

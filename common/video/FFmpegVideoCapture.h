@@ -10,16 +10,13 @@ extern "C" {
     #include <libavutil/imgutils.h>
     #include <libswscale/swscale.h>
     #include <libavutil/hwcontext.h>
+    #include <libavutil/timestamp.h>
 }
 
 namespace cmn {
 
 class FfmpegVideoCapture {
-    //Size2 _dimensions;
-    //int _channels{-1};
     std::unique_ptr<cv::VideoCapture> _capture;
-    //std::map<int64_t, int64_t> _keyframes;
-    bool _disable_jumping{false};
     mutable std::set<std::string_view> _recovered_errors;
     std::once_flag skip_message_flag;
     
@@ -33,11 +30,10 @@ public:
     Size2 dimensions() const;
     int channels() const;
     int frame_rate() const;
-    bool set_frame(uint32_t index);
-    bool read(Image& frame);
-    bool read(gpuMat& frame);
-    bool read(cv::Mat& frame);
-    bool grab();
+    
+    bool read(uint32_t frameIndex, Image& frame);
+    bool read(uint32_t frameIndex, gpuMat& frame);
+    bool read(uint32_t frameIndex, cv::Mat& frame);
     
     void close();
     bool open(const std::string& filePath);
@@ -58,7 +54,7 @@ private:
     Image _buffer;
 
     int videoStreamIndex = -1;
-    int64_t frameCount = 0;
+    int64_t frameCount = -1;
     
     std::string _filePath;
 
@@ -71,10 +67,15 @@ private:
     bool update_sws_context(const AVFrame* frame, int dims = 0);
 
     template<typename Mat>
-    bool _read(Mat& mat);
+    bool _read(uint32_t frameIndex, Mat& mat);
+    
+    template<typename Mat>
+    bool decode_frame(Mat& mat);
     
 private:
     void recovered_error(const std::string_view&) const;
+    void log_packet(const AVPacket *pkt);
+    static std::string error_to_string(int);
 };
 
 } // namespace cmn

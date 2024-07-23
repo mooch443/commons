@@ -188,8 +188,7 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
             if (!_video->is_open())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
             
-            _video->set_frame(frameIndex.get());
-            if(_video->read(output)) {
+            if(_video->read(frameIndex.get(), output)) {
                 output.set_index(frameIndex.get());
                 return true;
             }
@@ -220,8 +219,7 @@ bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
         if (!_video->is_open())
             throw U_EXCEPTION("Video ", _filename, " cannot be opened.");
 
-        _video->set_frame(frameIndex.get());
-        return _video->read(output);
+        return _video->read(frameIndex.get(), output);
     }
 
     case IMAGE:
@@ -245,8 +243,7 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& outpu
             if (!_video->is_open())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
             
-            _video->set_frame(frameIndex.get());
-            _video->read(output);
+            _video->read(frameIndex.get(), output);
             
             assert(output.cols == _video->dimensions().width
                    && output.rows == _video->dimensions().height);

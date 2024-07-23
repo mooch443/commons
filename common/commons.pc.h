@@ -781,7 +781,13 @@ public:
 
     void set(T value) {
         std::scoped_lock lock(mtx);
-        data = std::move(value);
+        if(data) {
+#ifndef NDEBUG
+            printf("Cannot replace existing value\n.");
+#endif
+        } else {
+            data = std::move(value);
+        }
     }
 
     T read() {
