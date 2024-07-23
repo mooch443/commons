@@ -4,6 +4,89 @@
 #include <misc/pretty.h>
 #include <gui/Graph.h>
 
+namespace cmn::utils {
+using namespace cmn::gui;
+
+Bounds calculate_bounds(const std::string& text, Drawable* reference, const Font& font) {
+    return Base::default_text_bounds(text, reference, font);
+}
+
+size_t find_splitting_point(const std::string& str, const float w, const float max_w, Drawable* reference, const Font& font)
+{
+    float cw = w;
+    size_t L = str.length();
+    size_t idx = L;
+    
+    static const std::set<char> whitespace {
+        ' ',':',',','/','\\'
+    };
+    static const std::set<char> extended_whitespace {
+        ' ','-',':',',','/','\\','.','_'
+    };
+    
+    while(cw > max_w && idx > 1) {
+        L = idx;
+        
+        // try to find a good splitting-point
+        // (= dont break inside words)
+        do --idx;
+        while(idx
+              && ((L-idx <= 10 && whitespace.find(str[idx-1]) == whitespace.end())
+               || (L-idx > 10  && extended_whitespace.find(str[idx-1]) == extended_whitespace.end())));
+        
+        // didnt find a proper position for breaking
+        if(!idx)
+            break;
+        
+        // test splitting at idx
+        Bounds bounds = calculate_bounds(StaticText::RichString::parse(str.substr(0, idx)), reference, font);
+        
+        cw = utils::calculate_width(bounds);
+    }
+    
+    if(not idx) {
+        // can we put the whole segment in a new line, or
+        // do we have to break it up?
+        // do a quick-search for the best-fitting size.
+        cw = w;
+        
+        if(cw > max_w) {
+            // we have to break it up.
+            size_t len = str.length();
+            size_t middle = len * 0.5;
+            idx = middle;
+            
+            while (true) {
+                if(len <= 1)
+                    break;
+                
+                Bounds bounds = calculate_bounds(StaticText::RichString::parse(str.substr(0, middle)), reference, font);
+                cw = utils::calculate_width(bounds);
+                
+                if(cw <= max_w) {
+                    middle = middle + len * 0.25;
+                    len = len * 0.5;
+                    
+                } else if(cw > max_w) {
+                    middle = middle - len * 0.25;
+                    len = len * 0.5;
+                }
+            }
+            
+            idx = middle;
+            if(!idx && str.length() > 0)
+                idx = 1;
+            
+        } else {
+            // next line!
+        }
+    }
+    
+    return idx;
+}
+
+}
+
 namespace cmn::gui {
     static bool nowindow_updated = false;
     static bool nowindow;
@@ -223,141 +306,62 @@ void StaticText::add_shadow() {
     advance_wrap(*_fade_out);
 }
 
-    void StaticText::add_string(std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>> &strings, Vec2& offset)
-    {
+void StaticText::add_string(
+        Drawable* reference,
+        const Settings& _settings,
+        std::unique_ptr<RichString>&& ptr,
+        std::vector<std::unique_ptr<RichString>>& strings,
+        Vec2& offset)
+{
+    if (_settings.max_size.x > 0 && not ptr->str.empty()) {
+        Bounds bounds = utils::calculate_bounds(ptr->parsed, reference, ptr->font);
+        const auto w = utils::calculate_width(bounds);
+        const float max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
         
-        /*if(_max_size.y > 0) {
-            if(ptr->pos.y * Base::default_line_spacing(_default_font) >= _max_size.y ) {
-                Print("Cutting off ", ptr->str, "  at ", ptr->pos, " with max size ", _max_size);
+        //Print("** ", utils::ShortenText(ptr->parsed, 15)," w=", w, " max=",max_w, " font=",ptr->font);
+
+        if (w > max_w) {
+            size_t idx = utils::find_splitting_point(ptr->str, w, max_w, reference, ptr->font);
+            
+            offset.y++;
+            offset.x = 0;
+
+            if (idx) {
+                auto& obj = *ptr;
+                strings.emplace_back(std::move(ptr));
+
+                std::string copy = obj.str;
+                obj.str = copy.substr(0, idx);
+                obj.parsed = RichString::parse(obj.str);
+
+                copy = utils::ltrim(copy.substr(idx));
+
+                // if there is some remaining non-whitespace
+                // string, add it recursively
+                if (not copy.empty()) {
+                    auto tmp = std::make_unique<RichString>();
+                    tmp->str = std::move(copy);
+                    tmp->font = obj.font;
+                    tmp->parsed = RichString::parse(tmp->str);
+                    tmp->pos.x = obj.pos.x;
+                    tmp->pos.y = obj.pos.y + 1;
+                    tmp->clr = obj.clr;
+                    add_string(reference, _settings, std::move(tmp), strings, offset);
+                }
+
                 return;
+
+            } else {
+                // put the whole text in the next line
+                ptr->pos.y++;
             }
-        }*/
-        //const Vec2 stage_scale = this->stage_scale();
-        //const Vec2 real_scale(1); //= this->real_scale();
-        auto real_scale = this;
-        
-        if(_settings.max_size.x > 0 && !ptr->str.empty()) {
-            Bounds bounds = Base::default_text_bounds(ptr->parsed, real_scale, ptr->font);
-            auto w = bounds.width + bounds.x;
-            
-            const float max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
-            
-            if(w > max_w) {
-                float cw = w;
-                size_t L = ptr->str.length();
-                size_t idx = L;
-                
-                static const std::set<char> whitespace {
-                    ' ',':',',','/','\\'
-                };
-                static const std::set<char> extended_whitespace {
-                    ' ','-',':',',','/','\\','.','_'
-                };
-                
-                while(cw > max_w && idx > 1) {
-                    L = idx;
-                    
-                    // try to find a good splitting-point
-                    // (= dont break inside words)
-                    do --idx;
-                    while(idx
-                          && ((L-idx <= 10 && whitespace.find(ptr->str[idx-1]) == whitespace.end())
-                           || (L-idx > 10  && extended_whitespace.find(ptr->str[idx-1]) == extended_whitespace.end())));
-                          /*&& ptr->str[idx-1] != ' '
-                          && ptr->str[idx-1] != '-'
-                          && ptr->str[idx-1] != ':'
-                          && ptr->str[idx-1] != ','
-                          && ptr->str[idx-1] != '/'
-                          && ptr->str[idx-1] != '.'
-                          && ptr->str[idx-1] != '_');*/
-                    
-                    // didnt find a proper position for breaking
-                    if(!idx)
-                        break;
-                    
-                    // test splitting at idx
-                    bounds = Base::default_text_bounds(RichString::parse(ptr->str.substr(0, idx)), real_scale, ptr->font);
-                    
-                    cw = bounds.width + bounds.x;
-                }
-                
-                if(!idx) {
-                    // can we put the whole segment in a new line, or
-                    // do we have to break it up?
-                    // do a quick-search for the best-fitting size.
-                    cw = w;
-                    
-                    if(cw > _settings.max_size.x - _settings.margins.x - _settings.margins.x) {
-                        // we have to break it up.
-                        size_t len = ptr->str.length();
-                        size_t middle = len * 0.5;
-                        idx = middle;
-                        
-                        while (true) {
-                            if(len <= 1)
-                                break;
-                            
-                            bounds = Base::default_text_bounds(RichString::parse(ptr->str.substr(0, middle)), real_scale, ptr->font);
-                            
-                            cw = bounds.width + bounds.x;
-                            
-                            if(cw <= max_w) {
-                                middle = middle + len * 0.25;
-                                len = len * 0.5;
-                                
-                            } else if(cw > max_w) {
-                                middle = middle - len * 0.25;
-                                len = len * 0.5;
-                            }
-                        }
-                        
-                        idx = middle;
-                        if(!idx && ptr->str.length() > 0)
-                            idx = 1;
-                        
-                    } else {
-                        // next line!
-                    }
-                }
-                
-                offset.y ++;
-                offset.x = 0;
-                
-                if(idx) {
-                    auto& obj = *ptr;
-                    strings.emplace_back(std::move(ptr));
-                    
-                    std::string copy = obj.str;
-                    obj.str = copy.substr(0, idx);
-                    obj.parsed = RichString::parse(obj.str);
-                    
-                    copy = utils::ltrim(copy.substr(idx));
-                    
-                    // if there is some remaining non-whitespace
-                    // string, add it recursively
-                    if(!copy.empty()) {
-                        auto tmp = std::make_unique<RichString>();
-                        tmp->str = std::move(copy);
-                        tmp->font = obj.font;
-                        tmp->parsed = RichString::parse(tmp->str);
-                        tmp->pos.x = obj.pos.x;
-                        tmp->pos.y = obj.pos.y + 1;
-                        tmp->clr = obj.clr;
-                        add_string(std::move(tmp), strings, offset);
-                    }
-                    
-                    return;
-                    
-                } else
-                    // put the whole text in the next line
-                    ptr->pos.y++;
-            }
-            
-            offset.x += w;
         }
         
-        strings.emplace_back(std::move(ptr));
+        offset.x += w;
     }
+
+    strings.emplace_back(std::move(ptr));
+}
 
 std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     char quote = 0;
@@ -580,7 +584,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    add_string(this, _settings, std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
                 }
                 
                 tag.text = tag.text.substr(sub.after - tag.range.start);
@@ -610,7 +614,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    add_string(this, _settings, std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
                 }
                 if(breaks_line) {
                     ++offset.y;

@@ -101,6 +101,9 @@ namespace cmn::gui {
         bool operator!=(const Font& other) const {
             return !operator==(other);
         }
+        
+        std::string toStr() const;
+        static std::string class_name() { return "Font"; }
     };
 }
 

@@ -9,4 +9,8 @@ namespace cmn::gui {
     std::string Vertex::toStr() const {
         return "V<"+Meta::toStr(position()) + ">";
     }
+
+    std::string Font::toStr() const {
+        return "Font<"+Meta::toStr(size)+" "+Meta::toStr(style)+" "+Meta::toStr((int)align)+">";
+    }
 }

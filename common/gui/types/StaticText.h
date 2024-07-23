@@ -6,6 +6,43 @@
 #include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
 
+namespace cmn {
+namespace utils {
+
+/**
+ * @brief Calculates the bounding box of a text string.
+ *
+ * @param text The text string to calculate bounds for.
+ * @param reference A pointer to a Drawable object for context.
+ * @param font The font used for rendering the text.
+ * @return A Bounds object representing the dimensions of the text.
+ */
+Bounds calculate_bounds(const std::string& text, gui::Drawable* reference, const gui::Font& font);
+
+/**
+ * @brief Calculates the width of a bounding box.
+ *
+ * @param bounds The Bounds object representing the dimensions of the text.
+ * @return The width of the bounding box.
+ */
+constexpr float calculate_width(const Bounds& bounds) {
+    return bounds.width + bounds.x;
+}
+
+/**
+ * @brief Finds the best splitting point in a string to ensure it fits within a maximum width.
+ *
+ * @param str The input string to be split.
+ * @param max_w The maximum allowed width for the text.
+ * @param reference A pointer to a Drawable object for context.
+ * @param font The font used for rendering the text.
+ * @return The index in the string where it should be split.
+ */
+size_t find_splitting_point(const std::string& str, const float w, const float max_w, gui::Drawable* reference, const gui::Font& font);
+
+} // namespace utils
+} // namespace cmn
+
 namespace cmn::gui {
 
     struct TRange {
@@ -39,6 +76,7 @@ namespace cmn::gui {
         Vec2 _org_position;
         derived_ptr<ExternalImage> _fade_out;
         
+    public:
         struct Settings {
             Vec2 max_size{0};
             Margins margins{5, 5, 5, 5};
@@ -50,7 +88,10 @@ namespace cmn::gui {
             FadeOut_t fade_out{0.f};
             Shadow_t shadow{0.f};
             
-        } _settings;
+        };
+        
+    private:
+        Settings _settings;
         
     public:
         struct RichString {
@@ -159,7 +200,7 @@ namespace cmn::gui {
         void set_margins(const Margins& margin);
         
         void update() override;
-        void add_string(std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>>& output, Vec2& offset);
+        static void add_string(Drawable* reference, const Settings&, std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>>& output, Vec2& offset);
         void structure_changed(bool downwards) override;
         virtual void set_size(const Size2& size) override;
         

@@ -386,25 +386,41 @@ public:
 
 using ConstString_t = ConstexprString<128>;
 
+// Function to safely cast a value to int64_t
+template <typename T>
+constexpr bool is_within_int64_range(T value) {
+    return value <= static_cast<T>(std::numeric_limits<int64_t>::max()) && value >= static_cast<T>(std::numeric_limits<int64_t>::min());
+}
+
 template <typename T>
 requires std::floating_point<T>
 constexpr ConstString_t to_string(T value) {
     std::array<char, 128> contents{0}; // Initialize array with null terminators
     
-    if (std::is_constant_evaluated())
-    {
+    //if (std::is_constant_evaluated()) {
         if (value != value) {
-            const char nan[] = "nan";
+            /*const char nan[] = "nan";
             std::copy(std::begin(nan), std::end(nan) - 1, contents.data()); // -1 to exclude null terminator
-            return contents;
+            return contents;*/
+            return "nan";
         }
-        if (value == std::numeric_limits<T>::infinity() || value == -std::numeric_limits<T>::infinity()) {
-            const char* inf = (value < 0) ? "-inf" : "inf";
+    
+        if (   value == std::numeric_limits<T>::infinity()
+            || value == -std::numeric_limits<T>::infinity()
+            || not is_within_int64_range(value))
+        {
+            /*const char* inf = (value < 0) ? "-inf" : "inf";
             std::copy(inf, inf + std::string_view(inf).length(), contents.data());
-            return contents;
+            return contents;*/
+            if(value < 0) {
+                return "-inf";
+            } else
+                return "inf";
         }
 
+        /// the maximum number of pre-decimal point digits
         constexpr int max_digits = 50;
+    
         // Extract integer and fractional parts
         int64_t integerPart = static_cast<int64_t>(value);
         T fractionalPart = value - integerPart;
@@ -413,7 +429,7 @@ constexpr ConstString_t to_string(T value) {
 
         // Convert integer part directly into 'contents'
         char* current = contents.data() + max_digits + 1; // Make room for the largest integer
-        if (integerPart < 0) {
+        if (value < 0) {
             integerPart = -integerPart;  // Convert to positive
             do {
                 --current;
@@ -445,21 +461,81 @@ constexpr ConstString_t to_string(T value) {
         char* fraction_current = fraction_start + 1;
 
         constexpr T tolerance{1e-4};
+        constexpr uint8_t max_nines{2};
+        char* nines_start = nullptr;
+        uint8_t nines = 0;
+    
         char* last_non_zero = 0;
-        for (int i = 0; i < max_digits; ++i) {
+        //constexpr int max_fractions_digits = std::numeric_limits<T>::digits10;
+        /// THIS IS WRONG. But it makes them agree more.
+        constexpr int max_fractions_digits = std::numeric_limits<float>::digits10;
+    
+        for (int i = 0; i < max_fractions_digits + max_nines; ++i) {
             fractionalPart *= 10;
-            char digit = '0' + static_cast<int>(fractionalPart);
+            char digit = '0' + static_cast<int64_t>(fractionalPart);
             *fraction_current = digit;
+            
+            if(digit == '9' && i >= max_fractions_digits - 2) {
+                if(not nines_start) {
+                    nines_start = fraction_current;
+                    nines = 0;
+                }
+                
+                ++nines;
+                
+                if(nines > max_nines) {
+                    static_assert(max_nines > 0);
+                    /// this should be valid since we counted some nines
+                    --nines_start;
+                    
+                    while(*nines_start >= '9' || nines_start == fraction_start) {
+                        if(nines_start == fraction_start) {
+                            last_non_zero = (fraction_start - 1);
+                        } else {//if(nines_start < fraction_start) {
+                            //last_non_zero = nullptr;
+                            *nines_start = '0';
+                        }
+                        
+                        if(nines_start == copy.data()) {
+                            /// we have reached the beginning of the array. shift everything
+                            /// up to the fraction point to zero, setting the
+                            /// fraction point to zero to add a digit
+                            //for(char * s = copy.data(); s <= fraction_point; ++s)
+                            //    *s = '0';
+                            //*nines_start = '0'; // set to zero so in the next step it increments to 1 since we add a digit
+                            *fraction_start = '0';
+                            last_non_zero = fraction_start;
+                            break;
+                        } else {
+                            --nines_start;
+                        }
+                    }
+                    
+                    if(nines_start > fraction_start)
+                    {
+                        //assert(*nines_start == '0');
+                        last_non_zero = nines_start;
+                    }
+                    *nines_start = *nines_start + 1;
+                    break;
+                }
+            } else if(nines_start)
+                nines_start = nullptr;
+            
             if (digit != '0') {
                 last_non_zero = fraction_current;
             }
             fraction_current++;
-            fractionalPart -= static_cast<int>(fractionalPart);
+            fractionalPart -= static_cast<int64_t>(fractionalPart);
             
             if (fractionalPart < tolerance && fractionalPart > -tolerance) {
                 break;  // Break when the fractional part is close enough to zero
             }
         }
+    
+    if(fraction_current - fraction_start >= max_fractions_digits) {
+        *(fraction_start + max_fractions_digits) = 0;
+    }
 
         if (last_non_zero) {
             *(last_non_zero + 1) = '\0'; // Trim the trailing zeros
@@ -468,7 +544,7 @@ constexpr ConstString_t to_string(T value) {
         }
         
         return ConstString_t{copy};
-    } else {
+    /*} else {
         if (std::isnan(value)) {
             const char nan[] = "nan";
             std::copy(std::begin(nan), std::end(nan) - 1, contents.data()); // -1 to exclude null terminator
@@ -484,10 +560,6 @@ constexpr ConstString_t to_string(T value) {
         auto result = cmn::to_chars(contents.data(), contents.data() + contents.size(), value, cmn::chars_format::fixed);
         if (result.ec == std::errc{}) {
             // Trim trailing zeros but leave at least one digit after the decimal point
-            /*if (not utils::contains((const char*)contents.data(), '.')) {
-                *result.ptr = '\0';
-                return contents;
-            }*/
             char* end = result.ptr;
             while (end > contents.data() + 1 && *(end - 1) == '0')
                 --end;
@@ -518,13 +590,13 @@ constexpr ConstString_t to_string(T value) {
         } else {
             throw std::invalid_argument("Error converting floating point to string");
         }
-    }
+    }*/
 }
 
 template<typename T>
 requires std::integral<T>
 constexpr ConstString_t to_string(T value) {
-    if (std::is_constant_evaluated()) {
+    //if (std::is_constant_evaluated()) {
         // For simplicity, we'll assume a maximum of 20 chars for int64_t (and its negative sign).
         std::array<char, 21> buffer{0};
         char* end = buffer.data() + 20;
@@ -551,7 +623,7 @@ constexpr ConstString_t to_string(T value) {
         std::array<char, 21> result{0};
         std::copy(current, end, result.data());
         return ConstString_t{result}; //std::string(current, end - current);
-    } else {
+    /*} else {
         char buffer[128] = {0};
         auto result = cmn::to_chars(buffer, buffer + sizeof(buffer), value);
         if (result.ec == std::errc{}) {
@@ -560,7 +632,7 @@ constexpr ConstString_t to_string(T value) {
         } else {
             throw std::invalid_argument("Error converting to string");
         }
-    }
+    }*/
 }
 
 template <typename T>
