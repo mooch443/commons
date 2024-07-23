@@ -1476,7 +1476,11 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         return false;
     }));
     
-    if(parent) {
+    static Timing timing("dyn::update", 0.1);
+    
+    if(TakeTiming take(timing);
+       parent)
+    {
         //! check if we need anything more to be done to the objects before adding
         if(before_add) {
             auto copy = objects;
