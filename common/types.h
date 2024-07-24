@@ -309,7 +309,7 @@ struct Pose {
 struct SegmentedOutlines {
     struct Outline {
         std::vector<int32_t> _points; // has to be divisible by 2 (x,y)
-        bool valid() const { return _points.empty(); }
+        //bool valid() const { return not _points.empty(); }
         size_t size() const {
             return _points.size() / 2u; // assume divisible by 2
         }
@@ -324,22 +324,37 @@ struct SegmentedOutlines {
                 pts[index] = (*this)[index];
             return pts;
         }
+        
+        static Outline from_vectors(const std::vector<Vec2>& pts) {
+            Outline outline;
+            outline._points.resize(pts.size() * 2);
+            for(size_t i=0, N = pts.size(); i<N; ++i) {
+                auto& pt = pts[i];
+                outline._points[i * 2u] = (int32_t(pt.x));
+                outline._points[i * 2u + 1] = (int32_t(pt.y));
+            }
+            return outline;
+        }
     };
     
+    std::optional<Outline> original_outline;
     std::vector<Outline> lines;
-    bool empty() const { return lines.empty(); }
+    
+    bool has_original_outline() const { return original_outline.has_value(); }
+    bool has_holes() const { return not lines.empty(); }
+    
     void add(Outline&& outline) {
         lines.emplace_back(std::move(outline));
     }
+    
+    void set_original(const std::vector<Vec2>& pts) {
+        if(original_outline.has_value())
+            throw std::runtime_error("Outline is already set.");
+        original_outline = Outline::from_vectors(pts);
+    }
+    
     void add(const std::vector<Vec2>& pts) {
-        Outline outline;
-        outline._points.resize(pts.size() * 2);
-        for(size_t i=0, N = pts.size(); i<N; ++i) {
-            auto& pt = pts[i];
-            outline._points[i * 2u] = (int32_t(pt.x));
-            outline._points[i * 2u + 1] = (int32_t(pt.y));
-        }
-        lines.emplace_back(std::move(outline));
+        lines.emplace_back(Outline::from_vectors(pts));
     }
 };
 
