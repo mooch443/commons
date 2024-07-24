@@ -101,21 +101,21 @@ namespace cmn {
 
     class ReadonlyMemoryWrapper : public Data {
         uchar *_data;
-#ifndef NDEBUG
+//#ifndef NDEBUG
         uint64_t _capacity;
-#endif
+//#endif
         uint64_t pos;
         
     public:
         ReadonlyMemoryWrapper(uchar *memory, uint64_t
-#ifndef NDEBUG
+//#ifndef NDEBUG
                               size
-#endif
+//#endif
                               )
             : _data(memory),
-#ifndef NDEBUG
+//#ifndef NDEBUG
               _capacity(size),
-#endif
+//#endif
               pos(0)
         {
             _supports_fast = true;
@@ -127,6 +127,9 @@ namespace cmn {
         
         virtual uint64_t read_data(uint64_t num_bytes, char *buffer) override {
             assert(pos+num_bytes <= _capacity);
+            if(pos + num_bytes > _capacity) {
+                throw OutOfRangeException("The file being read is only ", _capacity, " big, but we are trying to read from ", pos, "-", pos+num_bytes,".");
+            }
             memcpy(buffer, _data + pos, num_bytes);
             seek(pos + num_bytes);
             
