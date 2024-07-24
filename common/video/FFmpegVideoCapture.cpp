@@ -279,11 +279,13 @@ int FfmpegVideoCapture::channels() const {
 }
 
 void FfmpegVideoCapture::log_packet(const AVPacket *pkt) {
+#if !defined(NDEBUG) && !defined(__linux__)
     AVRational *time_base = &formatContext->streams[pkt->stream_index]->time_base;
     std::cout << "Packet - pts:" << av_ts2str(pkt->pts) << " pts_time:" << av_ts2timestr(pkt->pts, time_base)
               << " dts:" << av_ts2str(pkt->dts) << " dts_time:" << av_ts2timestr(pkt->dts, time_base)
               << " duration:" << pkt->duration << " duration_time:" << av_ts2timestr(pkt->duration, time_base)
               << " stream_index:" << pkt->stream_index << std::endl;
+#endif
 }
 
 std::string FfmpegVideoCapture::error_to_string(int response) {
