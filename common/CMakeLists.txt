@@ -140,8 +140,8 @@ if(COMMONS_BUILD_HTTPD)
 endif()
 
 
-if(COMPILER_ID MATCHES "GNU")
-    target_link_libraries(commons PUBLIC atomic)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_link_libraries(commons PUBLIC atomic thread m)
 endif()
 
 add_dependencies(commons Commons::OpenCV)
