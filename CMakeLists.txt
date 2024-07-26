@@ -1329,6 +1329,7 @@ else()
             -DBUILD_WITH_DEBUG_INFO=OFF
             -DWITH_EIGEN:BOOL=FALSE
             -DWITH_CUDA:BOOL=FALSE
+            -DWITH_V4L=OFF 
             -DWITH_FFMPEG:BOOL=TRUE
             -DWITH_MSMF:BOOL=FALSE
             -DWITH_IPP:BOOL=FALSE
