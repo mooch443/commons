@@ -462,12 +462,15 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
     if constexpr (std::is_same_v<Mat, gpuMat>) {
         _buffer.get().copyTo(mat);
     }
+    
+#ifndef NDEBUG
     auto str = Meta::toStr(frameCount);
     if constexpr(std::is_same_v<Mat, Image>) {
         cv::putText(mat.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
     } else {
         cv::putText(mat, str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
     }
+#endif
     return true;
 }
 
