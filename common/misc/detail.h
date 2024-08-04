@@ -833,6 +833,9 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         else if constexpr(are_the_same<cv::Mat, VT>) {
             return cmn::Meta::toStr(v);
         }
+        else if constexpr(is_instantiation<std::function, VT>::value) {
+            return nullptr;
+        }
         //auto str = Meta::toStr(v);
         //return nlohmann::json(str.c_str());
         

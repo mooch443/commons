@@ -250,6 +250,7 @@ namespace cmn {
         }
         
         template<typename T, typename Arg = T>
+            requires (not is_instantiation<std::function, T>::value)
         struct has_equals
         {
             constexpr static const bool value = !std::is_same<decltype(*(T*)(0) == *(Arg*)(0)), detail::No>::value;
@@ -325,6 +326,7 @@ namespace cmn {
             }
             
             template<typename K>
+                requires (not is_instantiation<std::function, K>::value)
             bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
                 if constexpr(trivial) {
                     auto v = _value.load();
@@ -336,11 +338,18 @@ namespace cmn {
             }
             
             template<typename K>
+                requires (not is_instantiation<std::function, K>::value)
             bool equals(const K& other, const typename std::enable_if< std::is_same<cv::Mat, K>::value, K >::type* = NULL) const {
                 std::shared_lock guard(_property_mutex);
                 if(not _value.has_value())
                     return false;
                 return cv::countNonZero(_value.value() != other) == 0;
+            }
+            
+            template<typename K>
+                requires (is_instantiation<std::function, K>::value)
+            bool equals(const K&, const typename std::enable_if< is_instantiation<std::function, K>::value, K >::type* = NULL) const {
+                return false;
             }
             
             bool operator==(const PropertyType& other) const override {

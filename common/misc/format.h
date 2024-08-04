@@ -696,6 +696,16 @@ public:
     }
 #endif
     
+    
+    template<template <typename ...> class T, typename Rt, typename... Args>
+        requires is_instantiation<std::function, T<Rt(Args...)>>::value
+    static std::string parse_value(const T<Rt(Args...)>&) {
+        std::stringstream ss;
+        bool first = true;
+        ((ss << (first ? "" : ", ") << Meta::name<Args>(), first = false), ...);
+        return "function<"+Meta::name<Rt>()+"("+ss.str()+")>";
+    }
+    
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_set<K>::value || is_container<K>::value
     static std::string parse_value(const T&m) {

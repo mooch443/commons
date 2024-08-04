@@ -813,10 +813,18 @@ inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::valu
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
+        && (not is_instantiation<std::function, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value), typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+
+template<typename Q>
+    requires is_instantiation<std::function, Q>::value
+inline Q fromStr(const std::string&, const Q* = nullptr) {
+    throw std::runtime_error("Cannot generate function from string.");
+}
+
 }
 #pragma endregion Meta prototypes
 // </Meta prototypes>
@@ -830,6 +838,7 @@ namespace _Meta {
     * Such as "vector<pair<int,float>>".
     */
 //template<class Q> std::string name(const typename std::enable_if< std::is_integral<typename std::remove_cv<Q>::type>::value && !std::is_same<bool, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return sizeof(Q) == sizeof(long) ? "long" : "int"; }
+template<class Q> std::string name(const typename std::enable_if< std::is_same<void, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "void"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<int, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<short, typename std::remove_cv<Q>::type>::value && !std::is_same<int16_t, short>::value, Q >::type* =nullptr) { return "short"; }
 template<class Q> std::string name(const typename std::enable_if< !std::is_same<int32_t, int>::value && std::is_same<int32_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int32"; }
@@ -884,7 +893,13 @@ template<class Q>
 std::string name() { 
     return tuple_name(Q{});
 }
-    
+
+template<class Q>
+    requires (is_instantiation<std::function, Q>::value)
+std::string name() {
+    return utils::get_name(Q{});
+}
+
 template<class Q>
 std::string name(const typename std::enable_if< is_container<Q>::value, Q >::type* =nullptr) {
     return "array<"+Meta::name<typename Q::value_type>()+">";
@@ -1498,6 +1513,7 @@ inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::valu
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
+        && (not is_instantiation<std::function, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
 }
@@ -1507,9 +1523,15 @@ template<typename Q, typename K>
 inline std::string toStr(const Q& value) {
     return toStr(value.load());
 }
+
+template<typename Q>
+    requires is_instantiation<std::function, Q>::value
+inline std::string toStr(const Q& val) {
+    return utils::get_name(val);
+}
         
 template<typename Q, typename T>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
     return _Meta::fromStr<T>(str);
 }
         
