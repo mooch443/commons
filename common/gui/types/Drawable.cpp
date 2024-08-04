@@ -183,8 +183,10 @@ namespace cmn::gui {
         if(parent() && parent()->stage())
             parent()->stage()->erase(this);
         
-        for(auto &handle : _delete_handlers) {
-            (*handle)();
+        auto handlers = std::move(_delete_handlers);
+        for(auto &handle : handlers) {
+            if(handle)
+                (*handle)();
         }
 
         clear_cache();

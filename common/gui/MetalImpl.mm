@@ -1,5 +1,4 @@
 #include <commons.pc.h>
-#include <misc/checked_casts.h>
 #include "MetalImpl.h"
 
 #include <imgui/imgui.h>

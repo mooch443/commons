@@ -1,5 +1,4 @@
 #include "FFmpegVideoCapture.h"
-#include <misc/format.h>
 #include <misc/Timer.h>
 
 //#undef NDEBUG

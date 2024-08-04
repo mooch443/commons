@@ -2,7 +2,6 @@
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
 #include <misc/Image.h>
-#include <misc/checked_casts.h>
 #include <video/AveragingAccumulator.h>
 
 namespace cmn {

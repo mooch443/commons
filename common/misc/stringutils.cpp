@@ -1,16 +1,7 @@
 #include <commons.pc.h>
 #include "stringutils.h"
 #include <regex>
-#include <iomanip>
-#include <algorithm>
-#include <locale>
-#include <functional>
-#include <cstring>
-#include <unordered_set>
-#include <map>
-#include <misc/format.h>
 #include <file/Path.h>
-#include <misc/checked_casts.h>
 
 namespace cmn::utils {
     // Explicitly instantiate the most commonly used forms of the contains function

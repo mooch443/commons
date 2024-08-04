@@ -1,5 +1,4 @@
 #include "DrawCVBase.h"
-#include <misc/checked_casts.h>
 #include <gui/DrawStructure.h>
 
 namespace cmn::gui {

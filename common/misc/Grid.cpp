@@ -1,5 +1,4 @@
 #include "Grid.h"
-#include <misc/checked_casts.h>
 
 namespace cmn {
 namespace grid {

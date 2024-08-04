@@ -147,6 +147,9 @@ public:
     constexpr inline Color alpha(uint8_t alpha) const {
         return Color(this->r, this->g, this->b, alpha);
     }
+    constexpr inline Color multiply_alpha(float alpha_factor) const {
+        return Color(this->r, this->g, this->b, saturate(this->a * alpha_factor));
+    }
     
     constexpr inline Color saturation(float factor) const {
         Color hsv(toHSV());
@@ -327,9 +330,11 @@ constexpr static const Color
         DarkCyan       = Color(0, 125, 250, 255),
             Cyan       = Color(0, 255, 255, 255),
           Yellow       = Color(255, 255, 0, 255),
+      DarkYellow       = Color(150, 150, 0, 255),
              Red       = Color(255, 0, 0, 255),
             Blue       = Color(0, 0, 255, 255),
            Green       = Color(0, 255, 0, 255),
+       DarkGreen       = Color(0, 150, 0, 255),
           Purple       = Color(200, 0, 255, 255),
      Transparent       = Color(0, 0, 0, 0),
            Orange      = Color(255, 165, 0, 255),
@@ -372,9 +377,11 @@ constexpr static const auto AllColors = std::array {
     DEFINE_COLOR(DarkCyan),
     DEFINE_COLOR(Cyan),
     DEFINE_COLOR(Yellow),
+    DEFINE_COLOR(DarkYellow),
     DEFINE_COLOR(Red),
     DEFINE_COLOR(Blue),
     DEFINE_COLOR(Green),
+    DEFINE_COLOR(DarkGreen),
     DEFINE_COLOR(Purple),
     DEFINE_COLOR(Transparent),
     DEFINE_COLOR(Orange),

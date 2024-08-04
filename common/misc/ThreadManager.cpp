@@ -1,5 +1,4 @@
 #include "ThreadManager.h"
-#include <misc/format.h>
 #include <file/Path.h>
 
 namespace cmn {

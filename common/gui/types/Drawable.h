@@ -254,6 +254,13 @@ namespace cmn::gui {
         }
         delete_function_handle_t on_delete(delete_function_t);
         void remove_delete_handler(delete_function_handle_t);
+        void clear_delete_handlers() {
+            /*for(auto &h : _delete_handlers) {
+                if(h)
+                    (*h)();
+            }*/
+            _delete_handlers.clear();
+        }
         
         /**
          * Change object properties (only changed if different) and track

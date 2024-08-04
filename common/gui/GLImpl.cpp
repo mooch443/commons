@@ -72,7 +72,6 @@ using ImTextureID_t = ImGui_OpenGL3_TextureID;
 
 #include "GLImpl.h"
 #include <misc/Timer.h>
-#include <misc/checked_casts.h>
 
 #ifdef WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32

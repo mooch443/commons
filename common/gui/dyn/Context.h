@@ -30,6 +30,14 @@ struct DefaultSettings {
     std::unordered_map<std::string, std::shared_ptr<VarBase<const Context&, State&>>, MultiStringHash, MultiStringEqual> variables;
 };
 
+struct CurrentObjectHandler {
+    std::weak_ptr<Drawable> _current_object;
+    
+    void reset();
+    void select(const std::shared_ptr<Drawable>&);
+    std::shared_ptr<Drawable> get() const;
+};
+
 struct Context {
     std::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
     std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;

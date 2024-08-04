@@ -16,7 +16,18 @@
 #   define trex_use_std_to_chars
 #endif
 
+#include <misc/useful_concepts.h>
+
 namespace cmn {
+
+namespace utils {
+
+template<template <typename ...> class T, typename Rt, typename... Args>
+    requires is_instantiation<std::function, T<Rt(Args...)>>::value
+std::string get_name(const T<Rt(Args...)>&);
+
+}
+
 
 #if defined(trex_use_std_to_chars)
 // C++17 and std::to_chars is available
@@ -1562,6 +1573,15 @@ constexpr inline bool lowercase_equal_to(const std::string_view& A, const cmn::u
     }
 
     return true;
+}
+
+template<template <typename ...> class T, typename Rt, typename... Args>
+    requires is_instantiation<std::function, T<Rt(Args...)>>::value
+std::string get_name(const T<Rt(Args...)>&) {
+    std::string ss;
+    bool first = true;
+    ((ss = ss + (first ? "" : ", ") + Meta::name<Args>(), first = false), ...);
+    return "function<"+Meta::name<Rt>()+"("+ss+")>";
 }
 
 }

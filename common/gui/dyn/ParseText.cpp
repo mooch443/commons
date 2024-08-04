@@ -73,7 +73,8 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     break;
                 default:
                     if(comment_out) {
-                        throw InvalidSyntaxException("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
+                        FormatWarning("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
+                        comment_out = false;
                     }
                     output << ch;
             }

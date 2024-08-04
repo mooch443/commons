@@ -4,7 +4,6 @@
 #include <file/Path.h>
 #include <misc/GlobalSettings.h>
 #include <misc/ThreadPool.h>
-#include <misc/checked_casts.h>
 #include <misc/Image.h>
 #include <video/AveragingAccumulator.h>
 #include <misc/ranges.h>
