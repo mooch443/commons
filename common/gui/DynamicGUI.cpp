@@ -873,7 +873,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             });
         }
         
-        Print("Overall objects estimate: ", overall_count);
+        Print("[dyn::update] #objects estimate: ", overall_count);
         _debug_timer.reset();
     }
 #endif
