@@ -47,13 +47,19 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
             CTimer ctimer("custom var");
             return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
-        } else if(auto it = state._named_entities.find(props.name);
-                  it != state._named_entities.end())
+            
+        } else if(auto lock = state._current_object_handler.lock();
+                  lock != nullptr)
         {
-            auto v = get_modifier_from_object(it->second.get(), props.parse(context, state));
-            if(v.has_value()) {
-                return Meta::fromStr<Result>(v.value());
+            if(auto ptr = lock->retrieve_named(props.name);
+               ptr != nullptr)
+            {
+                auto v = get_modifier_from_object(ptr.get(), props.parse(context, state));
+                if(v.has_value()) {
+                    return Meta::fromStr<Result>(v.value());
+                }
             }
+            
         }
         
     } catch(...) {

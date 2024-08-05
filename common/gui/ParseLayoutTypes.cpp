@@ -76,7 +76,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, Sta
             size = get(_defaults.size, "size");
         } else {
             //Print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.patterns[hash]["size"] = Pattern{"auto", {}};
+            state.register_pattern(hash, "size", Pattern{"auto", {}});
         }
         
     } else {
@@ -126,20 +126,27 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(clickable)
         ptr->set_clickable(clickable);
     
-    if(state.patterns.contains(hash)
-       && state.patterns.at(hash).contains("name")) {
-        auto var = parse_text(state.patterns.at(hash).at("name").original, context, state);
-        name = var;
+    if(auto pattern = state.get_pattern(hash, "name");
+       pattern.has_value())
+    {
+        name = parse_text(pattern.value()->original, context, state);
     }
+    
     if(not name.empty()) {
         ptr->set_name(name);
+        assert(ptr.ptr);
         
+        auto lock = state._current_object_handler.lock();
+        if(lock) {
 #ifndef NDEBUG
-        if(state._named_entities.contains(name)
-           && state._named_entities.at(name) != ptr)
-            FormatWarning("Duplicate entry for ", name, ": ", state._named_entities.at(name).get(), " vs. ", ptr.get());
+            /*if(auto n = state.named_entity(name);
+               n != nullptr && n != ptr)
+            {
+                FormatWarning("Duplicate entry for ", name, ": ", n.get(), " vs. ", ptr.get());
+            }*/
 #endif
-        state._named_entities[name] = ptr;
+            lock->register_named(name, std::weak_ptr(ptr.ptr));
+        }
     }
     
     if(obj.count("modules")) {
@@ -177,12 +184,10 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         State state;
                         it->second(hover_action.parse(context, state));
                         
-                    } else if(auto it = state._named_entities.find(name);
-                              it != state._named_entities.end())
+                    } else if(auto ptr = state.named_entity(name);
+                              ptr != nullptr)
                     {
-                        if(it->second) {
-                            apply_modifier_to_object(it->first, it->second, hover_action.parse(context, state));
-                        }
+                        apply_modifier_to_object(name, ptr, hover_action.parse(context, state));
                         
                     } else {
                         Print("Unknown Action: ", hover_action);
@@ -202,12 +207,10 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         State state;
                         it->second(unhover_action.parse(context, state));
                         
-                    } else if(auto it = state._named_entities.find(name);
-                              it != state._named_entities.end())
+                    } else if(auto ptr = state.named_entity(name);
+                              ptr != nullptr)
                     {
-                        if(it->second) {
-                            apply_modifier_to_object(it->first, it->second, unhover_action.parse(context, state));
-                        }
+                        apply_modifier_to_object(name, ptr, unhover_action.parse(context, state));
                         
                     } else {
                         Print("Unknown Action: ", unhover_action);
@@ -289,7 +292,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
     if(obj.count("path") && obj["path"].is_string()) {
         std::string raw = obj["path"].get<std::string>();
         if(utils::contains(raw, "{")) {
-            state.patterns[hash]["path"] = Pattern{raw, {}};
+            state.register_pattern(hash, "path", Pattern{raw, {}});
             
         } else {
             auto path = file::Path(raw);
@@ -486,7 +489,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         auto input = obj["var"].get<std::string>();
         var = parse_text(input, context, state);
         if(var != input) {
-            state.patterns[hash]["var"] = Pattern{input, {}};
+            state.register_pattern(hash, "var", Pattern{input, {}});
         }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");
@@ -497,26 +500,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     }
     
     {
-        {
-            auto ptr = LabeledField::Make(gui, var, state, *this, invert);
-            if(not state._text_fields.contains(hash) or not state._text_fields.at(hash))
-            {
-                state._text_fields.emplace(hash, std::move(ptr));
-            } else {
-                //throw U_EXCEPTION("Cannot deal with replacement LabeledFields yet.");
-                state._text_fields[hash] = std::move(ptr);
+        ptr = Layout::Make<HorizontalLayout>(Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
+        
+        auto hashed = state.get_monostate(hash, ptr);
+        
+        if(not hashed->_text_field) {
+            hashed->_text_field = LabeledField::Make(gui, var, state, *this, invert);
+            if(not hashed->_text_field) {
+                FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
+                return nullptr;
             }
         }
         
-        VarCache& cache = state._var_cache[hash];
-        cache._var = var;
-        cache._obj = obj;
+        hashed->_var_cache = VarCache{
+            ._var = var,
+            ._obj = obj
+        };
         
-        auto& ref = state._text_fields.at(hash);
-        if(not ref) {
-            FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
-            return nullptr;
-        }
+        auto& ref = hashed->_text_field;
         
         if(var.empty()) {
             // combobox?
@@ -528,9 +529,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         }
         
         auto r = ref->ref();
-        cache._value = r.valid()
-            ? r.get().valueString()
-            : "null";
+        hashed->_var_cache->_value = r.valid()
+                                     ? r.get().valueString()
+                                     : "null";
         if(obj.contains("desc")) {
             ref->set_description(obj["desc"].get<std::string>());
         }
@@ -585,7 +586,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
-        ptr = Layout::Make<HorizontalLayout>(std::move(objs), Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
+        ptr.to<HorizontalLayout>()->set(std::move(objs));
     }
     
     return ptr;
@@ -717,13 +718,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
         if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
             //Print("collection: ", child.dump());
             // all successfull, add collection:
-            state.loops[hash] = {
-                .variable = obj["var"].get<std::string>(),
-                .child = child//,
-                //.state = std::make_unique<State>(state)
-            };
+            
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             ptr->set_name("foreach<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
+            
+            state.register_variant(hash, ptr, LoopBody{
+                .variable = obj["var"].get<std::string>(),
+                .child = child
+            });
         }
     }
     return ptr;
@@ -738,18 +740,27 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         if(child.is_object()) {
             //Print("collection: ", child.dump());
             // all successfull, add collection:
-            state.lists[hash] = {
-                .variable = obj["var"].get<std::string>(),
-                .item = child,
-                .state = std::make_unique<State>(state)
-            };
+            auto copy = std::make_unique<State>();
+            copy->_current_object_handler = state._current_object_handler;
             
             ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
-            ptr.to<ScrollableList<DetailItem>>()->on_select([&, &body = state.lists[hash]](size_t index, const DetailItem &)
+            auto body = state.register_variant(hash, ptr, ListContents{
+                .variable = obj["var"].get<std::string>(),
+                .item = child,
+                ._state = std::move(copy)
+            });
+            
+            ptr.to<ScrollableList<DetailItem>>()->on_select([&, body = std::weak_ptr(body)](size_t index, const DetailItem &)
             {
-                if(body.on_select_actions.contains(index)) {
-                    std::get<1>(body.on_select_actions.at(index))();
-                }
+                auto lock = body.lock();
+                if(not lock)
+                    return;
+                
+                lock->apply_if<ListContents>([index](ListContents& contents){
+                    if(contents.on_select_actions.contains(index)) {
+                        std::get<1>(contents.on_select_actions.at(index))();
+                    }
+                });
             });
             ptr->set_name("list<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
             
@@ -792,9 +803,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             }
         }
         
-        state.manual_lists[hash] = {
+        state.register_variant(hash, ptr, ManualListContents{
             .items = items
-        };
+        });
         
         ptr.to<ScrollableList<DetailItem>>()->set_items(items);
         ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context=context](size_t index, const DetailItem &)
@@ -888,26 +899,22 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
     if(obj.count("then")) {
         auto child = obj["then"];
         if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
+            auto copy = std::make_unique<State>();
+            copy->_current_object_handler = state._current_object_handler;
+            
+            // inc another two times to reserve our object
+            //state._current_index.inc();
+            //state._current_index.inc();
+            
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
-            IndexScopeHandler handler{state._current_index};
-            auto c = parse_object(gui, child, context, state, context.defaults);
-            if(not c)
-                return nullptr;
-            
-            c->set_is_displayed(false);
-            
-            Layout::Ptr _else;
-            if(obj.count("else") && obj["else"].is_object()) {
-                _else = parse_object(gui, obj["else"], context, state, context.defaults);
-            }
-            
-            state.ifs[hash] = IfBody{
+            //ptr->clear_delete_handlers();
+            auto weak = std::weak_ptr(state.register_variant(hash, ptr, IfBody{
                 .variable = obj["var"].get<std::string>(),
-                ._if = c,
-                ._else = _else
-            };
-            
-            state._timers[hash] = {};
+                .__if = child,
+                .__else = obj.contains("else") ? obj["else"] : nullptr,
+                ._assigned_hash = hash,
+                ._state = std::move(copy)
+            }));
         }
     }
     return ptr;

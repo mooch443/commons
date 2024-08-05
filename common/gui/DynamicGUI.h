@@ -91,6 +91,10 @@ struct DynamicGUI {
     bool first_load{true}, first_update{true};
     std::string previous;
     std::future<tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>> read_file_future;
+    std::shared_ptr<CurrentObjectHandler> current_object_handler = std::make_shared<CurrentObjectHandler>();
+#ifndef NDEBUG
+    Timer _debug_timer;
+#endif
     
     void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     
@@ -98,12 +102,10 @@ struct DynamicGUI {
     void clear();
     
 private:
-    
     void reload();
+public:
     static bool update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
-    [[nodiscard]] static bool update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
-    [[nodiscard]] static bool update_lists(GUITaskQueue_t* gui, uint64_t hash, DrawStructure& g, const Layout::Ptr& o, const Context& context, State& state);
-    static bool update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr& o, const Context& context, State& state);
+private:
 };
 
 void update_tooltips(DrawStructure&, State&);

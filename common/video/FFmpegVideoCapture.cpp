@@ -2,6 +2,7 @@
 #include <misc/Timer.h>
 
 //#undef NDEBUG
+//#define DEBUG_FFMPEG_PACKETS
 
 namespace cmn {
 
@@ -277,8 +278,8 @@ int FfmpegVideoCapture::channels() const {
         : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
 }
 
-void FfmpegVideoCapture::log_packet(const AVPacket *pkt) {
-#if !defined(NDEBUG) && !defined(__linux__)
+void FfmpegVideoCapture::log_packet([[maybe_unused]] const AVPacket * pkt) {
+#if !defined(NDEBUG) && !defined(__linux__) && defined(DEBUG_FFMPEG_PACKETS)
     AVRational *time_base = &formatContext->streams[pkt->stream_index]->time_base;
     std::cout << "Packet - pts:" << av_ts2str(pkt->pts) << " pts_time:" << av_ts2timestr(pkt->pts, time_base)
               << " dts:" << av_ts2str(pkt->dts) << " dts_time:" << av_ts2timestr(pkt->dts, time_base)

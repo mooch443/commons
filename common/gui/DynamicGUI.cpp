@@ -21,87 +21,6 @@
 namespace cmn::gui {
 namespace dyn {
 
-template<typename T, typename Str>
-T resolve_variable_type(Str _word, const Context& context, State& state) {
-    std::string_view word;
-    if constexpr(std::same_as<Str, Pattern>) {
-        word = std::string_view(_word.original);
-    } else
-        word = std::string_view(_word);
-    
-    if(word.empty())
-        throw U_EXCEPTION("Invalid variable name (is empty).");
-    
-    if(word.length() > 2
-       && ((word.front() == '{'
-            && word.back() == '}')
-       || (word.front() == '['
-            && word.back() == ']'))
-       )
-    {
-        word = word.substr(1,word.length()-2);
-    }
-    
-    return resolve_variable(word, context, state, [&](const VarBase_t& variable, const VarProps& modifiers) -> T
-    {
-        if constexpr(std::is_same_v<T, bool>) {
-            if(variable.is<bool>()) {
-                return variable.value<T>(modifiers);
-            } else if(variable.is<file::Path>()) {
-                auto tmp = variable.value<file::Path>(modifiers);
-                return not tmp.empty();
-            } else if(variable.is<std::string>()) {
-                auto tmp = variable.value<std::string>(modifiers);
-                return not tmp.empty();
-            } else if(variable.is<sprite::Map&>()) {
-                auto& tmp = variable.value<sprite::Map&>({});
-                if(modifiers.subs.empty())
-                    throw U_EXCEPTION("sprite::Map selector is empty, need subvariable doing ", word,".sub");
-                
-                auto ref = tmp[modifiers.subs.front()];
-                if(not ref.get().valid()) {
-                    FormatWarning("Retrieving invalid property (", modifiers, ") from map with keys ", tmp.keys(), ".");
-                    return false;
-                }
-                //Print(ref.get().name()," = ", ref.get().valueString(), " with ", ref.get().type_name());
-                if(ref.template is_type<T>()) {
-                    return ref.get().template value<T>();
-                } else if(ref.is_type<std::string>()) {
-                    return not ref.get().value<std::string>().empty();
-                } else if(ref.is_type<file::Path>()) {
-                    return not ref.get().value<file::Path>().empty();
-                }
-            }
-        }
-        
-        if(variable.is<T>()) {
-            return variable.value<T>(modifiers);
-            
-        } else if(variable.is<sprite::Map&>()) {
-            auto& tmp = variable.value<sprite::Map&>({});
-            if(not modifiers.subs.empty()) {
-                auto ref = tmp[modifiers.subs.front()];
-                if(ref.template is_type<T>()) {
-                    return ref.get().template value<T>();
-                }
-                
-            } else
-                throw U_EXCEPTION("sprite::Map selector is empty, need subvariable doing ", word,".sub");
-            
-        } else if(variable.is<VarReturn_t>()) {
-            auto tmp = variable.value<VarReturn_t>(modifiers);
-            if(tmp.template is_type<T>()) {
-                return tmp.get().template value<T>();
-            }
-        }
-        
-        throw U_EXCEPTION("Invalid variable type for ",word," or variable not found.");
-        
-    }, [&]() -> T {
-        throw U_EXCEPTION("Invalid variable type for ",word," or variable not found.");
-    });
-}
-
 std::string Pattern::toStr() const {
     return "Pattern<" + std::string(original) + ">";
 }
@@ -477,7 +396,9 @@ void Context::init() const {
                 } else
                     return trunc;
             }),
-            VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
+            VarFunc("global", [](const VarProps&) -> sprite::Map& {
+                return GlobalSettings::map();
+            }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);
                 
@@ -631,19 +552,27 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                 if (auto it = context.custom_elements.find(obj["type"].get<std::string>());
                     it != context.custom_elements.end()) 
                 {
-                    if (state._customs_cache.contains(hash)) {
-                        ptr = state._customs_cache.at(hash);
-                        context.custom_elements.at(state._customs.at(hash))
-                            ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
-                        state._timers[hash].reset();
+                    if(auto sit = state._collectors->objects.find(hash);
+                       sit != state._collectors->objects.end()
+                       && std::holds_alternative<CustomBody>(sit->second->object))
+                    {
+                        /// we are a custom object already!
+                        auto &obj = *sit->second;
+                        auto &body = std::get<CustomBody>(obj.object);
+                        ptr = body._customs_cache;
+                        context.custom_elements.at(body.name)->update(ptr, context, state, obj.patterns);
+                        obj.timer.reset();
                         
                     } else {
                         ptr = it->second->create(layout);
-                        it->second
-                            ->update(ptr, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{});
-                        state._customs[hash] = it->first;
-                        state._customs_cache[hash] = ptr;
-                        state._timers[hash].reset();
+                        auto obj = state.register_variant(hash, ptr, CustomBody{
+                            .name = it->first,
+                            ._customs_cache = ptr
+                        });
+                        auto &body = std::get<CustomBody>(obj->object);
+                        body._customs_cache = ptr;
+                        it->second->update(ptr, context, state, obj->patterns);
+                        obj->timer.reset();
                     }
                 } else
                     FormatExcept("Unknown layout type: ", layout.type);
@@ -709,580 +638,53 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
         if(o.is<Layout>()) {
             auto layout = o.to<Layout>();
             auto& objects = layout->objects();
+            bool changed = false;
             for(size_t i=0, N = objects.size(); i<N; ++i) {
                 auto& child = objects[i];
                 auto r = update_objects(gui, g, child, context, state);
                 if(r) {
                     // objects changed
                     layout->replace_child(i, child);
+                    changed = true;
                 }
+            }
+            if(changed) {
+                Print("Changed layout: ", *layout);
+                layout->update_layout();
             }
         } else {
             //Print("Object ", *o, " has no hash and is thus not updated.");
         }
         return false;
     }
-    //Print("updating ", o->type()," with index ", hash, " for ", (uint64_t)o.get(), " ", o->name());
-    
-    /*if(auto it = state._timers.find(hash); it != state._timers.end()) {
-        if(it->second.elapsed() > 0.01) {
-            it->second.reset();
-        } else
-            return false;
-    }*/
     
     assert(not o || o.ptr);
-    if(o) state._current_object = std::weak_ptr<Drawable>{o.ptr};
-    else state._current_object.reset();
-    
-    //! something that needs to be executed before everything runs
-    if(state.display_fns.contains(hash)) {
-        state.display_fns.at(hash)(g);
+    if(auto lock = state._current_object_handler.lock();
+       lock && o)
+    {
+        lock->select(o.ptr);
+    } else if(lock) {
+        lock->reset();
+    } else {
+#ifndef NDEBUG
+        throw std::runtime_error("Have no current_object_handler!");
+#endif
     }
-
-    if (state._customs.contains(hash)) {
-        if(not context.custom_elements.at(state._customs.at(hash))->update(o, context, state, state.patterns.contains(hash) ? state.patterns.at(hash) : decltype(state.patterns)::mapped_type{})) {
-            if(update_patterns(gui, hash, o, context, state)) {
-                //changed = true;
-            }
-        }
+    
+    /// try to find the current object
+    auto it = state._collectors->objects.find(hash);
+    if(it == state._collectors->objects.end())
+        return false;
+    
+    if(not it->second) {
+        state._collectors->objects.erase(it);
         return false;
     }
     
-    //! if statements below
-    if(auto it = state.ifs.find(hash); it != state.ifs.end()) {
-        auto &obj = it->second;
-        try {
-            auto res = resolve_variable_type<bool>(obj.variable, context, state);
-            auto last_condition = (uint64_t)o->custom_data("last_condition");
-            if(not res) {
-                if(obj._else) {
-                    if(last_condition != 1) {
-                        o.to<Layout>()->set_children({obj._else});
-                    }
-                    update_objects(gui, g, obj._else, context, state);
-                    
-                } else {
-                    if(o->is_displayed()) {
-                        o->set_is_displayed(false);
-                        o.to<Layout>()->clear_children();
-                    }
-                }
-                
-                if(last_condition != 1) {
-                    o->add_custom_data("last_condition", (void*)1);
-                }
-                return false;
-            }
-            
-            if(last_condition != 2) {
-                o->set_is_displayed(true);
-                o->add_custom_data("last_condition", (void*)2);
-                o.to<Layout>()->set_children({obj._if});
-            }
-            
-            update_objects(gui, g, obj._if, context, state);
-            state._timers[hash].reset();
-            
-        } catch(const std::exception& ex) {
-            FormatError(ex.what());
-        }
-        
-        return false;
-    }
-    
-    //! for-each loops below
-    if(update_loops(gui, hash, g, o, context, state))
-        return false;
-    
-    //! did the current object change?
-    bool changed{false};
-    
-    //! fill default fields like fill, line, pos, etc.
-    if(update_patterns(gui, hash, o, context, state)) {
-        changed = true;
-    }
-    
-    //! if this is a Layout type, need to iterate all children as well:
-    if(o.is<Layout>()) {
-        auto layout = o.to<Layout>();
-        auto& objects = layout->objects();
-        for(size_t i=0, N = objects.size(); i<N; ++i) {
-            auto& child = objects[i];
-            auto r = update_objects(gui, g, child, context, state);
-            if(r) {
-                // objects changed
-                layout->replace_child(i, child);
-            }
-        }
-    }
-    
-    //! list contents loops below
-    (void)update_lists(gui, hash, g, o, context, state);
-    return changed;
-}
-
-bool DynamicGUI::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
-    bool changed{false};
-    
-    auto it = state.patterns.find(hash);
-    if(it != state.patterns.end()) {
-        auto& pattern = it->second;
-        LabeledField *field{nullptr};
-        if(state._text_fields.contains(hash))
-            field = state._text_fields.at(hash).get();
-        
-        //Print("Found pattern ", pattern, " at index ", hash);
-        
-        if(it->second.contains("var")) {
-            try {
-                auto var = parse_text(pattern.at("var"), context, state);
-                if(state._text_fields.contains(hash)) {
-                    auto &f = state._text_fields.at(hash);
-                    auto str = f->ref().get().valueString();
-                    VarCache &cache = state._var_cache[hash];
-                    if(cache._var != var /*|| str != cache._value*/)
-                    {
-                        Print("Need to change ", cache._value," => ", str, " and ", cache._var, " => ", var);
-                        
-                        //! replace old object (also updates the cache)
-                        o = parse_object(gui, cache._obj, context, state, context.defaults, hash);
-                        
-                        field = f.get();
-                        changed = true;
-                    }
-                }
-            } catch(std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        auto ptr = o;
-        if(field) {
-            ptr = field->representative();
-        }
-        
-        if(it->second.contains("fill")) {
-            try {
-                auto fill = resolve_variable_type<Color>(pattern.at("fill"), context, state);
-                LabeledField::delegate_to_proper_type(FillClr{fill}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if(it->second.contains("color")) {
-            try {
-                auto clr = resolve_variable_type<Color>(pattern.at("color"), context, state);
-                LabeledField::delegate_to_proper_type(TextClr{clr}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if(it->second.contains("line")) {
-            try {
-                auto line = resolve_variable_type<Color>(pattern.at("line"), context, state);
-                LabeledField::delegate_to_proper_type(LineClr{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(it->second.contains("placeholder")) {
-            try {
-                auto placeholder = parse_text(pattern.at("placeholder"), context, state);
-                LabeledField::delegate_to_proper_type(Placeholder_t{placeholder}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("pad")) {
-            try {
-                auto line = resolve_variable_type<Bounds>(pattern.at("pad"), context, state);
-                LabeledField::delegate_to_proper_type(Margins{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("alpha")) {
-            try {
-                auto line = resolve_variable_type<float>(pattern.at("alpha"), context, state);
-                LabeledField::delegate_to_proper_type(Alpha{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("pos")) {
-            try {
-                auto str = parse_text(pattern.at("pos"), context, state);
-                ptr->set_pos(Meta::fromStr<Vec2>(str));
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("scale")) {
-            try {
-                ptr->set_scale(Meta::fromStr<Vec2>(parse_text(pattern.at("scale"), context, state)));
-                //o->set_scale(resolve_variable_type<Vec2>(pattern.at("scale"), context));
-                //Print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if(pattern.contains("origin")) {
-            try {
-                ptr->set_origin(Meta::fromStr<Vec2>(parse_text(pattern.at("origin"), context, state)));
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("size")) {
-            try {
-                auto& size = pattern.at("size");
-                if(size.original == "auto")
-                {
-                    if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
-                    else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
-                } else {
-                    ptr->set_size(Meta::fromStr<Size2>(parse_text(size, context, state)));
-                    //o->set_size(resolve_variable_type<Size2>(size, context));
-                }
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(it->second.contains("max_size")) {
-            try {
-                auto line = Meta::fromStr<Size2>(parse_text(pattern.at("max_size"), context, state));
-                LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if(it->second.contains("preview_max_size")) {
-            try {
-                auto line = Meta::fromStr<Size2>(parse_text(pattern.at("preview_max_size"), context, state));
-                LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if (it->second.contains("item_line")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("item_line"), context, state));
-                LabeledField::delegate_to_proper_type(ItemBorderColor_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if (it->second.contains("item_color")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("item_color"), context, state));
-                LabeledField::delegate_to_proper_type(ItemColor_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if (it->second.contains("label_line")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("label_line"), context, state));
-                LabeledField::delegate_to_proper_type(LabelBorderColor_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if (it->second.contains("label_fill")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("label_fill"), context, state));
-                LabeledField::delegate_to_proper_type(LabelColor_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if(it->second.contains("list_size")) {
-            try {
-                auto line = Meta::fromStr<Size2>(parse_text(pattern.at("list_size"), context, state));
-                LabeledField::delegate_to_proper_type(ListDims_t{line}, ptr);
-                
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        if (it->second.contains("list_line")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("list_line"), context, state));
-                LabeledField::delegate_to_proper_type(ListLineClr_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-
-        if (it->second.contains("list_fill")) {
-            try {
-                auto line = Meta::fromStr<Color>(parse_text(pattern.at("list_fill"), context, state));
-                LabeledField::delegate_to_proper_type(ListFillClr_t{ line }, ptr);
-
-            }
-            catch (const std::exception& e) {
-                FormatError("Error parsing context; ", pattern, ": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("text")) {
-            try {
-                auto text = Str{parse_text(pattern.at("text"), context, state)};
-                LabeledField::delegate_to_proper_type(text, ptr);
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context ", pattern.at("text"),": ", e.what());
-            }
-        }
-        
-        if(pattern.contains("radius")) {
-            try {
-                auto text = Radius{Meta::fromStr<float>(parse_text(pattern.at("radius"), context, state))};
-                LabeledField::delegate_to_proper_type(text, ptr);
-            } catch(const std::exception& e) {
-                FormatError("Error parsing context ", pattern.at("radius"),": ", e.what());
-            }
-        }
-
-        if(ptr.is<ExternalImage>()) {
-            if(pattern.contains("path")) {
-                auto img = ptr.to<ExternalImage>();
-                auto output = file::Path(parse_text(pattern.at("path"), context, state));
-                if(output.exists() && not output.is_folder()) {
-                    auto modified = output.last_modified();
-                    auto &entry = state._image_cache[output.str()];
-                    Image::Ptr ptr;
-                    if(std::get<0>(entry) != modified)
-                    {
-                        ptr = load_image(output);
-                        entry = { modified, Image::Make(*ptr) };
-                    } else if(state.chosen_images[hash] != output.str()) {
-                        //ptr = Image::Make(*std::get<1>(entry));
-                        //if(not img->source()
-                        //   || *std::get<1>(entry) != *img->source())
-                        {
-                            img->unsafe_get_source().create(*std::get<1>(entry));
-                            img->updated_source();
-                        }
-                    }
-                    
-                    if(ptr) {
-                        state.chosen_images[hash] = output.str();
-                        img->set_source(std::move(ptr));
-                    }
-                }
-            }
-        }
-    }
-
-
-    return changed;
-}
-
-bool DynamicGUI::update_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
-{
-    if(auto it = state.lists.find(hash); it != state.lists.end()) {
-        ListContents &obj = it->second;
-        if(context.has(obj.variable)) {
-            if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-                
-                auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
-                
-                IndexScopeHandler handler{state._current_index};
-                //if(vector != obj.cache) {
-                std::vector<DetailItem> ptrs;
-                //obj.cache = vector;
-                obj.state = std::make_unique<State>();
-                Context tmp = context;
-                
-                size_t index=0;
-                auto convert_to_item = [&gc = context, &index, &obj, &o](sprite::Map&, const nlohmann::json& item_template, Context& context, State& state) -> DetailItem
-                {
-                    DetailItem item;
-                    if(item_template.contains("text") && item_template["text"].is_string()) {
-                        item.set_name(parse_text(item_template["text"].get<std::string>(), context, state));
-                    }
-                    if(item_template.contains("detail") && item_template["detail"].is_string()) {
-                        item.set_detail(parse_text(item_template["detail"].get<std::string>(), context, state));
-                    }
-                    if(item_template.contains("action") && item_template["action"].is_string()) {
-                        auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
-                        
-                        if(not obj.on_select_actions.contains(index)
-                           || std::get<0>(obj.on_select_actions.at(index)) != action.name)
-                        {
-                            obj.on_select_actions[index] = std::make_tuple(
-                                index, [&gc = gc, ptr = o.get(), index = index, action = action, context](){
-                                    Print("Clicked item at ", index, " with action ", action);
-                                    State state;
-                                    Action _action = action.parse(context, state);
-                                    _action.parameters = { Meta::toStr(index) };
-                                    if(auto it = gc.actions.find(action.name); it != gc.actions.end()) {
-                                        try {
-                                            it->second(_action);
-                                        } catch(const std::exception& ex) {
-                                            // pass
-                                        }
-                                    }
-                                }
-                            );
-                        }
-                    }
-                    return item;
-                };
-                
-                for(auto &v : vector) {
-                    auto previous = state._variable_values;
-                    tmp.variables["i"] = v;
-                    try {
-                        auto &ref = v->value<sprite::Map&>({});
-                        auto item = convert_to_item(ref, obj.item, tmp, state);
-                        ptrs.emplace_back(std::move(item));
-                        ++index;
-                    } catch(const std::exception& ex) {
-                        FormatExcept("Cannot create list items for template: ", obj.item.dump(), " and type ", v->class_name());
-                    }
-                    state._variable_values = std::move(previous);
-                }
-                
-                o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
-            }
-        }
-        return true;
-    }
-    else if (auto it = state.manual_lists.find(hash); it != state.manual_lists.end()) {
-        ManualListContents &body = it->second;
-        auto items = body.items;
-        for (auto& i : items) {
-            i.set_detail(parse_text(i.detail(), context, state));
-            i.set_name(parse_text(i.name(), context, state));
-        }
-        o.to<ScrollableList<DetailItem>>()->set_items(items);
-        return true;
-    }
-
-    return false;
-}
-
-bool DynamicGUI::update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
-{
-    if(auto it = state.loops.find(hash); it != state.loops.end()) {
-        auto &obj = it->second;
-        PreVarProps ps = extractControls(obj.variable);
-        auto props = ps.parse(context, state);
-        
-        if(context.has(props.name)) {
-            if(context.variable(props.name)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-                auto& vector = context.variable(props.name)->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
-                
-                //IndexScopeHandler handler{state._current_index};
-                if(vector != obj.cache) {
-                    std::vector<Layout::Ptr> ptrs;
-                    /*if (not obj.state) {
-                        obj.state = std::make_unique<State>(state);
-                    }*/
-                    Context tmp = context;
-                    size_t i = 0;
-                    for(auto &v : vector) {
-                        auto previous = state._variable_values;
-                        tmp.variables["i"] = v;
-                        auto ptr = parse_object(gui, obj.child, tmp, state, context.defaults);
-                        if(ptr) {
-                            update_objects(gui, g, ptr, tmp, state);
-                        }
-                        ptrs.push_back(ptr);
-                        state._variable_values = std::move(previous);
-                        ++i;
-                        if (i >= 500) {
-							break;
-						}
-                    }
-                    
-                    o.to<Layout>()->set_children(ptrs);
-                    obj.cache = vector;
-                    
-                } else {
-                    Context tmp = context;
-                    for(size_t i=0; i<obj.cache.size() && i < 500; ++i) {
-                        auto previous = state._variable_values;
-                        tmp.variables["i"] = obj.cache[i];
-                        auto& p = o.to<Layout>()->objects().at(i);
-                        if(p) {
-                            update_objects(gui, g, p, tmp, state);
-                        }
-                        //p->parent()->stage()->Print(nullptr);
-                        state._variable_values = std::move(previous);
-                    }
-                }
-            }
-            else if(context.variable(props.name)->is_vector()
-                    || (context.variable(props.name)->is<sprite::Map&>()
-                        && not props.subs.empty()
-                        && context.variable(props.name)->value<sprite::Map&>(props).has(props.subs.front())
-                        && context.variable(props.name)->value<sprite::Map&>(props).at(props.subs.front()).get().is_array()))
-            {
-                auto str = context.variable(props.name)->value_string(props);
-                auto vector = util::parse_array_parts(util::truncate(str));
-                
-                std::vector<Layout::Ptr> ptrs;
-                Context tmp = context;
-                size_t i=0;
-                for(auto &v : vector) {
-                    auto previous = state._variable_values;
-                    //tmp.variables["i"] = v;
-                    tmp.variables["index"] = std::unique_ptr<VarBase_t>{
-                        new Variable([i = i++](const VarProps&) -> size_t {
-                            return i;
-                        })
-                    };
-                    tmp.variables["i"] = std::unique_ptr<VarBase_t>{
-                        new Variable([v](const VarProps&) -> std::string {
-                            return v;
-                        })
-                    };
-                    auto ptr = parse_object(gui, obj.child, tmp, state, context.defaults);
-                    if(ptr) {
-                        update_objects(gui, g, ptr, tmp, state);
-                    }
-                    ptrs.push_back(ptr);
-                    state._variable_values = std::move(previous);
-                }
-                
-                o.to<Layout>()->set_children(ptrs);
-            }
-        }
-        return true;
-    }
-    return false;
+    /// get the hashed object and ensure
+    /// it stays alive during execution
+    auto ptr = it->second;
+    return ptr->update(gui, hash, g, o, context, state);
 }
 
 void DynamicGUI::reload() {
@@ -1322,10 +724,12 @@ void DynamicGUI::reload() {
     {
         read_file_future.get().transform([&](const auto& result) {
             auto&& [defaults, layout] = result;
-            state._text_fields.clear();
+            //state._text_fields.clear();
             context.defaults = std::move(defaults);
             
             State tmp;
+            tmp._current_object_handler = std::weak_ptr(current_object_handler);
+            
             auto last_selected = graph->selected_object();
             if(state._last_settings_box) {
                 tmp._last_settings_box = std::move(state._last_settings_box);
@@ -1334,7 +738,6 @@ void DynamicGUI::reload() {
             
             std::vector<Layout::Ptr> objs;
             objects.clear();
-            
             state = {};
             
             for(auto &obj : layout) {
@@ -1419,13 +822,14 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
     if(first_update)
         first_update = false;
     
-    if(do_update_objects && state._timers.size() > 10000) {
+    /*if(do_update_objects && state._collectors->_timers.size() > 100000) {
+        Print("* Clearing object cache by reloading... ", state._collectors->_timers.size());
         first_load = true;
         if(read_file_future.valid())
             read_file_future.wait();
         previous.clear();
         reload();
-    }
+    }*/
     
     if(context.defaults.window_color != Transparent) {
         if(base)
@@ -1438,47 +842,93 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         }
     }
     
-    //! clear variable state
-    state._variable_values.clear();
     
-    context.system_variables().emplace(VarFunc("hovered", [&state = state](const VarProps& props) -> bool {
+    //! clear variable state
+    current_object_handler->_variable_values.clear();
+    
+#ifndef NDEBUG
+    if(_debug_timer.elapsed() > 10) {
+        size_t overall_count{0};
+        
+        std::queue<HashedObject*> queue;
+        overall_count += state._collectors->objects.size();
+        
+        for(auto &[_, ptr] : state._collectors->objects)
+            queue.push(ptr.get());
+        
+        while(not queue.empty()) {
+            auto front = queue.front();
+            queue.pop();
+            
+            front->run_if_one_of<IfBody, LoopBody, ListContents>([&](auto&& object) {
+                if(not object._state) {
+                    return;
+                }
+                
+                overall_count += object._state->_collectors->objects.size();
+                
+                //object._state->_variable_values.clear();
+                for(auto &[_, ptr] : object._state->_collectors->objects)
+                    queue.push(ptr.get());
+            });
+        }
+        
+        Print("Overall objects estimate: ", overall_count);
+        _debug_timer.reset();
+    }
+#endif
+    
+    context.system_variables().emplace(VarFunc("hovered", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
-            if(auto ptr = state._current_object.lock();
-               ptr != nullptr)
-            {
-                return ptr->hovered();
+            auto lock = object_handler.lock();
+            if(lock) {
+                if(auto ptr = lock->get();
+                   ptr != nullptr)
+                {
+                    return ptr->hovered();
+                }
             }
             
         } else if(props.parameters.size() == 1) {
-            if(auto it = state._named_entities.find(props.parameters.front());
-               it != state._named_entities.end())
+            if(auto lock = object_handler.lock();
+               lock != nullptr)
             {
-                return it->second->hovered();
+                if(auto ptr = lock->retrieve_named(props.first());
+                   ptr != nullptr)
+                {
+                    return ptr->hovered();
+                }
             }
         }
         return false;
     }));
     
-    context.system_variables().emplace(VarFunc("selected", [&state = state](const VarProps& props) -> bool {
+    context.system_variables().emplace(VarFunc("selected", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
-            if(auto ptr = state._current_object.lock();
-               ptr != nullptr)
-            {
-                return ptr->selected();
+            auto lock = object_handler.lock();
+            if(lock) {
+                if(auto ptr = lock->get();
+                   ptr != nullptr)
+                {
+                    return ptr->selected();
+                }
             }
             
         } else if(props.parameters.size() == 1) {
-            if(auto it = state._named_entities.find(props.parameters.front());
-               it != state._named_entities.end())
+            if(auto lock = object_handler.lock();
+               lock != nullptr)
             {
-                return it->second->selected();
+                if(auto ptr = lock->retrieve_named(props.first());
+                   ptr != nullptr)
+                {
+                    return ptr->selected();
+                }
             }
         }
         return false;
     }));
     
     static Timing timing("dyn::update", 10);
-    
     if(TakeTiming take(timing);
        parent)
     {
@@ -1532,7 +982,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         }
     }
 
-    if(state._timers.size() > 10000) {
+    //if(state._collectors->_timers.size() > 10000) {
         /*std::vector<std::tuple<double, size_t>> sorted_objects;
         sorted_objects.resize(state._timers.size());
         for(auto &[h, o] : state._timers) {
@@ -1567,7 +1017,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             state._timers.erase(h);
         }*/
         
-    }
+    //}
     
     if (do_update_objects)
         last_update.reset();
@@ -1594,10 +1044,12 @@ void update_tooltips(DrawStructure& graph, State& state) {
     std::string name{"<null>"};
     std::unique_ptr<sprite::Reference> ref;
     
-    for(auto & [key, ptr] : state._text_fields) {
-        if(not ptr)
+    /// TODO: This does not walk all sub-state objects!
+    for(auto & [key, obj] : state._collectors->objects) {
+        if(not obj || not obj->_text_field)
             continue;
         
+        auto &ptr = obj->_text_field;
         ptr->text()->set_clickable(true);
         
         if(ptr->representative()->parent()

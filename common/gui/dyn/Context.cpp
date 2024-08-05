@@ -3,6 +3,40 @@
 
 namespace cmn::gui::dyn {
 
+void CurrentObjectHandler::set_variable_value(std::string_view name, std::string_view value)
+{
+    _variable_values[std::string(name)] = std::string(value);
+}
+
+std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::string_view name) const
+{
+    if(auto it = _variable_values.find(name);
+       it != _variable_values.end())
+    {
+        return std::string_view(it->second);
+    }
+    
+    return std::nullopt;
+}
+
+std::shared_ptr<Drawable> CurrentObjectHandler::retrieve_named(std::string_view name)
+{
+    if(auto it = _named_entities.find(name);
+       it != _named_entities.end())
+    {
+        auto lock = it->second.lock();
+        if(not lock)
+            _named_entities.erase(it);
+        return lock;
+    }
+    return nullptr;
+}
+
+void CurrentObjectHandler::register_named(const std::string &name, std::weak_ptr<Drawable> ptr)
+{
+    _named_entities[name] = ptr;
+}
+
 void CurrentObjectHandler::reset() {
     _current_object.reset();
 }

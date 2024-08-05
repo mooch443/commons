@@ -10,24 +10,54 @@ namespace cmn::gui::dyn {
 
 struct State;
 class LayoutContext;
+struct CurrentObjectHandler;
+
+#if defined(_MSC_VER) && _MSC_VER <= 1930
+    template <class T> struct type {};
+    template <class T> constexpr type<T> type_v{};
+
+    template <class T, class...Ts, template<class...> class Tp>
+    constexpr inline bool is_one_of(type<Tp<Ts...>>, type<T>) {
+        return (std::is_same_v<Ts, T> || ...);
+    }
+
+    template <typename T, typename Variant>
+    concept is_in_variant = is_one_of(type<Variant>{}, type<T>{});
+#else
+    template <typename T, typename Variant>
+    concept is_in_variant = requires (Variant v) {
+        {[]<typename K, class...Ts, template<class...> class Tp>(const Tp<Ts...>&) {
+            if constexpr((std::same_as<Ts, K> || ...)) {
+                return std::true_type{};
+            } else
+                return std::false_type{};
+        }.template operator()<T>(v)} -> std::same_as<std::true_type>;
+    };
+#endif
 
 struct LoopBody {
     std::string variable;
     nlohmann::json child;
-    //std::unique_ptr<State> state;
+    std::unique_ptr<State> _state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
 };
 
 struct IfBody {
     std::string variable;
+    nlohmann::json __if, __else;
     Layout::Ptr _if;
     Layout::Ptr _else;
+    
+    size_t _assigned_hash{0};
+    std::unique_ptr<State> _state;
+    
+    //~IfBody();
 };
 
 struct ListContents {
     std::string variable;
     nlohmann::json item;
-    std::unique_ptr<State> state;
+    std::unique_ptr<State> _state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
     std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
 };
@@ -45,10 +75,12 @@ struct Pattern {
     static std::string class_name() { return "Pattern"; }
 };
 
+using PatternMapType = std::unordered_map<std::string, Pattern>;
+
 struct CustomElement {
     std::string name;
     std::function<Layout::Ptr(LayoutContext&)> create;
-    std::function<bool(Layout::Ptr&, const Context&, State&, const robin_hood::unordered_map<std::string, Pattern>&)> update;
+    std::function<bool(Layout::Ptr&, const Context&, State&, const PatternMapType&)> update;
 };
 
 struct ManualListContents {
@@ -99,39 +131,101 @@ public:
     IndexScopeHandler& operator=(const IndexScopeHandler&) = delete;
 };
 
-struct State {
-    robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, Pattern>> patterns;
-    std::unordered_map<size_t, std::function<void(DrawStructure&)>> display_fns;
-    std::unordered_map<size_t, LoopBody> loops;
-    std::unordered_map<size_t, ListContents> lists;
-    std::unordered_map<size_t, ManualListContents> manual_lists;
-    std::unordered_map<size_t, IfBody> ifs;
-    std::unordered_map<size_t, std::string> chosen_images;
+struct CustomBody {
+    std::string name;
+    Layout::Ptr _customs_cache;
+};
+
+struct HashedObject {
+    using VariantType = std::variant<std::monostate, IfBody, CustomBody, LoopBody, ListContents, ManualListContents>;
     
-    std::unordered_map<size_t, std::unique_ptr<LabeledField>> _text_fields;
+    size_t hash;
+    Timer timer;
+    VariantType object;
+    
+    std::optional<std::function<void(DrawStructure&)>> display_fn;
+    std::optional<std::string> chosen_image;
+    std::unique_ptr<LabeledField> _text_field;
+    std::optional<VarCache> _var_cache;
+    PatternMapType patterns;
+    Layout::Ptr current;
+    
+    template<typename T>
+        requires (is_in_variant<T, HashedObject::VariantType>)
+    void apply_if(auto&& fn) {
+        if(not std::holds_alternative<T>(object))
+            return;
+        
+        fn(std::get<T>(object));
+    }
+    
+    template<typename... Ts>
+    void run_if_one_of(auto&& fn) {
+        // Lambda to apply the function if the type matches
+        auto apply = [&](auto&& arg) {
+            if constexpr ((std::is_same_v<std::decay_t<decltype(arg)>, Ts> || ...)) {
+                fn(arg);
+            }
+        };
+
+        std::visit(apply, object);
+    }
+    
+    bool update(GUITaskQueue_t*, size_t hash, DrawStructure&, Layout::Ptr&, const Context&, State&);
+    bool update_if(GUITaskQueue_t *, uint64_t, DrawStructure&, Layout::Ptr &, const Context &, State &);
+    bool update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state);
+    bool update_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &,  const Layout::Ptr &o, const Context &context, State &state);
+    bool update_manual_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &,  const Layout::Ptr &o, const Context &context, State &state);
+    bool update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state);
+};
+
+struct State {
+    //robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, Pattern>> patterns;
     Layout::Ptr _settings_tooltip;
     std::unordered_map<std::string, std::tuple<size_t, Image::Ptr>> _image_cache;
-    std::unordered_map<size_t, VarCache> _var_cache;
-    std::unordered_map<size_t, Timer> _timers;
     
-    std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
-    std::unordered_map<size_t, std::string> _customs;
-    std::unordered_map<size_t, Layout::Ptr> _customs_cache;
-    std::unordered_map<std::string, Layout::Ptr, MultiStringHash, MultiStringEqual> _named_entities;
-    
-    std::weak_ptr<Drawable> _current_object;
+    std::weak_ptr<CurrentObjectHandler> _current_object_handler;
     derived_ptr<Combobox> _last_settings_box;
     bool _settings_was_selected{false};
     Drawable* _mark_for_selection{nullptr};
     
     Index _current_index;
     
+    struct Collectors {
+        std::unordered_map<size_t, std::shared_ptr<HashedObject>> objects;
+        void dealloc(size_t hash);
+    };
+    
+    std::shared_ptr<Collectors> _collectors = std::make_shared<Collectors>();
+    
     State() = default;
     State(State&&) = default;
-    State(const State& other);
+    State(const State& other) = delete;
     
-    State& operator=(const State& other) = default;
+    State& operator=(const State& other) = delete;
     State& operator=(State&& other) = default;
+    
+    template<typename T>
+        requires (is_in_variant<T, HashedObject::VariantType>)
+    std::shared_ptr<HashedObject> register_variant(size_t hash, const Layout::Ptr& o, T&& object) {
+        auto obj = register_variant(hash, o);
+        obj->object = std::move(object);
+        return obj;
+    }
+    
+    std::shared_ptr<HashedObject> register_monostate(size_t hash, const Layout::Ptr&);
+    std::shared_ptr<HashedObject> get_monostate(size_t hash, const Layout::Ptr&);
+    
+    void register_pattern(size_t hash, const std::string&, Pattern&&);
+    std::optional<const Pattern*> get_pattern(size_t hash, const std::string&);
+    
+    std::shared_ptr<Drawable> named_entity(std::string_view);
+    std::optional<std::string_view> cached_variable_value(std::string_view name) const;
+    void set_cached_variable_value(std::string_view name, std::string_view value);
+    
+private:
+    std::shared_ptr<HashedObject> register_variant(size_t hash, const Layout::Ptr& o);
+    void register_delete_callback(const std::shared_ptr<HashedObject>&, const Layout::Ptr&);
 };
 
 }

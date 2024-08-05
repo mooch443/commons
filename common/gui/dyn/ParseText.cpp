@@ -95,10 +95,10 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     
                     CTimer timer(current_word);
                     std::string resolved_word;
-                    if(auto it = state._variable_values.find(current_word);
-                       it != state._variable_values.end())
+                    if(auto value = state.cached_variable_value(current_word);
+                       value.has_value())
                     {
-                        resolved_word = it->second;
+                        resolved_word = value.value();
                         
                     } else {
                         resolved_word = resolve_variable(current_word, context, state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
@@ -147,11 +147,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                             return optional ? "" : "null";
                         });
                         
-                        if(not utils::contains(current_word, "hovered")
-                           && not utils::contains(current_word, "selected"))
-                        {
-                            state._variable_values[std::string(current_word)] = resolved_word;
-                        }
+                        state.set_cached_variable_value(current_word, resolved_word);
                     }
                     if(nesting_start_positions.empty()) {
                         output << resolved_word;

@@ -84,9 +84,29 @@
       { "type": "each", 
         "var": "list_var", 
         "do": {
-          "type": "stext",
-          "text": "{i.name} {i.color}", 
-          "color":"{i.color}"
+          "type":"condition",
+          "var":"{||:{i.visible}:{equal:{global.gui_frame}:0}}",
+          "then": {
+            "type": "stext",
+            "text": "{if:{equal:{global.gui_frame}:0}:'gui_frame is 0':'not zero {global.gui_frame}'} {i.name} {i.color}", 
+            "color":"{i.color}",
+            "align":"center"
+          },
+          "else": {
+            "type": "condition",
+            "var":"{equal:{global.gui_frame}:2}",
+            "then": {
+              "type": "rect",
+              "size": [100,100],
+              "fill": [255,255,255,255],
+              "line": "{i.color}"
+            },
+            "else": {
+              "type": "stext",
+              "text": "{i.name}",
+              "color":"{i.color}"
+            }
+          }
         }
       }
     ]}

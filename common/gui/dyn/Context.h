@@ -32,9 +32,17 @@ struct DefaultSettings {
 
 struct CurrentObjectHandler {
     std::weak_ptr<Drawable> _current_object;
+    std::unordered_map<std::string, std::weak_ptr<Drawable>, MultiStringHash, MultiStringEqual> _named_entities;
+    std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
     
     void reset();
     void select(const std::shared_ptr<Drawable>&);
+    void register_named(const std::string& name, std::weak_ptr<Drawable> ptr);
+    
+    void set_variable_value(std::string_view name, std::string_view value);
+    std::optional<std::string_view> get_variable_value(std::string_view name) const;
+    
+    std::shared_ptr<Drawable> retrieve_named(std::string_view name);
     std::shared_ptr<Drawable> get() const;
 };
 
