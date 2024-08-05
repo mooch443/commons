@@ -32,4 +32,11 @@ using FormatColor_t = FormatColorNames;
 //namespace FormatColor = FormatColorNames;
 using FormatColor = FormatColorNames;
 
+enum class FormatterType {
+    UNIX,
+    TAGS,
+    HTML,
+    NONE
+};
+
 }

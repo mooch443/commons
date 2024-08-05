@@ -16,13 +16,6 @@ namespace print_colors {
     inline static bool dont_print = true;
 }
 
-enum class FormatterType {
-    UNIX,
-    TAGS,
-    HTML,
-    NONE
-};
-
 namespace PrefixLiterals {
     enum Prefix {
         WARNING,
