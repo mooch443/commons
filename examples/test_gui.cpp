@@ -13,9 +13,11 @@
 #include <misc/GlobalSettings.h>
 
 #include <file/DataLocation.h>
+#include <misc/FormatColor.h>
 
-using namespace gui;
-using namespace gui::dyn;
+using namespace cmn;
+using namespace cmn::gui;
+using namespace cmn::gui::dyn;
 
 namespace cexpression
 {
@@ -117,7 +119,7 @@ void print_sequence(std::integer_sequence<T, ints...> int_seq)
 {
     std::cout << "The sequence of size " << int_seq.size() << ": ";
     ((std::cout << ints << ' '),...);
-    ((printf("%s: %stext%s\n", FormatColor::names[ints], Formatter<FormatterType::UNIX, FormatColor::Class((FormatColor::data::values)ints)>::tag(), Formatter<FormatterType::UNIX, FormatColor::BLACK>::tag())), ...);
+    //((printf("%s: %stext%s\n", FormatColor::names[ints], Formatter<FormatterType::UNIX, FormatColor::Class((FormatColor::data::values)ints)>::tag(), Formatter<FormatterType::UNIX, FormatColor::BLACK>::tag())), ...);
     
     std::cout << '\n';
 }
@@ -218,44 +220,44 @@ int main(int argc, char**argv) {
     });
     
     set_log_file("site.html");
-    print("int main() {\n\tprintf();\n}\n");
+    Print("int main() {\n\tprintf();\n}\n");
     gui::init_errorlog();
     
-    print(fmt::red("Hi in red."));
+    Print(fmt::red("Hi in red."));
     
 #if !defined(__EMSCRIPTEN__)
     try {
         throw SoftException("Soft exception ",argc);
     } catch(const SoftExceptionImpl& soft) {
-        print("Got: ", soft);
+        Print("Got: ", soft);
     }
     try {
         throw CustomException(type<std::invalid_argument>, "Test",argc,argv);
     } catch(const std::invalid_argument& e) {
-        print("Got: ",e);
+        Print("Got: ",e);
     }
 #endif
     
-    print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
+    //print_sequence(std::make_index_sequence<FormatColor::data::num_elements>{});
     /*for (int j=0; j<11; ++j) {
      for(int k=0; k<11; ++k)
      for(int i=0; i<8; ++i)
      printf("[%d;%dm \033[%d;%dmtext\033[0;0m\n", j, j + k * 10 + i, j, j + k * 10 + i);
      }*/
     
-    print("OpenGL1.32");
-    print("str.c_str()");
-    print("printf(\"%s\\n\", str.c_str());");
-    print("dec<0>:", dec<0>( 0.423125123f ));
-    print("Test \"\\\"string\\\"\".");
-    print("File: ", file::Path("test"));
-    print("dec<0>:", dec<0>( 0.523125123f ));
-    print("dec<1>:", dec<1>( 0.523125123 ));
-    print("dec<2>:", dec<2>( 0.523125123 ));
-    print("dec<3>:", dec<3>( 0.523125123 ));
-    print("dec<4>:", dec<4>( 0.523125123 ));
-    print("dec<5>:", dec<5>( 0.523125123 ));
-    print("dec<6>:", dec<6>( 0.523125123 ));
+    Print("OpenGL1.32");
+    Print("str.c_str()");
+    Print("printf(\"%s\\n\", str.c_str());");
+    Print("dec<0>:", dec<0>( 0.423125123f ));
+    Print("Test \"\\\"string\\\"\".");
+    Print("File: ", file::Path("test"));
+    Print("dec<0>:", dec<0>( 0.523125123f ));
+    Print("dec<1>:", dec<1>( 0.523125123 ));
+    Print("dec<2>:", dec<2>( 0.523125123 ));
+    Print("dec<3>:", dec<3>( 0.523125123 ));
+    Print("dec<4>:", dec<4>( 0.523125123 ));
+    Print("dec<5>:", dec<5>( 0.523125123 ));
+    Print("dec<6>:", dec<6>( 0.523125123 ));
     FormatWarning("Something is wrong.");
     
     sprite::Map map;
@@ -264,36 +266,36 @@ int main(int argc, char**argv) {
     
     
     for (size_t i = 0; i<2; ++i) {
-        print("Iteration ", i);
-        print(std::vector<file::Path>{"/a/b/c","./d.exe"});
-        print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
-        print("std::map<std::string,float>{\n\t\"key\":value\n}");
+        Print("Iteration ", i);
+        Print(std::vector<file::Path>{"/a/b/c","./d.exe"});
+        Print("Program:\nint main() {\n\t// comment\n\tint value;\n\tscanf(\"%d\", &value);\n\tprintf(\"%d\\n\", value);\n\t/*\n\t * Multi-line comment\n\t */\n\tif(value == 42) {\n\t\tstd::string str = Meta::toStr(value);\n\t\tprintf(\"%s\\n\", str.c_str());\n\t}\n}");
+        Print("std::map<std::string,float>{\n\t\"key\":value\n}");
         
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         
-        print("Python:\ndef func():\n\tprint(\"Hello world\")\n\nfunc()");
+        Print("Python:\ndef func():\n\tPrint(\"Hello world\")\n\nfunc()");
         
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         
-        print("<html><head><style>.css-tag { bla; }</style></head><tag style='test'>tag content</tag><int></int></html>");
+        Print("<html><head><style>.css-tag { bla; }</style></head><tag style='test'>tag content</tag><int></int></html>");
         
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         
         std::map<pv::bid, std::pair<std::string, float>> mappe;
         mappe[pv::bid::invalid] = { "Test", 0.5f };
-        print("pv::bid: ", pv::bid::invalid);
-        print("<html><head><style>.css-tag { bla; }</style></head><tag>tag content</tag><int></int></html>");
+        Print("pv::bid: ", pv::bid::invalid);
+        Print("<html><head><style>.css-tag { bla; }</style></head><tag>tag content</tag><int></int></html>");
         
         //std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
-        print("Map: ", mappe, " ", FileSize{uint64_t(1000 * 1000 * 2123)});
-        print(std::set<pv::bid>{pv::bid::invalid});
+        Print("Map: ", mappe, " ", FileSize{uint64_t(1000 * 1000 * 2123)});
+        Print(std::set<pv::bid>{pv::bid::invalid});
         
         // std::this_thread::sleep_for(std::chrono::milliseconds(uint64_t(float(rand()) / float(RAND_MAX) * 1000)));
         
         pv::bid value;
-        print(std::set<pv::bid*>{nullptr, & value});
-        print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
-        print(std::vector<bool>{true, false, true, false});
+        Print(std::set<pv::bid*>{nullptr, & value});
+        Print(std::set<char*>{nullptr, (char*)0x123123, (char*)0x12222});
+        Print(std::vector<bool>{true, false, true, false});
         
         // std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -303,11 +305,11 @@ int main(int argc, char**argv) {
     {
         Timer timer;
         for (size_t i=0; i<count; ++i) {
-            print("Test ",i,"/",count);
+            Print("Test ",i,"/",count);
         }
         
         auto seconds = timer.elapsed();
-        print("This took ", seconds," seconds");
+        Print("This took ", seconds," seconds");
     }
     
     {
@@ -317,12 +319,12 @@ int main(int argc, char**argv) {
         }
         
         auto seconds = timer.elapsed();
-        print("This took ", seconds," seconds");
+        Print("This took ", seconds," seconds");
     }
     
-    print("Test ",std::string("test"));
-    //print("Test",5,6,7.0,std::vector<pv::bid>{pv::bid(1234), pv::bid::invalid},"MicroOwl starting...");
-    print("A normal print, hello world.");
+    Print("Test ",std::string("test"));
+    //Print("Test",5,6,7.0,std::vector<pv::bid>{pv::bid(1234), pv::bid::invalid},"MicroOwl starting...");
+    Print("A normal print, hello world.");
     
     constexpr auto owl_indexes = std::make_index_sequence<sizeof(owl)>{};
     constexpr auto owl_update = [] <std::size_t... Is> (std::index_sequence<Is...>) { (inc_offset<Is>(), ...); };
@@ -339,7 +341,7 @@ int main(int argc, char**argv) {
      #if defined(__EMSCRIPTEN__)
      //file::Path image_path("/photomode_21012022_190427.png");
      file::Path image_path("./trex_screenshot_web.png");
-     print("loading ", image_path);
+     Print("loading ", image_path);
      #else
      file::Path image_path("C:/Users/tristan/Pictures/Cyberpunk 2077/photomode_21012022_190427.png");
      #endif
@@ -360,7 +362,7 @@ int main(int argc, char**argv) {
         
         auto r = v + k;
         auto r2 = k + v;
-        print("Result ", r, " and ", r2, " ", Loc(2, 3) + Loc(3, 3));
+        Print("Result ", r, " and ", r2, " ", Loc(2, 3) + Loc(3, 3));
     }
     
     // Current state:
@@ -392,14 +394,14 @@ int main(int argc, char**argv) {
         }
     });
     
-    dyn::Modules::add(Modules::Module{
+    /*dyn::Modules::add(Modules::Module{
         ._name = "follow",
         ._apply = [](size_t index, State& state, const Layout::Ptr& o) {
             state.display_fns[index] = [o = o.get()](DrawStructure& g){
                 o->set_pos(g.mouse_position() + Vec2(5));
             };
         }
-    });
+    });*/
     
     static std::vector<std::shared_ptr<VarBase_t>> fishes;
     std::vector<sprite::Map> _data;
@@ -558,7 +560,7 @@ int main(int argc, char**argv) {
             else if (e.key.code == Codes::Escape)
                 terminate = true;
             else if(e.key.code == Codes::Return) {
-                print(layout.toString(nullptr));
+                Print(layout.toString(nullptr));
             }
         }
     });
