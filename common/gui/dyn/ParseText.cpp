@@ -79,7 +79,14 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     output << ch;
             }
         } else {
-            if(ch == '}') {
+            if(comment_out) {
+                output << ch;
+                comment_out = false;
+                
+            } else if(ch == '\\') {
+                comment_out = true;
+                
+            } else if(ch == '}') {
                 if(nesting_start_positions.empty()) {
                     throw InvalidSyntaxException("Mismatched closing brace at position ", i);
                 }
