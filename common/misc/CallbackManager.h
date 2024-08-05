@@ -22,7 +22,7 @@ class CallbackManagerImpl {
     using Fn_t = typename callback::Fn<Argument>::type;
     
 private:
-    std::size_t _nextID = 0; // Counter for generating unique IDs
+    std::size_t _nextID = 1; // Counter for generating unique IDs
     std::unordered_map<std::size_t, Fn_t> _callbacks;
     mutable std::mutex _mutex; // Mutex to ensure thread-safety
     
@@ -66,7 +66,15 @@ public:
     // Unregister (remove) a callback using its unique ID
     void unregisterCallback(std::size_t id) {
         std::unique_lock lock(_mutex); // Lock the mutex
-        _callbacks.erase(id);
+        if(auto it = _callbacks.find(id);
+           it != _callbacks.end())
+        {
+            _callbacks.erase(it);
+        } else {
+#ifndef NDEBUG
+            FormatWarning("Callbacks did not contain ID ", id, ".");
+#endif
+        }
     }
 
     // Call all registered callbacks
