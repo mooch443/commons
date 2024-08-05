@@ -9,7 +9,7 @@ if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(commons)
+project(commons LANGUAGES CXX C ASM_NASM)
 
 include(ExternalProject)
 include(FetchContent)
@@ -1171,6 +1171,7 @@ if(${COMMONS_BUILD_OPENCV})
     set(trigger_build_dir "${CMAKE_BINARY_DIR}/force_opencv")
     set(BUILD_SHARED_LIBS OFF)
     message(STATUS "Building OpenCV...")
+    message(STATUS "Current NASM = ${CMAKE_ASM_NASM_COMPILER}")
     
     if(UNIX)
         get_filename_component(PKG_CONFIG_PATH ${AVDEVICE_LIBRARY} DIRECTORY)
@@ -1204,9 +1205,11 @@ if(${COMMONS_BUILD_OPENCV})
     IF(NOT CMAKE_BUILD_TYPE)
        SET(CMAKE_BUILD_TYPE Release FORCE)
     ENDIF()
+
     set(OPENCV_CXX_FLAGS "${OPENCV_CXX_FLAGS}")
     set(OPENCV_C_FLAGS "${OPENCV_CXX_FLAGS}")
     set(OPENCV_CMAKE_ARGS 
+            -DCMAKE_ASM_NASM_COMPILER:FILEPATH=${CMAKE_ASM_NASM_COMPILER}
             -DBUILD_IPP_IW=OFF 
             -DBUILD_ITT=OFF 
             -DWITH_1394=OFF 
@@ -1321,6 +1324,7 @@ else()
     message(STATUS "Python site-packages directory is ${PYTHON_SITE}")
     
     set(OPENCV_CMAKE_ARGS
+            -DCMAKE_ASM_NASM_COMPILER:FILEPATH=${CMAKE_ASM_NASM_COMPILER}
             -DBUILD_DOCS:BOOL=FALSE
             -DBUILD_EXAMPLES:BOOL=FALSE
             -DBUILD_TESTS:BOOL=FALSE
