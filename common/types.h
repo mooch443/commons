@@ -21,8 +21,8 @@
 
 
 #include <misc/metastring.h>
-#include <misc/format.h>
 #include <misc/utilsexception.h>
+#include <misc/format.h>
 #include <misc/checked_casts.h>
 #include <misc/EnumClass.h>
 #include <misc/custom_exceptions.h>
