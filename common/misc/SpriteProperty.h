@@ -39,7 +39,6 @@ namespace cmn {
             
             // Lambda functions to allow custom behaviors. These can be overridden as needed.
             std::function<void(const std::string&)> _set_value_from_string; ///< Setter function from string.
-            std::function<nlohmann::json()> _to_json = [](){return nlohmann::json();}; ///< Function to serialize property to JSON.
 
             // More lambda functions for enum type properties.
             GETTER(std::function<std::vector<std::string>()>, enum_values);///< Getter for the enum values.
@@ -158,9 +157,7 @@ namespace cmn {
              * Serializes the property to a JSON object.
              * @return A JSON representation of the property.
              */
-            auto to_json() const {
-				return _to_json();
-			}
+            virtual nlohmann::json to_json() const = 0;
 
             template<typename T>
             Property<T>& toProperty() {
@@ -264,6 +261,7 @@ namespace cmn {
                 && std::is_move_assignable_v<ValueType>
                 && std::is_copy_constructible_v<ValueType>
                 && std::is_copy_assignable_v<ValueType>;
+            using BaseStoreType = std::optional<ValueType>;
             using StoreType = std::conditional_t<
                 trivial,
                 std::atomic<std::optional<ValueType>>,
@@ -288,20 +286,6 @@ namespace cmn {
             void init() {
                 _set_value_from_string = [this](const std::string& str) {
                     *this = Meta::fromStr<ValueType>(str);
-                };
-                
-                _to_json = [this]() {
-                    if constexpr(trivial) {
-                        auto v = _value.load();
-                        if(not v.has_value())
-                            throw PropertyException("No value stored in "+name()+".");
-                        return cvt2json(v.value());
-                    } else {
-                        std::shared_lock guard(_property_mutex);
-                        if(not _value.has_value())
-                            throw PropertyException("No value stored in "+name()+".");
-                        return cvt2json(_value.value());
-                    }
                 };
                 
                 _is_enum = cmn::is_enum<ValueType>::value;
@@ -384,6 +368,71 @@ namespace cmn {
                     std::shared_lock guard(_property_mutex);
                     return _value.has_value();
                 }
+            }
+            
+            nlohmann::json to_json() const override {
+                if constexpr(trivial) {
+                    auto v = _value.load();
+                    if(not v.has_value())
+                        throw PropertyException("No value stored in "+name()+".");
+                    return cvt2json(v.value());
+                } else {
+                    std::shared_lock guard(_property_mutex);
+                    if(not _value.has_value())
+                        throw PropertyException("No value stored in "+name()+".");
+                    return cvt2json(_value.value());
+                }
+            }
+            
+            template<typename K = ValueType>
+                requires (HasNotEqualOperator<K> && trivial)
+            bool assign_if(const ValueType& next) {
+                BaseStoreType v = _value.load();
+                if(v.has_value()) {
+                    if(v.value() != next) {
+                        //return _value.compare_exchange_strong(v, BaseStoreType(next));
+                        _value.store(next);
+                        return true;
+                    }
+                    
+                } else {
+                    //return _value.compare_exchange_strong(v, BaseStoreType(next));
+                    _value.store(next);
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            template<typename K = ValueType>
+                requires (HasNotEqualOperator<K> && not trivial)
+            bool assign_if(const ValueType& next) {
+                std::unique_lock guard(_property_mutex);
+                if(_value.has_value()) {
+                    if(_value.value() != next) {
+                        _value = next;
+                        return true;
+                    }
+                    
+                } else {
+                    _value = next;
+                    return true;
+                }
+                
+                return false;
+            }
+
+            template<typename K = ValueType>
+                requires (not HasNotEqualOperator<K>)
+            bool assign_if(const ValueType& next) {
+                if constexpr(trivial) {
+                    _value.store(BaseStoreType(next));
+                } else {
+                    std::unique_lock guard(_property_mutex);
+                    _value = next;
+                }
+                
+                return true;
             }
             
             template<typename If_t,

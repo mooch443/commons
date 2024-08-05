@@ -11,11 +11,6 @@ concept ParserAvailable = requires(const T& t) {
 };
 
 namespace sprite {
-    
-template <typename T>
-concept HasNotEqualOperator = requires(T a, T b) {
-    { a != b } -> std::same_as<bool>;
-};
 
     class Map;
     class PropertyType;
@@ -603,7 +598,14 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void PropertyType::operator=(const T& value) {
+#ifndef NDEBUG
+        auto ptr = dynamic_cast<Property<T>*>(this);
+        if(not ptr) {
+            throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
+        }
+#else
         auto ptr = static_cast<Property<T>*>(this);
+#endif
         if(ptr->valid()) {
             *ptr = value;
             
@@ -618,56 +620,19 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void Property<T>::value(const T& v) {
-        if constexpr(HasNotEqualOperator<T>) {
-            if constexpr(trivial) {
-                if(not valid() || value() != v)
-                {
-                    _value = v;
-                    
-                    if(_do_print) {
-                        if constexpr(ParserAvailable<T>)
-                        {
-                            Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
-                        } else {
-                            Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
-                        }
-                    }
-                    
-                    triggerCallbacks();
-                }
-                
-            } else {
-                if(std::unique_lock guard(_property_mutex);
-                   not _value.has_value() || v != _value)
-                {
-                    _value = v;
-                    
-                    guard.unlock();
-                    
-                    if(_do_print) {
-                        if constexpr(ParserAvailable<T>)
-                        {
-                            Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
-                        } else {
-                            Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
-                        }
-                    }
-                    //if(_do_print)
-                    //    Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", _value);
-                    
-                    triggerCallbacks();
-                }
-            }
+        if(not assign_if(v))
             return;
-            
-        } else {
+        
+        if(_do_print) {
+            if constexpr(ParserAvailable<T>)
             {
-                std::unique_lock guard(_property_mutex);
-                _value = v;
+                Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+            } else {
+                Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
             }
-            
-            triggerCallbacks();
         }
+        
+        triggerCallbacks();
     }
 
     template<typename T>
