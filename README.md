@@ -44,7 +44,12 @@ Here is a simple example that demonstrates the use of dynamic GUI functionality 
 #include <file/DataLocation.h>
 #include <misc/CommandLine.h>
 #include <gui/dyn/Action.h>
+#include <video/FFmpegVideoCapture.h>
+#include <video/VideoSource.h>
+#include <file/PathArray.h>
+#include <file/Path.h>
 
+using namespace cmn;
 using namespace gui;
 using namespace gui::dyn;
 
@@ -55,16 +60,23 @@ int main(int argc, char**argv) {
 
     // Register custom data paths
     file::DataLocation::register_path("app", [](const sprite::Map&, file::Path input) {
+        if(input.is_absolute())
+            return input;
         return CommandLine::instance().wd() / input;
     });
 
     // Define global variables
     bool terminate = false;
+    
     SETTING(app_name) = std::string("test application");
     SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.pt");
-    SETTING(blob_size_ranges) = std::vector<float>{};
+    SETTING(track_size_filter) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();
+    SETTING(gui_frame) = Frame_t(0);
+    SETTING(gui_run) = false;
+    SETTING(terminate) = false;
+    SETTING(mat) = cv::Mat();
     
     // Create a list variable
     static std::vector<std::shared_ptr<VarBase_t>> list;
@@ -77,6 +89,7 @@ int main(int argc, char**argv) {
         tmp["color"] = ColorWheel{static_cast<uint32_t>(i)}.next();
         tmp["pos"] = Vec2(100, 150+i*50);
         tmp["size"] = Size2(25, 25);
+        tmp["visible"] = i % 2 == 0;
         _data.push_back(std::move(tmp));
         
         list.emplace_back(new Variable{
@@ -94,6 +107,10 @@ int main(int argc, char**argv) {
             o->set_draggable();
         }
     });
+    
+    ExternalImage display;
+    display.set_source(Image::Make());
+    GUITaskQueue_t queue;
 
     // Open the Window
     IMGUIBase base("Dynamic GUI Example",
@@ -105,6 +122,7 @@ int main(int argc, char**argv) {
         // the GUI itself, which is loaded form the JSON file.
         static dyn::DynamicGUI dynGUI{
             // JSON file location
+            .gui = &queue,
             .path = file::DataLocation::parse("app", "test_gui.json"),
             .graph = &graph,
             .context = [&]() {
@@ -123,20 +141,39 @@ int main(int argc, char**argv) {
                     VarFunc("global", [](const VarProps&) -> sprite::Map& { return GlobalSettings::map(); }),
                     VarFunc("isTrue", [](const VarProps&) { return true; }),
                     VarFunc("add", [](const VarProps&) { return true; }),
-                    VarFunc("path", [](const VarProps&) { return file::Path("Herakles"); })
+                    VarFunc("path", [](const VarProps&) { return file::Path("Herakles"); }),
+                    VarFunc("window_size", [](const VarProps&){
+                        return Size2(1024,1024);
+                    }),
+                    VarFunc("video_length", [](const VarProps&) -> Frame_t {
+                        return 5000_f;
+                    }),
+                    VarFunc("mouse", [&](const VarProps&) -> Vec2 {
+                        return graph.mouse_position();
+                    })
                 };
                 context.actions = {
                     // stuff that can be triggered by lists / buttons
                     // is an "Action". this quits the app:
-                    ActionFunc("QUIT", [&](Action) { terminate = true; })
+                    ActionFunc("QUIT", [&](Action) { terminate = true; }),
+                    ActionFunc("set", [&](Action a) {
+                        if(a.parameters.size() < 2)
+                            throw InvalidArgumentException("Not enough arguments for set:name: ", a);
+                        if(not GlobalSettings::has(a.parameters.at(0)))
+                            throw InvalidArgumentException("Cannot find given parameter: ", a);
+                        GlobalSettings::map()[a.parameters.at(0)].get().set_value_from_string(a.parameters.at(1));
+                    })
                 };
                 return context;
             }(),
             .base = &base
         };
+        
+        graph.wrap_object(display);
 
         // Update Dynamic GUI
         dynGUI.update(nullptr);
+        queue.processTasks(&base, graph);
 
         return not terminate;  // Continue the event loop unless terminated
         
@@ -243,9 +280,29 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
       { "type": "each", 
         "var": "list_var", 
         "do": {
-          "type": "stext",
-          "text": "{i.name} {i.color}", 
-          "color":"{i.color}"
+          "type":"condition",
+          "var":"{||:{i.visible}:{equal:{global.gui_frame}:0}}",
+          "then": {
+            "type": "stext",
+            "text": "{if:{equal:{global.gui_frame}:0}:'gui_frame is 0':'not zero {global.gui_frame}'} {i.name} {i.color}", 
+            "color":"{i.color}",
+            "align":"center"
+          },
+          "else": {
+            "type": "condition",
+            "var":"{equal:{global.gui_frame}:2}",
+            "then": {
+              "type": "rect",
+              "size": [100,100],
+              "fill": [255,255,255,255],
+              "line": "{i.color}"
+            },
+            "else": {
+              "type": "stext",
+              "text": "{i.name}",
+              "color":"{i.color}"
+            }
+          }
         }
       }
     ]}
