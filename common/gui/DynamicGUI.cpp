@@ -16,7 +16,6 @@
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/ResolveVariable.h>
 #include <gui/dyn/Action.h>
-#include <regex>
 
 namespace cmn::gui {
 namespace dyn {

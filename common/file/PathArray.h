@@ -2,32 +2,8 @@
 
 #include <commons.pc.h>
 #include <file/Path.h>
-#include <regex>
 
 namespace cmn::file {
-
-// FilesystemInterface that both real and mock classes should implement
-struct FilesystemInterface {
-    virtual std::set<file::Path> find_files(const file::Path&) const = 0;
-    virtual bool is_folder(const file::Path&) const = 0;
-    virtual bool exists(const file::Path&) const = 0;
-    virtual ~FilesystemInterface() = default;
-};
-
-// RealFilesystem that uses the actual filesystem calls
-struct RealFilesystem : FilesystemInterface {
-    inline std::set<file::Path> find_files(const file::Path& path) const override {
-        return path.find_files(); // Actual implementation
-    }
-
-    inline bool is_folder(const file::Path& path) const override {
-        return path.is_folder(); // Actual implementation
-    }
-    
-    inline bool exists(const file::Path& path) const override {
-        return path.exists(); // Actual implementation
-    }
-};
 
 /**
  * @class PathArray

@@ -1,6 +1,5 @@
 #include <commons.pc.h>
 #include "stringutils.h"
-#include <regex>
 #include <file/Path.h>
 
 namespace cmn::utils {

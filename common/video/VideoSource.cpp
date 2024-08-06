@@ -1,6 +1,5 @@
 #include "VideoSource.h"
 #include "Video.h"
-#include <regex>
 #include <file/Path.h>
 #include <misc/GlobalSettings.h>
 #include <misc/ThreadPool.h>

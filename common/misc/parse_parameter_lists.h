@@ -1,6 +1,5 @@
 #pragma once
 #include <commons.pc.h>
-#include <regex>
 
 inline std::string unescape(const std::string &input) {
     std::string output;
