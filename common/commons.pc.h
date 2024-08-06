@@ -69,6 +69,7 @@
 #include <optional>
 #include <compare>
 #include <random>
+#include <regex>
 #include <any>
 #include <stack>
 #if __APPLE__
