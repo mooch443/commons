@@ -2,13 +2,13 @@
 #define M_TIMER_H
 
 #include <commons.pc.h>
+//#define TREX_ENABLE_TIMERS
 
 namespace cmn {
 class MetaObject;
 }
 
-class Timer
-{
+class Timer {
 public:
     Timer() : beg_(clock_::now()) {}
     void reset() { beg_ = clock_::now(); }
@@ -32,6 +32,7 @@ private:
 
 class Timing {
     //Timer _timer;
+#ifdef TREX_ENABLE_TIMERS
     std::string _name;
     const double _print_threshold;
     long sample_count;
@@ -48,10 +49,13 @@ class Timing {
     
     std::mutex _mutex;
     std::map<std::thread::id, Info> _threads;
+#endif
     
 public:
-    Timing(const std::string& name, double print_threshold = 1.0)
+    Timing([[maybe_unused]] const std::string& name, [[maybe_unused]] double print_threshold = 1.0)
+#ifdef TREX_ENABLE_TIMERS
         : _name(name), _print_threshold(print_threshold), sample_count(0)
+#endif
     {
         
     }

@@ -42,7 +42,7 @@ namespace cmn::gui {
                 advance_wrap(_description);
             end();
             
-            _box.set_bounds(Bounds(Vec2(margin,  (Base::default_line_spacing(_settings.font) - box_size.height) * 0.5), box_size));
+            _box.set_bounds(Bounds(Vec2(margin,  (Base::default_line_spacing(_settings.font) - box_size.height) * 0.5f), box_size));
             _description.set_pos(Vec2(box_size.width + _box.pos().x + 4, 0));
             
             if(!_settings.text.empty()) {

@@ -374,16 +374,16 @@ std::string VideoSource::toStr() const {
 }
 
 VideoSource::VideoSource(VideoSource&& other)
-    : _source(other._source),
-      _base(other._base),
-      _size(other._size),
-      _length(other._length),
-      _average(std::move(other._average)),
-      _mask(std::move(other._mask)),
-      _has_timestamps(other._has_timestamps),
-      _framerate(other._framerate),
-      _colors(other._colors),
-      _last_file(nullptr)
+    :   _source(other._source),
+        _base(other._base),
+        _last_file(nullptr),
+        _size(other._size),
+        _length(other._length),
+        _average(std::move(other._average)),
+        _mask(std::move(other._mask)),
+        _has_timestamps(other._has_timestamps),
+        _framerate(other._framerate),
+        _colors(other._colors)
 {
     for(auto& f : other._files_in_seq) {
         _files_in_seq.push_back(new File(std::move(*f)));

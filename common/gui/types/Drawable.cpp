@@ -853,7 +853,7 @@ bool SectionInterface::is_animating() noexcept {
         if(_rotation != 0)
             transform.rotate(DEGREE(_rotation));
         
-        if(origin().x || origin().y)
+        if(origin().x != 0 || origin().y != 0)
             transform.translate(-width() * origin().x, -height() * origin().y);
         
         return transform;

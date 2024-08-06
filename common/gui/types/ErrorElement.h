@@ -1,10 +1,10 @@
 #pragma once
 #include <commons.pc.h>
 #include <gui/types/Entangled.h>
-#include <gui/types/Layout.h>
-#include <gui/GuiTypes.h>
 
 namespace cmn::gui {
+
+class StaticText;
 
 class ErrorElement : public Entangled {
 public:
@@ -19,7 +19,7 @@ public:
     
 protected:
     Settings _settings;
-    derived_ptr<Text> _text;
+    std::shared_ptr<StaticText> _text;
     
 public:
     template<typename... Args>
@@ -27,6 +27,8 @@ public:
     {
         create(std::forward<Args>(args)...);
     }
+    
+    ~ErrorElement();
     
     template<typename... Args>
     void create(Args... args) {
@@ -42,6 +44,7 @@ public:
     void set(attr::LineClr clr) override;
     void set(attr::TextClr clr);
     void set(attr::Str content);
+    void set(attr::SizeLimit limit);
     
     void set_bounds(const Bounds& bds) override;
     void set_pos(const Vec2& p) override;

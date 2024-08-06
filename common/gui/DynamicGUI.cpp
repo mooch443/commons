@@ -575,7 +575,7 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                         obj->timer.reset();
                     }
                 } else
-                    FormatExcept("Unknown layout type: ", layout.type);
+                    throw InvalidArgumentException("Unknown layout type: ", layout.type);
                 break;
         }
         
@@ -587,7 +587,7 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
         layout.finalize(ptr);
         return ptr;
     } catch(const std::exception& e) {
-        std::string text = "Failed to make object with '"+std::string(e.what())+"' for "+ obj.dump();
+        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ obj.dump()+"</c>";
         FormatExcept("Failed to make object here ",e.what(), " for ",obj.dump());
         return Layout::Make<ErrorElement>(attr::Str{text}, Loc{layout.pos}, Size{layout.size});
     }

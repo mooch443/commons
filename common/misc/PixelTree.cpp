@@ -191,7 +191,6 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         
         //timer.reset();
         auto px = blob->pixels()->data();
-        auto px_end = px + blob->pixels()->size();
         std::vector<HorizontalLine> lines;
         std::vector<uchar> pixels;
         lines.reserve(blob->hor_lines().size());

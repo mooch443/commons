@@ -16,15 +16,15 @@ struct FilesystemInterface {
 
 // RealFilesystem that uses the actual filesystem calls
 struct RealFilesystem : FilesystemInterface {
-    std::set<file::Path> find_files(const file::Path& path) const override {
+    inline std::set<file::Path> find_files(const file::Path& path) const override {
         return path.find_files(); // Actual implementation
     }
 
-    bool is_folder(const file::Path& path) const override {
+    inline bool is_folder(const file::Path& path) const override {
         return path.is_folder(); // Actual implementation
     }
     
-    bool exists(const file::Path& path) const override {
+    inline bool exists(const file::Path& path) const override {
         return path.exists(); // Actual implementation
     }
 };

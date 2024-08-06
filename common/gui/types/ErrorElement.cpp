@@ -1,10 +1,19 @@
 #include "ErrorElement.h"
+#include <gui/types/StaticText.h>
+#include <gui/types/Layout.h>
+#include <gui/GuiTypes.h>
 
 namespace cmn::gui {
 
 void ErrorElement::init() {
-    _text = std::make_shared<Text>(Str{"ERROR: element "+name()+" cannot be loaded."});
+    _text = std::make_shared<StaticText>(Str{"ERROR: element "+name()+" cannot be loaded."});
     set_bounds(_settings.bounds);
+}
+
+ErrorElement::~ErrorElement() { }
+
+void ErrorElement::set(SizeLimit limit) {
+    _text->set(limit);
 }
 
 void ErrorElement::update() {
@@ -13,7 +22,7 @@ void ErrorElement::update() {
     
     set_background(_settings.fill_clr, _settings.line_clr);
     _text->set_txt(_settings.content);
-    _text->set_font(_settings.font);
+    _text->set_default_font(_settings.font);
     //auto_size();
     
     begin();

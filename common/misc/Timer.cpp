@@ -16,7 +16,7 @@ TakeTiming::TakeTiming(Timing& t) : timing(t) {
 }
 
 void Timing::start_() {
-#ifndef NDEBUG
+#ifdef TREX_ENABLE_TIMERS
     std::lock_guard<std::mutex> guard(_mutex);
     auto id = std::this_thread::get_id();
     Info& t = _threads[id];
@@ -35,7 +35,7 @@ void Timing::start_() {
 }
 
 void Timing::start_measure() {
-#ifndef NDEBUG
+#ifdef TREX_ENABLE_TIMERS
     std::lock_guard<std::mutex> guard(_mutex);
     auto id = std::this_thread::get_id();
     _threads[id].timer.reset();
@@ -51,7 +51,7 @@ void Timing::start_measure() {
 #endif
 }
 double Timing::conclude_measure() {
-#ifndef NDEBUG
+#ifdef TREX_ENABLE_TIMERS
     double elapsed;
     {
         std::lock_guard<std::mutex> guard(_mutex);
@@ -65,8 +65,8 @@ double Timing::conclude_measure() {
 #endif
 }
 
-double Timing::conclude_measure(double elapsed) {
-#ifndef NDEBUG
+double Timing::conclude_measure([[maybe_unused]] double elapsed) {
+#ifdef TREX_ENABLE_TIMERS
     std::lock_guard<std::mutex> guard(_mutex);
     auto id = std::this_thread::get_id();
     auto &info = _threads[id];
@@ -105,7 +105,6 @@ double Timing::conclude_measure(double elapsed) {
     
     return elapsed * 1000;
 #else
-    UNUSED(elapsed)
     return 0;
 #endif
 }

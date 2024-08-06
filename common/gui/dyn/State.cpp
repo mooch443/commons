@@ -90,15 +90,6 @@ T resolve_variable_type(Str _word, const Context& context, State& state) {
     });
 }
 
-
-/*IfBody::~IfBody() {
-    /*if(_if)
-        _if->clear_delete_handlers();
-    if(_else)
-        _else->clear_delete_handlers();/
-    Print("Destroying IfBody");
-}*/
-
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
     //! something that needs to be executed before everything runs

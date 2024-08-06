@@ -142,9 +142,11 @@ void Layout::set_content_changed(bool changed) {
 
     void Layout::set_children(const std::vector<Layout::Ptr>& objects) {
         std::vector<Layout::Ptr> copy(objects);
+#ifndef NDEBUG
         for(auto &ptr : objects) {
             assert(ptr != nullptr);
         }
+#endif
         set_children(std::move(copy));
     }
     

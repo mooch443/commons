@@ -179,7 +179,6 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
     start = image.ptr(rstart);
     end_ptr = image.ptr(rstart + 1);
     
-    const ptr_safe_t channels = image.channels();
     assert(end_ptr == start + ptr_safe_t(image.cols) * step_px);
     //end_ptr = start + image.cols;
 
