@@ -16,7 +16,7 @@ public:
     std::array<Vec2, 4> corners(const Size2& dimensions) const;
     
     std::string toStr() const;
-    nlohmann::json to_json() const;
+    glz::json_t to_json() const;
     static CropOffsets fromStr(const std::string&);
     static const std::string& class_name();
     bool operator==(const CropOffsets&) const;

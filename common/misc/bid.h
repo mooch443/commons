@@ -82,7 +82,7 @@ struct bid {
     }
     
     std::string toStr() const;
-    nlohmann::json to_json() const;
+    glz::json_t to_json() const;
     static std::string class_name() { return "blob"; }
     static bid fromStr(const std::string& str);
     

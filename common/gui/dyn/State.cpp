@@ -52,7 +52,13 @@ T resolve_variable_type(Str _word, const Context& context, State& state) {
                     return false;
                 }
                 //Print(ref.get().name()," = ", ref.get().valueString(), " with ", ref.get().type_name());
-                if(ref.template is_type<T>()) {
+                if constexpr(std::same_as<T, bool>) {
+                    if(ref.is_type<bool>())
+                        return ref.value<bool>();
+                    else
+                        return convert_to_bool(ref.get().valueString());
+                    
+                } else if(ref.template is_type<T>()) {
                     return ref.get().template value<T>();
                 } else if(ref.is_type<std::string>()) {
                     return not ref.get().value<std::string>().empty();
@@ -168,7 +174,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 o.to<Layout>()->set_children({});
             }
             
-            if(obj.__else != nullptr) {
+            if(not obj.__else.is_null()) {
                 if(not obj._else) {
                     for(auto &[n, p] : patterns) {
                         //obj._state->_collectors->objects[hash][n] = Pattern{p};
@@ -179,7 +185,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                     obj._state->_current_index = {};
                     //obj._state->_variable_values.clear();
                     
-                    obj._else = parse_object(gui, obj.__else, context, *obj._state, context.defaults);
+                    obj._else = parse_object(gui, obj.__else.get_object(), context, *obj._state, context.defaults);
                 } //else
                     //state._current_index.inc();
                 
@@ -229,7 +235,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 obj._state->_collectors->objects.clear();
                 obj._state->_current_index = {};
                 
-                obj._if = parse_object(gui, obj.__if, context, *obj._state, context.defaults);
+                obj._if = parse_object(gui, obj.__if.get_object(), context, *obj._state, context.defaults);
             } //else
                 //state._current_index.inc();
             
@@ -558,7 +564,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             Context tmp = context;
             
             size_t index=0;
-            auto convert_to_item = [&gc = context, &index, &obj](sprite::Map&, const nlohmann::json& item_template, Context& context, State& state) -> DetailItem
+            auto convert_to_item = [&gc = context, &index, &obj](sprite::Map&, const glz::json_t& item_template, Context& context, State& state) -> DetailItem
             {
                 DetailItem item;
                 if(item_template.contains("text") && item_template["text"].is_string()) {
@@ -602,7 +608,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                     ptrs.emplace_back(std::move(item));
                     ++index;
                 } catch(const std::exception& ex) {
-                    FormatExcept("Cannot create list items for template: ", obj.item.dump(), " and type ", v->class_name());
+                    FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("<invalid_json>"), " and type ", v->class_name());
                 }
                 //state._variable_values = std::move(previous);
             }
@@ -676,6 +682,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     }
                 }
                 
+                ptrs.resize(i);
                 o.to<Layout>()->set_children(std::move(ptrs));
                 obj.cache = vector;
                 
@@ -743,6 +750,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     break;
                 }
             }
+            
+            ptrs.resize(i);
             
             /*size_t i=0;
             for(auto &v : vector) {

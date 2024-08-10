@@ -157,7 +157,7 @@ namespace cmn {
              * Serializes the property to a JSON object.
              * @return A JSON representation of the property.
              */
-            virtual nlohmann::json to_json() const = 0;
+            virtual glz::json_t to_json() const = 0;
 
             template<typename T>
             Property<T>& toProperty() {
@@ -370,7 +370,7 @@ namespace cmn {
                 }
             }
             
-            nlohmann::json to_json() const override {
+            glz::json_t to_json() const override {
                 if constexpr(trivial) {
                     auto v = _value.load();
                     if(not v.has_value())

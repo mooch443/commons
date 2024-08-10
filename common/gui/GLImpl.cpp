@@ -2,7 +2,7 @@
 #include <commons.pc.h>
 #include <cstdio>
 
-#include <imgui/imgui.h>
+#include <imgui.h>
 using ImTextureID_t = ImGui_OpenGL3_TextureID;
 
 #include <imgui/backends/imgui_impl_opengl3.h>

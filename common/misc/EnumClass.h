@@ -149,8 +149,8 @@ public:
     {
         return self_type::get(cmn::Meta::fromStr<std::string>(str));
     }
-    nlohmann::json to_json() const {
-        return nlohmann::json(name());
+    glz::json_t to_json() const {
+        return name();
     }
     static std::string class_name() noexcept { return std::string(_names::class_name());}
     

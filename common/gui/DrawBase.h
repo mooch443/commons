@@ -23,7 +23,7 @@ namespace cmn::gui {
     protected:
         GETTER(bool, frame_recording);
         std::function<Bounds(const std::string&, Drawable*, const Font&)> _previous_line_bounds;
-        std::function<uint32_t(const Font&)> _previous_line_spacing;
+        std::function<Float2_t(const Font&)> _previous_line_spacing;
         Base *_previous_base;
         
     public:
@@ -46,8 +46,8 @@ namespace cmn::gui {
         virtual Size2 window_dimensions() const;
         virtual Event toggle_fullscreen(DrawStructure&g);
         
-        virtual float text_width(const Text &text) const;
-        virtual float text_height(const Text &text) const;
+        virtual Float2_t text_width(const Text &text) const;
+        virtual Float2_t text_height(const Text &text) const;
         
         static Size2 text_dimensions(const std::string& text, Drawable* obj = NULL, const Font& font = {});
         
@@ -55,10 +55,10 @@ namespace cmn::gui {
         static Bounds default_text_bounds(const std::string& text, Drawable* obj = NULL, const Font& font = {});
         static void set_default_text_bounds(std::function<Bounds(const std::string&, Drawable*, const Font&)>);
         
-        virtual uint32_t line_spacing(const Font& font);
+        virtual Float2_t line_spacing(const Font& font);
         
-        static uint32_t default_line_spacing(const Font& font);
-        static void set_default_line_spacing(std::function<uint32_t(const Font&)>);
+        static Float2_t default_line_spacing(const Font& font);
+        static void set_default_line_spacing(std::function<Float2_t(const Font&)>);
     };
 }
 

@@ -240,7 +240,7 @@ public:
 
 struct LabeledCombobox : public LabeledField {
     gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(GUITaskQueue_t*, const std::string& name, State&, const nlohmann::json& obj);
+    LabeledCombobox(GUITaskQueue_t*, const std::string& name, State&, const glz::json_t& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_combo);
@@ -251,7 +251,7 @@ struct LabeledCombobox : public LabeledField {
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
-    LabeledTextField(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
+    LabeledTextField(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_text_field);
@@ -262,7 +262,7 @@ struct LabeledTextField : public LabeledField {
 };
 struct LabeledDropDown : public LabeledField {
     gui::derived_ptr<gui::Dropdown> _dropdown;
-    LabeledDropDown(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj);
+    LabeledDropDown(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
@@ -273,7 +273,7 @@ struct LabeledDropDown : public LabeledField {
 struct LabeledList : public LabeledField {
     gui::derived_ptr<gui::List> _list;
     bool _invert{false};
-    LabeledList(GUITaskQueue_t*, const std::string& name, const nlohmann::json& obj, bool invert = false);
+    LabeledList(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj, bool invert = false);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_list);
@@ -358,7 +358,7 @@ public:
 struct LabeledCheckbox : public LabeledField {
     gui::derived_ptr<gui::Checkbox> _checkbox;
     bool _invert{false};
-    LabeledCheckbox(GUITaskQueue_t*, const std::string& name, const std::string& desc, const nlohmann::json&, bool invert = false);
+    LabeledCheckbox(GUITaskQueue_t*, const std::string& name, const std::string& desc, const glz::json_t&, bool invert = false);
     ~LabeledCheckbox();
     void add_to(std::vector<Layout::Ptr>& v) override {
         //LabeledField::add_to(v);

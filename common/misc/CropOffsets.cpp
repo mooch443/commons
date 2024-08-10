@@ -11,7 +11,7 @@ std::string CropOffsets::toStr() const {
     return Meta::toStr(Bounds(left,top,right - left,bottom - top));
 }
 
-nlohmann::json CropOffsets::to_json() const {
+glz::json_t CropOffsets::to_json() const {
     return cvt2json(Bounds(left,top,right - left,bottom - top));
 }
 

@@ -36,7 +36,7 @@ namespace cmn::gui {
         POLYGON, LINE
     )
     
-    float interface_scale();
+    Float2_t interface_scale();
     
     namespace hidden {
         class Global {
@@ -44,7 +44,7 @@ namespace cmn::gui {
             Global() {}
             
         public:
-            static float interface_scale;
+            static Float2_t interface_scale;
         };
     }
 
@@ -138,7 +138,7 @@ namespace cmn::gui {
         
         //! Rotation of the object and all children.
         //  Object is rotated around origin.
-        GETTER(float, rotation);
+        GETTER(Float2_t, rotation);
         
         //! This is true, if this object (or one of its parents) has rotation != 0.
         GETTER(bool, has_global_rotation);
@@ -270,10 +270,10 @@ namespace cmn::gui {
         virtual void set_size(const Size2& size);
         virtual void set_bounds(const Bounds& bounds);
         virtual void set_origin(const Vec2& origin);
-        virtual void set_rotation(float radians);
+        virtual void set_rotation(Float2_t radians);
         virtual void set_scale(const Vec2& scale);
         
-        void set_scale(float x, float y) { set_scale({x, y}); }
+        void set_scale(Float2_t x, Float2_t y) { set_scale({x, y}); }
         virtual void set_z_index(int index);
         
         //! Accessed by DrawBases to save their own object states (and reuse them).
@@ -295,7 +295,7 @@ namespace cmn::gui {
         bool is_dirty(const Base* base = NULL) const;
         
         //! Supposed to return true if x,y (absolute values) is within object boundaries.
-        virtual bool in_bounds(float x, float y);
+        virtual bool in_bounds(Float2_t x, Float2_t y);
         
         virtual Vec2 stage_scale() const;
         
@@ -323,8 +323,8 @@ namespace cmn::gui {
         
         //! Mouse-down is repeatedly called, even if the mouse is just
         //  continously pressed but moved.
-        virtual void mdown(float x, float y, bool left_button);
-        virtual void mup(float x, float y, bool left_button);
+        virtual void mdown(Float2_t x, Float2_t y, bool left_button);
+        virtual void mup(Float2_t x, Float2_t y, bool left_button);
         virtual void scroll(Event e);
         
         virtual bool kdown(Event e);
@@ -452,7 +452,7 @@ namespace cmn::gui {
         
         void set_pos(const Vec2& pos) override;
         void set_origin(const Vec2& origin) override;
-        void set_rotation(float radians) override;
+        void set_rotation(Float2_t radians) override;
         void set_size(const Size2& size) override;
         void set_bounds(const Bounds& bounds) override;
         void set_scale(const Vec2& scale) override;
@@ -464,7 +464,7 @@ namespace cmn::gui {
         
         virtual std::vector<Drawable*>& children() = 0;
         
-        virtual void find(float x, float y, std::vector<Drawable*>& results);
+        virtual void find(Float2_t x, Float2_t y, std::vector<Drawable*>& results);
         virtual Drawable* find(const std::string& search);
         
         virtual bool is_animating() noexcept override;

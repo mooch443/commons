@@ -163,9 +163,9 @@ DEFINE_ARITHMETIC_OP(/)
 
 #undef DEFINE_ARITHMETIC_OP
 
-NUMBER_ALIAS(Radius, float)
-NUMBER_ALIAS(Rotation, float)
-NUMBER_ALIAS(Alpha, float)
+NUMBER_ALIAS(Radius, Float2_t)
+NUMBER_ALIAS(Rotation, Float2_t)
+NUMBER_ALIAS(Alpha, Float2_t)
 NUMBER_ALIAS(Checked, bool)
 NUMBER_ALIAS(Folded_t, bool)
 NUMBER_ALIAS(ZIndex, int)

@@ -298,7 +298,8 @@ namespace cmn {
     template<> void Data::read(cv::Point2f&);
     template<> uint64_t Data::write(const cv::Point2f& val);
     
-    template<> void Data::read(Vec2&);
+    template<> void Data::read(Vector2D<float, true>&);
+    template<> void Data::read(Vector2D<double, true>&);
     template<> uint64_t Data::write(const Vec2& val);
 
     template<> void Data::read(Size2&);

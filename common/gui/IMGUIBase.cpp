@@ -7,11 +7,11 @@
 #include "MetalImpl.h"
 #include "GLImpl.h"
 
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
-#define IM_NORMALIZE2F_OVER_ZERO(VX,VY)     { float d2 = VX*VX + VY*VY; if (d2 > 0.0f) { float inv_len = 1.0f / ImSqrt(d2); VX *= inv_len; VY *= inv_len; } }
-#define IM_FIXNORMAL2F(VX,VY)               { float d2 = VX*VX + VY*VY; if (d2 < 0.5f) d2 = 0.5f; float inv_lensq = 1.0f / d2; VX *= inv_lensq; VY *= inv_lensq; }
+#define IM_NORMALIZE2F_OVER_ZERO(VX,VY)     { Float2_t d2 = VX*VX + VY*VY; if (d2 > 0_F) { Float2_t inv_len = 1_F / ImSqrt(d2); VX *= inv_len; VY *= inv_len; } }
+#define IM_FIXNORMAL2F(VX,VY)               { Float2_t d2 = VX*VX + VY*VY; if (d2 < 0.5_F) d2 = 0.5_F; Float2_t inv_lensq = 1_F / d2; VX *= inv_lensq; VY *= inv_lensq; }
 
 #define GLFW_INCLUDE_GL3  /* don't drag in legacy GL headers. */
 #define GLFW_NO_GLU       /* don't drag in the old GLU lib - unless you must. */
@@ -358,7 +358,7 @@ class PolyCache : public CacheObject {
     };*/
 
     std::unordered_map<uint32_t, ImFont*> _fonts;
-    float im_font_scale = 2;
+    Float2_t im_font_scale = 2;
 
     std::unordered_map<GLFWwindow*, IMGUIBase*> base_pointers;
 
@@ -422,7 +422,7 @@ void set_window_size(GLFWwindow* window, Size2 size) {
 #endif
 }
 
-float IMGUIBase::get_scale_multiplier() {
+Float2_t IMGUIBase::get_scale_multiplier() {
 #if defined(__EMSCRIPTEN__)
     return 1.f;//emscripten_get_device_pixel_ratio();
 #else
@@ -430,20 +430,20 @@ float IMGUIBase::get_scale_multiplier() {
 #endif
 }
 
-Size2 get_window_size(GLFWwindow* window, float ) {
+Size2 get_window_size(GLFWwindow* window, Float2_t ) {
     int w, h;
     glfwGetWindowSize(window, &w, &h);
     //w *= r;
     //h *= r;
-    return { float(w), float(h) };
+    return { Float2_t(w), Float2_t(h) };
 }
 
-Size2 get_frame_buffer_size(GLFWwindow* window, float r) {
+Size2 get_frame_buffer_size(GLFWwindow* window, Float2_t r) {
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     display_w *= r;
     display_h *= r;
-    return { float(display_w), float(display_h) };
+    return { Float2_t(display_w), Float2_t(display_h) };
 }
 
 void IMGUIBase::set_window_size(Size2 size) {
@@ -515,7 +515,7 @@ Bounds IMGUIBase::get_window_bounds() const {
     return Bounds(x, y, size.width, size.height);
 }
 
-Size2 frame_buffer_scale(GLFWwindow* window, float r) {
+Size2 frame_buffer_scale(GLFWwindow* window, Float2_t r) {
     // Setup display size (every frame to accommodate for window resizing)
     auto window_size = get_window_size(window, 1);
     auto fb = get_frame_buffer_size(window, r);
@@ -613,19 +613,19 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     Print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
 #endif
     
-    float dpi_scale = 1 / max(xscale, yscale);//max(float(fw) / float(width), float(fh) / float(height));
+    Float2_t dpi_scale = 1 / Float2_t(max(xscale, yscale));//max(float(fw) / float(width), float(fh) / float(height));
     //auto& io = ImGui::GetIO();
 
 #if defined(__EMSCRIPTEN__)
     dpi_scale = 0.5; // emscripten_get_device_pixel_ratio();
     //io.DisplayFramebufferScale = ImVec2(emscripten_get_device_pixel_ratio(), emscripten_get_device_pixel_ratio());
 #endif
-    //SETTING(gui_interface_scale) = float(1);// / dpi_scale);
-    im_font_scale = max(1, dpi_scale) * 0.75f;
+    //SETTING(gui_interface_scale) = Float2_t(1);// / dpi_scale);
+    im_font_scale = max(1, dpi_scale) * 0.75_F;
     base->_dpi_scale = dpi_scale;
 
-    const float interface_scale = gui::interface_scale();
-    base->_graph->set_scale(1.0 / interface_scale);
+    const Float2_t interface_scale = gui::interface_scale();
+    base->_graph->set_scale(1.0_F / interface_scale);
 
     int fw, fh;
 #if __APPLE__
@@ -744,16 +744,16 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         //io.WantCaptureKeyboard = false;
         
         
-        const float base_scale = 32;
+        const Float2_t base_scale = 32;
         //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
-        float dpi_scale = 1 / max(xscale, yscale);
+        Float2_t dpi_scale = 1 / Float2_t(max(xscale, yscale));
 #if defined(__EMSCRIPTEN__)
         //Print("dpi:",emscripten_get_device_pixel_ratio());
         dpi_scale = 0.5;
         //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
         //io.FontGlobalScale = 1.f / dpi_scale;
 #endif
-        im_font_scale = max(1, dpi_scale) * 0.75f;
+        im_font_scale = max(1, dpi_scale) * 0.75_F;
         _dpi_scale = dpi_scale;
         
         int fw, fh;
@@ -776,7 +776,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             config.OversampleH = 5;
             config.OversampleV = 5;
 
-            auto load_font = [&](int no, std::string suffix, const file::Path& path, std::string = ".ttf", float scale = 1.0, bool = false) {
+            auto load_font = [&](int no, std::string suffix, const file::Path& path, std::string = ".ttf", Float2_t scale = 1_F, bool = false) {
                 config.FontNo = no;
                 if (no > 0)
                     config.MergeMode = false;
@@ -826,7 +826,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
                     ptr = io.Fonts->AddFontDefault();
-                    im_font_scale = max(1, dpi_scale) * 0.5f;
+                    im_font_scale = max(1, dpi_scale) * 0.5_F;
                 }
                 //ptr->ConfigData->GlyphOffset = ImVec2(1,0);
                 ptr->FontSize = base_scale * im_font_scale * scale;
@@ -897,8 +897,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             Event e(EventType::MMOVE);
             auto &io = ImGui::GetIO();
-            e.move.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
-            e.move.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
+            e.move.x = Float2_t(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
+            e.move.y = Float2_t(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
             
             base->event(e);
             
@@ -917,8 +917,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             auto base = base_pointers.at(window);
             auto &io = ImGui::GetIO();
-            e.mbutton.x = float(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
-            e.mbutton.y = float(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
+            e.mbutton.x = Float2_t(xpos * io.DisplayFramebufferScale.x) * base->_dpi_scale;
+            e.mbutton.y = Float2_t(ypos * io.DisplayFramebufferScale.y) * base->_dpi_scale;
             e.mbutton.button = GLFW_MOUSE_BUTTON_RIGHT == button ? 1 : 0;
 
             base->event(e);
@@ -926,8 +926,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         });
         glfwSetScrollCallback(_platform->window_handle(), [](GLFWwindow* window, double xoff, double yoff) {
             Event e(EventType::SCROLL);
-            e.scroll.dy = float(yoff);
-            e.scroll.dx = float(xoff);
+            e.scroll.dy = Float2_t(yoff);
+            e.scroll.dx = Float2_t(xoff);
             
             auto base = base_pointers.at(window);
             base->event(e);
@@ -1276,10 +1276,10 @@ ImVec2 ImRotationCenter(int rotation_start_index, ImDrawList* list)
 
 ImVec2 operator-(const ImVec2& l, const ImVec2& r) { return{ l.x - r.x, l.y - r.y }; }
 
-void ImRotateEnd(int rotation_start_index, ImDrawList* list, float rad, ImVec2 center)
+void ImRotateEnd(int rotation_start_index, ImDrawList* list, Float2_t rad, ImVec2 center)
 {
     //auto center = ImRotationCenter(list);
-    float s=cos(rad), c=sin(rad);
+    Float2_t s=cos(rad), c=sin(rad);
     center = ImRotate(center, s, c) - center;
 
     auto& buf = list->VtxBuffer;
@@ -1327,7 +1327,7 @@ uint32_t blendColors(uint32_t color1, uint32_t color2) {
 }
 
 
-void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBase::DrawOrder& order, ImDrawList* list, float thickness) {
+void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBase::DrawOrder& order, ImDrawList* list, Float2_t thickness) {
     const auto points_count = points.size();
 
     if (points_count <= 1) {
@@ -1357,11 +1357,11 @@ void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBa
         const auto col2 = points[i2].color();
         //const auto col = blendColors(col1, col2);
 
-        float dx = p2.x - p1.x;
-        float dy = p2.y - p1.y;
+        Float2_t dx = p2.x - p1.x;
+        Float2_t dy = p2.y - p1.y;
         IM_NORMALIZE2F_OVER_ZERO(dx, dy);
-        dx *= (thickness * 0.5f);
-        dy *= (thickness * 0.5f);
+        dx *= (thickness * 0.5_F);
+        dy *= (thickness * 0.5_F);
 
         // Vertex Writing
         list->_VtxWritePtr[0].pos.x = p1.x + dy; list->_VtxWritePtr[0].pos.y = p1.y - dx; list->_VtxWritePtr[0].uv = uv; list->_VtxWritePtr[0].col = col1;
@@ -1475,15 +1475,15 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         pushed_rect = true;
     }
     
-    float global_scale = (transform.transformPoint(Vec2(1)) - transform.transformPoint(Vec2(0))).x;
+    Float2_t global_scale = (transform.transformPoint(Vec2(1)) - transform.transformPoint(Vec2(0))).x;
     
     switch (o->type()) {
         case Type::CIRCLE: {
             auto ptr = static_cast<Circle*>(o);
             
             // calculate a reasonable number of segments based on global bounds
-            auto e = 0.25f;
-            auto r = max(1, order.bounds.width * 0.5f);
+            auto e = 0.25_F;
+            auto r = max(1, order.bounds.width * 0.5_F);
             auto th = acos(2 * SQR(1 - e / r) - 1);
             int64_t num_segments = (int64_t)ceil(2*M_PI/th);
             
@@ -1492,9 +1492,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             // generate circle path
             auto centre = ImVec2(ptr->radius(), ptr->radius());
-            const float a_max = (float)M_PI*2.0f * ((float)num_segments - 1.0f) / (float)num_segments;
+            const Float2_t a_max = (Float2_t)M_PI*2.0_F * ((Float2_t)num_segments - 1.0_F) / (Float2_t)num_segments;
             
-            list->PathArcTo(centre, ptr->radius(), 0.0f, a_max, (int)num_segments - 1);
+            list->PathArcTo(centre, ptr->radius(), 0.0_F, a_max, (int)num_segments - 1);
             
             // transform according to local transform etc.
             for (auto i=0; i<list->_Path.Size; ++i) {
@@ -1587,11 +1587,16 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             auto font = _fonts.at(ptr->font().style);
             auto font_scale = ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
             
+            ImVec2 rounded(round(bds.x), round(bds.y));
+            //Print(ptr->txt(), "scale = ", font_scale, " rounded = ", Vec2(rounded), " (", bds.pos(),")");
+            
             if(ptr->shadow() > 0) {
+                Vec2 offset = Vec2(1.5_F * global_scale + font->ConfigData->GlyphOffset.y / font_scale).map([](auto x){return round(x);});
+                
                 list->AddText(font,
                               font_scale,
-                              (bds.pos() + Vec2((1.5) * global_scale + font->ConfigData->GlyphOffset.y / font_scale)),
-                              (ImColor)Color(20, 20, 20, 255 * saturate(ptr->shadow(), 0.f, 1.f)),
+                              bds.pos() + offset,
+                              (ImColor)Color(20, 20, 20, 255 * saturate(ptr->shadow(), 0_F, 1_F)),
                               ptr->txt().c_str());
             }
             list->AddText(font,
@@ -1654,8 +1659,8 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                ImVec2(0, 0),
                                ImVec2(o->width() - 0.5, o->height() - 0.5),
                                ImVec2(0, 0),
-                               ImVec2((o->width() - 0.5) / float(tex_cache->texture()->width),
-                                      (o->height() - 0.5) / float(tex_cache->texture()->height)),
+                               ImVec2((o->width() - 0.5) / Float2_t(tex_cache->texture()->width),
+                                      (o->height() - 0.5) / Float2_t(tex_cache->texture()->height)),
                                col);
             //}
             for (auto i = I; i<list->VtxBuffer.size(); ++i) {
@@ -1846,8 +1851,8 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                             
                             //! Skip drawables that are outside the view
                             //  TODO: What happens to Drawables that dont have width/height?
-                            float x = b.x;
-                            float y = b.y;
+                            Float2_t x = b.x;
+                            Float2_t y = b.y;
                             
                             if(y < -b.height || y > ptr->height()
                                || x < -b.width || x > ptr->width())
@@ -1889,22 +1894,22 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
         
         auto imfont = _fonts.at(font.style);
-        ImVec2 size = imfont->CalcTextSizeA(imfont->FontSize * font.size / im_font_scale, FLT_MAX, -1.0f, text.c_str(), text.c_str() + text.length(), NULL);
+        Vec2 size = imfont->CalcTextSizeA(imfont->FontSize * font.size / im_font_scale, FLT_MAX, -1_F, text.c_str(), text.c_str() + text.length(), NULL);
         // Round
-        //size.x = max(0, (float)(int)(size.x - 0.95f));
-        size.y = line_spacing(font);
-        //size.y = max(0, (float)(int)(size.y - 0.95f));
+        //size.x = max(0, (float)(int)(size.x - 0.95_F));
+        //size.y = line_spacing(font);
+        //size.y = max(0, (float)(int)(size.y - 0.95_F));
         //return text_size;
         //auto size = ImGui::CalcTextSize(text.c_str());
         return Bounds(Vec2(), size);
     }
 
-    uint32_t IMGUIBase::line_spacing(const Font& font) {
+    Float2_t IMGUIBase::line_spacing(const Font& font) {
         if(_fonts.empty()) {
             FormatWarning("Trying to get line_spacing without a font loaded.");
             return Base::line_spacing(font);
         }
-        return sign_cast<uint32_t>(font.size * _fonts.at(font.style)->FontSize / im_font_scale);
+        return font.size * _fonts.at(font.style)->FontSize / im_font_scale;
     }
 
     void IMGUIBase::set_title(std::string title) {

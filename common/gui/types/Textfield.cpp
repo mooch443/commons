@@ -13,7 +13,7 @@
 #endif
 
 namespace cmn::gui {
-    constexpr static const float margin = 5;
+    constexpr static const Float2_t margin = 5;
 
     void set_clipboard(const std::string& text) {
 #ifdef CMN_CLIPBOARD_GLFW
@@ -506,7 +506,7 @@ void Textfield::set_postfix(const std::string &p) {
         if(content_changed()) {
             // assumes test_text is only gonna be used in one thread at a time
             Timer timer;
-            const float max_w = width() - margin * 2; // maximal displayed text width
+            const Float2_t max_w = width() - margin * 2; // maximal displayed text width
             
             //Vec2 scale = stage_scale();
             //Vec2 real_scale = Drawable::real_scale();
@@ -518,7 +518,7 @@ void Textfield::set_postfix(const std::string &p) {
                 _text_offset = text().length();
             
             auto r = Base::default_text_bounds(text(), real_scale, font());
-            const float cursor_y = (height() - Base::default_line_spacing(font()))*0.5;
+            const Float2_t cursor_y = (height() - Base::default_line_spacing(font()))*0.5;
             
             if(_text_offset >= sign_cast<size_t>(_cursor_position))
                 _text_offset = (size_t)max(0, _cursor_position-1);
@@ -593,7 +593,7 @@ void Textfield::set_postfix(const std::string &p) {
             if(!_selection.empty() && ((long)_text_offset < _selection.last))
             {
                 // determine visible starting position
-                float sx0;
+                Float2_t sx0;
                 
                 if((long)_cursor_position == _selection.first) {
                     sx0 = _cursor.pos().x;
@@ -614,7 +614,7 @@ void Textfield::set_postfix(const std::string &p) {
                 // see how long the visible text is
                 r = Base::default_text_bounds(visible_selected_text, real_scale, font());
                 
-                float sx1 = r.width + margin + 1;
+                Float2_t sx1 = r.width + margin + 1;
                 if((long)_cursor_position == _selection.last) {
                     sx1 = _cursor.pos().x;
                 }
@@ -659,13 +659,13 @@ void Textfield::set_postfix(const std::string &p) {
         end();
     }
     
-    void Textfield::move_cursor(float mx) {
+    void Textfield::move_cursor(Float2_t mx) {
         std::string display = text().substr(_text_offset, _display_text_len - _text_offset);
-        float x = 0;
+        Float2_t x = 0;
         long idx = 0;
         
-        const float character_size = roundf(25 * font().size);
-        while (x + character_size*0.5 < mx
+        const Float2_t character_size = round(25_F * font().size);
+        while (x + character_size*0.5_F < mx
                && idx <= long(display.length()))
         {
             auto r = Base::default_text_bounds(display.substr(0, (size_t)idx++), this, font());

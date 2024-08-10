@@ -28,10 +28,10 @@ struct is_set<robin_hood::detail::Table<isFlat, MaxLoadFactor100, Key, void, Has
 //struct is_set<tsl::sparse_set<T, Alloc>> : public std::true_type {};
 
 template<class T> struct is_map : public std::false_type {};
-template<class T, class Compare, class Alloc>
-struct is_map<std::map<T, Compare, Alloc>> : public std::true_type {};
-template<class T, class Compare, class Alloc>
-struct is_map<std::unordered_map<T, Compare, Alloc>> : public std::true_type {};
+template<class T, class... Args>
+struct is_map<std::map<T, Args...>> : public std::true_type {};
+template<class T, class... Args>
+struct is_map<std::unordered_map<T, Args...>> : public std::true_type {};
 template<class T, class Compare, class Alloc>
 struct is_map<ska::bytell_hash_map<T, Compare, Alloc>> : public std::true_type {};
 //template<class T, class Compare, class Alloc>
@@ -99,7 +99,7 @@ concept _has_tostr_method = requires(const T* t) {
 };
 template<typename T>
 concept has_to_json_method = requires(const T* t) {
-    { t->to_json() } -> std::convertible_to<nlohmann::json>;
+    { t->to_json() } -> std::convertible_to<glz::json_t>;
 };
 template<typename T>
 concept _has_fromstr_method = requires() {

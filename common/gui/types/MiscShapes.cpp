@@ -4,7 +4,7 @@ namespace cmn::gui {
     
     Triangle::Triangle(const Vec2& center,
                        const Size2& size,
-                       float angle,
+                       Float2_t angle,
                        const Color& fill,
                        const Color& line)
         :  _fill(fill),
@@ -77,7 +77,7 @@ namespace cmn::gui {
             Vertices::prepare();
     }*/
 
-    bool Triangle::in_bounds(float x, float y) {
+    bool Triangle::in_bounds(Float2_t x, Float2_t y) {
         if(_points.empty())
             return Entangled::in_bounds(x, y);
         
@@ -86,9 +86,9 @@ namespace cmn::gui {
         auto p1 = gtransform.transformPoint(_points.at(1).position());
         auto p2 = gtransform.transformPoint(_points.at(2).position());
         
-        float Area = 0.5 *(-p1.y*p2.x + p0.y*(-p1.x + p2.x) + p0.x*(p1.y - p2.y) + p1.x*p2.y);
-        float s = 1/(2*Area)*(p0.y*p2.x - p0.x*p2.y + (p2.y - p0.y)*x + (p0.x - p2.x)*y);
-        float t = 1/(2*Area)*(p0.x*p1.y - p0.y*p1.x + (p0.y - p1.y)*x + (p1.x - p0.x)*y);
+        Float2_t Area = 0.5 *(-p1.y*p2.x + p0.y*(-p1.x + p2.x) + p0.x*(p1.y - p2.y) + p1.x*p2.y);
+        Float2_t s = 1/(2*Area)*(p0.y*p2.x - p0.x*p2.y + (p2.y - p0.y)*x + (p0.x - p2.x)*y);
+        Float2_t t = 1/(2*Area)*(p0.x*p1.y - p0.y*p1.x + (p0.y - p1.y)*x + (p1.x - p0.x)*y);
         
         return 0 <= s && s <= 1 && 0 <= t && t <= 1 && s + t <= 1;
     }

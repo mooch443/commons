@@ -37,14 +37,14 @@ struct CurrentObjectHandler;
 
 struct LoopBody {
     std::string variable;
-    nlohmann::json child;
+    glz::json_t::object_t child;
     std::unique_ptr<State> _state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
 };
 
 struct IfBody {
     std::string variable;
-    nlohmann::json __if, __else;
+    glz::json_t __if, __else;
     Layout::Ptr _if;
     Layout::Ptr _else;
     
@@ -56,7 +56,7 @@ struct IfBody {
 
 struct ListContents {
     std::string variable;
-    nlohmann::json item;
+    glz::json_t::object_t item;
     std::unique_ptr<State> _state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
     std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
@@ -64,7 +64,7 @@ struct ListContents {
 
 struct VarCache {
     std::string _var, _value;
-    nlohmann::json _obj;
+    glz::json_t::object_t _obj;
 };
 
 struct Pattern {
@@ -75,7 +75,7 @@ struct Pattern {
     static std::string class_name() { return "Pattern"; }
 };
 
-using PatternMapType = std::unordered_map<std::string, Pattern>;
+using PatternMapType = std::unordered_map<std::string, Pattern, MultiStringHash, MultiStringEqual>;
 
 struct CustomElement {
     std::string name;

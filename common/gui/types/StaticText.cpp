@@ -11,9 +11,9 @@ Bounds calculate_bounds(const std::string& text, Drawable* reference, const Font
     return Base::default_text_bounds(text, reference, font);
 }
 
-size_t find_splitting_point(const std::string& str, const float w, const float max_w, Drawable* reference, const Font& font)
+size_t find_splitting_point(const std::string& str, const Float2_t w, const Float2_t max_w, Drawable* reference, const Font& font)
 {
-    float cw = w;
+    Float2_t cw = w;
     size_t L = str.length();
     size_t idx = L;
     
@@ -274,7 +274,7 @@ void StaticText::add_shadow() {
     if(not _fade_out)
         _fade_out = std::make_shared<ExternalImage>();
     
-    float h = min(height(), Base::default_line_spacing(_settings.default_font) * 3.f);
+    Float2_t h = min(height(), Base::default_line_spacing(_settings.default_font) * 3_F);
     auto image = Image::Make(height()+1, 1, 4);
     image->set_to(0);
     
@@ -286,11 +286,11 @@ void StaticText::add_shadow() {
     }
     image->get().setTo(cv::Scalar(bg.alpha(0)));
     
-    const float start_y = height() - h;
-    const float end_y = height() + 1;
+    const Float2_t start_y = height() - h;
+    const Float2_t end_y = height() + 1;
     
     for(uint y=start_y; y<end_y; ++y) {
-        float percent = saturate(float(y-start_y) / float(end_y - start_y + 1), 0.f, 1.f);
+        auto percent = saturate(Float2_t(y-start_y) / Float2_t(end_y - start_y + 1_F), 0_F, 1_F);
         percent *= percent;
         //percent = 1;
         auto ptr = image->ptr(y, 0);
@@ -316,7 +316,7 @@ void StaticText::add_string(
     if (_settings.max_size.x > 0 && not ptr->str.empty()) {
         Bounds bounds = utils::calculate_bounds(ptr->parsed, reference, ptr->font);
         const auto w = utils::calculate_width(bounds);
-        const float max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
+        const Float2_t max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
         
         //Print("** ", utils::ShortenText(ptr->parsed, 15)," w=", w, " max=",max_w, " font=",ptr->font);
 
@@ -533,7 +533,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 if((tag.name.length() == 2 && tag.name[1] >= '0' && tag.name[1] < '9')
                    || tag.name == "h")
                 {
-                    tag.font.size = _settings.default_font.size * (1 + (1 - saturate(float(tag.name[1] - '0') / 6.f, 0.f, 1.f)));
+                    tag.font.size = _settings.default_font.size * (1 + (1 - saturate(Float2_t(tag.name[1] - '0') / 6_F, 0_F, 1_F)));
                     tag.font.style |= Style::Bold;
                     tag.color = mix_colors(tag.color, highlight_clr);
                     //breaks_line = true;
@@ -626,7 +626,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         update_vector_elements(texts, strings);
         
         offset = _settings.margins.pos();
-        float y = 0;
+        Float2_t y = 0;
         //float height = Base::default_line_spacing(_default_font);
         Font prev_font = strings.empty() ? _settings.default_font : strings.front()->font;
         
@@ -646,7 +646,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             if(s->pos.y > y) {
                 offset.x = _settings.margins.x;
                 
-                auto current_height = roundf(Base::default_line_spacing(prev_font) * 0.5);
+                auto current_height = (Base::default_line_spacing(prev_font) * 0.5);
                 for(size_t j=row_start; j<i; ++j) {
                     texts[j]->set_pos(Vec2(texts[j]->pos().x, offset.y + current_height));
                 }
@@ -664,12 +664,12 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             text->set_pos(target);
             //advance_wrap(*text);
             
-            offset.x += roundf(text->text_bounds().width + text->text_bounds().x);
+            offset.x += (text->text_bounds().width + text->text_bounds().x);
         }
         
         auto current_height = Base::default_line_spacing(prev_font);
         for(size_t j=row_start; j<texts.size(); ++j) {
-            texts[j]->set_pos(Vec2(texts[j]->pos().x, offset.y + current_height * 0.5));
+            texts[j]->set_pos(Vec2(texts[j]->pos().x, offset.y + current_height * 0.5_F));
         }
         
         //end();

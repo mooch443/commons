@@ -5,12 +5,14 @@
 
 namespace cmn::gui::dyn {
 
-Font parse_font(const nlohmann::json& obj, Font font, std::string_view name) {
-    if(obj.count(name)) {
-        auto f = obj[name];
-        if(f.count("size")) font.size = f["size"].get<float>();
+Font parse_font(const glz::json_t::object_t& obj, Font font, std::string_view name) {
+    if(auto it = obj.find(name);
+       it != obj.end())
+    {
+        auto &f = it->second.get_object();
+        if(f.count("size")) font.size = narrow_cast<Float2_t>(f.at("size").get<double>());
         if(f.count("style")) {
-            auto style = f["style"].get<std::string>();
+            auto style = f.at("style").get<std::string>();
             if(style == "bold")
                 font.style = Style::Bold;
             if(style == "italic")
@@ -21,7 +23,7 @@ Font parse_font(const nlohmann::json& obj, Font font, std::string_view name) {
                 font.style = Style::Monospace;
         }
         if(f.count("align")) {
-            auto align = f["align"].get<std::string>();
+            auto align = f.at("align").get<std::string>();
             if(align == "left")
                 font.align = Align::Left;
             else if(align == "right")
@@ -50,14 +52,14 @@ Image::Ptr load_image(const file::Path& path) {
 }
 
 // Initialize from a JSON object
-LayoutContext::LayoutContext(GUITaskQueue_t* gui, const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
+LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
  : gui(gui), obj(obj), state(state), context(context), _defaults(defaults)
 {
     if(not obj.contains("type")) {
         //throw std::invalid_argument("Structure does not contain type information");
         type = LayoutType::unknown;
     } else {
-        auto type_name = utils::lowercase(obj["type"].get<std::string>());
+        auto type_name = utils::lowercase(obj.at("type").get<std::string>());
         if (not LayoutType::has(type_name))
             type = LayoutType::unknown;
         else
@@ -150,8 +152,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     }
     
     if(obj.count("modules")) {
-        if(obj["modules"].is_array()) {
-            for(auto mod : obj["modules"]) {
+        if(obj.at("modules").is_array()) {
+            for(auto mod : obj.at("modules").get_array()) {
                 Print("module ", mod.get<std::string>());
                 auto m = Modules::exists(mod.get<std::string>());
                 if(m)
@@ -166,8 +168,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(origin != Vec2(0)) ptr->set_origin(origin);
     
     if(obj.count("hover") || obj.count("unhover")) {
-        auto hover_action = obj.count("hover") ? PreAction::fromStr(obj["hover"].get<std::string>()) : PreAction{};
-        auto unhover_action = obj.count("unhover") ? PreAction::fromStr(obj["unhover"].get<std::string>()) : PreAction{};
+        auto hover_action = obj.count("hover") ? PreAction::fromStr(obj.at("hover").get<std::string>()) : PreAction{};
+        auto unhover_action = obj.count("unhover") ? PreAction::fromStr(obj.at("unhover").get<std::string>()) : PreAction{};
         
         static constexpr auto hover_name = "_hover_handle";
         auto hover_handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(hover_name);
@@ -226,7 +228,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     }
     
     if(obj.count("drag") || obj.count("click")) {
-        auto action = PreAction::fromStr(obj[obj.count("drag") ? "drag" : "click"].get<std::string>());
+        auto action = PreAction::fromStr(obj.at(obj.count("drag") ? "drag" : "click").get<std::string>());
         
         if(obj.count("drag")) {
             static constexpr auto handle_name = "_drag_handle";
@@ -289,8 +291,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
 {
     Image::Ptr img;
     
-    if(obj.count("path") && obj["path"].is_string()) {
-        std::string raw = obj["path"].get<std::string>();
+    if(obj.count("path") && obj.at("path").is_string()) {
+        std::string raw = obj.at("path").get<std::string>();
         if(utils::contains(raw, "{")) {
             state.register_pattern(hash, "path", Pattern{raw, {}});
             
@@ -342,8 +344,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
     std::vector<Layout::Ptr> children;
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
-        for(auto &child : obj["children"]) {
-            auto ptr = parse_object(gui, child, context, state, context.defaults);
+        for(auto &child : obj.at("children").get_array()) {
+            auto ptr = parse_object(gui, child.get_object(), context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -352,8 +354,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
     
     auto ptr = Layout::Make<VerticalLayout>(std::move(children));
     if(obj.count("align")) {
-        if(obj["align"].is_string()) {
-            std::string align = obj["align"].get<std::string>();
+        if(obj.at("align").is_string()) {
+            std::string align = obj.at("align").get<std::string>();
             if(align == "left") {
                 ptr.to<VerticalLayout>()->set_policy(VerticalLayout::Policy::LEFT);
             } else if(align == "center") {
@@ -373,8 +375,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
     
     if(obj.count("children")) {
         IndexScopeHandler handler{state._current_index};
-        for(auto &child : obj["children"]) {
-            auto ptr = parse_object(gui, child, context, state, context.defaults);
+        for(auto &child : obj.at("children").get_array()) {
+            auto ptr = parse_object(gui, child.get_object(), context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -383,8 +385,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
     
     auto ptr = Layout::Make<HorizontalLayout>(std::move(children));
     if(obj.count("align")) {
-        if(obj["align"].is_string()) {
-            std::string align = obj["align"].get<std::string>();
+        if(obj.at("align").is_string()) {
+            std::string align = obj.at("align").get<std::string>();
             if(align == "top") {
                 ptr.to<HorizontalLayout>()->set_policy(HorizontalLayout::Policy::TOP);
             } else if(align == "center") {
@@ -418,22 +420,22 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
     
                 
     if(obj.count("children")) {
-        for(auto &row : obj["children"]) {
+        for(auto &row : obj.at("children").get_array()) {
             if(row.is_array()) {
                 std::vector<Layout::Ptr> cols;
-                for(auto &cell : row) {
+                for(auto &cell : row.get_array()) {
                     if(cell.is_array() || cell.is_object()) {
                         std::vector<Layout::Ptr> objects;
                         IndexScopeHandler handler{state._current_index};
                         if(cell.is_object()) {
                             // only a single object
-                            auto ptr = parse_object(gui, cell, context, state, context.defaults);
+                            auto ptr = parse_object(gui, cell.get_object(), context, state, context.defaults);
                             if(ptr)
                                 objects.push_back(ptr);
                             
                         } else {
-                            for(auto& obj : cell) {
-                                auto ptr = parse_object(gui, obj, context, state, context.defaults);
+                            for(auto& obj : cell.get_array()) {
+                                auto ptr = parse_object(gui, obj.get_object(), context, state, context.defaults);
                                 if(ptr) {
                                     objects.push_back(ptr);
                                 }
@@ -466,9 +468,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
     
     if(obj.count("children")) {
         //IndexScopeHandler handler{state._current_index};
-        for(auto &child : obj["children"]) {
+        for(auto &child : obj.at("children").get_array()) {
             //Print("collection: ", child.dump());
-            auto ptr = parse_object(gui, child, context, state, context.defaults);
+            auto ptr = parse_object(gui, child.get_object(), context, state, context.defaults);
             if(ptr) {
                 children.push_back(ptr);
             }
@@ -486,7 +488,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     Layout::Ptr ptr;
     std::string var;
     if(obj.contains("var")) {
-        auto input = obj["var"].get<std::string>();
+        auto input = obj.at("var").get<std::string>();
         var = parse_text(input, context, state);
         if(var != input) {
             state.register_pattern(hash, "var", Pattern{input, {}});
@@ -495,8 +497,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         throw U_EXCEPTION("settings field should contain a 'var'.");
     
     bool invert{false};
-    if(obj.contains("invert") && obj["invert"].is_boolean()) {
-        invert = obj["invert"].get<bool>();
+    if(obj.contains("invert") && obj.at("invert").is_boolean()) {
+        invert = obj.at("invert").get<bool>();
     }
     
     {
@@ -533,7 +535,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                                      ? r.get().valueString()
                                      : "null";
         if(obj.contains("desc")) {
-            ref->set_description(obj["desc"].get<std::string>());
+            ref->set_description(obj.at("desc").get<std::string>());
         }
         
         ref->set(font);
@@ -555,8 +557,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ref->set(attr::HighlightClr{highlight_clr});
         
         if (obj.contains("label")) {
-            auto p = obj["label"];
-            if (p.is_object()) {
+            auto &o = obj.at("label");
+            if (o.is_object()) {
+                auto &p = o.get_object();
                 LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 ref->set(line_clr);
                 LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
@@ -571,8 +574,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             ref->set(LabelColor_t{fill});
             ref->set(LabelBorderColor_t{line});
             
-            auto p = obj["list"];
-            if (p.is_object()) {
+            auto &o = obj.at("list");
+            if (o.is_object()) {
+                auto &p = o.get_object();
+                
                 ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
                 ref->set(line_clr);
                 ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
@@ -599,7 +604,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
     auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     if(obj.count("action")) {
-        auto action = PreAction::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr->on_click([action, context = context](auto){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end())
@@ -623,7 +628,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
     auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
     
     if(obj.count("action")) {
-        auto action = PreAction::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr.to<Checkbox>()->on_change([action, context=context](){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end()) 
@@ -645,7 +650,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
     auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
     
     if(obj.count("action")) {
-        auto action = PreAction::fromStr(obj["action"].get<std::string>());
+        auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr.to<Textfield>()->on_enter([action, context=context](){
             if(auto it = context.actions.find(action.name);
                it != context.actions.end()) 
@@ -714,17 +719,17 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
 {
     Layout::Ptr ptr;
     if(obj.count("do")) {
-        auto child = obj["do"];
-        if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
+        auto &child = obj.at("do");
+        if(obj.count("var") && obj.at("var").is_string() && child.is_object()) {
             //Print("collection: ", child.dump());
             // all successfull, add collection:
             
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
-            ptr->set_name("foreach<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
+            ptr->set_name("foreach<"+obj.at("var").get<std::string>()+" "+Meta::toStr(hash)+">");
             
             state.register_variant(hash, ptr, LoopBody{
-                .variable = obj["var"].get<std::string>(),
-                .child = child
+                .variable = obj.at("var").get<std::string>(),
+                .child = child.get_object()
             });
         }
     }
@@ -735,8 +740,8 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::list>()
 {
     Layout::Ptr ptr;
-    if(obj.count("var") && obj["var"].is_string() && obj.count("template")) {
-        auto child = obj["template"];
+    if(obj.count("var") && obj.at("var").is_string() && obj.count("template")) {
+        auto &child = obj.at("template");
         if(child.is_object()) {
             //Print("collection: ", child.dump());
             // all successfull, add collection:
@@ -745,8 +750,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             
             ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
             auto body = state.register_variant(hash, ptr, ListContents{
-                .variable = obj["var"].get<std::string>(),
-                .item = child,
+                .variable = obj.at("var").get<std::string>(),
+                .item = child.get_object(),
                 ._state = std::move(copy)
             });
             
@@ -762,12 +767,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                     }
                 });
             });
-            ptr->set_name("list<"+obj["var"].get<std::string>()+" "+Meta::toStr(hash)+">");
+            ptr->set_name("list<"+obj.at("var").get<std::string>()+" "+Meta::toStr(hash)+">");
             
         }
         
-    } else if(obj.count("items") && obj["items"].is_array()) {
-        auto child = obj["items"];
+    } else if(obj.count("items") && obj.at("items").is_array()) {
+        auto& child = obj.at("items").get_array();
         
         ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
         std::vector<PreAction> actions;
@@ -852,8 +857,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         list->set(detail_color);
         
         if (obj.contains("label")) {
-            auto p = obj["label"];
-            if (p.is_object()) {
+            auto &o = obj.at("label");
+            if (o.is_object()) {
+                auto &p = o.get_object();
+                
                 LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 list->set(line_clr);
                 LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
@@ -865,8 +872,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         }
 
         if (obj.contains("list")) {
-            auto p = obj["list"];
-            if (p.is_object()) {
+            auto &o = obj.at("list");
+            if (o.is_object()) {
+                auto &p = o.get_object();
                 ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
                 list->set(line_clr);
                 ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
@@ -897,8 +905,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
 {
     Layout::Ptr ptr;
     if(obj.count("then")) {
-        auto child = obj["then"];
-        if(obj.count("var") && obj["var"].is_string() && child.is_object()) {
+        auto &_child = obj.at("then");
+        if(obj.count("var") && obj.at("var").is_string() && _child.is_object()) {
+            auto &child = _child.get_object();
             auto copy = std::make_unique<State>();
             copy->_current_object_handler = state._current_object_handler;
             
@@ -909,9 +918,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
             ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
             //ptr->clear_delete_handlers();
             auto weak = std::weak_ptr(state.register_variant(hash, ptr, IfBody{
-                .variable = obj["var"].get<std::string>(),
+                .variable = obj.at("var").get<std::string>(),
                 .__if = child,
-                .__else = obj.contains("else") ? obj["else"] : nullptr,
+                .__else = obj.contains("else") ? obj.at("else") : nullptr,
                 ._assigned_hash = hash,
                 ._state = std::move(copy)
             }));

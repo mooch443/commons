@@ -10,12 +10,12 @@ namespace cmn::gui {
         std::string msg;
         gui::Color clr;
         
-        float alpha;
+        Float2_t alpha;
         
         ErrorMessage() : time(std::chrono::system_clock::now()), last(time), alpha(1.0f) {}
         bool active() const {
-            std::chrono::duration<float> d = std::chrono::system_clock::now() - time;
-            auto d_ = std::chrono::duration_cast<std::chrono::milliseconds>(d).count() / 1000.f;
+            std::chrono::duration<Float2_t> d = std::chrono::system_clock::now() - time;
+            auto d_ = std::chrono::duration_cast<std::chrono::milliseconds>(d).count() / 1000_F;
             if(d_ > 5) {
                 return false;
             }
@@ -23,11 +23,11 @@ namespace cmn::gui {
         }
         void update() {
             if(!active()) {
-                std::chrono::duration<float> d = std::chrono::system_clock::now() - last;
-                auto d_ = std::chrono::duration_cast<std::chrono::milliseconds>(d).count() / 1000.f;
+                std::chrono::duration<Float2_t> d = std::chrono::system_clock::now() - last;
+                auto d_ = std::chrono::duration_cast<std::chrono::milliseconds>(d).count() / 1000_F;
                 
-                alpha -= 0.25f * d_;
-                clr.a = (uint8_t)saturate(255.f * alpha);
+                alpha -= 0.25_F * d_;
+                clr.a = (uint8_t)saturate(255_F * alpha);
             }
             
             last = std::chrono::system_clock::now();
@@ -564,7 +564,7 @@ void DrawStructure::close_dialogs() {
         pop_section();
     }
     
-    Drawable* DrawStructure::find(float x, float y) {
+    Drawable* DrawStructure::find(Float2_t x, Float2_t y) {
         _root.update_bounds();
         results.clear();
         _root.find(x, y, results);
@@ -580,7 +580,7 @@ void DrawStructure::close_dialogs() {
         return found;
     }
     
-    Drawable* DrawStructure::mouse_move(float x, float y) {
+    Drawable* DrawStructure::mouse_move(Float2_t x, Float2_t y) {
         _mouse_position.x = x;
         _mouse_position.y = y;
         
@@ -598,7 +598,7 @@ void DrawStructure::close_dialogs() {
     Drawable* DrawStructure::mouse_down(bool left_button) {
         mouse_state[left_button ? 0 : 1] = true;
         
-        float x = _mouse_position.x, y = _mouse_position.y;
+        Float2_t x = _mouse_position.x, y = _mouse_position.y;
         auto d = find(x, y);
         
         Event e(HOVER);
@@ -623,7 +623,7 @@ void DrawStructure::close_dialogs() {
             if(dynamic_cast<HasName*>(_selected_object))
                 type = dynamic_cast<HasName*>(_selected_object)->name();
             
-            float x = _mouse_position.x, y = _mouse_position.y;
+            Float2_t x = _mouse_position.x, y = _mouse_position.y;
             _selected_object->mup(x, y, left_button);
         }
         
@@ -644,7 +644,7 @@ void DrawStructure::close_dialogs() {
 
         switch(e.type) {
             case MMOVE: {
-                const float interface_scale = gui::interface_scale();
+                const Float2_t interface_scale = gui::interface_scale();
                 
                 Event hover(EventType::HOVER);
                 hover.hover.x = e.move.x / scale().x * interface_scale;

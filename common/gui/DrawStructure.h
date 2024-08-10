@@ -255,13 +255,13 @@ namespace cmn::gui {
         Vertices* vertices(const std::vector<Vec2>& points, const Color& color, PrimitiveType type);
         Vertices* vertices(const std::vector<Vertex>& points, PrimitiveType type = PrimitiveType::LineStrip);
         
-        void set_scale(float s) { if(_scale == Vec2(s,s)) return; _scale = Vec2(s, s); all_changed(); }
+        void set_scale(Float2_t s) { if(_scale == Vec2(s,s)) return; _scale = Vec2(s, s); all_changed(); }
         void set_scale(const Vec2& s) { if(_scale == s) return; _scale = s; all_changed(); }
         
         Drawable* find(const std::string& name);
-        Drawable* find(float x, float y);
+        Drawable* find(Float2_t x, Float2_t y);
         
-        Drawable* mouse_move(float x, float y);
+        Drawable* mouse_move(Float2_t x, Float2_t y);
         Drawable* mouse_down(bool left_button);
         Drawable* mouse_up(bool left_button);
         

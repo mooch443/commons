@@ -11,6 +11,38 @@ namespace cmn::gui {
 
 #include <misc/matharray.h>
 
+/*template <class T> requires (std::integral<T> && not std::same_as<T, bool>)
+struct glz::meta<T>
+{
+   static constexpr auto custom_read = true;
+};
+
+namespace glz::detail
+{
+    template <class T> requires (std::integral<T> && not std::same_as<T, bool>)
+    struct from_json<T>
+   {
+      template <auto Opts>
+      static void op(T& uuid, auto&&... args)
+      {
+         std::string str;
+         read<json>::op<Opts>(str, args...);
+          uuid = cmn::Meta::fromStr<T>(str);
+      }
+   };
+
+template <class T> requires (std::integral<T> && not std::same_as<T, bool>)
+    struct to_json<T>
+   {
+      template <auto Opts>
+      static void op(T uuid, auto&&... args) noexcept
+      {
+         std::string str = std::to_string(uuid);
+         write<json>::op<Opts>(str, args...);
+      }
+   };
+}*/
+
 namespace cmn {
     class Image;
 
@@ -784,13 +816,13 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
 
 
     template<typename VT>
-    auto cvt2json(const VT & v) -> nlohmann::json {
-        if constexpr (is_numeric<VT>)
-            return nlohmann::json(v);
-        else if constexpr (_clean_same<VT, bool>)
-            return nlohmann::json((bool)v);
-        else if constexpr (is_map<VT>::value) {
-            auto a = nlohmann::json::object();
+    auto cvt2json(const VT & v) -> glz::json_t {
+        if constexpr (is_numeric<VT>) {
+            return glz::json_t(v);
+        } else if constexpr (_clean_same<VT, bool>) {
+            return glz::json_t((bool)v);
+        } else if constexpr (is_map<VT>::value) {
+            auto a = glz::json_t();
             for (auto& [key, i] : v) {
                 if constexpr(std::is_same_v<decltype(key), std::string>)
                     a[key] = cvt2json(i);
@@ -802,7 +834,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             return a;
         }
         else if constexpr (is_container<VT>::value || is_set<VT>::value) {
-            auto a = nlohmann::json::array();
+            auto a = std::vector<glz::json_t>{};
             for (const auto& i : v) {
                 a.push_back(cvt2json(i));
             }
@@ -810,22 +842,17 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         }
         else if constexpr (std::is_same_v<VT, std::string>) {
             std::string str = v;
-            return nlohmann::json(v.c_str());
+            return glz::json_t(v.c_str());
         }
         else if constexpr (std::is_convertible_v<VT, std::string>) {
             std::string str = v;
-            return nlohmann::json(v.c_str());
+            return glz::json_t(v.c_str());
         }
         else if constexpr (is_pair<VT>::value) {
-            auto a = nlohmann::json::array();
-            a.push_back(cvt2json(v.first));
-            a.push_back(cvt2json(v.second));
-            return a;
+            return glz::json_t{cvt2json(v.first), cvt2json(v.second)};
         }
         else if constexpr (is_tuple_v<VT>) {
-            auto a = nlohmann::json::array();
-            std::apply([&a](auto&&... args) { ((a.push_back(cvt2json(args))), ...); }, v);
-            return a;
+            return std::apply([](auto&&... args) { return glz::json_t{cvt2json(args)...}; }, v);
         }
         else if constexpr(has_to_json_method<VT>) {
             return v.to_json();
@@ -836,10 +863,8 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         else if constexpr(is_instantiation<std::function, VT>::value) {
             return nullptr;
         }
-        //auto str = Meta::toStr(v);
-        //return nlohmann::json(str.c_str());
-        
-        else {
+        else
+        {
             static_assert(std::same_as<const VT, std::remove_cvref_t<VT>*>, "Cannot convert object to json.");
         }
             //throw U_EXCEPTION("Cannot parse JSON for: ", v, " of type ", type_name<VT>());

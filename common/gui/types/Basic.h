@@ -20,7 +20,7 @@ namespace cmn::gui {
         GETTER_NCONST(Vec2, position);
         
     public:
-        Vertex(float x, float y, const Color& color = Color())
+        Vertex(Float2_t x, Float2_t y, const Color& color = Color())
             : _color((ImU32)color), _position(x, y)
         {}
         
@@ -77,7 +77,7 @@ namespace cmn::gui {
     };
     
     struct Font {
-        float size;
+        Float2_t size;
         uint32_t style;
         Align align;
         
@@ -86,12 +86,12 @@ namespace cmn::gui {
         { }
         
         template <typename T = Style, typename K = Align>
-        constexpr Font(float s, T style, K align = Align::Left, typename std::enable_if<std::is_same<T, Style>::value && std::is_same<K, Align>::value, bool>::type * = NULL)
+        constexpr Font(Float2_t s, T style, K align = Align::Left, typename std::enable_if<std::is_same<T, Style>::value && std::is_same<K, Align>::value, bool>::type * = NULL)
             : size(s), style(style), align(align)
         { }
         
         template <typename K = Align>
-        constexpr Font(float s, K align = Align::Left, typename std::enable_if<std::is_same<K, Align>::value, bool>::type* = NULL)
+        constexpr Font(Float2_t s, K align = Align::Left, typename std::enable_if<std::is_same<K, Align>::value, bool>::type* = NULL)
             : Font(s, Style::Regular, align)
         {}
         

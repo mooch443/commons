@@ -472,25 +472,28 @@ int main(int argc, char**argv) {
     
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
+    DynamicGUI dynGUI;
+    
     IMGUIBase base("BBC Micro owl", {1024,1024},
         [&](DrawStructure& graph) -> bool
     {
-        static dyn::DynamicGUI dynGUI{
-            .path = file::DataLocation::parse("app", "test_gui.json"),
-            .graph = &graph,
-            .context = [&](){
-                dyn::Context context;
-                context.actions = { ActionFunc("QUIT", [&](Action) { terminate = true; }) };
-                context.variables = {
-                    VarFunc("list_var", [](const VarProps&) -> auto& { return fishes; }),
-                    VarFunc("isFalse", [](const VarProps&) { return false; }),
-                    VarFunc("isTrue", [](const VarProps&) { return true; }),
-                    VarFunc("global", [](const VarProps&) -> auto& { return GlobalSettings::map(); })
-                };
-                return context;
-            }(),
-            .base = ptr
-        };
+        if(not dynGUI) {
+            dynGUI = dyn::DynamicGUI{
+                .path = file::DataLocation::parse("app", "test_gui.json"),
+                .context = [&](){
+                    dyn::Context context;
+                    context.actions = { ActionFunc("QUIT", [&](Action) { terminate = true; }) };
+                    context.variables = {
+                        VarFunc("list_var", [](const VarProps&) -> auto& { return fishes; }),
+                        VarFunc("isFalse", [](const VarProps&) { return false; }),
+                        VarFunc("isTrue", [](const VarProps&) { return true; }),
+                        VarFunc("global", [](const VarProps&) -> auto& { return GlobalSettings::map(); })
+                    };
+                    return context;
+                }(),
+                    .base = ptr
+            };
+        }
         
         //! set dt and target position for the constexpr functions to exploit
         if (last_mouse_pos != graph.mouse_position()) {
@@ -533,7 +536,7 @@ int main(int argc, char**argv) {
         graph.text(Str("BBC MicroOwl"), Loc(10, 10), TextClr(White.alpha(el / 5 * 205 + 50)), Font(1));
         graph.wrap_object(button);
         
-        dynGUI.update(nullptr);
+        dynGUI.update(graph, nullptr);
         
         auto size = circle0->size() + Size2(1);
         if(size.width > 50) {

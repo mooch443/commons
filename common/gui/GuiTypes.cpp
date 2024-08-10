@@ -56,7 +56,7 @@ void VertexArray::update_size() {
         set_bounds(Bounds());
     } else {
         Vec2 maximum(-std::numeric_limits<Float2_t>::max()), minimum(std::numeric_limits<Float2_t>::max());
-        float x, y;
+        Float2_t x, y;
         
         for(auto &p : _original_points) {
             x = p.position().x;
@@ -171,7 +171,7 @@ bool VertexArray::swap_with(gui::Drawable *d) {
     return true;
 }
 
-void VertexArray::set_thickness(float t) {
+void VertexArray::set_thickness(Float2_t t) {
     if(t != _thickness) {
         _thickness = t;
         set_dirty();
@@ -214,7 +214,7 @@ Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, con
     update_size();
 }
 
-bool Polygon::in_bounds(float x, float y) {
+bool Polygon::in_bounds(Float2_t x, Float2_t y) {
     if(Drawable::in_bounds(x, y)) {
         std::vector<Vec2> points;
         points.reserve(_relative->size());
@@ -410,7 +410,7 @@ void Line::update_bounds() {
     _max_scale = global_text_scale().max();
 }
 
-void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& array, float threshold)
+void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& array, Float2_t threshold)
 {
     array.clear();
     
@@ -435,15 +435,15 @@ void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& 
     }
     
     bounds << Size2(bounds.size() - bounds.pos());
-    float dim = bounds.size().length();
-    float cumlen = 0;
+    Float2_t dim = bounds.size().length();
+    Float2_t cumlen = 0;
     Vec2 prev_vertex = last_added_point;
     
     for (size_t i=1; i<points.size()-1; i++) {
         Vertex p1(points.at(i));
         
         auto line = p1.position() - last_added_point.position();
-        auto color_diff = p1.clr().diff(last_added_point.clr()) / 4.f / 255.f;
+        auto color_diff = p1.clr().diff(last_added_point.clr()) / 4_F / 255_F;
         
         auto len = line.length();
         line = line / len;
@@ -454,11 +454,11 @@ void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& 
         // returns [-1,1] values from 180°-0° (upper half of the unit circle)
         // 90°-180° is < 0, while 0°-90° is >= 0
         // move it to [-2,0], take absolute and multiply by 0.5, so we get 0-180° -> [0,1]
-        float a = cmn::abs(previous_vec.dot(line) - 1) * 0.5f;
-        if (cumlen < dim * threshold * 0.005 && color_diff < threshold * 0.01 && a < threshold * 0.1)
+        Float2_t a = cmn::abs(previous_vec.dot(line) - 1) * 0.5_F;
+        if (cumlen < dim * threshold * 0.005_F && color_diff < threshold * 0.01_F && a < threshold * 0.1_F)
             continue;
         
-        cumlen = 0;
+        cumlen = 0_F;
         
         //change[3] = min_alpha;
         last_added_point = p1;
@@ -520,14 +520,14 @@ std::ostream & Circle::operator <<(std::ostream &os) {
 std::ostream & Text::operator <<(std::ostream &os) {
     //Drawable::operator<<(os);
     
-    using namespace nlohmann;
+    using namespace glz;
     auto t = txt();
     //t = utils::find_replace(t, "/", "");
     
-    json j = t;
+    json_t j = t;
     
     os <<
-    j.dump() << ","
+    write_json(j).value_or("null") << ","
     ""<<font().size<<","
     "" << color() << "";
     if(/*font().align != Align::Left || */font().style) {

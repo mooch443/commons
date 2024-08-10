@@ -73,14 +73,14 @@ namespace cmn::gui {
 #endif
     }
     
-    float interface_scale() {
+    Float2_t interface_scale() {
         if(!callback) {
             GlobalSettings::map().register_shutdown_callback([](auto){
                 callback.reset();
             });
             auto update = [](std::string_view name) {
                 hidden::Global::interface_scale = GlobalSettings::has(std::string(name))
-                        ? SETTING(gui_interface_scale).value<float>()
+                        ? SETTING(gui_interface_scale).value<Float2_t>()
                         : 1;
             };
             
@@ -128,7 +128,7 @@ namespace cmn::gui {
             auto str = Meta::toStr(difference);
             DebugHeader(all_drawables.size(), " drawables in memory, ", difference.size()," new, ", deleted.size()," deleted");
             
-            std::set<std::tuple<float, Drawable*>> oldest;
+            std::set<std::tuple<Float2_t, Drawable*>> oldest;
             for (auto && [object, info] : all_drawables) {
                 auto & [timer, r, t] = info;
                 //auto str = resolve_stacktrace({r, t});
@@ -137,7 +137,7 @@ namespace cmn::gui {
             }
             
             
-            std::set<std::tuple<float, Drawable*>> copy;
+            std::set<std::tuple<Float2_t, Drawable*>> copy;
             for(auto && [_, object] : oldest) {
                 auto && [timer, r, t] = all_drawables.at(object);
                 copy.insert({timer.elapsed(), object});//resolve_stacktrace({r, t})});
@@ -314,7 +314,7 @@ namespace cmn::gui {
         set_bounds_changed();
     }
     
-    void Drawable::set_rotation(float radians) {
+    void Drawable::set_rotation(Float2_t radians) {
         if(_rotation == radians)
             return;
 #ifndef NDEBUG
@@ -370,7 +370,7 @@ namespace cmn::gui {
     //    Return: >0 for P2 left of the line through P0 to P1
     //          =0 for P2 on the line
     //          <0 for P2 right of the line
-    inline float
+    inline Float2_t
     isLeft( const Vec2& P0, const Vec2& P1, const Vec2& P2 )
     {
         return ( (P1.x - P0.x) * (P2.y - P0.y)
@@ -392,7 +392,7 @@ namespace cmn::gui {
         transform.scale(_scale);
     }
     
-    bool Drawable::in_bounds(float x, float y) {
+    bool Drawable::in_bounds(Float2_t x, Float2_t y) {
         auto gbounds = global_bounds();
         
         if(_has_global_rotation) {
@@ -512,10 +512,10 @@ namespace cmn::gui {
         }
     }
     
-    void Drawable::mdown(float x, float y, bool left_button) {
+    void Drawable::mdown(Float2_t x, Float2_t y, bool left_button) {
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
-        event.mbutton = {left_button ? 0 : 1, true, (float)r.x, (float)r.y}; //rx, ry};
+        event.mbutton = {left_button ? 0 : 1, true, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
         
         for(auto &e : _event_handlers[MBUTTON])
             (*e)(event);
@@ -529,10 +529,10 @@ namespace cmn::gui {
             parent()->mdown(x, y, left_button);
     }
     
-    void Drawable::mup(float x, float y, bool left_button) {
+    void Drawable::mup(Float2_t x, Float2_t y, bool left_button) {
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
-        event.mbutton = {left_button ? 0 : 1, false, (float)r.x, (float)r.y}; //rx, ry};
+        event.mbutton = {left_button ? 0 : 1, false, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
         
         for(auto &e : _event_handlers[MBUTTON])
             (*e)(event);
@@ -905,7 +905,7 @@ bool SectionInterface::is_animating() noexcept {
         }
     }
     
-    void SectionInterface::set_rotation(float radians) {
+    void SectionInterface::set_rotation(Float2_t radians) {
         if(radians != _rotation) {
             Drawable::set_rotation(radians);
             children_rect_changed();
@@ -1093,7 +1093,7 @@ void SectionInterface::set_z_index(int index) {
         }
     }
     
-    void SectionInterface::find(float x, float y, std::vector<Drawable*>& results) {
+    void SectionInterface::find(Float2_t x, Float2_t y, std::vector<Drawable*>& results) {
         bool cropped = type() == Type::ENTANGLED && ((Entangled*)this)->scroll_enabled() && not ((Entangled*)this)->size().empty();
         if(cropped && not global_bounds().contains(x, y))
             return;

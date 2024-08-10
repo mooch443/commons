@@ -768,8 +768,8 @@ Path Path::absolute() const {
         }
     }
         
-        nlohmann::json Path::to_json() const {
-            return nlohmann::json(c_str());
+        glz::json_t Path::to_json() const {
+            return glz::json_t(c_str());
         }
 }
 

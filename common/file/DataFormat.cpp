@@ -446,18 +446,18 @@ uint64_t Data::write(const Size2& val) {
 }
 
 template<>
-void Data::read(Size2& pt) {
-    if constexpr(std::is_same<Float2_t, float>::value) {
-        read<float>(pt.width);
-        read<float>(pt.height);
-        
-    } else {
-        float x,y;
-        read<float>(x);
-        read<float>(y);
-        pt.width = x;
-        pt.height = y;
-    }
+void Data::read(Vector2D<float, false>& pt) {
+    read<float>(pt.width);
+    read<float>(pt.height);
+}
+
+template<>
+void Data::read(Vector2D<double, false>& pt) {
+    float x,y;
+    read<float>(x);
+    read<float>(y);
+    pt.width = x;
+    pt.height = y;
 }
 
 template<>
@@ -470,18 +470,18 @@ uint64_t Data::write(const Vec2& val) {
 }
 
 template<>
-void Data::read(Vec2& pt) {
-    if constexpr(std::is_same<Float2_t, float>::value) {
-        read<float>(pt.x);
-        read<float>(pt.y);
-        
-    } else {
-        float x,y;
-        read<float>(x);
-        read<float>(y);
-        pt.x = x;
-        pt.y = y;
-    }
+void Data::read(Vector2D<float, true>& pt) {
+    read<float>(pt.x);
+    read<float>(pt.y);
+}
+
+template<>
+void Data::read(Vector2D<double, true>& pt) {
+    float x,y;
+    read<float>(x);
+    read<float>(y);
+    pt.x = x;
+    pt.y = y;
 }
 
 template<>

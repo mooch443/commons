@@ -5,7 +5,15 @@
 
 namespace cmn::gui::dyn {
 
-Font parse_font(const nlohmann::json& obj, Font font = Font(0.75), std::string_view name = "font");
+Font parse_font(const glz::json_t::object_t& obj, Font font = Font(0.75), std::string_view name = "font");
+
+struct NumberParser {
+    template<typename T>
+        requires (std::integral<T> || std::same_as<T, float>)
+    static constexpr T get(const auto& obj) {
+        return static_cast<T>(obj.get_number());
+    }
+};
 
 inline Color parse_color(const auto& obj) {
     if(not obj.is_array())
@@ -14,28 +22,29 @@ inline Color parse_color(const auto& obj) {
         throw std::invalid_argument("Color is not an array of RGB.");
     uint8_t a = 255;
     if(obj.size() >= 4) {
-        a = obj[3].template get<uint8_t>();
+        a = obj[3].template get<double>();
     }
-    return Color(obj[0].template get<uint8_t>(),
-                 obj[1].template get<uint8_t>(),
-                 obj[2].template get<uint8_t>(),
+    return Color(obj[0].template get<double>(),
+                 obj[1].template get<double>(),
+                 obj[2].template get<double>(),
                  a);
+    return Color{};
 }
 
 template<typename T, bool assume_exists = false>
-auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash, std::string name_prefix="")
+auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64_t hash, std::string name_prefix="")
 {
     auto it = obj.find(name);
     
     if constexpr(assume_exists) {
         if(it == obj.end())
-            throw InvalidArgumentException("Expected property ", name, " in ", obj.dump());
+            throw InvalidArgumentException("Expected property ", name, " in ", glz::write_json(obj).value_or("<invalid_json>"));
     } else {
         if(it == obj.end())
             return de;
     }
     
-    auto& o = *it;
+    auto& o = it->second;
     if constexpr(not are_the_same<std::string, T>
                  && not are_the_same<file::Path, T>)
     {
@@ -43,7 +52,7 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
             state.register_pattern(hash, name_prefix+name, Pattern{o.template get<std::string>(), {}});
             return de;
         }
-        return Meta::fromStr<T>(o.dump());
+        return Meta::fromStr<T>(glz::write_json(o).value());
         
     } else if constexpr(are_the_same<file::Path, T>) {
         return o.template get<file::Path>();
@@ -60,7 +69,7 @@ auto get(State& state, const nlohmann::json& obj, T de, auto name, uint64_t hash
 class LayoutContext {
 public:
     GUITaskQueue_t *gui{nullptr};
-    const nlohmann::json& obj;
+    const glz::json_t::object_t& obj;
     State& state;
     const Context& context;
     
@@ -89,7 +98,7 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(GUITaskQueue_t*, const nlohmann::json& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
+    LayoutContext(GUITaskQueue_t*, const glz::json_t::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
     
     template <LayoutType::Class T>
     Layout::Ptr create_object() {

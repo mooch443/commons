@@ -39,7 +39,7 @@ protected:
     std::vector<Vertex> _original_points;
     GETTER(PrimitiveType, primitive);
     GETTER(bool, size_calculated);
-    GETTER(float, thickness);
+    GETTER(Float2_t, thickness);
     
 public:
     VertexArray(const std::vector<Vertex>& p, PrimitiveType primitive, MEMORY memory, Type::Class type = Type::VERTICES);
@@ -79,7 +79,7 @@ public:
         return _points;
     }
     
-    void set_thickness(float t);
+    void set_thickness(Float2_t t);
     bool operator!=(const VertexArray& other) const;
     std::ostream &operator <<(std::ostream &os) override;
     void set_pos(const Vec2&) override;
@@ -141,11 +141,11 @@ protected:
         ATTRIBUTE_ALIAS(Point_t, Vec2)
         ATTRIBUTE_ALIAS(Points_t, std::vector<Vec2>)
         ATTRIBUTE_ALIAS(Vertices_t, std::vector<Vertex>)
-        NUMBER_ALIAS(Thickness_t, float)
+        NUMBER_ALIAS(Thickness_t, Float2_t)
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
-        float _process_scale;
-        GETTER(float, max_scale);
+        Float2_t _process_scale;
+        GETTER(Float2_t, max_scale);
         
     public:
         template<typename... Args> Line(Args... args)
@@ -265,7 +265,7 @@ protected:
     protected:
         bool swap_with(Drawable* d) override;
         void update_size();
-        bool in_bounds(float x, float y) override;
+        bool in_bounds(Float2_t x, Float2_t y) override;
     };
     
 class Rect final : public Drawable {
@@ -328,7 +328,7 @@ protected:
         static constexpr auto Class = Type::data::values::CIRCLE;
     private:
         struct Settings {
-            float radius = 1;
+            Float2_t radius = 1;
             Color line_clr = White;
             Color fill_clr = Transparent;
         } _settings;
@@ -369,7 +369,7 @@ protected:
         const auto& fill_clr() const { return _settings.fill_clr; }
         const auto& line_clr() const { return _settings.line_clr; }
         
-        void set_radius(float radius) {
+        void set_radius(Float2_t radius) {
             if(int(_settings.radius) == int(radius))
                 return;
             
@@ -380,9 +380,9 @@ protected:
         CHANGE_SETTER(line_clr)
         CHANGE_SETTER(fill_clr)
         
-        bool in_bounds(float x, float y) override {
+        bool in_bounds(Float2_t x, Float2_t y) override {
             auto size = global_bounds();
-            return euclidean_distance(Vec2(x, y), size.pos() + size.size().mul(Vec2(1) - origin())) <= size.width * 0.5f;
+            return euclidean_distance(Vec2(x, y), size.pos() + size.size().mul(Vec2(1) - origin())) <= size.width * 0.5_F;
         }
         
         std::ostream &operator <<(std::ostream &os) override;
@@ -404,7 +404,7 @@ protected:
     class Text final : public Drawable {
     public:
         static constexpr auto Class = Type::data::values::TEXT;
-        NUMBER_ALIAS(Shadow_t, float)
+        NUMBER_ALIAS(Shadow_t, Float2_t)
         
     private:
         struct Settings {

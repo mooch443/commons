@@ -207,8 +207,11 @@ struct Range {
     std::string toStr() const {
         return "[" + Meta::toStr(start) + "," + Meta::toStr(end) + "]";
     }
-    nlohmann::json to_json() const {
-        return nlohmann::json::array({cvt2json(start), cvt2json(end)});
+    glz::json_t to_json() const {
+        return {
+            cvt2json(start),
+            cvt2json(end)
+        };
     }
     static std::string class_name() { return "range<" + Meta::template name<T>() + ">"; }
 
@@ -312,8 +315,11 @@ struct FrameRange {
     std::string toStr() const {
         return "[" + Meta::toStr(start()) + "," + Meta::toStr(end()) + "]";
     }
-    nlohmann::json to_json() const {
-        return nlohmann::json::array({cvt2json(start()), cvt2json(end())});
+    glz::json_t to_json() const {
+        return {
+            cvt2json(start()),
+            cvt2json(end())
+        };
     }
     static std::string class_name() {
         return "FrameRange";

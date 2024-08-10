@@ -151,7 +151,7 @@ namespace cmn::gui {
         void wrap_object(Drawable* d);
         void end();
         
-        void find(float x, float y, std::vector<Drawable*>&) override;
+        void find(Float2_t x, Float2_t y, std::vector<Drawable*>&) override;
         
     private:
         void reuse_current_object();

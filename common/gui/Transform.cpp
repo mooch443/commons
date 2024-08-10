@@ -33,34 +33,34 @@ namespace cmn::gui {
     Transform::Transform()
     {
         // Identity matrix
-        m_matrix[0] = 1.f; m_matrix[4] = 0.f; m_matrix[8]  = 0.f; m_matrix[12] = 0.f;
-        m_matrix[1] = 0.f; m_matrix[5] = 1.f; m_matrix[9]  = 0.f; m_matrix[13] = 0.f;
-        m_matrix[2] = 0.f; m_matrix[6] = 0.f; m_matrix[10] = 1.f; m_matrix[14] = 0.f;
-        m_matrix[3] = 0.f; m_matrix[7] = 0.f; m_matrix[11] = 0.f; m_matrix[15] = 1.f;
+        m_matrix[0] = 1_F; m_matrix[4] = 0_F; m_matrix[8]  = 0_F; m_matrix[12] = 0_F;
+        m_matrix[1] = 0_F; m_matrix[5] = 1_F; m_matrix[9]  = 0_F; m_matrix[13] = 0_F;
+        m_matrix[2] = 0_F; m_matrix[6] = 0_F; m_matrix[10] = 1_F; m_matrix[14] = 0_F;
+        m_matrix[3] = 0_F; m_matrix[7] = 0_F; m_matrix[11] = 0_F; m_matrix[15] = 1_F;
     }
     
     
     ////////////////////////////////////////////////////////////
-    Transform::Transform(float a00, float a01, float a02,
-                         float a10, float a11, float a12,
-                         float a20, float a21, float a22)
+    Transform::Transform(Float2_t a00, Float2_t a01, Float2_t a02,
+                         Float2_t a10, Float2_t a11, Float2_t a12,
+                         Float2_t a20, Float2_t a21, Float2_t a22)
     {
-        m_matrix[0] = a00; m_matrix[4] = a01; m_matrix[8]  = 0.f; m_matrix[12] = a02;
-        m_matrix[1] = a10; m_matrix[5] = a11; m_matrix[9]  = 0.f; m_matrix[13] = a12;
-        m_matrix[2] = 0.f; m_matrix[6] = 0.f; m_matrix[10] = 1.f; m_matrix[14] = 0.f;
-        m_matrix[3] = a20; m_matrix[7] = a21; m_matrix[11] = 0.f; m_matrix[15] = a22;
+        m_matrix[0] = a00; m_matrix[4] = a01; m_matrix[8]  = 0_F; m_matrix[12] = a02;
+        m_matrix[1] = a10; m_matrix[5] = a11; m_matrix[9]  = 0_F; m_matrix[13] = a12;
+        m_matrix[2] = 0_F; m_matrix[6] = 0_F; m_matrix[10] = 1_F; m_matrix[14] = 0_F;
+        m_matrix[3] = a20; m_matrix[7] = a21; m_matrix[11] = 0_F; m_matrix[15] = a22;
     }
     
     Transform Transform::getInverse() const
     {
         // Compute the determinant
-        float det = m_matrix[0] * (m_matrix[15] * m_matrix[5] - m_matrix[7] * m_matrix[13]) -
+        Float2_t det = m_matrix[0] * (m_matrix[15] * m_matrix[5] - m_matrix[7] * m_matrix[13]) -
         m_matrix[1] * (m_matrix[15] * m_matrix[4] - m_matrix[7] * m_matrix[12]) +
         m_matrix[3] * (m_matrix[13] * m_matrix[4] - m_matrix[5] * m_matrix[12]);
         
         // Compute the inverse if the determinant is not zero
         // (don't use an epsilon because the determinant may *really* be tiny)
-        if (det != 0.f)
+        if (det != 0_F)
         {
             return Transform( (m_matrix[15] * m_matrix[5] - m_matrix[7] * m_matrix[13]) / det,
                              -(m_matrix[15] * m_matrix[4] - m_matrix[7] * m_matrix[12]) / det,
@@ -78,7 +78,7 @@ namespace cmn::gui {
         }
     }
     
-Vec2 Transform::transformPoint(float x, float y) const
+Vec2 Transform::transformPoint(Float2_t x, Float2_t y) const
 {
     return Vec2(m_matrix[0] * x + m_matrix[4] * y + m_matrix[12],
                     m_matrix[1] * x + m_matrix[5] * y + m_matrix[13]);
@@ -105,10 +105,10 @@ Bounds Transform::transformRect(const Bounds& rectangle) const
     };
     
     // Compute the bounding rectangle of the transformed points
-    float left = points[0].x;
-    float top = points[0].y;
-    float right = points[0].x;
-    float bottom = points[0].y;
+    Float2_t left = points[0].x;
+    Float2_t top = points[0].y;
+    Float2_t right = points[0].x;
+    Float2_t bottom = points[0].y;
     for (int i = 1; i < 4; ++i)
     {
         if      (points[i].x < left)   left = points[i].x;
@@ -124,8 +124,8 @@ Bounds Transform::transformRect(const Bounds& rectangle) const
 ////////////////////////////////////////////////////////////
 Transform& Transform::combine(const Transform& transform)
 {
-    const float* a = m_matrix;
-    const float* b = transform.m_matrix;
+    const Float2_t* a = m_matrix;
+    const Float2_t* b = transform.m_matrix;
     
     *this = Transform(a[0] * b[0]  + a[4] * b[1]  + a[12] * b[3],
                       a[0] * b[4]  + a[4] * b[5]  + a[12] * b[7],
@@ -142,7 +142,7 @@ Transform& Transform::combine(const Transform& transform)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::translate(float x, float y)
+Transform& Transform::translate(Float2_t x, Float2_t y)
 {
     Transform translation(1, 0, x,
                           0, 1, y,
@@ -160,11 +160,11 @@ Transform& Transform::translate(const Vec2& offset)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::rotate(float angle)
+Transform& Transform::rotate(Float2_t angle)
 {
-    float rad = angle * 3.141592654f / 180.f;
-    float cos = std::cos(rad);
-    float sin = std::sin(rad);
+    Float2_t rad = angle * 3.141592654_F / 180_F;
+    Float2_t cos = std::cos(rad);
+    Float2_t sin = std::sin(rad);
     
     Transform rotation(cos, -sin, 0,
                        sin,  cos, 0,
@@ -175,7 +175,7 @@ Transform& Transform::rotate(float angle)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::scale(float scaleX, float scaleY)
+Transform& Transform::scale(Float2_t scaleX, Float2_t scaleY)
 {
     Transform scaling(scaleX, 0,      0,
                       0,      scaleY, 0,
@@ -192,7 +192,7 @@ Transform& Transform::scale(const Vec2& factors)
 }
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::scale(const float factor)
+Transform& Transform::scale(const Float2_t factor)
 {
     Transform scaling(factor, 0,      0,
                       0,      factor, 0,
@@ -221,7 +221,7 @@ Vec2 operator *(const Transform& left, const Vec2& right)
     return left.transformPoint(right);
 }
     
-    const float* Transform::getMatrix() const {
+    const Float2_t* Transform::getMatrix() const {
         return m_matrix;
     }
 

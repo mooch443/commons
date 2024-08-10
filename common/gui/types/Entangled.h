@@ -9,7 +9,7 @@
 namespace cmn::gui {
     struct Margin {
         //float left, top,
-        float right, bottom;
+        Float2_t right, bottom;
     };
     
     //! A collection of drawables that have connected properties.

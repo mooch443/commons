@@ -69,20 +69,20 @@ Module* exists(const std::string& name);
 }
 
 Layout::Ptr parse_object(GUITaskQueue_t*,
-                         const nlohmann::json& obj,
+                         const glz::json_t::object_t& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
                          uint64_t hash = 0);
 
-tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const std::string& text);
+tl::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const std::string& text);
 
 //! A simple struct that manages properties like the path to where the dyn gui is loaded from,
 //! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
 struct DynamicGUI {
     GUITaskQueue_t* gui{nullptr};
     file::Path path;
-    DrawStructure* graph{nullptr};
+    //DrawStructure* graph{nullptr};
     Context context;
     State state;
     Base* base;
@@ -90,19 +90,19 @@ struct DynamicGUI {
     Timer last_load, last_update;
     bool first_load{true}, first_update{true};
     std::string previous;
-    std::future<tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>> read_file_future;
+    std::future<tl::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>> read_file_future;
     std::shared_ptr<CurrentObjectHandler> current_object_handler = std::make_shared<CurrentObjectHandler>();
 #ifndef NDEBUG
     Timer _debug_timer;
 #endif
     
-    void update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
+    void update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     
     operator bool() const;
     void clear();
     
 private:
-    void reload();
+    void reload(DrawStructure& graph);
 public:
     static bool update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& o, const Context& context, State& state);
 private:

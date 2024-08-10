@@ -69,7 +69,8 @@ target_link_libraries(commons
     PUBLIC Commons::LibPNG 
     PUBLIC Commons::LibZIP 
     PUBLIC Commons::LibZ
-    PUBLIC nlohmann_json::nlohmann_json
+    PUBLIC glaze::glaze
+    #PUBLIC nlohmann_json::nlohmann_json
 )
 
 option(COMMONS_DONT_USE_PCH OFF)

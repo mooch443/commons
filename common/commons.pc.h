@@ -96,7 +96,8 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wall"
 #endif
-#include <nlohmann/json.hpp>
+#include <glaze/glaze.hpp>
+//#include <nlohmann/json.hpp>
 #ifdef __llvm__
 #pragma clang diagnostic pop
 #endif
@@ -211,8 +212,8 @@ public:
 #include <robin_hood.h>
 
 #ifndef CMN_WITH_IMGUI_INSTALLED
-    #if __has_include ( <imgui/imgui.h> )
-    #include <imgui/imgui.h>
+    #if __has_include ( <imgui.h> )
+    #include <imgui.h>
         #define CMN_WITH_IMGUI_INSTALLED true
     #else
         #define CMN_WITH_IMGUI_INSTALLED false
@@ -793,7 +794,7 @@ struct timestamp_t {
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
     static std::string class_name() { return "timestamp"; }
     static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
-    nlohmann::json to_json() const { return valid() ? nlohmann::json{ get() } : nlohmann::json{ nullptr }; }
+    glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
     
     static timestamp_t now() {
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -893,8 +894,13 @@ struct MultiStringHash {
         return std::hash<std::string>{}(str);
     }
 
-    size_t operator()(std::string_view strv) const {
-        return std::hash<std::string_view>{}(strv);
+    template<typename Str>
+        requires (std::convertible_to<std::string_view, Str> && not std::same_as<std::string, Str>)
+    size_t operator()(Str strv) const {
+        if constexpr(std::same_as<std::string_view, Str>)
+            return std::hash<std::string_view>{}(strv);
+        else
+            return std::hash<std::string_view>{}(std::string_view(strv));
     }
 };
 
@@ -905,15 +911,22 @@ struct MultiStringEqual {
         return lhs == rhs;
     }
 
-    bool operator()(const std::string& lhs, std::string_view rhs) const {
+    template<typename Str>
+        requires (std::convertible_to<std::string_view, Str> && not std::same_as<std::string, Str>)
+    bool operator()(const std::string& lhs, Str rhs) const {
         return lhs == rhs;
     }
 
-    bool operator()(std::string_view lhs, const std::string& rhs) const {
+    template<typename Str>
+        requires (std::convertible_to<std::string_view, Str> && not std::same_as<std::string, Str>)
+    bool operator()(Str lhs, const std::string& rhs) const {
         return lhs == rhs;
     }
 
-    bool operator()(std::string_view lhs, std::string_view rhs) const {
+    template<typename Str, typename Str2>
+        requires (std::convertible_to<std::string_view, Str> && not std::same_as<std::string, Str>
+                  && std::convertible_to<std::string_view, Str2> && not std::same_as<std::string, Str2>)
+    bool operator()(Str lhs, Str2 rhs) const {
         return lhs == rhs;
     }
 };

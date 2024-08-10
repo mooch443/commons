@@ -32,23 +32,16 @@ std::string blob::Pose::Skeleton::toStr() const {
     return "[" + Meta::toStr(name()) + "," + Meta::toStr(_connections) + "]";
 }
 
-nlohmann::json blob::Pose::Skeleton::to_json() const {
-    auto a = nlohmann::json::array();
-    a.push_back(name());
-    a.push_back(cvt2json(connections()));
-    return a;
+glz::json_t blob::Pose::Skeleton::to_json() const {
+    return glz::json_t{ name(), cvt2json(connections()) };
 }
 
 std::string blob::Pose::Skeleton::Connection::toStr() const {
     return "["+Meta::toStr(from) + "," + Meta::toStr(to)+"]";
 }
 
-nlohmann::json blob::Pose::Skeleton::Connection::to_json() const {
-    auto a = nlohmann::json::array();
-    a.push_back(from);
-    a.push_back(to);
-    //a.push_back(name);
-    return a;
+glz::json_t blob::Pose::Skeleton::Connection::to_json() const {
+    return glz::json_t{from, to};
 }
 
 blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const std::string &str) {
@@ -114,8 +107,8 @@ bool blob::Pose::operator==(const Pose& other) const noexcept {
     return points == other.points;
 }
 
-nlohmann::json blob::Pose::to_json() const {
-    nlohmann::json j;
+glz::json_t blob::Pose::to_json() const {
+    std::vector<glz::json_t> j;
     for(size_t i = 0; i < points.size(); ++i) {
         j.push_back(points[i].to_json());
     }

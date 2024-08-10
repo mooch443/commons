@@ -281,8 +281,8 @@ public:
             return Meta::toStr(_paths.front().str());
         return Meta::toStr(_paths);
     }
-    nlohmann::json to_json() const {
-        return nlohmann::json(source());
+    glz::json_t to_json() const {
+        return glz::json_t(source());
     }
     static std::string class_name() {
         return "PathArray";

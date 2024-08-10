@@ -25,7 +25,7 @@ Bounds calculate_bounds(const std::string& text, gui::Drawable* reference, const
  * @param bounds The Bounds object representing the dimensions of the text.
  * @return The width of the bounding box.
  */
-constexpr float calculate_width(const Bounds& bounds) {
+constexpr Float2_t calculate_width(const Bounds& bounds) {
     return bounds.width + bounds.x;
 }
 
@@ -38,7 +38,7 @@ constexpr float calculate_width(const Bounds& bounds) {
  * @param font The font used for rendering the text.
  * @return The index in the string where it should be split.
  */
-size_t find_splitting_point(const std::string& str, const float w, const float max_w, gui::Drawable* reference, const gui::Font& font);
+size_t find_splitting_point(const std::string& str, const Float2_t w, const Float2_t max_w, gui::Drawable* reference, const gui::Font& font);
 
 } // namespace utils
 } // namespace cmn
@@ -67,8 +67,8 @@ namespace cmn::gui {
 
     class StaticText : public Entangled {
     public:
-        NUMBER_ALIAS(FadeOut_t, float)
-        NUMBER_ALIAS(Shadow_t, float)
+        NUMBER_ALIAS(FadeOut_t, Float2_t)
+        NUMBER_ALIAS(Shadow_t, Float2_t)
         
     private:
         std::vector<std::unique_ptr<Text>> texts;
@@ -81,12 +81,12 @@ namespace cmn::gui {
             Vec2 max_size{0};
             Margins margins{5, 5, 5, 5};
             Color text_color = White;
-            Font default_font = Font(0.75);
+            Font default_font = Font(0.75_F);
             std::string txt;
             Alpha alpha{1};
             Alpha fill_alpha{0};
-            FadeOut_t fade_out{0.f};
-            Shadow_t shadow{0.f};
+            FadeOut_t fade_out{0_F};
+            Shadow_t shadow{0_F};
             
         };
         

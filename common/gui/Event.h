@@ -156,17 +156,17 @@ namespace cmn::gui {
     };
     
     struct WindowResizedEvent {
-        float width, height;
+        Float2_t width, height;
     };
     
     struct MouseMoveEvent {
-        float x, y;
+        Float2_t x, y;
     };
     
     struct MouseButtonEvent {
         int button;
         bool pressed;
-        float x, y;
+        Float2_t x, y;
     };
     
     struct SelectEvent {
@@ -175,7 +175,7 @@ namespace cmn::gui {
     
     struct HoverEvent {
         bool hovered;
-        float x, y;
+        Float2_t x, y;
     };
     
     struct KeyEvent {
@@ -189,12 +189,12 @@ namespace cmn::gui {
     };
     
     struct ScrollEvent {
-        float dx,dy;
+        Float2_t dx,dy;
     };
     
     struct DragEvent {
-        float x,y;
-        float rx, ry;
+        Float2_t x,y;
+        Float2_t rx, ry;
     };
     
     class Event {

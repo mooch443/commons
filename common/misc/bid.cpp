@@ -15,10 +15,10 @@ std::string bid::toStr() const {
     return Meta::toStr<uint32_t>(_id);
 }
 
-nlohmann::json bid::to_json() const {
+glz::json_t bid::to_json() const {
     if(!valid())
-        return nullptr;
-    return nlohmann::json(_id);
+        return glz::json_t::null_t{};
+    return _id;
 }
 
 bid bid::fromStr(const std::string& str) {

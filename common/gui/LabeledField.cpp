@@ -84,7 +84,7 @@ std::string LabeledField::toStr() const {
     return "Field<"+_ref+">";
 }
 
-LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, State& state, const nlohmann::json&)
+LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, State& state, const glz::json_t&)
     : LabeledField(gui, name)
 {
     if(state._last_settings_box != nullptr
@@ -180,7 +180,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::strin
     return ptr;
 }
 
-LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const nlohmann::json&, bool invert)
+LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert)
 : LabeledField(gui, name),
 _checkbox(std::make_shared<gui::Checkbox>(attr::Str(desc))),
 _invert(invert)
@@ -218,7 +218,7 @@ void LabeledCheckbox::set_description(std::string desc) {
 LabeledCheckbox::~LabeledCheckbox() {
 }
 
-LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const nlohmann::json&)
+LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
     : LabeledField(gui, name),
     _text_field(std::make_shared<gui::Textfield>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
@@ -275,7 +275,7 @@ void LabeledTextField::update_ref_in_main_thread() {
     }
 }
 
-LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const nlohmann::json&, bool invert)
+LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert)
 : LabeledField(gui, name),
 _list(std::make_shared<gui::List>(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
@@ -380,7 +380,7 @@ void LabeledList::update_ref_in_main_thread() {
     
 }
 
-LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const nlohmann::json&)
+LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
 : LabeledField(gui, name),
 _dropdown(std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
@@ -744,9 +744,9 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     _layout->set_policy(VerticalLayout::Policy::LEFT);
     
     if(context->obj.contains("preview")
-       && context->obj["preview"].is_object())
+       && context->obj.at("preview").is_object())
     {
-        auto &text = context->obj["preview"];
+        auto &text = context->obj.at("preview").get_object();
         if(text.contains("font")) {
             Font font = parse_font(text);
             _dropdown->preview()->set(font);
@@ -757,7 +757,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
         }
         if(text.contains("color")) {
             try {
-                auto color = parse_color(text["color"]);
+                auto color = parse_color(text.at("color"));
                 _dropdown->preview()->set(TextClr{color});
             } catch(const std::exception& ex) {
                 FormatExcept("Invalid format for color: ", ex.what());

@@ -101,8 +101,17 @@ void Layout::set_content_changed(bool changed) {
 
     void Layout::set_children(std::vector<Layout::Ptr>&& objects) {
 #ifndef NDEBUG
-        if(std::set<Layout::Ptr>(objects.begin(), objects.end()).size() != objects.size())
-            throw U_EXCEPTION("Cannot insert the same object multiple times.");
+        if(auto set = std::set<Layout::Ptr>(objects.begin(), objects.end());
+           set.size() != objects.size())
+        {
+            std::map<const Drawable*, size_t> counts;
+            for(auto &ptr : set) {
+                size_t c = std::count(objects.begin(), objects.end(), ptr);
+                if(c > 1)
+                    counts[ptr.get()] = c;
+            }
+            throw U_EXCEPTION("Cannot insert the same object multiple times (", set.size()," vs. ", objects.size(), "): ", counts);
+        }
 #endif
         
         std::vector<Layout::Ptr> next;
@@ -539,10 +548,10 @@ void GridLayout::update_layout() {
             if (col_idx >= max_col_widths.size()) {
                 max_col_widths.push_back(cell_bounds.width);
             } else {
-                max_col_widths[col_idx] = std::max(max_col_widths[col_idx], cell_bounds.width);
+                max_col_widths[col_idx] = max(max_col_widths[col_idx], cell_bounds.width);
             }
 
-            row_height = std::max(row_height, cell_bounds.height);
+            row_height = max(row_height, cell_bounds.height);
             ++col_idx;
         }
         

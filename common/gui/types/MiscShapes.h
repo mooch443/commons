@@ -10,13 +10,13 @@ namespace cmn::gui {
         GETTER(std::vector<Vertex>, points);
         
     public:
-        Triangle(const Vec2& center, const Size2& size, float angle = 0, const Color& fill = White, const Color& line = Transparent);
+        Triangle(const Vec2& center, const Size2& size, Float2_t angle = 0, const Color& fill = White, const Color& line = Transparent);
         Triangle(const std::vector<Vertex>& vertices);
         
         _CHANGE_SETTER(fill)
         _CHANGE_SETTER(line)
         
-        bool in_bounds(float x, float y) override;
+        bool in_bounds(Float2_t x, Float2_t y) override;
         
     protected:
         bool swap_with(Drawable *d) override;

@@ -3,7 +3,17 @@
 #include <commons.pc.h>
 
 namespace cmn {
-    typedef float Float2_t;
+    using Float2_t = double;
+
+    /// a constructor literal for the float2_t type
+    constexpr inline Float2_t operator "" _F(long double value) {
+        return static_cast<Float2_t>(value);
+    }
+
+    /// the same but for integer
+    constexpr inline Float2_t operator "" _F(unsigned long long value) {
+        return static_cast<Float2_t>(value);
+    }
 
 #if CMN_WITH_IMGUI_INSTALLED
     #define IMGUI_CONSTRUCTOR \
@@ -206,7 +216,7 @@ namespace cmn {
     std::string toStr() const { \
         return "[" + Meta::toStr(A()) + "," + Meta::toStr(B()) + "]"; \
     } \
-    nlohmann::json to_json() const { \
+    glz::json_t to_json() const { \
         return { A(), B() }; \
     } \
     \
@@ -325,7 +335,7 @@ constexpr inline Vector2D<V, K> operator-(const Vector2D<V, K>& w, const cv::Poi
     
 template<typename V, bool K>
 inline std::ostream &operator <<(std::ostream &os, const Vector2D<V, K>& obj) {
-    uint _x = (uint)roundf(obj.A()), _y = (uint)roundf(obj.B());
+    uint _x = (uint)round(obj.A()), _y = (uint)round(obj.B());
     //assert(obj.A() >= SHRT_MIN && obj.B() >= SHRT_MIN && obj.A() <= SHRT_MAX && obj.B() <= SHRT_MAX);
         
     uint both = (_x << 16) & 0xFFFF0000;
@@ -535,8 +545,8 @@ public:
     std::string toStr() const {
         return "[" + Meta::toStr(x) + "," + Meta::toStr(y) + "," + Meta::toStr(width) + "," + Meta::toStr(height) + "]";
     }
-    nlohmann::json to_json() const {
-        return nlohmann::json::array({ x, y, width, height });
+    glz::json_t to_json() const {
+        return glz::json_t{ x, y, width, height };
     }
     static Bounds fromStr(const std::string& str)
     {

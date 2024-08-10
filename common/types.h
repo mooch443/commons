@@ -133,7 +133,7 @@ struct Pose {
         std::string toStr() const {
             return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
         }
-        nlohmann::json to_json() const {
+        glz::json_t to_json() const {
             // output as [x, y]
             return {x, y};
         }
@@ -163,7 +163,7 @@ struct Pose {
 
             static std::string class_name() noexcept { return "Connection"; }
             static Connection fromStr(const std::string&);
-            nlohmann::json to_json() const;
+            glz::json_t to_json() const;
         };
         
     protected:
@@ -197,7 +197,7 @@ struct Pose {
 
         static Skeleton fromStr(const std::string&);
         std::string toStr() const;
-        nlohmann::json to_json() const;
+        glz::json_t to_json() const;
         static std::string class_name() noexcept { return "Skeleton"; }
         static void add(Skeleton&&);
         static Skeleton get(const std::string&);
@@ -292,7 +292,7 @@ struct Pose {
     static Pose fromStr(const std::string&);
 
     bool operator==(const Pose& other) const noexcept;
-    nlohmann::json to_json() const;
+    glz::json_t to_json() const;
     
     /**
      * Serializes the Pose object to a byte array.

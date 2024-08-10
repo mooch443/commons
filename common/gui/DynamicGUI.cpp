@@ -483,7 +483,7 @@ Module* exists(const std::string& name) {
 }
 
 Layout::Ptr parse_object(GUITaskQueue_t* gui,
-                         const nlohmann::json& obj,
+                         const glz::json_t::object_t& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
@@ -548,8 +548,8 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                 ptr = layout.create_object<LayoutType::image>();
                 break;
             default:
-                if (auto it = context.custom_elements.find(obj["type"].get<std::string>());
-                    it != context.custom_elements.end()) 
+                if (auto it = context.custom_elements.find(obj.at("type").get_string());
+                    it != context.custom_elements.end())
                 {
                     if(auto sit = state._collectors->objects.find(hash);
                        sit != state._collectors->objects.end()
@@ -579,27 +579,31 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
         }
         
         if(not ptr) {
-            FormatExcept("Cannot create object ",obj["type"].get<std::string>());
+            FormatExcept("Cannot create object ",obj.at("type").get_string());
             return nullptr;
         }
         
         layout.finalize(ptr);
         return ptr;
     } catch(const std::exception& e) {
-        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ obj.dump()+"</c>";
-        FormatExcept("Failed to make object here ",e.what(), " for ",obj.dump());
+        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj).value_or("<invalid_json>")+"</c>";
+        FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj).value_or("<invalid_json>"));
         return Layout::Make<ErrorElement>(attr::Str{text}, Loc{layout.pos}, Size{layout.size});
     }
 }
 
-tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(const std::string& text){
+tl::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const std::string& text){
     DefaultSettings defaults;
     try {
-        auto obj = nlohmann::json::parse(text);
+        glz::json_t obj{};
+        auto error = glz::read_json(obj, text);
+        if(error != glz::error_code::none)
+            return tl::unexpected(glz::format_error(error, text));
+        
         State state;
         try {
-            if(obj.contains("defaults") && obj["defaults"].is_object()) {
-                auto d = obj["defaults"];
+            if(obj.contains("defaults") && obj.at("defaults").is_object()) {
+                auto& d = obj.at("defaults").get_object();
                 defaults.font = parse_font(d, defaults.font);
                 if(d.contains("color")) defaults.textClr = parse_color(d["color"]);
                 if(d.contains("fill")) defaults.fill = parse_color(d["fill"]);
@@ -607,11 +611,11 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
                 if(d.contains("pad"))
-                    defaults.pad = Meta::fromStr<Bounds>(d["pad"].dump());
+                    defaults.pad = Meta::fromStr<Bounds>(glz::write_json(d["pad"]).value());
                 
                 if(d.contains("vars") && d["vars"].is_object()) {
-                    for(auto &[name, value] : d["vars"].items()) {
-                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(value.dump())](const Context& context, State& state) -> std::string {
+                    for(auto &[name, value] : d["vars"].get_object()) {
+                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(glz::write_json(value).value())](const Context& context, State& state) -> std::string {
                             return parse_text(value, context, state);
                         }));
                     }
@@ -624,7 +628,7 @@ tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*> load(cons
         }
         return std::make_tuple(defaults, obj["objects"]);
         
-    } catch(const nlohmann::json::exception& error) {
+    } catch(const std::exception& error) {
         throw InvalidSyntaxException(error.what());
         //return tl::unexpected(error.what());
     }
@@ -686,7 +690,7 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
     return ptr->update(gui, hash, g, o, context, state);
 }
 
-void DynamicGUI::reload() {
+void DynamicGUI::reload(DrawStructure& graph) {
     if(not first_load
        && last_load.elapsed() < 0.25)
     {
@@ -695,7 +699,7 @@ void DynamicGUI::reload() {
     
     if(not read_file_future.valid()) {
         read_file_future = std::async(std::launch::async,
-             [this]() -> tl::expected<std::tuple<DefaultSettings, nlohmann::json>, const char*>
+             [this]() -> tl::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>
              {
                 try {
                     auto p = file::DataLocation::parse("app", path).absolute();
@@ -721,7 +725,7 @@ void DynamicGUI::reload() {
        && (read_file_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready
            || first_load))
     {
-        read_file_future.get().transform([&](const auto& result) {
+        read_file_future.get().transform([&, graph = &graph](const auto& result) {
             auto&& [defaults, layout] = result;
             //state._text_fields.clear();
             context.defaults = std::move(defaults);
@@ -738,9 +742,8 @@ void DynamicGUI::reload() {
             std::vector<Layout::Ptr> objs;
             objects.clear();
             state = {};
-            
-            for(auto &obj : layout) {
-                auto ptr = parse_object(gui, obj, context, tmp, context.defaults);
+            for(auto &obj : layout.get_array()) {
+                auto ptr = parse_object(gui, obj.get_object(), context, tmp, context.defaults);
                 if(ptr) {
                     objs.push_back(ptr);
                 }
@@ -767,9 +770,9 @@ void DynamicGUI::reload() {
         first_load = false;
 }
 
-void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add) 
+void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add)
 {
-    reload();
+    reload(graph);
     
     /*if(state.ifs.size() > 3000) {
         for(auto it = state.ifs.begin(); it != state.ifs.end() && state.ifs.size() > 2000;) {
@@ -942,7 +945,7 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
         
         for(auto &obj : objects) {
             if(do_update_objects)
-                update_objects(gui, *graph, obj, context, state);
+                update_objects(gui, graph, obj, context, state);
         }
         
     } else {
@@ -952,27 +955,27 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
             before_add(copy);
             for(auto &obj : copy) {
                 if(do_update_objects)
-                    update_objects(gui, *graph, obj, context, state);
-                graph->wrap_object(*obj);
+                    update_objects(gui, graph, obj, context, state);
+                graph.wrap_object(*obj);
             }
             
         } else {
             for(auto &obj : objects) {
                 if(do_update_objects)
-                    update_objects(gui, *graph, obj, context, state);
-                graph->wrap_object(*obj);
+                    update_objects(gui, graph, obj, context, state);
+                graph.wrap_object(*obj);
             }
         }
     }
     
-    dyn::update_tooltips(*graph, state);
+    dyn::update_tooltips(graph, state);
     
     if(state._mark_for_selection) {
-        if(state._mark_for_selection->is_child_of(&graph->root())) {
+        if(state._mark_for_selection->is_child_of(&graph.root())) {
 #ifndef NDEBUG
             Print("Had to reselect object ", state._mark_for_selection, " after reloading the GUI.");
 #endif
-            graph->select(state._mark_for_selection);
+            graph.select(state._mark_for_selection);
             state._mark_for_selection = nullptr;
         } else {
 #ifndef NDEBUG
@@ -1023,11 +1026,11 @@ void DynamicGUI::update(Layout* parent, const std::function<void(std::vector<Lay
 }
 
 DynamicGUI::operator bool() const {
-    return graph != nullptr;
+    return not path.empty();
 }
 
 void DynamicGUI::clear() {
-    graph = nullptr;
+    path = {};
     objects.clear();
     previous.clear();
     state = {};

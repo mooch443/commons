@@ -786,7 +786,7 @@ namespace cmn::gui {
                                 });
                                 
                                 _details.at(idx)->set_pos(Vec2{
-                                    roundf(width() * 0.5f),
+                                    round(width() * 0.5_F),
                                     ycenter + _details.at(idx)->height() - middle
                                 });
                                 

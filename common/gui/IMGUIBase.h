@@ -72,8 +72,8 @@ namespace cmn::gui {
 #endif
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
-        GETTER(float, dpi_scale);
-        float _last_dpi_scale = -1;
+        GETTER(Float2_t, dpi_scale);
+        Float2_t _last_dpi_scale = -1;
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;
         
@@ -164,7 +164,7 @@ namespace cmn::gui {
             _open_files_fn = fn;
         }
         
-        float get_scale_multiplier();
+        Float2_t get_scale_multiplier();
         void set_background_color(const Color&) override;
         void set_frame_recording(bool v) override;
         void loop();
@@ -174,7 +174,7 @@ namespace cmn::gui {
         const std::string& title() const override { return _title; }
         
         Bounds text_bounds(const std::string& text, Drawable*, const Font& font) override;
-        uint32_t line_spacing(const Font& font) override;
+        Float2_t line_spacing(const Font& font) override;
 
         Size2 window_dimensions() const override;
         void set_window_size(Size2) override;

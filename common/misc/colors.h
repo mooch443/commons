@@ -305,7 +305,7 @@ public:
     std::string toStr() const {
         return "[" + std::to_string(r) + "," + std::to_string(g) + "," + std::to_string(b) + "," + std::to_string(a) + "]";
     }
-    nlohmann::json to_json() const {
+    glz::json_t to_json() const {
         return {r,g,b,a};
     }
 

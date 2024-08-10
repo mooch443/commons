@@ -359,7 +359,7 @@ namespace cmn::gui {
         SectionInterface::update_bounds();
     }
     
-    void Section::find(float x, float y, std::vector<Drawable*>& results) {
+    void Section::find(Float2_t x, Float2_t y, std::vector<Drawable*>& results) {
         if(!enabled())
             return;
         

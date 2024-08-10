@@ -193,7 +193,7 @@ protected:
     
 private:
     void update() override;
-    void move_cursor(float mx);
+    void move_cursor(Float2_t mx);
     
     bool onEnter(Event e);
     bool onControlKey(Event e);

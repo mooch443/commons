@@ -33,18 +33,18 @@
 
 namespace cmn::gui {
 class Transform {
-    float m_matrix[16];
+    Float2_t m_matrix[16];
     
 public:
     Transform();
-    Transform(float a00, float a01, float a02,
-              float a10, float a11, float a12,
-              float a20, float a21, float a22);
+    Transform(Float2_t a00, Float2_t a01, Float2_t a02,
+              Float2_t a10, Float2_t a11, Float2_t a12,
+              Float2_t a20, Float2_t a21, Float2_t a22);
 
-    const float* getMatrix() const;
+    const Float2_t* getMatrix() const;
     
     Transform getInverse() const;
-    Vec2 transformPoint(float x, float y) const;
+    Vec2 transformPoint(Float2_t x, Float2_t y) const;
     Vec2 transformPoint(const Vec2& pt) const;
     
     bool operator==(const Transform&) const noexcept = default;
@@ -55,11 +55,11 @@ public:
     Transform& combine(const Transform& other);
     
     Transform& translate(const Vec2&);
-    Transform& translate(float x, float y);
-    Transform& rotate(float angle);
-    Transform& scale(float x, float y);
+    Transform& translate(Float2_t x, Float2_t y);
+    Transform& rotate(Float2_t angle);
+    Transform& scale(Float2_t x, Float2_t y);
     Transform& scale(const Vec2& factors);
-    Transform& scale(const float factor);
+    Transform& scale(const Float2_t factor);
     
     cv::Mat toCV() const {
         cv::Mat t(2,3,CV_64F,cv::Scalar(0.0));

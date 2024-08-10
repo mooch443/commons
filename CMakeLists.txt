@@ -537,8 +537,17 @@ endif()
 
 include(FetchContent)
 
-FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
-FetchContent_MakeAvailable(json)
+#FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
+#FetchContent_MakeAvailable(json)
+
+FetchContent_Declare(
+  glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(glaze)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      G L A D
@@ -631,7 +640,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.3.8
+        GIT_TAG 3.4
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"
@@ -683,7 +692,19 @@ endif()
 #    BUILDING      I M G U I
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-set (imgui_path ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
+set (imgui_path ${CMAKE_BINARY_DIR}/_deps/imgui)
+
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG v1.91.0
+    SOURCE_DIR ${imgui_path}
+)
+
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
+endif()
+
 message(STATUS "imgui: ${imgui_path}")
 file(GLOB imgui_sources ${imgui_path}/*.cpp ${imgui_path}/*.h
     ${imgui_path}/backends/imgui_impl_glfw*.cpp ${imgui_path}/backends/imgui_impl_glfw*.h
@@ -703,8 +724,9 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
 endif()
 
 add_library(imgui STATIC ${imgui_sources})
+target_compile_definitions(imgui PUBLIC IMGUI_USE_WCHAR32=1)
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    target_compile_definitions(imgui PUBLIC TREX_ENABLE_EXPERIMENTAL_BLUR=1)
+    #target_compile_definitions(imgui PUBLIC TREX_ENABLE_EXPERIMENTAL_BLUR=0)
 endif()
 
 include_directories(${imgui_path})
@@ -1639,4 +1661,4 @@ if(WIN32)
     endif()
 endif()
 
-export(TARGETS commons cnpy imgui nlohmann_json ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )

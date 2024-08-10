@@ -110,4 +110,28 @@ bool convert_to_bool(Str&& p) noexcept {
     return true;
 }
 
+template<typename ValueType, typename PatternMapType>
+inline std::optional<ValueType> parse_value(std::string_view name, const PatternMapType& patterns, const Context& context, State& state)
+{
+    auto it = patterns.find(name);
+    if(it == patterns.end())
+        return std::nullopt;
+    
+    const Pattern &pattern = it->second;
+    if constexpr(std::same_as<ValueType, std::string>) {
+        return parse_text(pattern, context, state);
+    } else {
+        return Meta::fromStr<ValueType>(parse_text(pattern, context, state));
+    }
+};
+
+template<typename ValueType, typename PatternMapType, typename CleanVT = remove_cvref_t<ValueType>>
+inline CleanVT parse_value_with_default(ValueType&& default_value, std::string_view name, const PatternMapType& patterns, const Context& context, State& state)
+{
+    auto value = parse_value<CleanVT>(name, patterns, context, state);
+    if(not value.has_value())
+        return default_value;
+    return std::move(value.value());
+};
+
 }
