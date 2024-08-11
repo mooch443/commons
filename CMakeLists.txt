@@ -652,6 +652,8 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
             "-DGLFW_BUILD_WAYLAND=OFF"
             ${GLFW_add_flags}
         UPDATE_COMMAND ""
+        PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff"
+        UPDATE_DISCONNECTED 1
     )
     
     set(GLFW_INCLUDE_DIR ${GLFW_INSTALL_DIR}/include)
