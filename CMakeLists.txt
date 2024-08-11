@@ -650,7 +650,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
 
     if(WIN32)
-        set(COMMONS_GLFW_PATCH git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
+        set(COMMONS_GLFW_PATCH git apply --reject --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
     else()
         set(COMMONS_GLFW_PATCH patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1)
     endif()
