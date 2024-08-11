@@ -649,6 +649,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
             "-DGLFW_BUILD_EXAMPLES=OFF"
             "-DGLFW_BUILD_TESTS=OFF"
             "-DGLFW_BUILD_DOCS=OFF"
+            "-DGLFW_BUILD_WAYLAND=OFF"
             ${GLFW_add_flags}
         UPDATE_COMMAND ""
     )
