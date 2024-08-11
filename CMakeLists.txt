@@ -540,6 +540,11 @@ include(FetchContent)
 #FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
 #FetchContent_MakeAvailable(json)
 set(glaze_PATH ${CMAKE_BINARY_DIR}/_deps/glaze)
+if(WIN32)
+    set(glaze_PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff")
+else()
+    set(glaze_PATCH_COMMAND patch -N -s -d ${glaze_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff" || echo 1)
+endif()
 
 FetchContent_Declare(
   glaze
@@ -547,7 +552,8 @@ FetchContent_Declare(
   GIT_TAG v2.1.3
   GIT_SHALLOW TRUE
   SOURCE_DIR ${glaze_PATH}
-  PATCH_COMMAND patch -N -s -d ${glaze_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff"
+  PATCH_COMMAND ${glaze_PATCH_COMMAND}
+  UPDATE_DISCONNECTED 1
 )
 
 FetchContent_MakeAvailable(glaze)
@@ -642,6 +648,13 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
 
     set(COMMONS_GLFW_SOURCE_PATH ${CMAKE_BINARY_DIR}/_deps/glfw)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
+
+    if(WIN32)
+        set(COMMONS_GLFW_PATCH git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
+    else()
+        set(COMMONS_GLFW_PATCH patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1)
+    endif()
+
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
         GIT_TAG 3.4
@@ -658,7 +671,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
             ${GLFW_add_flags}
         UPDATE_COMMAND ""
         SOURCE_DIR ${COMMONS_GLFW_SOURCE_PATH}
-        PATCH_COMMAND patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
+        PATCH_COMMAND ${COMMONS_GLFW_PATCH}
     )
     #PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
     
