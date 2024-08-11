@@ -586,8 +586,8 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
         layout.finalize(ptr);
         return ptr;
     } catch(const std::exception& e) {
-        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj).value_or("<invalid_json>")+"</c>";
-        FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj).value_or("<invalid_json>"));
+        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj)+"</c>";
+        FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj));
         return Layout::Make<ErrorElement>(attr::Str{text}, Loc{layout.pos}, Size{layout.size});
     }
 }
@@ -611,11 +611,11 @@ tl::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const s
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
                 if(d.contains("pad"))
-                    defaults.pad = Meta::fromStr<Bounds>(glz::write_json(d["pad"]).value());
+                    defaults.pad = Meta::fromStr<Bounds>(glz::write_json(d["pad"]));
                 
                 if(d.contains("vars") && d["vars"].is_object()) {
                     for(auto &[name, value] : d["vars"].get_object()) {
-                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(glz::write_json(value).value())](const Context& context, State& state) -> std::string {
+                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(glz::write_json(value))](const Context& context, State& state) -> std::string {
                             return parse_text(value, context, state);
                         }));
                     }

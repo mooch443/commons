@@ -608,7 +608,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                     ptrs.emplace_back(std::move(item));
                     ++index;
                 } catch(const std::exception& ex) {
-                    FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("<invalid_json>"), " and type ", v->class_name());
+                    FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item), " and type ", v->class_name());
                 }
                 //state._variable_values = std::move(previous);
             }

@@ -543,7 +543,7 @@ include(FetchContent)
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG main
+  GIT_TAG v2.1.3
   GIT_SHALLOW TRUE
 )
 
@@ -637,6 +637,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
         set(GLFW_C_FLAGS "${GLFW_C_FLAGS} -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
     endif()
 
+    set(COMMONS_GLFW_SOURCE_PATH ${CMAKE_BINARY_DIR}/_deps/glfw)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -650,11 +651,13 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
             "-DGLFW_BUILD_TESTS=OFF"
             "-DGLFW_BUILD_DOCS=OFF"
             "-DGLFW_BUILD_WAYLAND=OFF"
+            "-DGLFW_LIBRARY_TYPE=STATIC"
             ${GLFW_add_flags}
         UPDATE_COMMAND ""
-        PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff"
-        UPDATE_DISCONNECTED 1
+        SOURCE_DIR ${COMMONS_GLFW_SOURCE_PATH}
+        PATCH_COMMAND patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
     )
+    #PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
     
     set(GLFW_INCLUDE_DIR ${GLFW_INSTALL_DIR}/include)
     link_directories(${GLFW_INSTALL_DIR}/lib)
