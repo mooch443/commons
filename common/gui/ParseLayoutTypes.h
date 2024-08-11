@@ -38,7 +38,7 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
     
     if constexpr(assume_exists) {
         if(it == obj.end())
-            throw InvalidArgumentException("Expected property ", name, " in ", glz::write_json(obj).value_or("<invalid_json>"));
+            throw InvalidArgumentException("Expected property ", name, " in ", glz::write_json(obj));
     } else {
         if(it == obj.end())
             return de;
@@ -52,7 +52,7 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
             state.register_pattern(hash, name_prefix+name, Pattern{o.template get<std::string>(), {}});
             return de;
         }
-        return Meta::fromStr<T>(glz::write_json(o).value());
+        return Meta::fromStr<T>(glz::write_json(o));
         
     } else if constexpr(are_the_same<file::Path, T>) {
         return o.template get<file::Path>();
