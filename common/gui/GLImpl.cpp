@@ -5,16 +5,16 @@
 #include <imgui.h>
 using ImTextureID_t = ImGui_OpenGL3_TextureID;
 
-#include <imgui/backends/imgui_impl_opengl3.h>
+#include <backends/imgui_impl_opengl3.h>
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
 #endif
 
 #if !defined(__EMSCRIPTEN__)
-#include <imgui/backends/imgui_impl_opengl2.h>
+#include <backends/imgui_impl_opengl2.h>
 #endif
 
-#include <imgui/backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_glfw.h>
 
 #if defined(__EMSCRIPTEN__)
 #define IMGUI_IMPL_OPENGL_ES3
