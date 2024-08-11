@@ -539,12 +539,15 @@ include(FetchContent)
 
 #FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
 #FetchContent_MakeAvailable(json)
+set(glaze_PATH ${CMAKE_BINARY_DIR}/_deps/glaze)
 
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
   GIT_TAG v2.1.3
   GIT_SHALLOW TRUE
+  SOURCE_DIR ${glaze_PATH}
+  PATCH_COMMAND patch -N -s -d ${glaze_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff"
 )
 
 FetchContent_MakeAvailable(glaze)
