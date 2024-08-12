@@ -529,6 +529,12 @@ template<typename Mat>
 bool FfmpegVideoCapture::_read(uint32_t frameIndex, Mat& outFrame) {
     if (!is_open())
         return false;
+    if(frameIndex > length()) {
+#ifndef NDEBUG
+        FormatExcept("Unable to load frame ", frameIndex, " from file of length ", length());
+#endif
+        return false;
+    }
 
     static Timing timing("ffmpeg::read_frame");
     if(seek_frame(frameIndex)) {
