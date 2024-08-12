@@ -12,7 +12,7 @@ struct State;
 class LayoutContext;
 struct CurrentObjectHandler;
 
-#if defined(_MSC_VER) && _MSC_VER <= 1930
+//#if defined(_MSC_VER) && _MSC_VER <= 1930
     template <class T> struct type {};
     template <class T> constexpr type<T> type_v{};
 
@@ -23,7 +23,7 @@ struct CurrentObjectHandler;
 
     template <typename T, typename Variant>
     concept is_in_variant = is_one_of(type<Variant>{}, type<T>{});
-#else
+/*#else
     template <typename T, typename Variant>
     concept is_in_variant = requires (Variant v) {
         {[]<typename K, class...Ts, template<class...> class Tp>(const Tp<Ts...>&) {
@@ -33,7 +33,7 @@ struct CurrentObjectHandler;
                 return std::false_type{};
         }.template operator()<T>(v)} -> std::same_as<std::true_type>;
     };
-#endif
+#endif*/
 
 struct LoopBody {
     std::string variable;
