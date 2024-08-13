@@ -141,36 +141,6 @@ void Layout::set_stage(gui::DrawStructure *s) {
     void Layout::update_layout() {
         if(not _layout_dirty)
             return;
-        /*if(not _layout_dirty) {
-            //print_stacktrace();
-            bool child_dirty = false;
-            
-            for(auto &ptr : objects()) {
-                auto _c = ptr.get();
-                if(not _c)
-                    continue;
-                
-                if (_c->type() == Type::SINGLETON)
-                    _c = static_cast<const SingletonObject*>(_c)->ptr();
-                
-                if(_c
-                   && _c->type() == Type::ENTANGLED
-                   && dynamic_cast<const Layout*>(_c))
-                {
-                    if(static_cast<Layout*>(_c)->_layout_dirty) {
-                        child_dirty = true;
-                        break;
-                    }
-                }
-            }
-            
-            if(child_dirty) {
-                print_stacktrace();
-            }
-            return;
-        }*/
-        
-        //_layout_dirty = false;
         
         for(auto &ptr : objects()) {
             auto _c = ptr.get();
@@ -188,9 +158,8 @@ void Layout::set_stage(gui::DrawStructure *s) {
             }
         }
         
-        Print("Updating ", *this," (",no_quotes(name()),"): ", bounds());
-        if(_layout_dirty)
-            _update_layout();
+        //Print("Updating ", *this," (",no_quotes(name()),"): ", bounds());
+        _update_layout();
         _layout_dirty = false;
     }
 
