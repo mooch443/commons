@@ -783,6 +783,8 @@ void DrawStructure::close_dialogs() {
             e.scroll.dx = delta.x;
             e.scroll.dy = delta.y;
             _hovered_object->scroll(e);
+            
+            update_hover();
         }
     }
     

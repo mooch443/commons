@@ -871,10 +871,18 @@ std::shared_ptr<Drawable> State::named_entity(std::string_view name) {
     return lock->retrieve_named(name);
 }
 
+constexpr inline bool contains_bad_variable(std::string_view name) {
+    return is_in(name, "i", "index", "hovered", "selected")
+            || utils::beginsWith(name, "i.")
+            || utils::contains(name, "{hovered}")
+            || utils::contains(name, "{selected}")
+            || utils::contains(name, "{i.")
+            || utils::contains(name, "{i}");
+}
+
 std::optional<std::string_view> State::cached_variable_value(std::string_view name) const
 {
-    if(is_in(name, "i", "index", "hovered", "selected")
-       || utils::beginsWith(name, "i.") || utils::contains(name, "{hovered}") || utils::contains(name, "{selected}") || utils::contains(name, "{i."))
+    if(contains_bad_variable(name))
         return std::nullopt;
     
     auto lock = _current_object_handler.lock();
@@ -885,8 +893,7 @@ std::optional<std::string_view> State::cached_variable_value(std::string_view na
 }
 
 void State::set_cached_variable_value(std::string_view name, std::string_view value) {
-    if(is_in(name, "i", "index", "hovered", "selected")
-       || utils::beginsWith(name, "i.") || utils::contains(name, "{hovered}") || utils::contains(name, "{selected}") || utils::contains(name, "{i."))
+    if(contains_bad_variable(name))
         return;
     
     auto lock = _current_object_handler.lock();
