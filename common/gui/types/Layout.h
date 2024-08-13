@@ -11,6 +11,7 @@ namespace cmn::gui {
         
     private:
         GETTER_NCONST(std::vector<Ptr>, objects);
+        bool _layout_dirty{true};
         
     protected:
         GETTER(attr::Margins, margins);
@@ -37,7 +38,7 @@ namespace cmn::gui {
             init();
         }
         
-    private:
+    protected:
         void init();
         
     public:
@@ -65,13 +66,24 @@ namespace cmn::gui {
             set_children(std::move(ptr));
         }
         void set_margins(const attr::Margins&);
-        virtual void update_layout();
+        void update_layout();
         virtual void auto_size();
         void set_parent(SectionInterface*) override;
         void set_content_changed(bool) override;
+        void set_layout_dirty();
+        
+        void children_rect_changed() override;
+        
+        void set_size(const Size2&) override;
+        void set_pos(const Vec2&) override;
+        void set_bounds(const Bounds&) override;
+        void set_bounds_changed() override;
+        
+        void set_stage(gui::DrawStructure*) override;
         
     protected:
         using Entangled::auto_size;
+        virtual void _update_layout();
         static void _apply_to_children(Drawable* ptr, const std::function<void(Drawable*)>&);
         void apply_to_children(const std::function<void(Drawable*)>&);
     };
@@ -94,10 +106,12 @@ namespace cmn::gui {
         
         using Layout::set;
         
-        void update_layout() override {
+        void auto_size() override {}
+        
+    protected:
+        void _update_layout() override {
             auto_size();
         }
-        void auto_size() override {}
     };
 
     
@@ -135,9 +149,10 @@ namespace cmn::gui {
         void set(Policy p) { set_policy(p); }
         void set_policy(Policy);
         virtual std::string name() const override { return "HorizontalLayout"; }
-        
-        void update_layout() override;
         void auto_size() override;
+        
+    protected:
+        void _update_layout() override;
     };
     
     class VerticalLayout : public Layout {
@@ -173,9 +188,10 @@ namespace cmn::gui {
         using Layout::set;
         void set_policy(Policy);
         void set(Policy p) { set_policy(p); }
-        
-        void update_layout() override;
         void auto_size() override;
+        
+    protected:
+        void _update_layout() override;
     };
 
 class GridInfo {
@@ -268,7 +284,6 @@ private:
     
 public:
     void auto_size() override;
-    void children_rect_changed() override;
     void update() override;
     
     auto& vertical_clr() const { return _settings.verticalClr; }
@@ -285,7 +300,7 @@ public:
     
 private:
     void update_hover();
-    void update_layout() override;
+    void _update_layout() override;
     void set_parent(SectionInterface*) override;
 };
 

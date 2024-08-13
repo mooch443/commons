@@ -263,6 +263,8 @@ static_assert(false, "OpenCV version insufficient.");
 
 namespace cmn {
 
+template <typename T> struct type_t {};
+template <typename T> constexpr inline type_t<T> type_v{};
 
 inline void set_thread_name(const std::string& name) {
 #if __APPLE__

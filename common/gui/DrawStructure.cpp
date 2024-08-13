@@ -326,12 +326,12 @@ void Dialog::set_closed() {
             //_layout.auto_size();
         }
         
-        begin();
-        advance_wrap(_title_bg);
-        //d.wrap_object(*_text);
-        advance_wrap(_title);
-        advance_wrap(_layout);
-        end();
+        OpenContext([this]{
+            advance_wrap(_title_bg);
+            //d.wrap_object(*_text);
+            advance_wrap(_title);
+            advance_wrap(_layout);
+        });
         
         update_sizes(_graph);
         

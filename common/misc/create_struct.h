@@ -772,5 +772,5 @@ template<> inline enum NAM :: Variables cmn::Meta::fromStr<enum NAM :: Variables
         ++index; \
     } \
     \
-    throw CustomException(cmn::type<std::invalid_argument>, "Cannot find variable '", #NAM ,"::", str.c_str() ,"'."); \
+    throw CustomException(cmn::type_v<std::invalid_argument>, "Cannot find variable '", #NAM ,"::", str.c_str() ,"'."); \
 }

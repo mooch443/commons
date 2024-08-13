@@ -10,21 +10,20 @@ namespace cmn::gui {
         :  _fill(fill),
            _line(line)
     {
-        begin();
-        if(fill != Transparent) {
-            _points = simple_triangle(fill, size);
-            add<Vertices>(_points, PrimitiveType::Triangles);
-        }
-        
-        if(line != Transparent) {
-            auto array = simple_triangle(line, size);
-            if(_points.empty())
-                _points = array;
-            array.push_back(array.front());
-            add<Vertices>(array, PrimitiveType::LineStrip);
-        }
-        
-        end();
+        OpenContext([&]{
+            if(fill != Transparent) {
+                _points = simple_triangle(fill, size);
+                add<Vertices>(_points, PrimitiveType::Triangles);
+            }
+            
+            if(line != Transparent) {
+                auto array = simple_triangle(line, size);
+                if(_points.empty())
+                    _points = array;
+                array.push_back(array.front());
+                add<Vertices>(array, PrimitiveType::LineStrip);
+            }
+        });
         
         set_origin(Vec2(0.5, 0.65));
         set_bounds(Bounds(center, size));
@@ -39,9 +38,9 @@ namespace cmn::gui {
     {
         assert(vertices.size() % 3 == 0);
         _points = vertices;
-        begin();
+        
+        auto ctx = OpenContext();
         add<Vertices>(_points, PrimitiveType::Triangles);
-        end();
         //entangle(new Vertices(_points, PrimitiveType::Triangles, Vertices::TRANSPORT));
     }
 

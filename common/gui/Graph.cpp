@@ -82,7 +82,7 @@ void Graph::update() {
         function_names.push_back(std::make_shared<Label>(f._name, f._color));
     update_vector_elements(_labels, function_names);
     
-    begin();
+    auto ctx = OpenContext();
     
     const Color fg_ = gui::White;
     const Color fg = fg_.alpha(255);
@@ -438,8 +438,6 @@ void Graph::update() {
     
     for(auto l : _labels)
         advance_wrap(*l);
-    
-    end();
 }
 
 Vec2 Graph::transform_point(Vec2 pt) {

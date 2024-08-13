@@ -74,13 +74,13 @@ namespace cmn::gui {
         };
         
         GETTER(std::vector<Item<T>>, items);
-        std::vector<Rect*> _rects;
+        std::vector<std::shared_ptr<Rect>> _rects;
         std::vector<StaticText*> _texts;
         std::vector<Text*> _details;
         std::unique_ptr<StaticText> _label_text;
 
         StaticText _placeholder_text;
-        Tooltip tooltip = Tooltip(nullptr);
+        Tooltip tooltip = Tooltip({});
         
         std::function<void(size_t, const T&)> _callback;
         OnHover_t _on_hovered;
@@ -195,8 +195,8 @@ namespace cmn::gui {
         }
         
         ~ScrollableList() {
-            for(auto r : _rects)
-                delete r;
+            //for(auto r : _rects)
+            //    delete r;
             for(auto t : _texts)
                 delete t;
             
@@ -489,7 +489,7 @@ namespace cmn::gui {
         }
         
         size_t highlighted_item() const {
-            for(auto r : _rects) {
+            for(auto &r : _rects) {
                 if(r->hovered()) {
                     size_t idx = rect_to_idx.count(r) ? rect_to_idx.at(r) : 0;
                     return idx;
@@ -524,9 +524,11 @@ namespace cmn::gui {
             
             //draw_structure()->do_hover(_rects.at(index - first_visible));
             
-            if(index >= first_visible && index <= last_visible) {
-                if(stage())
-                    stage()->do_hover(_rects.at(sign_cast<size_t>(index - first_visible)));
+            if(index >= first_visible
+               && index <= last_visible
+               && stage())
+            {
+                    stage()->do_hover(_rects.at(sign_cast<size_t>(index - first_visible)).get());
             }
         }
         
@@ -565,7 +567,7 @@ namespace cmn::gui {
             if(N != _rects.size()) {
                 if(N < _rects.size()) {
                     for(size_t i=N; i<_rects.size(); i++) {
-                        delete _rects.at(i);
+                        //delete _rects.at(i);
                         delete _texts.at(i);
                         
                         if constexpr(has_detail<T>) {
@@ -600,10 +602,13 @@ namespace cmn::gui {
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
-                    _rects.push_back(new Rect(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
-                    _rects.back()->on_hover([r = _rects.back(), this](Event e) {
-                        if(rect_to_idx.count(r)) {
-                            auto idx = rect_to_idx.at(r);
+                    _rects.push_back(std::make_shared<Rect>(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
+                    _rects.back()->on_hover([_r = std::weak_ptr(_rects.back()), this](Event e)
+                    {
+                        if(auto r = _r.lock();
+                           r && rect_to_idx.count(r.get()))
+                        {
+                            auto idx = rect_to_idx.at(r.get());
                             if(!e.hover.hovered) {
                                 if(_currently_highlighted_item == (long)idx) {
                                     _currently_highlighted_item = -1;
@@ -631,7 +636,7 @@ namespace cmn::gui {
                 rect->set_size(Size2(_list_dims.width, item_height));
             }
             
-            set_content_changed(true);
+            //set_content_changed(true);
         }
         
         /*void update_bounds() override {
@@ -697,13 +702,12 @@ namespace cmn::gui {
                                 ? _label_fill_clr : _label_fill_clr.exposureHSL(1.25)));
                 
                 if(_foldable && _folded) {
-                    begin();
+                    auto ctx = OpenContext();
                     add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
                     if(not _label_text)
                         _label_text = std::make_unique<StaticText>();
                     _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
                     advance_wrap(*_label_text);
-                    end();
                     
                 } else {
                     Entangled * e = _foldable ? &_list : this;
@@ -712,112 +716,112 @@ namespace cmn::gui {
                     else
                         _list.set_z_index(0);
                     
-                    e->begin();
-                    
-                    size_t first_visible = (size_t)max(0.f, floorf(e->scroll_offset().y / item_height));
-                    size_t last_visible = (size_t)floorf((e->scroll_offset().y + e->height()) / item_height);
-                    
-                    rect_to_idx.clear();
-                    
-                    for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
-                        auto& item = _items[i];
-                        const float y = i * item_height;
-                        _rects.at(idx)->set_pos(Vec2(1, y + 1));
-                        if constexpr(has_disabled<T>) {
-                            _rects.at(idx)->set_clickable(not item.value().disabled());
-                        } else
-                            _rects.at(idx)->set_clickable(true);
+                    {
+                        auto ctx = e->OpenContext();
                         
-                        _texts.at(idx)->set_txt(item.value());
-                        if constexpr(has_detail<T>) {
-                            _details.at(idx)->set_txt(item.value().detail());
-                        }
+                        size_t first_visible = (size_t)max(0.f, floorf(e->scroll_offset().y / item_height));
+                        size_t last_visible = (size_t)floorf((e->scroll_offset().y + e->height()) / item_height);
                         
-                        if constexpr (has_color_function<T>) {
-                            if (item.value().color() != Transparent)
-                                _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
-                            else
-                                _texts.at(idx)->set_text_color(_text_color);
+                        rect_to_idx.clear();
+                        
+                        for(size_t i=first_visible, idx = 0; i<=last_visible && i<_items.size() && idx < _rects.size(); i++, idx++) {
+                            auto& item = _items[i];
+                            const float y = i * item_height;
+                            _rects.at(idx)->set_pos(Vec2(1, y + 1));
+                            if constexpr(has_disabled<T>) {
+                                _rects.at(idx)->set_clickable(not item.value().disabled());
+                            } else
+                                _rects.at(idx)->set_clickable(true);
                             
-                        } else if constexpr(has_disabled<T>) {
-                            if(item.value().disabled())
-                                _texts.at(idx)->set_text_color(_text_color.exposureHSL(0.5).alpha(50));
-                            else
-                                _texts.at(idx)->set_text_color(_text_color);
-                            
+                            _texts.at(idx)->set_txt(item.value());
                             if constexpr(has_detail<T>) {
-                                if(item.value().disabled())
-                                    _details.at(idx)->set(TextClr{ (Color)_detail_color.alpha(max(10,_detail_color.a * 0.75))});
-                                else
-                                    _details.at(idx)->set(TextClr{ (Color)_detail_color });
+                                _details.at(idx)->set_txt(item.value().detail());
                             }
-                        }
-                        
-                        if constexpr (has_font_function<T>) {
-                            if (item.value().font().size > 0) {
-                                _texts.at(idx)->set_default_font(item.value().font());
+                            
+                            if constexpr (has_color_function<T>) {
+                                if (item.value().color() != Transparent)
+                                    _texts.at(idx)->set_text_color(Color::blend(_text_color.alpha(130), item.value().color().alpha(125)));
+                                else
+                                    _texts.at(idx)->set_text_color(_text_color);
+                                
+                            } else if constexpr(has_disabled<T>) {
+                                if(item.value().disabled())
+                                    _texts.at(idx)->set_text_color(_text_color.exposureHSL(0.5).alpha(50));
+                                else
+                                    _texts.at(idx)->set_text_color(_text_color);
+                                
                                 if constexpr(has_detail<T>) {
-                                    _details.at(idx)->set_font(detail_font(item.value().font()));
+                                    if(item.value().disabled())
+                                        _details.at(idx)->set(TextClr{ (Color)_detail_color.alpha(max(10,_detail_color.a * 0.75))});
+                                    else
+                                        _details.at(idx)->set(TextClr{ (Color)_detail_color });
                                 }
                             }
-                        } else if constexpr(has_detail<T>) {
-                            _details.at(idx)->set_font(detail_font(_item_font));
-                        }
-                        
-                        rect_to_idx[_rects.at(idx)] = i;
-                        
-                        e->advance_wrap(*_rects.at(idx));
-                        e->advance_wrap(*_texts.at(idx));
-                        if constexpr(has_detail<T>) {
-                            e->advance_wrap(*_details.at(idx));
-                        }
-                        
-                        if constexpr(has_detail<T>) {
-                            _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5));
                             
-                            if(_item_font.align == Align::Center) {
-                                float ycenter = y + item_height * 0.5;
-                                float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
-                                //Print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
-                                
-                                _texts.at(idx)->set_pos(Vec2{
-                                    (width() - _texts.at(idx)->width()) * 0.5f,
-                                    ycenter - _texts.at(idx)->height() + middle
-                                });
-                                
-                                _details.at(idx)->set_pos(Vec2{
-                                    round(width() * 0.5_F),
-                                    ycenter + _details.at(idx)->height() - middle
-                                });
-                                
-                            } else if(_item_font.align == Align::Left) {
-                                _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
-                                _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + _item_padding);
-                            } else {
-                                _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y * 0.5));
-                                _details.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+                            if constexpr (has_font_function<T>) {
+                                if (item.value().font().size > 0) {
+                                    _texts.at(idx)->set_default_font(item.value().font());
+                                    if constexpr(has_detail<T>) {
+                                        _details.at(idx)->set_font(detail_font(item.value().font()));
+                                    }
+                                }
+                            } else if constexpr(has_detail<T>) {
+                                _details.at(idx)->set_font(detail_font(_item_font));
                             }
-                        } else {
-                            _texts.at(idx)->set_max_size(Size2(-1, item_height));
                             
-                            if(_item_font.align == Align::Center)
-                                _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
-                            else if(_item_font.align == Align::Left)
-                                _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
-                            else
-                                _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+                            rect_to_idx[_rects.at(idx).get()] = i;
+                            
+                            e->advance_wrap(*_rects.at(idx));
+                            e->advance_wrap(*_texts.at(idx));
+                            if constexpr(has_detail<T>) {
+                                e->advance_wrap(*_details.at(idx));
+                            }
+                            
+                            if constexpr(has_detail<T>) {
+                                _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5));
+                                
+                                if(_item_font.align == Align::Center) {
+                                    float ycenter = y + item_height * 0.5;
+                                    float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
+                                    //Print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
+                                    
+                                    _texts.at(idx)->set_pos(Vec2{
+                                        (width() - _texts.at(idx)->width()) * 0.5f,
+                                        ycenter - _texts.at(idx)->height() + middle
+                                    });
+                                    
+                                    _details.at(idx)->set_pos(Vec2{
+                                        round(width() * 0.5_F),
+                                        ycenter + _details.at(idx)->height() - middle
+                                    });
+                                    
+                                } else if(_item_font.align == Align::Left) {
+                                    _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
+                                    _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + _item_padding);
+                                } else {
+                                    _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y * 0.5));
+                                    _details.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+                                }
+                            } else {
+                                _texts.at(idx)->set_max_size(Size2(-1, item_height));
+                                
+                                if(_item_font.align == Align::Center)
+                                    _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
+                                else if(_item_font.align == Align::Left)
+                                    _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
+                                else
+                                    _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+                            }
+                        }
+                        
+                        if(_items.empty()) {
+                            if(not _placeholder_text.text().empty()) {
+                                _placeholder_text.set(Origin{0.5});
+                                _placeholder_text.set(Loc{width() * 0.5f, height() * 0.5f});
+                                e->advance_wrap(_placeholder_text);
+                            }
                         }
                     }
-                    
-                    if(_items.empty()) {
-                        if(not _placeholder_text.text().empty()) {
-                            _placeholder_text.set(Origin{0.5});
-                            _placeholder_text.set(Loc{width() * 0.5f, height() * 0.5f});
-                            e->advance_wrap(_placeholder_text);
-                        }
-                    }
-                    
-                    e->end();
                     
                     if(e->scroll_enabled()) {
                         const float last_y = item_height * (_items.size()-1);
@@ -830,7 +834,7 @@ namespace cmn::gui {
                     }
                     
                     if(_foldable) {
-                        begin();
+                        auto ctx = OpenContext();
                         add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
                         
                         if(not _label_text)
@@ -854,17 +858,15 @@ namespace cmn::gui {
                             _list.set_pos(Vec2(x, height()));
                         } else
                             _list.set_pos(Vec2(x, -_list.height()));
-                        
-                        end();
                     }
                 }
             }
 
             Color base_color;
-            for (auto rect : _rects) {
-                if (not rect_to_idx.contains(rect))
+            for (auto &rect : _rects) {
+                if (not rect_to_idx.contains(rect.get()))
                     continue;
-                auto idx = rect_to_idx[rect];
+                auto idx = rect_to_idx[rect.get()];
                 _items[idx].set_hovered(rect->hovered());
 
                 if constexpr (has_tooltip<T>) {
@@ -886,7 +888,7 @@ namespace cmn::gui {
                         base_color = base_color.exposure(1.5);
                 }
 
-                if (rect->pressed() || (_stays_toggled && (long)rect_to_idx[rect] == _last_selected_item))
+                if (rect->pressed() || (_stays_toggled && (long)rect_to_idx[rect.get()] == _last_selected_item))
                     rect->set_fillclr(base_color.exposure(0.15f));
                 else if (rect->hovered())
                     rect->set_fillclr(base_color.exposure(1.25f));

@@ -661,11 +661,11 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
         return false;
     }
     
-    assert(not o || o.ptr);
+    assert(not o || o.get_smart());
     if(auto lock = state._current_object_handler.lock();
        lock && o)
     {
-        lock->select(o.ptr);
+        lock->select(o.get_smart());
     } else if(lock) {
         lock->reset();
     } else {
@@ -751,10 +751,9 @@ void DynamicGUI::reload(DrawStructure& graph) {
             
             if(tmp._settings_was_selected)
             {
-                if(tmp._settings_tooltip
-                   && tmp._settings_tooltip->is_staged())
+                if(current_object_handler->_tooltip_object
+                   && current_object_handler->_tooltip_object->is_staged())
                 {
-                    //Print("Is staged.");
                     tmp._mark_for_selection = last_selected;
                 }
             }
@@ -848,7 +847,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     //! clear variable state
     current_object_handler->_variable_values.clear();
     
-#ifndef NDEBUG
+//#ifndef NDEBUG
     if(_debug_timer.elapsed() > 10) {
         size_t overall_count{0};
         
@@ -878,7 +877,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         Print("[dyn::update] #objects estimate: ", overall_count);
         _debug_timer.reset();
     }
-#endif
+//#endif
     
     context.system_variables().emplace(VarFunc("hovered", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
@@ -1038,75 +1037,11 @@ void DynamicGUI::clear() {
 }
 
 void update_tooltips(DrawStructure& graph, State& state) {
-    if(not state._settings_tooltip) {
-        state._settings_tooltip = Layout::Make<SettingsTooltip>();
-    }
+    auto handler = state._current_object_handler.lock();
+    if(not handler)
+        return;
     
-    Layout::Ptr found = nullptr;
-    std::string name{"<null>"};
-    std::unique_ptr<sprite::Reference> ref;
-    
-    /// TODO: This does not walk all sub-state objects!
-    for(auto & [key, obj] : state._collectors->objects) {
-        if(not obj || not obj->_text_field)
-            continue;
-        
-        auto &ptr = obj->_text_field;
-        ptr->text()->set_clickable(true);
-        
-        if(ptr->representative()->parent()
-           && ptr->representative()->parent()->stage()
-           && ptr->representative()->hovered() /*&& (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))*/)
-        {
-            //found = ptr->representative();
-            if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
-                auto p = dynamic_cast<const LabeledCombobox*>(ptr.get());
-                auto hname = p->highlighted_parameter();
-                if(hname.has_value()) {
-                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
-                    name = hname.value();
-                    found = ptr->representative();
-                    break;
-                } else {
-                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with nothing highlighted.");
-                    hname = p->selected_parameter();
-                    if(hname.has_value()) {
-                        name = hname.value();
-                        found = ptr->representative();
-                        break;
-                    }
-                }
-            } else {
-                found = ptr->representative();
-                auto r = ptr->ref();
-                name = r.valid() ? r.name() : "<null>";
-                break;
-            }
-            //if(ptr->representative().is<Combobox>())
-                //ptr->representative().to<Combobox>()-
-        }
-    }
-    
-    if(found) {
-        ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
-    }
-
-    if(found && ref && found->hovered()) {
-        //auto ptr = state._settings_tooltip.to<SettingsTooltip>();
-        //if(ptr && ptr->other()
-        //   && (not ptr->other()->parent() || not ptr->other()->parent()->stage()))
-        {
-            // dont draw
-            //state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
-        } //else {
-            state._settings_tooltip.to<SettingsTooltip>()->set_parameter(name);
-            state._settings_tooltip.to<SettingsTooltip>()->set_other(found.get());
-            graph.wrap_object(*state._settings_tooltip);
-        //}
-        
-    } else {
-        state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
-    }
+    handler->update_tooltips(graph);
 }
 
 }

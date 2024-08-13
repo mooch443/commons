@@ -130,6 +130,12 @@ concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::
 template<typename T>
 concept integral_number = (!_clean_same<bool, T>) && std::integral<T>;
 
+template<typename T, typename... Args>
+constexpr bool contains_type() {
+    // Check if any of the types in Args... match T
+    return (std::is_same_v<std::remove_cv_t<std::remove_reference_t<Args>>, T> || ...);
+}
+
 namespace check_abs_detail {
     template<typename T>
     concept has_coordinates = requires(T t) {

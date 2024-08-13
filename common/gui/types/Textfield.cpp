@@ -482,7 +482,7 @@ void Textfield::set_postfix(const std::string &p) {
 }
     
     void Textfield::update() {
-        begin();
+        auto ctx = OpenContext();
         
         static constexpr const Color BrightRed(255,150,150,255);
         Color base_color   = fill_color(),
@@ -655,8 +655,6 @@ void Textfield::set_postfix(const std::string &p) {
         
         if(selected() && !read_only())
             advance_wrap(_cursor);
-        
-        end();
     }
     
     void Textfield::move_cursor(Float2_t mx) {

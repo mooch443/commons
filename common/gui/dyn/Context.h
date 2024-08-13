@@ -3,8 +3,11 @@
 #include <gui/dyn/VarProps.h>
 #include <misc/colors.h>
 #include <gui/GuiTypes.h>
+#include <gui/types/SettingsTooltip.h>
 
 namespace cmn::gui::dyn {
+
+class LabeledField;
 
 struct Action;
 struct CustomElement;
@@ -35,6 +38,9 @@ struct CurrentObjectHandler {
     std::unordered_map<std::string, std::weak_ptr<Drawable>, MultiStringHash, MultiStringEqual> _named_entities;
     std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
     
+    std::shared_ptr<SettingsTooltip> _tooltip_object;
+    std::vector<std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>> _textfields;
+    
     void reset();
     void select(const std::shared_ptr<Drawable>&);
     void register_named(const std::string& name, std::weak_ptr<Drawable> ptr);
@@ -44,6 +50,14 @@ struct CurrentObjectHandler {
     
     std::shared_ptr<Drawable> retrieve_named(std::string_view name);
     std::shared_ptr<Drawable> get() const;
+    
+    void add_tooltip(DrawStructure&);
+    void set_tooltip(const std::string_view& parameter, std::weak_ptr<Drawable> other);
+    void set_tooltip(std::nullptr_t);
+    
+    void register_tooltipable(std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>);
+    void unregister_tooltipable(std::weak_ptr<LabeledField>);
+    void update_tooltips(DrawStructure&);
 };
 
 struct Context {

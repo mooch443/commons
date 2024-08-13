@@ -723,6 +723,12 @@ bool SectionInterface::is_animating() noexcept {
         set_dirty();
         _bounds_changed = true;
         
+        if(parent() && (parent()->type() == Type::SECTION
+                        || parent()->type() == Type::ENTANGLED))
+        {
+            static_cast<SectionInterface*>(parent())->children_rect_changed();
+        }
+        
         if(parent() && parent()->type() == Type::ENTANGLED) {
             static_cast<Entangled*>(parent())->set_content_changed(true);
         }
@@ -881,7 +887,7 @@ bool SectionInterface::is_animating() noexcept {
             Drawable::set_size(size);
             
             if(!size.Equals(c)) {
-                if(origin() != Vec2(0, 0))
+                //if(origin() != Vec2(0, 0))
                     children_rect_changed();
             }
         }
@@ -1045,6 +1051,7 @@ void SectionInterface::set_z_index(int index) {
         _stage = s;
         clear_cache();
         set_dirty();
+        children_rect_changed();
     }
     
     void SectionInterface::clear_parent_dont_check() {

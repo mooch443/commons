@@ -36,7 +36,7 @@ namespace cmn::gui {
         GETTER(float, row_height);
         
     public:
-        List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});
+        List(const Bounds& size, const std::string& title, std::vector<std::shared_ptr<Item>>&& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});
         virtual ~List() override;
         
         using Entangled::set;
@@ -59,7 +59,7 @@ namespace cmn::gui {
         
         void set_row_height(float v);
         void on_toggle(std::function<void()> fn);
-        void set_items(std::vector<std::shared_ptr<Item>> items);
+        void set_items(std::vector<std::shared_ptr<Item>>&& items);
         void set_title(const std::string& title);
         void select_item(long ID);
         void set_selected(long ID, bool selected);

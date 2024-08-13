@@ -4,7 +4,7 @@
 namespace cmn::gui {
 
 SettingsTooltip::SettingsTooltip(
-     Drawable* ptr,
+     std::weak_ptr<Drawable> ptr,
      const sprite::Map* map,
      const GlobalSettings::docs_map_t* docs)
   : Tooltip(ptr, 400), map(map), docs(docs)

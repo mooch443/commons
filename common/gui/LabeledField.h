@@ -53,6 +53,8 @@ private:
     std::string _ref;
     //sprite::Reference _ref;
     CallbackCollection _callback_id;
+    CallbackManagerImpl<void> _delete_callbacks;
+    
     mutable std::mutex _ref_mutex;
     
 protected:
@@ -69,6 +71,10 @@ public:
     sprite::Reference ref() const {
         std::unique_lock guard(_ref_mutex);
         return settings_map()[_ref];
+    }
+    
+    auto register_delete_callback(auto&& fn) {
+        return _delete_callbacks.registerCallback(std::forward<decltype(fn)>(fn));
     }
     
     LabeledField(GUITaskQueue_t*, const std::string& name);

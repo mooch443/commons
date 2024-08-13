@@ -232,7 +232,7 @@ int main(int argc, char**argv) {
         Print("Got: ", soft);
     }
     try {
-        throw CustomException(type<std::invalid_argument>, "Test",argc,argv);
+        throw CustomException(type_v<std::invalid_argument>, "Test",argc,argv);
     } catch(const std::invalid_argument& e) {
         Print("Got: ",e);
     }

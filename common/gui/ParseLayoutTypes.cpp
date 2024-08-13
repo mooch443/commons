@@ -136,7 +136,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     
     if(not name.empty()) {
         ptr->set_name(name);
-        assert(ptr.ptr);
+        assert(ptr.get_smart());
         
         auto lock = state._current_object_handler.lock();
         if(lock) {
@@ -147,7 +147,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                 FormatWarning("Duplicate entry for ", name, ": ", n.get(), " vs. ", ptr.get());
             }*/
 #endif
-            lock->register_named(name, std::weak_ptr(ptr.ptr));
+            lock->register_named(name, std::weak_ptr(ptr.get_smart()));
         }
     }
     
@@ -592,6 +592,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         std::vector<Layout::Ptr> objs;
         ref->add_to(objs);
         ptr.to<HorizontalLayout>()->set(std::move(objs));
+        
+        if(auto handler = state._current_object_handler.lock();
+           handler)
+        {
+            handler->register_tooltipable(ref, ptr.get_smart());
+            ref->register_delete_callback([_handler = state._current_object_handler, ptr = std::weak_ptr(ref)]()
+            {
+                auto handler = _handler.lock();
+                if(not handler)
+                    return;
+
+                auto lock = ptr.lock();
+                if(not lock)
+                    return;
+
+                handler->unregister_tooltipable(lock);
+            });
+        }
     }
     
     return ptr;

@@ -1106,9 +1106,6 @@ _SoftException(cmn::source_location loc, const Args& ...args) -> _SoftException<
 
 #define SoftException(...) _SoftException(cmn::source_location::current(), __VA_ARGS__)
 
-template <typename T> struct type_t {};
-template <typename T> inline type_t<T> type{};
-
 template< class T, typename... Args>
 struct CustomException : T {
     CustomException(type_t<T>, const Args& ...args, cmn::source_location info = cmn::source_location::current()) noexcept(false)

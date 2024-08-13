@@ -25,9 +25,8 @@ void ErrorElement::update() {
     _text->set_default_font(_settings.font);
     //auto_size();
     
-    begin();
+    auto ctx = OpenContext();
     advance_wrap(*_text);
-    end();
 }
 
 void ErrorElement::set(attr::Str content) {

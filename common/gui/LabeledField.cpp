@@ -12,13 +12,13 @@ class PathArrayView : public VerticalLayout {
 public:
     StaticText* text{nullptr};
     Drawable* control{nullptr};
-    void update_layout() override {
+    void _update_layout() override {
         //set(LineClr{Red});
         //Print("Updating layout.");
         if(text && control) {
             //text->set(SizeLimit{control->width(), control->height()});
         }
-        VerticalLayout::update_layout();
+        VerticalLayout::_update_layout();
     }
 };
 }
@@ -78,6 +78,7 @@ void LabeledField::replace_docs(const std::string &docs) {
 LabeledField::~LabeledField() {
     if(_callback_id)
         settings_map().unregister_callbacks(std::move(_callback_id));
+    _delete_callbacks.callAll();
 }
 
 std::string LabeledField::toStr() const {
@@ -316,28 +317,30 @@ _list(std::make_shared<gui::List>(
     
     //_list->textfield()->set_font(Font(0.7f));
     //_list->set(Font(0.7f));
-    std::vector<std::shared_ptr<gui::Item>> items;
-    long index{0};
-    auto r = ref();
-    if(r.is_type<bool>()) {
-        items = {
-            std::make_shared<TextItem>("false", 0),
-            std::make_shared<TextItem>("true", 1)
-        };
-        index = not _invert ?
-                    (r.value<bool>() ? 1 : 0)
-                :   (r.value<bool>() ? 0 : 1);
-        
-    } else {
-        assert(r.get().is_enum());
-        
-        for(auto &name : r.get().enum_values()()) {
-            items.push_back(std::make_shared<TextItem>(name));
+    {
+        std::vector<std::shared_ptr<gui::Item>> items;
+        long index{0};
+        auto r = ref();
+        if(r.is_type<bool>()) {
+            items = {
+                std::make_shared<TextItem>("false", 0),
+                std::make_shared<TextItem>("true", 1)
+            };
+            index = not _invert ?
+            (r.value<bool>() ? 1 : 0)
+            :   (r.value<bool>() ? 0 : 1);
+            
+        } else {
+            assert(r.get().is_enum());
+            
+            for(auto &name : r.get().enum_values()()) {
+                items.push_back(std::make_shared<TextItem>(name));
+            }
+            index = narrow_cast<long>(r.get().enum_index()());
         }
-        index = narrow_cast<long>(r.get().enum_index()());
+        _list->set_items(std::move(items));
+        _list->select_item(index);
     }
-    _list->set_items(items);
-    _list->select_item(index);
     /*_list->on_select([this](auto index, auto) {
         if(index < 0)
             return;
@@ -588,7 +591,7 @@ void LabeledPath::asyncRetrieve(std::function<std::optional<file::Path>()> fn) {
                         _files.insert(files.begin(), files.end());
                     }
                     
-                    enqueue([weakdown = std::weak_ptr{_dropdown.ptr}](auto, auto&) {
+                    enqueue([weakdown = std::weak_ptr{_dropdown.get_smart()}](auto, auto&) {
                         auto dropdown = weakdown.lock();
                         if(not dropdown)
                             return;
@@ -942,7 +945,7 @@ void LabeledPathArray::updateDropdownItems() {
             for (auto& m : matches)
                 (void)m.is_folder(); // cache is_folder
 
-            enqueue([weakdown = std::weak_ptr{_dropdown.ptr}](auto, auto&) {
+            enqueue([weakdown = std::weak_ptr{_dropdown.get_smart()}](auto, auto&) {
                 auto dropdown = weakdown.lock();
                 if(not dropdown)
                     return;

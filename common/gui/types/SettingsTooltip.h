@@ -11,7 +11,7 @@ class SettingsTooltip : public Tooltip {
     std::string _param;
     
 public:
-    SettingsTooltip(Drawable* ptr = nullptr,
+    SettingsTooltip(std::weak_ptr<Drawable> ptr = {},
                     const sprite::Map* map = nullptr,
                     const GlobalSettings::docs_map_t* docs = nullptr);
     void set_parameter(const std::string& name);

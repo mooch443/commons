@@ -219,7 +219,7 @@ struct Range {
     {
         auto parts = util::parse_array_parts(util::truncate(str));
         if (parts.size() != 2) {
-            throw CustomException(type<std::invalid_argument>,"Illegal Rangel format.");
+            throw CustomException(type_v<std::invalid_argument>,"Illegal Rangel format.");
         }
 
         auto x = Meta::template fromStr<T>(parts[0]);

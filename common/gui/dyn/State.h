@@ -13,16 +13,13 @@ class LayoutContext;
 struct CurrentObjectHandler;
 
 //#if defined(_MSC_VER) && _MSC_VER <= 1930
-    template <class T> struct type {};
-    template <class T> constexpr type<T> type_v{};
-
     template <class T, class...Ts, template<class...> class Tp>
-    constexpr inline bool is_one_of(type<Tp<Ts...>>, type<T>) {
+    constexpr inline bool is_one_of(type_t<Tp<Ts...>>, type_t<T>) {
         return (std::is_same_v<Ts, T> || ...);
     }
 
     template <typename T, typename Variant>
-    concept is_in_variant = is_one_of(type<Variant>{}, type<T>{});
+    concept is_in_variant = is_one_of(type_t<Variant>{}, type_t<T>{});
 /*#else
     template <typename T, typename Variant>
     concept is_in_variant = requires (Variant v) {
@@ -145,7 +142,7 @@ struct HashedObject {
     
     std::optional<std::function<void(DrawStructure&)>> display_fn;
     std::optional<std::string> chosen_image;
-    std::unique_ptr<LabeledField> _text_field;
+    std::shared_ptr<LabeledField> _text_field;
     std::optional<VarCache> _var_cache;
     PatternMapType patterns;
     Layout::Ptr current;
@@ -181,7 +178,6 @@ struct HashedObject {
 
 struct State {
     //robin_hood::unordered_map<size_t, robin_hood::unordered_map<std::string, Pattern>> patterns;
-    Layout::Ptr _settings_tooltip;
     std::unordered_map<std::string, std::tuple<size_t, Image::Ptr>> _image_cache;
     
     std::weak_ptr<CurrentObjectHandler> _current_object_handler;

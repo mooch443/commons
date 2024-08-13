@@ -11,8 +11,7 @@ namespace cmn::gui {
         if(!content_changed())
             return;
         
-        begin();
-        
+        auto ctx = OpenContext();
         using column_t = size_t;
         //using row_t = size_t;
         
@@ -20,8 +19,6 @@ namespace cmn::gui {
         for(const auto & [index, title] : _columns) {
             title_bounds[index] = add<Text>(Str{title}, TextClr{White}, Font(_default_font.size * 1.25, Style::Bold))->bounds();
         }
-        
-        end();
     }
     
     void Table::add_column(Column ) {

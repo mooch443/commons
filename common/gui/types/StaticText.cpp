@@ -180,7 +180,7 @@ void StaticText::set_default_font(Font font) {
         if(_content_changed && not _begun /* && not _content_changed_while_updating*/) {
             _content_changed = false;
             
-            begin();
+            auto ctx = OpenContext();
             
             // find enclosing rectangle dimensions
             Vec2 m(0);
@@ -221,6 +221,8 @@ void StaticText::set_default_font(Font font) {
                     m.y = min(m.y, _settings.max_size.y);
                 }
             }
+            
+            //Print("Setting size of ", _settings.txt, " to ", m);
             set_size(m);
             
             if(_settings.fade_out > 0) {
@@ -237,8 +239,6 @@ void StaticText::set_default_font(Font font) {
                                ? bg_line_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
                                : Transparent);
             
-            end();
-
             set_content_changed(false);
         }
     }

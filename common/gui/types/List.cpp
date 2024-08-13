@@ -8,7 +8,7 @@ namespace cmn::gui {
 
     }
     
-    List::List(const Bounds& size, const std::string& title, const std::vector<std::shared_ptr<Item>>& items, const std::function<void(List*, const Item&)>& on_click)
+    List::List(const Bounds& size, const std::string& title, std::vector<std::shared_ptr<Item>>&& items, const std::function<void(List*, const Item&)>& on_click)
     : //gui::DrawableCollection("List"+std::to_string((long)this)),
         _title(Str{title}, TextClr(White), _label_font),
         _title_background(),
@@ -27,7 +27,7 @@ namespace cmn::gui {
         //set_bounds({size.pos(), Size2(size.width, (_folded ?  0 : _row_height * _items.size()) + margin*2 + (title_height+title_margin*3))});
         set_bounds(Bounds(size.pos(), Size2(size.width, _row_height)));
         set_background(Transparent, Black.alpha(255));
-        set_items(items);
+        set_items(std::move(items));
         set_clickable(true);
         //set_scroll_enabled(true);
         
@@ -90,7 +90,7 @@ namespace cmn::gui {
         });
     }
     
-    void List::set_items(std::vector<std::shared_ptr<Item>> items) {
+    void List::set_items(std::vector<std::shared_ptr<Item>>&& items) {
         for(size_t i=0; i<items.size(); ++i) {
             if(items[i]->ID() == -1)
                 items[i]->set_ID(i);
@@ -109,11 +109,11 @@ namespace cmn::gui {
         if(clean_list)
             return;
         
-        DrawStructure::Lock_t *guard = NULL;
+        std::unique_ptr<DrawStructure::Lock_t> guard = nullptr;
         if(stage())
-            guard = new GUI_LOCK(stage()->lock());
+            guard = std::make_unique<DrawStructure::Lock_t>(stage()->lock());
         
-        _items = items;
+        _items = std::move(items);
         _selected_rect = NULL;
         
         std::function<void(const std::shared_ptr<Rect>&, const std::shared_ptr<Item>&)>
@@ -127,9 +127,6 @@ namespace cmn::gui {
             _selected_item = -1;
         
         update_sizes();
-        
-        if(guard)
-            delete guard;
     }
 
     void List::update_sizes() {
@@ -359,7 +356,8 @@ void List::on_click(const Item * item) {
         if(!content_changed())
             return;
         
-        begin();
+        /// begin a local context
+        auto ctx = OpenContext();
         
         Vec2 offset(Vec2(0, 0));
         float inversion_correct_height = inverted ? -_row_height : _row_height;
@@ -369,7 +367,6 @@ void List::on_click(const Item * item) {
         
         if(foldable() && folded()) {
             draw_title();
-            end();
             return;
         }
         
@@ -401,7 +398,6 @@ void List::on_click(const Item * item) {
         }
         
         draw_title();
-        end();
     }
 
     void List::set_size(const Size2& _size) {
@@ -530,7 +526,6 @@ void List::set(ItemFont_t font) {
     if(font != _item_font) {
         _item_font = font;
         update_sizes();
-        set_content_changed(true);
     }
 }
 void List::set(LabelFont_t font) {
@@ -540,7 +535,6 @@ void List::set(LabelFont_t font) {
         _label_font = font;
         _title.set(_label_font);
         update_sizes();
-        set_content_changed(true);
     }
 }
 

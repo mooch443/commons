@@ -354,7 +354,7 @@ namespace cmn::gui {
                 Timer timer;
                 const auto& size = bounds();
                 
-                begin();
+                auto ctx = OpenContext();
                 add<Rect>(Box(Vec2(), this->size()), FillClr{Black.alpha(125)});
                 
                 if(!_title.empty())
@@ -458,8 +458,6 @@ namespace cmn::gui {
                         bar_pos.x += padding + element.x;
                     }
                 }
-                
-                end();
                 
                 _needs_update = false;
                 

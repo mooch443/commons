@@ -2,26 +2,32 @@
 #include <gui/DrawStructure.h>
 
 namespace cmn::gui {
-    Tooltip::Tooltip(Drawable* other, float max_width)
-          : _other(other),
-            _text(SizeLimit(max_width > 0 || !_other
-                            ? max_width
-                            : _other->width(), -1),
-                Font(0.6),
-                FillClr{Black.alpha(220)},
-                LineClr{100,175,250,200},
-                Margins{10,10,10,10}
-            ),
+    Tooltip::Tooltip(std::nullptr_t, float max_width) : Tooltip(std::weak_ptr<Drawable>{}, max_width) { }
+    Tooltip::Tooltip(std::weak_ptr<Drawable> other, float max_width)
+          : _other(std::move(other)),
             _max_width(max_width)
     {
-        set_text("");
+        auto lock = _other.lock();
+        _text.create(
+            Str{},
+            SizeLimit(max_width > 0 || !lock
+                ? max_width
+                : lock->width(), -1),
+            Font(0.6),
+            FillClr{Black.alpha(220)},
+            LineClr{100,175,250,200},
+            Margins{10,10,10,10}
+        );
         set_origin(Vec2(0, 1));
         _text.set_clickable(false);
         set_z_index(15);
     }
 
-    void Tooltip::set_other(Drawable* other) {
-        if(other == _other)
+    void Tooltip::set_other(std::weak_ptr<Drawable> other) {
+        auto lock = _other.lock();
+        auto lock2 = other.lock();
+        
+        if(lock == lock2)
             return;
         
         _other = other;
@@ -53,9 +59,8 @@ namespace cmn::gui {
             return;
         }
         
-        begin();
+        auto ctx = OpenContext();
         advance_wrap(_text);
-        end();
         
         set_bounds(Bounds(mp, _text.size() + Vec2(5, 2) * 2));
     }

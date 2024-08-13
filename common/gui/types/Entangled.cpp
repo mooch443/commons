@@ -206,7 +206,8 @@ void Entangled::on_visibility_change(bool visible) {
 }
 
     void Entangled::begin() {
-        if(_begun) {
+        bool expected = false;
+        if(not _begun.compare_exchange_strong(expected, true)) {
             print_stacktrace();
             throw U_EXCEPTION("Cannot begin twice.");
         }

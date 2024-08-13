@@ -426,24 +426,27 @@ protected:
         }
         
         template<typename... Args> void create(Args... args) {
-            set(Origin(0, 0));
+            if constexpr(not contains_type<Origin, Args...>()) {
+                switch(_settings.font.align) {
+                    case Align::Center:
+                        set(Origin(0.5));
+                        break;
+                    case Align::Right:
+                        set(Origin(1, 0));
+                        break;
+                    case Align::VerticalCenter:
+                        set(Origin(0, 0.5));
+                        break;
+                        
+                    default:
+                        set(Origin(0, 0));
+                        break;
+                }
+            }
             
             (set(std::forward<Args>(args)), ...);
             
-            switch(_settings.font.align) {
-                case Align::Center:
-                    set(Origin(0.5));
-                    break;
-                case Align::Right:
-                    set(Origin(1, 0));
-                    break;
-                case Align::VerticalCenter:
-                    set(Origin(0, 0.5));
-                    break;
-                    
-                default:
-                    break;
-            }
+            
         }
         
         virtual ~Text() {}
@@ -488,6 +491,8 @@ protected:
                 set_origin(Vec2());
             else if(font.align == Align::Right)
                 set_origin(Vec2(1, 0));
+            else if(font.align == Align::VerticalCenter)
+                set_origin(Vec2(0,0.5));
             //}
             
             _settings.font = font;

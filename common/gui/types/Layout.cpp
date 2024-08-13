@@ -6,35 +6,62 @@ namespace cmn::gui {
     void Layout::init() {
         set_content_changed(true);
         //set_background(Red.alpha(125));
-        if(not _objects.empty())
-            update();
+        set_layout_dirty();
+        update();
     }
 
     void Layout::set_parent(SectionInterface *parent) {
         if(parent != this->parent()) {
             Entangled::set_parent(parent);
+            set_layout_dirty();
             set_content_changed(true);
         }
     }
 
 void Layout::set_content_changed(bool changed) {
+    if(changed)
+        set_layout_dirty();
     Entangled::set_content_changed(changed);
 }
     
     void Layout::update() {
-        if(!content_changed())
-            return;
-        
-        begin();
-        for(auto& o : _objects) {
-            assert(o != nullptr);
-            advance_wrap(*o);
+        if(content_changed()) {
+            auto ctx = OpenContext();
+            for(auto& o : _objects) {
+                assert(o != nullptr);
+                advance_wrap(*o);
+            }
+            
+            set_content_changed(false);
         }
-        end();
         
         update_layout();
-        set_content_changed(false);
     }
+
+    void Layout::_update_layout() {
+    }
+
+void Layout::children_rect_changed() {
+    Entangled::children_rect_changed();
+    set_layout_dirty();
+    set_content_changed(true);
+}
+
+void Layout::set_bounds_changed() {
+    Entangled::set_bounds_changed();
+    set_layout_dirty();
+}
+
+void Layout::set_stage(gui::DrawStructure *s) {
+    if(s == _stage)
+        return;
+    
+    Entangled::set_stage(s);
+    
+    _layout_dirty = false;
+    set_layout_dirty();
+    update();
+}
     
     void Layout::add_child(size_t pos, Layout::Ptr ptr) {
         assert(ptr != nullptr);
@@ -54,7 +81,23 @@ void Layout::set_content_changed(bool changed) {
             _objects.push_back(ptr);
         
         set_content_changed(true);
+        set_layout_dirty();
         update();
+    }
+
+    void Layout::set_layout_dirty() {
+        if(_layout_dirty)
+            return;
+        
+        for(auto &ptr : objects())
+            if(ptr
+               && ptr->type() == Type::ENTANGLED
+               && dynamic_cast<const Layout*>(ptr.get()))
+            {
+                static_cast<Layout*>(ptr.get())->set_layout_dirty();
+            }
+        
+        _layout_dirty = true;
     }
 
     void Layout::replace_child(size_t pos, Layout::Ptr ptr) {
@@ -74,6 +117,7 @@ void Layout::set_content_changed(bool changed) {
             throw OutOfRangeException("Cannot add ", ptr.get(), " at ", pos, " which is out of bounds.");
         
         set_content_changed(true);
+        set_layout_dirty();
         update();
     }
 
@@ -90,13 +134,64 @@ void Layout::set_content_changed(bool changed) {
         _objects.insert(_objects.end(), ptr);
 
         set_content_changed(true);
+        set_layout_dirty();
         update();
     }
 
     void Layout::update_layout() {
-        //if(name() != "Entangled")
-        //    Print(name(), " updating.");
-        //auto_size();
+        if(not _layout_dirty)
+            return;
+        /*if(not _layout_dirty) {
+            //print_stacktrace();
+            bool child_dirty = false;
+            
+            for(auto &ptr : objects()) {
+                auto _c = ptr.get();
+                if(not _c)
+                    continue;
+                
+                if (_c->type() == Type::SINGLETON)
+                    _c = static_cast<const SingletonObject*>(_c)->ptr();
+                
+                if(_c
+                   && _c->type() == Type::ENTANGLED
+                   && dynamic_cast<const Layout*>(_c))
+                {
+                    if(static_cast<Layout*>(_c)->_layout_dirty) {
+                        child_dirty = true;
+                        break;
+                    }
+                }
+            }
+            
+            if(child_dirty) {
+                print_stacktrace();
+            }
+            return;
+        }*/
+        
+        //_layout_dirty = false;
+        
+        for(auto &ptr : objects()) {
+            auto _c = ptr.get();
+            if(not _c)
+                continue;
+            
+            if (_c->type() == Type::SINGLETON)
+                _c = static_cast<const SingletonObject*>(_c)->ptr();
+            
+            if(_c
+               && _c->type() == Type::ENTANGLED
+               && dynamic_cast<const Layout*>(_c))
+            {
+                static_cast<Layout*>(_c)->update();
+            }
+        }
+        
+        Print("Updating ", *this," (",no_quotes(name()),"): ", bounds());
+        if(_layout_dirty)
+            _update_layout();
+        _layout_dirty = false;
     }
 
     void Layout::set_children(std::vector<Layout::Ptr>&& objects) {
@@ -143,6 +238,7 @@ void Layout::set_content_changed(bool changed) {
         if(dirty) {
             _objects = std::move(next);
             set_content_changed(true);
+            set_layout_dirty();
             update();
         }
         
@@ -168,7 +264,8 @@ void Layout::set_content_changed(bool changed) {
         Entangled::remove_child(ptr.get());
 
         set_content_changed(true);
-        update();
+        set_layout_dirty();
+        //update();
     }
     
     void Layout::remove_child(gui::Drawable *ptr) {
@@ -177,23 +274,52 @@ void Layout::set_content_changed(bool changed) {
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it != _objects.end()) {
             set_content_changed(true);
+            set_layout_dirty();
             _objects.erase(it);
             return;
         }
         //Print("Cannot find object ",ptr);
     }
+
+void Layout::set_size(const Size2 &size) {
+    //if(not size.Equals(this->size())) {
+        Entangled::set_size(size);
+        
+    //    set_layout_dirty();
+    //    set_content_changed(true);
+    //}
+}
+
+void Layout::set_pos(const Vec2 &pos) {
+   // if(not pos.Equals(this->pos())) {
+        Entangled::set_pos(pos);
+        
+    //    set_layout_dirty();
+    //    set_content_changed(true);
+    //}
+}
+
+void Layout::set_bounds(const Bounds& bounds) {
+    //if(not bounds.Equals(this->bounds())) {
+        Entangled::set_bounds(bounds);
+        
+    //    set_layout_dirty();
+    //    set_content_changed(true);
+    //}
+}
     
     void Layout::set_margins(const attr::Margins &margins) {
         if(_margins == margins)
             return;
         
         _margins = margins;
-        update_layout();
+        set_layout_dirty();
         set_content_changed(true);
     }
     
     void Layout::clear_children() {
-        _objects.clear(); 
+        _objects.clear();
+        set_layout_dirty();
         set_content_changed(true);
         Entangled::clear_children(); 
     }
@@ -218,7 +344,7 @@ void Layout::set_content_changed(bool changed) {
     
     void HorizontalLayout::init()
     {
-        update();
+        Layout::init();
     }
 
 void HorizontalLayout::auto_size() {
@@ -228,7 +354,7 @@ void VerticalLayout::auto_size() {
     // do nothing
 }
     
-    void HorizontalLayout::update_layout() {
+    void HorizontalLayout::_update_layout() {
         float x = 0;
         float max_height = _margins.y + _margins.height;
         
@@ -242,12 +368,6 @@ void VerticalLayout::auto_size() {
             auto _c = c;
             if (c->type() == Type::SINGLETON)
                 _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            if (_c->type() == Type::ENTANGLED
-                && dynamic_cast<Layout*>(_c))
-            {
-                static_cast<Layout*>(_c)->update_layout();
-            }
 
             _c->update_bounds();
             
@@ -275,7 +395,6 @@ void VerticalLayout::auto_size() {
         
         if(not Size2(x, max(0, max_height)).Equals(size())) {
             set_size(Size2(x, max(0, max_height)));
-            set_content_changed(true);
         }
     }
     
@@ -284,15 +403,16 @@ void VerticalLayout::auto_size() {
             return;
         
         _policy = policy;
-        update_layout();
+        set_layout_dirty();
+        set_content_changed(true);
     }
     
     void VerticalLayout::init()
     {
-        update();
+        Layout::init();
     }
     
-    void VerticalLayout::update_layout() {
+    void VerticalLayout::_update_layout() {
         float y = 0;
         float max_width = _margins.x + _margins.width;
         
@@ -303,12 +423,6 @@ void VerticalLayout::auto_size() {
             auto _c = c;
             if (c->type() == Type::SINGLETON)
                 _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            if (_c->type() == Type::ENTANGLED
-                && dynamic_cast<Layout*>(_c))
-            {
-                static_cast<Layout*>(_c)->update_layout();
-            }
 
             _c->update_bounds();
             
@@ -337,7 +451,6 @@ void VerticalLayout::auto_size() {
         
         if(not Size2(max_width, max(0.f, y)).Equals(size())) {
             set_size(Size2(max_width, max(0.f, y)));
-            set_content_changed(true);
         }
     }
 
@@ -351,12 +464,6 @@ void VerticalLayout::auto_size() {
             auto _c = c;
             if (c->type() == Type::SINGLETON)
                 _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            if (_c->type() == Type::ENTANGLED
-                && dynamic_cast<Layout*>(_c))
-            {
-                static_cast<Layout*>(_c)->update();
-            }
 
             auto bds = _c->local_bounds();
             mi = min(bds.pos(), mi);
@@ -376,7 +483,8 @@ void VerticalLayout::auto_size() {
             return;
         
         _policy = policy;
-        update_layout();
+        set_layout_dirty();
+        set_content_changed(true);
     }
 
 template<typename Lambda>
@@ -450,23 +558,25 @@ void GridLayout::init() {
             _last_hover = Vec2(e.hover.x, e.hover.y);
             //Print("hovered ", name(), " at ", _last_hover, " with ", e.hover.hovered, " ", (uint64_t)this);
             update_hover();
+            set_layout_dirty();
             set_content_changed(true);
         }
     });
     
-    update();
-    update_layout();
+    Layout::init();
 }
 
 void GridLayout::set(GridLayout::HPolicy policy) {
     if(policy != _settings.hpolicy) {
         _settings.hpolicy = policy;
+        set_layout_dirty();
         set_content_changed(true);
     }
 }
 void GridLayout::set(GridLayout::VPolicy policy) {
     if(policy != _settings.vpolicy) {
         _settings.vpolicy = policy;
+        set_layout_dirty();
         set_content_changed(true);
     }
 }
@@ -475,6 +585,7 @@ void GridLayout::set(attr::VerticalClr verticalClr) {
     if(verticalClr != _settings.verticalClr) {
         _settings.verticalClr = verticalClr;
         _vertical_rect->set(FillClr{(Color)verticalClr});
+        set_layout_dirty();
         set_content_changed(true);
     }
 }
@@ -483,6 +594,7 @@ void GridLayout::set(attr::HorizontalClr horizontalClr) {
     if(horizontalClr != _settings.horizontalClr) {
         _settings.horizontalClr = horizontalClr;
         _horizontal_rect->set(FillClr{(Color)horizontalClr});
+        set_layout_dirty();
         set_content_changed(true);
     }
 }
@@ -522,7 +634,7 @@ void GridLayout::update_hover() {
     }
 }
 
-void GridLayout::update_layout() {
+void GridLayout::_update_layout() {
     std::vector<float> max_col_widths, max_row_heights;
     GridInfo::GridBounds gridBounds;
 
@@ -646,30 +758,25 @@ void GridLayout::update_layout() {
 }
 
 void GridLayout::set_parent(SectionInterface * p) {
-    set_content_changed(true);
     Layout::set_parent(p);
-    update();
+    //update();
 }
 
 void GridLayout::update() {
-    if(!content_changed())
-        return;
-    
-    begin();
-    if(immediately_clickable() && hovered()) {
-        advance_wrap(*_vertical_rect);
-        advance_wrap(*_horizontal_rect);
+    if(content_changed()) {
+        auto ctx = OpenContext();
+        
+        if(immediately_clickable() && hovered()) {
+            advance_wrap(*_vertical_rect);
+            advance_wrap(*_horizontal_rect);
+        }
+        for(auto o : _objects)
+            advance_wrap(*o);
+
+        set_content_changed(false);
     }
-    for(auto o : _objects)
-        advance_wrap(*o);
-    end();
     
     update_layout();
-    set_content_changed(false);
-}
-
-void GridLayout::children_rect_changed() {
-    Layout::children_rect_changed();
 }
 
 void GridLayout::auto_size() {

@@ -50,15 +50,13 @@ void Combobox::update() {
         _value->add_to(objects);
     _layout.set_children(objects);
     
-    {
-        begin();
+    OpenContext([this](){
         advance_wrap(_layout);
-        end();
-    }
+    });
     
     _layout.update_layout();
     _layout.auto_size();
-    Entangled::set_size({_layout.width(), height()});
+    //Entangled::set_size({_layout.width(), height()});
 }
 
 void Combobox::set(ListDims_t dims) {

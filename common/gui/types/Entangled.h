@@ -22,6 +22,35 @@ namespace cmn::gui {
     //  OR WRAPPED OBJECTS AND CHILDREN WONT BE OFFICIALLY ADDED WITH THIS AS ITS
     //  PARENT.
     class Entangled : public SectionInterface {
+    private:
+        struct Context {
+            Entangled* _e;
+            Context(Entangled& e) : _e(&e) {
+                _e->begin();
+            }
+            ~Context() {
+                _e->end();
+            }
+        };
+        
+        friend struct Entangled::Context;
+        
+    public:
+        [[nodiscard("Discarding the context kind of goes against the concept")]]
+        inline Context OpenContext() {
+            return Context(*this);
+        }
+        
+        /// Just explicitly clearing all the children.
+        inline void ClearContext() {
+            Context{*this};
+        }
+        
+        inline void OpenContext(auto&& fn) {
+            Context ctx{*this};
+            fn();
+        }
+        
     protected:
         GETTER(std::vector<Drawable*>, current_children);
         GETTER(std::vector<Drawable*>, new_children);
@@ -87,10 +116,10 @@ namespace cmn::gui {
         template<typename T, typename = typename std::enable_if<std::is_convertible<T, const Drawable*>::value && std::is_pointer<T>::value>::type>
         T child(size_t index) const {
             if(index >= _current_children.size())
-                throw CustomException(cmn::type<std::invalid_argument>, "Item ",index," out of range.");
+                throw CustomException(cmn::type_v<std::invalid_argument>, "Item ",index," out of range.");
             auto ptr = dynamic_cast<T>(_current_children.at(index));
             if(!ptr)
-                throw CustomException(cmn::type<std::invalid_argument>, "Item ", index," of type ", _current_children.at(index)->type().name(), " cannot be converted to");
+                throw CustomException(cmn::type_v<std::invalid_argument>, "Item ", index," of type ", _current_children.at(index)->type().name(), " cannot be converted to");
             return ptr;
         }
         
@@ -111,11 +140,13 @@ namespace cmn::gui {
         //void deinit_child(bool erase, Drawable* d);
         //void deinit_child(bool erase, std::vector<Drawable*>::iterator it, Drawable* d);
         
-    public:
+    private:
         //! Begin delta update
         void begin();
         //! End delta update
-        virtual void end();
+        void end();
+        
+    public:
         //! Advance one step in delta update, by adding given
         //  Drawable (and trying to match it with current one).
         //Drawable* advance(Drawable *d);

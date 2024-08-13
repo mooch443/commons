@@ -67,13 +67,15 @@ void Button::init() {
         } else if(_settings.font.align == Align::Right) {
             _text.set_origin(Vec2(1, 0.5));
             _text.set_pos(Vec2(width() - 10, height() * 0.5) + offset);
+        } else if(_settings.font.align == Align::VerticalCenter) {
+            _text.set_origin(Vec2(0, 0.5));
+            _text.set_pos(Vec2(width() - 10, height() * 0.5) + offset);
         }
         _text.set(TextClr{text_clr});
         
         if(content_changed()) {
-            begin();
+            auto ctx = OpenContext();
             advance_wrap(_text);
-            end();
         }
     }
     

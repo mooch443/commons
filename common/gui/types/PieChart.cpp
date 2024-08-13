@@ -175,9 +175,8 @@ namespace cmn::gui {
     void PieChart::update() {
         update_triangles();
         
-        begin();
+        auto ctx = OpenContext();
         draw_slices();
-        end();
     }
     
     void PieChart::draw_slices() {

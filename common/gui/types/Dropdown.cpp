@@ -253,14 +253,13 @@ void Dropdown::init() {
         if(!content_changed())
             return;
         
-        begin();
+        auto ctx = OpenContext();
         if(_opened)
             advance_wrap(_list);
         if(_button)
             advance_wrap(*_button);
         else
             advance_wrap(*_textfield);
-        end();
     }
 
 Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
