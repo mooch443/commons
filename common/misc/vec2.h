@@ -3,7 +3,7 @@
 #include <commons.pc.h>
 
 namespace cmn {
-    using Float2_t = double;
+    using Float2_t = float;
 
     /// a constructor literal for the float2_t type
     constexpr inline Float2_t operator "" _F(long double value) {
