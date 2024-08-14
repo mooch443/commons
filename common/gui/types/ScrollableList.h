@@ -491,7 +491,7 @@ namespace cmn::gui {
         size_t highlighted_item() const {
             for(auto &r : _rects) {
                 if(r->hovered()) {
-                    size_t idx = rect_to_idx.count(r) ? rect_to_idx.at(r) : 0;
+                    size_t idx = rect_to_idx.count(r.get()) ? rect_to_idx.at(r.get()) : 0;
                     return idx;
                 }
             }
