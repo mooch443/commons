@@ -1587,11 +1587,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             auto font = _fonts.at(ptr->font().style);
             auto font_scale = ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
             
-            ImVec2 rounded(round(bds.x), round(bds.y));
+            Vec2 rounded(round(bds.x), round(bds.y));
             //Print(ptr->txt(), "scale = ", font_scale, " rounded = ", Vec2(rounded), " (", bds.pos(),")");
             
             if(ptr->shadow() > 0) {
-                Vec2 offset = Vec2(1.5_F * global_scale + font->ConfigData->GlyphOffset.y / font_scale).map([](auto x){return round(x);});
+                Vec2 offset = Vec2(1.5_F * global_scale + font->ConfigData->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
                 
                 list->AddText(font,
                               font_scale,

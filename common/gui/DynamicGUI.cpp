@@ -847,7 +847,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     //! clear variable state
     current_object_handler->_variable_values.clear();
     
-//#ifndef NDEBUG
+#ifndef NDEBUG
     if(_debug_timer.elapsed() > 10) {
         size_t overall_count{0};
         
@@ -877,7 +877,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         Print("[dyn::update] #objects estimate: ", overall_count);
         _debug_timer.reset();
     }
-//#endif
+#endif
     
     context.system_variables().emplace(VarFunc("hovered", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
