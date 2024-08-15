@@ -2,18 +2,10 @@
 
 #include <commons.pc.h>
 #include <misc/Image.h>
-#include <processing/LuminanceGrid.h>
+//#include <processing/LuminanceGrid.h>
+#include <processing/encoding.h>
 
 namespace cmn {
-    ENUM_CLASS(DifferenceMethod_t, absolute, sign, none);
-    /*enum class DifferenceMethod {
-        absolute,
-        sign,
-        none
-    };*/
-    using DifferenceMethod = DifferenceMethod_t::Class;
-
-    ENUM_CLASS(meta_encoding_t, gray, r3g3b2, rgb8);
 
     template <typename From, typename To>
     concept explicitly_convertible_to = requires(From from) {
