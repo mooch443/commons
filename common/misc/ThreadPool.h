@@ -90,50 +90,80 @@ namespace cmn {
         void wait_one();
     };
 
+template <typename F, typename Tuple, std::size_t i, std::size_t... I>
+constexpr bool check_invocability_with_void_ptr_impl(std::index_sequence<I...>) {
+    return (std::invocable<F, std::conditional_t<I == i, void*, std::tuple_element_t<I, Tuple>>...>);
+}
+
+template <typename F, typename ArgsTuple, std::size_t i>
+consteval bool is_generic_lambda() {
+    constexpr auto size = std::tuple_size_v<ArgsTuple>;
+    return []<std::size_t... I>(std::index_sequence<I...>) -> bool {
+        return (std::invocable<F, std::conditional_t<I == i, void*, std::tuple_element_t<I, ArgsTuple>>...>);
+        //return (check_invocability_with_void_ptr_impl<F, ArgsTuple, I>(sequence) || ...);
+    }(std::make_index_sequence<size>{});
+}
+
+template<std::size_t i, typename DefaultType, typename... Args>
+struct conditional_conversion {
+    template<typename F, typename Value>
+        requires (is_generic_lambda<F, std::tuple<Args...>, i>())
+    static constexpr DefaultType convert(Value value, F* = nullptr) {
+        return static_cast<DefaultType>(value);
+    }
+
+    template<typename F, typename Value>
+        requires (not is_generic_lambda<F, std::tuple<Args...>, i>())
+    static constexpr auto convert(Value value, F* = nullptr) {
+        return narrow_cast<std::tuple_element_t<i, typename detail::arg_types<F>::type>>(value);
+    }
+};
 
 template<typename F, typename Iterator, typename Pool>
 void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end, uint32_t threads = 0) {
     if(threads == 0)
         threads = (uint32_t)pool.num_threads();
-    int64_t i = 0, N;
+    
+    /// calculate how many items we have
+    /// been given by caller:
+    int64_t N;
     if constexpr(std::integral<Iterator>)
         N = end - start;
     else
         N = std::distance(start, end);
     
-    const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
-    int64_t enqueued{0};
-    Iterator nex = start;
-    std::exception_ptr ex;
+    /// catch special cases
+    /// if no items are provided, exit.
+    if(N <= 0)
+        return;
     
-    {
-        Iterator nex = start;
-        int64_t i = 0;
-        
-        for(auto it = start; it != end;) {
-            auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
-            if constexpr(std::integral<Iterator>)
-                nex += step;
-            else
-                std::advance(nex, step);
-            
-            if(nex != end)
-                ++enqueued;
-            
-            it = nex;
-            i += step;
-        }
+    /// if only one thread is provided, just run
+    /// the function and be done with it
+    if(threads <= 1) {
+        fn(0, start, end, 0);
+        return;
     }
     
-#if defined(COMMONS_HAS_LATCH)
-    std::latch work_done{static_cast<ptrdiff_t>(enqueued)};
-#else
-    std::atomic<int64_t> processed(0);
-#endif
+    /// otherwise we need to actually calculate how many threads
+    /// to run and how many items / thread we want
+    const int64_t per_thread = max(1, int64_t(N) / int64_t(threads));
     
+    //Print("Distributing ", N, " elements over ", threads, " threads (", per_thread, " per thread with ", int64_t(N) % int64_t(threads),")");
+    
+    int64_t i=0;
     size_t j=0;
+    Iterator nex = start;
+    std::vector<std::future<void>> futures(min(N, static_cast<int64_t>(threads)) - 1);
+    
     for(auto it = start; it != end; ++j) {
-        auto step = (i + per_thread) < (N - per_thread) ? per_thread : (N - i);
+        int64_t step;
+        if(j + 1 == threads) {
+            step = N - i;
+            
+        } else {
+            /// there is the current package, plus a full package left
+            step = per_thread;
+        }
         
         if constexpr(std::integral<Iterator>)
             nex += step;
@@ -141,29 +171,12 @@ void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end, uint32
             std::advance(nex, step);
         
         if(nex == end) {
-            //try
-            {
-                // run in local thread
-                fn(i, it, nex, j);
-            } /*catch(...) {
-                ex = std::current_exception();
-                throw;
-            }*/
+            // run in local thread
+            fn(i, it, nex, conditional_conversion<4, size_t, int64_t, Iterator, Iterator, size_t>::template convert<std::remove_cvref_t<F>>(j));
             
         } else {
-            pool.enqueue([&](auto i, auto it, auto nex, auto index) {
-                //try
-                {
-                    fn(i, it, nex, index);
-                } /*catch(...) {
-                    ex = std::current_exception();
-                    throw;
-                }*/
-#if defined(COMMONS_HAS_LATCH)
-                work_done.count_down();
-#else
-                ++processed;
-#endif
+            futures[j] = pool.enqueue([&](int64_t i, auto it, auto nex, size_t index) {
+                fn(i, it, nex, conditional_conversion<4, size_t, int64_t, Iterator, Iterator, size_t>::template convert<std::remove_cvref_t<F>>(index));
             }, i, it, nex, j);
         }
         
@@ -171,14 +184,9 @@ void distribute_indexes(F&& fn, Pool& pool, Iterator start, Iterator end, uint32
         i += step;
     }
     
-#if defined(COMMONS_HAS_LATCH)
-    work_done.wait();
-#else
-    while(processed < enqueued) { }
-#endif
-    
-    if(ex)
-        std::rethrow_exception(ex);
+    assert(i == N);
+    for(auto &f : futures)
+        f.get();
 }
 
     template<typename T>

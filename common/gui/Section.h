@@ -234,6 +234,5 @@ namespace cmn::gui {
         
         void collect(std::vector<Drawable*>& ret);
         virtual void structure_changed(bool downwards) final override;
-        void children_rect_changed() final override;
     };
 }

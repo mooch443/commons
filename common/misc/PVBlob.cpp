@@ -2,6 +2,7 @@
 #include <misc/GlobalSettings.h>
 #include <misc/Timer.h>
 #include <misc/create_struct.h>
+#include <misc/ThreadPool.h>
 
 #if defined(USE_NEON)
     #include <arm_neon.h>
@@ -108,65 +109,103 @@ size_t Blob::all_blobs() {
 }
 
 void Blob::calculate_moments() {
-    if(_moments.ready)
+    if (_moments.ready)
         return;
     
     assert(_properties.ready);
-    for (auto &h: *_hor_lines) {
-        const uint my = h.y;
-        const uint mysq = my * my;
-        
-        int mx = h.x0;
-        
-        for (int x=h.x0; x<=h.x1; x++, mx++) {
-            const uint mxsq = mx * mx;
+
+    static GenericThreadPool pool(8, "moments_pool");
+    const uint32_t num_threads = _hor_lines->size() > 1000 ? min(narrow_cast<uint32_t>(_hor_lines->size()), 4u) : 1;
+    // Create a vector of _moments copies for each thread
+    std::vector<Moments> thread_moments(num_threads, Moments{});
+
+    // Parallel processing of the first loop
+    //fn(i, it, nex, conditional_conversion<4, size_t, int64_t, Iterator, Iterator, size_t>::template convert<std::remove_cvref_t<F>>(j));
+    distribute_indexes([&](auto, auto start, auto end, int64_t thread_index) {
+        Moments& local_moments = thread_moments.at(thread_index);
+        assert(thread_index < num_threads);
+    
+        for(auto it = start; it != end; ++it) {
+            auto& h = *it;
+            const uint my = h.y;
+            const uint mysq = my * my;
             
-            _moments.m[0][0] += 1;
-            _moments.m[0][1] += 1 * my;
-            _moments.m[1][0] += mx * 1;
-            _moments.m[1][1] += mx * my;
+            int mx = h.x0;
             
-            _moments.m[2][0] += mxsq;
-            _moments.m[0][2] += mysq;
-            _moments.m[2][1] += mxsq * my;
-            _moments.m[1][2] += mx * mysq;
-            _moments.m[2][2] += mxsq * mysq;
+            for (int x = h.x0; x <= h.x1; x++, mx++) {
+                const uint mxsq = mx * mx;
+                
+                local_moments.m[0][0] += 1;
+                local_moments.m[0][1] += 1 * my;
+                local_moments.m[1][0] += mx * 1;
+                local_moments.m[1][1] += mx * my;
+                
+                local_moments.m[2][0] += mxsq;
+                local_moments.m[0][2] += mysq;
+                local_moments.m[2][1] += mxsq * my;
+                local_moments.m[1][2] += mx * mysq;
+                local_moments.m[2][2] += mxsq * mysq;
+            }
+        }
+    }, pool, _hor_lines->begin(), _hor_lines->end(), num_threads);
+    
+    // Merge thread-local moments into the main _moments structure
+    for (const auto& local_moments : thread_moments) {
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                _moments.m[i][j] += local_moments.m[i][j];
+            }
         }
     }
-    
+
     _properties.center = Vec2(_moments.m[1][0] / _moments.m[0][0],
                               _moments.m[0][1] / _moments.m[0][0]);
-    
-    for (auto &h: *_hor_lines) {
-        const int vy  = (h.y) - _properties.center.y;
-        const int vy2 = vy * vy;
-        
-        int vx = (h.x0) - _properties.center.x;
-        
-        for (int x=h.x0; x<=h.x1; x++, vx++) {
-            const auto vx2 = vx * vx;
 
-            _moments.mu[0][0] += 1;
-            _moments.mu[0][1] += 1 * vy;
-            _moments.mu[0][2] += 1 * vy2;
+    // Parallel processing of the second loop
+    distribute_indexes([&](auto, auto start, auto end, int64_t thread_index) {
+        Moments& local_moments = thread_moments.at(thread_index);
 
-            _moments.mu[1][0] += vx * 1;
-            _moments.mu[1][1] += float(vx) * float(vy);
-            _moments.mu[1][2] += float(vx) * float(vy2);
+        for(auto it = start; it != end; ++it) {
+            auto& h = *it;
+            const int vy = (h.y) - _properties.center.y;
+            const int vy2 = vy * vy;
+            
+            int vx = (h.x0) - _properties.center.x;
+            
+            for (int x = h.x0; x <= h.x1; x++, vx++) {
+                const auto vx2 = vx * vx;
+                
+                local_moments.mu[0][0] += 1;
+                local_moments.mu[0][1] += 1 * vy;
+                local_moments.mu[0][2] += 1 * vy2;
+                
+                local_moments.mu[1][0] += vx * 1;
+                local_moments.mu[1][1] += float(vx) * float(vy);
+                local_moments.mu[1][2] += float(vx) * float(vy2);
+                
+                local_moments.mu[2][0] += vx2 * 1;
+                local_moments.mu[2][1] += float(vx2) * float(vy);
+                local_moments.mu[2][2] += float(vx2) * float(vy2);
+            }
+        }
+    }, pool, _hor_lines->begin(), _hor_lines->end(), num_threads);
 
-            _moments.mu[2][0] += vx2 * 1;
-            _moments.mu[2][1] += float(vx2) * float(vy);
-            _moments.mu[2][2] += float(vx2) * float(vy2);
+    // Merge thread-local moments into the main _moments structure
+    for (const auto& local_moments : thread_moments) {
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                _moments.mu[i][j] += local_moments.mu[i][j];
+            }
         }
     }
 
     float mu00_inv = 1.0f / float(_moments.mu[0][0]);
-    for (int i=0; i<3; i++) {
-        for (int j=0; j<3; j++) {
+    for (int i = 0; i<3; i++) {
+        for (int j = 0; j<3; j++) {
             _moments.mu_[i][j] = _moments.mu[i][j] * mu00_inv;
         }
     }
-    
+
     _properties.angle = 0.5 * cmn::atan2(2 * _moments.mu_[1][1], _moments.mu_[2][0] - _moments.mu_[0][2]);
     _moments.ready = true;
 }

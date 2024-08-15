@@ -441,6 +441,8 @@ namespace cmn::gui {
     class Rect;
     
     class SectionInterface : public Drawable {
+        GETTER(bool, has_children_rect_changed){false};
+        
     public:
         SectionInterface(const Type::Class& type, DrawStructure* s)
             : Drawable(type), _background(NULL), _stage(s)
@@ -475,6 +477,8 @@ namespace cmn::gui {
         std::string toString(const Base* base, const std::string& indent = "");
         virtual std::string toStr() const override;
         
+        virtual void before_draw();
+        
     public:
         using Drawable::set;
         virtual void set(FillClr clr) { set_background(clr, _bg_line_color); }
@@ -482,6 +486,7 @@ namespace cmn::gui {
         
     protected:
         friend class Drawable;
+        friend class Entangled;
         friend class DrawableCollection;
         
         GETTER_PTR(Rect*, background);
@@ -498,7 +503,7 @@ namespace cmn::gui {
         
     protected:
         virtual void remove_child(Drawable *child) = 0;
-        virtual void children_rect_changed();
+        void children_rect_changed();
     };
 }
 

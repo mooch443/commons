@@ -677,7 +677,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     //(*obj._state)._variable_values = std::move(previous);
 
                     ++i;
-                    if (i >= 500) {
+                    if (i >= 5000) {
                         break;
                     }
                 }
@@ -689,7 +689,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             } else {
                 //State &state = *obj._state;
                 Context tmp = context;
-                for(size_t i=0; i<obj.cache.size() && i < 500; ++i) {
+                for(size_t i=0; i<obj.cache.size() && i < 5000; ++i) {
                     //auto previous = (*obj._state)._variable_values;
                     tmp.variables["i"] = obj.cache[i];
                     auto& p = o.to<Layout>()->objects().at(i);
@@ -746,7 +746,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 //obj._state->_variable_values = std::move(previous);
 
                 ++i;
-                if (i >= 500) {
+                if (i >= 5000) {
                     break;
                 }
             }

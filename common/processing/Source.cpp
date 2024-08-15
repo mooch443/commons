@@ -95,7 +95,7 @@ void Source::init(const cv::Mat& image, bool enable_threads) {
     lh = image.rows;
     
     if(enable_threads
-       && int32_t(image.cols)*int32_t(image.rows) > int32_t(100*100))
+       && int64_t(image.cols)*int64_t(image.rows) > int64_t(100*100))
     {
         /**
          * FIND HORIZONTAL LINES IN ORIGINAL IMAGE

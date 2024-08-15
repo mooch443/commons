@@ -300,13 +300,15 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
 }
 
 // called by user
-blobs_t run(const cv::Mat &image, bool enable_threads) {
+blobs_t run(DLList& list, const cv::Mat &image, bool enable_threads) {
     //auto list = List_t::from_cache();
-    DLList list;
+    //DLList list;
+    list.clear();
     list.source().init(image, enable_threads);
     
     blobs_t results = run_fast(&list, image.channels());
     //List_t::to_cache(std::move(list));
+    list.clear();
     return results;
 }
 

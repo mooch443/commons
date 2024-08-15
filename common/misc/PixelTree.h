@@ -104,8 +104,32 @@ namespace cmn::pixel {
     };
     
     class Tree {
+    public:
+        struct Comparator {
+            // this member is required to let container be aware that
+            // comparator is capable of dealing with types other than key
+            public: using is_transparent = std::true_type;
+            using Ptr = std::unique_ptr<Node>;
+
+            public: bool operator()(uint64_t left, const Ptr& right) const
+            {
+                return left < right->index;
+            }
+
+            public: bool operator()(const Ptr & left, uint64_t right) const
+            {
+                return left->index < right;
+            }
+
+            public: bool operator()(const Ptr& left, const Ptr& right) const
+            {
+                return left->index < right->index;
+            }
+        };
+        using node_set_t = std::set<std::unique_ptr<Node>, Comparator>;
+        
     protected:
-        GETTER(std::vector<std::unique_ptr<Node>>, nodes);
+        GETTER(node_set_t, nodes);
         
     public:
         using sides_t = std::vector<Subnode*>;

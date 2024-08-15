@@ -125,7 +125,7 @@ namespace cmn::gui {
         
         virtual void clear_children();
         virtual bool is_animating() noexcept override;
-        virtual void before_draw();
+        virtual void before_draw() override;
     protected:
         friend class Section;
         
@@ -294,10 +294,6 @@ namespace cmn::gui {
             _index++;
         }
         
-        void children_rect_changed() override;
-        
-        void set_bounds_changed() override;
-
         void set_parent(SectionInterface* p) override;
     protected:
         

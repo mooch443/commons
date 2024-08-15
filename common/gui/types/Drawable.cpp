@@ -723,10 +723,8 @@ bool SectionInterface::is_animating() noexcept {
         set_dirty();
         _bounds_changed = true;
         
-        if(parent() && (parent()->type() == Type::SECTION
-                        || parent()->type() == Type::ENTANGLED))
-        {
-            static_cast<SectionInterface*>(parent())->children_rect_changed();
+        if(parent()) {
+            parent()->children_rect_changed();
         }
         
         if(parent() && parent()->type() == Type::ENTANGLED) {
@@ -1074,29 +1072,8 @@ void SectionInterface::set_z_index(int index) {
             else
                 set_stage(NULL);
             
-            children_rect_changed();
             Drawable::set_parent(parent);
-        }
-    }
-    
-    void SectionInterface::children_rect_changed() {
-        if(!_bounds_changed)
-            set_bounds_changed();
-        
-        if(_background)
-            _background->set_bounds_changed();
-        
-        for(auto c : children()) {
-            if(!c)
-                continue;
-            
-            if(c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
-            
-            if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED) {
-                static_cast<SectionInterface*>(c)->children_rect_changed();
-            } else
-                c->set_bounds_changed();
+            children_rect_changed();
         }
     }
     

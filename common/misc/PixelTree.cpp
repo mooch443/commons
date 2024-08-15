@@ -575,7 +575,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
     }
     
     template<typename T>
-    inline void add_edge(Tree::sides_t& _sides, T& non_full_nodes, const Edge& edge, const std::vector<std::unique_ptr<Node>>& raw_nodes) {
+    inline void add_edge(Tree::sides_t& _sides, T& non_full_nodes, const Edge& edge, const Tree::node_set_t& raw_nodes) {
         UNUSED(raw_nodes)
         /*auto it = edges.find(edge);
         if(it != edges.end()) {
@@ -778,7 +778,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             //node->border.insert(BOTTOM);
         
         //_node_positions[node->index] = node;
-        _nodes.push_back(std::move(node));
+        _nodes.insert(std::move(node));
     }
     
     std::vector<std::shared_ptr<std::vector<Vec2>>> Tree::generate_edges() {
@@ -792,13 +792,16 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         };
         
         static constexpr auto linear_search = [](uint64_t idx, auto &nodes) -> pixel::Node* {
-            for(auto &node : nodes) {
+            auto it = nodes.find(idx);
+            return it != nodes.end() ? it->get() : nullptr;
+            
+            /*for(auto &node : nodes) {
                 if(node->index == idx) {
                     return node.get();
                 }
             }
             
-            return nullptr;
+            return nullptr;*/
         };
         
         for(auto &node : _nodes) {

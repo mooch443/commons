@@ -146,14 +146,14 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                     FormatExcept("Failed opening NPZ archive ",npz.str()," with (presumably) timestamps in them for video ",_filename,". Proceeding without.");
                     
                     if(!_video->open(_filename))
-                        throw U_EXCEPTION("Opening Video ",_filename," failed.");
+                        throw U_EXCEPTION("Opening Video ",_filename," failed. Please check whether it is accessible and intact.");
                     _length = Frame_t(_video->length());
                     _video->close();
                 }
                 
             } else {
                 if(!_video->open(_filename))
-                    throw U_EXCEPTION("Opening Video ",_filename," failed.");
+                    throw U_EXCEPTION("Opening Video ",_filename," failed. Please check whether it is accessible and intact.");
                 try {
                     _length = Frame_t(_video->length());
                 } catch(const std::exception& e) {

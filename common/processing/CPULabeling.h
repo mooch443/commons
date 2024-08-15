@@ -13,7 +13,7 @@ namespace cmn {
          * @param enable_threads when set to true, this function will use threads to extract horizontal lines (default false)
          * @return an array of the blobs found in image
          */
-        blobs_t run(const cv::Mat &image, bool enable_threads = false);
+        blobs_t run(DLList&, const cv::Mat &image, bool enable_threads = false);
         blobs_t run(const cv::Mat &image, ListCache_t& list, bool enable_threads = false);
     
         /**

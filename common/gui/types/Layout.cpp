@@ -41,15 +41,12 @@ void Layout::set_content_changed(bool changed) {
     void Layout::_update_layout() {
     }
 
-void Layout::children_rect_changed() {
-    Entangled::children_rect_changed();
-    set_layout_dirty();
-    set_content_changed(true);
-}
-
 void Layout::set_bounds_changed() {
-    Entangled::set_bounds_changed();
-    set_layout_dirty();
+    if(not _bounds_changed) {
+        Entangled::set_bounds_changed();
+        set_layout_dirty();
+        set_content_changed(true);
+    }
 }
 
 void Layout::set_stage(gui::DrawStructure *s) {
@@ -234,7 +231,6 @@ void Layout::set_stage(gui::DrawStructure *s) {
 
         set_content_changed(true);
         set_layout_dirty();
-        //update();
     }
     
     void Layout::remove_child(gui::Drawable *ptr) {
@@ -290,7 +286,8 @@ void Layout::set_bounds(const Bounds& bounds) {
         _objects.clear();
         set_layout_dirty();
         set_content_changed(true);
-        Entangled::clear_children(); 
+        Entangled::clear_children();
+        update();
     }
 
     void Layout::_apply_to_children(Drawable* ptr, const std::function<void (Drawable *)> & fn) {

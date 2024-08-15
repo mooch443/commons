@@ -175,6 +175,8 @@ void DLList::clear() {
         ptr = std::move(next);
     }
     _end = nullptr;
+    
+    _owned.clear();
 }
 
 }

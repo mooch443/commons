@@ -72,8 +72,6 @@ namespace cmn::gui {
         void set_content_changed(bool) override;
         void set_layout_dirty();
         
-        void children_rect_changed() override;
-        
         void set_size(const Size2&) override;
         void set_pos(const Vec2&) override;
         void set_bounds(const Bounds&) override;

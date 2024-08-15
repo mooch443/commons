@@ -61,20 +61,20 @@ namespace cmn::gui {
         }
         
         for(auto c : _children) {
+            if(not c)
+                continue;
+            
             if(c->type() == Type::SINGLETON)
                 d = static_cast<SingletonObject*>(c)->ptr();
             else
                 d = c;
             
-            assert(c->parent() == this);
+            assert(d->parent() == this);
             
             if(d->type() == Type::ENTANGLED) {
                 auto ptr = static_cast<Entangled*>(d);
                 ptr->before_draw();
                 
-                /*if(ptr->background()) {
-                    ret.push_back(ptr->background());
-                }*/
                 if (ptr->is_displayed()) {
                     ptr->set_rendered(true);
                     ret.push_back(ptr);
@@ -84,6 +84,8 @@ namespace cmn::gui {
                 
             } else if(d->type() == Type::SECTION) {
                 auto ptr = static_cast<Section*>(d);
+                ptr->before_draw();
+                
                 if (ptr->enabled() && ptr->is_displayed()) {
                     ptr->set_rendered(true);
                     ptr->collect(ret);
@@ -92,15 +94,12 @@ namespace cmn::gui {
                     ptr->set_rendered(false);
                 
             }
-            else if(c->type() == Type::ENTANGLED) {
-                c->set_rendered(c->is_displayed());
-            }
-            else if (c->is_displayed()) {
-                c->set_rendered(true);
-                ret.push_back(c);
+            else if (d->is_displayed()) {
+                d->set_rendered(true);
+                ret.push_back(d);
             }
             else
-                c->set_rendered(false);
+                d->set_rendered(false);
         }
         
         if(debug_rects() && clickable() && width() > 0 && height() > 0) {
@@ -142,6 +141,9 @@ namespace cmn::gui {
             return const_cast<Section*>(this);
         
         for(auto c : _children) {
+            if(not c)
+                continue;
+            
             if(c->type() == Type::SINGLETON)
                 c = static_cast<SingletonObject*>(c)->ptr();
             
@@ -153,10 +155,6 @@ namespace cmn::gui {
         }
         
         return NULL;
-    }
-    
-    void Section::children_rect_changed() {
-        SectionInterface::children_rect_changed();
     }
     
     void Section::begin(bool reuse) {
@@ -269,11 +267,30 @@ namespace cmn::gui {
         if(!obj)
             return;
         
+#ifndef NDEBUG
+        bool found = false;
+        for(auto &[k, v] : _wrapped_children) {
+            if(v == obj) {
+                assert(not found);
+                found = true;
+                assert(k == d);
+            } else {
+                assert(k != d);
+            }
+        }
+        
+        for(auto c : _children) {
+            assert(c != d);
+        }
+#endif
+        
         assert(!contains(_children, obj));
         assert(_index <= _children.size());
         _children.insert(_children.begin() + _index, obj);
         _wrapped_children[d] = obj;
         _index++;
+        
+        assert(obj->parent() == this);
     }
     
     void Section::end() {
@@ -294,7 +311,7 @@ namespace cmn::gui {
                     ptr = static_cast<SingletonObject*>(ptr)->ptr();
                 }
                 
-                if(ptr->parent()) {
+                if(ptr->parent() == this) {
                     ptr->set_parent(nullptr);
                     //assert(_children.at(index) == ptr);
                     //_children.erase(_children.begin() + index);
@@ -346,6 +363,9 @@ namespace cmn::gui {
         _section_clickable = false;
         
         for(auto ptr : _children) {
+            if(not ptr)
+                continue;
+            
             // use actual object instead
             if(ptr->type() == Type::SINGLETON)
                 ptr = static_cast<SingletonObject*>(ptr)->ptr();
@@ -422,8 +442,11 @@ namespace cmn::gui {
     
     void Section::structure_changed(bool downwards) {
         if(downwards) {
-            for(auto c : _children)
+            for(auto c : _children) {
+                if(not c)
+                    continue;
                 c->structure_changed(true);
+            }
         }
         
         SectionInterface::structure_changed(downwards);
