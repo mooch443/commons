@@ -40,6 +40,10 @@ namespace cmn {
                 return position.y > other.position.y;
             }
             
+            bool operator<(const Peak& other) const {
+                return position < other.position;
+            }
+            
             std::string toStr() const;
             static std::string class_name() {
                 return "Peak";

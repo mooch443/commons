@@ -365,7 +365,14 @@ namespace cmn {
                         y = (*points)[i] - min_y;
                         
                         if(y / (peak->position.y - min_y) >= 0.5) {
-                            if(!contains(peak->points, Vec2(i, y)))
+                            //if(!contains(peak->points, Vec2(i, y)))
+                            /*if(auto it = find_sorted(peak->points, Vec2(i, y), std::less<>{});
+                               it == peak->points.end())
+                            {
+                                insert_sorted(peak->points, Vec2(i, y));
+                            } else {
+                                Print("Contains ", Vec2(i, y), " already!");
+                            }*/
                                 peak->points.emplace_back(i, y);
                             //peak->median_y.addNumber(y);
                             if(y > peak->max_y)

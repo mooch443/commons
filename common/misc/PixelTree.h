@@ -88,18 +88,32 @@ namespace cmn::pixel {
         
         Node(float x, float y, const std::array<int, 9>& neighbors = {0});
         
-        bool operator<(const Node& other) const {
+        template<typename Other>
+        bool operator==(const Other& other) const {
+            return x == other.x && y == other.y;
+        }
+        template<typename Other>
+        bool operator<(const Other& other) const {
             return y < other.y || (y == other.y && x < other.x);
         }
-        bool operator>(const Node& other) const {
+        template<typename Other>
+        bool operator>=(const Other& other) const {
             return !(operator<(other));
         }
-        bool operator==(const Node& other) const {
-            return x == other.x && y == other.y;
+        template<typename Other>
+        bool operator>(const Other& other) const {
+            return !(operator<(other)); //&& (not operator==(other));
         }
         
         constexpr static uint64_t leaf_index(int64_t x, int32_t y) {
             return uint64_t( ( (uint64_t(x) << 32) & 0xFFFFFFFF00000000 ) | (uint64_t(y) & 0x00000000FFFFFFFF) );
+        }
+        
+        constexpr static std::tuple<float, float> coordinates(uint64_t hash) {
+            return {
+                (uint64_t(hash) >> 32) & 0xFFFFFFFF,
+                uint64_t(hash) & 0xFFFFFFFF
+            };
         }
     };
     
@@ -111,22 +125,14 @@ namespace cmn::pixel {
             public: using is_transparent = std::true_type;
             using Ptr = std::unique_ptr<Node>;
 
-            public: bool operator()(uint64_t left, const Ptr& right) const
-            {
-                return left < right->index;
-            }
+            bool operator()(uint64_t left, const Ptr& right) const;
 
-            public: bool operator()(const Ptr & left, uint64_t right) const
-            {
-                return left->index < right;
-            }
+            bool operator()(const Ptr & left, uint64_t right) const;
 
-            public: bool operator()(const Ptr& left, const Ptr& right) const
-            {
-                return left->index < right->index;
-            }
+            bool operator()(const Ptr& left, const Ptr& right) const;
         };
-        using node_set_t = std::set<std::unique_ptr<Node>, Comparator>;
+        //using node_set_t = std::set<std::unique_ptr<Node>, Comparator>;
+        using node_set_t = std::vector<std::unique_ptr<Node>>;
         
     protected:
         GETTER(node_set_t, nodes);

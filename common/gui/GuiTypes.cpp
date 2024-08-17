@@ -410,66 +410,6 @@ void Line::update_bounds() {
     _max_scale = global_text_scale().max();
 }
 
-void reduce_vertex_line(const std::vector<Vertex>& points, std::vector<Vertex>& array, Float2_t threshold)
-{
-    array.clear();
-    
-    if(points.empty())
-        return;
-    
-    Vertex last_added_point(points.front());
-    array.push_back(last_added_point);
-    
-    if(points.size() == 1)
-        return;
-    
-    Vec2 previous_vec((last_added_point.position() - points.back().position()).normalize());
-    
-    Bounds bounds(FLT_MAX, FLT_MAX, 0, 0);
-    for(auto &v : points) {
-        auto &pt = v.position();
-        if(pt.x < bounds.x) bounds.x = pt.x;
-        if(pt.y < bounds.y) bounds.y = pt.y;
-        if(pt.x > bounds.width) bounds.width = pt.x;
-        if(pt.y > bounds.height) bounds.height = pt.y;
-    }
-    
-    bounds << Size2(bounds.size() - bounds.pos());
-    Float2_t dim = bounds.size().length();
-    Float2_t cumlen = 0;
-    Vec2 prev_vertex = last_added_point;
-    
-    for (size_t i=1; i<points.size()-1; i++) {
-        Vertex p1(points.at(i));
-        
-        auto line = p1.position() - last_added_point.position();
-        auto color_diff = p1.clr().diff(last_added_point.clr()) / 4_F / 255_F;
-        
-        auto len = line.length();
-        line = line / len;
-        
-        cumlen += (p1.position() - prev_vertex).length();
-        prev_vertex = p1.position();
-        
-        // returns [-1,1] values from 180°-0° (upper half of the unit circle)
-        // 90°-180° is < 0, while 0°-90° is >= 0
-        // move it to [-2,0], take absolute and multiply by 0.5, so we get 0-180° -> [0,1]
-        Float2_t a = cmn::abs(previous_vec.dot(line) - 1) * 0.5_F;
-        if (cumlen < dim * threshold * 0.005_F && color_diff < threshold * 0.01_F && a < threshold * 0.1_F)
-            continue;
-        
-        cumlen = 0_F;
-        
-        //change[3] = min_alpha;
-        last_added_point = p1;
-        previous_vec = line;
-        array.push_back(last_added_point);
-    }
-    
-    array.push_back(points.back());
-    
-}
-
 void Line::prepare() {
     if(!_transport)
         return;

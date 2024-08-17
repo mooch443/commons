@@ -618,9 +618,24 @@ inline bool contains(const K<Args...>& v, T&& obj) {
     }
 }
 
+template<class T, typename Comparator>
+auto insert_sorted(std::vector<T>& vector, T&& element, Comparator&& cmp) {
+    return vector.insert(std::upper_bound(vector.begin(), vector.end(), element, std::forward<Comparator>(cmp)), std::move(element));
+}
+
 template<class T>
 auto insert_sorted(std::vector<T>& vector, T&& element) {
     return vector.insert(std::upper_bound(vector.begin(), vector.end(), element), std::move(element));
+}
+
+template<class T, typename Comparator, class K = T>
+auto find_sorted(const std::vector<T>& vector, const K& element, Comparator&& cmp) {
+    auto it = std::lower_bound(vector.begin(), vector.end(), element, cmp);
+    if (it != vector.end() && !cmp(element, *it)) {
+        return it; // Element found
+    } else {
+        return vector.end(); // Element not found
+    }
 }
 
 template<class T>

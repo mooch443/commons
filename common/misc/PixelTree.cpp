@@ -13,6 +13,21 @@
 namespace cmn::pixel {
     static Image::Ptr debug_greyscale = nullptr;
 
+bool Tree::Comparator::operator()(uint64_t left, const Ptr& right) const
+{
+    return left < right->index;
+}
+
+bool Tree::Comparator::operator()(const Ptr & left, uint64_t right) const
+{
+    return left->index < right;
+}
+
+bool Tree::Comparator::operator()(const Ptr& left, const Ptr& right) const
+{
+    return left->index < right->index;
+}
+
 struct Row {
     std::vector<int> cache;
 #if TREE_WITH_PIXELS
@@ -740,7 +755,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
 Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), index(leaf_index(int64_t(x), int32_t(y))), neighbors(neighbors)
 { }
 
-#define LEAF_INDEX(VEC) ( Node::leaf_index( int64_t( VEC .x ), int32_t( VEC .y ) ) )
+#define LEAF_INDEX(VEC) ( VEC )//Node::leaf_index( int64_t( VEC .x ), int32_t( VEC .y ) ) )
 
     void Tree::add(float x, float y, const std::array<int, 9> &neighborhood) {
 #define IS_SET(NAME) (neighborhood[indexes[(size_t) NAME ]])
@@ -778,7 +793,9 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             //node->border.insert(BOTTOM);
         
         //_node_positions[node->index] = node;
-        _nodes.insert(std::move(node));
+        insert_sorted<std::unique_ptr<Node>>(_nodes, std::move(node),  Tree::Comparator{});
+        //_nodes.emplace_back(std::move(node));
+        //_nodes.emplace(std::move(node));
     }
     
     std::vector<std::shared_ptr<std::vector<Vec2>>> Tree::generate_edges() {
@@ -791,10 +808,8 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             TOP, LEFT, RIGHT, BOTTOM
         };
         
-        static constexpr auto linear_search = [](uint64_t idx, auto &nodes) -> pixel::Node* {
-            auto it = nodes.find(idx);
-            return it != nodes.end() ? it->get() : nullptr;
-            
+        static constexpr auto linear_search = [](const Vec2& v, auto &nodes) -> pixel::Node* {
+            auto idx = Node::leaf_index(v.x, v.y);
             /*for(auto &node : nodes) {
                 if(node->index == idx) {
                     return node.get();
@@ -802,6 +817,15 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             }
             
             return nullptr;*/
+            
+            auto it = find_sorted<std::unique_ptr<Node>>(nodes, idx, Tree::Comparator{});
+            //auto it = nodes.find(idx);
+            /*auto it = std::find_if(nodes.begin(), nodes.end(), [idx](const auto& A) {
+                return A->index == idx;
+            });*/
+            if(it == nodes.end())
+                return nullptr;
+            return it->get();
         };
         
         for(auto &node : _nodes) {
@@ -946,11 +970,11 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         Vec2 ma(0, 0);
         
         for(auto &node : _nodes) {
-            mi.x = min(mi.x, node->position.x);
-            mi.y = min(mi.y, node->position.y);
+            mi.x = min(mi.x, node->x);
+            mi.y = min(mi.y, node->y);
             
-            ma.x = max(ma.x, node->position.x);
-            ma.y = max(ma.y, node->position.y);
+            ma.x = max(ma.x, node->x);
+            ma.y = max(ma.y, node->y);
         }
         
         Bounds bounds(mi, Size2(ma - mi));
@@ -974,7 +998,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
 #define OFFSET(X) (((X) - bounds.pos() + margin) * scale)
             
             for(auto &node : _nodes) {
-                cv::rectangle(output, OFFSET(node->position - Vec2(0.5)), OFFSET(node->position + Vec2(0.5)), Red, -1);
+                cv::rectangle(output, OFFSET(Vec2(node->x,node->y) - Vec2(0.5)), OFFSET(Vec2(node->x,node->y) + Vec2(0.5)), Red, -1);
                 
                 for(auto side : node->border) {
                     auto center = pixel::half_vectors[side];
@@ -982,8 +1006,8 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
                     auto d = Vec2(v0.y, -v0.x);
                     v0 = v0 - d; // transpose
                     auto v1 = v0 + d * 2;
-                    cv::circle(output, OFFSET(node->position + center), 0.1 * scale, White, max(1, 0.025 * scale));
-                    cv::rectangle(output, OFFSET(node->position + v0), OFFSET(node->position + v1), White, max(1, 0.025 * scale));
+                    cv::circle(output, OFFSET(Vec2(node->x,node->y) + center), 0.1 * scale, White, max(1, 0.025 * scale));
+                    cv::rectangle(output, OFFSET(Vec2(node->x,node->y) + v0), OFFSET(Vec2(node->x,node->y) + v1), White, max(1, 0.025 * scale));
                 }
                 //cv::circle(output, OFFSET(node->position), 3, Cyan);
             }
@@ -1010,12 +1034,12 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
             p1.y = min(output.rows, p1.y);
             
             cv::cvtColor(output, output, cv::COLOR_BGR2RGB);
-            cv::imshow("output", output);//(Bounds(p0, p1 - p0)));
-            static int waitkey_method = 0;
+            tf::imshow("output", output);//(Bounds(p0, p1 - p0)));
+            /*static int waitkey_method = 0;
             int key = cv::waitKey(waitkey_method);
             if(key == 13) {
                 waitkey_method = 1;
-            }
+            }*/
 #endif
         
             for (auto& edge : node->edges) {

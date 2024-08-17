@@ -152,6 +152,7 @@ void ThreadGroup::terminate() {
 
 void ThreadGroup::notify() {
     for(auto &t : threads) {
+        //thread_print("TM Notify ", no_quotes(name),"::", no_quotes(t.name));
         t.m.notify();
     }
 }
@@ -168,7 +169,6 @@ void ThreadManager::notify(ThreadGroupId group) {
     }
     
     if(g) {
-        //thread_print("TM Notify ", g->name);
         g->notify();
     }
 }
