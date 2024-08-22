@@ -721,7 +721,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.91.0
     SOURCE_DIR ${imgui_path}
-    PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff"
+    PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff" || echo 1
     UPDATE_DISCONNECTED 1
 )
 
