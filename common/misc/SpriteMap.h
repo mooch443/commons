@@ -196,6 +196,11 @@ namespace std
 namespace cmn {
 namespace sprite {
 
+enum class RegisterInit {
+    DONT_TRIGGER,
+    DO_TRIGGER
+};
+
 template <typename T>
 concept Iterable = requires(T obj) {
     { std::begin(obj) } -> std::input_iterator;
@@ -323,7 +328,7 @@ concept Iterable = requires(T obj) {
             return true;
         }
         
-        template<typename Callback, typename Str>
+        template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
         CallbackCollection register_callbacks(const std::initializer_list<Str>& names, Callback callback) {
@@ -332,20 +337,20 @@ concept Iterable = requires(T obj) {
                 for(const char* str : names) {
                     converted_names.emplace_back(str);
                 }
-                return register_callbacks_impl(converted_names, callback);
+                return register_callbacks_impl<init_type>(converted_names, callback);
             } else
-                return register_callbacks_impl(names, callback);
+                return register_callbacks_impl<init_type>(names, callback);
         }
         
-        template<typename Callback, typename Str>
+        template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
         CallbackCollection register_callbacks(const std::vector<Str>& names, Callback callback) {
-            return register_callbacks_impl(names, callback);
+            return register_callbacks_impl<init_type>(names, callback);
         }
         
-        template<std::ranges::range Container, typename Callback>
-        requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
+        template<RegisterInit init_type = RegisterInit::DO_TRIGGER, std::ranges::range Container, typename Callback>
+            requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
         CallbackCollection register_callbacks_impl(const Container& names, Callback callback) {
             CallbackCollection collection;
             for(const auto& name : names) {
@@ -354,7 +359,9 @@ concept Iterable = requires(T obj) {
                 }
             }
             
-            trigger_callbacks(collection);
+            if constexpr(init_type == RegisterInit::DO_TRIGGER) {
+                trigger_callbacks(collection);
+            }
             return collection;
         }
         
