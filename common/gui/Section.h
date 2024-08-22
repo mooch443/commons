@@ -4,6 +4,7 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/SingletonObject.h>
 #include <misc/colors.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     class DrawableCollection;

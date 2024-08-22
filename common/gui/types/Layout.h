@@ -47,7 +47,7 @@ namespace cmn::gui {
         void update() override;
         void add_child(size_t pos, Layout::Ptr ptr);
         void add_child(Layout::Ptr ptr);
-        void replace_child(size_t pos, Layout::Ptr ptr);
+        bool replace_child(size_t pos, Layout::Ptr ptr);
         
         void remove_child(Layout::Ptr ptr);
         void remove_child(Drawable* ptr) override;
@@ -88,9 +88,8 @@ namespace cmn::gui {
 
     class PlaceinLayout : public Layout {
     public:
-        // Constructors and destructors, if needed
         PlaceinLayout(const std::vector<Layout::Ptr>& vec = {}) : Layout(vec) {}
-        virtual ~PlaceinLayout() { /* custom destruction logic if needed */ }
+        virtual ~PlaceinLayout() { }
         
         PlaceinLayout(PlaceinLayout&&) noexcept = default;
         PlaceinLayout& operator=(PlaceinLayout&&) noexcept = default;
@@ -104,12 +103,12 @@ namespace cmn::gui {
         
         using Layout::set;
         
-        void auto_size() override {}
+        //void auto_size() override {}
         
-    protected:
+    /*protected:
         void _update_layout() override {
             auto_size();
-        }
+        }*/
     };
 
     

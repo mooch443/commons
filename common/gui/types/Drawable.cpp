@@ -6,6 +6,7 @@
 #include <misc/Timer.h>
 #include <misc/SpriteMap.h>
 #include <gui/DrawableCollection.h>
+#include <gui/Passthrough.h>
 //#define _DEBUG_MEMORY
 
 namespace cmn::gui {
@@ -14,11 +15,16 @@ namespace cmn::gui {
     CallbackCollection callback;
 
     std::string Drawable::toStr() const {
-        return std::string(type().name()) + " " + Meta::toStr(_bounds);
+        if(type() == Type::PASSTHROUGH) {
+            auto ptr = static_cast<const Fallthrough*>(this);
+            auto k = ptr->object().get();
+            return "PASSTHROUGH<" + (k ? k->toStr() : "null") + ">";
+        }
+        return "("+hex(this).toStr()+")"+std::string(type().name()) + "<" + name() + " b:" + Meta::toStr(_bounds)+">";
     }
 
     std::string SectionInterface::toStr() const {
-        return std::string(type().name()) + " " + name();
+        return "("+hex(this).toStr()+")"+std::string(type().name()) + "<" + name() + " " + Meta::toStr(_bounds)+">";
     }
     
 #ifdef _DEBUG_MEMORY
@@ -707,7 +713,8 @@ bool SectionInterface::is_animating() noexcept {
         
         // update transforms
         _global_transform = Transform();
-        global_transform(_global_transform);
+        _global_transform_no_rotation = Transform();
+        global_transform(_global_transform, _global_transform_no_rotation);
         
         _global_bounds = _global_transform.transformRect(Bounds(0, 0, width(), height()));
     }
@@ -821,13 +828,19 @@ bool SectionInterface::is_animating() noexcept {
         update_bounds();
         return _global_transform;
     }
-    
-    bool Drawable::global_transform(Transform &transform) {
+    const Transform& Drawable::global_transform_no_rotation() {
+        update_bounds();
+        return _global_transform_no_rotation;
+    }
+
+    bool Drawable::global_transform(Transform &transform, Transform &no_rotation) {
         _has_global_rotation = _rotation != 0;
         _global_text_scale = scale();
         
         if(_parent) {
             transform = _parent->global_transform();
+            no_rotation = _parent->global_transform_no_rotation();
+            
             _has_global_rotation = _has_global_rotation || _parent->_has_global_rotation;
             _global_text_scale = _global_text_scale.mul(_parent->_global_text_scale);
             
@@ -836,10 +849,30 @@ bool SectionInterface::is_animating() noexcept {
         }
         
         transform.combine(local_transform());
+        no_rotation.combine(local_transform_no_rotation());
         
         return _has_global_rotation;
     }
-    
+
+    Transform Drawable::local_transform_no_rotation() {
+        Transform transform;
+        
+        if(_parent && _parent->type() == Type::ENTANGLED) {
+            auto entangled = static_cast<Entangled*>(_parent);
+            if(entangled->scroll_enabled()) {
+                transform.translate(-entangled->scroll_offset());
+            }
+        }
+        
+        transform.translate(pos().x, pos().y);
+        transform.scale(_scale);
+        
+        if(origin().x != 0 || origin().y != 0)
+            transform.translate(-width() * origin().x, -height() * origin().y);
+        
+        return transform;
+    }
+
     Transform Drawable::local_transform() {
         Transform transform;
         
@@ -968,16 +1001,11 @@ bool SectionInterface::is_animating() noexcept {
         if (visible)
             return;
 
-        for (auto c : children()) {
-            if (!c)
-                continue;
-
-            if (c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
+        apply_to_objects(children(), [visible](auto c){
             if (c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
                 static_cast<SectionInterface*>(c)->set_rendered(visible);
             else c->set_rendered(visible);
-        }
+        });
     }
 
 void SectionInterface::set_z_index(int index) {
@@ -1035,20 +1063,19 @@ void SectionInterface::set_z_index(int index) {
         if(_stage)
             _stage->erase(this);
         
-        for(auto c : children()) {
-            if(!c)
-                continue;
-            
-            if(c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
+        apply_to_objects(children(), [s](auto c){
             if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
                 static_cast<SectionInterface*>(c)->set_stage(s);
-            else c->clear_cache();
-        }
+            else {
+                c->clear_cache();
+                c->set_bounds_changed();
+            }
+        });
         
         _stage = s;
         clear_cache();
         set_dirty();
+        set_bounds_changed();
         children_rect_changed();
     }
     
@@ -1078,27 +1105,37 @@ void SectionInterface::set_z_index(int index) {
     }
     
     void SectionInterface::find(Float2_t x, Float2_t y, std::vector<Drawable*>& results) {
-        bool cropped = type() == Type::ENTANGLED && ((Entangled*)this)->scroll_enabled() && not ((Entangled*)this)->size().empty();
+        /// find clickable items at position (x, y) and write the results
+        /// to the output array
+        bool cropped = type() == Type::ENTANGLED
+                        && ((Entangled*)this)->scroll_enabled()
+                        && not ((Entangled*)this)->size().empty();
+        
         if(cropped && not global_bounds().contains(x, y))
             return;
         
+        /// iterate backwards in order to find the top-most objects first
         for(auto it = children().rbegin(); it != children().rend(); ++it) {
-            auto ptr = *it;
-            if (!ptr)
-                continue;
-            
-            // use actual object instead
-            if(ptr->type() == Type::SINGLETON)
-                ptr = static_cast<SingletonObject*>(ptr)->ptr();
-            
-            if(ptr->clickable()) {
-                if(ptr->type() == Type::SECTION || ptr->type() == Type::ENTANGLED)
+            /*if(*it && (*it)->type() == Type::PASSTHROUGH) {
+                auto ft = static_cast<Fallthrough*>(*it)->object().get();
+                if(ft)
+                    Print("Searching ", x,",", y, " in ", *it, " (or rather: ", ft,") with ", ft->clickable());
+                else
+                    Print("Searching ", x,",", y, " in ", *it, " (but it is null)");
+            }*/
+            apply_to_object(*it, [&](auto ptr){
+                if(not ptr->clickable())
+                    return;
+                
+                if(ptr->type() == Type::SECTION
+                   || ptr->type() == Type::ENTANGLED)
                 {
                     static_cast<SectionInterface*>(ptr)->find(x, y, results);
                     
-                } else if(ptr->in_bounds(x, y))
+                } else if(ptr->in_bounds(x, y)) {
                     results.push_back(ptr);
-            }
+                }
+            });
         }
         
         if(!_clickable || !global_bounds().contains(x, y))
@@ -1108,25 +1145,32 @@ void SectionInterface::set_z_index(int index) {
     }
     
     Drawable* SectionInterface::find(const std::string& search) {
-        for(auto it=children().begin(), ite=children().end(); it != ite; ++it) {
-            if (!*it)
-                continue;
-
-            if((*it)->type() == Type::SECTION || (*it)->type() == Type::ENTANGLED) {
-                auto ptr = static_cast<SectionInterface*>(*it);
-                auto r = ptr->find(search);
-                if(r) {
-                    return r;
+        Drawable* r = nullptr;
+        for(auto it=children().begin(), ite=children().end();
+            it != ite && not r;
+            ++it)
+        {
+            r = apply_to_object(*it, [&search](auto c) -> Drawable* {
+                if(c->type() == Type::SECTION
+                   || c->type() == Type::ENTANGLED)
+                {
+                    auto ptr = static_cast<SectionInterface*>(c);
+                    auto r = ptr->find(search);
+                    if(r) {
+                        return r;
+                    }
+                    
+                } else {
+                    auto ptr = dynamic_cast<const HasName*>(c);
+                    if(ptr && ptr->name() == search)
+                        return c;
                 }
                 
-            } else {
-                auto ptr = dynamic_cast<const HasName*>(*it);
-                if(ptr && ptr->name() == search)
-                    return *it;
-            }
+                return nullptr;
+            });
         }
         
-        return NULL;
+        return r;
     }
     
     std::string SectionInterface::toString(const Base* base, const std::string& indent) {
@@ -1153,8 +1197,17 @@ void SectionInterface::set_z_index(int index) {
         for(auto c : children()) {
             if(!c)
                 continue;
+                
+            if(c->type() == Type::PASSTHROUGH) {
+                ss << indent << "* passthrough -- ";
+                c = static_cast<Fallthrough*>(c)->object().get();
+            }
             
-            if((c->type() == Type::SINGLETON && (static_cast<SingletonObject*>(c)->ptr()->type() == Type::SECTION || static_cast<SingletonObject*>(c)->ptr()->type() == Type::ENTANGLED)) || c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
+            if((c->type() == Type::SINGLETON
+                && (static_cast<SingletonObject*>(c)->ptr()->type() == Type::SECTION
+                    || static_cast<SingletonObject*>(c)->ptr()->type() == Type::ENTANGLED))
+               || c->type() == Type::SECTION
+               || c->type() == Type::ENTANGLED)
             {
                 if(c->type() == Type::SINGLETON)
                     ss << static_cast<SectionInterface*>(static_cast<SingletonObject*>(c)->ptr())->toString(base, indent+"\t");

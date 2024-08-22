@@ -244,6 +244,11 @@ protected:
         Polygon();
         Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
         Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
+        
+        using Drawable::set;
+        void set(FillClr clr) { set_fill_clr(clr); }
+        void set(LineClr clr) { set_border_clr(clr); }
+        
         void set_fill_clr(const Color& clr);
         void set_border_clr(const Color& clr);
         void set_vertices(const std::vector<Vec2>& vertices);
@@ -685,7 +690,7 @@ void reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Flo
     Float2_t cumlen = 0;
     Vec2 prev_vertex = last_added_point;
     
-    for (size_t i=0; i<points.size()-1; i++) {
+    for (size_t i=1; i<points.size()-1; i++) {
         T p1(points.at(i));
         
         Vec2 line;

@@ -3,6 +3,7 @@
 #include <gui/types/StaticText.h>
 #include <gui/types/Button.h>
 #include <misc/GlobalSettings.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     struct ErrorMessage {
@@ -809,18 +810,13 @@ void DrawStructure::close_dialogs() {
             
             ptr->set_bounds_changed();
             
-            for(auto c : ptr->children()) {
-                if(!c)
-                    continue;
-                
-                if(c->type() == Type::SINGLETON)
-                    c = static_cast<SingletonObject*>(c)->ptr();
+            apply_to_objects(ptr->children(), [&q](auto c) {
                 c->set_bounds_changed();
                 
                 if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED) {
                     q.push(static_cast<SectionInterface*>(c));
                 }
-            }
+            });
         }
     }
     

@@ -647,13 +647,13 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
                 auto r = update_objects(gui, g, child, context, state);
                 if(r) {
                     // objects changed
-                    layout->replace_child(i, child);
                     changed = true;
+                    changed = layout->replace_child(i, child) || changed;
                 }
             }
             if(changed) {
                 Print("Changed layout: ", *layout);
-                layout->update_layout();
+                layout->set_layout_dirty();
             }
         } else {
             //Print("Object ", *o, " has no hash and is thus not updated.");

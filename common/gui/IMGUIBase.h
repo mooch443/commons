@@ -203,5 +203,6 @@ namespace cmn::gui {
         void event(const gui::Event& e);
         static void update_size_scale(GLFWwindow*);
         void set_last_framebuffer(Size2);
+        void draw_debug_rectangle(Drawable* o);
     };
 }

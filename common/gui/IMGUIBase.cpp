@@ -35,6 +35,7 @@
 #endif
 
 #include <misc/colors.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
 
@@ -1386,7 +1387,30 @@ void RenderNonAntialiasedStroke(const std::vector<Vertex>& points, const IMGUIBa
     list->_Path.Size = 0;
 }
 
-
+void IMGUIBase::draw_debug_rectangle(Drawable *o) {
+    auto &io = ImGui::GetIO();
+    Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale) .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
+    
+    Transform transform;
+    transform.scale(scale);
+    transform.combine(o->global_transform_no_rotation());
+    auto bds = transform.transformRect(Bounds(Vec2(), o->size()));
+    
+    auto list = ImGui::GetForegroundDrawList();
+    list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(200));
+    std::string text;
+    if(o->parent() && o->parent()->background() == o) {
+        if(dynamic_cast<Entangled*>(o->parent()))
+            text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
+        else
+            text = Meta::toStr(*(Drawable*)o->parent());
+    } else
+        text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds());
+    auto font = _fonts.at(Style::Regular);
+    auto _font = Font(0.3, Style::Regular);
+    
+    list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+}
 
 void IMGUIBase::draw_element(const DrawOrder& order) {
     auto list = ImGui::GetForegroundDrawList();
@@ -1424,13 +1448,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         
         // generate position without rotation
         Vec2 scale = (_graph->scale() / gui::interface_scale() / _dpi_scale) .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
-        
         transform = Transform();
         transform.scale(scale);
-        transform.combine(o->parent()->global_transform());
-        transform.translate(o->pos());
-        transform.scale(o->scale());
-        transform.translate(-o->size().mul(o->origin()));
+        transform.combine(o->global_transform_no_rotation());
         
         bds = transform.transformRect(Bounds(Vec2(), o->size()));
         center = bds.pos() + bds.size().mul(o->origin());
@@ -1456,10 +1476,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         
         transform = Transform();
         transform.scale(scale);
-        transform.combine(o->parent()->global_transform());
-        transform.translate(o->pos());
-        transform.scale(o->scale());
-        transform.translate(-o->size().mul(o->origin()));
+        transform.combine(o->global_transform_no_rotation());
         
         bds = transform.transformRect(Bounds(Vec2(), o->size()));
         center = bds.pos() + bds.size().mul(o->origin());
@@ -1520,16 +1537,21 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 points.clear();
                 points.reserve(ptr->relative()->size());
                 
-                ImVec2 prev{order.transform.transformPoint(ptr->relative()->back())};
+                Transform t = order.transform;//ptr->local_transform();
+                //t = t.combine(order.transform);
+                
+                Vec2 prev{t.transformPoint(ptr->relative()->back())};
+                const size_t N = ptr->relative()->size();
                 for(auto &pt : *ptr->relative()) {
-                    auto cvt = order.transform.transformPoint(pt);
-                    if(sqdistance(cvt, prev) > SQR(5)) {
+                    auto cvt = t.transformPoint(pt);
+                    //if(N <= 100 || sqdistance(cvt, prev) > SQR(5))
+                    {
                         points.emplace_back(std::move(cvt));
                         prev = cvt;
                     }
                 }
                 
-                //Print("points size = ", points.size(), " vs. ", ptr->relative()->size());
+                //Print("points size = ", points.size(), " vs. ", ptr->relative()->size(), " vs. ", reduced.size());
                 
                 if(points.size() >= 3) {
                     points.push_back(points.front());
@@ -1547,6 +1569,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                        )
                     {
                         //((PolyCache*)cache)->original() = points;
+                        //list->AddConcavePolyFilled(points.data(), points.size(), cvtClr(ptr->fill_clr()));
                         PolyFillScanFlood(list, points, output, cvtClr(ptr->fill_clr()));
                         ((PolyCache*)cache)->points() = output;
                         cache->set_changed(false);
@@ -1558,19 +1581,21 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                         }
                     }
                     
-                    if(ptr->show_points()) {
-                        auto clr = cvtClr(ptr->border_clr());
-                        for(auto &pt : *ptr->relative()) {
-                            auto cvt = order.transform.transformPoint(pt);
-                            list->AddCircle(cvt, order.transform.transformPoint(1, 1).x - order.transform.transformPoint(0, 0).x, clr);
-                        }
-                    }
-                    
                 } else if(cache) {
                     o->remove_cache(this);
                 }
                 
                 //list->AddConvexPolyFilled(points.data(), points.size(), (ImColor)ptr->fill_clr());
+                //list->AddConcavePolyFilled(points.data(), points.size(), cvtClr(ptr->fill_clr()));
+                
+                if(ptr->show_points()) {
+                    auto clr = cvtClr(ptr->border_clr());
+                    auto R = order.transform.transformPoint(1, 1).x - order.transform.transformPoint(0, 0).x;
+                    for(auto &pt : points) {
+                        list->AddCircle(pt, R, clr);
+                    }
+                }
+                
                 if(ptr->border_clr() != Transparent)
                     list->AddPolyline(points.data(), (int)points.size(), (ImColor)ptr->border_clr(), true, 1);
             }
@@ -1749,8 +1774,13 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         auto font = _fonts.at(Style::Regular);
         auto _font = Font(0.3, Style::Regular);
         
-        list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+        if(o->in_bounds(_graph->mouse_position().x, _graph->mouse_position().y)) {
+            list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+        }
     }
+    
+    //if(o->custom_data("passthrough"))
+    //    draw_debug_rectangle(o);
 #endif
     
     if(o->type() != Type::ENTANGLED && o->has_global_rotation()) {
@@ -1790,8 +1820,15 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             return false;
         };
         
-        if(o->type() == Type::SINGLETON)
+        if(o->type() == Type::SINGLETON) {
             o = static_cast<SingletonObject*>(o)->ptr();
+        }
+        while(o->type() == Type::PASSTHROUGH) {
+            o = static_cast<Fallthrough*>(o)->object().get();
+            if(not o)
+                return;
+        }
+        
         o->set_was_visible(false);
         
         auto &io = ImGui::GetIO();
@@ -1803,10 +1840,10 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         {
             auto p = o->parent();
             if(p)
-                transform.combine(p->global_transform());
+                transform.combine(p->global_transform_no_rotation());
             
         } else {
-            transform.combine(o->global_transform());
+            transform.combine(o->global_transform_no_rotation());
         }
         
         auto bounds = transform.transformRect(Bounds(0, 0, o->width(), o->height()));
@@ -1826,6 +1863,15 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
 #endif
         
         switch (o->type()) {
+            /*case Type::PASSTHROUGH: {
+                auto ptr = static_cast<Fallthrough*>(o);
+                auto _p = ptr->object().get();
+                if(_p) {
+                    redraw(_p, draw_order, above_z, false, clip_rect);
+                    draw_debug_rectangle(_p);
+                }
+                break;
+            }*/
             case Type::ENTANGLED: {
                 auto ptr = static_cast<Entangled*>(o);
                 if(ptr->rotation() != 0)

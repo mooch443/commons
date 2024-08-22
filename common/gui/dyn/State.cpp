@@ -5,6 +5,7 @@
 #include <gui/dyn/ResolveVariable.h>
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui::dyn {
 
@@ -158,7 +159,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
 {
     auto& obj = std::get<IfBody>(object);
     
-    if(not o.is<Layout>()) {
+    if(not o.is<Fallthrough>()) {
         state._collectors->dealloc(obj._assigned_hash);
         //it = state._collectors->ifs.erase(it);
         return true;
@@ -166,12 +167,13 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
     try {
         auto res = resolve_variable_type<bool>(obj.variable, context, state);
         auto last_condition = (uint64_t)o->custom_data("last_condition");
+        auto pass = o.to<Fallthrough>();
         
         //IndexScopeHandler handler{state._current_index};
         if(not res) {
             if(obj._if) {
                 obj._if = nullptr;
-                o.to<Layout>()->set_children({});
+                pass->set_object(nullptr);
             }
             
             if(not obj.__else.is_null()) {
@@ -192,7 +194,8 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 if(last_condition != 1) {
                     auto ref = obj._else;
                     
-                    o.to<Layout>()->set_children({obj._else});
+                    ref->set_bounds_changed();
+                    pass->set_object(obj._else);
                     
                     if(ref != obj._else) {
                         FormatWarning("Differs! ", *ref, " vs. ", *obj._else);
@@ -201,13 +204,13 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 }
                 
                 if(DynamicGUI::update_objects(gui, g, obj._else, context, *obj._state)) {
-                    FormatWarning("Object changed after update");
+                    //FormatWarning("Object changed after update");
                 }
                 
             } else {
                 if(o->is_displayed()) {
                     o->set_is_displayed(false);
-                    o.to<Layout>()->clear_children();
+                    pass->set_object(nullptr);
                 }
                 
                 obj._else = nullptr;
@@ -223,7 +226,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
         } else {
             if(obj._else) {
                 obj._else = nullptr;
-                o.to<Layout>()->set_children({});
+                pass->set_object(nullptr);
             }
             
             if(not obj._if) {
@@ -242,12 +245,12 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
             if(last_condition != 2) {
                 o->set_is_displayed(true);
                 o->add_custom_data("last_condition", (void*)2);
-                o.to<Layout>()->set_children({obj._if});
+                pass->set_object(obj._if);
             }
             
             auto ref = obj._if;
             if(DynamicGUI::update_objects(gui, g, obj._if, context, *obj._state)) {
-                FormatWarning("Object changed after update.");
+                //FormatWarning("Object changed after update.");
             }
             if(ref != obj._if)
                 FormatWarning("Differs! ", *ref, " vs. ", *obj._if);
@@ -632,6 +635,7 @@ bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure
 
 bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
 {
+    bool dirty = false;
     auto &obj = std::get<LoopBody>(object);
     if (not obj._state) {
         obj._state = std::make_unique<State>();
@@ -669,8 +673,11 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     } //else
                         //obj._state->_current_index.inc();
 
-                    if(ptr)
-                        DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state);
+                    if(ptr) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                            dirty = true;
+                        }
+                    }
 
                     ptrs.at(i) = std::move(ptr);
 
@@ -694,7 +701,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     tmp.variables["i"] = obj.cache[i];
                     auto& p = o.to<Layout>()->objects().at(i);
                     if(p) {
-                        DynamicGUI::update_objects(gui, g, p, tmp, *obj._state);
+                        if(DynamicGUI::update_objects(gui, g, p, tmp, *obj._state)) {
+                            //Print("Changed content");
+                            dirty = true;
+                        }
                     }
                     //p->parent()->stage()->Print(nullptr);
                     //obj._state->_variable_values = std::move(previous);
@@ -714,6 +724,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             Context tmp = context;
             std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
+            if(ptrs.size() != min(5000u, vector.size()))
+                dirty = true;
             ptrs.resize(vector.size());
             
             size_t i = 0;
@@ -732,17 +744,18 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 };
                 
                 // try to reuse existing objects first:
-                Layout::Ptr ptr = ptrs.at(i);
+                Layout::Ptr &ptr = ptrs.at(i);
                 if(not ptr) {
                     ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
+                    dirty = true;
                 }
-
                 if(ptr) {
-                    DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state);
+                    if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                        dirty = true;
+                    } else if(ptr && ptr->is_dirty()) {
+                        dirty = true;
+                    }
                 }
-
-                ptrs.at(i) = std::move(ptr);
-
                 //obj._state->_variable_values = std::move(previous);
 
                 ++i;
@@ -752,36 +765,18 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             }
             
             ptrs.resize(i);
+            o.to<Layout>()->set_children(ptrs);
             
-            /*size_t i=0;
-            for(auto &v : vector) {
-                auto previous = obj._state->_variable_values;
-                //tmp.variables["i"] = v;
-                tmp.variables["index"] = std::unique_ptr<VarBase_t>{
-                    new Variable([i = i++](const VarProps&) -> size_t {
-                        return i;
-                    })
-                };
-                tmp.variables["i"] = std::unique_ptr<VarBase_t>{
-                    new Variable([v](const VarProps&) -> std::string {
-                        return v;
-                    })
-                };
-                auto ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
-                if(ptr) {
-                    DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state);
-                }
-                ptrs.push_back(ptr);
-                obj._state->_variable_values = std::move(previous);
-            }*/
-            
+            if(dirty) {
+                //Print(o.to<Layout>(), " is dirty.");
+                o.to<Layout>()->set_layout_dirty();
+                o.to<Layout>()->update();
+            }
             //o.to<Layout>()->set_children(ptrs);
-            o.to<Layout>()->set_children(std::move(ptrs));
-            //obj.cache = vector;
         }
     }
     
-    return false;
+    return dirty;
 }
 
 void State::register_delete_callback(const std::shared_ptr<HashedObject>& ptr, const Layout::Ptr &o)

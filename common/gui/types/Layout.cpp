@@ -1,6 +1,7 @@
 #include "Layout.h"
 #include <gui/types/SingletonObject.h>
 #include <gui/GuiTypes.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     void Layout::init() {
@@ -97,7 +98,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
         _layout_dirty = true;
     }
 
-    void Layout::replace_child(size_t pos, Layout::Ptr ptr) {
+    bool Layout::replace_child(size_t pos, Layout::Ptr ptr) {
         assert(ptr != nullptr);
         
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
@@ -108,14 +109,18 @@ void Layout::set_stage(gui::DrawStructure *s) {
             }
         }
         
-        if (pos < _objects.size())
+        if (pos < _objects.size()) {
+            //if(_objects[pos] == ptr)
+            //    return false;
+            
             _objects[pos] = ptr;
-        else
+        } else
             throw OutOfRangeException("Cannot add ", ptr.get(), " at ", pos, " which is out of bounds.");
         
         set_content_changed(true);
         set_layout_dirty();
         update();
+        return true;
     }
 
     void Layout::add_child(Layout::Ptr ptr) {
@@ -139,21 +144,13 @@ void Layout::set_stage(gui::DrawStructure *s) {
         if(not _layout_dirty)
             return;
         
-        for(auto &ptr : objects()) {
-            auto _c = ptr.get();
-            if(not _c)
-                continue;
-            
-            if (_c->type() == Type::SINGLETON)
-                _c = static_cast<const SingletonObject*>(_c)->ptr();
-            
-            if(_c
-               && _c->type() == Type::ENTANGLED
-               && dynamic_cast<const Layout*>(_c))
+        apply_to_objects(objects(), [](auto c){
+            if(c->type() == Type::ENTANGLED
+               && dynamic_cast<const Layout*>(c))
             {
-                static_cast<Layout*>(_c)->update();
+                static_cast<Layout*>(c)->update();
             }
-        }
+        });
         
         //Print("Updating ", *this," (",no_quotes(name()),"): ", bounds());
         _update_layout();
@@ -296,16 +293,15 @@ void Layout::set_bounds(const Bounds& bounds) {
             for (auto child : placein->children())
                 _apply_to_children(child, fn);
             
-        } else {
+        } else if(ptr) {
             fn(ptr);
         }
     }
 
     void Layout::apply_to_children(const std::function<void (Drawable *)> & fn) {
-        for (auto c : children()) {
-            if(c)
-                _apply_to_children(c, fn);
-        }
+        apply_to_objects(children(), [&](auto c){
+            _apply_to_children(c, fn);
+        });
     }
     
     void HorizontalLayout::init()
@@ -324,26 +320,12 @@ void VerticalLayout::auto_size() {
         float x = 0;
         float max_height = _margins.y + _margins.height;
         
-        // Fetch all children, recursively expanding PlaceinLayout objects
-        //std::vector<Drawable*> allChildren = fetch_children();
-        
         apply_to_children([&](Drawable* c) {
-            if(!c)
-                return;
-
-            auto _c = c;
-            if (c->type() == Type::SINGLETON)
-                _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            _c->update_bounds();
-            
+            c->update_bounds();
             max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
         });
         
         apply_to_children([&](Drawable* c) {
-            if(!c)
-                return;
-            
             x += _margins.x;
 
             auto local = c->local_bounds();
@@ -383,23 +365,12 @@ void VerticalLayout::auto_size() {
         float max_width = _margins.x + _margins.width;
         
         apply_to_children([&](Drawable* c) {
-            if(!c)
-                return;
-
-            auto _c = c;
-            if (c->type() == Type::SINGLETON)
-                _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            _c->update_bounds();
-            
-            max_width = max(max_width, _c->local_bounds().width + _margins.width + _margins.x);
+            c->update_bounds();
+            max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
             assert(not std::isnan(max_width));
         });
         
         apply_to_children([&](Drawable* c) {
-            if(!c)
-                return;
-            
             y += _margins.y;
             
             auto local = c->local_bounds();
@@ -424,14 +395,7 @@ void VerticalLayout::auto_size() {
         Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
         
         apply_to_children([&](Drawable* c){
-            if(!c)
-                return;
-
-            auto _c = c;
-            if (c->type() == Type::SINGLETON)
-                _c = static_cast<const SingletonObject*>(_c)->ptr();
-
-            auto bds = _c->local_bounds();
+            auto bds = c->local_bounds();
             mi = min(bds.pos(), mi);
             ma = max(bds.pos() + bds.size(), ma);
         });

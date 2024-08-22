@@ -1,6 +1,7 @@
 #include "Section.h"
 #include <gui/DrawStructure.h>
 #include <gui/DrawableCollection.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     ColorWheel Section::wheel;
@@ -53,22 +54,13 @@ namespace cmn::gui {
             return;
         }
         
-        Drawable *d;
         set_rendered(true);
         
         if(_background) {
             ret.push_back(_background);
         }
         
-        for(auto c : _children) {
-            if(not c)
-                continue;
-            
-            if(c->type() == Type::SINGLETON)
-                d = static_cast<SingletonObject*>(c)->ptr();
-            else
-                d = c;
-            
+        apply_to_objects(_children, [&](Drawable* d) {
             assert(d->parent() == this);
             
             if(d->type() == Type::ENTANGLED) {
@@ -100,7 +92,7 @@ namespace cmn::gui {
             }
             else
                 d->set_rendered(false);
-        }
+        });
         
         if(debug_rects() && clickable() && width() > 0 && height() > 0) {
             _clr.a = hovered() ? 30 : 20;
@@ -140,21 +132,15 @@ namespace cmn::gui {
         if(this->HasName::name() == name)
             return const_cast<Section*>(this);
         
-        for(auto c : _children) {
-            if(not c)
-                continue;
-            
-            if(c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
-            
+        return apply_to_objects(_children, [&name](Drawable* c) -> Section* {
             if(c->type() == Type::SECTION) {
                 auto f = static_cast<Section*>(c)->find_section(name);
                 if(f)
                     return f;
             }
-        }
-        
-        return NULL;
+            
+            return nullptr;
+        });
     }
     
     void Section::begin(bool reuse) {
@@ -169,13 +155,12 @@ namespace cmn::gui {
         _index = 0;
         
         // disable all sections until they are "begun"
-        for(size_t i=0; i<_children.size(); i++) {
-            const auto &c = _children[i];
+        apply_to_objects(_children, [](auto c) {
             if(c->type() == Type::SECTION) {
                 static_cast<Section*>(c)->_was_enabled = static_cast<Section*>(c)->enabled();
                 static_cast<Section*>(c)->set_enabled(false);
             }
-        }
+        });
     }
     
     void Section::add_collection(DrawableCollection *custom, bool wrap) {
@@ -310,8 +295,10 @@ namespace cmn::gui {
                 //    _wrapped_children.erase(static_cast<SingletonObject*>(ptr)->ptr());
                     ptr = static_cast<SingletonObject*>(ptr)->ptr();
                 }
+                while(ptr && ptr->type() == Type::PASSTHROUGH)
+                    ptr = static_cast<Fallthrough*>(ptr)->object().get();
                 
-                if(ptr->parent() == this) {
+                if(ptr && ptr->parent() == this) {
                     ptr->set_parent(nullptr);
                     //assert(_children.at(index) == ptr);
                     //_children.erase(_children.begin() + index);
@@ -342,15 +329,16 @@ namespace cmn::gui {
     
     void Section::reuse_current_object() {
         if(_index < _children.size()) {
-            if(_children.at(_index)->type() == Type::SECTION) {
-                auto section = static_cast<Section*>(_children.at(_index));
-                
-                if(section->was_enabled()) {
-                    section->set_enabled(true);
-                    while(section->_index < section->children().size())
-                        section->reuse_current_object();
+            apply_to_object(_children.at(_index), [](auto c){
+                if(c->type() == Type::SECTION) {
+                    auto section = static_cast<Section*>(c);
+                    if(section->was_enabled()) {
+                        section->set_enabled(true);
+                        while(section->_index < section->children().size())
+                            section->reuse_current_object();
+                    }
                 }
-            }
+            });
             
             _index++;
         }
@@ -362,19 +350,13 @@ namespace cmn::gui {
         
         _section_clickable = false;
         
-        for(auto ptr : _children) {
-            if(not ptr)
-                continue;
-            
-            // use actual object instead
-            if(ptr->type() == Type::SINGLETON)
-                ptr = static_cast<SingletonObject*>(ptr)->ptr();
-            
+        apply_to_objects(_children, [this](auto ptr) {
             if(ptr->clickable()) {
                 _section_clickable = true;
-                break;
+                return true;
             }
-        }
+            return false;
+        });
         
         SectionInterface::update_bounds();
     }
@@ -442,11 +424,9 @@ namespace cmn::gui {
     
     void Section::structure_changed(bool downwards) {
         if(downwards) {
-            for(auto c : _children) {
-                if(not c)
-                    continue;
+            apply_to_objects(_children, [](auto c){
                 c->structure_changed(true);
-            }
+            });
         }
         
         SectionInterface::structure_changed(downwards);

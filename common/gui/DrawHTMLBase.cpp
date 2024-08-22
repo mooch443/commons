@@ -2,6 +2,7 @@
 #include <misc/Base64.h>
 #include <gui/types/StaticText.h>
 #include <gui/DrawStructure.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     
@@ -43,6 +44,8 @@ namespace cmn::gui {
             o = o->type() == Type::SINGLETON
                     ? static_cast<SingletonObject*>(o)->ptr()
                     : o;
+            while(o->type() == Type::PASSTHROUGH)
+                o = static_cast<Fallthrough*>(o)->object().get();
 
             if(o->type() == Type::POLYGON)
                 return std::string();

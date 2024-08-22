@@ -506,7 +506,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         auto hashed = state.get_monostate(hash, ptr);
         
-        if(not hashed->_text_field) {
+        //if(not hashed->_text_field)
+        {
             hashed->_text_field = LabeledField::Make(gui, var, state, *this, invert);
             if(not hashed->_text_field) {
                 FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
@@ -933,7 +934,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
             //state._current_index.inc();
             //state._current_index.inc();
             
-            ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
+            ptr = Layout::Make<Fallthrough>();
             //ptr->clear_delete_handlers();
             auto weak = std::weak_ptr(state.register_variant(hash, ptr, IfBody{
                 .variable = obj.at("var").get<std::string>(),

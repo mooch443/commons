@@ -645,7 +645,8 @@ auto insert_sorted(std::vector<T>& vector, const T& element) {
 }
 
 namespace cmn {
-template<typename Numeric, Numeric InvalidValue = static_cast<Numeric>(-1)>
+
+template<typename Numeric, Numeric InvalidValue = std::unsigned_integral<Numeric> ? static_cast<Numeric>(-1) : std::numeric_limits<Numeric>::infinity()>
 class TrivialOptional {
     static_assert(std::is_arithmetic<Numeric>::value, "TrivialOptional can only be used with arithmetic types.");
 
@@ -657,12 +658,20 @@ public:
     constexpr TrivialOptional() noexcept = default;
     constexpr TrivialOptional(const TrivialOptional&) noexcept = default;
     constexpr TrivialOptional(TrivialOptional&&) noexcept = default;
-    constexpr explicit TrivialOptional(Numeric value) noexcept : value_(value) {}
-
+    constexpr explicit TrivialOptional(Numeric value) noexcept : value_(value) {
+        assert(value != InvalidValue);
+    }
+    constexpr explicit TrivialOptional(std::nullopt_t) noexcept {}
+    
     constexpr TrivialOptional& operator=(const TrivialOptional&) noexcept = default;
     constexpr TrivialOptional& operator=(TrivialOptional&&) noexcept = default;
     constexpr TrivialOptional& operator=(Numeric value) noexcept {
+        assert(value != InvalidValue);
         value_ = value;
+        return *this;
+    }
+    constexpr TrivialOptional& operator=(std::nullopt_t) noexcept {
+        value_ = InvalidValue;
         return *this;
     }
 
@@ -726,6 +735,10 @@ public:
 
     constexpr friend bool operator!=(const TrivialOptional& lhs, const TrivialOptional& rhs) {
         return !(lhs == rhs);
+    }
+    
+    std::string toStr() const {
+        return has_value() ? std::to_string(value_) : "nullopt";
     }
 };
 

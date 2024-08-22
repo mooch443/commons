@@ -2,15 +2,15 @@
 
 namespace cmn {
 namespace curves {
-        float interpolate(const std::vector<float>& values, float index) {
+        Float2_t interpolate(const std::vector<Float2_t>& values, Float2_t index) {
             const auto N = values.size();
             // Compute the index of the first value to interpolate
-            const auto first = static_cast<std::vector<float>::size_type>(index);
+            const auto first = static_cast<std::vector<Float2_t>::size_type>(index);
             // Compute the interpolation factor
             const auto p = index - first;
 
             // calculate the wrapped index and return the value
-            auto get_value = [&](std::vector<float>::size_type i) {
+            auto get_value = [&](std::vector<Float2_t>::size_type i) {
                 // Compute the wrapped index
                 i = i - (i >= N) * N;
                 // Retrieve the value from the input vector
@@ -18,30 +18,30 @@ namespace curves {
             };
 
             // Compute the values to interpolate using the wrapped indices
-            float v0 = get_value(first);
-            float v1 = get_value(first + 1);
+            Float2_t v0 = get_value(first);
+            Float2_t v1 = get_value(first + 1);
 
             // Compute and return the interpolated value
             return v0 * (1 - p) + v1 * p;
         }
         
-        std::vector<float> derive(const std::vector<float>& values) {
-            std::vector<float> derivative;
+        std::vector<Float2_t> derive(const std::vector<Float2_t>& values) {
+            std::vector<Float2_t> derivative;
             derivative.resize(values.size());
             for(size_t i = 0; i < values.size(); i++)
                 derivative[i] = values[i] - values[i ? i-1 : values.size()-1];
             return derivative;
         }
         
-        Extrema find_extreme_points(const std::vector<float>& values, std::vector<float>& derivative)
+        Extrema find_extreme_points(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative)
         {
             Extrema ret;
             if(derivative.empty())
                 derivative = derive(values);
             
             const long L = values.size();
-            float y0 = derivative.back();
-            float last_extremum = -1;
+            Float2_t y0 = derivative.back();
+            Float2_t last_extremum = -1;
             int last_extremum_type = -1;
             
             ret.min = FLT_MAX;
@@ -53,19 +53,19 @@ namespace curves {
                 if(ret.min > c) ret.min = c;
             }
             ret.mean /= values.size();
-            const float magic_value = ret.mean * 0.3;
+            const Float2_t magic_value = ret.mean * 0.3;
             
-            std::vector<std::pair<float, bool>> all;
+            std::vector<std::pair<Float2_t, bool>> all;
             
             for (long x1=0; x1<L; x1++) {
-                float x0 = x1-1;
-                float y1 = derivative[x1];
+                Float2_t x0 = x1-1;
+                Float2_t y1 = derivative[x1];
                 
-                float p = crosses_zero(y0, y1);
+                Float2_t p = crosses_zero(y0, y1);
                 
                 if(p >= 0 && p <= 1) {
-                    float ky1 = values[x1];
-                    float ky0 = values[x1 == 0 ? (values.size()-1) : (x1-1)];
+                    Float2_t ky1 = values[x1];
+                    Float2_t ky0 = values[x1 == 0 ? (values.size()-1) : (x1-1)];
                     
                     // it crosses zero in this segment
                     Vec2 pt(x0+p, y1+(y0-y1)*p);
@@ -104,7 +104,7 @@ namespace curves {
                 y0 = y1;
             }
             
-            std::pair<float, bool> prev(0.f, false);
+            std::pair<Float2_t, bool> prev(0.f, false);
             if(!all.empty())
                 prev = all.front();
             if(prev.second) {
@@ -123,11 +123,11 @@ namespace curves {
                 auto idx = pair.first;
                 auto type = pair.second;
                 
-                float height = interpolate(values, idx);//values[idx];
+                Float2_t height = interpolate(values, idx);//values[idx];
                 
                 if(type) {
                     //assert(prev.first >= 0 && prev.first <= values.size());
-                    float diff = abs(height-interpolate(values, prev.first));
+                    Float2_t diff = abs(height-interpolate(values, prev.first));
                     
                     if(diff < magic_value) {
                         // erase maximum (or erase previous maximum? hmm)
@@ -206,17 +206,17 @@ namespace curves {
             return ret;
         }
         
-        std::map<float, float> area_under_extreme(const std::vector<float>& values, bool minima, std::vector<float>& derivative)
+        std::map<Float2_t, Float2_t> area_under_extreme(const std::vector<Float2_t>& values, bool minima, std::vector<Float2_t>& derivative)
         {
             Extrema e = find_extreme_points(values, derivative);
             
-            std::map<float, float> area;
+            std::map<Float2_t, Float2_t> area;
             
             if(!e.minima.empty()) {
                 auto &search_first = minima ? e.minima : e.maxima;
                 auto &search_second = minima ? e.maxima : e.minima;
                 
-                for (float exact : search_first) {
+                for (Float2_t exact : search_first) {
                     long minimum = exact;
                     long fidx = LONG_MAX, lidx = LONG_MAX;
                     
@@ -251,7 +251,7 @@ namespace curves {
                     }
                     
                     // add up the area´
-                    float value_min = FLT_MAX, value_max = -FLT_MAX;
+                    Float2_t value_min = FLT_MAX, value_max = -FLT_MAX;
                     
                     for(long i=fidx; i<=lidx; i++) {
                         long x = i;
@@ -265,18 +265,18 @@ namespace curves {
                     }
                     
                     
-                    float distances = 1;
+                    Float2_t distances = 1;
                     
                     if(search_first.size() > 1) {
                         for(long m : search_first) {
                             if(m != minimum) {
                                 distances += min(abs(minimum - m),
-                                                 min(abs(minimum + (float)values.size() - m),
-                                                     abs(m - minimum + (float)values.size())));
+                                                 min(abs(minimum + (Float2_t)values.size() - m),
+                                                     abs(m - minimum + (Float2_t)values.size())));
                             }
                         }
                         
-                        distances /= float(search_first.size()-1);
+                        distances /= Float2_t(search_first.size()-1);
                     }
                     
                     area[exact] = distances * abs(value_max - value_min);
@@ -286,21 +286,21 @@ namespace curves {
             return area;
         }
         
-        std::map<float, float> area_under_minima(const std::vector<float>& values) {
-            std::vector<float> derivative;
+        std::map<Float2_t, Float2_t> area_under_minima(const std::vector<Float2_t>& values) {
+            std::vector<Float2_t> derivative;
             return area_under_extreme(values, true, derivative);
         }
         
-        std::map<float, float> area_under_maxima(const std::vector<float>& values) {
-            std::vector<float> derivative;
+        std::map<Float2_t, Float2_t> area_under_maxima(const std::vector<Float2_t>& values) {
+            std::vector<Float2_t> derivative;
             return area_under_extreme(values, false, derivative);
         }
         
-        std::map<float, float> area_under_minima(const std::vector<float>& values, std::vector<float>& derivative) {
+        std::map<Float2_t, Float2_t> area_under_minima(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative) {
             return area_under_extreme(values, true, derivative);
         }
         
-        std::map<float, float> area_under_maxima(const std::vector<float>& values, std::vector<float>& derivative) {
+        std::map<Float2_t, Float2_t> area_under_maxima(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative) {
             return area_under_extreme(values, false, derivative);
         }
     }

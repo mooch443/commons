@@ -3,6 +3,7 @@
 #include <gui/types/Dropdown.h>
 #include <misc/stacktrace.h>
 #include <misc/Timer.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
     Entangled::Entangled(Entangled&& other) noexcept
@@ -72,14 +73,9 @@ namespace cmn::gui {
     }
     
     void Entangled::update(const std::function<void(Entangled& base)> create) {
-        begin();
-        try {
+        OpenContext([&](){
             create(*this);
-        } catch(...) {
-            end();
-            throw;
-        }
-        end();
+        });
     }
     
     Entangled::~Entangled() {
@@ -101,11 +97,9 @@ namespace cmn::gui {
         
         set_stage(nullptr);
         
-        for(size_t i=0; i<children.size(); i++) {
-            if(children[i]) {
-                children[i]->set_parent(NULL);
-            }
-        }
+        apply_to_objects(children, [](auto c){
+            c->set_parent(nullptr);
+        });
     }
     
     void Entangled::set_scroll_enabled(bool enable) {
@@ -374,92 +368,103 @@ bool Entangled::is_animating() noexcept {
     return false;
 }
 
-    void Entangled::before_draw() {
-        _content_changed_while_updating = false;
-        update();
+void Entangled::before_draw() {
+#ifndef NDEBUG
+    static size_t iterations{0};
+    static Timer last_print;
         
-        for(auto c : children()) {
-            if(!c)
-                continue;
+    ++iterations;
+#endif
+    _content_changed_while_updating = false;
+    update();
+
+    apply_to_objects(children(), [](Drawable* c){
+        if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED) {
+            static_cast<SectionInterface*>(c)->before_draw();
+        }
+    });
+
+    SectionInterface::before_draw();
+        
+    if(_content_changed && !_content_changed_while_updating)
+        _content_changed = false;
+    else if(_content_changed_while_updating)
+        set_dirty();
+    
+#ifndef NDEBUG
+    if(last_print.elapsed() > 10) {
+        Print("Iterations[Entangled::before_draw] = ", iterations);
+        last_print.reset();
+    }
+#endif
+}
+    
+void SectionInterface::before_draw() {
+#ifndef NDEBUG
+    static size_t iterations{0}, processed_objects{0}, Nsamples{0};
+    static Timer last_print;
+#endif
+    
+    if(_has_children_rect_changed) {
+        std::vector<SectionInterface*> reset;
+        std::queue<SectionInterface*> q;
+        q.push(this);
+        reset.push_back(this);
+        
+        while(not q.empty()) {
+            auto ptr = q.front();
+            q.pop();
             
-            if(c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
+#ifndef NDEBUG
+            ++iterations;
+#endif
+            ptr->_has_children_rect_changed = true;
+            reset.push_back(ptr);
+            ptr->set_bounds_changed();
+            //ptr->children_rect_changed();
             
-            if(c->type() == Type::ENTANGLED)
-                static_cast<Entangled*>(c)->before_draw();
+            if(ptr->_background)
+                ptr->_background->set_bounds_changed();
+            
+            apply_to_objects(ptr->children(), [&q](auto c){
+                if(c->type() == Type::ENTANGLED || c->type() == Type::SECTION) {
+                    q.push(static_cast<SectionInterface*>(c));
+                } else
+                    c->set_bounds_changed();
+            });
         }
         
-        SectionInterface::before_draw();
+        /// we need to reset the has *children_rect_changed*
+        /// after the loop because otherwise it'll *set_bounds_dirty*
+        /// from some child, which resets the parent (that we just processed)
+        for(auto r : reset) {
+            r->_has_children_rect_changed = false;
+        }
         
-        if(_content_changed && !_content_changed_while_updating)
-            _content_changed = false;
-        else if(_content_changed_while_updating)
-            set_dirty();
+#ifndef NDEBUG
+        processed_objects += reset.size();
+        ++Nsamples;
+        if(last_print.elapsed() > 10) {
+            Print("Iterations[before_draw] = ", iterations, " with ", processed_objects / double(Nsamples), " objects/run");
+            last_print.reset();
+        }
+#endif
     }
     
-    void SectionInterface::before_draw() {
-#ifndef NDEBUG
-        static size_t iterations{0};
-        static Timer last_print;
-#endif
+    _has_children_rect_changed = false;
+}
+
+void Entangled::set_parent(SectionInterface* p) {
+    //children_rect_changed();
+    if(p != _parent) {
+        if(p)
+            set_content_changed(true);
         
-        if(_has_children_rect_changed) {
-            std::queue<SectionInterface*> q;
-            q.push(this);
-            
-            while(not q.empty()) {
-                auto ptr = q.front();
-                q.pop();
-                
-#ifndef NDEBUG
-                ++iterations;
-#endif
-                
-                ptr->set_bounds_changed();
-                //ptr->children_rect_changed();
-                
-                if(ptr->_background)
-                    ptr->_background->set_bounds_changed();
-                
-                for(auto c : ptr->children()) {
-                    if(!c)
-                        continue;
-                    
-                    if(c->type() == Type::SINGLETON)
-                        c = static_cast<SingletonObject*>(c)->ptr();
-                    
-                    //if(c->bounds_changed())
-                    //    continue;
-                    
-                    if(c->type() == Type::ENTANGLED || c->type() == Type::SECTION) {
-                        q.push(static_cast<SectionInterface*>(c));
-                    } else
-                        c->set_bounds_changed();
-                }
-            }
-            
-#ifndef NDEBUG
-            if(last_print.elapsed() > 10) {
-                Print("Iterations[before_draw] = ", iterations);
-                last_print.reset();
-            }
-#endif
-        }
-        
-        _has_children_rect_changed = false;
+        if(not p)
+            set_stage(nullptr);
+        SectionInterface::set_parent(p);
     }
-    
-    void Entangled::set_parent(SectionInterface* p) {
-        //children_rect_changed();
-        if(p != _parent) {
-            if(p)
-                set_content_changed(true);
-            
-            if(not p)
-                set_stage(nullptr);
-            SectionInterface::set_parent(p);
-        }
-    }
+}
 
 void SectionInterface::children_rect_changed() {
     if(_has_children_rect_changed)
@@ -475,35 +480,6 @@ void SectionInterface::children_rect_changed() {
     set_bounds_changed();
     if(_background)
         _background->set_bounds_changed();
-    
-    /*std::queue<SectionInterface*> q;
-    q.push(this);
-    
-    while(not q.empty()) {
-        auto ptr = q.front();
-        q.pop();
-        
-        ptr->set_bounds_changed();
-        ptr->_has_children_rect_changed = true;
-        ++iterations;
-        
-        if(ptr->_background)
-            ptr->_background->set_bounds_changed();
-        
-        for(auto c : ptr->children()) {
-            if(!c)
-                continue;
-            
-            if(c->type() == Type::SINGLETON)
-                c = static_cast<SingletonObject*>(c)->ptr();
-            
-            if(c->type() == Type::ENTANGLED || c->type() == Type::SECTION) {
-                if(not static_cast<SectionInterface*>(c)->has_children_rect_changed())
-                    q.push(static_cast<SectionInterface*>(c));
-            } else
-                c->set_bounds_changed();
-        }
-    }*/
     
 #ifndef NDEBUG
     if(last_print.elapsed() > 10) {
@@ -596,10 +572,25 @@ void SectionInterface::children_rect_changed() {
             throw U_EXCEPTION("Cannot entangle Sections.");
         } else if(d->type() == Type::SINGLETON)
             throw U_EXCEPTION("Cannot entangle wrapped objects.");
-        
-        d->set_parent(this);
+        /*if(d->type() == Type::PASSTHROUGH) {
+            auto c = static_cast<Fallthrough*>(d)->object().get();
+            if(c)
+                c->set_parent(this);
+        }else*/
+            d->set_parent(this);
         
         _owned[d] = own;
     }
+
+bool Entangled::clickable() {
+    if(_clickable)
+        return true;
+    
+    return apply_to_objects(_current_children, [](auto o) -> bool {
+        if(o->clickable())
+            return true;
+        return false;
+    });
+}
 
 }

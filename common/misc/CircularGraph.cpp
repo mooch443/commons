@@ -49,12 +49,11 @@ namespace cmn {
          * The curvature returned is missing a sqrt() in the normalization
          * for performance reasons.
          */
-        scalars_t curvature(points_t points, int r, bool absolute) {
-            assert(points);
+        scalars_t curvature(const points_t::element_type& points, int r, bool absolute) {
             if (r < 1)
                 throw std::invalid_argument("r must be >= 1");
             
-            if(!points || points->empty()) {
+            if(points.empty()) {
                 FormatWarning("[curvature] points cannot be empty or nullptr.");
                 return nullptr;
             }
@@ -62,11 +61,11 @@ namespace cmn {
             static Timing timing("curvature", 10);
             TakeTiming take(timing);
             
-            scalars_t result = std::make_shared<scalars_t::element_type>();
-            result->resize(points->size());
+            scalars_t result = std::make_unique<scalars_t::element_type>();
+            result->resize(points.size());
             
-            auto start = points->data();
-            auto end = start + points->size();
+            auto start = points.data();
+            auto end = start + points.size();
             
             auto ptr1 = end - r;
             auto ptr2 = start;
@@ -109,27 +108,38 @@ namespace cmn {
             return result;
         }
         
-        std::tuple<peaks_t, peaks_t> find_peaks(scalars_t points, float, std::vector<scalars_t> diffs, PeakMode mode) {
+        std::tuple<peaks_t, peaks_t> find_peaks(const scalars_t& points, float, const std::vector<scalars_t>& diffs, PeakMode mode) {
             //static Timing timing("find_peaks", 0.01);
             //TakeTiming take(timing);
             
             if(!points || points->empty())
                 return {nullptr, nullptr};
             
-            scalars_t diff, second_diff;
+            const scalars_t::element_type *diff, *second_diff;
+            
+            std::vector<scalars_t> tmp;
             if(diffs.empty()) {
-                auto diffs = differentiate(points, 2);
-                diff = diffs.at(0);
-                second_diff = diffs.at(1);
+                auto diffs = differentiate(*points, 2);
+                tmp.emplace_back(std::move(diffs.at(0)));
+                tmp.emplace_back(std::move(diffs.at(1)));
+                diff = tmp.front().get();
+                second_diff = tmp.back().get();
                 
             } else {
                 auto L = diffs.size();
-                for (size_t i=L; i<2; ++i) {
-                    diffs.push_back(differentiate(i > 0 ? diffs.at(i-1) : points, 1)[0]);
+                if(L > 0)
+                    diff = diffs.at(0).get();
+                else {
+                    tmp.emplace_back(std::move(differentiate(*points, 1).front()));
+                    diff = tmp.back().get();
                 }
                 
-                diff = diffs.at(0);
-                second_diff = diffs.at(1);
+                if(L > 1)
+                    second_diff = diffs.at(1).get();
+                else {
+                    tmp.emplace_back(std::move(differentiate(*diff, 1).front()));
+                    second_diff = tmp.back().get();
+                }
             }
             
             bool sign = diff->back() < 0;
@@ -143,8 +153,8 @@ namespace cmn {
             auto point = points->data();
             //auto prev_point = points->back();
             
-            auto maxima = std::make_shared<peaks_t::element_type>();
-            auto minima = std::make_shared<peaks_t::element_type>();
+            auto maxima = std::make_unique<peaks_t::element_type>();
+            auto minima = std::make_unique<peaks_t::element_type>();
             
             std::set<std::tuple<scalar_t, size_t>, std::greater<>> sorted;
             std::set<std::tuple<scalar_t, bool>> extrema;
@@ -393,35 +403,35 @@ namespace cmn {
                 }
             }
             
-            return { maxima, minima };
+            return { std::move(maxima), std::move(minima) };
         }
         
-        template<bool calculate_sum = false, typename T = points_t>
-        std::tuple<scalar_t, std::vector<T>> _differentiate(T points, size_t times) {
-            using pointer_t = typename T::element_type::value_type *;
+        template<bool calculate_sum = false, typename T = points_t::element_type>
+        std::tuple<scalar_t, std::vector<std::unique_ptr<T>>> _differentiate(const T& points, size_t times) {
+            using pointer_t = typename T::value_type *;
             //assert(points);
-            if(!points || points->empty())
-                return {0, {}};
+            if(points.empty())
+                return std::make_tuple(scalar_t(0), std::vector<std::unique_ptr<T>>{});
             
-            std::vector<T> result;
+            std::vector<std::unique_ptr<T>> result;
             std::vector<pointer_t> out;
             
             out.resize(times);
             for (size_t i=0; i<times; ++i) {
-                result.push_back(std::make_shared<typename T::element_type>());
-                result.back()->resize(points->size());
+                result.emplace_back(std::make_unique<T>());
+                result.back()->resize(points.size());
                 out[i] = result.back()->data();
             }
             
             //auto out = result->data();
-            auto prev = points->data();
-            auto ptr = points->data() + 1;
-            auto end = points->data() + points->size();
+            auto prev = points.data();
+            auto ptr = points.data() + 1;
+            auto end = points.data() + points.size();
             
             scalar_t sum(0);
             pointer_t *o;
             auto oend = out.data() + out.size();
-            typename T::element_type::value_type value;
+            typename T::value_type value;
             
             // out[n] = a[n+1] - a[n]
             for (; ptr != end; ++ptr) {
@@ -437,10 +447,10 @@ namespace cmn {
                 prev = ptr;
             }
             
-            assert(&points->back() == prev);
+            assert(&points.back() == prev);
             assert(&result.front()->back() == out.front());
             
-            ptr = points->data();
+            ptr = points.data();
             
             value = *ptr - *prev;
             o = out.data();
@@ -450,36 +460,36 @@ namespace cmn {
             if constexpr(calculate_sum)
                 sum += ptr->x * prev->y - prev->x * ptr->y;
             
-            return {sum, result};
+            return std::make_tuple(sum, std::move(result));
         }
         
-        std::vector<scalars_t> differentiate(scalars_t points, size_t times) {
+        std::vector<scalars_t> differentiate(const scalars_t::element_type& points, size_t times) {
             return std::get<1>(_differentiate<false>(points, times));
         }
         
-        std::vector<points_t> differentiate(points_t points, size_t times) {
+        std::vector<points_t> differentiate(const points_t::element_type& points, size_t times) {
             return std::get<1>(_differentiate<false>(points, times));
         }
         
-        std::tuple<scalar_t, std::vector<points_t>> differentiate_and_test_clockwise(points_t points, size_t times) {
+        std::tuple<scalar_t, std::vector<points_t>> differentiate_and_test_clockwise(const points_t::element_type& points, size_t times) {
             return _differentiate<true>(points, times);
         }
         
         namespace EFT {
-            std::tuple<points_t, scalars_t, scalars_t, scalars_t> dt(points_t dxy) {
+            std::tuple<points_t, scalars_t, scalars_t, scalars_t> dt(const points_t& dxy) {
                 if (!dxy || dxy->empty())
                     throw U_EXCEPTION("[periodic::EFT] Cannot work on empty (or null) dxy array.");
                 
-                auto dt = std::make_shared<scalars_t::element_type>();
+                auto dt = std::make_unique<scalars_t::element_type>();
                 dt->resize(dxy->size() - 1); // -1 because dxy is same size as array
                 
-                auto cumsum = std::make_shared<scalars_t::element_type>();
+                auto cumsum = std::make_unique<scalars_t::element_type>();
                 cumsum->resize(dt->size() + 1); // prepend a zero
                 
-                auto phi = std::make_shared<scalars_t::element_type>();
+                auto phi = std::make_unique<scalars_t::element_type>();
                 phi->resize(cumsum->size());
                 
-                auto cache_xy_sum = std::make_shared<points_t::element_type>();
+                auto cache_xy_sum = std::make_unique<points_t::element_type>();
                 cache_xy_sum->resize(dt->size());
                 
                 scalar_t sum = 0;
@@ -498,23 +508,28 @@ namespace cmn {
                 }
                 
                 // return cache, phi, t and dt
-                return {cache_xy_sum, phi, cumsum, dt};
+                return {std::move(cache_xy_sum), std::move(phi), std::move(cumsum), std::move(dt)};
             }
         }
     
-    
-        
-        coeff_t eft(points_t points, size_t order, points_t dxy) {
-            if(points->empty())
+        coeff_t eft(const points_t::element_type& points, size_t order, const points_t& _dxy) {
+            if(points.empty())
                 return nullptr;
             
-            if(!dxy)
-                dxy = differentiate(points, 1)[0];
-            auto && [cache_xy_sum, phi, cumsum, dt] = EFT::dt(dxy);
+            points_t tmp;
+            const points_t* dxy;
+            if(not _dxy) {
+                tmp = std::move(differentiate(points, 1).front());
+                dxy = &tmp;
+            } else {
+                dxy = &_dxy;
+            }
+                
+            auto && [cache_xy_sum, phi, cumsum, dt] = EFT::dt(*dxy);
             auto T = cumsum->back(); // period is the circumference
             
             const scalar_t norm_base = T / (2 * SQR(M_PI));
-            auto coeffs = std::make_shared<coeff_t::element_type>();
+            auto coeffs = std::make_unique<coeff_t::element_type>();
             coeffs->resize(order);
             
             std::vector<Vec2> cossin_phi;
@@ -549,12 +564,9 @@ namespace cmn {
             return coeffs;
         }
         
-        std::vector<points_t> ieft(coeff_t coeffs, size_t order, size_t n_points, Vec2 offset, bool save_steps)
+        std::vector<points_t> ieft(const coeff_t::element_type& coeffs, size_t order, size_t n_points, Vec2 offset, bool save_steps, Float2_t scale)
         {
-            if(!coeffs)
-                return {};
-            
-            if(order > coeffs->size())
+            if(order > coeffs.size())
                 throw U_EXCEPTION("Cannot compute order > coeffs.size().");
             
             assert(n_points > 0);
@@ -576,16 +588,16 @@ namespace cmn {
                     auto ct = fast::cos(t[j] * (i+1));
                     auto st = fast::sin(t[j] * (i+1));
                     
-                    pt[j].x += (*coeffs)[i].x * ct + (*coeffs)[i].y * st;
-                    pt[j].y += (*coeffs)[i].z * ct + (*coeffs)[i].w * st;
+                    pt[j].x += scale * (coeffs[i].x * ct + coeffs[i].y * st);
+                    pt[j].y += scale * (coeffs[i].z * ct + coeffs[i].w * st);
                 }
                 
                 if(save_steps)
-                    result.push_back(std::make_shared<points_t::element_type>(pt.begin(), pt.end()));
+                    result.emplace_back(std::make_unique<points_t::element_type>(pt.begin(), pt.end()));
             }
             
             if(!save_steps)
-                result.push_back(std::make_shared<points_t::element_type>(pt.begin(), pt.end()));
+                result.emplace_back(std::make_unique<points_t::element_type>(pt.begin(), pt.end()));
             
             return result;
         }
@@ -604,23 +616,23 @@ namespace cmn {
             
             for(auto &d : _derivatives) {
                 if(d)
-                    d = differentiate(_points, 1)[0];
+                    d = std::move(differentiate(*_points, 1)[0]);
             }
             
             _is_clockwise = true;
         }
         
-        void Curve::set_points(points_t points, bool copy) {
+        void Curve::set_points(points_t&& points, bool copy) {
+            // retain a pointer of the points / replace the old ones
             if(copy)
-                points = std::make_shared<points_t::element_type>(*points);
+                _points = std::make_unique<points_t::element_type>(*points);
+            else
+                _points = std::move(points);
             
             //! calculate som basic properties of the curve
-            auto && [sum, der] = _differentiate<true>(points, 1);
-            _derivatives = der;
+            auto && [sum, der] = _differentiate<true>(*_points, 1);
+            _derivatives = std::move(der);
             _is_clockwise = sum >= 0 ? true : false;
-            
-            // retain a pointer of the points / replace the old ones
-            _points = points;
         }
     }
 }

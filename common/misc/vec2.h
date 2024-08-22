@@ -36,6 +36,7 @@ namespace cmn {
     \
     constexpr Scalar min() const { return std::min(A(), B()); } \
     constexpr Scalar max() const { return std::max(A(), B()); } \
+    constexpr Scalar mean() const { return 0.5_F * (A() + B()); } \
     constexpr Vector2D abs() const { return self_type(std::abs(A()), std::abs(B())); } \
     constexpr bool empty() const { return operator==(zeros()); } \
     \
@@ -310,6 +311,9 @@ struct Vector2D<Scalar, false>
 
 typedef Vector2D<Float2_t, true> Vec2;
 typedef Vector2D<Float2_t, false> Size2;
+
+extern template struct Vector2D<Float2_t, true>;
+extern template struct Vector2D<Float2_t, false>;
 
 //static_assert(std::is_trivial_v<Vec2>, "vec2 trivial");
 //static_assert(std::is_trivial_v<Size2>, "size2 trivial");
@@ -732,4 +736,6 @@ inline std::optional<VecType> LineSegmentsIntersect(const VecType& p1, const Vec
 
     return std::nullopt;
 }
+
+Float2_t polygon_area(const std::vector<Vec2>& pts);
 }

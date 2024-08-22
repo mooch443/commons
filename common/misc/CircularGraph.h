@@ -13,9 +13,9 @@ namespace cmn {
             scalar_t x, y, z, w;
         };
         
-        typedef std::shared_ptr<std::vector<point_t>> points_t;
-        typedef std::shared_ptr<std::vector<scalar_t>> scalars_t;
-        typedef std::shared_ptr<std::vector<Vec4>> coeff_t;
+        typedef std::unique_ptr<std::vector<point_t>> points_t;
+        typedef std::unique_ptr<std::vector<scalar_t>> scalars_t;
+        typedef std::unique_ptr<std::vector<Vec4>> coeff_t;
         typedef Range<scalar_t> range_t;
         
         struct Peak {
@@ -50,31 +50,31 @@ namespace cmn {
             }
         };
         
-        typedef std::shared_ptr<std::vector<Peak>> peaks_t;
+        typedef std::unique_ptr<std::vector<Peak>> peaks_t;
         
-        scalars_t curvature(points_t, int, bool = false);
+        scalars_t curvature(const points_t::element_type&, int, bool = false);
         
         //! calculates out[n] = a[n+1] - a[n] for every point
-        std::vector<points_t> differentiate(points_t, size_t times = 1);
-        std::vector<scalars_t> differentiate(scalars_t, size_t times = 1);
-        std::tuple<scalar_t, std::vector<points_t>> differentiate_and_test_clockwise(points_t, size_t times = 1);
+    std::vector<points_t> differentiate(const points_t::element_type&, size_t times = 1);
+    std::vector<scalars_t> differentiate(const scalars_t::element_type&, size_t times = 1);
+    std::tuple<scalar_t, std::vector<points_t>> differentiate_and_test_clockwise(const points_t::element_type&, size_t times = 1);
         
         enum PeakMode {
             FIND_BROAD,
             FIND_POINTY
         };
-        std::tuple<peaks_t, peaks_t> find_peaks(scalars_t, float min_width = 0, std::vector<scalars_t> = {}, PeakMode = FIND_BROAD);
+        std::tuple<peaks_t, peaks_t> find_peaks(const scalars_t&, float min_width = 0, const std::vector<scalars_t>& = {}, PeakMode = FIND_BROAD);
         
-        coeff_t eft(points_t, size_t order = 10, points_t derivative = nullptr);
-        std::vector<points_t> ieft(coeff_t, size_t order, size_t n_points, Vec2 offset = Vec2(0), bool save_steps = true);
+        coeff_t eft(const points_t::element_type&, size_t order = 10, const points_t& derivative = nullptr);
+        std::vector<points_t> ieft(const coeff_t::element_type&, size_t order, size_t n_points, Vec2 offset = Vec2(0), bool save_steps = true, Float2_t scale = 1_F);
         
         namespace EFT {
-            std::tuple<points_t, scalars_t, scalars_t, scalars_t> dt(points_t derivative);
+            std::tuple<points_t, scalars_t, scalars_t, scalars_t> dt(const points_t& derivative);
         }
 
         class Curve {
         public:
-            typedef std::shared_ptr<Curve> Ptr;
+            typedef std::unique_ptr<Curve> Ptr;
             
         protected:
             GETTER(bool, is_clockwise);
@@ -87,7 +87,7 @@ namespace cmn {
             Curve();
             
             // takes ownership of points and sets them
-            void set_points(points_t points, bool copy = true);
+            void set_points(points_t&& points, bool copy = true);
             void make_clockwise();
             
             // Curve::Ptr approximate(uint32_t order);

@@ -3,6 +3,7 @@
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
 #include <gui/types/StaticText.h>
+#include <gui/Passthrough.h>
 
 #if __has_include ( <GLFW/glfw3.h> )
     #include <GLFW/glfw3.h>
@@ -95,9 +96,7 @@ void Textfield::init() {
                     
                     //Print("* searching ", (uint64_t)root, " name=", root->name());
                     
-                    for(auto c : root->children()) {
-                        if(c->type() == Type::SINGLETON)
-                            c = ((SingletonObject*)c)->ptr();
+                    apply_to_objects(root->children(), [&](auto c){
                         if(c->type() == Type::ENTANGLED
                            && dynamic_cast<Textfield*>(c))
                         {
@@ -109,7 +108,7 @@ void Textfield::init() {
                         } else if(dynamic_cast<SectionInterface*>(c)) {
                             q.push_front(static_cast<SectionInterface*>(c));
                         }
-                    }
+                    });
                 }
                 
                 //Print("* searching for ", (uint64_t)this);

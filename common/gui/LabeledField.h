@@ -11,6 +11,7 @@
 #include <file/PathArray.h>
 #include <gui/types/Combobox.h>
 #include <gui/GUITaskQueue.h>
+#include <gui/Passthrough.h>
 
 namespace cmn::gui {
 namespace dyn {
@@ -118,11 +119,17 @@ public:
     template<typename T>
     static bool delegate_to_proper_type(const T& attribute, const Layout::Ptr& object)
     {
+        if(not object)
+            return false;
+        
+        if(object.is<Fallthrough>()) {
+            return delegate_to_proper_type(attribute, object.to<Fallthrough>()->object());
+        }
+        
         // Existing base class set implementation
         if constexpr(takes_attribute<Drawable, T>) {
             object->set(attribute);
             return true;
-            
         }
 
         switch (object->type()) {

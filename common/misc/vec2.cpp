@@ -46,4 +46,24 @@ namespace cmn {
         //return sqrt(SQR(m) + SQR(n));
         return min(cmn::abs(p.x - x), cmn::abs(p.x - (x + width)), min(cmn::abs(p.y - y), cmn::abs(p.y - (y + height))));
     }
+
+    Float2_t polygon_area(const std::vector<Vec2>& pts)
+    {
+        // Initialze area
+        Float2_t area = 0.0;
+        if(pts.empty())
+            return 0;
+        
+        // Calculate value of shoelace formula
+        auto n = pts.size();
+        size_t j = n - 1;
+        for (size_t i = 0; i < n; i++)
+        {
+            area += (pts[j].x + pts[i].x) * (pts[j].y - pts[i].y);
+            j = i;  // j is previous vertex to i
+        }
+        
+        // Return absolute value
+        return cmn::abs(area / 2.0f);
+    }
 }

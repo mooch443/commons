@@ -33,7 +33,7 @@ namespace cmn::gui {
         NONE,    VERTICES,  CIRCLE,
         RECT,    TEXT,      IMAGE,
         SECTION, SINGLETON, ENTANGLED,
-        POLYGON, LINE
+        POLYGON, LINE,      PASSTHROUGH
     )
     
     Float2_t interface_scale();
@@ -81,21 +81,24 @@ namespace cmn::gui {
         //  using the Drawables
         robin_hood::unordered_map<const Base*, CacheObject::Ptr> _cache;
         
-        std::unordered_map<std::string, std::tuple<void*, std::function<void(void*)>>> _custom_data;
+        std::unordered_map<std::string_view, std::tuple<void*, std::function<void(void*)>>> _custom_data;
         std::unordered_set<uchar> _custom_tags;
         
-        GETTER_SETTER(std::string, name);
+        GETTER(std::string, name);
         
     public:
-        void add_custom_data(const std::string& key, void* data, std::function<void(void*)> deleter = [](void*){}) {
+        virtual void set_name(const std::string& name) {
+            _name = name;
+        }
+        void add_custom_data(std::string_view key, void* data, std::function<void(void*)> deleter = [](void*){}) {
             _custom_data[key] = {data, deleter};
         }
-        void remove_custom_data(const std::string& key) {
+        void remove_custom_data(std::string_view key) {
             auto it = _custom_data.find(key);
             if(it != _custom_data.end())
                 _custom_data.erase(key);
         }
-        void* custom_data(const std::string& key) const {
+        void* custom_data(std::string_view key) const {
             auto it = _custom_data.find(key);
             if(it != _custom_data.end()) {
                 return std::get<0>(it->second);
@@ -174,7 +177,7 @@ namespace cmn::gui {
         //  also rotation, even though thats not supported).
         //  This transforms points into this objects coordinate
         //  space.
-        Transform _global_transform;
+        Transform _global_transform, _global_transform_no_rotation;
         
         //! [Cached] Global position and size according to
         //  object hierarchy and scale.
@@ -388,6 +391,7 @@ namespace cmn::gui {
         //  absolute, global position of this Drawable. It also scales objects according
         //  to drawing hierarchy.
         const Transform& global_transform();
+        const Transform& global_transform_no_rotation();
         
         void global_scale_rotation(Transform &);
         
@@ -395,6 +399,7 @@ namespace cmn::gui {
         const Bounds& global_bounds();
         
         Transform local_transform();
+        Transform local_transform_no_rotation();
         Bounds local_bounds();
         
         virtual std::ostream &operator <<(std::ostream &os);
@@ -410,7 +415,7 @@ namespace cmn::gui {
         virtual bool swap_with(Drawable* d);
         
         //! Returns true if there has been a rotation in this object, or one of its parents. (used for more efficient in_bounds detection)
-        virtual bool global_transform(Transform& transform);
+        virtual bool global_transform(Transform& transform, Transform& no_rotation);
         
         //! Returns true if there was a size/position change since the last
         //  call to update_bounds()

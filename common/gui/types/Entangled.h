@@ -96,15 +96,7 @@ namespace cmn::gui {
         //  Also, this takes ownership of objects.
         //Drawable* entangle(Drawable* d);
         
-        bool clickable() final override {
-            if(_clickable)
-                return true;
-            
-            for(auto o : _current_children)
-                if(o && o->clickable())
-                    return true;
-            return false;
-        }
+        bool clickable() final override;
         
         //Drawable* find(float x, float y) override;
         

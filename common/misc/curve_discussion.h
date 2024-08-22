@@ -4,21 +4,21 @@
 namespace cmn {
     namespace curves {
         struct Extrema {
-            std::vector<float> minima;
-            std::vector<float> maxima;
+            std::vector<Float2_t> minima;
+            std::vector<Float2_t> maxima;
             
-            float min, max, mean;
+            Float2_t min, max, mean;
         };
 
-        std::vector<float> derive(const std::vector<float>& values);
-        Extrema find_extreme_points(const std::vector<float>& values, std::vector<float>& derivative);
+        std::vector<Float2_t> derive(const std::vector<Float2_t>& values);
+        Extrema find_extreme_points(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative);
 
-        std::map<float, float> area_under_minima(const std::vector<float>& values);
-        std::map<float, float> area_under_maxima(const std::vector<float>& values);
+        std::map<Float2_t, Float2_t> area_under_minima(const std::vector<Float2_t>& values);
+        std::map<Float2_t, Float2_t> area_under_maxima(const std::vector<Float2_t>& values);
         
-        std::map<float, float> area_under_minima(const std::vector<float>& values, std::vector<float>& derivative);
-        std::map<float, float> area_under_maxima(const std::vector<float>& values, std::vector<float>& derivative);
+        std::map<Float2_t, Float2_t> area_under_minima(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative);
+        std::map<Float2_t, Float2_t> area_under_maxima(const std::vector<Float2_t>& values, std::vector<Float2_t>& derivative);
         
-        float interpolate(const std::vector<float>& values, float index);
+        Float2_t interpolate(const std::vector<Float2_t>& values, Float2_t index);
     }
 }

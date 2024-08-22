@@ -6,6 +6,8 @@ namespace cmn::gui {
 template<class Base>
 class derived_ptr {
 public:
+    using element_type = Base;
+    
     std::variant<std::monostate, Base*, std::shared_ptr<Base>> _ptr{std::monostate{}};
 
     template<typename T>
@@ -64,21 +66,17 @@ public:
         } else
             return std::get<std::shared_ptr<Base>>(_ptr).get();
     }
-    template<typename T>
-        requires (std::convertible_to<Base*, T*> || std::is_base_of_v<Base, T>)
-    T* to() const {
-        auto ptr = dynamic_cast<T*>(get());
-        if(!ptr)
-            throw std::runtime_error("Cannot cast object to specified type.");
-        return ptr;
-    }
     void reset() {
         _ptr = std::monostate{};
     }
     
     template<typename T>
         requires (std::convertible_to<Base*, T*> || std::is_base_of_v<Base, T>)
-    constexpr bool is() const { return dynamic_cast<T*>(get()); }
+    T* to() const;
+    
+    template<typename T>
+        requires (std::convertible_to<Base*, T*> || std::is_base_of_v<Base, T>)
+    constexpr bool is() const;
     
     bool operator==(Base* raw) const { return get() == raw; }
     //bool operator==(decltype(ptr) other) const { return ptr == other; }

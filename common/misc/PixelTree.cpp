@@ -417,7 +417,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
         next_row->border.clear();
     }
     
-    std::vector<std::shared_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobWeakPtr blob, int)
+    std::vector<std::unique_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobWeakPtr blob, int)
     {
         int cols = blob->bounds().width + 2;
         int offx = blob->bounds().x;
@@ -547,7 +547,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
         }
 #endif*/
         
-        std::vector<std::shared_ptr<std::vector<Vec2>>> interp;
+        std::vector<std::unique_ptr<std::vector<Vec2>>> interp;
         try {
             interp = tree.generate_edges();
         } catch(const std::invalid_argument& e) {
@@ -798,7 +798,7 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         //_nodes.emplace(std::move(node));
     }
     
-    std::vector<std::shared_ptr<std::vector<Vec2>>> Tree::generate_edges() {
+    std::vector<std::unique_ptr<std::vector<Vec2>>> Tree::generate_edges() {
 #undef IS_SET
 #define IS_SET(NAME) (node->neighbors[ (size_t)indexes[NAME] ])
         
@@ -942,10 +942,10 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
         _sides.insert(_sides.end(), _non_full_nodes.begin(), _non_full_nodes.end());
         _non_full_nodes.clear();
         
-        std::vector<std::shared_ptr<std::vector<Vec2>>> lines;
+        std::vector<std::unique_ptr<std::vector<Vec2>>> lines;
         for(auto& node : _sides) {
             if(!node->walked) {
-                lines.push_back(walk(node));
+                lines.emplace_back(walk(node));
             }
         }
         
@@ -957,9 +957,9 @@ Node::Node(float x, float y, const std::array<int, 9>& neighbors) : x(x), y(y), 
 #undef IS_SET
     }
     
-    std::shared_ptr<std::vector<Vec2>> Tree::walk(Subnode* node) {
+    std::unique_ptr<std::vector<Vec2>> Tree::walk(Subnode* node) {
         std::deque<pixel::Subnode*> q;
-        auto line = std::make_shared<std::vector<Vec2>>();
+        auto line = std::make_unique<std::vector<Vec2>>();
         line->reserve(q.size() + 1);
         
         q.push_front(node);
