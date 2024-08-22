@@ -28,6 +28,10 @@ namespace cmn::gui {
             _changed = v;
         }
     };
+
+#ifdef PASSTHROUGH
+#undef PASSTHROUGH
+#endif
     
     ENUM_CLASS (Type,
         NONE,    VERTICES,  CIRCLE,
