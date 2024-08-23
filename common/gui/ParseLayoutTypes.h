@@ -69,7 +69,7 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
 class LayoutContext {
 public:
     GUITaskQueue_t *gui{nullptr};
-    const glz::json_t::object_t& obj;
+    glz::json_t::object_t obj;
     State& state;
     const Context& context;
     

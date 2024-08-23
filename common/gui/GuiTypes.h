@@ -235,7 +235,7 @@ protected:
         GETTER_PTR(std::shared_ptr<std::vector<Vec2>>, relative);
         GETTER(Color, fill_clr);
         GETTER(Color, border_clr);
-        bool _size_calculated;
+        bool _size_calculated{false};
         GETTER(bool, show_points){false};
     public:
         static constexpr auto Class = Type::data::values::POLYGON;

@@ -197,13 +197,13 @@ Polygon::Polygon()
 }
 
 Polygon::Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr, const Color& line_clr)
-    : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(fill_clr), _border_clr(line_clr), _size_calculated(false)
+    : Drawable(Type::POLYGON), _vertices(vertices), _fill_clr(fill_clr), _border_clr(line_clr)
 {
     update_size();
 }
 
 Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, const Color& line_clr)
-    : Drawable(Type::POLYGON), _fill_clr(fill_clr), _border_clr(line_clr), _size_calculated(false)
+    : Drawable(Type::POLYGON), _fill_clr(fill_clr), _border_clr(line_clr)
 {
     _vertices = std::make_shared<std::vector<Vec2>>(vertices.begin(), vertices.end());
     if(!vertices.empty()) {
