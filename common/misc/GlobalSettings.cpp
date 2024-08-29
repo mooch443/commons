@@ -45,6 +45,11 @@ sprite::Map& GlobalSettings::map() {
     return instance()->_map;
 }
 
+std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view name) {
+    auto &m = GlobalSettings::map();
+    return *m.at(name);
+}
+
 sprite::Map& GlobalSettings::current_defaults() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");

@@ -344,7 +344,7 @@ void Dialog::set_closed() {
         _buttons->set_policy(gui::HorizontalLayout::Policy::CENTER);
         
         //set_size(Size2(width(), _layout.height() + _layout.pos().y + 10));
-        set_scale(_graph.scale().reciprocal() * gui::interface_scale());
+        set_scale(_graph.scale().reciprocal() / gui::interface_scale());
                 //d.wrap_object(*_okay);
         //if(_abort)
         //    d.wrap_object(*_abort);
@@ -837,4 +837,17 @@ void DrawStructure::close_dialogs() {
         _width = narrow_cast<uint16_t>(size.width);
         _height = narrow_cast<uint16_t>(size.height);
     }
+
+Size2 DrawStructure::dialog_window_size() const {
+    return _dialog_window_size;
+}
+
+void DrawStructure::set_dialog_window_size(const Size2 &s) {
+    _dialog_window_size = s;
+}
+
+Vec2 DrawStructure::scale() const {
+    return _scale;
+}
+
 }

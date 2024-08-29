@@ -252,7 +252,7 @@ protected:
         if(inserted == 8 // erased
            || (inserted == '.' && !utils::contains(this->text(), '.'))
            || (inserted == '-' && at == 0 && !utils::contains(this->text(), '-'))
-           || irange('0', '9').contains(inserted))
+           || irange('0', '9'+1).contains(inserted))
         {
             if(text != "-") {
                 try {

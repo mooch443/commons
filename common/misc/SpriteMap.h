@@ -60,6 +60,18 @@ namespace sprite {
         bool valid() const;
         std::string_view type_name() const;
         
+        
+        std::shared_ptr<const PropertyType> operator *() const {
+            if(auto ptr = _type.lock();
+               not ptr)
+            {
+                throw std::runtime_error("Property is not valid.");
+            } else
+                return ptr;
+        }
+        std::shared_ptr<const PropertyType> operator ->() const {
+            return this->operator*();
+        }
         const PropertyType& get() const {
             if(auto ptr = _type.lock();
                not ptr)

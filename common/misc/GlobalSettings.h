@@ -98,6 +98,7 @@ namespace cmn {
          * Returns a reference to the settings map.
          */
         static sprite::Map& map();
+        static std::shared_ptr<const sprite::PropertyType> at(std::string_view);
         static const sprite::Map& defaults();
         static sprite::Map& current_defaults();
         static sprite::Map& current_defaults_with_config();

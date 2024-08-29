@@ -101,9 +101,9 @@ namespace cmn::gui {
 
         GETTER(uint16_t, width);
         GETTER(uint16_t, height);
-        GETTER_I(Vec2, scale, {0});
+        Vec2 _scale{0};
         GETTER(std::atomic_bool, changed);
-        GETTER_SETTER_I(Size2, dialog_window_size, {0});
+        Size2 _dialog_window_size{0};
         GETTER_I(Vec2, mouse_position, {0});
 
         std::set<Drawable*> _end_objects;
@@ -394,6 +394,11 @@ namespace cmn::gui {
                 _hovered_object->hover(e);
             }
         }
+        
+    public:
+        Size2 dialog_window_size() const;
+        void set_dialog_window_size(const Size2&);
+        Vec2 scale() const;
         
     public:
         void set_dirty(const Base* base);

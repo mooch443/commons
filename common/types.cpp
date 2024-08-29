@@ -18,13 +18,15 @@ blob::Pair::Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags, 
 }
 
 std::string blob::Prediction::toStr() const {
-    std::vector<std::string> detect_classes;
+    std::map<uint16_t, std::string> detect_classes;
     if(GlobalSettings::has("detect_classes")) {
-        detect_classes = SETTING(detect_classes).value<std::vector<std::string>>();
+        detect_classes = SETTING(detect_classes).value<std::map<uint16_t, std::string>>();
     }
     
-    if(valid())
-        return (clid < detect_classes.size() ? detect_classes.at(clid) : "unknown<"+Meta::toStr(clid)+">")+"["+dec<2>( p / 255.f * 100.f).toStr()+"%]";
+    if(valid()) {
+        auto it = detect_classes.find(clid);
+        return (it == detect_classes.end() ? "unknown<"+Meta::toStr(clid)+">" : it->second) + "["+dec<2>( p / 255_F * 100_F).toStr()+"%]";
+    }
     return "pred<null>";
 }
 
