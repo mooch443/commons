@@ -68,8 +68,8 @@ namespace cmn {
          */
         ~GlobalSettings();
         
-        static float& invalid() {
-            static float _invalid = infinity<float>();
+        static Float2_t& invalid() {
+            static Float2_t _invalid = infinity<Float2_t>();
             return _invalid;
         }
 

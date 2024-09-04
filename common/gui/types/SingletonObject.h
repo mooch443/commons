@@ -17,11 +17,7 @@ namespace cmn::gui {
         GETTER_PTR(Drawable*, ptr);
         
     public:
-        SingletonObject(Drawable *d)
-            : Drawable(Type::SINGLETON),
-        _ptr(d)
-        {}
-        
+        SingletonObject(Drawable *d);
         ~SingletonObject();
         
         bool swap_with(Drawable* draw) override {
@@ -40,7 +36,8 @@ namespace cmn::gui {
         virtual void set_bounds_changed() override;
         virtual void update_bounds() override;
         virtual void set_dirty() final override {
-            _ptr->set_dirty();
+            if(_ptr)
+                _ptr->set_dirty();
         }
         virtual bool is_animating() noexcept override;
         

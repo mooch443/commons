@@ -652,7 +652,7 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
                 }
             }
             if(changed) {
-                Print("Changed layout: ", *layout);
+                //Print("Changed layout: ", *layout);
                 layout->set_layout_dirty();
             }
         } else {

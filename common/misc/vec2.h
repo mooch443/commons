@@ -612,6 +612,7 @@ public:
                     misrepresented as being the original software.
                  3. This notice may not be removed or altered from any source distribution.
          */
+        assert(_vertices);
         
         uint32_t count = (uint32_t)_vertices->size();
         if(count > 2 && count <= 64) {

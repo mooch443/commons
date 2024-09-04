@@ -56,7 +56,7 @@ namespace pv {
     };
 
 CREATE_STRUCT(PVSettings,
-    (float, cm_per_pixel),
+    (Float2_t, cm_per_pixel),
     (bool, correct_illegal_lines)
 )
 

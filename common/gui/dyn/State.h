@@ -6,6 +6,10 @@
 #include <gui/dyn/VarProps.h>
 #include <gui/LabeledField.h>
 
+namespace cmn::gui {
+class IMGUIBase;
+}
+
 namespace cmn::gui::dyn {
 
 struct State;

@@ -307,7 +307,8 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     
     if(patterns.contains("fill")) {
         try {
-            auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
+            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("fill"), context, state));
+            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
             LabeledField::delegate_to_proper_type(FillClr{fill}, ptr);
             
         } catch(const std::exception& e) {

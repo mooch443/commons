@@ -144,17 +144,18 @@ R apply_to_object(Drawable* c, F&& fn) {
             return R{};
     }
 
-    if(c->type() == Type::SINGLETON) {
-        c = static_cast<SingletonObject*>(c)->ptr();
+    while(c && is_in(c->type(), Type::PASSTHROUGH, Type::SINGLETON)) {
+        if(c->type() == Type::PASSTHROUGH)
+            c = static_cast<Fallthrough*>(c)->object().get();
+        else
+            c = static_cast<SingletonObject*>(c)->ptr();
     }
-    while(c->type() == Type::PASSTHROUGH) {
-        c = static_cast<Fallthrough*>(c)->object().get();
-        if(not c) {
-            if constexpr(std::same_as<R, void>)
-                return;
-            else
-                return R{};
-        }
+    
+    if(not c) {
+        if constexpr(std::same_as<R, void>)
+            return;
+        else
+            return R{};
     }
     
     assert(dynamic_cast<Fallthrough*>(c) == nullptr);

@@ -61,7 +61,7 @@ namespace cmn::gui {
         }
         
         apply_to_objects(_children, [&](Drawable* d) {
-            assert(d->parent() == this);
+            assert(not d->parent() || d->parent() == this);
             
             if(d->type() == Type::ENTANGLED) {
                 auto ptr = static_cast<Entangled*>(d);
@@ -275,7 +275,7 @@ namespace cmn::gui {
         _wrapped_children[d] = obj;
         _index++;
         
-        assert(obj->parent() == this);
+        assert(obj->ptr() && obj->ptr()->parent() == this);
     }
     
     void Section::end() {

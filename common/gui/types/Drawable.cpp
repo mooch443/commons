@@ -213,6 +213,14 @@ namespace cmn::gui {
 #endif
 
         set_parent(NULL);
+        
+        if(auto s = (SingletonObject*)custom_data("singleton");
+           s != nullptr)
+        {
+            assert(s->ptr() == this);
+            Print("* deleting singleton ", hex(s), " captured object.");
+            s->ptr() = nullptr;
+        }
     }
     
     Drawable::delete_function_handle_t Drawable::on_delete(delete_function_t fn) {
@@ -662,11 +670,11 @@ void Drawable::set_animating(bool animating) noexcept {
 bool SectionInterface::is_animating() noexcept {
     if(Drawable::is_animating())
         return true;
-    for(auto c : children()) {
+    return apply_to_objects(children(), [](Drawable* c) -> bool {
         if(c && c->is_animating())
             return true;
-    }
-    return false;
+        return false;
+    });
 }
     
     bool Drawable::swap_with(gui::Drawable *d) {
@@ -1204,6 +1212,7 @@ void SectionInterface::set_z_index(int index) {
             }
             
             if((c->type() == Type::SINGLETON
+                && static_cast<SingletonObject*>(c)->ptr()
                 && (static_cast<SingletonObject*>(c)->ptr()->type() == Type::SECTION
                     || static_cast<SingletonObject*>(c)->ptr()->type() == Type::ENTANGLED))
                || c->type() == Type::SECTION
@@ -1216,33 +1225,37 @@ void SectionInterface::set_z_index(int index) {
                 
             } else if(c->type() == Type::SINGLETON) {
                 auto singleton = static_cast<SingletonObject*>(c);
-                auto type = singleton->ptr()->type().name();
-                ss << indent << "\t'" << type << "' (wrapped)";
-                
-                auto name_ptr = dynamic_cast<HasName*>(c);
-                if(name_ptr)
-                    ss << "'"<<name_ptr->name()<<"'";
-                else if(dynamic_cast<Text*>(singleton->ptr())) {
-                    auto text = static_cast<Text*>(singleton->ptr())->txt();
-                    if(text.length() > 15)
-                        text = text.substr(0, 12)+"...";
-                    text = utils::find_replace(text, "'", "");
-                    text = utils::find_replace(text, "\"", "");
+                if(not singleton->ptr())
+                    ss << indent << "\t" << c->type().name() << " (null)";
+                else {
+                    auto type = singleton->ptr()->type().name();
+                    ss << indent << "\t'" << type << "' (wrapped)";
                     
-                    ss << "'" << text << "'";
-                }
-                
-                auto obj = singleton->ptr()->cached(base);
-                if(obj && obj->changed())
-                    ss << "*";
-                if(singleton->ptr()->_bounds_changed)
-                    ss << "~";
-                
-                ss << (singleton->ptr()->clickable()?" clickable":"");
-                //ss << " " << singleton->ptr()->pos().x << "," << singleton->ptr()->pos().y << " " << singleton->ptr()->size().x << "x" << singleton->ptr()->size().y;
-                
-                if(singleton->ptr()->type() == Type::SECTION || singleton->ptr()->type() == Type::ENTANGLED) {
-                    ss << "\n" << static_cast<SectionInterface*>(singleton->ptr())->toString(base, indent+"\t");
+                    auto name_ptr = dynamic_cast<HasName*>(c);
+                    if(name_ptr)
+                        ss << "'"<<name_ptr->name()<<"'";
+                    else if(dynamic_cast<Text*>(singleton->ptr())) {
+                        auto text = static_cast<Text*>(singleton->ptr())->txt();
+                        if(text.length() > 15)
+                            text = text.substr(0, 12)+"...";
+                        text = utils::find_replace(text, "'", "");
+                        text = utils::find_replace(text, "\"", "");
+                        
+                        ss << "'" << text << "'";
+                    }
+                    
+                    auto obj = singleton->ptr()->cached(base);
+                    if(obj && obj->changed())
+                        ss << "*";
+                    if(singleton->ptr()->_bounds_changed)
+                        ss << "~";
+                    
+                    ss << (singleton->ptr()->clickable()?" clickable":"");
+                    //ss << " " << singleton->ptr()->pos().x << "," << singleton->ptr()->pos().y << " " << singleton->ptr()->size().x << "x" << singleton->ptr()->size().y;
+                    
+                    if(singleton->ptr()->type() == Type::SECTION || singleton->ptr()->type() == Type::ENTANGLED) {
+                        ss << "\n" << static_cast<SectionInterface*>(singleton->ptr())->toString(base, indent+"\t");
+                    }
                 }
                 
             } else {

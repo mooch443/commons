@@ -370,8 +370,12 @@ inline consteval bool is_debug_mode() {
 inline consteval std::string_view compile_mode_name() {
 #ifndef NDEBUG
     return std::string_view("debug");
-#else
+#elif defined(NDEBUG) && defined(RELWITHDEBINFO)
+    return std::string_view("dbgrelease");
+#elif defined(NDEBUG)
     return std::string_view("release");
+#else
+    return std::string_view("unknown");
 #endif
 }
 
@@ -646,10 +650,18 @@ auto insert_sorted(std::vector<T>& vector, const T& element) {
 
 namespace cmn {
 
-template<typename Numeric, Numeric InvalidValue = std::unsigned_integral<Numeric> ? static_cast<Numeric>(-1) : std::numeric_limits<Numeric>::infinity()>
+enum class TrivialIllegalValueType {
+    NegativeOne,
+    Infinity
+};
+
+template<typename Numeric, TrivialIllegalValueType InvalidValueType = std::unsigned_integral<Numeric> ? TrivialIllegalValueType::NegativeOne : TrivialIllegalValueType::Infinity>
 class TrivialOptional {
     static_assert(std::is_arithmetic<Numeric>::value, "TrivialOptional can only be used with arithmetic types.");
 
+    static constexpr Numeric InvalidValue = InvalidValueType == TrivialIllegalValueType::NegativeOne
+            ? static_cast<Numeric>(-1)
+            : std::numeric_limits<Numeric>::infinity();
     Numeric value_{InvalidValue};
 
 public:

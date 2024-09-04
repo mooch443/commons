@@ -559,7 +559,7 @@ template<typename T>
     requires (not std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
     if (auto ptr = _type.lock();
-        ptr && ptr->valid()) 
+        ptr /*&& ptr->valid()*/) 
     {
         ptr->operator=(value);
     }

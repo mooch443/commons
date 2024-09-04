@@ -47,7 +47,7 @@ void process_tags(int32_t index,
 {
     using namespace gui;
     
-    static const double cm_per_pixel = SETTING(cm_per_pixel).value<float>() <= 0 ? 234.0 / 3007.0 : SETTING(cm_per_pixel).value<float>();
+    static const double cm_per_pixel = SETTING(cm_per_pixel).value<Float2_t>() <= 0 ? 234_F / 3007_F : SETTING(cm_per_pixel).value<Float2_t>();
     static const Range<double> tag_size_range = SETTING(tags_size_range).value<Range<double>>();
     static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
     static const auto tags_approximation = SETTING(tags_approximation).value<float>();

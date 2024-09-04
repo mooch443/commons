@@ -1152,8 +1152,9 @@ void IMGUIBase::process_main_queue() {
         _above_z.clear();
         _rotation_starts.clear();
         
-        for(auto &o : objects)
+        apply_to_objects(objects, [this](Drawable* o) {
             redraw(o, _draw_order, _above_z);
+        });
         
         std::sort(_above_z.begin(), _above_z.end(), [](const auto& A, const auto& B) {
             return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);
@@ -1820,15 +1821,6 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             return false;
         };
         
-        if(o->type() == Type::SINGLETON) {
-            o = static_cast<SingletonObject*>(o)->ptr();
-        }
-        while(o->type() == Type::PASSTHROUGH) {
-            o = static_cast<Fallthrough*>(o)->object().get();
-            if(not o)
-                return;
-        }
-        
         o->set_was_visible(false);
         
         auto &io = ImGui::GetIO();
@@ -1889,32 +1881,32 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     //draw_order.emplace_back(DrawOrder::DEFAULT, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                     for(auto c : ptr->children()) {
-                        if (!c)
-                            continue;
-
-                        if(ptr->scroll_enabled()) {
-                            auto b = c->local_bounds();
-                            
-                            //! Skip drawables that are outside the view
-                            //  TODO: What happens to Drawables that dont have width/height?
-                            Float2_t x = b.x;
-                            Float2_t y = b.y;
-                            
-                            if(y < -b.height || y > ptr->height()
-                               || x < -b.width || x > ptr->width())
-                            {
-                                continue;
+                        apply_to_object(c, [&](Drawable* c) {
+                            if(ptr->scroll_enabled()) {
+                                auto b = c->local_bounds();
+                                
+                                //! Skip drawables that are outside the view
+                                //  TODO: What happens to Drawables that dont have width/height?
+                                Float2_t x = b.x;
+                                Float2_t y = b.y;
+                                
+                                if(y < -b.height || y > ptr->height()
+                                   || x < -b.width || x > ptr->width())
+                                {
+                                    return;
+                                }
                             }
-                        }
-                        
-                        redraw(c, draw_order, above_z, false, clip_rect);
+                            
+                            redraw(c, draw_order, above_z, false, clip_rect);
+                        });
                     }
                     
                     //draw_order.emplace_back(DrawOrder::POP, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                 } else {
-                    for(auto c : ptr->children())
+                    apply_to_objects(ptr->children(), [&](Drawable* c){
                         redraw(c, draw_order, above_z, false, clip_rect);
+                    });
                 }
                 
                 if(ptr->rotation() != 0) {

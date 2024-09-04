@@ -44,10 +44,10 @@ namespace cmn::gui {
             o = o->type() == Type::SINGLETON
                     ? static_cast<SingletonObject*>(o)->ptr()
                     : o;
-            while(o->type() == Type::PASSTHROUGH)
+            while(o && o->type() == Type::PASSTHROUGH)
                 o = static_cast<Fallthrough*>(o)->object().get();
-
-            if(o->type() == Type::POLYGON)
+            
+            if(not o || o->type() == Type::POLYGON)
                 return std::string();
             
             //bounds.combine(o->global_transform());

@@ -223,7 +223,7 @@ namespace cmn::gui {
             }*/
             
             T *ret = new T(obj);
-            ret->set_parent(this);
+            //ret->set_parent(this);
             
             if(obj->parent() != this) {
                 obj->set_parent(this);
