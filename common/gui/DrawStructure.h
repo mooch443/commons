@@ -166,7 +166,12 @@ namespace cmn::gui {
         void close_dialogs();
         
         inline void section(const std::string& name, const std::function<void(DrawStructure&, Section*)>& fn) {
-            fn(*this, begin_section(name));
+            try {
+                fn(*this, begin_section(name));
+            } catch(...) {
+                pop_section();
+                throw;
+            }
             pop_section();
         }
         
