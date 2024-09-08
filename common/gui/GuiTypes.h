@@ -144,6 +144,7 @@ protected:
         NUMBER_ALIAS(Thickness_t, Float2_t)
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
+        Color _line_clr;
         Float2_t _process_scale;
         GETTER(Float2_t, max_scale);
         
@@ -176,6 +177,14 @@ protected:
             for(auto &a : A)
 				ps.emplace_back(a, clr);
             VertexArray::create(std::move(ps), PrimitiveType::LineStrip);
+            _line_clr = clr;
+        }
+        void set(const Points_t& A) {
+            std::vector<Vertex> ps;
+            ps.reserve(A.size());
+            for(auto &a : A)
+                ps.emplace_back(a, _line_clr);
+            VertexArray::create(std::move(ps), PrimitiveType::LineStrip);
         }
         void set(Thickness_t t) {
             set_thickness(t);
@@ -185,6 +194,7 @@ protected:
             for(auto &c : copy)
                 c.color() = ImU32(clr);
 			VertexArray::create(std::move(copy), PrimitiveType::LineStrip);
+            _line_clr = clr;
 		}
         template<typename... Args>
         void addVertices(std::vector<Vertex>&vertices, Point_t pt, LineClr clr, Args... args)

@@ -258,16 +258,35 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         static constexpr auto handle_name = "_drag_handle";
         auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-        auto h = ptr->add_event_handler_replace(EventType::MBUTTON, [action, context = context](Event event) {
+        auto h = ptr->add_event_handler_replace(EventType::MBUTTON, [action, context = context, handler = state._current_object_handler](Event event) {
             if(event.mbutton.pressed) {
                 try {
-                    if(auto it = context.actions.find(action.name);
+                    std::string_view name = action.name;
+                    std::string pattern;
+                    if(utils::contains(name, '{')) {
+                        State state;
+                        state._current_object_handler = handler;
+                        
+                        pattern = parse_text(name, context, state);
+                        auto a = PreAction::fromStr(pattern);
+                        if(auto it = context.actions.find(a.name);
+                           it != context.actions.end())
+                        {
+                            State state;
+                            it->second(a.parse(context, state));
+                        } else
+                            Print("Unknown Action [",name,"]: ", action);
+                        
+                        return;
+                    }
+                    
+                    if(auto it = context.actions.find(name);
                        it != context.actions.end())
                     {
                         State state;
                         it->second(action.parse(context, state));
                     } else
-                        Print("Unknown Action: ", action);
+                        Print("Unknown Action [",name,"]: ", action);
                     
                 } catch(...) {
                     FormatExcept("error using action ", action);
@@ -284,6 +303,27 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::combobox>() {
     throw std::invalid_argument("Combobox not implemented.");
+}
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::line>()
+{
+    Layout::Ptr ptr;
+    if(obj.count("from") && obj.count("to")) {
+        
+        auto from = get(Vec2{}, "from");
+        auto to = get(Vec2{}, "to");
+        
+        ptr = Layout::Make<Line>(from, to);
+        Print("adding line from ", from, " to ", to);
+        
+    } else if(obj.count("points")) {
+        auto points = get(std::vector<Vec2>{}, "points");
+        ptr = Layout::Make<Line>(Line::Points_t{points});
+    } else
+        throw InvalidArgumentException("Need to specify points somehow.");
+    
+    return ptr;
 }
 
 template <>

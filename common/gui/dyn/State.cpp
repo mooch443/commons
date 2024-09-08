@@ -516,6 +516,16 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             FormatError("Error parsing context ", patterns.at("radius"),": ", e.what());
         }
     }
+    
+    if(patterns.contains("points")) {
+        try {
+            auto line = Meta::fromStr<std::vector<Vec2>>(parse_text(patterns.at("points"), context, state));
+            LabeledField::delegate_to_proper_type(Line::Points_t{line}, ptr);
+            
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
 
     /*if(ptr.is<ExternalImage>()) {
         if(patterns.contains("path")) {
@@ -873,13 +883,14 @@ constexpr inline bool contains_bad_variable(std::string_view name) {
             || utils::contains(name, "{hovered}")
             || utils::contains(name, "{selected}")
             || utils::contains(name, "{i.")
-            || utils::contains(name, "{i}");
+            || utils::contains(name, "{i}")
+            || utils::contains(name, "{index}");
 }
 
 std::optional<std::string_view> State::cached_variable_value(std::string_view name) const
 {
-    if(contains_bad_variable(name))
-        return std::nullopt;
+    //if(contains_bad_variable(name))
+    //    return std::nullopt;
     
     auto lock = _current_object_handler.lock();
     if(not lock)

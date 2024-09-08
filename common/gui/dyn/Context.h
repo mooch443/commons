@@ -47,6 +47,7 @@ struct CurrentObjectHandler {
     
     void set_variable_value(std::string_view name, std::string_view value);
     std::optional<std::string_view> get_variable_value(std::string_view name) const;
+    void remove_variable(std::string_view name);
     
     std::shared_ptr<Drawable> retrieve_named(std::string_view name);
     std::shared_ptr<Drawable> get() const;

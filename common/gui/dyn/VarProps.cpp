@@ -69,7 +69,7 @@ VarProps PreVarProps::parse(const Context& context, State& state) const {
     for(auto &s : subs)
         props.subs.emplace_back(s);
     
-    if(props.name == "if")  {
+    if(props.name == "if" || props.name == "for")  {
         for(auto &p : parameters)
             props.parameters.emplace_back(p);
         

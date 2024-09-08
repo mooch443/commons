@@ -229,6 +229,12 @@ public:
                     return true;
                 }
                 break;
+            case Type::LINE:
+                if constexpr (takes_attribute<Line, T>) {
+                    object.to<Line>()->set(attribute);
+                    return true;
+                }
+                break;
             case Type::TEXT:
                 if constexpr (takes_attribute<Text, T>) {
                     object.to<Text>()->set(attribute);

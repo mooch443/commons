@@ -249,6 +249,77 @@ void Context::init() const {
             VarFunc("/", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
             }),
+            VarFunc("meanVector", [](const VarProps& props) -> Vec2 {
+                REQUIRE_EXACTLY(1, props);
+                auto vector = Meta::fromStr<std::vector<Vec2>>(props.first());
+                Vec2 mean;
+                for(auto &v : vector)
+                    mean += v;
+                mean /= vector.size();
+                return mean;
+            }),
+            VarFunc("join", [](const VarProps& props) -> std::string {
+                REQUIRE_AT_LEAST(1, props);
+                
+                auto& array = props.parameters.back();
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(array)));
+                
+                if(props.parameters.size() == 2) {
+                    
+                }
+                
+                std::stringstream ss;
+                for(auto &p : parts) {
+                    ss << p;
+                }
+                return ss.str();
+            }),
+            VarFunc("for", [this](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::stringstream ss;
+                ss << "[";
+                
+                auto trunc = props.parameters.at(0);
+                auto fn = props.parameters.at(1);
+                
+                State state;
+                auto handler = std::make_shared<CurrentObjectHandler>();
+                state._current_object_handler = handler;
+                
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parsed = parse_text(trunc, *this, state);
+                    auto parts = util::parse_array_parts(util::truncate(parsed));
+                    
+                    size_t index{0};
+                    for(auto &p : parts) {
+                        handler->set_variable_value("i", p);
+                        if(index > 0)
+                            ss << ",";
+                        ss << parse_text(fn, *this, state);
+                        
+                        ++index;
+                    }
+                    handler->remove_variable("i");
+                    
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    auto text = Meta::fromStr<std::string>(trunc);
+                    size_t index{0};
+                    for(auto p : text) {
+                        handler->set_variable_value("i", std::string_view(&p, 1));
+                        if(index > 0)
+                            ss << ",";
+                        ss << parse_text(fn, *this, state);
+                        
+                        ++index;
+                    }
+                    handler->remove_variable("i");
+                }
+                
+                ss << "]";
+                //Print("=> ", no_quotes(ss.str()));
+                return ss.str();
+            }),
             VarFunc("addVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
             }),
@@ -543,6 +614,9 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                 break;
             case LayoutType::combobox:
                 ptr = layout.create_object<LayoutType::combobox>();
+                break;
+            case LayoutType::line:
+                ptr = layout.create_object<LayoutType::line>();
                 break;
             case LayoutType::image:
                 ptr = layout.create_object<LayoutType::image>();

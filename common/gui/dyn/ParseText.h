@@ -38,8 +38,15 @@ auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char cl
 
 template<typename R>
 R create_parse_result(std::string_view trimmedStr) {
-    if (trimmedStr.front() == '{' and trimmedStr.back() == '}') {
-        trimmedStr = trimmedStr.substr(1, trimmedStr.size() - 2);
+    if (not trimmedStr.empty() and trimmedStr.front() == '{' and trimmedStr.back() == '}') {
+        if constexpr(std::same_as<R, PreVarProps>) {
+            trimmedStr = trimmedStr.substr(1, trimmedStr.size() - 2);
+        } else {
+            R action;
+            action.original = std::string(trimmedStr);
+            action.name = std::string_view(action.original);
+            return action;
+        }
     }
 
     std::size_t pos = 0;

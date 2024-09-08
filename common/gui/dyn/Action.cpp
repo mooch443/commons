@@ -19,7 +19,7 @@ std::string Action::toStr() const {
 
 Action PreAction::parse(const Context& context, State& state) const {
     Action action{
-        .name = std::string(name)
+        .name = std::string(parse_text(name, context, state))
     };
     
     action.parameters.reserve(parameters.size());

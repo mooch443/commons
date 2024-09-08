@@ -125,6 +125,14 @@ void CurrentObjectHandler::set_variable_value(std::string_view name, std::string
     _variable_values[std::string(name)] = std::string(value);
 }
 
+void CurrentObjectHandler::remove_variable(std::string_view name)
+{
+    auto it = _variable_values.find(name);
+    if(it != _variable_values.end()) {
+        _variable_values.erase(it);
+    }
+}
+
 std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::string_view name) const
 {
     if(auto it = _variable_values.find(name);
