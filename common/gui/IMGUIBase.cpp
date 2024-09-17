@@ -686,7 +686,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
         float xscale, yscale;
 #if GLFW_HAVE_MONITOR_SCALE
-        glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+        if(monitor)
+            glfwGetMonitorContentScale(monitor, &xscale, &yscale);
 #else
         xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
@@ -701,7 +702,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         width *= xscale;
         height *= yscale;
 #endif
-        _work_area = get_work_area(monitor);
+        if(monitor)
+            _work_area = get_work_area(monitor);
         
         if(!_platform->window_handle())
 #ifdef WIN32
@@ -1598,7 +1600,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 }
                 
                 if(ptr->border_clr() != Transparent)
-                    list->AddPolyline(points.data(), (int)points.size(), (ImColor)ptr->border_clr(), true, 1);
+                    list->AddPolyline(points.data(), (int)points.size() - 1, (ImColor)ptr->border_clr(), true, 1);
             }
             
             break;

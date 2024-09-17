@@ -143,6 +143,10 @@ T map_vector(const VarProps& props, Apply&& apply) {
 void Context::init() const {
     if(not _system_variables.has_value())
         _system_variables = {
+            VarFunc("repeat", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                return utils::repeat(props.last(), Meta::fromStr<uint8_t>(props.first()));
+            }),
             VarFunc("time", [](const VarProps&) -> double {
                 auto ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
                 return static_cast<double>(ms.count()) / 1000.0;

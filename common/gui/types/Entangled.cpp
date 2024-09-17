@@ -361,11 +361,9 @@ void Entangled::on_visibility_change(bool visible) {
 bool Entangled::is_animating() noexcept {
     if(Drawable::is_animating())
         return true;
-    for(auto c : children()) {
-        if(c && c->is_animating())
-            return true;
-    }
-    return false;
+    return apply_to_objects(children(), [](Drawable* c){
+        return c->is_animating();
+    });
 }
 
 void Entangled::before_draw() {

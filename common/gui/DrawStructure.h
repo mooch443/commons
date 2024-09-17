@@ -254,7 +254,7 @@ namespace cmn::gui {
         }
         template<typename... Args>
         Line* line(Args... args) {
-            return create<Type::data::values::VERTICES, Line>(std::forward<Args>(args)...);
+            return create<Type::data::values::LINE, Line>(std::forward<Args>(args)...);
         }
         
         Vertices* vertices(const std::vector<Vec2>& points, const Color& color, PrimitiveType type);

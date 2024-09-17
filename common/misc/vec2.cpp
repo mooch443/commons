@@ -64,6 +64,6 @@ namespace cmn {
         }
         
         // Return absolute value
-        return cmn::abs(area / 2.0f);
+        return cmn::abs(area / 2.0_F);
     }
 }
