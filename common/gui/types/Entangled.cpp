@@ -536,11 +536,11 @@ void SectionInterface::children_rect_changed() {
         if(_begun)
             throw U_EXCEPTION("Undefined while updating.");
         
-        for (size_t i=0; i<_current_children.size(); ++i) {
-            if(_current_children[i]) {
-                auto tmp = _current_children[i];
-                _current_children[i] = nullptr;
-                
+        auto cchildren = _current_children;
+        _current_children.clear();
+        
+        for (size_t i=0; i<cchildren.size(); ++i) {
+            apply_to_object(cchildren[i], [this](Drawable* tmp) {
                 tmp->set_parent(nullptr);
                 
                 auto it = _owned.find(tmp);
@@ -549,11 +549,9 @@ void SectionInterface::children_rect_changed() {
                         delete tmp;
                     _owned.erase(it);
                 }
-                
-            }
+            });
         }
         
-        _current_children.clear();
         _owned.clear();
         assert(_currently_removed.empty());
         
