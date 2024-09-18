@@ -230,6 +230,7 @@ struct Range {
 };
 
 using Rangef = Range<float>;
+using Ranged = Range<double>;
 using Rangei = Range<int>;
 using Rangel = Range<long_t>;
 
