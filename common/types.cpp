@@ -56,8 +56,8 @@ blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const
     }
     return Connection{
         .from = Meta::fromStr<uint8_t>(parts.at(0)),
-        .to = Meta::fromStr<uint8_t>(parts.at(1))//,
-        //.name = Meta::fromStr<std::string>(name)
+        .to = Meta::fromStr<uint8_t>(parts.at(1)),
+        .name = ""//Meta::fromStr<std::string>(name)
     };
 }
 

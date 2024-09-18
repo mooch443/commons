@@ -1127,12 +1127,10 @@ if(${COMMONS_BUILD_PNG})
         #PATCH_COMMAND ${PNG_PATCH}
 
         GIT_REPOSITORY  https://github.com/glennrp/libpng.git
-        GIT_TAG e56f79c0c6d94f5d727fc147d4487038e188cdf2
+        GIT_TAG v1.6.44
 
         INSTALL_DIR ${png_install_dir}
-        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} # to find zlib
-        -DPNG_TESTS=OFF
-        -DPNG_SHARED=OFF
+        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON
     )
 
     include_directories(${png_install_dir}/include)
@@ -1146,6 +1144,7 @@ if(${COMMONS_BUILD_PNG})
         set(PNG_LIBRARY "${png_install_dir}/lib/libpng16$<IF:$<CONFIG:Debug>,d,>.a")
     endif()
     
+    message(STATUS "png library ${PNG_LIBRARY}")
     target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARY} Commons::LibZ Commons::LibZIP)
     add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ Commons::LibZIP)
 
@@ -1174,11 +1173,13 @@ if(${COMMONS_BUILD_PNG})
     if(WIN32)
        set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
             -DPNG_LIBRARY_RELEASE:FILEPATH=${png_install_dir}/lib/libpng16_static.lib
+            -DPNG_LIBRARY_RELWITHDEBINFO:FILEPATH=${png_install_dir}/lib/libpng16_static.lib
             -DPNG_LIBRARY_DEBUG:FILEPATH=${png_install_dir}/lib/libpng16_staticd.lib
             -DPNG_PNG_INCLUDE_DIR:FILEPATH=${png_install_dir}/include)
    else()
         set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
             -DPNG_LIBRARY_RELEASE:FILEPATH=${png_install_dir}/lib/libpng16.a
+            -DPNG_LIBRARY_RELWITHDEBINFO:FILEPATH=${png_install_dir}/lib/libpng16.a
             -DPNG_LIBRARY_DEBUG:FILEPATH=${png_install_dir}/lib/libpng16d.a
             -DPNG_PNG_INCLUDE_DIR:FILEPATH=${png_install_dir}/include
         )
@@ -1298,7 +1299,9 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_FAT_JAVA_LIB=OFF 
             -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DBUILD_opencv_highgui=ON
-            -DBUILD_opencv_dnn=OFF 
+            -DBUILD_opencv_dnn:BOOL=OFF 
+            -DBUILD_opencv_ml:BOOL=OFF
+            -DWITH_VA:BOOL=OFF
             -DBUILD_opencv_video=ON
             -DBUILD_opencv_videoio=ON
             -DBUILD_opencv_flann:BOOL=ON
@@ -1404,7 +1407,8 @@ else()
             -DBUILD_opencv_java:BOOL=FALSE
             -DBUILD_opencv_python:BOOL=OFF
             -DBUILD_opencv_objdetect:BOOL=ON
-            -DBUILD_opencv_dnn:BOOL=ON
+            -DBUILD_opencv_dnn:BOOL=OFF
+            -DWITH_VA:BOOL=OFF
             -DBUILD_opencv_ml:BOOL=OFF
             -DBUILD_opencv_stitching:BOOL=OFF
             -DBUILD_opencv_flann:BOOL=ON

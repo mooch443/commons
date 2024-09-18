@@ -179,13 +179,13 @@ class source_location {
     
 public:
     constexpr source_location() noexcept = default;
-    source_location( const source_location& other ) = default;
-    source_location( source_location&& other ) noexcept = default;
+    constexpr source_location( const source_location& other ) = default;
+    constexpr source_location( source_location&& other ) noexcept = default;
     
-    source_location& operator=(const source_location&) noexcept = default;
-    source_location& operator=(source_location&&) noexcept = default;
+    constexpr source_location& operator=(const source_location&) noexcept = default;
+    constexpr source_location& operator=(source_location&&) noexcept = default;
 
-    static source_location current(
+    static constexpr source_location current(
         const char* file = __builtin_FILE(),
         const char* func = __builtin_FUNCTION(),
         int line = __builtin_LINE()) noexcept

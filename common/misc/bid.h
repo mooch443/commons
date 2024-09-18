@@ -188,7 +188,7 @@ struct bid {
 };
 
 
-static_assert(int32_t(-1) == (uint32_t)bid::invalid, "Must be equal to ensure backwards compatibility.");
+static_assert(static_cast<uint32_t>(int32_t(-1)) == bid::invalid, "Must be equal to ensure backwards compatibility.");
 
 }
 
