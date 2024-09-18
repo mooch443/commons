@@ -1076,15 +1076,18 @@ void SectionInterface::set_z_index(int index) {
                 static_cast<SectionInterface*>(c)->set_stage(s);
             else {
                 c->clear_cache();
-                c->set_bounds_changed();
+                if(s)
+                    c->set_bounds_changed();
             }
         });
         
         _stage = s;
         clear_cache();
-        set_dirty();
-        set_bounds_changed();
-        children_rect_changed();
+        if(s) {
+            set_dirty();
+            set_bounds_changed();
+            children_rect_changed();
+        }
     }
     
     void SectionInterface::clear_parent_dont_check() {
