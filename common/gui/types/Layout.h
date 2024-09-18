@@ -49,7 +49,7 @@ namespace cmn::gui {
         void add_child(Layout::Ptr ptr);
         bool replace_child(size_t pos, Layout::Ptr ptr);
         
-        void remove_child(Layout::Ptr ptr);
+        void remove_child(const Layout::Ptr& ptr);
         void remove_child(Drawable* ptr) override;
         void set_children(const std::vector<Layout::Ptr>&);
         void set_children(std::vector<Layout::Ptr>&&);

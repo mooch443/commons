@@ -228,7 +228,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
         set_children(std::move(copy));
     }
     
-    void Layout::remove_child(Layout::Ptr ptr) {
+    void Layout::remove_child(const Layout::Ptr& ptr) {
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it == _objects.end())
             return;
@@ -290,10 +290,10 @@ void Layout::set_bounds(const Bounds& bounds) {
     }
     
     void Layout::clear_children() {
+        Entangled::clear_children();
         _objects.clear();
         set_layout_dirty();
         set_content_changed(true);
-        Entangled::clear_children();
         update();
     }
 

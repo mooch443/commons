@@ -1107,6 +1107,14 @@ DynamicGUI::operator bool() const {
 }
 
 void DynamicGUI::clear() {
+    apply_to_objects(objects, [](Drawable* c) {
+        if(c->type() == Type::ENTANGLED
+           || c->type() == Type::SECTION)
+        {
+            auto ptr = static_cast<SectionInterface*>(c);
+            ptr->set_stage(nullptr);
+        }
+    });
     path = {};
     objects.clear();
     previous.clear();
