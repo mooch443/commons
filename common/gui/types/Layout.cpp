@@ -14,8 +14,10 @@ namespace cmn::gui {
     void Layout::set_parent(SectionInterface *parent) {
         if(parent != this->parent()) {
             Entangled::set_parent(parent);
-            set_layout_dirty();
-            set_content_changed(true);
+            if(parent) {
+                set_layout_dirty();
+                set_content_changed(true);
+            }
         }
     }
 
@@ -43,7 +45,7 @@ void Layout::set_content_changed(bool changed) {
     }
 
 void Layout::set_bounds_changed() {
-    if(not _bounds_changed) {
+    if(not _bounds_changed || not parent()) {
         Entangled::set_bounds_changed();
         set_layout_dirty();
         set_content_changed(true);
@@ -84,7 +86,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
     }
 
     void Layout::set_layout_dirty() {
-        if(_layout_dirty)
+        if(_layout_dirty || not parent())
             return;
         
         for(auto &ptr : objects()) {
