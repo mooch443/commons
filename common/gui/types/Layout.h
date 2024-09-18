@@ -42,7 +42,7 @@ namespace cmn::gui {
         void init();
         
     public:
-        virtual ~Layout() { clear_children(); }
+        virtual ~Layout();
         
         void update() override;
         void add_child(size_t pos, Layout::Ptr ptr);

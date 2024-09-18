@@ -85,6 +85,12 @@ void Layout::set_stage(gui::DrawStructure *s) {
         update();
     }
 
+    Layout::~Layout() {
+        set_stage(nullptr);
+        set_parent(nullptr);
+        clear_children();
+    }
+
     void Layout::set_layout_dirty() {
         if(_layout_dirty || not stage())
             return;
