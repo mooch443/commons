@@ -87,13 +87,15 @@ void Layout::set_stage(gui::DrawStructure *s) {
         if(_layout_dirty)
             return;
         
-        for(auto &ptr : objects())
-            if(ptr
-               && ptr->type() == Type::ENTANGLED
-               && dynamic_cast<const Layout*>(ptr.get()))
-            {
-                static_cast<Layout*>(ptr.get())->set_layout_dirty();
-            }
+        for(auto &ptr : objects()) {
+            apply_to_object(ptr.get(), [](Drawable* ptr) {
+                if(ptr->type() == Type::ENTANGLED
+                   && dynamic_cast<const Layout*>(ptr))
+                {
+                    static_cast<Layout*>(ptr)->set_layout_dirty();
+                }
+            });
+        }
         
         _layout_dirty = true;
     }
