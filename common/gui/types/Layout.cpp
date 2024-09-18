@@ -290,10 +290,10 @@ void Layout::set_bounds(const Bounds& bounds) {
     }
     
     void Layout::clear_children() {
-        Entangled::clear_children();
         _objects.clear();
         set_layout_dirty();
         set_content_changed(true);
+        Entangled::clear_children();
         update();
     }
 
