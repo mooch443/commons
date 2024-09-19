@@ -326,9 +326,6 @@ endif()
 if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     message(STATUS "Not adding any options.")
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    # -fsanitize-trap=,signed-integer-overflow
-    #set(C_SANITIZE_OPTIONS "-fsanitize=thread,null,alignment,undefined,bounds -fno-sanitize-recover=null,alignment,undefined,bounds,signed-integer-overflow")
-
     #if(TREX_CONDA_PACKAGE_INSTALL)
         set(M1OPTIONS "")
     #else
@@ -341,25 +338,24 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
         set(M1OPTIONS "")
     endif()
 
-    set(C_SANITIZE_OPTIONS "")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-stack-address -Wthread-safety")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${M1OPTIONS} -O3 -flto")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g ${C_SANITIZE_OPTIONS} -fno-lto")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g -fno-lto")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++98-compat-pedantic -Wall -Wextra -pedantic")
     
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=return-stack-address")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${M1OPTIONS} -O3")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-c++98-compat-pedantic")
     message(STATUS "hidden visibility in main project ${CMAKE_CXX_FLAGS}")
     message(STATUS "Apple Silicon: ${CMAKE_SYSTEM_PROCESSOR} -> ${M1OPTIONS}")
     
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-nullability-extension")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-nullability-extension")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${C_SANITIZE_OPTIONS}")
-    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} ${C_SANITIZE_OPTIONS}")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+    set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO}")
 elseif(MSVC)
 else()
     message(STATUS "***** compiler ID ${CMAKE_CXX_COMPILER_ID}")
@@ -1283,6 +1279,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_QT=ON 
             -DWITH_TIFF=OFF 
             -DWITH_V4L=OFF 
+            -DBUILD_PROTOBUF:BOOL=OFF
             -DWITH_LIBV4L=OFF 
             -DWITH_OPENCL=OFF 
             -DWITH_OPENCLAMDFFT=OFF 
@@ -1416,7 +1413,7 @@ else()
             -DWITH_WEBP=OFF
             -DBUILD_PNG:BOOL=OFF
             -DBUILD_ZLIB:BOOL=OFF
-            -DBUILD_PROTOBUF:BOOL=ON
+            -DBUILD_PROTOBUF:BOOL=OFF
             -DBUILD_JPEG:BOOL=ON
             -DBUILD_OPENJPEG:BOOL=OFF
             -DWITH_OPENJPEG:BOOL=OFF
@@ -1523,10 +1520,10 @@ endif()
         link_directories(${OpenCV_LIB_PATH})
         set(OpenCV_LIBS opencv_core${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgproc${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgcodecs${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_video${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_videoio${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_highgui${COMMONS_OPENCV_VERSION_NO_DOTS} 
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
-            libjpeg-turbo ittnotify ade libprotobuf libtiff ${FFMPEG_LIBRARIES})
+            libjpeg-turbo ittnotify ade libtiff ${FFMPEG_LIBRARIES})
     else()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libjpeg-turbo ittnotify ade libprotobuf ${FFMPEG_LIBRARIES})
+		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libjpeg-turbo ittnotify ade ${FFMPEG_LIBRARIES})
 		if(APPLE)
 			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff)
 		else()

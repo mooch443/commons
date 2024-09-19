@@ -92,7 +92,6 @@ void CVBase::set_window_bounds(Bounds) {
     }
     
     void CVBase::paint(gui::DrawStructure &s) {
-        auto lock = GUI_LOCK(s.lock());
         s.before_paint(this);
         _overlay.copyTo(_window);
         

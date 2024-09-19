@@ -109,10 +109,6 @@ namespace cmn::gui {
         if(clean_list)
             return;
         
-        std::unique_ptr<DrawStructure::Lock_t> guard = nullptr;
-        if(stage())
-            guard = std::make_unique<DrawStructure::Lock_t>(stage()->lock());
-        
         _items = std::move(items);
         _selected_rect = NULL;
         
