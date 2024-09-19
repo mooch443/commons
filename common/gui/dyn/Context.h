@@ -43,7 +43,7 @@ struct CurrentObjectHandler {
     
     void reset();
     void select(const std::shared_ptr<Drawable>&);
-    void register_named(const std::string& name, std::weak_ptr<Drawable> ptr);
+    void register_named(const std::string& name, const std::shared_ptr<Drawable>& ptr);
     
     void set_variable_value(std::string_view name, std::string_view value);
     std::optional<std::string_view> get_variable_value(std::string_view name) const;

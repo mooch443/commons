@@ -147,7 +147,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                 FormatWarning("Duplicate entry for ", name, ": ", n.get(), " vs. ", ptr.get());
             }*/
 #endif
-            lock->register_named(name, std::weak_ptr(ptr.get_smart()));
+            lock->register_named(name, ptr.get_smart());
         }
     }
     

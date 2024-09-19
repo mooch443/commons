@@ -467,7 +467,7 @@ std::ostream & Text::operator <<(std::ostream &os) {
     json_t j = t;
     
     os <<
-    write_json(j) << ","
+    write_json(j).value() << ","
     ""<<font().size<<","
     "" << color() << "";
     if(/*font().align != Align::Left || */font().style) {

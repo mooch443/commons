@@ -157,8 +157,23 @@ std::shared_ptr<Drawable> CurrentObjectHandler::retrieve_named(std::string_view 
     return nullptr;
 }
 
-void CurrentObjectHandler::register_named(const std::string &name, std::weak_ptr<Drawable> ptr)
+void CurrentObjectHandler::register_named(const std::string &name, const std::shared_ptr<Drawable>& ptr)
 {
+    if(not ptr)
+        throw InvalidArgumentException("Cannot register a null pointer for name ",name,".");
+    ptr->on_delete([this, name, ptr = std::weak_ptr(ptr)]() {
+        //Print("Deleting ", name, " from named entities.");
+        if(auto it = _named_entities.find(name);
+           it != _named_entities.end())
+        {
+            if(it->second.lock() == ptr.lock())
+                _named_entities.erase(it);
+#ifndef NDEBUG
+            else
+                Print("Error: ", name, " is not the same as the one in the map.");
+#endif
+        }
+    });
     _named_entities[name] = ptr;
 }
 

@@ -549,10 +549,10 @@ endif()
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v2.1.3
+  GIT_TAG v3.4.1
   GIT_SHALLOW TRUE
   SOURCE_DIR ${glaze_PATH}
-  PATCH_COMMAND ${glaze_PATCH_COMMAND}
+  #PATCH_COMMAND ${glaze_PATCH_COMMAND}
   UPDATE_DISCONNECTED 1
 )
 
@@ -1362,6 +1362,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DCPU_BASELINE_DISABLE=
             -DCPU_DISPATCH=
             -DCV_DISABLE_OPTIMIZATION=ON 
+            -DWITH_PROTOBUF:BOOL=OFF
             -DCPU_BASELINE= 
             -DCPU_DISPATCH=
             -DCMAKE_BUILD_TYPE=Release
@@ -1430,6 +1431,7 @@ else()
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
             -DWITH_OPENEXR=OFF
+            -DWITH_PROTOBUF:BOOL=OFF
             -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release

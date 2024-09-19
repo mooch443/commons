@@ -141,7 +141,7 @@ template<typename... _Args>
 class VarBase {
 protected:
     /// The type of the derived class, as a string_view.
-    const std::string_view type;
+    const std::string type;
     bool _is_vector{false};
     
 public:
@@ -149,7 +149,7 @@ public:
     std::function<std::string(_Args...)> value_string;
     
 public:
-    VarBase(std::string_view type) : type(type) {}
+    VarBase(std::string_view type) : type((std::string)type) {}
     /// Virtual destructor to enable polymorphic behavior.
     virtual ~VarBase() {}
     
