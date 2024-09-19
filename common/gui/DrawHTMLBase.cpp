@@ -21,7 +21,6 @@ namespace cmn::gui {
 	}
     
     void HTMLBase::paint(gui::DrawStructure &s) {
-        auto lock = GUI_LOCK(s.lock());
         if(_size.empty())
             _size = Size2(s.width(), s.height());
         
