@@ -7,50 +7,30 @@ template<class Base>
 class derived_ptr {
 public:
     using element_type = Base;
-    
-    std::variant<std::monostate, Base*, std::shared_ptr<Base>> _ptr{std::monostate{}};
+    std::shared_ptr<Base> _ptr;
 
     template<typename T>
         requires std::is_base_of_v<Base, T>
     derived_ptr(const derived_ptr<T>& share) {
-        if(not share.has_value()) {
-            _ptr = std::monostate{};
-            assert(not has_value());
-        } else if(not share.is_smart()) {
-            _ptr = static_cast<Base*>(share.get());
-            assert(has_value() && not is_smart());
-        } else {
-            _ptr = std::static_pointer_cast<Base>(share.get_smart());
-            assert(has_value() && is_smart());
-        }
+        _ptr = std::static_pointer_cast<Base>(share._ptr);
     }
     
     template<typename T>
         requires std::is_base_of_v<Base, T>
     derived_ptr(derived_ptr<T>&& share)
     {
-        if(not share.has_value()) {
-            _ptr = std::monostate{};
-            assert(not has_value());
-        } else if(not share.is_smart()) {
-            _ptr = static_cast<Base*>(share.get());
-            assert(has_value() && not is_smart());
-        } else {
-            _ptr = std::static_pointer_cast<Base>(share.get_smart());
-            assert(has_value() && is_smart());
-        }
+        _ptr = std::static_pointer_cast<Base>(share._ptr);
         share.reset();
         assert(not share.has_value());
     }
     derived_ptr(const std::shared_ptr<Base>& share = nullptr) noexcept
         : _ptr(share)
+    { }
+
+   derived_ptr(std::nullptr_t) noexcept
+        : _ptr(nullptr)
     {
-        assert(has_value() && is_smart());
-    }
-    derived_ptr(Base* raw) noexcept
-        : _ptr(raw)
-    {
-        assert(has_value() && not is_smart());
+        assert(not has_value());
     }
     
     Base& operator*() const {
@@ -59,15 +39,10 @@ public:
     }
     
     Base* get() const {
-        if(not has_value())
-            return nullptr;
-        else if(not is_smart()) {
-            return std::get<Base*>(_ptr);
-        } else
-            return std::get<std::shared_ptr<Base>>(_ptr).get();
+        return _ptr.get();
     }
     void reset() {
-        _ptr = std::monostate{};
+        _ptr.reset();
     }
     
     template<typename T>
@@ -90,30 +65,15 @@ public:
     template<typename T>
         requires (std::convertible_to<Base*, T*> || std::is_base_of_v<Base, T>)
     operator derived_ptr<T> () {
-        if(not has_value()) {
-            return derived_ptr<T>();
-            
-        } else if(is_smart()) {
-            return derived_ptr<T>(std::static_pointer_cast<T>(std::get<std::shared_ptr<Base>>(_ptr)));
-        } else
-            return derived_ptr<T>(static_cast<T*>(std::get<Base*>(_ptr)));
+        return derived_ptr<T>(std::static_pointer_cast<T>(_ptr));
+    }
+
+    auto& get_smart() const {
+        return _ptr;
     }
     
-    const std::shared_ptr<Base>& get_smart() const {
-        if(not is_smart()) {
-            throw U_EXCEPTION("Not holding a smart pointer right now (", Meta::name<Base>(),").");
-        }
-        
-        return std::get<std::shared_ptr<Base>>(_ptr);
-    }
-    
-    bool is_smart() const {
-        return std::holds_alternative<std::shared_ptr<Base>>(_ptr);
-    }
     bool has_value() const {
-        if(_ptr.index() == std::variant_npos)
-            return false;
-        return not std::holds_alternative<std::monostate>(_ptr);
+        return _ptr != nullptr;
     }
 };
 
