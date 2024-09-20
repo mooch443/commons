@@ -88,10 +88,19 @@ namespace cmn {
         doc = utils::find_replace(doc, "<", "&lt;");
         doc = utils::find_replace(doc, ">", "&gt;");
         
+        char prev = 0;
         for(auto c : doc) {
             if(c == '\n') {
                 end_word(0, 0);
                 parsed << "<br/>";
+            } else if(prev == '\\') {
+                word << c;
+                prev = 0;
+                
+            } else if(c == '\\') {
+                word << c;
+                prev = c;
+                
             } else if(is_in(c, '\'', '`', '"', '$')
                       && ((in_string == 0)
                         || (in_string != 0 && in_string == c)))
