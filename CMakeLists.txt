@@ -1298,7 +1298,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_opencv_highgui=ON
             -DBUILD_opencv_dnn:BOOL=OFF 
             -DBUILD_opencv_ml:BOOL=OFF
-            -DWITH_VA:BOOL=OFF
+            -DWITH_VA:BOOL=ON
             -DBUILD_opencv_video=ON
             -DBUILD_opencv_videoio=ON
             -DBUILD_opencv_flann:BOOL=ON
@@ -1406,7 +1406,7 @@ else()
             -DBUILD_opencv_python:BOOL=OFF
             -DBUILD_opencv_objdetect:BOOL=ON
             -DBUILD_opencv_dnn:BOOL=OFF
-            -DWITH_VA:BOOL=OFF
+            -DWITH_VA:BOOL=ON
             -DBUILD_opencv_ml:BOOL=OFF
             -DBUILD_opencv_stitching:BOOL=OFF
             -DBUILD_opencv_flann:BOOL=ON
