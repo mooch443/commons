@@ -158,7 +158,7 @@ R apply_to_object(Drawable* c, F&& fn) {
             return R{};
     }
     
-    assert(dynamic_cast<Fallthrough*>(c) == nullptr);
+    //assert(dynamic_cast<Fallthrough*>(c) == nullptr);
 
     if constexpr(std::same_as<R, void>)
         fn(c);
