@@ -9,7 +9,6 @@
 
 namespace cmn::gui::dyn {
 
-
 template<typename T, typename Str>
 T resolve_variable_type(Str _word, const Context& context, State& state) {
     std::string_view word;

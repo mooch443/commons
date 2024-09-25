@@ -82,6 +82,10 @@ struct CustomElement {
     std::string name;
     std::function<Layout::Ptr(LayoutContext&)> create;
     std::function<bool(Layout::Ptr&, const Context&, State&, const PatternMapType&)> update;
+
+    CustomElement() = default;
+    CustomElement(std::string_view name, auto&& create, auto&& update) : name(std::move(name)), create(std::move(create)), update(std::move(update)) {}
+    virtual ~CustomElement() {}
 };
 
 struct ManualListContents {

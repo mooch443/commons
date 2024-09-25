@@ -290,6 +290,7 @@ void Layout::set_bounds(const Bounds& bounds) {
     }
     
     void Layout::clear_children() {
+        auto objs = _objects;
         _objects.clear();
         set_layout_dirty();
         set_content_changed(true);

@@ -1120,6 +1120,7 @@ void DynamicGUI::clear() {
     previous.clear();
     state = {};
     first_load = true;
+    context = {};
 }
 
 void update_tooltips(DrawStructure& graph, State& state) {
