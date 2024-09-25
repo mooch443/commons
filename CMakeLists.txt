@@ -520,12 +520,7 @@ FetchContent_Declare(
     GIT_TAG 0.1.0
 )
 
-FetchContent_GetProperties(pybdialogsind11)
-if(NOT dialogs_POPULATED)
-    FetchContent_Populate(dialogs)
-    #add_subdirectory(${dialogs_SOURCE_DIR} ${dialogs_BINARY_DIR})
-endif()
-
+FetchContent_MakeAvailable(dialogs)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      JSON
@@ -721,9 +716,7 @@ FetchContent_Declare(
     UPDATE_DISCONNECTED 1
 )
 
-if(NOT imgui_POPULATED)
-    FetchContent_Populate(imgui)
-endif()
+FetchContent_MakeAvailable(imgui)
 
 message(STATUS "imgui: ${imgui_path}")
 file(GLOB imgui_sources ${imgui_path}/*.cpp ${imgui_path}/*.h
@@ -869,11 +862,7 @@ elseif(NOT COMMONS_NO_PYTHON)
         GIT_TAG        ${pybind11_version_tag}
     )
 
-    FetchContent_GetProperties(pybind11)
-    if(NOT pybind11_POPULATED)
-        FetchContent_Populate(pybind11)
-        add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
-    endif()
+    FetchContent_MakeAvailable(pybind11)
 
     message(STATUS "PYTHON VARS: lib:${PYTHON_LIBRARY} inc:${PYTHON_INCLUDE_DIR} exec:${PYTHON_EXECUTABLE}")
 endif()
