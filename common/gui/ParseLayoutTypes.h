@@ -142,6 +142,9 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>();
 
 template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::line>();
+
+template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::textfield>();
 
 template <>
