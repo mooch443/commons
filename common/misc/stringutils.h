@@ -11,6 +11,8 @@
 #include <unordered_map>
 #include <codecvt>
 #include <type_traits>
+#include <unicode/uchar.h>   // For u_isWhitespace
+#include <unicode/utf8.h>    // For U8_NEXT and U8_PREV
 
 namespace cmn::utils {
 
@@ -166,12 +168,19 @@ inline std::string find_replace(
     return result;
 }
 
-template<StringLike Str>
-auto ltrim(Str&& s) {
+inline bool isWhitespaceOrAdditional(UChar32 c) {
+    return u_hasBinaryProperty(c, UCHAR_WHITE_SPACE) ||
+        c == 0x200B || // ZERO WIDTH SPACE
+        c == 0x2060 || // WORD JOINER
+        c == 0xFEFF;   // ZERO WIDTH NO-BREAK SPACE (BOM)
+}
+
+enum class TrimDirection { Left, Right };
+
+template<StringLike Str, TrimDirection Direction>
+auto trim_impl(Str&& s) {
     using StrDecayed = std::remove_cvref_t<Str>;
-    using CharType = typename StrDecayed::value_type;
-    auto pred = [](CharType c) -> bool { return not std::isspace(c); };
-    
+
     if (s.empty()) {
         if constexpr (std::is_same_v<StrDecayed, std::string>) {
             return std::forward<Str>(s);
@@ -179,65 +188,78 @@ auto ltrim(Str&& s) {
             return std::string_view{};
         }
     }
-    
-    if constexpr((std::is_rvalue_reference_v<Str&&>
-                  || is_const_lvalue_ref<Str>::value)
-                 && std::is_same_v<StrDecayed, std::string>)
-    {
-        auto copy = s;
-        auto start = std::find_if(copy.begin(), copy.end(), pred);
-        copy.erase(copy.begin(), start);
-        return copy;
-        
-    } else if constexpr (std::is_same_v<StrDecayed, std::string>) {
-        auto start = std::find_if(s.begin(), s.end(), pred);
-        s.erase(s.begin(), start);
-        return std::forward<Str>(s);
-        
+
+    const char* data = s.data();
+    int32_t length = static_cast<int32_t>(s.size());
+    int32_t start = 0;
+    int32_t end = length;
+
+    if constexpr (Direction == TrimDirection::Left) {
+        // Left trim
+        int32_t offset = start;
+        while (offset < end) {
+            int32_t prev_offset = offset;
+            UChar32 c;
+            U8_NEXT(data, offset, end, c);
+            if (c < 0) {
+                // Invalid character, stop trimming
+                break;
+            }
+            if (isWhitespaceOrAdditional(c)) {
+                // Whitespace character, move start forward
+                start = offset;
+            } else {
+                // Non-whitespace character found, stop
+                break;
+            }
+        }
     } else {
-        auto start = std::find_if(s.begin(), s.end(), pred);
-        if (start == s.end()) {
+        // Right trim
+        int32_t offset = end;
+        while (offset > start) {
+            UChar32 c;
+            U8_PREV(data, start, offset, c);
+            if (c < 0) {
+                // Invalid character, stop trimming
+                break;
+            }
+            if (isWhitespaceOrAdditional(c)) {
+                // Whitespace character, move end backward
+                end = offset;
+            } else {
+                // Non-whitespace character found, stop
+                break;
+            }
+        }
+    }
+
+    if constexpr ((std::is_rvalue_reference_v<Str&&> ||
+                   is_const_lvalue_ref<Str>::value) &&
+                  std::is_same_v<StrDecayed, std::string>) {
+        // Create a new string and return it
+        return std::string(data + start, end - start);
+    } else if constexpr (std::is_same_v<StrDecayed, std::string>) {
+        // Modify the original string in place
+        s.erase(end, length - end);      // Erase from 'end' to the end
+        s.erase(0, start);               // Erase from the start to 'start'
+        return std::forward<Str>(s);
+    } else {
+        // For string_view and const char*
+        if (start >= end) {
             return std::string_view{};
         }
-        return std::string_view(&*start, std::distance(start, s.end()));
+        return std::string_view(data + start, end - start);
     }
 }
 
 template<StringLike Str>
+auto ltrim(Str&& s) {
+    return trim_impl<Str, TrimDirection::Left>(std::forward<Str>(s));
+}
+
+template<StringLike Str>
 auto rtrim(Str&& s) {
-    using StrDecayed = std::remove_cvref_t<Str>;
-    using CharType = typename StrDecayed::value_type;
-    auto pred = [](CharType c) -> bool { return not std::isspace(c); };
-    
-    if (s.empty()) {
-        if constexpr (std::is_same_v<StrDecayed, std::string>) {
-            return std::forward<Str>(s);
-        } else {
-            return std::string_view{};
-        }
-    }
-    
-    if constexpr((std::is_rvalue_reference_v<Str&&>
-                  || is_const_lvalue_ref<Str>::value)
-                 && std::is_same_v<StrDecayed, std::string>)
-    {
-        auto copy = s;
-        auto end = std::find_if(copy.rbegin(), copy.rend(), pred).base();
-        copy.erase(end, copy.end());
-        return copy;
-        
-    } else if constexpr (std::is_same_v<StrDecayed, std::string>) {
-        auto end = std::find_if(s.rbegin(), s.rend(), pred).base();
-        s.erase(end, s.end());
-        return std::forward<Str>(s);
-        
-    } else {
-        auto end = std::find_if(s.rbegin(), s.rend(), pred).base();
-        if (end == s.begin()) {
-            return std::string_view{};
-        }
-        return std::string_view(&*s.begin(), std::distance(s.begin(), end));
-    }
+    return trim_impl<Str, TrimDirection::Right>(std::forward<Str>(s));
 }
 
 template<StringLike Str>

@@ -59,6 +59,18 @@ foreach(FILE ${SRCS} ${HDRS})
     source_group("${GROUP}" FILES "${FILE}")
 endforeach()
 
+# Find ICU package
+find_package(ICU REQUIRED COMPONENTS uc i18n)
+
+# Output ICU variables for debugging
+message(STATUS "Found ICU:")
+message(STATUS "  ICU_VERSION: ${ICU_VERSION}")
+message(STATUS "  ICU_LIBRARIES: ${ICU_LIBRARIES}")
+message(STATUS "  ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
+
+# Add ICU include directories
+target_include_directories(commons PUBLIC ${ICU_INCLUDE_DIRS})
+
 target_link_libraries(commons
     PUBLIC cnpy
     PUBLIC Commons::OpenCV
@@ -70,6 +82,7 @@ target_link_libraries(commons
     PUBLIC Commons::LibZIP 
     PUBLIC Commons::LibZ
     PUBLIC glaze::glaze
+    PUBLIC ${ICU_LIBRARIES}
     #PUBLIC nlohmann_json::nlohmann_json
 )
 
