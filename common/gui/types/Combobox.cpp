@@ -5,6 +5,16 @@
 namespace cmn::gui {
 using namespace dyn;
 
+tl::expected<std::string, const char*> default_value_of(std::string_view name) {
+    if(GlobalSettings::current_defaults().has(name)) {
+        return GlobalSettings::current_defaults().at(name).get().valueString();
+    } else if(GlobalSettings::defaults().has(name)) {
+        return GlobalSettings::defaults().at(name).get().valueString();
+    }
+    
+    return tl::unexpected("No default value available.");
+}
+
 void Combobox::init() {
     _dropdown = std::make_shared<Dropdown>(Box(0, 0, 800, 28));
     auto keys = settings_map().keys();
@@ -24,6 +34,28 @@ void Combobox::init() {
         }
     });
     
+    _reset_button = std::make_shared<Button>(Str{"<sym>⮌</sym>"}, Size{25,28});
+    _reset_button->on_click([this](auto){
+        if(not _does_not_equal_default)
+            return;
+        
+        auto name = parameter();
+        if(name.empty())
+            return;
+        
+        if(stage())
+            stage()->do_hover(nullptr);
+        
+        if(GlobalSettings::current_defaults().has(name)) {
+            GlobalSettings::current_defaults().at(name).get().copy_to(&settings_map());
+        } else if(GlobalSettings::defaults().has(name)) {
+            GlobalSettings::defaults().at(name).get().copy_to(&settings_map());
+        } else {
+            FormatWarning("Do not have a default value for ", name);
+            return;
+        }
+    });
+    
     _layout.set(Margins{0, 0, 0, 0});
     _layout.set_policy(HorizontalLayout::Policy::TOP);
     _layout.auto_size();
@@ -38,6 +70,21 @@ std::optional<Dropdown::TextItem> Combobox::last_hovered_item() const {
     return _dropdown->currently_hovered_item();
 }
 
+void Combobox::update_defaults() {
+    _does_not_equal_default = false;
+    
+    if(auto name = parameter();
+       _value && not name.empty() && settings_map().has(name))
+    {
+        auto value = settings_map().at(name).get().valueString();
+        if(auto def = default_value_of(name);
+           def && value != def.value())
+        {
+            _does_not_equal_default = true;
+        }
+    }
+}
+
 void Combobox::update() {
     if(not content_changed())
         return;
@@ -48,6 +95,13 @@ void Combobox::update() {
     
     if(_value)
         _value->add_to(objects);
+    
+    update_defaults();
+    if(_does_not_equal_default) {
+        //Print("Value ", _value->text()->txt(), " != ", def.value());
+        objects.push_back(_reset_button);
+    }
+    
     _layout.set_children(objects);
     
     OpenContext([this](){
@@ -77,6 +131,10 @@ void Combobox::set(ParmName name) {
     if(name != _settings.param) {
         _settings.param = name;
         
+        if(stage() && stage()->hovered_object() == this) {
+            stage()->do_hover(nullptr);
+        }
+        
         _value = LabeledField::Make(_gui, name);
         if(not dynamic_cast<const LabeledCheckbox*>(_value.get())) {
             _value->set_description("");
@@ -99,6 +157,11 @@ void Combobox::set(attr::Font font)   {
         if(_value)
             _value->set(font);
         _dropdown->set(font);
+        {
+            Font center{font};
+            center.align = Align::Center;
+            _reset_button->set(center);
+        }
         set_content_changed(true);
     }
 }
@@ -108,6 +171,7 @@ void Combobox::set(attr::FillClr clr) {
         if(_value)
             _value->set(clr);
         _dropdown->set(clr);
+        _reset_button->set(FillClr{Color::blend(clr, Yellow.alpha(50))});
         set_content_changed(true);
     }
 }
@@ -117,6 +181,7 @@ void Combobox::set(attr::LineClr clr) {
         if(_value)
             _value->set(clr);
         _dropdown->set(clr);
+        _reset_button->set(clr);
         set_content_changed(true);
     }
 }
@@ -126,6 +191,7 @@ void Combobox::set(attr::TextClr clr) {
         if(_value)
             _value->set(clr);
         _dropdown->set(clr);
+        _reset_button->set(clr);
         set_content_changed(true);
     }
 }
@@ -226,14 +292,17 @@ void Combobox::set_pos(const Vec2& p) {
 void Combobox::set_size(const Size2& p) {
     if(not _settings.bounds.size().Equals(p)) {
         _settings.bounds << p;
-        _dropdown->set(attr::Size{p.width * 0.35f, p.height});
         update_value();
+        _reset_button->set(attr::Size(25, p.height));
+        _dropdown->set(attr::Size{p.width * 0.35f - (_does_not_equal_default ? _reset_button->width() - 5_F * 2_F : 0_F), p.height});
         set_content_changed(true);
     }
     Entangled::set_size(p);
 }
 
 void Combobox::update_value() {
+    update_defaults();
+    
     if(not _value)
         return;
     

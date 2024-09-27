@@ -37,8 +37,10 @@ public:
 protected:
     Settings _settings;
     
+    bool _does_not_equal_default{false};
     HorizontalLayout _layout;
     derived_ptr<Dropdown> _dropdown;
+    derived_ptr<Button> _reset_button;
     std::unique_ptr<dyn::LabeledField> _value;
     
 public:
@@ -92,6 +94,7 @@ protected:
     void init();
     void update() override;
     void update_value();
+    void update_defaults();
 };
     
 }
