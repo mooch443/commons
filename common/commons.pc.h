@@ -504,6 +504,38 @@ constexpr inline auto max(const T0& x, const T1& y, const T2& z) -> decltype(x+y
     return std::max(decltype(x+y+z)(x), std::max(decltype(x+y+z)(y), decltype(x+y+z)(z)));
 }
 
+// max_element for containers that are not maps
+template <typename Iterable>
+std::optional<typename Iterable::value_type> max_element_impl(const Iterable& container, std::false_type) {
+    if (container.empty()) {
+        return std::nullopt;
+    }
+    
+    return *std::max_element(container.begin(), container.end());
+}
+
+// max_element for maps (based on the value part of the pair)
+template <typename Map>
+std::optional<typename Map::value_type> max_element_impl(const Map& map, std::true_type) {
+    if (map.empty()) {
+        return std::nullopt;
+    }
+
+    // Find the element with the maximum 'mapped_type' (value)
+    auto max_iter = std::max_element(map.begin(), map.end(),
+        [](const auto& lhs, const auto& rhs) {
+            return lhs.second < rhs.second;
+        });
+    
+    return *max_iter;
+}
+
+// General max_element function that dispatches based on whether the container is a map
+template <typename Iterable>
+auto max_element(const Iterable& container) {
+    return max_element_impl(container, is_map<Iterable>{});
+}
+
 /**
  * ======================
  * COMMON custom STL selectors and iterators
