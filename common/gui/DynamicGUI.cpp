@@ -215,6 +215,18 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
                 }
             }),
+            VarFunc("nequal", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::string p0(props.parameters.front());
+                std::string p1(props.parameters.back());
+                try {
+                    return not (p0 == p1);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
+                }
+            }),
             VarFunc("&&", [](const VarProps& props) -> bool {
                 for (auto &c : props.parameters) {
                     if(not convert_to_bool(c))

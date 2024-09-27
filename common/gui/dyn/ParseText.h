@@ -111,6 +111,7 @@ bool convert_to_bool(Str&& p) noexcept {
         || p == "\"\""
         || p == "0.0"
         || p == ""
+        || p == "Map<size:0>"
         )
       return false;
 
