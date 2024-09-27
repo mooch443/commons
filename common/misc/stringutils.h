@@ -198,7 +198,6 @@ auto trim_impl(Str&& s) {
         // Left trim
         int32_t offset = start;
         while (offset < end) {
-            int32_t prev_offset = offset;
             UChar32 c;
             U8_NEXT(data, offset, end, c);
             if (c < 0) {
