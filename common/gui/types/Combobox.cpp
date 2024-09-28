@@ -71,6 +71,7 @@ std::optional<Dropdown::TextItem> Combobox::last_hovered_item() const {
 }
 
 void Combobox::update_defaults() {
+    auto b = _does_not_equal_default;
     _does_not_equal_default = false;
     
     if(auto name = parameter();
@@ -82,6 +83,12 @@ void Combobox::update_defaults() {
         {
             _does_not_equal_default = true;
         }
+    }
+    
+    if(b != _does_not_equal_default) {
+        auto s = _settings.bounds.size();
+        _settings.bounds << Size2();
+        set_size(s);
     }
 }
 
