@@ -193,30 +193,43 @@ namespace cmn::pixel {
 
     template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_without_grid _____FN_TYPE {
-        for(const auto &line : lines) {
-            coord_t x0;
-            uchar* start{nullptr};
-            
-            for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
-                //assert(px < px_end);
-                
-                auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
-                if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold)) {
-                    if(start) {
-                        pixels.insert(pixels.end(), start, px);
-                        result.emplace_back(line.y, x0, x - 1);
-                        start = nullptr;
-                    }
-                    
-                } else if(!start) {
-                    start = px;
-                    x0 = x;
-                }
-            }
+        static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
+        static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
         
-            if(start) {
-                pixels.insert(pixels.end(), start, px);
-                result.emplace_back(line.y, x0, line.x1);
+        static_assert(input.channels > 0 || method == DifferenceMethod_t::none, "If we do not have pixels, we cannot build difference values.");
+        
+        if constexpr(input.channels == 0) {
+            for(const auto& line : lines) {
+                pixels.insert(pixels.end(), line.length() * output.channels, 255);
+            }
+            result.insert(result.end(), lines.begin(), lines.end());
+            
+        } else {
+            for(const auto &line : lines) {
+                coord_t x0;
+                uchar* start{nullptr};
+                
+                for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                    //assert(px < px_end);
+                    
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
+                    if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold)) {
+                        if(start) {
+                            pixels.insert(pixels.end(), start, px);
+                            result.emplace_back(line.y, x0, x - 1);
+                            start = nullptr;
+                        }
+                        
+                    } else if(!start) {
+                        start = px;
+                        x0 = x;
+                    }
+                }
+                
+                if(start) {
+                    pixels.insert(pixels.end(), start, px);
+                    result.emplace_back(line.y, x0, line.x1);
+                }
             }
         }
     }
@@ -224,30 +237,41 @@ namespace cmn::pixel {
     template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_without_bg _____FN_TYPE {
         UNUSED(bg);
+        static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
+        static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
+        static_assert(input.channels > 0 || method == DifferenceMethod_t::none, "If we do not have pixels, we cannot build difference values.");
         
-        for(const auto &line : lines) {
-            coord_t x0;
-            uchar* start{nullptr};
-            
-            for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
-                //assert(px < px_end);
-                
-                if(*px < threshold) {
-                    if(start) {
-                        pixels.insert(pixels.end(), start, px);
-                        result.emplace_back(line.y, x0, x - 1);
-                        start = nullptr;
-                    }
-                    
-                } else if(!start) {
-                    start = px;
-                    x0 = x;
-                }
+        if constexpr(input.channels == 0) {
+            for(const auto& line : lines) {
+                pixels.insert(pixels.end(), line.length() * output.channels, 255);
             }
-        
-            if(start) {
-                pixels.insert(pixels.end(), start, px);
-                result.emplace_back(line.y, x0, line.x1);
+            result.insert(result.end(), lines.begin(), lines.end());
+            
+        } else {
+            for(const auto &line : lines) {
+                coord_t x0;
+                uchar* start{nullptr};
+                
+                for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                    //assert(px < px_end);
+                    
+                    if(*px < threshold) {
+                        if(start) {
+                            pixels.insert(pixels.end(), start, px);
+                            result.emplace_back(line.y, x0, x - 1);
+                            start = nullptr;
+                        }
+                        
+                    } else if(!start) {
+                        start = px;
+                        x0 = x;
+                    }
+                }
+                
+                if(start) {
+                    pixels.insert(pixels.end(), start, px);
+                    result.emplace_back(line.y, x0, line.x1);
+                }
             }
         }
     }

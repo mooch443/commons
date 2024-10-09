@@ -46,7 +46,7 @@ namespace cmn {
     }
     ImageMode Background::image_mode() {
         check_callbacks();
-        return cmn::meta_encoding == meta_encoding_t::gray
+        return is_in(cmn::meta_encoding, meta_encoding_t::gray, cmn::meta_encoding_t::binary)
             ? ImageMode::GRAY
             : (cmn::meta_encoding == meta_encoding_t::rgb8
                 ? ImageMode::RGB
@@ -115,7 +115,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                                              int padding)
 {
 #ifndef NDEBUG
-    if(not is_in(input.channels, 1, 3)) {
+    if(not is_in(input.channels, 0, 1, 3)) {
         throw InvalidArgumentException("Invalid number of channels (",input,") in imageFromLines.");
     }
 #endif
@@ -147,14 +147,27 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     auto work_pixels = [&]<bool has_image, bool has_differences, bool has_pixels, 
                            InputInfo input, OutputInfo output, DifferenceMethod method>()
     {
+        using value_t = decltype(diffable_pixel_value<input, output>(pixels_ptr));
+        value_t value, diff;
+        
+        Print("Input: ", input, " Output: ", output);
+        
         for (auto &l : lines) {
             for (int x=l.x0; x<=l.x1; x++, pixels_ptr += input.channels) {
-                using value_t = decltype(diffable_pixel_value<input, output>(pixels_ptr));
-                value_t value, diff;
-                
                 bool pixel_is_set = base_threshold == 0;
                 
-                if constexpr(has_pixels) {
+                if constexpr(input.channels == 0) {
+                    pixel_is_set = true;
+                    
+                    if constexpr(is_rgb_array<value_t>::value) {
+                        value = value_t{ 255, 255, 255 };
+                        diff = value;
+                    } else {
+                        value = 255;
+                        diff = 255;
+                    }
+                    
+                } else if constexpr(has_pixels) {
                     if(base_threshold > 0 || has_image || has_differences) {
                         value = diffable_pixel_value<input, output>(pixels_ptr);
                     }
@@ -221,7 +234,9 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     
     auto work_threshold = [&]<bool has_pixels, InputInfo input, OutputInfo output, DifferenceMethod method>() {
         if(output_differences) {
-            if constexpr(has_pixels) {
+            if constexpr(input.channels == 0) {
+                return work_image.template operator()<true, has_pixels, input, output, DifferenceMethod_t::none>();
+            } else if constexpr(has_pixels) {
                 return work_image.template operator()<true, has_pixels, input, output, method>();
             } else {
                 throw InvalidArgumentException("Cannot output differences without pixels.");
@@ -233,7 +248,18 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     };
     
     auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
-        if(pixels) {
+        static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
+        static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
+        
+        if constexpr(input.channels == 0) {
+            /*if(output_differences)
+                throw InvalidArgumentException("Cannot output differences without providing pixels.");
+            if(output_greyscale)
+                throw InvalidArgumentException("Cannot output images without pixels.");*/
+            
+            return work_threshold.template operator()<true, input, output, DifferenceMethod_t::none>();
+            
+        } else if(pixels) {
             return work_threshold.template operator()<true, input, output, method>();
             
         } else {

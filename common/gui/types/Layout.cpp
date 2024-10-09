@@ -86,6 +86,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
     }
 
     Layout::~Layout() {
+        _layout_dirty = true;
         set_stage(nullptr);
         set_parent(nullptr);
         clear_children();
@@ -245,9 +246,9 @@ void Layout::set_stage(gui::DrawStructure *s) {
 
         auto it = std::find(_objects.begin(), _objects.end(), ptr);
         if(it != _objects.end()) {
+            _objects.erase(it);
             set_content_changed(true);
             set_layout_dirty();
-            _objects.erase(it);
             return;
         }
         //Print("Cannot find object ",ptr);

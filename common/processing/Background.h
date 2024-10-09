@@ -19,6 +19,9 @@ namespace cmn {
     constexpr bool is_r3g3b2() const { \
         return meta_encoding_t::r3g3b2 == encoding; \
     } \
+    constexpr bool is_binary() const { \
+        return meta_encoding_t::binary == encoding; \
+    } \
     \
     std::string toStr() const { \
         return std::string( #NAME ) + "<channels:"+Meta::toStr(channels) + " encoding:" + Meta::toStr(encoding)+">"; \
@@ -78,12 +81,36 @@ namespace cmn {
     }
 
     template<InputInfo input, OutputInfo output>
-    constexpr auto diffable_pixel_value(const uchar* input_data) noexcept {
-        static_assert(is_in(input.channels, 1, 3), "Input channels can only be 1 or 3.");
-        static_assert(is_in(input.channels, 1, 3), "Output channels can only be 1 or 3.");
-        assert(not input.is_r3g3b2() || input.channels != 3); //, "Three input channels cannot be R3G3B2 encoded.");
+    constexpr auto diffable_pixel_value(const uchar* input_data)
+#ifdef NDEBUG
+        noexcept
+#endif
+{
+        static_assert(is_in(input.channels, 0, 1, 3), "Input channels can only be 0, 1 or 3.");
+        static_assert(is_in(output.channels, 1, 3), "Output channels can only be 1 or 3.");
+#ifndef NDEBUG
+    //static_assert(input.channels == 0 || not input.is_binary(), "");
+        if(not input.is_binary() || input.channels == 0) {
+            
+        } else {
+            throw InvalidArgumentException("input=",input);
+        }
+#endif
+        //assert(not input.is_r3g3b2() || input.channels != 3); //, "Three input channels cannot be R3G3B2 encoded.");
 
-        if constexpr(input.channels == 1) {
+        if constexpr(input.channels == 0) {
+            if constexpr(output.channels == 3) {
+                return RGBArray{255, 255, 255};
+                
+            } else if constexpr(output.channels == 1) {
+                if constexpr(output.is_r3g3b2()) {
+                    return vec_to_r3g3b2(RGBArray{255, 255, 255});
+                } else {
+                    return 255;
+                }
+            }
+            
+        } else if constexpr(input.channels == 1) {
             if constexpr(input.is_r3g3b2()) {
                 if constexpr(output.channels == 3) {
                     return r3g3b2_to_vec(*input_data);
@@ -159,6 +186,31 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
             }
         }
     }
+
+template<OutputInfo output, typename Pixel>
+    requires (std::same_as<Pixel, RGBArray> || std::is_integral_v<Pixel>)
+constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
+    //static_assert(is_in(input.channels, 3, 1), "Need input to have either 3 or 1 channels.");
+    static_assert(is_in(output.channels, 3, 1), "Need output to have either 3 or 1 channels.");
+    
+    if constexpr(std::is_integral_v<Pixel>) {
+        if constexpr(output.channels == 1) {
+            image_ptr.push_back(value);
+            
+        } else {
+            static_assert(output.channels == 3, "Expecting 3 output channels here.");
+            image_ptr.insert(image_ptr.end(), 3u, value);
+        }
+        
+    } else if constexpr(std::same_as<Pixel, RGBArray>) {
+        if constexpr(output.channels == 3) {
+            image_ptr.insert(image_ptr.end(), {value[0], value[1], value[2]});
+        } else {
+            static_assert(output.channels == 1, "Expecting one output channel.");
+            image_ptr.push_back(bgr2gray(value));
+        }
+    }
+}
 
     template<OutputInfo output, DifferenceMethod method, typename Pixel>
     struct DifferenceImpl {
@@ -406,19 +458,6 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
          const Background* average = NULL,
          int padding = 0);
 
-    /*class LuminanceGrid;
-    std::pair<cv::Rect2i, size_t> imageFromLines(
-         InputInfo input,
-         const std::vector<HorizontalLine>& lines,
-         cv::Mat* output_mask,
-         cv::Mat* output_greyscale,
-         cv::Mat* output_differences,
-         const std::vector<uchar>& pixels,
-         int base_threshold,
-         const LuminanceGrid& grid,
-         const Background* background,
-         int padding);*/
-
     auto determine_colors(auto&& fn) {
         auto encoding = Background::image_mode();
         if(encoding == ImageMode::R3G3B2)
@@ -447,14 +486,24 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
 struct KnownOutputType {};
 template<OutputInfo output>
 auto call_image_mode_function(KnownOutputType, auto&& fn) {
-    static_assert(is_in(output.channels, 1, 3), "Output channels need to be either 1 or 3.");
+    static_assert(is_in(output.channels, 0, 1, 3), "Output channels need to be either 1 or 3.");
     
-    if(not Background::track_background_subtraction()) {
+    if constexpr(output.channels == 0) {
+#ifndef NDEBUG
+        if(Background::track_background_subtraction()) {
+            FormatWarning("Background subtraction is enabled, but we have no color data.");
+        }
+#endif
         return fn.template operator()<output, DifferenceMethod_t::none>();
-    } else if(Background::track_absolute_difference()) {
-        return fn.template operator()<output, DifferenceMethod_t::absolute>();
+        
     } else {
-        return fn.template operator()<output, DifferenceMethod_t::sign>();
+        if(not Background::track_background_subtraction()) {
+            return fn.template operator()<output, DifferenceMethod_t::none>();
+        } else if(Background::track_absolute_difference()) {
+            return fn.template operator()<output, DifferenceMethod_t::absolute>();
+        } else {
+            return fn.template operator()<output, DifferenceMethod_t::sign>();
+        }
     }
 }
 
@@ -475,8 +524,8 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
     auto determine_encoding = [&]<uint8_t channels>() {
         switch(info.encoding) {
             case meta_encoding_t::data::values::r3g3b2: {
-                if constexpr(channels == 3)
-                    throw InvalidArgumentException("Invalid number of channels for R3G3B2 encoding: ", channels);
+                if constexpr(channels != 1)
+                    FormatWarning("Invalid number of channels for R3G3B2 encoding: ", channels);
                 
                 return fn.template operator()<Info{
                     .channels = channels,
@@ -495,18 +544,40 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
                     .encoding = meta_encoding_t::rgb8
                 }>();
             }
+            case meta_encoding_t::data::values::binary: {
+                if constexpr(std::same_as<InputInfo, Info>) {
+                    if constexpr(channels != 0)
+                        throw InvalidArgumentException("Binary requires only one channel.");
+                    
+                    return fn.template operator()<Info{
+                        .channels = channels,
+                        .encoding = meta_encoding_t::binary
+                    }>();
+                }
+            }
                 
             default:
                 throw InvalidArgumentException("Unknown encoding type: ", info.encoding);
         }
     };
     
-    if(info.channels == 1)
-        return determine_encoding.template operator()<1>();
-    else if(info.channels == 3)
-        return determine_encoding.template operator()<3>();
-    else
-        throw InvalidArgumentException("Invalid number of output channels: ", info);
+    if constexpr(std::same_as<InputInfo, Info>) {
+        if(info.channels == 0)
+            return determine_encoding.template operator()<0>();
+        else if(info.channels == 1)
+            return determine_encoding.template operator()<1>();
+        else if(info.channels == 3)
+            return determine_encoding.template operator()<3>();
+        else
+            throw InvalidArgumentException("Invalid number of output channels: ", info);
+    } else {
+        if(info.channels == 1)
+            return determine_encoding.template operator()<1>();
+        else if(info.channels == 3)
+            return determine_encoding.template operator()<3>();
+        else
+            throw InvalidArgumentException("Invalid number of output channels: ", info);
+    }
 }
 
     auto call_image_mode_function(OutputInfo o, auto&& fn) {
@@ -524,7 +595,14 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
     auto call_image_mode_function(InputInfo input, OutputInfo output, const auto& fn) {
         auto determine_in = [&]<OutputInfo o, DifferenceMethod method>() {
             return call_single_image_info(input, [&]<InputInfo i>(){
-                return fn.template operator()<i, o, method>();
+                if constexpr(i.channels == 0) {
+                    /// we force the difference method if we have no color input
+                    /// channels. otherwise, this doesn't make sense. you cannot
+                    /// build a difference without colors.
+                    return fn.template operator()<i, o, DifferenceMethod_t::none>();
+                } else {
+                    return fn.template operator()<i, o, method>();
+                }
             });
         };
         

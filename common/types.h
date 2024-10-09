@@ -379,7 +379,9 @@ struct Pair {
     Prediction pred;
     
     Pair() = default;
+    Pair(Pair&&) = default;
     Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags = 0, Prediction&& pred = {});
+    Pair& operator=(Pair&&) = default;
 };
 }
 

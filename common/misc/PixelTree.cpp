@@ -88,62 +88,83 @@ struct Row {
 
 
 inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background) {
-    const uchar* px = blob->pixels()->data();
-    const uchar* dpx = difference_cache.data();
-    const uint8_t channels = blob->channels();
-    
-    std::vector<HorizontalLine> lines;
-    std::vector<uchar> pixels;
-    
-    pixels.reserve(blob->pixels()->size());
-    lines.reserve(blob->hor_lines().size());
-    
     //Print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
-    
-    for(const auto &line : blob->hor_lines()) {
-        coord_t x0;
-        const uchar* start{nullptr};
+    if(blob->is_binary()) {
+        std::vector<blob::Pair> blobs;
+        blobs.emplace_back(blob::Pair(std::make_unique<blob::lines_t>(blob->hor_lines()), nullptr, blob->flags(), blob::Prediction(blob->prediction())));
+        return blobs;
         
-        for (auto x=line.x0; x<=line.x1; ++x, px += channels, ++dpx) {
-            assert(px < blob->pixels()->data() + blob->pixels()->size());
+    } else {
+        const uint8_t channels = blob->channels();
+        
+        std::vector<HorizontalLine> lines;
+        lines.reserve(blob->hor_lines().size());
+        
+        const uchar* px = blob->pixels()->data();
+        const uchar* dpx = difference_cache.data();
+        
+        std::vector<uchar> pixels;
+        pixels.reserve(blob->pixels()->size());
+        
+        for(const auto &line : blob->hor_lines()) {
+            coord_t x0;
+            const uchar* start{nullptr};
             
-            if(not background.is_value_different<OutputInfo{
-                .channels = 1u,
-                .encoding = meta_encoding_t::gray
-            }>(x, line.y, *dpx, threshold)) {
-                if(start) {
-                    pixels.insert(pixels.end(), start, px);
-                    lines.emplace_back(line.y, x0, x - 1);
-                    start = nullptr;
-                }
+            for (auto x=line.x0; x<=line.x1; ++x, px += channels, ++dpx) {
+                assert(px < blob->pixels()->data() + blob->pixels()->size());
                 
-            } else if(!start) {
-                start = px;
-                x0 = x;
+                if(not background.is_value_different<OutputInfo{
+                    .channels = 1u,
+                    .encoding = meta_encoding_t::gray
+                }>(x, line.y, *dpx, threshold)) {
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        lines.emplace_back(line.y, x0, x - 1);
+                        start = nullptr;
+                    }
+                    
+                } else if(!start) {
+                    start = px;
+                    x0 = x;
+                }
+            }
+            
+            if(start) {
+                pixels.insert(pixels.end(), start, px);
+                lines.emplace_back(line.y, x0, line.x1);
             }
         }
-    
-        if(start) {
-            pixels.insert(pixels.end(), start, px);
-            lines.emplace_back(line.y, x0, line.x1);
+        
+        auto blobs = CPULabeling::run(lines, pixels, cache, channels);
+        for(auto &pair : blobs) {
+            pair.extra_flags |= pv::Blob::copy_flags(*blob);
+            pair.pred = blob->prediction();
+            //assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
         }
+        return blobs;
     }
-    
-    auto blobs = CPULabeling::run(lines, pixels, cache, channels);
-    for(auto &pair : blobs) {
-        pair.extra_flags |= pv::Blob::copy_flags(*blob);
-        pair.pred = blob->prediction();
-        //assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
-    }
-    return blobs;
 }
 
 
-    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t /*use_closing*/ = 0, uint8_t /*closing_size*/ = 2)
+    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache,
+                                   pv::BlobWeakPtr blob,
+                                   int threshold,
+                                   const Background* bg,
+                                   uint8_t /*use_closing*/ = 0,
+                                   uint8_t /*closing_size*/ = 2)
 #ifdef NDEBUG
         noexcept
 #endif
     {
+        if(blob->is_binary()) {
+            /// TODO
+            auto lines = std::make_unique<blob::line_ptr_t::element_type>(*blob->lines());
+            auto pair = blob::Pair(std::move(lines), nullptr, blob->flags(), blob::Prediction(blob->prediction()));
+            std::vector<blob::Pair> vector;
+            vector.emplace_back(std::move(pair));
+            return vector;
+        }
+        
 #ifndef NDEBUG
         if(!blob->pixels())
             throw U_EXCEPTION("Cannot threshold a blob without pixels.");
@@ -244,9 +265,20 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         blobs_t::value_type *found = nullptr;
         for(auto &tup : blobs) {
             auto && [lines, pixels, flags, pred] = tup;
-            if(pixels->size() > max_size) {
-                found = &tup;
-                max_size = pixels->size();
+            assert(pixels || blob->is_binary());
+            if(pixels) {
+                if(pixels->size() > max_size) {
+                    found = &tup;
+                    max_size = pixels->size();
+                }
+            } else {
+                pv::Blob tmp(std::move(lines), nullptr, flags | pv::Blob::copy_flags(*blob), blob::Prediction(pred));
+                if(tmp.num_pixels() > max_size) {
+                    found = &tup;
+                    max_size = tmp.num_pixels();
+                }
+                
+                lines = std::move(tmp.steal_lines());
             }
         }
         
@@ -258,6 +290,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                               blob::Prediction{blob->prediction()});
             assert(r->is_rgb() == blob->is_rgb());
             assert(r->is_r3g3b2() == blob->is_r3g3b2());
+            assert(r->is_binary() == blob->is_binary());
             return r;
         }
         
@@ -273,11 +306,15 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
     }
     
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, int threshold, const Background* bg, const Rangel& size_range) {
-        auto blobs = _threshold_blob(cache, blob, threshold, bg);
         std::vector<pv::BlobPtr> result;
-        for(auto&& [lines, pixels, flags, pred] : blobs) {
-            if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-                result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
+        if(blob->is_binary()) {
+            result.emplace_back(pv::Blob::Make(*blob));
+        } else {
+            auto blobs = _threshold_blob(cache, blob, threshold, bg);
+            for(auto&& [lines, pixels, flags, pred] : blobs) {
+                if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
+                    result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
+            }
         }
         return result;
     }
@@ -288,11 +325,15 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
     }*/
 
 std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background, const Rangel& size_range) {
-    auto blobs = _threshold_blob(cache, blob, difference_cache, threshold, background);
     std::vector<pv::BlobPtr> result;
-    for(auto && [lines, pixels, flags, pred] : blobs) {
-        if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
-            result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
+    if(blob->is_binary()) {
+        result.emplace_back(pv::Blob::Make(*blob));
+    } else {
+        auto blobs = _threshold_blob(cache, blob, difference_cache, threshold, background);
+        for(auto && [lines, pixels, flags, pred] : blobs) {
+            if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
+                result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));
+        }
     }
     return result;
 }
@@ -552,8 +593,8 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
             interp = tree.generate_edges();
         } catch(const std::invalid_argument& e) {
             Print("Error");
-            Print(blob->blob_id(),": ", e.what(), " ", blob->pixels()->size());
-            Print(*blob->pixels(), "\n", blob->hor_lines(), "\n\n");
+            Print(blob->blob_id(),": ", e.what(), " ", blob->pixels() ? blob->pixels()->size() : 0);
+            Print(blob->pixels() ? *blob->pixels() : std::vector<uchar>{}, "\n", blob->hor_lines(), "\n\n");
         }
         
         return interp;

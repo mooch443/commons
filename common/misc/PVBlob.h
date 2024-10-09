@@ -136,7 +136,8 @@ public:
         is_tag = 2,
         is_instance_segmentation = 4,
         is_rgb = 5,
-        is_r3g3b2 = 6
+        is_r3g3b2 = 6,
+        is_binary = 7
     };
     
     static constexpr void set_flag(uint8_t &flags, Flags flag, bool v) {
@@ -151,7 +152,8 @@ public:
     
     static constexpr uint8_t copy_flags(const pv::Blob& blob) {
         return  pv::Blob::get_only_flag(pv::Blob::Flags::is_rgb, blob.is_rgb())
-              | pv::Blob::get_only_flag(pv::Blob::Flags::is_r3g3b2, blob.is_r3g3b2());
+              | pv::Blob::get_only_flag(pv::Blob::Flags::is_r3g3b2, blob.is_r3g3b2())
+              | pv::Blob::get_only_flag(pv::Blob::Flags::is_binary, blob.is_binary());
     }
 
     static constexpr bool is_flag(uint8_t flags, Flags flag) {
@@ -198,12 +200,14 @@ public:
     constexpr bool is_instance_segmentation() const { return Blob::is_flag(_flags, Flags::is_instance_segmentation); }
     constexpr void set_instance_segmentation(bool v) { Blob::set_flag(_flags, Flags::is_instance_segmentation, v); }
     
+    constexpr bool is_binary() const { return Blob::is_flag(_flags, Flags::is_binary); }
+    constexpr void set_binary(bool is_binary) { Blob::set_flag(_flags, Flags::is_binary, is_binary); }
     constexpr bool is_rgb() const { return Blob::is_flag(_flags, Flags::is_rgb); }
     constexpr void set_rgb(bool is_rgb) { Blob::set_flag(_flags, Flags::is_rgb, is_rgb); }
     constexpr bool is_r3g3b2() const { return Blob::is_flag(_flags, Flags::is_r3g3b2); }
     constexpr void set_r3g3b2(bool is_r3g3b2) { Blob::set_flag(_flags, Flags::is_r3g3b2, is_r3g3b2); }
     
-    constexpr uint8_t channels() const { return is_rgb() ? 3 : 1; }
+    constexpr uint8_t channels() const { return is_rgb() ? 3 : (is_binary() ? 0 : 1); }
     
     constexpr cmn::InputInfo input_info() const {
         return cmn::InputInfo{
@@ -212,6 +216,8 @@ public:
         };
     }
     constexpr cmn::meta_encoding_t::Class encoding() const {
+        if(is_binary())
+            return cmn::meta_encoding_t::binary;
         if(is_r3g3b2())
             return cmn::meta_encoding_t::r3g3b2;
         
@@ -355,7 +361,8 @@ public:
                     | (uint8_t(val.is_tag())            << 3)
                     | (uint8_t(val.is_instance_segmentation()) << 4)
                     | (uint8_t(val.is_rgb()) << 5)
-                    | (uint8_t(val.is_r3g3b2()) << 6);
+                    | (uint8_t(val.is_r3g3b2()) << 6)
+                    | (uint8_t(val.is_binary()) << 7);
         _lines = ShortHorizontalLine::compress(val.hor_lines());
         start_y = val.lines()->empty() ? 0 : val.lines()->front().y;
     }
@@ -365,6 +372,7 @@ public:
     bool is_instance_segmentation() const { return (status_byte >> 4) & 1u; }
     bool is_rgb() const { return (status_byte >> 5) & 1u; }
     bool is_r3g3b2() const { return (status_byte >> 6) & 1u; }
+    bool is_binary() const { return (status_byte >> 7) & 1u; }
     cmn::Bounds calculate_bounds() const;
         
     pv::BlobPtr unpack() const;

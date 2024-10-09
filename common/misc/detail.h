@@ -110,6 +110,10 @@ namespace cmn {
             return HorizontalLine(y, std::min(x0, other.x0), std::max(x1, other.x1));
         }
         
+        constexpr ptr_safe_t length() const noexcept {
+            return ptr_safe_t(x1) - ptr_safe_t(x0) + 1;
+        }
+        
         std::string str() const {
             std::stringstream ss;
             ss << "HL<" << y << " " << x0 << "," << x1 << ">";
