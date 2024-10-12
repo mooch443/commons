@@ -150,8 +150,6 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
         using value_t = decltype(diffable_pixel_value<input, output>(pixels_ptr));
         value_t value, diff;
         
-        Print("Input: ", input, " Output: ", output);
-        
         for (auto &l : lines) {
             for (int x=l.x0; x<=l.x1; x++, pixels_ptr += input.channels) {
                 bool pixel_is_set = base_threshold == 0;
