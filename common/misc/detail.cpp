@@ -475,6 +475,8 @@ namespace cmn {
         };
         
         SupportedDataTypes estimate_datatype(const std::string& value) {
+            return INVALID;
+            
             if(value.empty())
                 return INVALID;
             

@@ -30,6 +30,8 @@ Font parse_font(const glz::json_t::object_t& obj, Font font, std::string_view na
                 font.align = Align::Right;
             else if(align == "center")
                 font.align = Align::Center;
+            else if(align == "vcenter")
+                font.align = Align::VerticalCenter;
         }
     }
     return font;
@@ -100,6 +102,9 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     highlight_clr = get(_defaults.highlightClr, "highlight_clr");
     vertical_clr = get(_defaults.verticalClr, "vertical_clr");
     horizontal_clr = get(_defaults.horizontalClr, "horizontal_clr");
+    cellFillClr = get(_defaults.cellFillClr, "cellfillclr");
+    cellLineClr = get(_defaults.cellLineClr, "celllineclr");
+    cellFillInterval = get(_defaults.cellFillInterval, "cellfillinterval");
 
     font = _defaults.font; // Initialize with default values
     if(type == LayoutType::button) {
@@ -498,7 +503,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
         }
     }
     
-    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr});
+    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr}, CellFillClr{cellFillClr}, CellLineClr{cellLineClr}, CellFillInterval{cellFillInterval});
 }
 
 template <>

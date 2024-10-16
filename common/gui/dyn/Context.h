@@ -23,6 +23,9 @@ struct DefaultSettings {
     Color line{Transparent};
     Color verticalClr{DarkCyan.alpha(150)};
     Color horizontalClr{DarkGray.alpha(150)};
+    Color cellFillClr{Transparent};
+    Color cellLineClr{Transparent};
+    uint16_t cellFillInterval{1};
     Color highlightClr{Drawable::accent_color};
     Color textClr{White};
     Color window_color{Transparent};

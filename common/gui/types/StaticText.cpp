@@ -202,6 +202,7 @@ void StaticText::set_default_font(Font font) {
                     Print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y, ": ", t->txt());
 #endif
                     //hiding_something = true;
+                    break;
                     
                 } else {
                     advance_wrap(*t);

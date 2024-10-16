@@ -86,6 +86,9 @@ public:
     Color highlight_clr;
     Color vertical_clr;
     Color horizontal_clr;
+    Color cellFillClr;
+    Color cellLineClr;
+    uint16_t cellFillInterval{1};
     TextClr textClr;
     bool clickable;
     Font font;

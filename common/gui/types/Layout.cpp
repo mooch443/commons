@@ -541,6 +541,27 @@ void GridLayout::set(attr::HorizontalClr horizontalClr) {
     }
 }
 
+void GridLayout::set(attr::CellFillClr cellFillClr) {
+    if(cellFillClr != _settings.cellFillClr) {
+        _settings.cellFillClr = cellFillClr;
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(attr::CellLineClr cellLineClr) {
+    if(cellLineClr != _settings.cellLineClr) {
+        _settings.cellLineClr = cellLineClr;
+        set_content_changed(true);
+    }
+}
+
+void GridLayout::set(CellFillInterval cellFillInterval) {
+    if(cellFillInterval != _settings.cellFillInterval) {
+        _settings.cellFillInterval = cellFillInterval;
+        set_content_changed(true);
+    }
+}
+
 void GridLayout::set(const std::vector<Layout::Ptr>& objects) {
     // Assuming _settings.objects is a std::vector<Layout::Ptr>
     set_children(objects);
@@ -712,6 +733,24 @@ void GridLayout::update() {
             advance_wrap(*_vertical_rect);
             advance_wrap(*_horizontal_rect);
         }
+        
+        if(_settings.cellFillClr != Transparent
+           || _settings.cellLineClr != Transparent)
+        {
+            for(size_t row = 0; row < _grid_info.numRows; ++row) {
+                for(size_t col = 0; col < _grid_info.numCols; col += max(1u, (uint16_t)_settings.cellFillInterval)) {
+                    auto bds = _grid_info.getCellBounds(row, col);
+                    bds << bds.size() - Size2(0, margins().height + margins().y);
+                    bds << bds.pos() + Vec2(0, margins().y);
+                    if(col + 1 < _grid_info.numCols)
+                        bds << bds.pos() + Vec2(1,0);
+                    add<Rect>(Box{bds},
+                              FillClr{(Color)_settings.cellFillClr},
+                              LineClr{(Color)_settings.cellLineClr});
+                }
+            }
+        }
+        
         for(auto o : _objects)
             advance_wrap(*o);
 

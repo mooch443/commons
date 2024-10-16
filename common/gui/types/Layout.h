@@ -235,6 +235,8 @@ public:
     static std::string class_name() { return "GridInfo"; }
 };
 
+NUMBER_ALIAS(CellFillInterval, uint16_t);
+
 class GridLayout : public Layout {
 public:
     enum class HPolicy {
@@ -248,6 +250,9 @@ protected:
     struct Settings {
         attr::VerticalClr verticalClr{DarkGray.alpha(125)};
         attr::HorizontalClr horizontalClr{DarkCyan.alpha(125)};
+        attr::CellFillClr cellFillClr{Transparent};
+        attr::CellLineClr cellLineClr{Transparent};
+        CellFillInterval cellFillInterval{1};
         HPolicy hpolicy{HPolicy::LEFT};
         VPolicy vpolicy{VPolicy::TOP};
         
@@ -291,6 +296,9 @@ public:
     void set(VPolicy);
     void set(attr::VerticalClr);
     void set(attr::HorizontalClr);
+    void set(attr::CellFillClr);
+    void set(attr::CellLineClr);
+    void set(CellFillInterval);
     void set(const std::vector<Layout::Ptr>& objects);
     
     virtual std::string name() const override { return "GridLayout"; }

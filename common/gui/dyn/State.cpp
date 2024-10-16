@@ -247,6 +247,38 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         }
     }
     
+    
+    if(patterns.contains("cellfillclr")) {
+        try {
+            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("cellfillclr"), context, state));
+            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
+            LabeledField::delegate_to_proper_type(CellFillClr{fill}, ptr);
+            
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
+    if(patterns.contains("celllineclr")) {
+        try {
+            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("celllineclr"), context, state));
+            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
+            LabeledField::delegate_to_proper_type(CellLineClr{fill}, ptr);
+            
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
+    if(patterns.contains("cellfillinterval")) {
+        try {
+            auto fill = Meta::fromStr<uint16_t>(parse_text(patterns.at("cellfillinterval"), context, state));
+            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
+            LabeledField::delegate_to_proper_type(CellFillInterval{fill}, ptr);
+            
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
+    
     if(patterns.contains("placeholder")) {
         try {
             auto placeholder = parse_text(patterns.at("placeholder"), context, state);

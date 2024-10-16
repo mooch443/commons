@@ -994,6 +994,31 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         return false;
     }));
     
+    context.system_variables().emplace(VarFunc("dimensions", [object_handler = state._current_object_handler](const VarProps& props) -> Size2 {
+        if(props.parameters.empty()) {
+            auto lock = object_handler.lock();
+            if(lock) {
+                if(auto ptr = lock->get();
+                   ptr != nullptr)
+                {
+                    return ptr->size();
+                }
+            }
+            
+        } else if(props.parameters.size() == 1) {
+            if(auto lock = object_handler.lock();
+               lock != nullptr)
+            {
+                if(auto ptr = lock->retrieve_named(props.first());
+                   ptr != nullptr)
+                {
+                    return ptr->size();
+                }
+            }
+        }
+        return false;
+    }));
+    
     context.system_variables().emplace(VarFunc("selected", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
         if(props.parameters.empty()) {
             auto lock = object_handler.lock();

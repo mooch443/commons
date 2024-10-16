@@ -1872,9 +1872,10 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 if(ptr->rotation() != 0)
                     draw_order.emplace_back(DrawOrder::START_ROTATION, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
                 
+                auto oclip_rect = clip_rect;
                 auto bg = static_cast<Entangled*>(o)->background();
                 if(bg) {
-                    redraw(bg, draw_order, above_z, true, clip_rect);
+                    redraw(bg, draw_order, above_z, true, oclip_rect);
                 }
                 
                 assert(!ptr->begun());
@@ -1910,6 +1911,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     apply_to_objects(ptr->children(), [&](Drawable* c){
                         redraw(c, draw_order, above_z, false, clip_rect);
                     });
+                }
+                
+                auto ol = static_cast<Entangled*>(o)->outline();
+                if(ol) {
+                    redraw(ol, draw_order, above_z, true, oclip_rect);
                 }
                 
                 if(ptr->rotation() != 0) {

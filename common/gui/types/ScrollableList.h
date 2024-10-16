@@ -76,7 +76,7 @@ namespace cmn::gui {
         GETTER(std::vector<Item<T>>, items);
         std::vector<std::shared_ptr<Rect>> _rects;
         std::vector<StaticText*> _texts;
-        std::vector<Text*> _details;
+        std::vector<StaticText*> _details;
         std::unique_ptr<StaticText> _label_text;
 
         StaticText _placeholder_text;
@@ -275,7 +275,7 @@ namespace cmn::gui {
                 font = detail_font({});
                 for(auto d : _details) {
                     if(d)
-                        d->set_font(font);
+                        d->set(font);
                 }
             }
             
@@ -291,7 +291,7 @@ namespace cmn::gui {
             if constexpr(has_detail<T>) {
                 for(auto d : _details) {
                     if(d)
-                        d->set_font(detail_font(font));
+                        d->set(detail_font(font));
                 }
             }
             
@@ -354,7 +354,8 @@ namespace cmn::gui {
 
             Float2_t y = _line_spacing * objs.size();
             Entangled * o = _foldable ? &_list : this;
-            if (y + o->scroll_offset().y < 0) {
+            //if (y + o->scroll_offset().y < 0)
+            {
                 if(o->scroll_enabled())
                     o->set_scroll_offset(Vec2());
             }
@@ -597,7 +598,7 @@ namespace cmn::gui {
                     _texts.at(i)->set_default_font(item_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
-                            _details.at(i)->set_font(detail_font);
+                            _details.at(i)->set(detail_font);
                     }
                 }
                 
@@ -627,7 +628,7 @@ namespace cmn::gui {
                     
                     _texts.push_back(new StaticText(attr::Font(item_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
                     if constexpr(has_detail<T>) {
-                        _details.push_back(new Text(detail_font, attr::TextClr{ (Color)_detail_color }));
+                        _details.push_back(new StaticText(detail_font, attr::TextClr{ (Color)_detail_color }, attr::Margins{0}));
                     }
                 }
             }
@@ -665,7 +666,7 @@ namespace cmn::gui {
             //font.size *= 0.7;
             //return Font(font);
             auto copy = _detail_font;
-            copy.align = _item_font.align;
+            //copy.align = _item_font.align;
             return copy;
         }
         
@@ -762,11 +763,11 @@ namespace cmn::gui {
                                 if (item.value().font().size > 0) {
                                     _texts.at(idx)->set_default_font(item.value().font());
                                     if constexpr(has_detail<T>) {
-                                        _details.at(idx)->set_font(detail_font(item.value().font()));
+                                        _details.at(idx)->set(detail_font(item.value().font()));
                                     }
                                 }
                             } else if constexpr(has_detail<T>) {
-                                _details.at(idx)->set_font(detail_font(_item_font));
+                                _details.at(idx)->set(detail_font(_item_font));
                             }
                             
                             rect_to_idx[_rects.at(idx).get()] = i;
@@ -778,40 +779,87 @@ namespace cmn::gui {
                             }
                             
                             if constexpr(has_detail<T>) {
-                                _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5));
-                                
-                                if(_item_font.align == Align::Center) {
-                                    float ycenter = y + item_height * 0.5;
-                                    float middle = (_texts.at(idx)->height() - _details.at(idx)->height()) * 0.5;
-                                    //Print(y, "Text ", _texts.at(idx)->text(), " -> ycenter=", ycenter, " item_padding=",item_padding, " height=",_texts.at(idx)->height(), " detail=", _details.at(idx)->height(), " line=",_line_spacing);
-                                    
-                                    _texts.at(idx)->set_pos(Vec2{
-                                        (width() - _texts.at(idx)->width()) * 0.5f,
-                                        ycenter - _texts.at(idx)->height() + middle
-                                    });
-                                    
-                                    _details.at(idx)->set_pos(Vec2{
-                                        round(width() * 0.5_F),
-                                        ycenter + _details.at(idx)->height() - middle
-                                    });
-                                    
-                                } else if(_item_font.align == Align::Left) {
-                                    _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
-                                    _details.at(idx)->set_pos(Vec2(0, y + _line_spacing * 0.5) + _item_padding);
-                                } else {
-                                    _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y * 0.5));
-                                    _details.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+                                // Set max sizes
+                                _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5f));
+                                _details.at(idx)->set_max_size(Size2(-1, item_height * 0.5f));
+
+                                // Compute heights
+                                float text_height = _texts.at(idx)->height();
+                                float detail_height = _details.at(idx)->height();
+                                float total_content_height = text_height + detail_height;
+
+                                // Compute vertical start position
+                                float ystart = y + (item_height - total_content_height) * 0.5f;
+
+                                if (_item_font.align == Align::Center) {
+                                    // Center alignment
+                                    _texts.at(idx)->set_origin(Vec2{0.5_F, 0_F});
+                                    _details.at(idx)->set_origin(Vec2{0.5_F, 0_F});
+
+                                    float x_center = width() * 0.5f;
+
+                                    _texts.at(idx)->set_pos(Vec2{x_center, ystart});
+                                    _details.at(idx)->set_pos(Vec2{x_center, ystart + text_height});
+
+                                } else if (_item_font.align == Align::Left) {
+                                    // Left alignment
+                                    _texts.at(idx)->set_origin(Vec2{0_F, 0_F});
+                                    _details.at(idx)->set_origin(Vec2{0_F, 0_F});
+
+                                    float x_left = _item_padding.x;
+
+                                    _texts.at(idx)->set_pos(Vec2{x_left, ystart});
+                                    _details.at(idx)->set_pos(Vec2{x_left, ystart + text_height});
+
+                                } else if (_item_font.align == Align::Right) {
+                                    // Right alignment
+                                    _texts.at(idx)->set_origin(Vec2{1_F, 0_F});
+                                    _details.at(idx)->set_origin(Vec2{1_F, 0_F});
+
+                                    float x_right = width() - _item_padding.x;
+
+                                    _texts.at(idx)->set_pos(Vec2{x_right, ystart});
+                                    _details.at(idx)->set_pos(Vec2{x_right, ystart + text_height});
+
+                                } else if (_item_font.align == Align::VerticalCenter) {
+                                    // Vertical center alignment (assuming left horizontal alignment)
+                                    _texts.at(idx)->set_origin(Vec2{0_F, 0_F});
+                                    _details.at(idx)->set_origin(Vec2{0_F, 0_F});
+
+                                    float x_left = _item_padding.x;
+
+                                    _texts.at(idx)->set_pos(Vec2{x_left, ystart});
+                                    _details.at(idx)->set_pos(Vec2{x_left, ystart + text_height});
                                 }
                             } else {
+                                // Items without details
                                 _texts.at(idx)->set_max_size(Size2(-1, item_height));
-                                
-                                if(_item_font.align == Align::Center)
-                                    _texts.at(idx)->set_pos(Vec2(width() * 0.5f, y + item_height*0.5f));
-                                else if(_item_font.align == Align::Left)
-                                    _texts.at(idx)->set_pos(Vec2(0, y) + _item_padding);
-                                else
-                                    _texts.at(idx)->set_pos(Vec2(width() - _item_padding.x, y + _item_padding.y));
+
+                                float text_height = _texts.at(idx)->height();
+                                float ystart = y + (item_height - text_height) * 0.5f;
+
+                                if (_item_font.align == Align::Center) {
+                                    _texts.at(idx)->set_origin(Vec2{0.5_F, 0_F});
+                                    float x_center = width() * 0.5f;
+                                    _texts.at(idx)->set_pos(Vec2{x_center, ystart});
+
+                                } else if (_item_font.align == Align::Left) {
+                                    _texts.at(idx)->set_origin(Vec2{0_F, 0_F});
+                                    float x_left = _item_padding.x;
+                                    _texts.at(idx)->set_pos(Vec2{x_left, ystart});
+
+                                } else if (_item_font.align == Align::Right) {
+                                    _texts.at(idx)->set_origin(Vec2{1_F, 0_F});
+                                    float x_right = width() - _item_padding.x;
+                                    _texts.at(idx)->set_pos(Vec2{x_right, ystart});
+
+                                } else if (_item_font.align == Align::VerticalCenter) {
+                                    _texts.at(idx)->set_origin(Vec2{0_F, 0_F});
+                                    float x_left = _item_padding.x;
+                                    _texts.at(idx)->set_pos(Vec2{x_left, ystart});
+                                }
                             }
+
                         }
                         
                         if(_items.empty()) {

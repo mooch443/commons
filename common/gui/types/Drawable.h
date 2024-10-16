@@ -498,7 +498,8 @@ namespace cmn::gui {
         friend class Entangled;
         friend class DrawableCollection;
         
-        GETTER_PTR(Rect*, background);
+        GETTER_PTR(Rect*, background){nullptr};
+        GETTER_PTR(Rect*, outline){nullptr};
         GETTER_PTR(DrawStructure*, stage);
         GETTER_I(Color, bg_fill_color, Transparent);
         GETTER_I(Color, bg_line_color, Transparent);

@@ -199,9 +199,15 @@ public:
                     }
                 }
                 else if (object.is<Layout>()) {
-                    if constexpr (takes_attribute<Layout, T>) {
-                        object.to<Layout>()->set(attribute);
-                        return true;
+                    if(object.is<GridLayout>()) {
+                        if constexpr (takes_attribute<GridLayout, T>) {
+                            object.to<GridLayout>()->set(attribute);
+                        }
+                    } else {
+                        if constexpr (takes_attribute<Layout, T>) {
+                            object.to<Layout>()->set(attribute);
+                            return true;
+                        }
                     }
                 }
                 else if (object.is<StaticText>()) {

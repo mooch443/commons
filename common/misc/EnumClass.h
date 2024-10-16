@@ -112,7 +112,10 @@ _61,_62,_63,_64,_65,N,...) N
 constexpr inline bool strings_equal(char const * a, char const * b) noexcept {
     return *a == *b && (*a == '\0' || strings_equal(a + 1, b + 1));
 }
-
+namespace EnumMeta {
+template<typename T>
+struct HasCustomParser : std::false_type {};
+}
 
 template <typename ValueType, size_t N, typename _names>
 class Enum {
@@ -156,7 +159,10 @@ public:
     
     template<typename T = std::string>
     static const self_type& get(T name) {
-        return _names::get(name);
+        if constexpr (EnumMeta::HasCustomParser<self_type>::value) {
+            return EnumMeta::HasCustomParser<self_type>::fromStr(name);
+        } else
+            return _names::get(name);
     }
     static const auto& fields() noexcept { return _names::str(); }
     
