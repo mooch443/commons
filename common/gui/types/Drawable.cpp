@@ -664,8 +664,10 @@ bool Drawable::is_animating() noexcept {
 }
 
 void Drawable::set_animating(bool animating) noexcept {
+#ifndef NDEBUG
     if(animating != _animating)
         Print(*this, " set to animating=",animating);
+#endif
         
     _animating = animating;
 }

@@ -5,6 +5,8 @@
 #include <misc/derived_ptr.h>
 
 namespace cmn::gui {
+    ATTRIBUTE_ALIAS(MinSize, Size2);
+
     class Layout : public Entangled {
     public:
         typedef derived_ptr<Drawable> Ptr;
@@ -15,6 +17,7 @@ namespace cmn::gui {
         
     protected:
         GETTER(attr::Margins, margins);
+        GETTER(MinSize, minSize);
         
     public:
         template<typename T, typename... Args>
@@ -34,6 +37,9 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
+            _minSize = MinSize{};
+            _margins = Margins{};
+            
             (set(std::forward<Args>(args)), ...);
             init();
         }
@@ -65,6 +71,7 @@ namespace cmn::gui {
         void set(std::vector<Layout::Ptr>&& ptr) {
             set_children(std::move(ptr));
         }
+        void set(MinSize);
         void set_margins(const attr::Margins&);
         void update_layout();
         virtual void auto_size();
@@ -119,7 +126,7 @@ namespace cmn::gui {
         };
         
     protected:
-        GETTER(Policy, policy);
+        GETTER(Policy, policy){Policy::CENTER};
         
     public:
         template<typename... Args>
@@ -159,7 +166,7 @@ namespace cmn::gui {
         };
         
     protected:
-        GETTER(Policy, policy);
+        GETTER(Policy, policy){Policy::LEFT};
         
     public:
         template<typename... Args>
@@ -236,6 +243,7 @@ public:
 };
 
 NUMBER_ALIAS(CellFillInterval, uint16_t);
+ATTRIBUTE_ALIAS(MinCellSize, Size2);
 
 class GridLayout : public Layout {
 public:
@@ -255,6 +263,7 @@ protected:
         CellFillInterval cellFillInterval{1};
         HPolicy hpolicy{HPolicy::LEFT};
         VPolicy vpolicy{VPolicy::TOP};
+        MinCellSize minCellSize;
         
     } _settings;
     
@@ -277,6 +286,8 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
+        _settings = {};
+        
         (set(std::forward<Args>(args)), ...);
         init();
     }
@@ -299,6 +310,7 @@ public:
     void set(attr::CellFillClr);
     void set(attr::CellLineClr);
     void set(CellFillInterval);
+    void set(MinCellSize);
     void set(const std::vector<Layout::Ptr>& objects);
     
     virtual std::string name() const override { return "GridLayout"; }

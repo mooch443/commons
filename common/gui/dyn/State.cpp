@@ -278,6 +278,15 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             FormatError("Error parsing context; ", patterns, ": ", e.what());
         }
     }
+    if(patterns.contains("mincellsize")) {
+        try {
+            auto fill = Meta::fromStr<Size2>(parse_text(patterns.at("mincellsize"), context, state));
+            LabeledField::delegate_to_proper_type(MinCellSize{fill}, ptr);
+            
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
     
     if(patterns.contains("placeholder")) {
         try {

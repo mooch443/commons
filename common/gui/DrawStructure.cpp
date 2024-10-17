@@ -160,7 +160,7 @@ void Dialog::set_closed() {
       : _closed(false),
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(500, 0), Font(0.8f))),
+        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(550, 0), Font(0.8f))),
         _title(attr::Str(title), Font(0.9f, Style::Bold)),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),

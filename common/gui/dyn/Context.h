@@ -26,6 +26,7 @@ struct DefaultSettings {
     Color cellFillClr{Transparent};
     Color cellLineClr{Transparent};
     uint16_t cellFillInterval{1};
+    Size2 minCellSize;
     Color highlightClr{Drawable::accent_color};
     Color textClr{White};
     Color window_color{Transparent};

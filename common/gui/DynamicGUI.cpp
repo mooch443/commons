@@ -30,8 +30,8 @@ bool Context::has(const std::string_view & name) const noexcept {
     return system_variables().contains(name);
 }
 
-template<typename T>
-T map_vectors(const VarProps& props, auto&& apply) {
+template<typename T, typename K = T>
+K map_vectors(const VarProps& props, auto&& apply) {
     REQUIRE_EXACTLY(2, props);
     
     T A{}, B{};
@@ -66,7 +66,7 @@ T map_vectors(const VarProps& props, auto&& apply) {
 
     } catch(const std::exception& ex) {
         throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
-        return T{};
+        return K{};
     }
     
     return apply(A, B);
@@ -341,6 +341,9 @@ void Context::init() const {
             }),
             VarFunc("subVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A - B; });
+            }),
+            VarFunc("distance", [](const VarProps& props) -> Float2_t {
+                return map_vectors<Vec2, Float2_t>(props, [](auto& A, auto& B) { return euclidean_distance(A, B); });
             }),
             VarFunc("mulVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.mul(B); });

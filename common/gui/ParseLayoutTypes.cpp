@@ -105,6 +105,10 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     cellFillClr = get(_defaults.cellFillClr, "cellfillclr");
     cellLineClr = get(_defaults.cellLineClr, "celllineclr");
     cellFillInterval = get(_defaults.cellFillInterval, "cellfillinterval");
+    minCellSize = get(_defaults.minCellSize, "mincellsize");
+    if(not minCellSize.empty()) {
+        Print("minCellSize = ", minCellSize);
+    }
 
     font = _defaults.font; // Initialize with default values
     if(type == LayoutType::button) {
@@ -503,7 +507,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
         }
     }
     
-    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr}, CellFillClr{cellFillClr}, CellLineClr{cellLineClr}, CellFillInterval{cellFillInterval});
+    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr}, CellFillClr{cellFillClr}, CellLineClr{cellLineClr}, CellFillInterval{cellFillInterval}, MinCellSize{minCellSize});
 }
 
 template <>

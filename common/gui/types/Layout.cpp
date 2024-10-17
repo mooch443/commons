@@ -403,8 +403,17 @@ void VerticalLayout::auto_size() {
         }
     }
 
+    void Layout::set(MinSize minSize) {
+        if(minSize == _minSize)
+            return;
+        
+        _minSize = minSize;
+        set_layout_dirty();
+        set_content_changed(true);
+    }
+
     void Layout::auto_size() {
-        Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(0);
+        Vec2 mi(std::numeric_limits<Float2_t>::max()), ma(_minSize);
         
         apply_to_children([&](Drawable* c){
             auto bds = c->local_bounds();
@@ -562,6 +571,14 @@ void GridLayout::set(CellFillInterval cellFillInterval) {
     }
 }
 
+void GridLayout::set(MinCellSize minCellSize) {
+    if(minCellSize != _settings.minCellSize) {
+        _settings.minCellSize = minCellSize;
+        set_layout_dirty();
+        set_content_changed(true);
+    }
+}
+
 void GridLayout::set(const std::vector<Layout::Ptr>& objects) {
     // Assuming _settings.objects is a std::vector<Layout::Ptr>
     set_children(objects);
@@ -615,6 +632,7 @@ void GridLayout::_update_layout() {
                 continue;
 
             Layout* cell = _cell.to<Layout>();
+            cell->set(MinSize{(Size2)_settings.minCellSize});
             cell->auto_size();
             
             auto cell_bounds = cell->local_bounds();

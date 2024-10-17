@@ -89,6 +89,7 @@ public:
     Color cellFillClr;
     Color cellLineClr;
     uint16_t cellFillInterval{1};
+    Size2 minCellSize;
     TextClr textClr;
     bool clickable;
     Font font;
