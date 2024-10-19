@@ -392,10 +392,17 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             ++brackets;
             
         } else if(/*!quote &&*/ c == '>') {
-            if(brackets > 0)
+            std::string_view s;
+            if(brackets > 0
+               && i >= before_pos + 1
+               && _txt.length() > before_pos + 1)
+            {
                 --brackets;
+                
+                s = std::string_view(_txt.c_str() + before_pos + 1,
+                                     i - before_pos - 1);
+            }
             
-            auto s = std::string_view(_txt.c_str() + before_pos + 1, i - before_pos - 1);
             if(!s.empty()) {
                 if(s[0] == '/') {
                     // ending tag

@@ -318,6 +318,7 @@ namespace cmn::gui {
         virtual void set(Rotation r) { set_rotation(r); }
         virtual void set(attr::Name name) { set_name(name); }
         virtual void set(attr::ZIndex index) { set_z_index(index); }
+        virtual void set(attr::Clickable c) { set_clickable((bool)c); }
         
     protected:
         /**

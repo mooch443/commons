@@ -12,6 +12,8 @@ class MetaTextfield;
 
 class StaticText;
 
+ATTRIBUTE_ALIAS(ClearText_t, std::optional<std::string>);
+
 class Textfield : public Entangled {
 public:
     using CheckTextFn = std::function<bool(std::string& text, char inserted, size_t at)>;
@@ -35,6 +37,7 @@ private:
     Rect _cursor = Rect(Box(0,0,2,30));
     Rect _selection_rect = Rect(FillClr{DarkCyan.alpha(100)});
     StaticText *_placeholder{nullptr};
+    std::unique_ptr<StaticText> _clear_button;
     
     size_t _text_offset{0};
     size_t _display_text_len{0};
@@ -57,6 +60,8 @@ protected:
         Color text_color = Black;
         Color fill_color = White.alpha(210);
         Color line_color = White.alpha(50);
+        
+        ClearText_t clear_text;
         bool read_only{false};
     } _settings;
     
@@ -71,6 +76,8 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
+        _settings = {};
+        
         (set(std::forward<Args>(args)), ...);
         init();
     }
@@ -93,6 +100,7 @@ public:
     void set(OnTab_t tab) { on_tab(tab); }
     void set(OnTextChanged_t change) { on_text_changed(change); }
     void set(Placeholder_t p) { set_placeholder(p); }
+    void set(ClearText_t c);
     
 public:
     void set_text_color(const Color& c);

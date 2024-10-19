@@ -639,13 +639,13 @@ void Textfield::set_postfix(const std::string &p) {
                       Origin(1, 0.5));
             //advance(tmp);
         }
-            
+        
         if(read_only()) {
             //auto tmp = new Text("(read-only)", Vec2(width() - 5, height() * 0.5), Gray, Font(max(0.1, _text_display.font().size * 0.9)));
             //tmp->set_origin(Vec2(1, 0.5));
             //advance(tmp);
             
-            add<Text>(Str("(read-only)"), Loc(width() - 5, height() * 0.5), TextClr(Gray), Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
+            add<Text>(Str("(read-only)"), Loc(width() - 5 - (_settings.clear_text ? 15 : 0), height() * 0.5), TextClr(Gray), Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
         }
         
         if(!_selection.empty()) {
@@ -654,6 +654,31 @@ void Textfield::set_postfix(const std::string &p) {
         
         if(selected() && !read_only())
             advance_wrap(_cursor);
+        
+        if(_settings.clear_text && not _settings.text.empty()) {
+            if(not _clear_button) {
+                _clear_button = std::make_unique<StaticText>(Str{_settings.clear_text.value()}, attr::Clickable{true}, TextClr{White}, Alpha{0.5}, Font(_settings.font.size * 1.1), attr::Origin{1,0.5});
+                _clear_button->on_click([this](auto) {
+                    set_text("");
+                    if(stage())
+                        stage()->select(this);
+                    
+                    if(_settings.on_text_changed)
+                        _settings.on_text_changed();
+                });
+            }
+            _clear_button->set(Str{_settings.clear_text.value()});
+            _clear_button->set(Loc{width() - 5_F, height() * 0.5_F});
+            advance_wrap(*_clear_button);
+        }
+        
+        if(_clear_button) {
+            if(_clear_button->hovered()) {
+                _clear_button->set_alpha(Alpha{1});
+            } else {
+                _clear_button->set_alpha(Alpha{0.5});
+            }
+        }
     }
     
     void Textfield::move_cursor(Float2_t mx) {
@@ -703,4 +728,18 @@ void Textfield::set_postfix(const std::string &p) {
         
         set_content_changed(true);
     }
+
+void Textfield::set(ClearText_t c) {
+    if(c && c->empty())
+        c = ClearText_t{std::nullopt};
+    
+    if((not c && not _settings.clear_text)
+       || (c && _settings.clear_text && _settings.clear_text.value() == c.value()))
+    {
+        return;
+    }
+    _settings.clear_text = c;
+    set_content_changed(true);
+}
+
 }

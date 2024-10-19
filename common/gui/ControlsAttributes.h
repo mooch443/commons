@@ -170,6 +170,7 @@ NUMBER_ALIAS(Rotation, Float2_t)
 NUMBER_ALIAS(Alpha, Float2_t)
 NUMBER_ALIAS(Checked, bool)
 NUMBER_ALIAS(Folded_t, bool)
+NUMBER_ALIAS(Clickable, bool)
 NUMBER_ALIAS(ZIndex, int)
 using Font = gui::Font;
 
