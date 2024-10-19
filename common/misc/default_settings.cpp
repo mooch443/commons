@@ -56,13 +56,13 @@ namespace cmn {
         std::stringstream word;
         char in_string = 0;
         
-        static constexpr std::array<std::string_view, 19> keywords {
+        static constexpr std::array<std::string_view, 20> keywords {
             "true", "false",
             "int", "float", "double",
             "ulong", "uint", "uchar",
             "vector", "string", "vec", "size", "color",
             "bool", "array", "long", "path", "map",
-            "bounds"
+            "bounds", "sizefilters"
         };
         
         auto end_word = [&](char c, char sep) {

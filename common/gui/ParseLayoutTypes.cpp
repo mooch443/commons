@@ -106,9 +106,6 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     cellLineClr = get(_defaults.cellLineClr, "celllineclr");
     cellFillInterval = get(_defaults.cellFillInterval, "cellfillinterval");
     minCellSize = get(_defaults.minCellSize, "mincellsize");
-    if(not minCellSize.empty()) {
-        Print("minCellSize = ", minCellSize);
-    }
 
     font = _defaults.font; // Initialize with default values
     if(type == LayoutType::button) {
