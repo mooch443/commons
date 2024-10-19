@@ -524,7 +524,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             
             IndexScopeHandler handler{state._current_index};
             //if(vector != obj.cache) {
-            std::vector<DetailItem> ptrs;
+            std::vector<DetailTooltipItem> ptrs;
             //obj.cache = vector;
             obj._state = std::make_unique<State>();
             obj._state->_current_object_handler = state._current_object_handler;
@@ -532,14 +532,17 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             Context tmp = context;
             
             size_t index=0;
-            auto convert_to_item = [&gc = context, &index, &obj](sprite::Map&, const glz::json_t& item_template, Context& context, State& state) -> DetailItem
+            auto convert_to_item = [&gc = context, &index, &obj](sprite::Map&, const glz::json_t& item_template, Context& context, State& state) -> DetailTooltipItem
             {
-                DetailItem item;
+                DetailTooltipItem item;
                 if(item_template.contains("text") && item_template["text"].is_string()) {
                     item.set_name(parse_text(item_template["text"].get<std::string>(), context, state));
                 }
                 if(item_template.contains("detail") && item_template["detail"].is_string()) {
                     item.set_detail(parse_text(item_template["detail"].get<std::string>(), context, state));
+                }
+                if(item_template.contains("tooltip") && item_template["tooltip"].is_string()) {
+                    item.set_tooltip(parse_text(item_template["tooltip"].get<std::string>(), context, state));
                 }
                 if(item_template.contains("action") && item_template["action"].is_string()) {
                     auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
@@ -581,7 +584,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                 //state._variable_values = std::move(previous);
             }
             
-            o.to<ScrollableList<DetailItem>>()->set_items(ptrs);
+            o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
         }
     }
     return false;
@@ -592,9 +595,10 @@ bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure
     auto items = body.items;
     for (auto& i : items) {
         i.set_detail(parse_text(i.detail(), context, state));
+        i.set_tooltip(parse_text(i.tooltip(), context, state));
         i.set_name(parse_text(i.name(), context, state));
     }
-    o.to<ScrollableList<DetailItem>>()->set_items(items);
+    o.to<ScrollableList<DetailTooltipItem>>()->set_items(items);
     return false;
 }
 

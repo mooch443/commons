@@ -89,7 +89,7 @@ struct CustomElement {
 };
 
 struct ManualListContents {
-    std::vector<DetailItem> items;
+    std::vector<DetailTooltipItem> items;
 };
 
 // Index class manages unique identifiers for objects.

@@ -80,7 +80,7 @@ namespace cmn::gui {
         std::unique_ptr<StaticText> _label_text;
 
         StaticText _placeholder_text;
-        Tooltip tooltip = Tooltip({});
+        Tooltip tooltip = Tooltip({}, 250);
         
         std::function<void(size_t, const T&)> _callback;
         OnHover_t _on_hovered;
@@ -352,7 +352,7 @@ namespace cmn::gui {
             _currently_highlighted_item = -1;
             _items.clear();
 
-            Float2_t y = _line_spacing * objs.size();
+            //Float2_t y = _line_spacing * objs.size();
             Entangled * o = _foldable ? &_list : this;
             //if (y + o->scroll_offset().y < 0)
             {
@@ -919,7 +919,7 @@ namespace cmn::gui {
 
                 if constexpr (has_tooltip<T>) {
                     auto tt = _items[idx].value().tooltip();
-                    if (rect->hovered() ) {
+                    if (rect->hovered()) {
                         tooltip.set_text(tt);
                         tooltip.set_other(rect);
                         tooltip.set_scale(Vec2(rect->global_bounds().width / rect->width()));
@@ -947,7 +947,7 @@ namespace cmn::gui {
             }
 
             if (stage()) {
-                if(!tooltip.text().text().empty())
+                if(!tooltip.text().text().empty() && hovered())
                     stage()->register_end_object(tooltip);
                 else {
                     stage()->unregister_end_object(tooltip);

@@ -38,4 +38,15 @@ bool DetailItem::operator!=(const DetailItem& other) const {
     return _name != other._name || _detail != other._detail;
 }
 
+DetailTooltipItem::DetailTooltipItem(const std::string& name,
+                                     const std::string& detail,
+                                     const std::string& tooltip,
+                                     bool disabled)
+    : _name(name), _detail(detail), _tooltip(tooltip), _disabled(disabled)
+{}
+
+bool DetailTooltipItem::operator!=(const DetailTooltipItem& other) const {
+    return _name != other._name || _detail != other._detail || _tooltip != other._tooltip;
+}
+
 }

@@ -186,6 +186,12 @@ public:
                         return true;
                     }
                 }
+                else if (object.is<ScrollableList<DetailTooltipItem>>()) {
+                    if constexpr (takes_attribute<ScrollableList<DetailTooltipItem>, T>) {
+                        object.to<ScrollableList<DetailTooltipItem>>()->set(attribute);
+                        return true;
+                    }
+                }
                 else if (object.is<Checkbox>()) {
                     if constexpr (takes_attribute<Checkbox, T>) {
                         object.to<Checkbox>()->set(attribute);

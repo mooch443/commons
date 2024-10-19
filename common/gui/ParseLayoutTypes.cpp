@@ -816,14 +816,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             auto copy = std::make_unique<State>();
             copy->_current_object_handler = state._current_object_handler;
             
-            ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
+            ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
             auto body = state.register_variant(hash, ptr, ListContents{
                 .variable = obj.at("var").get<std::string>(),
                 .item = child.get_object(),
                 ._state = std::move(copy)
             });
             
-            ptr.to<ScrollableList<DetailItem>>()->on_select([&, body = std::weak_ptr(body)](size_t index, const DetailItem &)
+            ptr.to<ScrollableList<DetailTooltipItem>>()->on_select([&, body = std::weak_ptr(body)](size_t index, const auto &)
             {
                 auto lock = body.lock();
                 if(not lock)
@@ -842,15 +842,16 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     } else if(obj.count("items") && obj.at("items").is_array()) {
         auto& child = obj.at("items").get_array();
         
-        ptr = Layout::Make<ScrollableList<DetailItem>>(Box{pos, size});
+        ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
         std::vector<PreAction> actions;
-        std::vector<DetailItem> items;
+        std::vector<DetailTooltipItem> items;
         
         for(auto &item : child) {
             if(item.is_object()) {
                 try {
                     auto text = item.contains("text") && item["text"].is_string() ? item["text"].get<std::string>() : "";
                     auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
+                    auto tooltip = item.contains("tooltip") && item["tooltip"].is_string() ? item["tooltip"].get<std::string>() : "";
                     auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
                     auto disabled = item.contains("disabled") && item["disabled"].is_boolean() ? item["disabled"].get<bool>() : false;
                     if(item.contains("disabled") && item["disabled"].is_string()) {
@@ -859,17 +860,19 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                     
                     actions.push_back(PreAction::fromStr(action));
                     //Print("list item: ", text, " ", action);
-                    items.push_back(DetailItem{
+                    items.push_back(DetailTooltipItem{
                         text,
                         detail,
+                        tooltip,
                         disabled
                     });
                     
                 } catch(const std::exception& ex) {
                     actions.push_back(PreAction());
-                    items.push_back(DetailItem{
+                    items.push_back(DetailTooltipItem{
                         "Error",
                         ex.what(),
+                        "",
                         true
                     });
                 }
@@ -880,8 +883,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             .items = items
         });
         
-        ptr.to<ScrollableList<DetailItem>>()->set_items(items);
-        ptr.to<ScrollableList<DetailItem>>()->on_select([actions, context=context](size_t index, const DetailItem &)
+        ptr.to<ScrollableList<DetailTooltipItem>>()->set_items(items);
+        ptr.to<ScrollableList<DetailTooltipItem>>()->on_select([actions, context=context](size_t index, const auto &)
         {
             if(index >= actions.size()) {
                 FormatWarning("Cannot select invalid index: ", index, " from ", actions);
@@ -900,7 +903,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     }
     
     if(ptr) {
-        auto list = ptr.to<ScrollableList<DetailItem>>();
+        auto list = ptr.to<ScrollableList<DetailTooltipItem>>();
         
         ItemPadding_t item_padding{get(Vec2(5), "item_padding")};
         list->set(item_padding);

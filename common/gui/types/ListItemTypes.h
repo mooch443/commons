@@ -68,4 +68,19 @@ namespace cmn::gui {
         }
         virtual bool operator!=(const DetailItem& other) const;
     };
+
+    class DetailTooltipItem {
+        GETTER_SETTER(std::string, name);
+        GETTER_SETTER(std::string, detail);
+        GETTER_SETTER(std::string, tooltip);
+        GETTER_SETTER(bool, disabled);
+        
+    public:
+        DetailTooltipItem(const std::string& name = "", const std::string& detail = "", const std::string& tooltip = "", bool disabled = false);
+        virtual ~DetailTooltipItem(){}
+        virtual operator std::string() const {
+            return _name;
+        }
+        virtual bool operator!=(const DetailTooltipItem& other) const;
+    };
 }
