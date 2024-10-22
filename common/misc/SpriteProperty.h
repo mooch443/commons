@@ -75,7 +75,7 @@ namespace cmn {
             
             virtual ~PropertyType() = default; ///< Default virtual destructor.
             
-            virtual void copy_to(Map* other) const = 0; ///< Copy function to duplicate this property to another map.
+            virtual void copy_to(Map& other) const = 0; ///< Copy function to duplicate this property to another map.
             
             /**
              * Registers a new callback function and returns its unique ID.
@@ -281,7 +281,7 @@ namespace cmn {
                 init();
             }
             
-            void copy_to(Map* other) const override;
+            void copy_to(Map& other) const override;
             
             void init() {
                 _set_value_from_string = [this](const std::string& str) {

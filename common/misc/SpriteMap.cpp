@@ -12,7 +12,7 @@ namespace sprite {
 
 Map::Map(const Map& other) {
     for(auto &[name, ptr] : other._props) {
-        ptr->copy_to(this);
+        ptr->copy_to(*this);
     }
     _print_by_default = other._print_by_default;
 }
@@ -34,7 +34,7 @@ Map& Map::operator=(const Map& other) {
     _props.clear();
     
     for(auto &[name, ptr] : other._props) {
-        ptr->copy_to(this);
+        ptr->copy_to(*this);
     }
     
     for(auto &&[key, c] : callbacks) {

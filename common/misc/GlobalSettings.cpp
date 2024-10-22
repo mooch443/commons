@@ -195,7 +195,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
                                        && additional
                                        && additional->has(resolution))
                                     {
-                                        additional->at(resolution).get().copy_to(&map);
+                                        additional->at(resolution).get().copy_to(map);
                                     }
                                     
                                     auto& obj = map[resolution].get();
@@ -206,7 +206,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
                                 auto& obj = map[var].get();
                                 obj.set_value_from_string(val);
                             } else if(additional && additional->has(var)) {
-                                additional->at(var).get().copy_to(&map);
+                                additional->at(var).get().copy_to(map);
                                 map[var].get().set_value_from_string(val);
                             } else {
                                 sprite::parse_values(source, map,"{"+var+":"+val+"}");

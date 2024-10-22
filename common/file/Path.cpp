@@ -510,6 +510,9 @@ Path Path::absolute() const {
     }
     
     bool Path::is_regular() const {
+        if(empty())
+            return false;
+        
         if (_stat_cache.is_regular.has_value() && not _stat_cache.too_old()) {
             return _stat_cache.is_regular.value();
         }

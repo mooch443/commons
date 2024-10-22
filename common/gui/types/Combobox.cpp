@@ -47,9 +47,9 @@ void Combobox::init() {
             stage()->do_hover(nullptr);
         
         if(GlobalSettings::current_defaults().has(name)) {
-            GlobalSettings::current_defaults().at(name).get().copy_to(&settings_map());
+            GlobalSettings::current_defaults().at(name).get().copy_to(settings_map());
         } else if(GlobalSettings::defaults().has(name)) {
-            GlobalSettings::defaults().at(name).get().copy_to(&settings_map());
+            GlobalSettings::defaults().at(name).get().copy_to(settings_map());
         } else {
             FormatWarning("Do not have a default value for ", name);
             return;

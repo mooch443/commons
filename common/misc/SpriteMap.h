@@ -655,24 +655,24 @@ void Reference::operator=(const T& value) {
     }
 
     template<typename T>
-    void Property<T>::copy_to(Map* other) const {
-        if(other->is_type<T>(std::string_view{_name})) {
+    void Property<T>::copy_to(Map& other) const {
+        if(other.is_type<T>(std::string_view{_name})) {
             if constexpr(trivial)
-                (*other)[_name] = _value.load().value();
+                other[_name] = _value.load().value();
             else {
                 std::unique_lock guard(_property_mutex);
-                (*other)[_name] = _value.value();
+                other[_name] = _value.value();
             }
             return;
             
-        } else if(other->has(_name))
-            other->erase(_name);
+        } else if(other.has(_name))
+            other.erase(_name);
 
         if constexpr(trivial) {
-            other->insert(_name, _value.load().value());
+            other.insert(_name, _value.load().value());
         } else {
             std::unique_lock guard(_property_mutex);
-            other->insert(_name, _value.value());
+            other.insert(_name, _value.value());
         }
     }
 }

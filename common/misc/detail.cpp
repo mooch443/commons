@@ -545,7 +545,7 @@ namespace cmn {
                     // try to set with existing type
                     map[key].get().set_value_from_string(value);
                 } else if(additional && additional->has(key)) {
-                    additional->at(key).get().copy_to(&map);
+                    additional->at(key).get().copy_to(map);
                     //[key] = additional->docs.at(key);
                     map[key].get().set_value_from_string(value);
                 } else {
