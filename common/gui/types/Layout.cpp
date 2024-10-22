@@ -302,8 +302,7 @@ void Layout::set_bounds(const Bounds& bounds) {
     void Layout::_apply_to_children(Drawable* ptr, const std::function<void (Drawable *)> & fn) {
         if (PlaceinLayout* placein = dynamic_cast<PlaceinLayout*>(ptr)) {
             //Print("Placein with ", placein->children().size(), " children.");
-            for (auto child : placein->children())
-                _apply_to_children(child, fn);
+            apply_to_objects(placein->children(), fn);
             
         } else if(ptr) {
             fn(ptr);
