@@ -126,7 +126,6 @@ namespace cmn {
         }
         
         virtual uint64_t read_data(uint64_t num_bytes, char *buffer) override {
-            assert(pos+num_bytes <= _capacity);
             if(pos + num_bytes > _capacity) {
                 throw OutOfRangeException("The file being read is only ", _capacity, " big, but we are trying to read from ", pos, "-", pos+num_bytes,".");
             }
