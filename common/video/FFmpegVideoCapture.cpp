@@ -6,6 +6,9 @@
 
 namespace cmn {
 
+IMPLEMENT(FfmpegVideoCapture::tested_video_lengths);
+IMPLEMENT(FfmpegVideoCapture::tested_video_lengths_mutex);
+
 FfmpegVideoCapture::FfmpegVideoCapture(const std::string& filePath) {
     avformat_network_init();
     if (not filePath.empty()
@@ -57,9 +60,13 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     AVStream *videoStream = formatContext->streams[videoStreamIndex];
     double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
 
-    std::cout << "Duration: " << durationInSeconds << " seconds" << std::endl;
-    std::cout << "nb_frames: " << videoStream->nb_frames << std::endl;
-    std::cout << "av_q2d(videoStream->time_base): " << av_q2d(videoStream->time_base)<< " " << videoStream->time_base.num << "/" << videoStream->time_base.den << std::endl;
+    //std::cout << "Duration: " << durationInSeconds << " seconds" << std::endl;
+    //std::cout << "L: " << codecContext->framerate.num / codecContext->framerate.den << " frames" << std::endl;
+    auto fr = static_cast<double>(double(formatContext->streams[ videoStreamIndex ]->avg_frame_rate.num) / formatContext->streams[ videoStreamIndex ]->avg_frame_rate.den);
+    //std::cout << " => " << durationInSeconds * fr << " frames" << std::endl;
+    
+    //std::cout << "nb_frames: " << videoStream->nb_frames << std::endl;
+    //std::cout << "av_q2d(videoStream->time_base): " << av_q2d(videoStream->time_base)<< " " << videoStream->time_base.num << "/" << videoStream->time_base.den << std::endl;
     
 #ifndef NDEBUG
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
@@ -193,8 +200,14 @@ retry_codec:
         FormatError("[FFMPEG] Failed to allocate frame or packet");
         return false;
     }
-
+    
     _filePath = filePath;
+    
+    if(not filePath.empty())
+        actual_frame_count_ = get_actual_frame_count(*this, filePath);
+    else
+        actual_frame_count_ = -1;
+    
     return true;
 }
 
@@ -207,8 +220,122 @@ void FfmpegVideoCapture::recovered_error(const std::string_view& str) const {
         _recovered_errors.insert(str);
 }
 
+int64_t FfmpegVideoCapture::estimated_frame_count() const {
+    // Attempt to get the number of frames from nb_frames
+    int64_t N = formatContext->streams[videoStreamIndex]->nb_frames;
+    int64_t decoder_delay = codecContext->has_b_frames;
+    N -= decoder_delay + 1;
+    
+    if (N > 0) {
+        return N;
+    }
+
+    // Fallback to estimate based on duration and frame rate
+    double durationInSeconds = formatContext->duration / static_cast<double>(AV_TIME_BASE);
+    int fr = frame_rate();
+    if (fr <= 0) {
+        return -1;
+    }
+    return static_cast<int64_t>(durationInSeconds * fr + 0.5); // Rounded to nearest integer
+}
+
+int64_t FfmpegVideoCapture::get_actual_frame_count(FfmpegVideoCapture&cap, const file::Path &path) {
+    std::unique_lock guard{tested_video_lengths_mutex};
+    if (auto it = tested_video_lengths.find(path.str());
+        it != tested_video_lengths.end())
+    {
+        return it->second;
+    }
+    
+    auto estimate = cap.estimated_frame_count();
+    auto frames = calculate_actual_frame_count(cap, path);
+    if(estimate != frames)
+        FormatWarning(" * ", path, " actual frame count = ", frames, " (instead of ", estimate,"). remembering this.");
+    else
+        Print(" * ", path, " is giving true length information (",frames," frames).");
+    tested_video_lengths[path.str()] = frames;
+    return frames;
+}
+
+int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap, const file::Path& path) {
+    // Check if we have already calculated the frame count
+    int64_t actual_frame_count = -1;
+    
+    //FfmpegVideoCapture cap{path.str()};
+    //if(not cap.open(path.str())) return -1;
+    if (!cap.is_open()) return -1;
+
+    int64_t estimated_count = cap.estimated_frame_count(); // Use nb_frames or duration * frame_rate
+
+    // Step 1: Try to seek to the estimated end frame
+    if (cap.seek_frame(static_cast<uint32_t>(estimated_count))) {
+        // Estimated frame exists, assume estimated_count is correct
+        actual_frame_count = estimated_count + 1;
+        return actual_frame_count;
+    } else {
+        // Step 2: Go back a few frames and test from there
+        int64_t frame_rate = cap.frame_rate();
+        if (frame_rate <= 0) {
+            frame_rate = 25; // Default to 25 fps if frame rate is invalid
+        }
+
+        // Determine how many frames to step back each time
+        int64_t step = frame_rate * 1; // Adjust as needed
+
+        int64_t last_valid_frame = -1;
+        int64_t current_index = max(0, estimated_count - 1 - step);
+        bool found = false;
+
+        while (current_index < estimated_count) {
+            //Print("* testing frame ", current_index);
+            if (not cap.seek_frame(static_cast<uint32_t>(current_index))) {
+                break;
+            }
+            last_valid_frame = current_index;
+            ++current_index;
+        }
+        
+        if(last_valid_frame != -1) {
+            actual_frame_count = last_valid_frame;
+            found = true;
+        }
+
+        // If found, return the actual frame count
+        if (found) {
+            return actual_frame_count;
+        } else {
+            // Step 3: Perform binary search to find the actual frame count
+            int64_t low = 0;
+            int64_t high = current_index + step; // Start from the last tested index
+            int64_t mid;
+            int64_t last_valid_frame = -1;
+
+            while (low <= high) {
+                mid = (low + high) / 2;
+
+                if (cap.seek_frame(static_cast<uint32_t>(mid))) {
+                    // Frame exists, move to higher indices
+                    low = mid + 1;
+                    last_valid_frame = mid;
+                } else {
+                    // Frame does not exist, move to lower indices
+                    high = mid - 1;
+                }
+            }
+
+            // The total number of frames is last_valid_frame
+            actual_frame_count = last_valid_frame + 1;
+            return actual_frame_count;
+        }
+    }
+}
+
 int64_t FfmpegVideoCapture::length() const {
     if (!is_open()) return -1;
+    
+    if(actual_frame_count_ >= 0) {
+        return actual_frame_count_;
+    }
     
     AVStream *videoStream = videoStreamIndex < int64_t(formatContext->nb_streams)
         ? formatContext->streams[videoStreamIndex]
@@ -217,6 +344,13 @@ int64_t FfmpegVideoCapture::length() const {
         return 0;
     
     int64_t N = formatContext->streams[videoStreamIndex]->nb_frames;
+    int64_t decoder_delay = codecContext->has_b_frames;
+    int64_t _decoder_delay = codecContext->delay;
+#ifndef NDEBUG
+    Print("* Stream reports decoder_delay of ", decoder_delay, " vs ", _decoder_delay, " frames. Subtracting from L=",N);
+#endif
+    N -= decoder_delay;
+    
     if(N <= 0) {
         static constexpr std::string_view msg{"The video-stream does not provide exact length information."};
         recovered_error(msg);
@@ -311,10 +445,10 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     int64_t received_frame = -1;
     
     // Determine if we should seek or decode sequentially
-    if (frameCount < static_cast<int64_t>(frameIndex)
-        && abs(static_cast<int64_t>(frameIndex) - frameCount) <= keyframe_interval)
+    if (current_frame < static_cast<int64_t>(frameIndex)
+        && abs(static_cast<int64_t>(frameIndex) - current_frame) <= keyframe_interval)
     {
-        received_frame = frameCount;
+        received_frame = current_frame;
         
     } else {
         // If far away, seek directly to the calculated timestamp
@@ -332,7 +466,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     while (received_frame < static_cast<int64_t>(frameIndex)) {
         int response = av_read_frame(formatContext, pkt);
         if(response < 0) {
-            FormatExcept("[FFMPEG] Error reading frame ", frameCount, ": ", error_to_string(response));
+            FormatExcept("[FFMPEG] Error reading frame ", received_frame + 1, ": ", error_to_string(response));
             return false;
         }
         
@@ -350,23 +484,26 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         while (true) {
             response = avcodec_receive_frame(codecContext, frame);
             
-            if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+            if (response == AVERROR(EAGAIN)) {
                 break; // Exit the loop to read the next packet
+            } else if(response == AVERROR_EOF) {
+                break; // EOF
             } else if (response < 0) {
-                FormatExcept("[FFMPEG] Error while receiving frame ", frameCount, " from decoder: ", error_to_string(response));
+                FormatExcept("[FFMPEG] Error while receiving frame ", current_frame, " from decoder: ", error_to_string(response));
                 return false;
             }
             
-            received_frame = av_rescale_q(frame->pts, time_base, av_inv_q(frame_rate));
+            received_frame = av_rescale_q(frame->best_effort_timestamp, time_base, av_inv_q(frame_rate));
+            //received_frame = av_rescale_q(frame->pts, time_base, av_inv_q(frame_rate));
             
             if(received_frame == static_cast<int64_t>(frameIndex)) {
                 /// This is exactly the frame that we wanted:
-                frameCount = frameIndex;
+                current_frame = frameIndex;
                 return true;
                 
             } else if (received_frame > static_cast<int64_t>(frameIndex)) {
                 FormatWarning("Here we land on a frame that is larger than we wanted: ", received_frame, " > ", static_cast<int64_t>(frameIndex));
-                frameCount = received_frame;
+                current_frame = received_frame;
                 av_frame_unref(frame);
                 return false;
             }
@@ -424,7 +561,9 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
             mat.create(frame->height, frame->width, CV_8UC(channels));
 
         dims = channels;
+#ifndef NDEBUG
         Print("Created with: ", frame->height, " ", frame->width, " ", channels);
+#endif
     }
     
     if constexpr(std::is_same_v<Mat, cv::Mat>
@@ -464,7 +603,7 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
     }
     
 #ifndef NDEBUG
-    auto str = Meta::toStr(frameCount);
+    auto str = Meta::toStr(current_frame);
     if constexpr(std::is_same_v<Mat, Image>) {
         cv::putText(mat.get(), str, Vec2(100,100), cv::FONT_HERSHEY_PLAIN, 1, gui::White);
     } else {
@@ -529,7 +668,7 @@ template<typename Mat>
 bool FfmpegVideoCapture::_read(uint32_t frameIndex, Mat& outFrame) {
     if (!is_open())
         return false;
-    if(frameIndex > length()) {
+    if(frameIndex >= length()) {
 #ifndef NDEBUG
         FormatExcept("Unable to load frame ", frameIndex, " from file of length ", length());
 #endif
@@ -540,7 +679,7 @@ bool FfmpegVideoCapture::_read(uint32_t frameIndex, Mat& outFrame) {
     if(seek_frame(frameIndex)) {
         TakeTiming take(timing);
         
-        if(frameCount == frameIndex) {
+        if(current_frame == frameIndex) {
             /// we already received it!
             auto result = decode_frame(outFrame);
             av_frame_unref(frame);
@@ -548,7 +687,7 @@ bool FfmpegVideoCapture::_read(uint32_t frameIndex, Mat& outFrame) {
         }
         
 #ifndef NDEBUG
-        FormatExcept("Was unable to load ", frameIndex, " - instead have ", frameCount, ".");
+        FormatExcept("Was unable to load ", frameIndex, " - instead have ", current_frame, ".");
 #endif
         return false;
     }

@@ -75,6 +75,84 @@ std::vector<std::pair<std::string, VideoSource::File::Type>> VideoSource::File::
     { "bmp", IMAGE }
 };
 
+namespace video_cache {
+
+struct CVideo {
+    VideoSource::File::Type type{VideoSource::File::Type::UNKNOWN};
+    file::Path path;
+    Size2 resolution;
+    Frame_t N_frames;
+    uint32_t frame_rate{0};
+    bool has_timestamps{false};
+};
+
+std::mutex mutex;
+std::unordered_map<std::string, std::vector<CVideo>> storage;
+
+std::vector<CVideo> _create_cache(const file::PathArray& source) {
+    std::smatch m;
+    std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
+    std::regex rext (".*(\\..+)$");
+    
+    std::string prefix, suffix, extension;
+    auto str = source.source();
+    if(std::regex_search(str,m,rext)) {
+        auto x = m[1];
+        extension = x.str().substr(1);
+        prefix = str.substr(0u, (uint64_t)m.position(1));
+        
+        //Print("Extension ",extension," basename ",prefix);
+        
+    } else {
+        throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
+    }
+    
+    if(prefix.empty()) {
+        prefix = "array";
+    }
+    
+    //Print("Searching for ",prefix,".",extension);
+    auto base = file::find_basename(source); //prefix;
+    //Print("Found _base = ", _base, " for ", source);
+    //_base = source.source();
+    std::vector<CVideo> video_info;
+    
+    for(auto &path : source) {
+        auto extension = std::string(path.extension());
+        auto basename = path.remove_extension().str();
+        auto f = VideoSource::File::open(video_info.size(), basename, extension);
+        if(!f)
+            throw U_EXCEPTION("Cannot open file ",path.str(),".");
+        
+        video_info.push_back(CVideo{
+            .type = f->type(),
+            .path = f->filename(),
+            .resolution = f->resolution(),
+            .N_frames = f->length(),
+            .frame_rate = static_cast<uint32_t>(f->framerate()),
+            .has_timestamps = f->has_timestamps()
+        });
+    }
+    
+    return video_info;
+}
+
+std::vector<CVideo> load_cache(const file::PathArray& source) {
+    std::unique_lock guard(mutex);
+    auto it = storage.find(source.source());
+    if(it == storage.end()) {
+        //guard.unlock();
+        
+        auto info = _create_cache(source);
+        //guard.lock();
+        storage[source.source()] = info;
+        return info;
+    }
+    return it->second;
+}
+
+}
+
 std::string VideoSource::File::complete_name(const std::string &basename, const std::string &ext) {
     return basename + "." + ext;
 }
@@ -106,6 +184,13 @@ VideoSource::File::File(File&& other)
     //if(other._video)
     //    delete other._video;
     other._video = nullptr;
+}
+
+VideoSource::File::File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type)
+    : _index(index), _filename(path), _length(length), _size(size), _video(), _type(type), _frame_rate(frame_rate)
+{
+    if(type == Type::VIDEO)
+        _video = new FfmpegVideoCapture{""};
 }
 
 VideoSource::File::File(size_t index, const std::string& basename, const std::string& extension) : _index(index), _video(NULL), _size(0, 0) {
@@ -281,6 +366,9 @@ short VideoSource::File::framerate() {
     if(type() != VIDEO)
         return -1;
     
+    if(_frame_rate)
+        return _frame_rate.value();
+    
     if(has_timestamps()) {
         if(_timestamps.size() > 1) {
             auto prev = _timestamps[0];
@@ -290,7 +378,8 @@ short VideoSource::File::framerate() {
                 prev = _timestamps[i];
             }
             average = average / double(_timestamps.size()-1);
-            return (short)round(1. / average);
+            _frame_rate = narrow_cast<uint32_t>(round(1. / average));
+            return _frame_rate.value();
         } else
             return -1;
         
@@ -301,7 +390,8 @@ short VideoSource::File::framerate() {
         auto fps = _video->frame_rate();
         if(not was_open)
             _video->close();
-        return narrow_cast<short>(fps);
+        _frame_rate = narrow_cast<uint32_t>(fps);
+        return _frame_rate.value();
     }
 }
 
@@ -392,103 +482,20 @@ VideoSource::VideoSource(VideoSource&& other)
     
 }
 
-/*VideoSource::VideoSource(const std::string& source)
-    : _source(source)
-{
-    std::smatch m;
-    std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
-    std::regex rext (".*(\\..+)$");
-    
-    long_t number_length = -1, start_number = 0, end_number = VIDEO_SEQUENCE_UNSPECIFIED_VALUE;
-    
-    std::string prefix, suffix, extension;
-    if(std::regex_search(source,m,rext)) {
-        auto x = m[1];
-        extension = x.str().substr(1);
-        prefix = source.substr(0u, (uint64_t)m.position(1));
-        
-        Print("Extension ",extension," basename ",prefix);
-        
-    } else {
-        throw U_EXCEPTION("File extension not found in ",source);
-    }
-    
-    Print("Searching for ",prefix,".",extension);
-    _base = prefix;
-    
-    if(std::regex_search (prefix,m,rplaceholder)) {
-        auto x = m[0];
-        auto s = x.str();
-        Print("Match ",s);
-        
-        auto L = s.length();
-        auto p = (uint64_t)m.position();
-        
-        s = s.substr(1, s.length()-2);
-        auto split = utils::split(s, '.');
-        
-        if(split.size()>1) {
-            start_number = std::stoi(split[1]);
-        }
-        if(split.size()>2) {
-            end_number = std::stoi(split[2]);
-        }
-        
-        number_length = std::stoi(split[0]);
-        suffix = prefix.substr(p + L);
-        prefix = prefix.substr(0u, p);
-        Print("match ",s," at ",p," with nr ",number_length,". suffix = ", suffix);
-    }
-    
-    if(number_length != -1) {
-        // no placeholders found, just load file.
-        open(prefix, suffix, extension, start_number, end_number, number_length);
-    } else {
-        open(prefix, suffix, extension);
-    }
-}*/
-
 VideoSource::VideoSource(const file::PathArray& source)
 {
-    std::smatch m;
-    std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
-    std::regex rext (".*(\\..+)$");
+    auto cache = video_cache::load_cache(source);
+    _base = file::find_basename(source);
     
-    std::string prefix, suffix, extension;
-    auto str = source.source();
-    if(std::regex_search(str,m,rext)) {
-        auto x = m[1];
-        extension = x.str().substr(1);
-        prefix = str.substr(0u, (uint64_t)m.position(1));
-        
-        //Print("Extension ",extension," basename ",prefix);
-        
-    } else {
-        throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
-    }
-    
-    if(prefix.empty()) {
-        prefix = "array";
-    }
-    
-    //Print("Searching for ",prefix,".",extension);
-    _base = file::find_basename(source); //prefix;
-    //Print("Found _base = ", _base, " for ", source);
-    //_base = source.source();
-    
-    for(auto &path : source) {
-        auto extension = std::string(path.extension());
-        auto basename = path.remove_extension().str();
-        auto f = File::open(_files_in_seq.size(), basename, extension);
-        if(!f)
-            throw U_EXCEPTION("Cannot open file ",path.str(),".");
-        
-        _files_in_seq.push_back(f);
-        _length += f->length();
-    }
-    
-    if(_files_in_seq.empty()) {
+    if(cache.empty()) {
         throw U_EXCEPTION("Cannot load video sequence ",source," (it is empty).");
+    }
+    
+    size_t index = 0;
+    for(auto &c : cache) {
+        auto file = new File(index++, c.path, c.N_frames, c.resolution, c.frame_rate, c.type);
+        _files_in_seq.emplace_back(file);
+        _length += c.N_frames;
     }
     
     _size = _files_in_seq.front()->resolution();

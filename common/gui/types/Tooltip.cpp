@@ -49,8 +49,7 @@ namespace cmn::gui {
             ox = 1;
         }
 
-        if(mp.y - _text.height() < 0
-           && mp.y < stage()->dialog_window_size().height * 0.5)
+        if(mp.y < stage()->dialog_window_size().height * 0.5)
             set_origin(Vec2(ox, 0));
         else
             set_origin(Vec2(ox, 1));

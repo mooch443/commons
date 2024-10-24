@@ -19,6 +19,8 @@ class FfmpegVideoCapture {
     std::unique_ptr<cv::VideoCapture> _capture;
     mutable std::set<std::string_view> _recovered_errors;
     std::once_flag skip_message_flag;
+    static std::unordered_map<std::string, int64_t> tested_video_lengths;
+    static std::mutex tested_video_lengths_mutex;
     
 public:
     FfmpegVideoCapture(const std::string& filePath);
@@ -54,7 +56,8 @@ private:
     Image _buffer;
 
     int videoStreamIndex = -1;
-    int64_t frameCount = -1;
+    int64_t current_frame = -1;
+    int64_t actual_frame_count_ = -1;
     
     std::string _filePath;
 
@@ -76,6 +79,10 @@ private:
     void recovered_error(const std::string_view&) const;
     void log_packet(const AVPacket *pkt);
     static std::string error_to_string(int);
+    
+    static int64_t calculate_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
+    static int64_t get_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
+    int64_t estimated_frame_count() const;
 };
 
 } // namespace cmn

@@ -31,6 +31,8 @@ public:
         static File *open(size_t index, const std::string& basename, const std::string& ext, bool no_check = false);
         static std::string complete_name(const std::string& basename, const std::string& ext);
         
+        File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type);
+        
     private:
         static std::vector<std::pair<std::string, Type>> _extensions;
         
@@ -40,6 +42,7 @@ public:
         //Video *_video;
         FfmpegVideoCapture *_video{nullptr};
         Type _type;
+        std::optional<uint32_t> _frame_rate;
         
         GETTER(std::string, format);
         

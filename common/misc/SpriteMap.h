@@ -444,7 +444,7 @@ concept Iterable = requires(T obj) {
             return ConstReference(*this);
         }
         
-        bool has(const std::string_view& name) const {
+        bool has(std::string_view name) const {
             auto guard = LOGGED_LOCK(mutex());
             return _props.contains(name);
         }
@@ -491,12 +491,12 @@ concept Iterable = requires(T obj) {
             return *property_;
         }
         
-        void erase(const std::string_view& key) {
+        void erase(std::string_view key) {
             auto guard = LOGGED_LOCK(mutex());
             auto it = _props.find(key);
-            if(it != _props.end())
+            if(it != _props.end()) {
                 _props.erase(it);
-            else {
+            } else {
                 std::string e = "Map does not have key '"+(std::string)key+"'.";
                 FormatError(e.c_str());
                 throw PropertyException(e);
