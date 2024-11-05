@@ -59,6 +59,7 @@ namespace cmn {
         
         //friend struct detail::g_GSettingsSingletonStruct;
         static std::mutex& mutex();
+        static std::mutex& defaults_mutex();
         
     public:
         GlobalSettings();

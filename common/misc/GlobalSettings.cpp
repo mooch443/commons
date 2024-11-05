@@ -15,6 +15,11 @@ std::mutex& GlobalSettings::mutex() {
     return _mutex;
 }
 
+std::mutex& GlobalSettings::defaults_mutex() {
+    static std::mutex _mutex;
+    return _mutex;
+}
+
 /**
  * GlobalSettings implementation
  */
@@ -51,12 +56,14 @@ std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view 
 }
 
 sprite::Map& GlobalSettings::current_defaults() {
+    std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_current_defaults;
 }
 
 void GlobalSettings::set_current_defaults(const sprite::Map& map) {
+    std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     instance()->_current_defaults.set_print_by_default(false);
@@ -64,12 +71,14 @@ void GlobalSettings::set_current_defaults(const sprite::Map& map) {
 }
 
 sprite::Map& GlobalSettings::current_defaults_with_config() {
+    std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_current_defaults_with_config;
 }
 
 void GlobalSettings::set_current_defaults_with_config(const sprite::Map& map) {
+    std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     instance()->_current_defaults_with_config.set_print_by_default(false);
@@ -77,6 +86,7 @@ void GlobalSettings::set_current_defaults_with_config(const sprite::Map& map) {
 }
 
 const sprite::Map& GlobalSettings::defaults() {
+    std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_defaults;
