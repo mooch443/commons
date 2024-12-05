@@ -257,7 +257,7 @@ int64_t FfmpegVideoCapture::get_actual_frame_count(FfmpegVideoCapture&cap, const
     return frames;
 }
 
-int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap, const file::Path& path) {
+int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap, const file::Path& ) {
     // Check if we have already calculated the frame count
     int64_t actual_frame_count = -1;
     
@@ -431,36 +431,52 @@ std::string FfmpegVideoCapture::error_to_string(int response) {
 bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     static Timing timing("ffmpeg::seek_frame");
     TakeTiming take(timing);
-    
-    // If the desired frame is already the current frame, no need to seek
-    //if(frameCount == frameIndex)
-    //    return true;
-    
+
+    // Log the initial state
+    #ifndef NDEBUG
+    Print("[seek_frame] Attempting to seek to frame ", frameIndex);
+    #endif
+
     AVRational time_base = formatContext->streams[videoStreamIndex]->time_base;
     AVRational frame_rate = av_guess_frame_rate(formatContext, formatContext->streams[videoStreamIndex], nullptr);
 
     // Calculate the keyframe interval
     int keyframe_interval = formatContext->streams[videoStreamIndex]->avg_frame_rate.num / formatContext->streams[videoStreamIndex]->avg_frame_rate.den;
-    
+
     int64_t received_frame = -1;
-    
+
     // Determine if we should seek or decode sequentially
     if (current_frame < static_cast<int64_t>(frameIndex)
         && abs(static_cast<int64_t>(frameIndex) - current_frame) <= keyframe_interval)
     {
         received_frame = current_frame;
-        
+
+        #ifndef NDEBUG
+        Print("[seek_frame] Decoding sequentially from current frame ", current_frame, " to ", frameIndex);
+        #endif
+
     } else {
         // If far away, seek directly to the calculated timestamp
         int64_t timestamp = av_rescale_q(max(0, static_cast<int64_t>(frameIndex)), av_inv_q(frame_rate), time_base);
+
+        #ifndef NDEBUG
+        Print("[seek_frame] Seeking to timestamp ", timestamp, " for frame ", frameIndex);
+        #endif
 
         if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
             FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
             return false;
         }
-        
+
         // Need to flush the buffer manually
         avcodec_flush_buffers(codecContext);
+
+        // we are actively setting a time, cannot assume sequential
+        last_seq_received_frame.reset();
+        
+        #ifndef NDEBUG
+        Print("[seek_frame] Flushed codec buffers after seeking.");
+        #endif
     }
 
     while (received_frame < static_cast<int64_t>(frameIndex)) {
@@ -469,21 +485,21 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             FormatExcept("[FFMPEG] Error reading frame ", received_frame + 1, ": ", error_to_string(response));
             return false;
         }
-        
+
         log_packet(pkt);
-        
+
         if(pkt->stream_index != videoStreamIndex
            || avcodec_send_packet(codecContext, pkt) != 0)
         {
             av_packet_unref(pkt);
             continue;
         }
-        
+
         av_packet_unref(pkt);
 
         while (true) {
             response = avcodec_receive_frame(codecContext, frame);
-            
+
             if (response == AVERROR(EAGAIN)) {
                 break; // Exit the loop to read the next packet
             } else if(response == AVERROR_EOF) {
@@ -493,24 +509,67 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 return false;
             }
             
-            received_frame = av_rescale_q(frame->best_effort_timestamp, time_base, av_inv_q(frame_rate));
-            //received_frame = av_rescale_q(frame->pts, time_base, av_inv_q(frame_rate));
-            
-            if(received_frame == static_cast<int64_t>(frameIndex)) {
-                /// This is exactly the frame that we wanted:
-                current_frame = frameIndex;
-                return true;
+            /*{
+                int64_t timestamp = frame->best_effort_timestamp;
+                double frame_index = double(timestamp) * double(time_base.num) / double(time_base.den) * double(frame_rate.den) / double(frame_rate.num);
+                auto actual = av_rescale_q(timestamp, time_base, av_inv_q(frame_rate));
                 
+                double fractional_part = actual - floor(frame_index);
+                
+                if (fractional_part > 0.001) { // Threshold for rounding error
+                    FormatWarning("Rounding error detected in frame index calculation. Fractional part: ", fractional_part);
+                }
+                
+                //auto rounded = static_cast<int64_t>(round(frame_index));
+                //FormatWarning("rounded frame_index = ", rounded, " original: ", actual);
+            }*/
+            
+            auto previous_frame = received_frame;
+            received_frame = av_rescale_q(frame->best_effort_timestamp, time_base, av_inv_q(frame_rate));
+            
+            // we have received a frame, so lets save it
+            if(last_seq_received_frame) {
+                int64_t expected_frame = previous_frame + 1; // Assuming sequential read
+                if (received_frame > expected_frame) {
+                    FormatWarning("Detected dropped frames. Expected frame: ", expected_frame, ", but received: ", received_frame);
+                }
+            }
+
+            last_seq_received_frame = received_frame;
+            
+            #ifndef NDEBUG
+            Print("[seek_frame] Received frame ", received_frame);
+            #endif
+
+            if(received_frame == static_cast<int64_t>(frameIndex)) {
+                // This is exactly the frame that we wanted
+                current_frame = frameIndex;
+
+                #ifndef NDEBUG
+                Print("[seek_frame] Successfully reached frame ", frameIndex);
+                #endif
+
+                return true;
+
             } else if (received_frame > static_cast<int64_t>(frameIndex)) {
                 FormatWarning("Here we land on a frame that is larger than we wanted: ", received_frame, " > ", static_cast<int64_t>(frameIndex));
                 current_frame = received_frame;
                 av_frame_unref(frame);
+
+                #ifndef NDEBUG
+                Print("[seek_frame] Overshot the desired frame. Current frame: ", received_frame);
+                #endif
+
                 return false;
             }
 
             av_frame_unref(frame);
         }
     }
+
+    #ifndef NDEBUG
+    Print("[seek_frame] Could not reach frame ", frameIndex);
+    #endif
 
     return false;
 }

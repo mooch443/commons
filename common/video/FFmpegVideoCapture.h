@@ -59,6 +59,8 @@ private:
     int64_t current_frame = -1;
     int64_t actual_frame_count_ = -1;
     
+    std::optional<int64_t> last_seq_received_frame;
+    
     std::string _filePath;
 
     bool seek_frame(uint32_t frameIndex);
