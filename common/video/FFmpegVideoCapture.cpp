@@ -3,6 +3,7 @@
 
 //#undef NDEBUG
 //#define DEBUG_FFMPEG_PACKETS
+//#define DEBUG_FFMPEG_FRAMES
 
 namespace cmn {
 
@@ -433,9 +434,9 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     TakeTiming take(timing);
 
     // Log the initial state
-    #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
     Print("[seek_frame] Attempting to seek to frame ", frameIndex);
-    #endif
+#endif
 
     AVRational time_base = formatContext->streams[videoStreamIndex]->time_base;
     AVRational frame_rate = av_guess_frame_rate(formatContext, formatContext->streams[videoStreamIndex], nullptr);
@@ -451,17 +452,17 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
     {
         received_frame = current_frame;
 
-        #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
         Print("[seek_frame] Decoding sequentially from current frame ", current_frame, " to ", frameIndex);
-        #endif
+#endif
 
     } else {
         // If far away, seek directly to the calculated timestamp
         int64_t timestamp = av_rescale_q(max(0, static_cast<int64_t>(frameIndex)), av_inv_q(frame_rate), time_base);
 
-        #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
         Print("[seek_frame] Seeking to timestamp ", timestamp, " for frame ", frameIndex);
-        #endif
+#endif
 
         if (av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
             FormatExcept("[FFMPEG] Error seeking frame to ", frameIndex, " in ", _filePath);
@@ -474,22 +475,22 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         // we are actively setting a time, cannot assume sequential
         last_seq_received_frame.reset();
         
-        #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
         Print("[seek_frame] Flushed codec buffers after seeking.");
-        #endif
+#endif
     }
 
     while (received_frame < static_cast<int64_t>(frameIndex)) {
         int response = av_read_frame(formatContext, pkt);
-        if(response < 0) {
+        if (response < 0) {
             FormatExcept("[FFMPEG] Error reading frame ", received_frame + 1, ": ", error_to_string(response));
             return false;
         }
 
         log_packet(pkt);
 
-        if(pkt->stream_index != videoStreamIndex
-           || avcodec_send_packet(codecContext, pkt) != 0)
+        if (pkt->stream_index != videoStreamIndex
+            || avcodec_send_packet(codecContext, pkt) != 0)
         {
             av_packet_unref(pkt);
             continue;
@@ -502,7 +503,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
             if (response == AVERROR(EAGAIN)) {
                 break; // Exit the loop to read the next packet
-            } else if(response == AVERROR_EOF) {
+            } else if (response == AVERROR_EOF) {
                 break; // EOF
             } else if (response < 0) {
                 FormatExcept("[FFMPEG] Error while receiving frame ", current_frame, " from decoder: ", error_to_string(response));
@@ -528,7 +529,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             received_frame = av_rescale_q(frame->best_effort_timestamp, time_base, av_inv_q(frame_rate));
             
             // we have received a frame, so lets save it
-            if(last_seq_received_frame) {
+            if (last_seq_received_frame) {
                 int64_t expected_frame = previous_frame + 1; // Assuming sequential read
                 if (received_frame > expected_frame) {
                     FormatWarning("Detected dropped frames. Expected frame: ", expected_frame, ", but received: ", received_frame);
@@ -537,17 +538,17 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
 
             last_seq_received_frame = received_frame;
             
-            #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
             Print("[seek_frame] Received frame ", received_frame);
-            #endif
+#endif
 
-            if(received_frame == static_cast<int64_t>(frameIndex)) {
+            if (received_frame == static_cast<int64_t>(frameIndex)) {
                 // This is exactly the frame that we wanted
                 current_frame = frameIndex;
 
-                #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
                 Print("[seek_frame] Successfully reached frame ", frameIndex);
-                #endif
+#endif
 
                 return true;
 
@@ -556,9 +557,9 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
                 current_frame = received_frame;
                 av_frame_unref(frame);
 
-                #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
                 Print("[seek_frame] Overshot the desired frame. Current frame: ", received_frame);
-                #endif
+#endif
 
                 return false;
             }
@@ -567,9 +568,9 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
         }
     }
 
-    #ifndef NDEBUG
+#ifdef DEBUG_FFMPEG_FRAMES
     Print("[seek_frame] Could not reach frame ", frameIndex);
-    #endif
+#endif
 
     return false;
 }
