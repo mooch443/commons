@@ -386,18 +386,15 @@ namespace cmn {
             
             template<typename K = ValueType>
                 requires (HasNotEqualOperator<K> && trivial)
-            bool assign_if(const ValueType& next) {
+            bool assign_if(ValueType next) {
                 BaseStoreType v = _value.load();
-                if(v.has_value()) {
-                    if(v.value() != next) {
-                        //return _value.compare_exchange_strong(v, BaseStoreType(next));
-                        _value.store(next);
-                        return true;
+                if(v.has_value()
+                   || v.value() != next)
+                {
+                    if constexpr(_has_blocking_tostr_method<ValueType>) {
+                        next.blocking_toStr();
                     }
-                    
-                } else {
-                    //return _value.compare_exchange_strong(v, BaseStoreType(next));
-                    _value.store(next);
+                    _value.store(std::move(next));
                     return true;
                 }
                 
@@ -408,14 +405,14 @@ namespace cmn {
                 requires (HasNotEqualOperator<K> && not trivial)
             bool assign_if(const ValueType& next) {
                 std::unique_lock guard(_property_mutex);
-                if(_value.has_value()) {
-                    if(_value.value() != next) {
-                        _value = next;
-                        return true;
+                if(not _value.has_value()
+                   || _value.value() != next)
+                {
+                    _value = std::move(next);
+                    if constexpr(_has_blocking_tostr_method<ValueType>) {
+                        if(_value)
+                            _value->blocking_toStr();
                     }
-                    
-                } else {
-                    _value = next;
                     return true;
                 }
                 
@@ -423,15 +420,25 @@ namespace cmn {
             }
 
             template<typename K = ValueType>
-                requires (not HasNotEqualOperator<K>)
-            bool assign_if(const ValueType& next) {
-                if constexpr(trivial) {
-                    _value.store(BaseStoreType(next));
-                } else {
-                    std::unique_lock guard(_property_mutex);
-                    _value = next;
+                requires (not HasNotEqualOperator<K> && trivial)
+            bool assign_if(ValueType next) {
+                if constexpr(_has_blocking_tostr_method<ValueType>) {
+                    next.blocking_toStr();
                 }
-                
+                _value.store(BaseStoreType(std::move(next)));
+            
+                return true;
+            }
+            
+            template<typename K = ValueType>
+                requires (not HasNotEqualOperator<K> && not trivial)
+            bool assign_if(const ValueType& next) {
+                std::unique_lock guard(_property_mutex);
+                _value = next;
+                if constexpr(_has_blocking_tostr_method<ValueType>) {
+                    if(_value)
+                        _value->blocking_toStr();
+                }
                 return true;
             }
             

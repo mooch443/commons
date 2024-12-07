@@ -98,6 +98,10 @@ concept _has_tostr_method = requires(const T* t) {
     { t->toStr() } -> std::convertible_to<std::string>;
 };
 template<typename T>
+concept _has_blocking_tostr_method = requires(const T* t) {
+    { t->blocking_toStr() } -> std::convertible_to<std::string>;
+};
+template<typename T>
 concept has_to_json_method = requires(const T* t) {
     { t->to_json() } -> std::convertible_to<glz::json_t>;
 };
