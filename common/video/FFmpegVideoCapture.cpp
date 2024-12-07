@@ -532,7 +532,7 @@ bool FfmpegVideoCapture::seek_frame(uint32_t frameIndex) {
             if (last_seq_received_frame) {
                 int64_t expected_frame = previous_frame + 1; // Assuming sequential read
                 if (received_frame > expected_frame) {
-                    recovered_error("Dropped frames.");
+                    recovered_error("Dropped frames during video decoding.");
                     FormatWarning("Detected dropped frames. Expected frame: ", expected_frame, ", but received: ", received_frame);
                 }
             }
