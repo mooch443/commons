@@ -388,7 +388,7 @@ namespace cmn {
                 requires (HasNotEqualOperator<K> && trivial)
             bool assign_if(ValueType next) {
                 BaseStoreType v = _value.load();
-                if(v.has_value()
+                if(not v.has_value()
                    || v.value() != next)
                 {
                     if constexpr(_has_blocking_tostr_method<ValueType>) {
