@@ -267,7 +267,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     static bool blur_difference = SETTING(blur_difference);
     static std::once_flag registered_callback;
     static float adaptive_threshold_scale = 0;
-    static int threshold = 25, threshold_maximum = 255;
+    static int detect_threshold = 25, threshold_maximum = 255;
     static bool use_closing = false;
     static int closing_size = 1;
     static bool use_adaptive_threshold = false;
@@ -283,8 +283,8 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 enable_abs_diff = value.template value<bool>();
             else if (key == "adaptive_threshold_scale")
                 adaptive_threshold_scale = value.template value<float>();
-            else if (key == "threshold")
-                threshold = value.template value<int>();
+            else if (key == "detect_threshold")
+                detect_threshold = value.template value<int>();
             else if (key == "threshold_maximum")
                 threshold_maximum = value.template value<int>();
             else if (key == "use_closing")
@@ -305,7 +305,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             "enable_difference",
             "enable_absolute_difference",
             "adaptive_threshold_scale",
-            "threshold",
+            "detect_threshold",
             "threshold_maximum",
             "use_closing",
             "closing_size",
@@ -370,11 +370,11 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         if(tags_enable)
             INPUT->copyTo(_floatb0);
         
-        CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_TOZERO));
+        CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_TOZERO));
         
         CALLCV(cv::blur(*INPUT, *OUTPUT, cv::Size(25, 25)));
         
-        CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_BINARY));
+        CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_BINARY));
         
     } else {
         
@@ -462,7 +462,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                  static gui::DrawStructure s;
                  static gui::Graph g(Bounds(0, 0, 640,480), "Graph");
                  g.clear();
-                 g.add_function(gui::Graph::Function("threshold", gui::Graph::Type::DISCRETE, [values](float x) -> float {
+                 g.add_function(gui::Graph::Function("detect_threshold", gui::Graph::Type::DISCRETE, [values](float x) -> float {
                  if(!values.contains(int(x)))
                  return GlobalSettings::invalid();
                  return values.at(int(x));
@@ -474,20 +474,20 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                  base.display();*/
                 
                 //CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY, 25, -threshold));
-                CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, adaptive_neighborhood_size, -threshold));
+                CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, adaptive_neighborhood_size, -detect_threshold));
                 
                 //INPUT->copyTo(local);
                 //tf::imshow("OUTPUT "+Meta::toStr(adaptive_neighborhood_size), local);
             }
             else {
                 if (threshold_maximum < 255) {
-                    CALLCV(cv::inRange(*INPUT, threshold, threshold_maximum, *OUTPUT));
+                    CALLCV(cv::inRange(*INPUT, detect_threshold, threshold_maximum, *OUTPUT));
                 }
                 else
-                    CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_BINARY));
+                    CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_BINARY));
             }
             
-            if (threshold < 0) {
+            if (detect_threshold < 0) {
                 CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
             }
             
@@ -502,7 +502,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 
                 CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1));
                 CALLCV(diff.copyTo(*OUTPUT, *INPUT));
-                CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_BINARY));
+                CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_BINARY));
                 
                 CALLCV(cv::dilate(*INPUT, *OUTPUT, closing_element));
                 CALLCV(cv::erode(*INPUT, *OUTPUT, closing_element));
@@ -513,18 +513,18 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             //      1. threshold
             //      2. check dilation_size flag
             if (use_adaptive_threshold) {
-                CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, adaptive_neighborhood_size, -threshold));
+                CALLCV(cv::adaptiveThreshold(*INPUT, *OUTPUT, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, adaptive_neighborhood_size, -detect_threshold));
             }
             else {
                 if (threshold_maximum < 255) {
-                    CALLCV(cv::inRange(*INPUT, threshold, threshold_maximum, *OUTPUT));
+                    CALLCV(cv::inRange(*INPUT, detect_threshold, threshold_maximum, *OUTPUT));
                 }
                 else {
-                    CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_BINARY));
+                    CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_BINARY));
                 }
             }
             
-            if (threshold < 0) {
+            if (detect_threshold < 0) {
                 CALLCV(cv::subtract(255, *INPUT, *OUTPUT));
             }
             
@@ -536,7 +536,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 
                 CALLCV(INPUT->convertTo(*OUTPUT, CV_8UC1));
                 CALLCV(diff.copyTo(*OUTPUT, *INPUT));
-                CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(threshold), 255, cv::THRESH_BINARY));
+                CALLCV(cv::threshold(*INPUT, *OUTPUT, abs(detect_threshold), 255, cv::THRESH_BINARY));
             }
         }
     }

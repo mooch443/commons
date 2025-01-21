@@ -236,7 +236,7 @@ namespace cmn {
                 for (auto&n : see_also) {
                     if(i > 0)
                         ss << ", ";
-                    ss << ":func:`" << n << "`";
+                    ss << ":param:`" << n << "`";
                     ++i;
                 }
                 ss << std::endl;
