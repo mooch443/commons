@@ -174,6 +174,8 @@ concept CallableWithNArgs = requires (F&& f) {
         
         //! copy one channel from a 1-d matrix of equal size
         void set_channel(size_t idx, const uchar* matrix);
+        //! copy a channel of an input image to a channel in this image
+        void set_channel(size_t idx, const Image& input, size_t input_index = 0);
         
         //! set a whole channel of the image to a constant value
         void set_channel(size_t idx, uchar value);

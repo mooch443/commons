@@ -79,7 +79,7 @@ namespace cmn {
         
         void print_help(const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t* fn);
         std::string help_html(const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t& fn);
-        std::string help_restructured_text(const std::string& title, const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t& fn, std::string postfix="", std::string filter="", std::string extra_text = "");
+    std::string help_restructured_text(const std::string& title, const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t& fn, std::string postfix="", std::string filter="", std::string extra_text = "", AccessLevel level = AccessLevelType::SYSTEM);
         std::string htmlify(std::string str, bool add_inks = false);
     }
 }

@@ -280,6 +280,20 @@ namespace cmn {
             for(auto c : channels)
                 *(ptr + c) = *m;
     }
+
+    void Image::set_channel(size_t idx, const Image& input, size_t input_index) {
+        assert(_data && idx < dims);
+        assert(input.data() && input.dims > input_index);
+        reset_stamp();
+        
+        auto data = this->data();
+        auto ptr = data + idx;
+        auto m = input.data() + input_index;
+        auto cs = input.dims;
+        
+        for(; ptr<data + _size; ptr+=dims, m += cs)
+            *ptr = *m;
+    }
     
     void Image::set_channel(size_t idx, const uchar* matrix) {
         assert(_data && idx < dims);

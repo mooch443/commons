@@ -919,6 +919,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             size_t local_recount = 0;
             auto local_ptr = _pixels->data();
 #endif
+            assert(_pixels && _pixels->data());
             auto ptr = _pixels->data();
             assert(_pixels->size() == num_pixels() * channels());
             
@@ -1088,11 +1089,16 @@ pv::BlobPtr CompressedBlob::unpack() const {
         auto _y = (coord_t)b.y;
         assert(image->channels() == 1);
         
-        auto ptr = _pixels ? _pixels->data() : nullptr;
-        
         auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
             static_assert(is_in(input.channels, 0,1,3), "Only 0, 1 or 3 channels input is supported.");
             static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
+            
+            const uchar* ptr;
+            if constexpr(input.channels > 0) {
+                assert(_pixels);
+                ptr = _pixels->data();
+            }
+            
             for (auto &line : hor_lines()) {
                 auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + ptr_safe_t(line.x0) - ptr_safe_t(_x)) * output.channels;
                 if constexpr(input.channels == 0) {
@@ -1416,7 +1422,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
-        auto ptr = _pixels->data();
+        auto ptr = _pixels ? _pixels->data() : nullptr;
         
         InputInfo input = input_info();
         OutputInfo output;
@@ -1441,7 +1447,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
                         
                     } else {
                         for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += output.channels) {
-                            assert(ptr < _pixels->data() + _pixels->size());
+                            assert(not ptr || ptr < _pixels->data() + _pixels->size());
                             
                             auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
                             auto diff = background.diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value);

@@ -86,6 +86,20 @@ bool blob::Pose::Skeleton::exists(const std::string& name) {
     return _registered.find(name) not_eq _registered.end();
 }
 
+bool blob::Pose::Skeleton::empty() const {
+    return _connections.empty();
+}
+
+std::set<uint8_t> blob::Pose::Skeleton::keypoint_indexes() const
+{
+    std::set<uint8_t> indexes;
+    for(auto &[from, to, _] : _connections) {
+        indexes.insert(from);
+        indexes.insert(to);
+    }
+    return indexes;
+}
+
 blob::Pose blob::Pose::fromStr(const std::string &str) {
     auto points = Meta::fromStr<std::vector<Point>>(str);
     return blob::Pose{std::move(points)};

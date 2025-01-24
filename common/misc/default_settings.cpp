@@ -140,11 +140,33 @@ namespace cmn {
         return parsed.str();
     }
 
+    std::string create_regex_from_array(const std::string& filter) {
+        std::stringstream regex_stream;
+        regex_stream << "(";
+        bool first = true;
+
+        for (const auto& param : utils::split(filter, ';')) { // Assuming `split` exists
+            if (!first) regex_stream << "|";
+            regex_stream << std::regex_replace(param, std::regex(R"([\^\$\.\*\+\?\(\)\[\]\{\}\|\\])"), R"(\\$&)"); // Escape special chars
+            first = false;
+        }
+
+        regex_stream << ")";
+        return regex_stream.str();
+    }
     
     /**
      * Outputs a given set of Parameter map and documentation into the reStructuredText format (https://docutils.sourceforge.io/docs/ref/rst/directives.html). The output is a single page containing documentation for all parameters in the map, including parameter type, access type and default parameters plus a description.
      */
-    std::string help_restructured_text(const std::string& title, const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t& fn, std::string postfix, std::string filter, std::string extra_text) {
+    std::string help_restructured_text(const std::string& title,
+                                       const sprite::Map& config,
+                                       const GlobalSettings::docs_map_t& docs,
+                                       const GlobalSettings::user_access_map_t& fn,
+                                       std::string postfix,
+                                       std::string filter,
+                                       std::string extra_text,
+                                       AccessLevel level)
+    {
         std::stringstream ss;
         
         //! prints a string with an underline of the same length made up of 'c's, usually a title
@@ -254,12 +276,14 @@ namespace cmn {
         if(!extra_text.empty())
             ss << extra_text;
         
-        auto array = utils::split(filter, ';');
         auto keys = extract_keys(docs);
+        std::string regex_string = create_regex_from_array(filter);
+        std::regex regex_pattern(regex_string);
         
         for (auto &key : keys) {
-            if(contains(array, key))
+            if (std::regex_search(key, regex_pattern)) {
                 continue;
+            }
             
             auto value = config[key].get().valueString();
             std::string doc = "";
@@ -269,8 +293,12 @@ namespace cmn {
             
             std::string access_level = "PUBLIC";
             auto it = fn.find(key);
-            if(it != fn.end() && it->second > AccessLevelType::PUBLIC)
-                access_level = it->second.name();
+            if(it != fn.end()) {
+                if(it->second > AccessLevelType::PUBLIC)
+                    access_level = it->second.name();
+                if(it->second > level)
+                    continue;
+            }
             
             print_parameter(key, (std::string)config[key].type_name(), value, doc);
         }

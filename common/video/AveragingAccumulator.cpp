@@ -2,6 +2,7 @@
 #include <misc/GlobalSettings.h>
 #include <misc/Image.h>
 #include <misc/SpriteMap.h>
+#include <misc/Timer.h>
 
 namespace cmn {
 
@@ -50,9 +51,11 @@ void AveragingAccumulator::_add(const Mat &f) {
             
             if(_mode == averaging_method_t::mode) {
                 spatial_histogram.resize(size_t(f.cols) * size_t(f.rows));
+                spatial_mutex.resize(size_t(f.cols));
+                for(auto &m : spatial_mutex)
+                    m = std::make_unique<std::mutex>();
                 for(uint64_t i=0; i<spatial_histogram.size(); ++i) {
                     std::fill(spatial_histogram.at(i).begin(), spatial_histogram.at(i).end(), RGB{0, 0, 0});
-                    spatial_mutex.push_back(std::make_unique<std::mutex>());
                 }
             }
         }
@@ -77,12 +80,30 @@ void AveragingAccumulator::_add(const Mat &f) {
         const uchar* ptr = (const uchar*)f.data;
         auto array_ptr = spatial_histogram.data();
         const auto end = spatial_histogram.data() + uint64_t(f.cols) * uint64_t(f.rows);
-        auto mutex_ptr = spatial_mutex.begin();
+        auto mutex_ptr = spatial_mutex.begin(); //! one lock per line
+        //thread_local Timing timing("MutexSwitch", 0.001);
+        //thread_local Timing mtiming("MutexLock", 0.001);
         
         assert(spatial_histogram.size() == uint64_t(f.cols) * uint64_t(f.rows));
         if constexpr(threaded) {
-            for (; array_ptr != end; ptr += channels, ++array_ptr, ++mutex_ptr) {
-                (*mutex_ptr)->lock(); //TODO: this is a performance culprit (locking/unlocking)
+            //timing.start_measure();
+            (*mutex_ptr)->lock();
+            
+            for (size_t x = 0; array_ptr != end; ptr += channels, ++array_ptr, ++x) {
+                if(x >= size_t(f.cols) * 100) {
+                    x = 0;
+                    
+                    (*mutex_ptr)->unlock();
+                    //timing.conclude_measure();
+                    
+                    //mtiming.start_measure();
+                    ++mutex_ptr;
+                    (*mutex_ptr)->lock();
+                    //mtiming.conclude_measure();
+                    
+                    //timing.start_measure();
+                }
+                
                 if(channels == 1) {
                     ++(*array_ptr)[*(ptr + 0)][0];
                 } else {
@@ -91,9 +112,12 @@ void AveragingAccumulator::_add(const Mat &f) {
                     ++(*array_ptr)[*(ptr + 1)][1];
                     ++(*array_ptr)[*(ptr + 2)][2];
                 }
-                
-                (*mutex_ptr)->unlock();
             }
+            
+            if(mutex_ptr == spatial_mutex.end())
+                throw RuntimeError("Should not be past end");
+            (*mutex_ptr)->unlock();
+            //timing.conclude_measure();
             
         } else {
             for (; array_ptr != end; ptr += channels, ++array_ptr) {

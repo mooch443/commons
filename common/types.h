@@ -196,6 +196,8 @@ struct Pose {
         bool operator!=(const Skeleton& other) const noexcept = default;
 
         static Skeleton fromStr(const std::string&);
+        std::set<uint8_t> keypoint_indexes() const;
+        bool empty() const;
         std::string toStr() const;
         glz::json_t to_json() const;
         static std::string class_name() noexcept { return "Skeleton"; }
