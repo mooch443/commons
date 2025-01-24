@@ -1428,6 +1428,14 @@ pv::BlobPtr CompressedBlob::unpack() const {
         OutputInfo output;
         output = input;
         
+        /// minimal allowance of one output channel.
+        /// we cannot output images with 0 channels, also even with 0 real-color channels
+        /// the difference of binary will be 1 channel.
+        if(output.encoding == meta_encoding_t::binary) {
+            output.channels = 1;
+            output.encoding = meta_encoding_t::gray;
+        }
+        
         auto image = Image::Make(b.height, b.width, output.channels);
         std::fill(image->data(), image->data() + image->size(), uchar(0));
         
