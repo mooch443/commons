@@ -73,13 +73,45 @@ namespace cmn {
             static Float2_t _invalid = infinity<Float2_t>();
             return _invalid;
         }
+        
+        static constexpr bool is_invalid_inf(Float2_t v) {
+            return std::isinf(v);
+        }
+        static constexpr bool is_invalid_nan(Float2_t v) {
+            return std::isnan(v);
+        }
+        static bool is_invalid_(Float2_t v) {
+            return v == invalid();
+        }
 
-        static void set_invalid(float v) {
+        static void set_invalid(Float2_t v) {
+            if(std::isnan(v)) {
+                set_is_invalid_fn(is_invalid_nan);
+            } else if(std::isinf(v)) {
+                set_is_invalid_fn(is_invalid_inf);
+            } else
+                set_is_invalid_fn(is_invalid_);
+            
             invalid() = v;
         }
 
+        static auto& is_invalid_mutex() {
+            static std::shared_mutex mutex;
+            return mutex;
+        }
+        static auto& is_invalid_fn() {
+            static std::function<bool(Float2_t)> _is_invalid = is_invalid_inf;
+            return _is_invalid;
+        }
+        
         static bool is_invalid(float v) {
-            return v == invalid();
+            std::shared_lock guard(is_invalid_mutex());
+            return is_invalid_fn()(v);
+        }
+        
+        static void set_is_invalid_fn(auto&& fn) {
+            std::unique_lock guard(is_invalid_mutex());
+            is_invalid_fn() = std::move(fn);
         }
         
         //! return the instance
