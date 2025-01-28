@@ -33,14 +33,24 @@ namespace cmn {
     
 #if !defined(__EMSCRIPTEN__) || true
     template<typename T0>
-    inline bool isnan(const T0& x, typename std::enable_if<std::is_floating_point<T0>::value || std::is_integral<T0>::value, bool>::type * =NULL) {
+    inline bool isnan(const T0& x, typename std::enable_if<std::is_integral<T0>::value, bool>::type * =NULL) {
         return std::isnan(x);
     }
 
 #if defined(_WIN32)
+    template <typename T>
+    constexpr bool isnan(T x, typename std::enable_if<std::is_floating_point<T>::value>::type* = 0) {
+        return x != x;
+    }
+
     template<>
     inline bool isnan(const size_t& x, bool *) {
         return std::isnan<double>(static_cast<double>(x));
+    }
+#else
+    template<typename T0>
+    inline constexpr bool isnan(const T0& x, typename std::enable_if<std::is_floating_point<T0>::value || std::is_integral<T0>::value, bool>::type * =NULL) {
+        return std::isnan(x);
     }
 #endif
 
@@ -50,9 +60,9 @@ namespace cmn {
     }
 
 #ifdef WIN32
-    template<typename T>
-    inline bool isinf(T s, typename std::enable_if<std::is_floating_point<T>::value, bool>::type * = NULL) {
-        return std::isinf(s);
+    template <typename T>
+    constexpr bool isinf(T x, typename std::enable_if<std::is_floating_point<T>::value>::type* = 0) {
+        return x > std::numeric_limits<T>::max() || x < -std::numeric_limits<T>::max();
     }
     
     template<typename T>
@@ -61,7 +71,7 @@ namespace cmn {
     }
 #else
     template<typename T>
-    inline bool isinf(T s, typename std::enable_if<std::is_floating_point<T>::value || std::is_integral<T>::value, bool>::type * = NULL) {
+    inline constexpr bool isinf(T s, typename std::enable_if<std::is_floating_point<T>::value || std::is_integral<T>::value, bool>::type * = NULL) {
         return std::isinf(s);
     }
 #endif

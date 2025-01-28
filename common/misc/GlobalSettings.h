@@ -75,10 +75,10 @@ namespace cmn {
         }
         
         static constexpr bool is_invalid_inf(Float2_t v) {
-            return std::isinf(v);
+            return cmn::isinf(v);
         }
         static constexpr bool is_invalid_nan(Float2_t v) {
-            return std::isnan(v);
+            return cmn::isnan(v);
         }
         static bool is_invalid_(Float2_t v) {
             return v == invalid();
