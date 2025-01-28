@@ -24,23 +24,67 @@ size_t find_splitting_point(const std::string& str, const Float2_t w, const Floa
         ' ','-',':',',','/','\\','.','_'
     };
     
-    while(cw > max_w && idx > 1) {
+    // -----------------------------------------------------
+    // 1) Quick search (binary search) to jump near a fitting idx
+    // -----------------------------------------------------
+    if (cw > max_w && L > 1)
+    {
+        size_t lo = 1;
+        size_t hi = L;
+        size_t best_fit = L; // If nothing fits, we stay with full length
+
+        while (lo <= hi)
+        {
+            size_t mid = (lo + hi) / 2;
+            Bounds mid_bounds = calculate_bounds(
+                StaticText::RichString::parse(str.substr(0, mid)),
+                reference, font
+            );
+            Float2_t mid_w = utils::calculate_width(mid_bounds);
+
+            if (mid_w <= max_w)
+            {
+                best_fit = mid;  // mid fits, see if we can do better (longer)
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid - 1;
+            }
+        }
+
+        idx = best_fit;
+        // Recompute 'cw' for that quick-guess idx
+        Bounds quick_bounds = calculate_bounds(
+            StaticText::RichString::parse(str.substr(0, idx)),
+            reference, font
+        );
+        cw = utils::calculate_width(quick_bounds);
+    }
+    
+    // -----------------------------------------------------
+    // 2) Original loop, unchanged, to refine index to whitespace
+    // -----------------------------------------------------
+    while (cw > max_w && idx > 1) {
         L = idx;
         
-        // try to find a good splitting-point
-        // (= dont break inside words)
-        do --idx;
-        while(idx
-              && ((L-idx <= 10 && whitespace.find(str[idx-1]) == whitespace.end())
-               || (L-idx > 10  && extended_whitespace.find(str[idx-1]) == extended_whitespace.end())));
-        
-        // didnt find a proper position for breaking
-        if(!idx)
+        // Try to find a "good splitting point" (don't break inside words)
+        do {
+            --idx;
+        }
+        while (idx
+               && ((L - idx <= 10 && whitespace.find(str[idx - 1]) == whitespace.end())
+                   || (L - idx > 10 && extended_whitespace.find(str[idx - 1]) == extended_whitespace.end())));
+
+        // If we couldn’t find a proper position for breaking
+        if (!idx)
             break;
         
-        // test splitting at idx
-        Bounds bounds = calculate_bounds(StaticText::RichString::parse(str.substr(0, idx)), reference, font);
-        
+        // Test splitting at idx
+        Bounds bounds = calculate_bounds(
+            StaticText::RichString::parse(str.substr(0, idx)),
+            reference, font
+        );
         cw = utils::calculate_width(bounds);
     }
     
