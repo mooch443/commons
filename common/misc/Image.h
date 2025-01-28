@@ -167,6 +167,8 @@ concept CallableWithNArgs = requires (F&& f) {
 
         void create(const Image& other, long_t index = -1);
         void create(const Image& other, long_t index, timestamp_t stamp);
+        
+        Image::Ptr to_greyscale() const;
 
         void clear();
         

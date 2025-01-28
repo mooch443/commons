@@ -501,26 +501,30 @@ namespace cmn {
         return image;
     }
 
+    Image::Ptr Image::to_greyscale() const {
+        if(dims == 1)
+            return Image::Make(*this);
+        
+        auto image = Image::Make(rows, cols, 1);
+        auto mat = image->get();
+        load_image_to_format(ImageMode::GRAY, get(), *image);
+        return image;
+    }
+
     template<typename MatOut>
     void load_image_to_format(ImageMode color, const cv::Mat& tmp, MatOut& output) {
-        if (tmp.cols != output.cols || tmp.rows != output.rows) {
-            throw InvalidArgumentException("Cannot convert image to target with different dimensions.");
+        if (static_cast<unsigned int>(tmp.cols) != static_cast<unsigned int>(output.cols)
+            || static_cast<unsigned int>(tmp.rows) != static_cast<unsigned int>(output.rows))
+        {
+            throw InvalidArgumentException("Input and output matrices must have the same dimensions.");
         }
-        /*uint8_t expected_channels = required_channels(color);
-        if (output.channels() != expected_channels) {
-            if(output.channels() <= 1
-               && color == ImageMode::RGBA)
-            {
-                throw InvalidArgumentException("Cannot convert image (",expected_channels,") to target with different number of channels (",output.channels(),").");
-            }
-        }*/
-
+        
         if (color == ImageMode::R3G3B2) {
             if (output.channels() != 1) {
                 throw InvalidArgumentException("Cannot convert image to R3G3B2 into target with ", output.channels(), " channels.");
             }
 
-            if constexpr (are_the_same<decltype(output), cv::Mat>) {
+            if constexpr (are_the_same<MatOut, cv::Mat>) {
                 if (tmp.channels() == 3) {
                     convert_to_r3g3b2<3>(tmp, output);
                     return;
@@ -530,7 +534,7 @@ namespace cmn {
                     return;
                 }
             }
-            else {
+            else if constexpr (are_the_same<MatOut, cv::UMat>) {
                 // gpumat
                 cv::Mat buffer = cv::Mat::zeros(tmp.size(), CV_8UC(output.channels()));
                 if (tmp.channels() == 3) {
@@ -543,43 +547,86 @@ namespace cmn {
                     buffer.copyTo(output);
                     return;
                 }
+                
+            } else if constexpr (are_the_same<MatOut, Image>) {
+                auto mat = output.get();
+                if (tmp.channels() == 3) {
+                    convert_to_r3g3b2<3>(tmp, mat);
+                    return;
+                }
+                else if (tmp.channels() == 4) {
+                    convert_to_r3g3b2<4>(tmp, mat);
+                    return;
+                }
+                
+            } else {
+                static_assert(false, "Unknown OutMat type.");
             }
 
         }
-        else if (tmp.channels() == output.channels()) {
-            tmp.copyTo(output);
+        else if (static_cast<uint>(tmp.channels()) == static_cast<uint>(output.channels())) {
+            if constexpr (are_the_same<MatOut, Image>) {
+                tmp.copyTo(output.get());
+            } else {
+                tmp.copyTo(output);
+            }
             return;
         }
         else if (tmp.channels() == 1) {
             switch (output.channels()) {
                 // case 1 already dealt with because then channels
                 // are the equal between output and input
-            case 3:
-                cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGR);
-                return;
-            case 4:
-                cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGRA);
-                return;
-
+                case 3: {
+                    if constexpr (are_the_same<MatOut, Image>) {
+                        cv::cvtColor(tmp, output.get(), cv::COLOR_GRAY2BGR);
+                    } else {
+                        cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGR);
+                    }
+                    return;
+                }
+                case 4: {
+                    if constexpr (are_the_same<MatOut, Image>) {
+                        cv::cvtColor(tmp, output.get(), cv::COLOR_GRAY2BGRA);
+                    } else {
+                        cv::cvtColor(tmp, output, cv::COLOR_GRAY2BGRA);
+                    }
+                    return;
+                }
             default:
                 break;
             }
         }
         else if (tmp.channels() == 3) {
             if (output.channels() == 4) {
-                cv::cvtColor(tmp, output, cv::COLOR_BGR2BGRA);
+                if constexpr (are_the_same<MatOut, Image>) {
+                    cv::cvtColor(tmp, output.get(), cv::COLOR_BGR2BGRA);
+                } else {
+                    cv::cvtColor(tmp, output, cv::COLOR_BGR2BGRA);
+                }
                 return;
             } else if(output.channels() == 1) {
-                cv::cvtColor(tmp, output, cv::COLOR_BGR2GRAY);
+                if constexpr (are_the_same<MatOut, Image>) {
+                    cv::cvtColor(tmp, output.get(), cv::COLOR_BGR2GRAY);
+                } else {
+                    cv::cvtColor(tmp, output, cv::COLOR_BGR2GRAY);
+                }
                 return;
             }
 
         } else if (tmp.channels() == 4) {
             if (output.channels() == 3) {
-                cv::cvtColor(tmp, output, cv::COLOR_BGRA2BGR);
+                if constexpr (are_the_same<MatOut, Image>) {
+                    cv::cvtColor(tmp, output.get(), cv::COLOR_BGRA2BGR);
+                } else {
+                    cv::cvtColor(tmp, output, cv::COLOR_BGRA2BGR);
+                }
                 return;
             } else if(output.channels() == 1) {
-                cv::cvtColor(tmp, output, cv::COLOR_BGRA2GRAY);
+                if constexpr (are_the_same<MatOut, Image>) {
+                    cv::cvtColor(tmp, output.get(), cv::COLOR_BGRA2GRAY);
+                } else {
+                    cv::cvtColor(tmp, output, cv::COLOR_BGRA2GRAY);
+                }
                 return;
             }
         }
