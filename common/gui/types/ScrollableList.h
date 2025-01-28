@@ -80,7 +80,7 @@ namespace cmn::gui {
         std::unique_ptr<StaticText> _label_text;
 
         StaticText _placeholder_text;
-        Tooltip tooltip = Tooltip({}, 250);
+        Tooltip tooltip = Tooltip({}, 300);
         
         std::function<void(size_t, const T&)> _callback;
         OnHover_t _on_hovered;
