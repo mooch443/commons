@@ -471,6 +471,9 @@ namespace cmn {
         png_destroy_read_struct(&png, &info, NULL);
         return ptr;
     }
+
+    template<typename T>
+    struct always_false : std::false_type {};
     
     cv::Mat restrict_image_keep_ratio(const Size2& max_size, const cv::Mat& input) {
         using namespace gui;
@@ -560,7 +563,7 @@ namespace cmn {
                 }
                 
             } else {
-                static_assert(false, "Unknown OutMat type.");
+                static_assert(always_false<MatOut>::value, "Unknown OutMat type.");
             }
 
         }
