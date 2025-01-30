@@ -116,6 +116,7 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
     //Print("Found _base = ", _base, " for ", source);
     //_base = source.source();
     std::vector<CVideo> video_info;
+    std::optional<Size2> first_resolution;
     
     for(auto &path : source) {
         auto extension = std::string(path.extension());
@@ -124,10 +125,17 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
         if(!f)
             throw U_EXCEPTION("Cannot open file ",path.str(),".");
         
+        Size2 resolution;
+        if(f->type() == VideoSource::File::Type::IMAGE) {
+            if(not first_resolution)
+                first_resolution = f->resolution();
+            resolution = *first_resolution;
+        }
+        
         video_info.push_back(CVideo{
             .type = f->type(),
             .path = f->filename(),
-            .resolution = f->resolution(),
+            .resolution = resolution,
             .N_frames = f->length(),
             .frame_rate = static_cast<uint32_t>(f->framerate()),
             .has_timestamps = f->has_timestamps()
@@ -141,12 +149,14 @@ std::vector<CVideo> load_cache(const file::PathArray& source) {
     std::unique_lock guard(mutex);
     auto it = storage.find(source.source());
     if(it == storage.end()) {
-        //guard.unlock();
-        
-        auto info = _create_cache(source);
-        //guard.lock();
-        storage[source.source()] = info;
-        return info;
+        try {
+            auto info = _create_cache(source);
+            storage[source.source()] = info;
+            return info;
+            
+        } catch(const std::exception& ex) {
+            FormatExcept("Cannot create cache for ", utils::ShortenText(source.toStr(), 1000),": ", ex.what());
+        }
     }
     return it->second;
 }
