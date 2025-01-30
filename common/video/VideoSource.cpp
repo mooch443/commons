@@ -459,7 +459,7 @@ VideoSource::~VideoSource() {
 }
 
 std::string VideoSource::toStr() const {
-    return "VideoSource<'" + _source + "' " + Meta::toStr(length()) + " frames>";
+    return "VideoSource<'" + utils::ShortenText(_source, 1000) + "' " + Meta::toStr(length()) + " frames>";
 }
 
 VideoSource::VideoSource(VideoSource&& other)

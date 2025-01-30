@@ -645,7 +645,7 @@ void Reference::operator=(const T& value) {
         if(_do_print) {
             if constexpr(ParserAvailable<T>)
             {
-                Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", v);
+                Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", utils::ShortenText(Meta::toStr(v), 1000));
             } else {
                 Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
             }
