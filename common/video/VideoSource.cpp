@@ -90,19 +90,12 @@ std::mutex mutex;
 std::unordered_map<std::string, std::vector<CVideo>> storage;
 
 std::vector<CVideo> _create_cache(const file::PathArray& source) {
-    std::smatch m;
-    std::regex rplaceholder ("%[0-9]+(\\.[0-9]+(.[1-9][0-9]*)?)?d");
-    std::regex rext (".*(\\..+)$");
-    
     std::string prefix, suffix, extension;
-    auto str = source.source();
-    if(std::regex_search(str,m,rext)) {
-        auto x = m[1];
-        extension = x.str().substr(1);
-        prefix = str.substr(0u, (uint64_t)m.position(1));
-        
-        //Print("Extension ",extension," basename ",prefix);
-        
+    std::string str = source.source();
+    size_t pos = str.find_last_of('.');
+    if (pos != std::string::npos) {
+        extension = str.substr(pos + 1);
+        prefix = str.substr(0, pos);
     } else {
         throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
     }
