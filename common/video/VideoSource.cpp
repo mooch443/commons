@@ -155,7 +155,10 @@ std::vector<CVideo> load_cache(const file::PathArray& source) {
             return info;
             
         } catch(const std::exception& ex) {
+#ifndef NDEBUG
             FormatExcept("Cannot create cache for ", utils::ShortenText(source.toStr(), 1000),": ", ex.what());
+#endif
+            throw;
         }
     }
     return it->second;
