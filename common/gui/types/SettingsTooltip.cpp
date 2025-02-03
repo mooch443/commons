@@ -7,7 +7,7 @@ SettingsTooltip::SettingsTooltip(
      std::weak_ptr<Drawable> ptr,
      const sprite::Map* map,
      const GlobalSettings::docs_map_t* docs)
-  : Tooltip(ptr, 400), map(map), docs(docs)
+  : Tooltip(ptr, 500), map(map), docs(docs)
 {
     if(!map)
         this->map = &GlobalSettings::defaults();

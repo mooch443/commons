@@ -105,8 +105,13 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
 }
 
 void CurrentObjectHandler::add_tooltip(DrawStructure &graph) {
-    if(_tooltip_object)
-        graph.wrap_object(*_tooltip_object);
+    if(_tooltip_object) {
+        if(auto lock = _tooltip_object->other().lock();
+           lock && lock->is_staged())
+        {
+            graph.wrap_object(*_tooltip_object);
+        }
+    }
 }
 
 void CurrentObjectHandler::set_tooltip(const std::string_view &parameter, std::weak_ptr<Drawable> other) {
