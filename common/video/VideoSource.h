@@ -31,7 +31,7 @@ public:
         static File *open(size_t index, const std::string& basename, const std::string& ext, bool no_check = false);
         static std::string complete_name(const std::string& basename, const std::string& ext);
         
-        File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type);
+        File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale);
         
     private:
         static std::vector<std::pair<std::string, Type>> _extensions;
@@ -43,6 +43,7 @@ public:
         FfmpegVideoCapture *_video{nullptr};
         Type _type;
         std::optional<uint32_t> _frame_rate;
+        std::optional<bool> _is_greyscale;
         
         GETTER(std::string, format);
         
@@ -63,6 +64,7 @@ public:
         ~File();
         auto length() const { return _length; }
         const cv::Size& resolution();
+        bool is_greyscale();
         
         void frame(cmn::ImageMode color, Frame_t frameIndex, gpuMat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
         bool frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) const;
@@ -90,6 +92,7 @@ private:
     bool _has_timestamps = false;
     short _framerate = -1;
     Image _buffer;
+    GETTER(bool, is_greyscale){false};
     
 private:
     GETTER_SETTER_I(ImageMode, colors, ImageMode::GRAY);

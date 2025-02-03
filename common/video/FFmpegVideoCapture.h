@@ -19,7 +19,11 @@ class FfmpegVideoCapture {
     std::unique_ptr<cv::VideoCapture> _capture;
     mutable std::set<std::string_view> _recovered_errors;
     std::once_flag skip_message_flag;
-    static std::unordered_map<std::string, int64_t> tested_video_lengths;
+    struct VideoTestResults {
+        int64_t length{-1};
+        bool is_greyscale{false};
+    };
+    static std::unordered_map<std::string, VideoTestResults> tested_video_lengths;
     static std::mutex tested_video_lengths_mutex;
     
 public:
@@ -32,6 +36,7 @@ public:
     Size2 dimensions() const;
     int channels() const;
     int frame_rate() const;
+    bool is_greyscale() const;
     
     bool read(uint32_t frameIndex, Image& frame);
     bool read(uint32_t frameIndex, gpuMat& frame);
@@ -58,6 +63,7 @@ private:
     int videoStreamIndex = -1;
     int64_t current_frame = -1;
     int64_t actual_frame_count_ = -1;
+    bool _is_greyscale{false};
     
     std::optional<int64_t> last_seq_received_frame;
     
@@ -82,8 +88,8 @@ private:
     void log_packet(const AVPacket *pkt);
     static std::string error_to_string(int);
     
-    static int64_t calculate_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
-    static int64_t get_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
+    static VideoTestResults calculate_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
+    static VideoTestResults get_actual_frame_count(FfmpegVideoCapture&, const file::Path& path);
     int64_t estimated_frame_count() const;
 };
 

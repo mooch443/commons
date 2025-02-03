@@ -204,16 +204,24 @@ retry_codec:
     
     _filePath = filePath;
     
-    if(not filePath.empty())
-        actual_frame_count_ = get_actual_frame_count(*this, filePath);
-    else
+    if(not filePath.empty()) {
+        auto results = get_actual_frame_count(*this, filePath);
+        actual_frame_count_ = results.length;
+        _is_greyscale = results.is_greyscale;
+    } else {
         actual_frame_count_ = -1;
+        _is_greyscale = false;
+    }
     
     return true;
 }
 
 bool FfmpegVideoCapture::is_open() const {
     return formatContext != nullptr;
+}
+
+bool FfmpegVideoCapture::is_greyscale() const {
+    return _is_greyscale;
 }
 
 void FfmpegVideoCapture::recovered_error(const std::string_view& str) const {
@@ -240,7 +248,7 @@ int64_t FfmpegVideoCapture::estimated_frame_count() const {
     return static_cast<int64_t>(durationInSeconds * fr + 0.5); // Rounded to nearest integer
 }
 
-int64_t FfmpegVideoCapture::get_actual_frame_count(FfmpegVideoCapture&cap, const file::Path &path) {
+FfmpegVideoCapture::VideoTestResults FfmpegVideoCapture::get_actual_frame_count(FfmpegVideoCapture&cap, const file::Path &path) {
     std::unique_lock guard{tested_video_lengths_mutex};
     if (auto it = tested_video_lengths.find(path.str());
         it != tested_video_lengths.end())
@@ -249,30 +257,29 @@ int64_t FfmpegVideoCapture::get_actual_frame_count(FfmpegVideoCapture&cap, const
     }
     
     auto estimate = cap.estimated_frame_count();
-    auto frames = calculate_actual_frame_count(cap, path);
-    if(estimate != frames)
-        FormatWarning(" * ", path, " actual frame count = ", frames, " (instead of ", estimate,"). remembering this.");
+    auto results = calculate_actual_frame_count(cap, path);
+    if(estimate != results.length)
+        FormatWarning(" * ", path, " actual frame count = ", results.length, " (instead of ", estimate,"). remembering this.");
     else
-        Print(" * ", path, " is giving true length information (",frames," frames).");
-    tested_video_lengths[path.str()] = frames;
-    return frames;
+        Print(" * ", path, " is giving true length information (",results.length," frames).");
+    tested_video_lengths[path.str()] = results;
+    return results;
 }
 
-int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap, const file::Path& ) {
+FfmpegVideoCapture::VideoTestResults FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap, const file::Path& ) {
     // Check if we have already calculated the frame count
-    int64_t actual_frame_count = -1;
+    VideoTestResults results;
     
     //FfmpegVideoCapture cap{path.str()};
     //if(not cap.open(path.str())) return -1;
-    if (!cap.is_open()) return -1;
+    if (!cap.is_open()) return {};
 
     int64_t estimated_count = cap.estimated_frame_count(); // Use nb_frames or duration * frame_rate
 
     // Step 1: Try to seek to the estimated end frame
     if (cap.seek_frame(static_cast<uint32_t>(estimated_count))) {
         // Estimated frame exists, assume estimated_count is correct
-        actual_frame_count = estimated_count + 1;
-        return actual_frame_count;
+        results.length = estimated_count + 1;
     } else {
         // Step 2: Go back a few frames and test from there
         int64_t frame_rate = cap.frame_rate();
@@ -297,13 +304,13 @@ int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap,
         }
         
         if(last_valid_frame != -1) {
-            actual_frame_count = last_valid_frame;
+            results.length = last_valid_frame;
             found = true;
         }
 
         // If found, return the actual frame count
         if (found) {
-            return actual_frame_count;
+            /// nothing
         } else {
             // Step 3: Perform binary search to find the actual frame count
             int64_t low = 0;
@@ -325,10 +332,42 @@ int64_t FfmpegVideoCapture::calculate_actual_frame_count(FfmpegVideoCapture&cap,
             }
 
             // The total number of frames is last_valid_frame
-            actual_frame_count = last_valid_frame + 1;
-            return actual_frame_count;
+            results.length = last_valid_frame + 1;
         }
     }
+    
+    // --- New code for dynamic greyscale detection ---
+    {
+        bool isDynamicGreyscale = false;
+        // Seek to the beginning of the video (frame index 0)
+        cv::Mat testFrame = cv::Mat::zeros(0, 0, CV_8UC(cap.channels()));
+        // Use the overloaded read function to decode frame 0 into a cv::Mat
+        if (cap.read(0, testFrame)) {
+            // If the frame has only one channel, it is grayscale.
+            if (testFrame.channels() == 1) {
+                isDynamicGreyscale = true;
+            }
+            // For multi-channel images, verify that all channels are identical.
+            else if (testFrame.channels() > 1) {
+                std::vector<cv::Mat> channels;
+                cv::split(testFrame, channels);
+                cv::Mat diff;
+                cv::absdiff(channels[0], channels[1], diff);
+                if (cv::countNonZero(diff) == 0) {
+                    cv::absdiff(channels[1], channels[2], diff);
+                    if (cv::countNonZero(diff) == 0)
+                        isDynamicGreyscale = true;
+                }
+            } else {
+                FormatExcept("Cannot determine greyscale of video with ", testFrame.channels(), " channels.");
+            }
+        }
+        
+        results.is_greyscale = isDynamicGreyscale;
+    }
+    // --- End of dynamic greyscale detection ---
+    
+    return results;
 }
 
 int64_t FfmpegVideoCapture::length() const {
@@ -407,10 +446,16 @@ int FfmpegVideoCapture::frame_rate() const {
 }
 
 int FfmpegVideoCapture::channels() const {
-    // Assuming video frames are in a standard format, they have 3 channels (RGB or YUV)
-    return swsInputFormat == AV_PIX_FMT_RGBA
-        ? 4
-        : (swsInputFormat == AV_PIX_FMT_RGB24 ? 3 : 1);
+    switch (swsInputFormat) {
+        case AV_PIX_FMT_RGBA: return 4;
+        case AV_PIX_FMT_RGB24: return 3;
+        case AV_PIX_FMT_GRAY8: return 1;
+        case AV_PIX_FMT_YUV420P: return 3;  // YUV has 3 planes
+        case AV_PIX_FMT_YUV422P: return 3;
+        case AV_PIX_FMT_YUV444P: return 3;
+        case AV_PIX_FMT_NV12: return 2;  // NV12 packs UV together
+        default: return 1;  // Assume monochrome if unknown
+    }
 }
 
 void FfmpegVideoCapture::log_packet([[maybe_unused]] const AVPacket * pkt) {

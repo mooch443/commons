@@ -1671,7 +1671,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             ImU32 col = IM_COL32_WHITE;
             uchar a = static_cast<ExternalImage*>(o)->color().a;
-            if(a > 0 && static_cast<ExternalImage*>(o)->color() != White)
+            if(static_cast<ExternalImage*>(o)->color() != Transparent && static_cast<ExternalImage*>(o)->color() != White)
                 col = (ImColor)static_cast<ExternalImage*>(o)->color();
             
             auto I = list->VtxBuffer.size();
