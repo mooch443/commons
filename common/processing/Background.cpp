@@ -2,7 +2,7 @@
 #include <misc/GlobalSettings.h>
 
 namespace cmn {
-    static std::atomic<bool> track_absolute_difference = true,
+    static std::atomic<bool> track_threshold_is_absolute = true,
         track_background_subtraction = true;
     static std::atomic<meta_encoding_t::data::values> meta_encoding = cmn::meta_encoding_t::gray.value();
 
@@ -10,13 +10,13 @@ namespace cmn {
         static std::once_flag _check_callbacks;
         std::call_once(_check_callbacks, []() {
             auto _callback = GlobalSettings::map().register_callbacks({
-                "track_absolute_difference",
+                "track_threshold_is_absolute",
                 "track_background_subtraction",
                 "meta_encoding"
 
             }, [](std::string_view name) {
-                if (name == "track_absolute_difference") {
-                    cmn::track_absolute_difference = SETTING(track_absolute_difference).value<bool>();
+                if (name == "track_threshold_is_absolute") {
+                    cmn::track_threshold_is_absolute = SETTING(track_threshold_is_absolute).value<bool>();
                 }
                 else if (name == "track_background_subtraction") {
                     cmn::track_background_subtraction = SETTING(track_background_subtraction).value<bool>();
@@ -31,9 +31,9 @@ namespace cmn {
 		});
     };
 
-    bool Background::track_absolute_difference() {
+    bool Background::track_threshold_is_absolute() {
         check_callbacks();
-        return cmn::track_absolute_difference;
+        return cmn::track_threshold_is_absolute;
     }
     bool Background::track_background_subtraction() {
         check_callbacks();

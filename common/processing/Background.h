@@ -279,7 +279,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
 
     class Background {
     public:
-        static bool track_absolute_difference();
+        static bool track_threshold_is_absolute();
         static bool track_background_subtraction();
         static meta_encoding_t::Class meta_encoding();
         static ImageMode image_mode();
@@ -475,7 +475,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
     auto call_image_mode_function(const auto& fn) {
         if(not Background::track_background_subtraction()) {
             return fn.template operator()<DifferenceMethod_t::none>();
-        } else if(Background::track_absolute_difference()) {
+        } else if(Background::track_threshold_is_absolute()) {
             return fn.template operator()<DifferenceMethod_t::absolute>();
         } else {
             return fn.template operator()<DifferenceMethod_t::sign>();
@@ -499,7 +499,7 @@ auto call_image_mode_function(KnownOutputType, auto&& fn) {
     } else {
         if(not Background::track_background_subtraction()) {
             return fn.template operator()<output, DifferenceMethod_t::none>();
-        } else if(Background::track_absolute_difference()) {
+        } else if(Background::track_threshold_is_absolute()) {
             return fn.template operator()<output, DifferenceMethod_t::absolute>();
         } else {
             return fn.template operator()<output, DifferenceMethod_t::sign>();
@@ -584,7 +584,7 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
         return call_single_image_info(o, [&]<OutputInfo output>{
             if(not Background::track_background_subtraction()) {
                 return fn.template operator()<output, DifferenceMethod_t::none>();
-            } else if(Background::track_absolute_difference()) {
+            } else if(Background::track_threshold_is_absolute()) {
                 return fn.template operator()<output, DifferenceMethod_t::absolute>();
             } else {
                 return fn.template operator()<output, DifferenceMethod_t::sign>();
