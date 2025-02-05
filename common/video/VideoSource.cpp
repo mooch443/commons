@@ -10,6 +10,45 @@
 
 namespace cmn {
 
+bool isGreyscale(const cv::Mat& frame) {
+    if (frame.empty()) {
+        throw RuntimeError("Error: Empty frame provided to isGreyscale()");
+    }
+
+    int channels = frame.channels();
+
+    // If it's already single-channel, it's grayscale
+    if (channels == 1) {
+        return true;
+    }
+
+    if (channels < 3) {
+        throw RuntimeError("Error: Unsupported image format with " + std::to_string(channels) + " channels");
+    }
+
+    // Convert to floating point for precise calculations
+    std::vector<cv::Mat> channelMats;
+    cv::split(frame, channelMats);
+
+    cv::Mat diff1, diff2;
+
+    // Compare Red and Green
+    cv::absdiff(channelMats[0], channelMats[1], diff1);
+    if (cv::countNonZero(diff1) > 0) {
+        return false; // R and G are not identical, meaning it's not grayscale
+    }
+
+    // Compare Green and Blue
+    cv::absdiff(channelMats[1], channelMats[2], diff2);
+    if (cv::countNonZero(diff2) > 0) {
+        return false; // G and B are not identical, meaning it's not grayscale
+    }
+
+    // If the image has an alpha channel (4th channel), ignore it
+    return true;
+}
+
+
 std::string load_string(const file::Path& npz, const std::string fname) {
     libzip::archive zip(npz.str(), ZIP_RDONLY);
     cnpy::npz_t arrays;
@@ -193,6 +232,7 @@ VideoSource::File::File(File&& other)
   _length(other._length),
   _video(other._video ? other._video : nullptr),
   _type(other._type),
+  _is_greyscale(std::move(other._is_greyscale)),
   _format(std::move(other._format)),
   _timestamps(std::move(other._timestamps)),
   _size(other._size)
@@ -203,7 +243,7 @@ VideoSource::File::File(File&& other)
 }
 
 VideoSource::File::File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale)
-    : _index(index), _filename(path), _length(length), _size(size), _video(), _type(type), _frame_rate(frame_rate), _is_greyscale(is_greyscale)
+: _index(index), _filename(path), _length(length), _video(), _type(type), _frame_rate(frame_rate), _is_greyscale(is_greyscale), _size(size)
 {
     if(type == Type::VIDEO)
         _video = new FfmpegVideoCapture{""};
@@ -230,7 +270,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
         case VIDEO: {
             _video = new FfmpegVideoCapture("");
             auto npz = file::Path(_filename).replace_extension("npz");
-            if(npz.exists()) {
+            if(/* DISABLES CODE */ (false) && npz.exists()) {
                 try {
                     static bool message = false;
                     if(!message) {
@@ -243,12 +283,24 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                     auto res = cnpy::npz_load(npz.str(), "imgshape").as_vec<int64_t>();
                     _size = cv::Size( (int)res[1], (int)res[0] );
                     _length = Frame_t(_timestamps.size());
+                    
+                    if(!_video->open(_filename))
+                        throw U_EXCEPTION("Opening Video ",_filename," failed. Please check whether it is accessible and intact.");
+                    try {
+                        _is_greyscale = _video->is_greyscale();
+                    } catch(const std::exception& e) {
+                        FormatExcept("Exception while retrieving length of the video", _filename,": ", e.what());
+                    }
+                    
+                    _video->close();
+                    
                 } catch(...) {
                     FormatExcept("Failed opening NPZ archive ",npz.str()," with (presumably) timestamps in them for video ",_filename,". Proceeding without.");
                     
                     if(!_video->open(_filename))
                         throw U_EXCEPTION("Opening Video ",_filename," failed. Please check whether it is accessible and intact.");
                     _length = Frame_t(_video->length());
+                    _is_greyscale = _video->is_greyscale();
                     _video->close();
                 }
                 
@@ -260,14 +312,34 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
                 } catch(const std::exception& e) {
                     FormatExcept("Exception while retrieving length of video ", _filename,": ", e.what());
                 }
+                
+                try {
+                    _size = _video->dimensions();
+                } catch(const std::exception& e) {
+                    FormatExcept("Exception while retrieving length of video ", _filename,": ", e.what());
+                }
+                
+                try {
+                    _is_greyscale = _video->is_greyscale();
+                } catch(const std::exception& e) {
+                    FormatExcept("Exception while retrieving length of the video", _filename,": ", e.what());
+                }
                 _video->close();
             }
             break;
         }
             
-        case IMAGE:
+        case IMAGE: {
             _length = 1_f;
+            try {
+                auto output = cv::imread(_filename, cv::IMREAD_UNCHANGED);
+                _size = {output.cols, output.rows};
+                _is_greyscale = isGreyscale(output);
+            } catch(const std::exception& e) {
+                FormatExcept("Exception when opening file ", _filename, ": ", e.what());
+            }
             break;
+        }
             
         default:
             break;
@@ -436,46 +508,10 @@ bool VideoSource::File::is_greyscale() {
     return *_is_greyscale;
 }
 
-bool isGreyscale(const cv::Mat& frame) {
-    if (frame.empty()) {
-        throw RuntimeError("Error: Empty frame provided to isGreyscale()");
-    }
-
-    int channels = frame.channels();
-
-    // If it's already single-channel, it's grayscale
-    if (channels == 1) {
-        return true;
-    }
-
-    if (channels < 3) {
-        throw RuntimeError("Error: Unsupported image format with " + std::to_string(channels) + " channels");
-    }
-
-    // Convert to floating point for precise calculations
-    std::vector<cv::Mat> channelMats;
-    cv::split(frame, channelMats);
-
-    cv::Mat diff1, diff2;
-
-    // Compare Red and Green
-    cv::absdiff(channelMats[0], channelMats[1], diff1);
-    if (cv::countNonZero(diff1) > 0) {
-        return false; // R and G are not identical, meaning it's not grayscale
-    }
-
-    // Compare Green and Blue
-    cv::absdiff(channelMats[1], channelMats[2], diff2);
-    if (cv::countNonZero(diff2) > 0) {
-        return false; // G and B are not identical, meaning it's not grayscale
-    }
-
-    // If the image has an alpha channel (4th channel), ignore it
-    return true;
-}
-
 const cv::Size& VideoSource::File::resolution() {
-    if(_size.width == 0 && _size.height == 0) {
+    if((_size.width == 0 && _size.height == 0)
+       || not _is_greyscale.has_value())
+    {
         switch(_type) {
             case VIDEO: {
                 bool was_open = _video->is_open();
