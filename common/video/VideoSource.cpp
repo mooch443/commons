@@ -149,18 +149,30 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
     //Print("Found _base = ", _base, " for ", source);
     //_base = source.source();
     std::vector<CVideo> video_info;
+    std::optional<CVideo> first_file;
     std::optional<Size2> first_resolution;
     std::optional<bool> first_greyscale;
     
     for(auto &path : source) {
         auto extension = std::string(path.extension());
         auto basename = path.remove_extension().str();
+        
+        if(first_file
+           && first_file->type == VideoSource::File::Type::IMAGE)
+        {
+            auto copy = *first_file;
+            copy.path = VideoSource::File::complete_name(basename, extension);
+            video_info.push_back(std::move(copy));
+            continue;
+        }
+        
         auto f = VideoSource::File::open(video_info.size(), basename, extension);
         if(!f)
             throw U_EXCEPTION("Cannot open file ",path.str(),".");
         
         Size2 resolution;
         bool is_greyscale;
+        
         if(f->type() == VideoSource::File::Type::IMAGE) {
             if(not first_resolution)
                 first_resolution = f->resolution();
@@ -168,6 +180,7 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
             if(not first_greyscale)
                 first_greyscale = f->is_greyscale();
             is_greyscale = *first_greyscale;
+            
         } else {
             resolution = f->resolution();
             is_greyscale = f->is_greyscale();
@@ -182,6 +195,9 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
             .has_timestamps = f->has_timestamps(),
             .is_greyscale = is_greyscale
         });
+        
+        if(not first_file)
+            first_file = video_info.back();
     }
     
     return video_info;
