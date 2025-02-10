@@ -11,87 +11,48 @@ Bounds calculate_bounds(const std::string& text, Drawable* reference, const Font
     return Base::default_text_bounds(text, reference, font);
 }
 
-size_t find_splitting_point(const std::string& str, const Float2_t w, const Float2_t max_w, Drawable* reference, const Font& font)
+// Inline helpers that match the original set membership:
+inline bool is_whitespace(char c) {
+    // Characters allowed when close to the end of the segment.
+    return c == ' ' || c == ':' || c == ',' || c == '/' || c == '\\';
+}
+
+inline bool is_extended_whitespace(char c) {
+    // Characters allowed when further away from the end.
+    return c == ' ' || c == '-' || c == ':' || c == ',' ||
+           c == '/' || c == '\\' || c == '.' || c == '_';
+}
+
+size_t find_splitting_point(const std::string& str, const Float2_t w,
+                              const Float2_t max_w, Drawable* reference,
+                              const Font& font)
 {
     Float2_t cw = w;
     size_t L = str.length();
     size_t idx = L;
     
-    static const std::set<char> whitespace {
-        ' ',':',',','/','\\'
-    };
-    static const std::set<char> extended_whitespace {
-        ' ','-',':',',','/','\\','.','_'
-    };
-    
-    // -----------------------------------------------------
-    // 1) Quick search (binary search) to jump near a fitting idx
-    // -----------------------------------------------------
-    if (cw > max_w && L > 1)
-    {
-        size_t lo = 1;
-        size_t hi = L;
-        size_t best_fit = L; // If nothing fits, we stay with full length
-
-        while (lo <= hi)
-        {
-            size_t mid = (lo + hi) / 2;
-            Bounds mid_bounds = calculate_bounds(
-                StaticText::RichString::parse(str.substr(0, mid)),
-                reference, font
-            );
-            Float2_t mid_w = utils::calculate_width(mid_bounds);
-
-            if (mid_w <= max_w)
-            {
-                best_fit = mid;  // mid fits, see if we can do better (longer)
-                lo = mid + 1;
-            }
-            else
-            {
-                hi = mid - 1;
-            }
-        }
-
-        idx = best_fit;
-        // Recompute 'cw' for that quick-guess idx
-        Bounds quick_bounds = calculate_bounds(
-            StaticText::RichString::parse(str.substr(0, idx)),
-            reference, font
-        );
-        cw = utils::calculate_width(quick_bounds);
-    }
-    
-    // -----------------------------------------------------
-    // 2) Original loop, unchanged, to refine index to whitespace
-    // -----------------------------------------------------
     while (cw > max_w && idx > 1) {
         L = idx;
-        
-        // Try to find a "good splitting point" (don't break inside words)
         do {
             --idx;
-        }
-        while (idx
-               && ((L - idx <= 10 && whitespace.find(str[idx - 1]) == whitespace.end())
-                   || (L - idx > 10 && extended_whitespace.find(str[idx - 1]) == extended_whitespace.end())));
-
-        // If we couldn’t find a proper position for breaking
-        if (!idx)
+        } while ( idx &&
+                  ((L - idx <= 10 && not is_whitespace(str[idx - 1])) ||
+                   (L - idx > 10 && not is_extended_whitespace(str[idx - 1]))) );
+        
+        // If we couldn’t find a proper breaking point, exit the loop.
+        if (idx == 0)
             break;
         
-        // Test splitting at idx
+        // Test splitting at idx:
         Bounds bounds = calculate_bounds(
-            StaticText::RichString::parse(str.substr(0, idx)),
+            StaticText::RichString::parse(std::string_view(str.data(), idx)),
             reference, font
         );
         cw = utils::calculate_width(bounds);
     }
     
     if(not idx) {
-        // can we put the whole segment in a new line, or
-        // do we have to break it up?
-        // do a quick-search for the best-fitting size.
+        // If no acceptable break was found, try to subdivide the segment.
         cw = w;
         
         if(cw > max_w) {
@@ -104,26 +65,26 @@ size_t find_splitting_point(const std::string& str, const Float2_t w, const Floa
                 if(len <= 1)
                     break;
                 
-                Bounds bounds = calculate_bounds(StaticText::RichString::parse(str.substr(0, middle)), reference, font);
+                Bounds bounds = calculate_bounds(
+                    StaticText::RichString::parse(std::string_view(str.data(), middle)),
+                    reference, font
+                );
                 cw = utils::calculate_width(bounds);
                 
                 if(cw <= max_w) {
                     middle = middle + len * 0.25;
                     len = len * 0.5;
-                    
-                } else if(cw > max_w) {
+                } else { // cw > max_w
                     middle = middle - len * 0.25;
                     len = len * 0.5;
                 }
             }
             
             idx = middle;
-            if(!idx && str.length() > 0)
+            if (!idx && not str.empty())
                 idx = 1;
-            
-        } else {
-            // next line!
         }
+        // Otherwise, the entire segment fits on a new line.
     }
     
     return idx;

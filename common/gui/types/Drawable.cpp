@@ -1137,8 +1137,8 @@ void SectionInterface::set_z_index(int index) {
             else
                 set_stage(NULL);
             
-            Drawable::set_parent(parent);
             children_rect_changed();
+            Drawable::set_parent(parent);
         }
     }
     

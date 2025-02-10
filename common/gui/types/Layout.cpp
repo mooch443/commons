@@ -13,11 +13,11 @@ namespace cmn::gui {
 
     void Layout::set_parent(SectionInterface *parent) {
         if(parent != this->parent()) {
-            Entangled::set_parent(parent);
             if(parent) {
                 set_layout_dirty();
                 set_content_changed(true);
             }
+            Entangled::set_parent(parent);
         }
     }
 
@@ -755,7 +755,12 @@ void GridLayout::update() {
            || _settings.cellLineClr != Transparent)
         {
             for(size_t row = 0; row < _grid_info.numRows; ++row) {
-                for(size_t col = 0; col < _grid_info.numCols; col += max(1u, (uint16_t)_settings.cellFillInterval)) {
+                for(size_t col = 0; col < _grid_info.numCols; col += max(1u, (uint16_t)_settings.cellFillInterval))
+                {
+                    /// ignore hidden cells
+                    if(not _grid_info.hasCell(row, col))
+                        continue;
+                    
                     auto bds = _grid_info.getCellBounds(row, col);
                     bds << bds.size() - Size2(0, margins().height + margins().y);
                     bds << bds.pos() + Vec2(0, margins().y);
