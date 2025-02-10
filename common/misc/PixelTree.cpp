@@ -460,11 +460,11 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
     
     std::vector<std::unique_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobWeakPtr blob, int)
     {
-        int cols = blob->bounds().width + 2;
-        int offx = blob->bounds().x;
-        
         if(blob->hor_lines().empty())
             return {};
+        
+        int cols = blob->bounds().width + 2;
+        int offx = blob->bounds().x;
         
 #if !defined(NDEBUG) && (defined(DEBUG_TREE_WALK) || defined(DEBUG_EDGES))
         auto && [pos, image] = blob->binary_image();
