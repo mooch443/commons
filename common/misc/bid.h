@@ -22,6 +22,7 @@ enum class FilterReason {
     LabelConfidenceThreshold,
     SplitFailed,
     OnlySegmentations,
+    BdxIgnored,
     
     Unknown
 };

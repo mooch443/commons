@@ -6,10 +6,15 @@ namespace cmn::gui {
 using namespace dyn;
 
 tl::expected<std::string, const char*> default_value_of(std::string_view name) {
-    if(GlobalSettings::current_defaults().has(name)) {
-        return GlobalSettings::current_defaults().at(name).get().valueString();
-    } else if(GlobalSettings::defaults().has(name)) {
-        return GlobalSettings::defaults().at(name).get().valueString();
+    if(auto value = GlobalSettings::current_defaults(name);
+       value)
+    {
+        return value->at(name).get().valueString();
+        
+    } else if(auto value = GlobalSettings::defaults(name);
+              value)
+    {
+        return value->at(name).get().valueString();
     }
     
     return tl::unexpected("No default value available.");
@@ -46,10 +51,13 @@ void Combobox::init() {
         if(stage())
             stage()->do_hover(nullptr);
         
-        if(GlobalSettings::current_defaults().has(name)) {
-            GlobalSettings::current_defaults().at(name).get().copy_to(settings_map());
-        } else if(GlobalSettings::defaults().has(name)) {
-            GlobalSettings::defaults().at(name).get().copy_to(settings_map());
+        if(auto defaults = GlobalSettings::get_current_defaults();
+           defaults.has(name)) {
+            defaults.at(name).get().copy_to(settings_map());
+        } else if(auto defaults = GlobalSettings::defaults();
+                  defaults.has(name))
+        {
+            defaults.at(name).get().copy_to(settings_map());
         } else {
             FormatWarning("Do not have a default value for ", name);
             return;

@@ -133,7 +133,10 @@ namespace cmn {
         static sprite::Map& map();
         static std::shared_ptr<const sprite::PropertyType> at(std::string_view);
         static const sprite::Map& defaults();
-        static sprite::Map& current_defaults();
+        static std::optional<sprite::Map> defaults(std::string_view name);
+        static std::optional<sprite::Map> current_defaults(std::string_view);
+        static void current_defaults(std::string_view, const sprite::Map&);
+        static sprite::Map get_current_defaults();
         static sprite::Map& current_defaults_with_config();
         static sprite::Map& set_defaults();
         static void set_current_defaults(const sprite::Map&);

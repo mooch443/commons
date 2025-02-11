@@ -55,7 +55,32 @@ std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view 
     return *m.at(name);
 }
 
-sprite::Map& GlobalSettings::current_defaults() {
+std::optional<sprite::Map> GlobalSettings::current_defaults(std::string_view name) {
+    std::unique_lock guard(defaults_mutex());
+    if (!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    if(instance()->_current_defaults.has(name)) {
+        sprite::Map tmp;
+        instance()->_current_defaults.at(name).get().copy_to(tmp);
+        return tmp;
+    }
+
+    return std::nullopt;
+}
+
+void GlobalSettings::current_defaults(std::string_view name, const sprite::Map& source) {
+    std::unique_lock guard(defaults_mutex());
+    if (!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    
+    if(not source.has(name)) {
+        throw U_EXCEPTION("Cannot find key ", name, " in source.");
+    }
+        
+    source.at(name).get().copy_to(instance()->_current_defaults);
+}
+
+sprite::Map GlobalSettings::get_current_defaults() {
     std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
@@ -90,6 +115,18 @@ const sprite::Map& GlobalSettings::defaults() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_defaults;
+}
+
+std::optional<sprite::Map> GlobalSettings::defaults(std::string_view name) {
+    std::unique_lock guard(defaults_mutex());
+    if (!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    if(instance()->_defaults.has(name)) {
+        sprite::Map tmp;
+        instance()->_defaults.at(name).get().copy_to(tmp);
+        return tmp;
+    }
+    return std::nullopt;
 }
 
 sprite::Map& GlobalSettings::set_defaults() {
