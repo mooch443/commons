@@ -281,7 +281,9 @@ namespace cmn {
         std::regex regex_pattern(regex_string);
         
         for (auto &key : keys) {
-            if (std::regex_search(key, regex_pattern)) {
+            if (not filter.empty()
+                && std::regex_search(key, regex_pattern))
+            {
                 continue;
             }
             
