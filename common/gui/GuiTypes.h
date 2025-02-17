@@ -309,6 +309,8 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
+        _settings = {};
+        
         (set(std::forward<Args>(args)), ...);
     }
     

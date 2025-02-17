@@ -492,28 +492,11 @@ public:
           _hue(255u + uint64_t(SQR(uint64_t(index)) * 0.5 * step))
     { }
     constexpr Color next() {
-        //if (_index >= sizeof(colors) / sizeof(gui::Color)) {
-        
         const uint8_t s = cmn::narrow_cast<uint8_t>(_hue % uint64_t(255));
-        //const uint32_t h = s % 100;
         const Color hsv(s, 255, 255);
-        //_hue += step;
-        /*if (_hue >= 255) {
-         _hue = _hue - 255 + _offset;
-         
-         _offset = _offset * 0.25;
-         if (_offset < 80) {
-         _offset = 0;
-         }
-         }*/
-        
         _index++;
         _hue += step * _index;
-        
         return hsv.HSV2RGB();
-        //}
-        
-        //return colors[_index++];
     }
 
 };
