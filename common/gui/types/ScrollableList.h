@@ -721,7 +721,7 @@ namespace cmn::gui {
                         auto ctx = e->OpenContext();
                         
                         size_t first_visible = (size_t)max(0.f, floorf(e->scroll_offset().y / item_height));
-                        size_t last_visible = (size_t)floorf((e->scroll_offset().y + e->height()) / item_height);
+                        size_t last_visible = (size_t)max(0.f, floorf((e->scroll_offset().y + e->height()) / item_height));
                         
                         rect_to_idx.clear();
                         
