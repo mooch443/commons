@@ -624,11 +624,12 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
         assert(width > 0 && height > 0);
         MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:input_format width:width height:height mipmapped:NO];
         textureDescriptor.usage = MTLTextureUsageShaderRead;
-    #if TARGET_OS_OSX
+#if defined(__arm64__) || defined(__aarch64__)
         textureDescriptor.storageMode = MTLStorageModeShared;
-    #else
-        textureDescriptor.storageMode = MTLStorageModeShared;
-    #endif
+#else
+        textureDescriptor.storageMode = MTLStorageModeManaged;
+#endif
+
 #ifndef NO_SWIZZLE_DIZZLE
         if (@available(macOS 10.15, *)) {
             if(ptr->dims != 4) {
