@@ -887,6 +887,8 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             Event e(EventType::KEY);
             e.key.pressed = action == GLFW_PRESS || action == GLFW_REPEAT;
             assert(key <= GLFW_KEY_LAST);
+            if(key < 0)
+                return;
             e.key.code = glfw_key_map[key];
             e.key.shift = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
             
