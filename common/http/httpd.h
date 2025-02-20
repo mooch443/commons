@@ -3,14 +3,12 @@
 
 #if WITH_MHD
 
-#include "types.h"
-#include <functional>
-
+#include <commons.pc.h>
 #include <microhttpd.h>
 #include <misc/SpriteMap.h>
 
 namespace cmn {
-    class Httpd : public Printable {
+    class Httpd {
     public:
         class Session {
         public:
@@ -50,12 +48,10 @@ namespace cmn {
         );
         ~Httpd();
         
-        UTILS_TOSTRING("HTTPd<>");
-        
     private:
         std::map<std::string, Session*> _sessions;
         
-        static int ahc_echo(void * cls,
+        static MHD_Result ahc_echo(void * cls,
                      struct MHD_Connection * connection,
                      const char * url,
                      const char * method,
@@ -63,7 +59,7 @@ namespace cmn {
                      const char * upload_data,
                      size_t * upload_data_size,
                      void ** ptr);
-        int local_ahc(struct MHD_Connection * connection,
+        MHD_Result local_ahc(struct MHD_Connection * connection,
                       std::string url,
                       std::string method,
                       const char * upload_data,

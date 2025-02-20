@@ -1,4 +1,5 @@
 #include "httpd.h"
+#include <commons.pc.h>
 #include <misc/GlobalSettings.h>
 
 #if WITH_MHD
@@ -11,7 +12,7 @@
 
 using namespace cmn;
 
-int accept_callback(void *cls,
+MHD_Result accept_callback(void *cls,
                              const struct sockaddr *addr,
                      socklen_t addrlen) {
     
@@ -65,7 +66,7 @@ Httpd::Httpd(const url_callback& get_image, const std::string& default_page, con
     }
     
     if(daemon == NULL)
-        Except("Cannot start HTTP daemon. Check your firewall settings (tried ports %d-%d).", default_port, port-1);
+        FormatExcept("Cannot start HTTP daemon. Check your firewall settings (tried ports %d-%d).", default_port, port-1);
     else
         DebugCallback("Started HTTP daemon on port %d.", port-1);
 }
@@ -75,7 +76,7 @@ Httpd::~Httpd() {
         MHD_stop_daemon(daemon);
 }
 
-int Httpd::ahc_echo(void * cls,
+MHD_Result Httpd::ahc_echo(void * cls,
                     struct MHD_Connection * connection,
                     const char * url,
                     const char * method,
@@ -112,7 +113,7 @@ const char HEX2DEC[256] =
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 };
 
-std::string UriDecode(std::string sSrc)
+std::string UriDecode(std::string_view sSrc)
 {
     // Note from RFC1630: "Sequences which start with a percent
     // sign but are not followed by two hexadecimal characters
@@ -120,7 +121,7 @@ std::string UriDecode(std::string sSrc)
     
     sSrc = utils::find_replace(sSrc, "+", " ");
     
-    const unsigned char * pSrc = (const unsigned char *)sSrc.c_str();
+    const unsigned char * pSrc = (const unsigned char *)sSrc.data();
     const size_t SRC_LEN = sSrc.length();
     const unsigned char * const SRC_END = pSrc + SRC_LEN;
     // last decodable '%'
@@ -192,7 +193,7 @@ Httpd::check_cookie(struct MHD_Connection* connection) {
     }
 }
 
-int Httpd::local_ahc(struct MHD_Connection * connection,
+MHD_Result Httpd::local_ahc(struct MHD_Connection * connection,
                      std::string url,
                      std::string method,
                      const char * upload_data,
@@ -204,10 +205,10 @@ int Httpd::local_ahc(struct MHD_Connection * connection,
     
     static int dummy;
     struct MHD_Response * response = nullptr;
-    int ret;
+    MHD_Result ret = MHD_NO;
     
     if (method != MHD_HTTP_METHOD_GET && method != MHD_HTTP_METHOD_POST) {
-        Error("Unknown http method '%S'.", &method);
+        FormatError("Unknown http method '%S'.", &method);
         return MHD_NO;
     }
     
@@ -244,9 +245,9 @@ int Httpd::local_ahc(struct MHD_Connection * connection,
             MHD_add_response_header(response, "Cache-Control", "no-cache");
         }
     } else {
-        ret = process_request(connection, &response, url, session, upload_data, upload_data_size, method);
-        if(ret != -1337)
-            return ret;
+        auto r = process_request(connection, &response, url, session, upload_data, upload_data_size, method);
+        if(r != -1337)
+            return (MHD_Result)r;
     }
     
     if(!response)
@@ -257,7 +258,7 @@ int Httpd::local_ahc(struct MHD_Connection * connection,
                                            MHD_HTTP_HEADER_SET_COOKIE,
                                             cookie.c_str());
         if(ret == MHD_NO) {
-            Error("Cannot set cookie.");
+            FormatError("Cannot set cookie.");
         }
         else {
             _sessions[key] = session;
@@ -345,21 +346,21 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
             if(*upload_data_size != 0) {
                 std::string data(upload_data, *upload_data_size);
                 auto array = utils::split(data, '&');
-                Debug("Number of elements: %d", array.size());
+                Print("Number of elements: %d", array.size());
                 
                 for (auto &k : array) {
                     auto split = utils::split(k, '=');
                     auto n = UriDecode(split[0]);
                     auto v = UriDecode(split[1]);
                     
-                    Debug("Received: '%S' = '%S'", &n, &v);
+                    Print("Received: '%S' = '%S'", &n, &v);
                     
                     if(!GlobalSettings::map().has(n)) {
                         return MHD_NO;
                         
                     } else {
                         if(GlobalSettings::access_level(n) > AccessLevelType::PUBLIC) {
-                            Error("Cannot write value for '%S' from web interface (access level %s).", &n, GlobalSettings::access_level(n).name());
+                            FormatError("Cannot write value for '%S' from web interface (access level %s).", &n, GlobalSettings::access_level(n).name());
                         } else {
                             auto prop = GlobalSettings::get(n);
                             try {
@@ -367,9 +368,9 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
                                 DebugCallback("%@", &prop.get());
                                 
                             } catch(const std::invalid_argument& e) {
-                                Error("Value '%S' cannot be converted to type of %@.", &v, &prop.get());
+                                FormatError("Value '%S' cannot be converted to type of %@.", &v, &prop.get());
                             } catch(const cmn::illegal_syntax& e) {
-                                Error("Value '%S' cannot be converted to type of %@.", &v, &prop.get());
+                                FormatError("Value '%S' cannot be converted to type of %@.", &v, &prop.get());
                             } catch(const UtilsException& ex) {
                                 
                             }
@@ -377,10 +378,10 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
                     }
                 }
                 
-                Debug("Downloaded data '%S'", &data);
+                Print("Downloaded data '%S'", &data);
                 
             } else if(method == MHD_HTTP_METHOD_POST)
-                Warning("No data uploaded! (%d)", *upload_data_size);
+                FormatWarning("No data uploaded! (%d)", *upload_data_size);
             
         } catch(const UtilsException& ex) {
             
