@@ -1098,6 +1098,13 @@ void SectionInterface::set_z_index(int index) {
         if(_stage)
             _stage->erase(this);
         
+        deselect();
+        if(hovered()) {
+            Event e{EventType::HOVER};
+            e.hover.hovered = false;
+            hover(e);
+        }
+        
         apply_to_objects(children(), [s](auto c){
             if(c->type() == Type::SECTION || c->type() == Type::ENTANGLED)
                 static_cast<SectionInterface*>(c)->set_stage(s);

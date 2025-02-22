@@ -83,7 +83,7 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
         ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
     }
 
-    if(found && ref && found->hovered())
+    if(found && ref && found->hovered() && found->is_staged())
     {
         //auto ptr = state._settings_tooltip.to<SettingsTooltip>();
         //if(ptr && ptr->other()
@@ -107,9 +107,11 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
 void CurrentObjectHandler::add_tooltip(DrawStructure &graph) {
     if(_tooltip_object) {
         if(auto lock = _tooltip_object->other().lock();
-           lock && lock->is_staged())
+           lock && lock->is_staged() && lock->hovered())
         {
             graph.wrap_object(*_tooltip_object);
+        } else {
+            _tooltip_object = nullptr;
         }
     }
 }
