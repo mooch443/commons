@@ -1257,6 +1257,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_1394=OFF 
             -DWITH_CUDA=OFF 
             -DWITH_JPEG=OFF
+            -DBUILD_JPEG=OFF
             -DWITH_CUFFT=OFF 
             -DWITH_GSTREAMER=OFF 
             -DWITH_IPP=OFF 
@@ -1329,7 +1330,6 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_opencv_ximgproc=OFF 
             -DBUILD_opencv_xobjdetect=OFF 
             -DBUILD_opencv_xphoto=OFF
-            -DBUILD_JPEG=OFF
             -DWITH_FFMPEG:BOOL=TRUE
             -DBUILD_DOCS=OFF
             -DBUILD_EXAMPLES=OFF
@@ -1340,8 +1340,8 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF
             -DBUILD_SHARED_LIBS=OFF
             -DBUILD_TESTS=OFF
-            -DBUILD_OPENJPEG:BOOL=OFF
-            -DWITH_OPENJPEG:BOOL=OFF
+            -DBUILD_OPENJPEG:BOOL=ON
+            -DWITH_OPENJPEG:BOOL=ON
             -DBUILD_WITH_DEBUG_INFO=OFF
             -DCV_ENABLE_INTRINSICS=OFF
             -DCPU_BASELINE=
@@ -1403,9 +1403,9 @@ else()
             -DBUILD_PNG:BOOL=OFF
             -DBUILD_ZLIB:BOOL=OFF
             -DBUILD_PROTOBUF:BOOL=OFF
-            -DBUILD_JPEG:BOOL=ON
-            -DBUILD_OPENJPEG:BOOL=OFF
-            -DWITH_OPENJPEG:BOOL=OFF
+            -DBUILD_JPEG:BOOL=OFF
+            -DBUILD_OPENJPEG:BOOL=ON
+            -DWITH_OPENJPEG:BOOL=ON
             -DBUILD_JASPER:BOOL=OFF
             -DBUILD_opencv_python3=OFF
             -DBUILD_opencv_python2=OFF
@@ -1435,14 +1435,14 @@ endif()
                 -DCMAKE_DEBUG_POSTFIX=
                 ${OPENCV_EXTRA_FLAGS})
 
-    set(COMMONS_OPENCV_VERSION "4.10.0")
+    set(COMMONS_OPENCV_VERSION "4.11.0")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
         if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
             message(STATUS "ARM?")
         else()
             message(STATUS "x86_64 macos")
-            set(COMMONS_OPENCV_VERSION "4.10.0")
+            set(COMMONS_OPENCV_VERSION "4.11.0")
         endif()
     endif()
     STRING(REPLACE "." "" COMMONS_OPENCV_VERSION_NO_DOTS ${COMMONS_OPENCV_VERSION})

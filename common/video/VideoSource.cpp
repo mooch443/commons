@@ -349,8 +349,12 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
             _length = 1_f;
             try {
                 auto output = cv::imread(_filename, cv::IMREAD_UNCHANGED);
-                _size = {output.cols, output.rows};
-                _is_greyscale = isGreyscale(output);
+                if(not output.empty()) {
+                    _size = {output.cols, output.rows};
+                    _is_greyscale = isGreyscale(output);
+                } else {
+                    FormatExcept("Cannot open file ", _filename, ".");
+                }
             } catch(const std::exception& e) {
                 FormatExcept("Exception when opening file ", _filename, ": ", e.what());
             }
