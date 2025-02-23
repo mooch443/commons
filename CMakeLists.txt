@@ -1256,8 +1256,9 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_ITT=OFF 
             -DWITH_1394=OFF 
             -DWITH_CUDA=OFF 
-            -DWITH_JPEG=OFF
-            -DBUILD_JPEG=OFF
+            -DWITH_JPEG=ON
+            -DBUILD_JPEG=ON
+            -DENABLE_LIBJPEG_TURBO_SIMD=OFF
             -DWITH_CUFFT=OFF 
             -DWITH_GSTREAMER=OFF 
             -DWITH_IPP=OFF 
@@ -1340,8 +1341,8 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_PERF_TESTS=OFF
             -DBUILD_SHARED_LIBS=OFF
             -DBUILD_TESTS=OFF
-            -DBUILD_OPENJPEG:BOOL=ON
-            -DWITH_OPENJPEG:BOOL=ON
+            -DBUILD_OPENJPEG:BOOL=OFF
+            -DWITH_OPENJPEG:BOOL=OFF
             -DBUILD_WITH_DEBUG_INFO=OFF
             -DCV_ENABLE_INTRINSICS=OFF
             -DCPU_BASELINE=
@@ -1403,9 +1404,11 @@ else()
             -DBUILD_PNG:BOOL=OFF
             -DBUILD_ZLIB:BOOL=OFF
             -DBUILD_PROTOBUF:BOOL=OFF
-            -DBUILD_JPEG:BOOL=OFF
-            -DBUILD_OPENJPEG:BOOL=ON
-            -DWITH_OPENJPEG:BOOL=ON
+            -DWITH_JPEG:BOOL=ON
+            -DBUILD_JPEG:BOOL=ON
+            -DENABLE_LIBJPEG_TURBO_SIMD:BOOL=OFF
+            -DBUILD_OPENJPEG:BOOL=OFF
+            -DWITH_OPENJPEG:BOOL=OFF
             -DBUILD_JASPER:BOOL=OFF
             -DBUILD_opencv_python3=OFF
             -DBUILD_opencv_python2=OFF
@@ -1509,10 +1512,10 @@ endif()
         link_directories(${OpenCV_LIB_PATH})
         set(OpenCV_LIBS opencv_core${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgproc${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgcodecs${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_video${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_videoio${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_highgui${COMMONS_OPENCV_VERSION_NO_DOTS} 
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
-            libopenjp2 ittnotify ade libtiff ${FFMPEG_LIBRARIES})
+            libjpeg-turbo ittnotify ade libtiff ${FFMPEG_LIBRARIES})
     else()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libopenjp2 ittnotify ade ${FFMPEG_LIBRARIES})
+		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libjpeg-turbo ittnotify ade ${FFMPEG_LIBRARIES})
 		if(APPLE)
 			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff)
 		else()
