@@ -1112,7 +1112,7 @@ if(${COMMONS_BUILD_PNG})
         #PATCH_COMMAND ${PNG_PATCH}
 
         GIT_REPOSITORY  https://github.com/glennrp/libpng.git
-        GIT_TAG v1.6.44
+        GIT_TAG v1.6.47
 
         INSTALL_DIR ${png_install_dir}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON
