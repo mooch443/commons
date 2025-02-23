@@ -1509,10 +1509,10 @@ endif()
         link_directories(${OpenCV_LIB_PATH})
         set(OpenCV_LIBS opencv_core${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgproc${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgcodecs${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_video${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_videoio${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_highgui${COMMONS_OPENCV_VERSION_NO_DOTS} 
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
-            libjpeg-turbo ittnotify ade libtiff ${FFMPEG_LIBRARIES})
+            libopenjp2 ittnotify ade libtiff ${FFMPEG_LIBRARIES})
     else()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libjpeg-turbo ittnotify ade ${FFMPEG_LIBRARIES})
+		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libopenjp2 ittnotify ade ${FFMPEG_LIBRARIES})
 		if(APPLE)
 			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff)
 		else()
