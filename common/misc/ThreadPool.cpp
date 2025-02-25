@@ -9,6 +9,11 @@ namespace cmn {
         resize(nthreads);
     }
 
+    std::vector<std::thread::id> GenericThreadPool::thread_ids() const {
+        std::unique_lock g(_thread_id_mutex);
+        return _thread_ids;
+    }
+
     void GenericThreadPool::force_stop() {
         {
             std::unique_lock<std::mutex> lock(m);
@@ -22,6 +27,9 @@ namespace cmn {
         }
         
         thread_pool.clear();
+        
+        std::unique_lock g(_thread_id_mutex);
+        _thread_ids.clear();
     }
 
     void GenericThreadPool::resize(size_t num_threads) {
@@ -29,21 +37,38 @@ namespace cmn {
         
         if(num_threads < nthreads) {
             size_t i=(nthreads - num_threads);
+            
+            {
+                std::unique_lock g(_thread_id_mutex);
+                _thread_ids.erase(_thread_ids.begin() + i, _thread_ids.end());
+                assert(_thread_ids.size() == num_threads);
+            }
+            
             for(auto it = thread_pool.begin() + i; it != thread_pool.end(); ++i) {
                 stop_thread.at(i) = true;
                 (*it)->join();
                 delete *it;
                 it = thread_pool.erase(it);
             }
+            
             stop_thread.resize(num_threads);
             
         } else {
             stop_thread.resize(num_threads);
+            {
+                std::unique_lock g(_thread_id_mutex);
+                _thread_ids.resize(num_threads);
+            }
             
             auto thread = [this](std::function<void()> init, int idx)
             {
                 auto name = this->thread_prefix()+"::thread_"+Meta::toStr(idx);
                 set_thread_name(name+"::init");
+                
+                {
+                    std::unique_lock g(_thread_id_mutex);
+                    _thread_ids.at(idx) = std::this_thread::get_id();
+                }
                 
                 std::unique_lock<std::mutex> lock(m);
                 init();

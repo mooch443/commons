@@ -18,9 +18,11 @@ namespace cmn {
         size_t nthreads;
         std::atomic_bool stop;
         std::function<void()> _init;
+        mutable std::mutex _thread_id_mutex;
         
         GETTER(std::atomic_int, working);
         GETTER(std::string, thread_prefix);
+        std::vector<std::thread::id> _thread_ids;
         
     public:
         GenericThreadPool(size_t nthreads, const std::string& thread_prefix, std::function<void(std::exception_ptr)> handle_exceptions = nullptr, std::function<void()> init = [](){});
@@ -32,6 +34,8 @@ namespace cmn {
         size_t num_threads() const {
             return nthreads;
         }
+        
+        std::vector<std::thread::id> thread_ids() const;
         
         void resize(size_t num_threads);
         
