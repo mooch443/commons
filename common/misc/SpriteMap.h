@@ -354,6 +354,20 @@ concept Iterable = requires(T obj) {
                 return register_callbacks_impl<init_type>(names, callback);
         }
         
+        template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str, size_t N>
+            requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
+            && (std::convertible_to<Str, std::string> || std::constructible_from<std::string, Str>)
+        CallbackCollection register_callbacks(const std::array<Str, N>& names, Callback callback) {
+            if constexpr(std::same_as<Str, const char*>) {
+                std::vector<std::string_view> converted_names;
+                for(const char* str : names) {
+                    converted_names.emplace_back(str);
+                }
+                return register_callbacks_impl<init_type>(converted_names, callback);
+            } else
+                return register_callbacks_impl<init_type>(names, callback);
+        }
+        
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
