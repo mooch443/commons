@@ -531,11 +531,11 @@ include(FetchContent)
 #FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
 #FetchContent_MakeAvailable(json)
 set(glaze_PATH ${CMAKE_BINARY_DIR}/_deps/glaze)
-if(WIN32)
-    set(glaze_PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff")
-else()
-    set(glaze_PATCH_COMMAND patch -N -s -d ${glaze_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff" || echo 1)
-endif()
+#if(WIN32)
+#    set(glaze_PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff")
+#else()
+#    set(glaze_PATCH_COMMAND patch -N -s -d ${glaze_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glaze_patch.diff" || echo 1)
+#endif()
 
 FetchContent_Declare(
   glaze
