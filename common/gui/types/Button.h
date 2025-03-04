@@ -123,6 +123,8 @@ namespace cmn::gui {
             }
             Entangled::set_bounds(bounds);
         }
+        
+        Size2 text_dims();
     };
 }
 

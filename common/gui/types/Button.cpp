@@ -119,4 +119,8 @@ void Button::init() {
         _toggled = v;
         set_content_changed(true);
     }
+
+    Size2 Button::text_dims() {
+        return _text.size();
+    }
 }

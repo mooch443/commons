@@ -173,20 +173,28 @@ void Dialog::set_closed() {
     {
         set_name("Dialog");
         _layout.set(Margins(5, 5, 5, 5));
-        _okay->set_size(Size2(gui::Base::default_text_bounds(_okay->txt(), nullptr, _okay->font()).width + 20, 40));
+        
+        const Float2_t margin = 20;
+        _okay->set_size(Size2(_okay->text_dims().width + margin, 40));
+        //_okay->set_size(Size2(gui::Base::default_text_bounds(strip_html(_okay->txt()), nullptr, _okay->font()).width + 20, 40));
         _okay->set_fill_clr(Color::blend(DarkCyan.exposure(0.5).alpha(110), Green.exposure(0.15)));
         if (_abort) {
-            _abort->set_size(Size2(gui::Base::default_text_bounds(_abort->txt(), nullptr, _abort->font()).width + 20, 40));
+            _abort->set_size(Size2(_abort->text_dims().width + margin, 40));
+            //_abort->set_size(Size2(gui::Base::default_text_bounds(strip_html(_abort->txt()), nullptr, _abort->font()).width + 20, 40));
             _abort->set_fill_clr(Color::blend(DarkCyan.exposure(0.5).alpha(110), Red.exposure(0.2)));
         }
+        
         if(_second)
-            _second->set_size(Size2(gui::Base::default_text_bounds(_second->txt(), nullptr, _second->font()).width + 20, 40));
+            _second->set_size(Size2(_second->text_dims().width + margin, 40));
+        //    _second->set_size(Size2(gui::Base::default_text_bounds(strip_html(_second->txt()), nullptr, _second->font()).width + 20, 40));
         if(_third)
-            _third->set_size(Size2(gui::Base::default_text_bounds(_third->txt(), nullptr, _third->font()).width + 20, 40));
+            _third->set_size(Size2(_third->text_dims().width + margin, 40));
+        //    _third->set_size(Size2(gui::Base::default_text_bounds(strip_html(_third->txt()), nullptr, _third->font()).width + 20, 40));
         if(_fourth)
-            _fourth->set_size(Size2(gui::Base::default_text_bounds(_fourth->txt(), nullptr, _fourth->font()).width + 20, 40));
+            _fourth->set_size(Size2(_fourth->text_dims().width + margin, 40));
+        //    _fourth->set_size(Size2(gui::Base::default_text_bounds(strip_html(_fourth->txt()), nullptr, _fourth->font()).width + 20, 40));
 
-        _title_bg.set_bounds(Bounds(Vec2(5, 10), Size2(max(600, _layout.width() + 20), 60)));
+        _title_bg.set_bounds(Bounds(Vec2(5, 10), Size2(max(650, _layout.width() + 20), 60)));
         _layout.set_pos(_title_bg.pos() + Vec2(0, _title_bg.height()));
         _text->set_max_size(Size2(_title_bg.width() - 50, 0));
         
