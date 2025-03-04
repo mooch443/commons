@@ -54,7 +54,7 @@ void Graph::update_title() {
     if(_title.hovered()) {
         _title.set_txt(_title_text);
     } else {
-        _title.set_txt(utils::ShortenText(_title_text, 15, 1.0));
+        _title.set_txt(utils::ShortenText(_title_text, 25, 1.0));
     }
 }
 
