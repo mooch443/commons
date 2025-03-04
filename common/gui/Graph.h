@@ -99,6 +99,7 @@ namespace cmn::gui {
         char _xyaxis;
         
         std::vector<std::shared_ptr<Text>> _labels;
+        std::string _title_text;
         Text _title;
         
         std::shared_ptr<Circle> _last_hovered_circle;
@@ -135,6 +136,7 @@ namespace cmn::gui {
         
     private:
         void highlight_point(std::shared_ptr<Circle> circle);
+        void update_title();
     };
 }
 

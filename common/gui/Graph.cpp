@@ -17,7 +17,8 @@ IMPLEMENT(Graph::_colors);
 #define OFFSET(NR) (NR)
 
 void Graph::set_title(const std::string &str) {
-    _title.set_txt(str);
+    _title_text = str;
+    set_content_changed(true);
 }
 
 void Graph::add_points(const std::string &name, const std::vector<Vec2> &points, Color color) {
@@ -47,6 +48,14 @@ void Graph::set_margin(const Vec2& margin) {
         return;
     _margin = margin;
     set_content_changed(true);
+}
+
+void Graph::update_title() {
+    if(_title.hovered()) {
+        _title.set_txt(_title_text);
+    } else {
+        _title.set_txt(utils::ShortenText(_title_text, 15, 1.0));
+    }
 }
 
 void Graph::update() {
@@ -427,12 +436,14 @@ void Graph::update() {
         add<Line>(positions, Line::Thickness_t{ line.thickness });
     }
     
-    if(!_title.txt().empty()) {
+    if(!_title_text.empty()) {
+        update_title();
+        
         _title.set_pos(Vec2(20, 15));
         _title.set_color(fg);
         add<Rect>(Box(_title.pos() - Vec2(1, 1),
                          Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
-                  FillClr{Black.alpha(150)});
+                  FillClr{Black.alpha(_title.hovered() ? 150 : 50)});
         
         add<Rect>(Box(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
                         Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
@@ -530,6 +541,10 @@ Graph::Graph(const Bounds& bounds,
     add_event_handler(HOVER, [this](Event e) {
         if(e.hover.hovered)
             this->set_content_changed(true);
+    });
+    _title.set_clickable(true);
+    _title.on_hover([this](auto){
+        update_title();
     });
 }
 
