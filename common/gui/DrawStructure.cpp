@@ -160,7 +160,7 @@ void Dialog::set_closed() {
       : _closed(false),
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(550, 0), Font(0.8f))),
+        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(650, 0), Font(0.8f))),
         _title(attr::Str(title), Font(0.9f, Style::Bold)),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
@@ -659,13 +659,15 @@ void DrawStructure::close_dialogs() {
                     while (draggable && !draggable->draggable())
                         draggable = draggable->parent();
                     
-                    if(draggable && draggable->pressed() && draggable->draggable() && draggable->being_dragged()) {
+                    if(draggable && draggable->pressed() && draggable->being_dragged()) {
                         auto pos = Vec2(hover.hover.x, hover.hover.y);
                         pos = draggable->global_transform().getInverse().transformPoint(pos);
                         
                         auto dg = draggable->relative_drag_start();
                         
-                        draggable->set_pos(draggable->pos() + pos - dg);
+                        if(draggable->draggable())
+                            draggable->set_pos(draggable->pos() + pos - dg);
+                        
                         auto it = draggable->_event_handlers.find(EventType::DRAG);
                         if(it != draggable->_event_handlers.end()) {
                             Event drag(EventType::DRAG);

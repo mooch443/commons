@@ -653,6 +653,7 @@ namespace cmn::gui {
             if (e.mbutton.pressed && e.mbutton.button == 0) {// save previous relative position
                 if (!parent() || !parent()->stage() || parent()->stage()->hovered_object() == this) {
                     _relative_drag_start = Vec2(e.mbutton.x, e.mbutton.y);
+                    _absolute_drag_start = global_bounds().pos();
                     _being_dragged = true;
                 }
             }

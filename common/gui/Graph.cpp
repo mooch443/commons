@@ -53,16 +53,17 @@ void Graph::update() {
     if(!content_changed())
         return;
     
+    auto fns = functions();
 #ifndef _MSC_VER
-    std::vector<size_t> indices(arange<size_t>(0, functions().size()));
+    std::vector<size_t> indices(arange<size_t>(0, fns.size()));
 #else
     // visual studio 2017
-    std::vector<size_t> indices(functions().size());
-    for (size_t i=0; i<functions().size(); ++i)
+    std::vector<size_t> indices(fns.size());
+    for (size_t i=0; i<fns.size(); ++i)
         indices[i] = i;
 #endif
     
-    size_t highlighted = functions().size();
+    size_t highlighted = fns.size();
     
     struct Label {
         std::string name;
@@ -78,7 +79,7 @@ void Graph::update() {
         }
     };
     std::vector<std::shared_ptr<Label>> function_names;
-    for(auto &f : functions())
+    for(auto &f : fns)
         function_names.push_back(std::make_shared<Label>(f._name, f._color));
     update_vector_elements(_labels, function_names);
     
@@ -188,7 +189,7 @@ void Graph::update() {
     
     if(_xyaxis & (char)Axis::X) {
         bool has_discrete = false;
-        for(auto &f : _functions) {
+        for(auto &f : fns) {
             if(TYPE_IS(DISCRETE)) {
                 has_discrete = true;
                 break;
@@ -285,7 +286,7 @@ void Graph::update() {
     std::vector<Vertex> vertices;
     
     for (auto idx : indices) {
-        auto &f = functions()[idx];
+        auto &f = fns.at(idx);
         
         if(f._points) {
             auto it = _gui_points.find(f._name);
@@ -296,6 +297,9 @@ void Graph::update() {
                     
                     float x = percentx * max_width - y_axis_offset;
                     float y = (1.0f - (pt.y / lengthy + y_offset_percent)) * max_height;
+                    
+                    if(x < 0 || x > max_width || y < 0 || y > max_height)
+                        continue;
                     
                     auto current = Vec2(x, y) + _margin;
                     auto ptr = Circle::MakePtr(attr::Loc(OFFSET(current)), attr::Radius(3), attr::LineClr(f._color));
@@ -561,6 +565,13 @@ Graph::Function Graph::add_function(const Graph::Function &function) {
     
     b.wrap_object(_gui_obj);
 }*/
+
+void Graph::clear() {
+    _gui_points.clear();
+    _functions.clear();
+    _lines.clear();
+    set_content_changed(true);
+}
 
 void Graph::export_data(const std::string &filename, std::function<void(float)> *percent_callback) const {
     std::vector<std::string> header;

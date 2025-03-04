@@ -120,7 +120,7 @@ namespace cmn::gui {
         virtual void update() override;
         //void display(gui::DrawStructure& base, const Vec2& pos = Vec2(0, 0), float scale = 1.0, float transparency = 1.0);
         bool empty() const { return _functions.empty(); }
-        void clear() { _gui_points.clear(); _functions.clear(); _lines.clear(); set_content_changed(true); }
+        void clear();
         
         void set_margin(const Vec2& margin);
         
