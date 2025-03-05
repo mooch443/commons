@@ -285,6 +285,8 @@ struct FrameRange {
 
     template<typename T>
     constexpr bool overlaps(const Range<T>& v) const {
+        if(empty() || v.empty())
+            return false;
         return contains(v.start) || contains(v.end)
             || (v.contains(start()) || v.end == start()) || (v.contains(end()) || v.end == end())
             || v.start == end() || start() == v.end;
