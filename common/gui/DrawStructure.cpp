@@ -194,7 +194,7 @@ void Dialog::set_closed() {
             _fourth->set_size(Size2(_fourth->text_dims().width + margin, 40));
         //    _fourth->set_size(Size2(gui::Base::default_text_bounds(strip_html(_fourth->txt()), nullptr, _fourth->font()).width + 20, 40));
 
-        _title_bg.set_bounds(Bounds(Vec2(5, 10), Size2(max(650, _layout.width() + 20), 60)));
+        _title_bg.set_bounds(Bounds(Vec2(5, 10), Size2(max(700, _layout.width() + 20), 60)));
         _layout.set_pos(_title_bg.pos() + Vec2(0, _title_bg.height()));
         _text->set_max_size(Size2(_title_bg.width() - 50, 0));
         
