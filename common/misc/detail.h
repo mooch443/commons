@@ -867,6 +867,13 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         else if constexpr(is_instantiation<std::function, VT>::value) {
             return nullptr;
         }
+        else if constexpr(is_instantiation<std::optional, VT>::value) {
+            if(v.has_value()) {
+                return cvt2json(v.value());
+            } else {
+                return nullptr;
+            }
+        }
         else
         {
             static_assert(std::same_as<const VT, std::remove_cvref_t<VT>*>, "Cannot convert object to json.");

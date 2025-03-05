@@ -36,6 +36,7 @@ namespace cmn {
             // The following are getters for specific flags.
             GETTER(bool, is_array); ///< Indicates if the property is of array type.
             GETTER(bool, is_enum); ///< Indicates if the property is of enum type.
+            GETTER(bool, is_optional); ///< Indicates whether we are dealing with an optional type.
             
             // Lambda functions to allow custom behaviors. These can be overridden as needed.
             std::function<void(const std::string&)> _set_value_from_string; ///< Setter function from string.
@@ -43,6 +44,8 @@ namespace cmn {
             // More lambda functions for enum type properties.
             GETTER(std::function<std::vector<std::string>()>, enum_values);///< Getter for the enum values.
             GETTER(std::function<uint32_t()>, enum_index);///< Getter for the index of an enum value.
+
+            GETTER(std::function<bool()>, optional_has_value);
             
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false);
@@ -70,6 +73,9 @@ namespace cmn {
                 };
                 _enum_index = []() -> uint32_t {
                     throw U_EXCEPTION("PropertyType::enum_index() not initialized");
+                };
+                _optional_has_value = []() -> bool {
+                    throw U_EXCEPTION("PropertyType::optional_has_value() not initialized");
                 };
             }
             
@@ -290,8 +296,10 @@ namespace cmn {
                 
                 _is_enum = cmn::is_enum<ValueType>::value;
                 _is_array = is_container<ValueType>::value;
+                _is_optional = is_instantiation<std::optional, ValueType>::value;
                 
                 init_enum();
+                init_optional();
             }
             
             template<typename T = ValueType>
@@ -307,6 +315,19 @@ namespace cmn {
             template<typename T = ValueType>
             void init_enum(typename std::enable_if_t<!cmn::is_enum<T>::value, T> * = nullptr) {
                 _enum_values = []() -> std::vector<std::string> { throw U_EXCEPTION("This type is not an Enum, so enum_values() cannot be called."); };
+            }
+            
+            template<typename T = ValueType>
+            void init_optional(typename std::enable_if_t<is_instantiation<std::optional, T>::value, T> * = nullptr)
+            {
+                _optional_has_value = [this]() -> bool {
+                    return value().has_value();
+                };
+            }
+            
+            template<typename T = ValueType>
+            void init_optional(typename std::enable_if_t<not is_instantiation<std::optional, T>::value, T> * = nullptr) {
+                _optional_has_value = []() -> bool { throw U_EXCEPTION("This type is not an Optional, so optional_has_value() cannot be called."); };
             }
             
             template<typename K>

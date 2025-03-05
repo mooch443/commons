@@ -804,20 +804,38 @@ inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
 inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
-        
+
+template<typename Q>
+    requires is_instantiation<std::optional, Q>::value
+inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
+        && (!is_instantiation<std::optional, Q>::value)
 inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
         
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
         && (not is_instantiation<std::function, Q>::value)
+        && (not is_instantiation<std::optional, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+
+template<typename Q>
+    requires (is_instantiation<std::optional, Q>::value)
+inline std::string toStr(const Q& value);
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value), typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value
+                 && (not is_instantiation<std::function, Q>::value)
+                 && (not is_instantiation<std::optional, Q>::value),
+                 typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+
+
+template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value
+                 && (is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type* =nullptr);
 
 template<typename Q>
     requires is_instantiation<std::function, Q>::value
@@ -1516,16 +1534,34 @@ namespace Meta {
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
+        && (!is_instantiation<std::optional, Q>::value)
 inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::name<typename cmn::remove_cvref<Q>::type>();
+}
+
+template<typename Q>
+    requires is_instantiation<std::optional, Q>::value
+inline std::string name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    return "optional<"+ _Meta::name<typename cmn::remove_cvref<typename Q::value_type>::type>() + ">";
 }
         
 template<typename Q>
     requires (!std::is_base_of<std::exception, Q>::value)
         && (!is_instantiation<std::atomic, Q>::value)
         && (not is_instantiation<std::function, Q>::value)
+        && (not is_instantiation<std::optional, Q>::value)
 inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
+}
+
+template<typename Q>
+    requires (is_instantiation<std::optional, Q>::value)
+inline std::string toStr(const Q& value) {
+    if(value.has_value()) {
+        using ValueType = cmn::remove_cvref_t<typename cmn::remove_cvref_t<Q>::value_type>;
+        return _Meta::toStr<ValueType>(value.value());
+    }
+    return "null";
 }
 
 template<typename Q, typename K>
@@ -1541,10 +1577,18 @@ inline std::string toStr(const Q& val) {
 }
         
 template<typename Q, typename T>
-inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value) && (not is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
     return _Meta::fromStr<T>(str);
 }
-        
+
+template<typename Q, typename T>
+inline T fromStr(const std::string& str, const typename std::enable_if< !std::is_pointer<Q>::value
+                 && (is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
+    if(str == "null")
+        return std::nullopt;
+    return _Meta::fromStr<typename T::value_type>(str);
+}
+
 template<typename Q, typename T>
 inline T fromStr(const std::string& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
     return new typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>(str);
