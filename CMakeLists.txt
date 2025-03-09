@@ -540,7 +540,7 @@ set(glaze_PATH ${CMAKE_BINARY_DIR}/_deps/glaze)
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v3.4.1
+  GIT_TAG v5.0.0
   GIT_SHALLOW TRUE
   SOURCE_DIR ${glaze_PATH}
   #PATCH_COMMAND ${glaze_PATCH_COMMAND}

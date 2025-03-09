@@ -283,3 +283,29 @@ struct RealFilesystem : FilesystemInterface {
 }
 
 std::ostream& operator<<(std::ostream& os, const cmn::file::Path& p);
+
+namespace glz {
+
+template <>
+struct from<JSON, cmn::file::Path>
+{
+    template <auto Opts>
+    static void op(cmn::file::Path& value, auto&&... args)
+    {
+       std::string str;
+       parse<JSON>::op<Opts>(str, args...);
+        value = cmn::file::Path(str);
+    }
+};
+
+template <>
+struct to<JSON, cmn::file::Path>
+{
+    template <auto Opts>
+    static void op(cmn::file::Path& value, auto&&... args) noexcept
+    {
+        serialize<JSON>::op<Opts>(value.str(), args...);
+    }
+};
+
+}
