@@ -515,7 +515,7 @@ namespace cmn {
             if(utils::beginsWith(str, '{') && utils::endsWith(str, '}'))
                 str = str.substr(1, str.length()-2);
             else
-                throw U_EXCEPTION("Malformed map string ",str);
+                throw U_EXCEPTION("Malformed map string ",utils::ShortenText(str, 1000));
             
             auto parts = util::parse_array_parts(str);
             for (auto &p : parts) {
@@ -584,7 +584,7 @@ namespace cmn {
                             
                         case INVALID:
                             if(!GlobalSettings::is_runtime_quiet(&map)) {
-                                FormatWarning("Data of invalid type ", value," for key ",key);
+                                FormatWarning("Data of invalid type ", utils::ShortenText(value, 1000)," for key ",key);
                                 continue;
                             }
                             break;
