@@ -702,12 +702,23 @@ namespace cmn::gui {
                             : (not hovered()
                                 ? _label_fill_clr : _label_fill_clr.exposureHSL(1.25)));
                 
+                if(not _label_text)
+                    _label_text = std::make_unique<StaticText>();
+                _label_text->create(Str{_folded_label}, Loc{
+                    _label_dims.width * (_label_font.align == Align::Left
+                        ? 0.0
+                        : (_label_font.align == Align::Center ? 0.5 : 1.0)),
+                    _label_dims.height * 0.5_F
+                }, Str{_folded_label}, Font(_label_font.size), Origin{
+                    _label_font.align == Align::Left
+                        ? 0.0
+                        : (_label_font.align == Align::Center ? 0.5 : 1.0),
+                    0.5
+                });
+                
                 if(_foldable && _folded) {
                     auto ctx = OpenContext();
                     add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
-                    if(not _label_text)
-                        _label_text = std::make_unique<StaticText>();
-                    _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
                     advance_wrap(*_label_text);
                     
                 } else {
@@ -885,11 +896,7 @@ namespace cmn::gui {
                         auto ctx = OpenContext();
                         add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
                         
-                        if(not _label_text)
-                            _label_text = std::make_unique<StaticText>();
-                        _label_text->create(Str{_folded_label}, Loc{0, _label_dims.height * 0.5f}, Str{_folded_label}, Font(_label_font.size), Origin{0, 0.5});
                         advance_wrap(*_label_text);
-                        
                         advance_wrap(_list);
                         
                         float x = width() - _list.width();

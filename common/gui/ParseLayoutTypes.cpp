@@ -902,27 +902,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     if(ptr) {
         auto list = ptr.to<ScrollableList<DetailTooltipItem>>();
         
-        ItemPadding_t item_padding{get(Vec2(5), "item_padding")};
-        list->set(item_padding);
-        
         Placeholder_t placeholder{get(std::string(), "placeholder")};
         list->set(placeholder);
         
-        ItemFont_t item_font{parse_font(obj, Font(0.75), "item_font")};
-        list->set(item_font);
-        DetailFont_t detail_font{parse_font(obj, Font(0.55, Align::Center), "detail_font")};
-        list->set(detail_font);
-
-        ItemColor_t item_color{get(Color(50,50,50,220), "item_color")};
-        list->set(item_color);
-        ItemBorderColor_t item_line{get(Transparent, "item_line")};
-        list->set(item_line);
-        
         Alternating_t alternate{get(false, "alternate")};
         list->set(alternate);
-
-        DetailColor_t detail_color{get(Gray, "detail_color")};
-        list->set(detail_color);
+        list->set(LineClr{Red});
         
         if (obj.contains("label")) {
             auto &o = obj.at("label");
@@ -936,6 +921,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
                 list->set(label_font);
+                
+                Str folded_label{dyn::get(state, p, std::string(), "text", hash, "label_")};
+                if(not folded_label.empty())
+                    list->set(folded_label);
             }
         }
 
@@ -949,22 +938,37 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 list->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
                 list->set(list_dims);
-                ItemFont_t item_font{parse_font(p, Font(0.6), "font")};
-                list->set(item_font);
+            }
+        }
+        
+        if (obj.contains("item")) {
+            auto &o = obj.at("item");
+            if(o.is_object()) {
+                auto &p = o.get_object();
+                
+                list->set(ItemPadding_t{ dyn::get(state, p, Vec2(5), "pad", hash, "item_") });
+                list->set(ItemFont_t{parse_font(p, Font(0.75), "font")});
+                list->set(ItemColor_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
+                list->set(ItemBorderColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
+            }
+        }
+        
+        if (obj.contains("detail")) {
+            auto &o = obj.at("detail");
+            if(o.is_object()) {
+                auto &p = o.get_object();
+                list->set(DetailColor_t{ dyn::get(state, p, Gray, "color", hash, "detail_") });
+                list->set(DetailFont_t{parse_font(p, Font(0.55, Align::Center), "font")});
             }
         }
         
         Foldable_t foldable{get(false, "foldable")};
         Folded_t folded{get(false, "folded")};
-        Str folded_label{get(std::string(), "text")};
         
         if(foldable) {
             list->set(foldable);
             list->set(folded);
         }
-        
-        if(not folded_label.empty())
-            list->set(folded_label);
     }
     
     return ptr;
