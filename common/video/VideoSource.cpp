@@ -1009,16 +1009,39 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     std::mutex mutex;
     GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
     Frame_t index = 0_f;
-    for(uint64_t i=start_index; i<=end_index; i+=step) {
-        auto file = _files_in_seq.at(i);
-        //file_indexes[file].insert(0_f);
-        const auto substep = max(1_f, file->length() / frames_per_file);
-        for(Frame_t j=start.try_sub(index); j <file->length() && j + index < end; j+=substep) {
-            if(j + index >= start) {
-                file_indexes[file].insert(j);
-            }
+    
+    std::vector<Frame_t> global_sample_indices;
+
+    if (samples <= 1) {
+        global_sample_indices.push_back(start);
+    } else {
+        // Compute the total number of frames in the [start, end) range
+        auto totalFrames = end - start;
+        auto numFrames = totalFrames.get();
+
+        // If for some reason the available frames are fewer than requested samples, adjust samples.
+        if (numFrames < samples)
+            samples = numFrames;
+
+        // Calculate the step size so that the first sample is at start and the last at end - 1.
+        double stepSize = max(1.0, ((numFrames-1) / double(samples)));
+
+        for (size_t i = 0; i < samples; ++i) {
+            uint64_t offset = static_cast<uint64_t>(std::round(i * stepSize));
+            if (offset >= numFrames)
+                offset = numFrames - 1; // Clamp to avoid overshoot.
+            global_sample_indices.push_back(start + Frame_t(offset));
         }
-        
+    }
+    
+    // now map global_frame indices to file indexes precisely
+    file_indexes.clear();
+    for (auto file : _files_in_seq) {
+        // Find the lower bound in the vector for the current file's starting global index.
+        auto lb = std::lower_bound(global_sample_indices.begin(), global_sample_indices.end(), index);
+        for (auto it = lb; it != global_sample_indices.end() && *it < index + file->length(); ++it) {
+            file_indexes[file].insert(*it - index);
+        }
         index += file->length();
     }
     

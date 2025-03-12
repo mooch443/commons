@@ -949,6 +949,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 list->set(fill_clr);
                 ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
                 list->set(list_dims);
+                ItemFont_t item_font{parse_font(p, Font(0.6), "font")};
+                list->set(item_font);
             }
         }
         
