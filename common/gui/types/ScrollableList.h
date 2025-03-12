@@ -706,13 +706,13 @@ namespace cmn::gui {
                     _label_text = std::make_unique<StaticText>();
                 _label_text->create(Str{_folded_label}, Loc{
                     _label_dims.width * (_label_font.align == Align::Left
-                        ? 0.0
-                        : (_label_font.align == Align::Center ? 0.5 : 1.0)),
+                        ? 0.0_F
+                        : (_label_font.align == Align::Center ? 0.5_F : 1.0_F)),
                     _label_dims.height * 0.5_F
                 }, Str{_folded_label}, Font(_label_font.size), Origin{
                     _label_font.align == Align::Left
-                        ? 0.0
-                        : (_label_font.align == Align::Center ? 0.5 : 1.0),
+                        ? 0.0_F
+                        : (_label_font.align == Align::Center ? 0.5_F : 1.0_F),
                     0.5
                 });
                 
