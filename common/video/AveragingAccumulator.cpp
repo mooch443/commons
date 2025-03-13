@@ -66,12 +66,12 @@ void AveragingAccumulator::_add(const Mat &f) {
             std::lock_guard guard(_accumulator_mutex);
             f.convertTo(_float_mat, CV_32FC(channels));
             cv::add(_accumulator, _float_mat, _accumulator);
+            ++count;
         } else {
             f.convertTo(_float_mat, CV_32FC(channels));
             cv::add(_accumulator, _float_mat, _accumulator);
+            ++count;
         }
-        
-        ++count;
         
     } else if(_mode == averaging_method_t::mode) {
         assert(f.isContinuous());
