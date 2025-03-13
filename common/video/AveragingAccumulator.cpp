@@ -62,13 +62,14 @@ void AveragingAccumulator::_add(const Mat &f) {
     }
     
     if(_mode == averaging_method_t::mean) {
-        f.convertTo(_float_mat, CV_32FC(channels));
-        
         if constexpr(threaded) {
             std::lock_guard guard(_accumulator_mutex);
+            f.convertTo(_float_mat, CV_32FC(channels));
             cv::add(_accumulator, _float_mat, _accumulator);
-        } else
+        } else {
+            f.convertTo(_float_mat, CV_32FC(channels));
             cv::add(_accumulator, _float_mat, _accumulator);
+        }
         
         ++count;
         
