@@ -1656,6 +1656,18 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _pixels = std::move(pixels);
         assert(!_pixels || _pixels->size() == num_pixels());
     }
+
+void Blob::set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels)
+{
+    assert(pixels.size() == num_pixels());
+    
+    if(not _pixels)
+    {
+        _pixels = std::make_unique<pixel_ptr_t::element_type>();
+    }
+    
+    (*_pixels) = pixels;
+}
     
 /*void Blob::set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset) {
     throw U_EXCEPTION("Deprecation.");

@@ -243,6 +243,7 @@ public:
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image() const;
     
     void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
+    void set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels);
     //void set_pixels(const cmn::grid::PixelGrid &grid, const cmn::Vec2& offset = cmn::Vec2(0));
     
     static decltype(_pixels) calculate_pixels(const cmn::Image::Ptr& image, const decltype(_hor_lines)& lines, const cmn::Vec2& offset = cmn::Vec2(0,0));
