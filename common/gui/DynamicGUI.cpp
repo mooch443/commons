@@ -20,8 +20,6 @@
 namespace cmn::gui {
 namespace dyn {
 
-ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow);
-
 std::string Pattern::toStr() const {
     return "Pattern<" + std::string(original) + ">";
 }
@@ -274,35 +272,10 @@ void Context::init() const {
             }),
             VarFunc("cmap", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);
+                using namespace cmn::cmap;
+                
                 auto cmap = CMaps::Class::fromStr(utils::lowercase(props.first()));
-                switch(cmap) {
-                    case CMaps::viridis: {
-                        auto value = Meta::fromStr<double>(props.last());
-                        return Viridis::value(value);
-                    }
-                    case CMaps::blacktopink: {
-                        auto value = Meta::fromStr<double>(props.last());
-                        return BlackToPink::value(value);
-                    }
-                    case CMaps::bluetored: {
-                        auto value = Meta::fromStr<double>(props.last());
-                        return BlueToRed::value(value);
-                    }
-                    case CMaps::bluetoyellow: {
-                        auto value = Meta::fromStr<double>(props.last());
-                        return BlueToYellow::value(value);
-                    }
-                    case CMaps::pinkfoam: {
-                        auto value = Meta::fromStr<double>(props.last());
-                        return PinkFoam::value(value);
-                    }
-                    case CMaps::wheel: {
-                        auto value = Meta::fromStr<uint32_t>(props.last());
-                        return ColorWheel(value).next();
-                    }
-                    default:
-                        throw U_EXCEPTION("Unknown cmap: ", props);
-                }
+                return cmap::ColorMap::value(cmap, Meta::fromStr<double>(props.last()));
             }),
             VarFunc("meanVector", [](const VarProps& props) -> Vec2 {
                 REQUIRE_EXACTLY(1, props);

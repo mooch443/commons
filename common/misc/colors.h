@@ -33,10 +33,10 @@ public:
           a(alpha)
     {}
     
-    constexpr Color(uint32_t rgba) 
-        : Color((uint8_t)(rgba >> IM_COL32_R_SHIFT), 
-                (uint8_t)(rgba >> IM_COL32_G_SHIFT), 
-                (uint8_t)(rgba >> IM_COL32_B_SHIFT), 
+    constexpr Color(uint32_t rgba)
+        : Color((uint8_t)(rgba >> IM_COL32_R_SHIFT),
+                (uint8_t)(rgba >> IM_COL32_G_SHIFT),
+                (uint8_t)(rgba >> IM_COL32_B_SHIFT),
                 (uint8_t)(rgba >> IM_COL32_A_SHIFT))
     {}
 
@@ -289,7 +289,7 @@ public:
             B = 255.f * Hue_2_RGB( var_1, var_2, H - ( 1 / 3.f ) );
         }
         
-        return Color((uint8_t)saturate(R), 
+        return Color((uint8_t)saturate(R),
                      (uint8_t)saturate(G),
                      (uint8_t)saturate(B));
     }
@@ -299,7 +299,7 @@ public:
     }
 
     /**
-     * META 
+     * META
      */
 
     std::string toStr() const {
@@ -499,6 +499,111 @@ public:
         return hsv.HSV2RGB();
     }
 
+};
+
+}
+
+namespace cmn::cmap {
+
+class Viridis {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 256> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlackToPink {
+public:
+    // Define a color as a tuple of three doubles (B, G, R).
+    using value_t = std::tuple<double, double, double>;
+private:
+    // The palette colors in BGR order.
+    static const std::array<value_t, 9> data_bgr;
+    
+public:
+    // Returns a gui::Color interpolated along the palette based on percent (0.0 to 1.0).
+    static gui::Color value(double percent);
+};
+
+class BlueToRed {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class PinkFoam {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlueToYellow {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlackToWhite {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    // Define 9 evenly spaced color stops from black to white in BGR order.
+    // (BGR because the other palettes use this order.)
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow, blacktowhite);
+
+class ColorMap {
+public:
+    template <CMaps::Class Map>
+    static gui::Color value(double percent) {
+        if constexpr (Map == CMaps::viridis) {
+            return Viridis::value(percent);
+        } else if constexpr (Map == CMaps::blacktopink) {
+            return BlackToPink::value(percent);
+        } else if constexpr (Map == CMaps::bluetored) {
+            return BlueToRed::value(percent);
+        } else if constexpr (Map == CMaps::pinkfoam) {
+            return PinkFoam::value(percent);
+        } else if constexpr (Map == CMaps::bluetoyellow) {
+            return BlueToYellow::value(percent);
+        } else if constexpr (Map == CMaps::blacktowhite) {
+            return BlackToWhite::value(percent);
+        } else if constexpr (Map == CMaps::wheel) {
+            // For the ColorWheel, treat 'param' as an index (cast to uint32_t) and retrieve the next color
+            return gui::ColorWheel(static_cast<uint32_t>(percent)).next();
+        } else {
+            static_assert([]{ return false; }(), "Unsupported color map specified.");
+        }
+    }
+    
+    static gui::Color value(CMaps::Class map, double param) {
+        switch(map) {
+            case CMaps::viridis: return value<CMaps::viridis>(param);
+            case CMaps::blacktopink: return value<CMaps::blacktopink>(param);
+            case CMaps::bluetored: return value<CMaps::bluetored>(param);
+            case CMaps::pinkfoam: return value<CMaps::pinkfoam>(param);
+            case CMaps::bluetoyellow: return value<CMaps::bluetoyellow>(param);
+            case CMaps::blacktowhite: return value<CMaps::blacktowhite>(param);
+            case CMaps::wheel:  return value<CMaps::wheel>(param);
+            default:
+                throw U_EXCEPTION("Unsupported color map specified: ", map);
+        }
+    }
 };
 
 }
