@@ -50,6 +50,12 @@ namespace cmn::gui {
             Context ctx{*this};
             fn();
         }
+
+        template<typename Fn, typename... Args>
+        inline void OpenContextWithArgs(Fn&& fn, Args&&... args) {
+            Context ctx{*this};
+            std::invoke(std::forward<Fn>(fn), std::forward<Args>(args)...);
+        }
         
     protected:
         GETTER(std::vector<Drawable*>, current_children);

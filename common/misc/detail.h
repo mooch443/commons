@@ -818,6 +818,45 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         static gui::Color value(double percent);
     };
 
+class BlackToPink {
+public:
+    // Define a color as a tuple of three doubles (B, G, R).
+    using value_t = std::tuple<double, double, double>;
+private:
+    // The palette colors in BGR order.
+    static const std::array<value_t, 9> data_bgr;
+    
+public:
+    // Returns a gui::Color interpolated along the palette based on percent (0.0 to 1.0).
+    static gui::Color value(double percent);
+};
+
+class BlueToRed {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class PinkFoam {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlueToYellow {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
 
     template<typename VT>
     auto cvt2json(const VT & v) -> glz::json_t {

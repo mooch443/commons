@@ -73,9 +73,7 @@ namespace cmn::gui {
     }
     
     void Entangled::update(const std::function<void(Entangled& base)> create) {
-        OpenContext([&](){
-            create(*this);
-        });
+        OpenContextWithArgs(create, *this);
     }
     
     Entangled::~Entangled() {

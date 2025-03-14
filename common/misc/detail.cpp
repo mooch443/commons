@@ -887,6 +887,173 @@ namespace cmn {
         return "HL("+std::to_string(y)+" "+std::to_string(x0)+","+std::to_string(x1)+")";
     }
 
+IMPLEMENT(BlackToPink::data_bgr){{
+    {40.0, 43.0, 46.0},   // #2e2b28  -> (R=46, G=43, B=40)
+    {52.0, 55.0, 59.0},   // #3b3734  -> (R=59, G=55, B=52)
+    {64.0, 68.0, 71.0},   // #474440  -> (R=71, G=68, B=64)
+    {76.0, 80.0, 84.0},   // #54504c  -> (R=84, G=80, B=76)
+    {107.0, 80.0, 107.0}, // #6b506b  -> (R=107, G=80, B=107)
+    {169.0, 61.0, 171.0}, // #ab3da9  -> (R=171, G=61, B=169)
+    {218.0, 37.0, 222.0}, // #de25da  -> (R=222, G=37, B=218)
+    {232.0, 68.0, 235.0}, // #eb44e8  -> (R=235, G=68, B=232)
+    {255.0, 128.0, 255.0} // #ff80ff  -> (R=255, G=128, B=255)
+}};
+
+// Returns a gui::Color interpolated along the palette based on percent (0.0 to 1.0).
+gui::Color BlackToPink::value(double percent) {
+    // Clamp the percentage to [0, 1]
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    
+    // Scale to the palette range
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        // If at the end, just use the last color.
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        // Interpolate linearly between data_bgr[idx] and data_bgr[idx+1].
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    
+    // Convert to integer values with rounding.
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    
+    // Construct and return a gui::Color.
+    // (Assuming gui::Color's constructor takes (R, G, B))
+    return gui::Color(R, G, B);
+}
+
+// Implementation for BlueToRed palette
+IMPLEMENT(BlueToRed::data_bgr){{
+    {197.0, 132.0, 25.0},   // #1984c5 -> (R=25, G=132, B=197)
+    {240.0, 167.0, 34.0},   // #22a7f0 -> (R=34, G=167, B=240)
+    {240.0, 191.0, 99.0},   // #63bff0 -> (R=99, G=191, B=240)
+    {237.0, 213.0, 167.0},  // #a7d5ed -> (R=167, G=213, B=237)
+    {226.0, 226.0, 226.0},  // #e2e2e2 -> (R=226, G=226, B=226)
+    {146.0, 166.0, 225.0},  // #e1a692 -> (R=225, G=166, B=146)
+    {86.0, 110.0, 222.0},   // #de6e56 -> (R=222, G=110, B=86)
+    {49.0, 75.0, 225.0},    // #e14b31 -> (R=225, G=75, B=49)
+    {40.0, 55.0, 194.0}     // #c23728 -> (R=194, G=55, B=40)
+}};
+
+gui::Color BlueToRed::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
+}
+
+// Implementation for PinkFoam palette
+IMPLEMENT(PinkFoam::data_bgr){{
+    {190.0, 190.0, 84.0},   // #54bebe -> (R=84, G=190, B=190)
+    {200.0, 200.0, 118.0},  // #76c8c8 -> (R=118, G=200, B=200)
+    {209.0, 209.0, 152.0},  // #98d1d1 -> (R=152, G=209, B=209)
+    {219.0, 219.0, 186.0},  // #badbdb -> (R=186, G=219, B=219)
+    {210.0, 218.0, 222.0},  // #dedad2 -> (R=222, G=218, B=210)
+    {173.0, 188.0, 228.0},  // #e4bcad -> (R=228, G=188, B=173)
+    {158.0, 151.0, 223.0},  // #df979e -> (R=223, G=151, B=158)
+    {139.0, 101.0, 215.0},  // #d7658b -> (R=215, G=101, B=139)
+    {100.0, 0.0, 200.0}     // #c80064 -> (R=200, G=0, B=100)
+}};
+
+gui::Color PinkFoam::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
+}
+
+// Implementation for BlueToYellow palette
+IMPLEMENT(BlueToYellow::data_bgr){{
+    {154.0, 95.0, 17.0},   // #115f9a -> (R=17, G=95, B=154)
+    {197.0, 132.0, 25.0},   // #1984c5 -> (R=25, G=132, B=197)
+    {240.0, 167.0, 34.0},   // #22a7f0 -> (R=34, G=167, B=240)
+    {196.0, 181.0, 72.0},   // #48b5c4 -> (R=72, G=181, B=196)
+    {143.0, 198.0, 118.0},  // #76c68f -> (R=118, G=198, B=143)
+    {91.0, 215.0, 166.0},   // #a6d75b -> (R=166, G=215, B=91)
+    {47.0, 229.0, 201.0},   // #c9e52f -> (R=201, G=229, B=47)
+    {17.0, 238.0, 208.0},   // #d0ee11 -> (R=208, G=238, B=17)
+    {0.0, 244.0, 208.0}     // #d0f400 -> (R=208, G=244, B=0)
+}};
+
+gui::Color BlueToYellow::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
+}
+
     uint8_t required_channels(ImageMode mode) {
         switch (mode) {
             case ImageMode::GRAY:

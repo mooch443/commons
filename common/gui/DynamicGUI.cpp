@@ -20,6 +20,8 @@
 namespace cmn::gui {
 namespace dyn {
 
+ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow);
+
 std::string Pattern::toStr() const {
     return "Pattern<" + std::string(original) + ">";
 }
@@ -227,6 +229,11 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
                 }
             }),
+            VarFunc("sqr", [](const VarProps& props) -> double {
+                REQUIRE_EXACTLY(1, props);
+                auto A = Meta::fromStr<double>(props.first());
+                return SQR(A);
+            }),
             VarFunc("&&", [](const VarProps& props) -> bool {
                 for (auto &c : props.parameters) {
                     if(not convert_to_bool(c))
@@ -264,6 +271,38 @@ void Context::init() const {
             }),
             VarFunc("/", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
+            }),
+            VarFunc("cmap", [](const VarProps& props) -> Color {
+                REQUIRE_EXACTLY(2, props);
+                auto cmap = CMaps::Class::fromStr(utils::lowercase(props.first()));
+                switch(cmap) {
+                    case CMaps::viridis: {
+                        auto value = Meta::fromStr<double>(props.last());
+                        return Viridis::value(value);
+                    }
+                    case CMaps::blacktopink: {
+                        auto value = Meta::fromStr<double>(props.last());
+                        return BlackToPink::value(value);
+                    }
+                    case CMaps::bluetored: {
+                        auto value = Meta::fromStr<double>(props.last());
+                        return BlueToRed::value(value);
+                    }
+                    case CMaps::bluetoyellow: {
+                        auto value = Meta::fromStr<double>(props.last());
+                        return BlueToYellow::value(value);
+                    }
+                    case CMaps::pinkfoam: {
+                        auto value = Meta::fromStr<double>(props.last());
+                        return PinkFoam::value(value);
+                    }
+                    case CMaps::wheel: {
+                        auto value = Meta::fromStr<uint32_t>(props.last());
+                        return ColorWheel(value).next();
+                    }
+                    default:
+                        throw U_EXCEPTION("Unknown cmap: ", props);
+                }
             }),
             VarFunc("meanVector", [](const VarProps& props) -> Vec2 {
                 REQUIRE_EXACTLY(1, props);
