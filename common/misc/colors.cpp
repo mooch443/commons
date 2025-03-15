@@ -8,6 +8,7 @@ Color Color::fromStr(const std::string& str) {
     if (s == "red") return gui::Red;
     if (s == "blue") return gui::Blue;
     if (s == "green") return gui::Green;
+    if (s == "darkgreen") return gui::DarkGreen;
     if (s == "yellow") return gui::Yellow;
     if (s == "cyan") return gui::Cyan;
     if (s == "white") return gui::White;
@@ -499,6 +500,117 @@ gui::Color BlackToWhite::value(double percent) {
  int G = static_cast<int>(std::round(g));
  int B = static_cast<int>(std::round(b));
  return gui::Color(R, G, B);
+}
+
+// Implementation for BlackToCyan palette
+IMPLEMENT(BlackToCyan::data_bgr){{
+    {0.0,   0.0,   0.0},   // Black: (B=0, G=0, R=0)
+    {32.0,  32.0,  0.0},
+    {64.0,  64.0,  0.0},
+    {96.0,  96.0,  0.0},
+    {128.0, 128.0, 0.0},
+    {160.0, 160.0, 0.0},
+    {192.0, 192.0, 0.0},
+    {224.0, 224.0, 0.0},
+    {255.0, 255.0, 0.0}    // Cyan in BGR: (B=255, G=255, R=0)
+}};
+
+gui::Color BlackToCyan::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
+}
+
+// Implementation for BlueToCyan palette
+IMPLEMENT(BlueToCyan::data_bgr){{
+    {255.0, 0.0,   0.0},   // Blue in BGR: (B=255, G=0, R=0)
+    {255.0, 32.0,  0.0},
+    {255.0, 64.0,  0.0},
+    {255.0, 96.0,  0.0},
+    {255.0, 128.0, 0.0},
+    {255.0, 160.0, 0.0},
+    {255.0, 192.0, 0.0},
+    {255.0, 224.0, 0.0},
+    {255.0, 255.0, 0.0}    // Cyan in BGR: (B=255, G=255, R=0)
+}};
+
+gui::Color BlueToCyan::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
+}
+
+// Implementation for BlackToGreen palette
+IMPLEMENT(BlackToGreen::data_bgr){{
+    {0.0,   0.0, 0.0},     // Black: (B=0, G=0, R=0)
+    {0.0,  32.0, 0.0},
+    {0.0,  64.0, 0.0},
+    {0.0,  96.0, 0.0},
+    {0.0, 128.0, 0.0},
+    {0.0, 160.0, 0.0},
+    {0.0, 192.0, 0.0},
+    {0.0, 224.0, 0.0},
+    {0.0, 255.0, 0.0}      // Green in BGR: (B=0, G=255, R=0)
+}};
+
+gui::Color BlackToGreen::value(double percent) {
+    if (percent < 0.0) { percent = 0.0; }
+    if (percent > 1.0) { percent = 1.0; }
+    double pos = percent * (data_bgr.size() - 1);
+    size_t idx = static_cast<size_t>(pos);
+    double t = pos - idx;
+    double b, g, r;
+    if (idx >= data_bgr.size() - 1) {
+        b = std::get<0>(data_bgr.back());
+        g = std::get<1>(data_bgr.back());
+        r = std::get<2>(data_bgr.back());
+    } else {
+        const auto& c0 = data_bgr[idx];
+        const auto& c1 = data_bgr[idx + 1];
+        b = (1.0 - t) * std::get<0>(c0) + t * std::get<0>(c1);
+        g = (1.0 - t) * std::get<1>(c0) + t * std::get<1>(c1);
+        r = (1.0 - t) * std::get<2>(c0) + t * std::get<2>(c1);
+    }
+    int R = static_cast<int>(std::round(r));
+    int G = static_cast<int>(std::round(g));
+    int B = static_cast<int>(std::round(b));
+    return gui::Color(R, G, B);
 }
 
 } /// EOF cmap

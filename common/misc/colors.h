@@ -329,9 +329,13 @@ constexpr static const Color
         DarkGray       = Color(50, 50, 50, 255),
         DarkCyan       = Color(0, 125, 250, 255),
             Cyan       = Color(0, 255, 255, 255),
+       LightCyan       = Color(125, 255, 255, 255),
           Yellow       = Color(255, 255, 0, 255),
       DarkYellow       = Color(150, 150, 0, 255),
+     LightYellow       = Color(255, 255, 125, 255),
              Red       = Color(255, 0, 0, 255),
+         DarkRed       = Color(150, 0, 0, 255),
+        LightRed       = Color(255, 125, 125, 255),
             Blue       = Color(0, 0, 255, 255),
            Green       = Color(0, 255, 0, 255),
        DarkGreen       = Color(0, 150, 0, 255),
@@ -376,9 +380,13 @@ constexpr static const auto AllColors = std::array {
     DEFINE_COLOR(DarkGray),
     DEFINE_COLOR(DarkCyan),
     DEFINE_COLOR(Cyan),
+    DEFINE_COLOR(LightCyan),
     DEFINE_COLOR(Yellow),
+    DEFINE_COLOR(LightYellow),
     DEFINE_COLOR(DarkYellow),
     DEFINE_COLOR(Red),
+    DEFINE_COLOR(DarkRed),
+    DEFINE_COLOR(LightRed),
     DEFINE_COLOR(Blue),
     DEFINE_COLOR(Green),
     DEFINE_COLOR(DarkGreen),
@@ -565,7 +573,34 @@ public:
     static gui::Color value(double percent);
 };
 
-ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow, blacktowhite);
+class BlackToCyan {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlueToCyan {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+class BlackToGreen {
+public:
+    using value_t = std::tuple<double, double, double>;
+private:
+    static const std::array<value_t, 9> data_bgr;
+public:
+    static gui::Color value(double percent);
+};
+
+ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow, blacktowhite, blacktocyan, bluetocyan, blacktogreen);
 
 class ColorMap {
 public:
@@ -583,6 +618,12 @@ public:
             return BlueToYellow::value(percent);
         } else if constexpr (Map == CMaps::blacktowhite) {
             return BlackToWhite::value(percent);
+        } else if constexpr (Map == CMaps::blacktocyan) {
+            return BlackToCyan::value(percent);
+        } else if constexpr (Map == CMaps::bluetocyan) {
+            return BlueToCyan::value(percent);
+        } else if constexpr (Map == CMaps::blacktogreen) {
+            return BlackToGreen::value(percent);
         } else if constexpr (Map == CMaps::wheel) {
             // For the ColorWheel, treat 'param' as an index (cast to uint32_t) and retrieve the next color
             return gui::ColorWheel(static_cast<uint32_t>(percent)).next();
@@ -599,6 +640,9 @@ public:
             case CMaps::pinkfoam: return value<CMaps::pinkfoam>(param);
             case CMaps::bluetoyellow: return value<CMaps::bluetoyellow>(param);
             case CMaps::blacktowhite: return value<CMaps::blacktowhite>(param);
+            case CMaps::blacktocyan: return value<CMaps::blacktocyan>(param);
+            case CMaps::bluetocyan: return value<CMaps::bluetocyan>(param);
+            case CMaps::blacktogreen: return value<CMaps::blacktogreen>(param);
             case CMaps::wheel:  return value<CMaps::wheel>(param);
             default:
                 throw U_EXCEPTION("Unsupported color map specified: ", map);
