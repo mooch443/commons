@@ -103,7 +103,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
                 }
 
                 // Check for precision loss
-                constexpr FromType epsilon = std::numeric_limits<FromType>::epsilon();
+                constexpr FromType epsilon = std::numeric_limits<ToType>::epsilon();
                 ToType converted = static_cast<ToType>(value);
                 FromType backConverted = static_cast<FromType>(converted);
                 FromType difference = std::abs(value - backConverted);
