@@ -6,10 +6,10 @@
 namespace cmn {
 
 extern IMPLEMENT(PrefixLiterals::names) = {
-    "WARNING",
-    "ERROR",
-    "EXCEPT",
-    "INFO"
+    "⚠",
+    "⮿",
+    "⮿",
+    "🛈"
 };
 
 static std::atomic_bool runtime_is_quiet{ false };
