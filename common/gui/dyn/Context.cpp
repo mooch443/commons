@@ -46,12 +46,17 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
         
         ptr->text()->set_clickable(true);
         
-        if(ptr->representative()->is_staged()
-           && ((ptr->representative()->type() == Type::ENTANGLED
-               && ptr->representative().to<Entangled>()->tooltip_object()
-               && ptr->representative().to<Entangled>()->tooltip_object()->hovered())
-               || ptr->representative()->hovered())
-           )
+        const Drawable* hover_object = ptr->representative().get();
+        if(hover_object
+           && hover_object->type() == Type::ENTANGLED
+           && static_cast<const Entangled*>(hover_object)->tooltip_object())
+        {
+            hover_object = static_cast<const Entangled*>(hover_object)->tooltip_object();
+        }
+        
+        if(hover_object
+           && hover_object->is_staged()
+           && hover_object->hovered())
         {
             //found = ptr->representative();
             if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
