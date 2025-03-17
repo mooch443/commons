@@ -261,6 +261,12 @@ void List::on_click(const Item * item) {
         for(auto item : _items)
             item->set_selected(false);
     }
+
+
+const Drawable* List::tooltip_object() const
+{
+    return &_title_background;
+}
     
     void List::draw_title() {
         advance_wrap(_title_background);

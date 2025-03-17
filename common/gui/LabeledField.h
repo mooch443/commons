@@ -45,6 +45,8 @@ public:
         if(_preview)
             _preview->set(limit);
     }
+    
+    const Drawable* tooltip_object() const override;
 };
 
 class LabeledField {

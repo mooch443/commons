@@ -494,4 +494,28 @@ void Dropdown::apply_item_filtering() {
     _items_changed = false;
 }
 
+const Drawable* Dropdown::tooltip_object() const {
+    if(_button
+       && _button->is_staged()
+       && _button->hovered())
+    {
+        return _button.get();
+        
+    } else if(_list.is_staged()
+              && _list.hovered())
+    {
+        if(_list.tooltip_object())
+            return _list.tooltip_object();
+        return &_list;
+    }
+    
+    if(_textfield
+       && _textfield->is_staged())
+    {
+        return _textfield.get();
+    }
+    
+    return nullptr;
+}
+
 }

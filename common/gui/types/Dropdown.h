@@ -230,6 +230,8 @@ namespace cmn::gui {
         bool has_selection() const;
         RawIndex filtered_item_index(FilteredIndex index) const;
         
+        virtual const Drawable* tooltip_object() const override;
+        
     protected:
         void set_inverted(bool); //! whether dropdown opens to the top
         void _set_open(bool);

@@ -70,6 +70,8 @@ namespace cmn::gui {
         void set_selected_rect(std::shared_ptr<Rect>);
         
         void update() override;
+        
+        const Drawable* tooltip_object() const override;
     private:
         void draw_title();
         void update_sizes();

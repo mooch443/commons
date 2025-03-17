@@ -976,4 +976,9 @@ void LabeledPathArray::update_ref_in_main_thread() {
     }
 }
 
+const Drawable* CustomDropdown::tooltip_object() const
+{
+    return Dropdown::tooltip_object();
+}
+
 }

@@ -46,9 +46,12 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
         
         ptr->text()->set_clickable(true);
         
-        if(ptr->representative()->parent()
-           && ptr->representative()->parent()->stage()
-           && ptr->representative()->hovered() /*&& (ptr->representative().ptr.get() == graph.hovered_object() || dynamic_cast<Textfield*>(graph.hovered_object()))*/)
+        if(ptr->representative()->is_staged()
+           && ((ptr->representative()->type() == Type::ENTANGLED
+               && ptr->representative().to<Entangled>()->tooltip_object()
+               && ptr->representative().to<Entangled>()->tooltip_object()->hovered())
+               || ptr->representative()->hovered())
+           )
         {
             //found = ptr->representative();
             if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
@@ -82,8 +85,20 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
     if(found) {
         ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
     }
+    
+    const Drawable* hover_object = found.get();
+    if(found
+       && found->type() == Type::ENTANGLED
+       && static_cast<const Entangled*>(found.get())->tooltip_object())
+    {
+        hover_object = static_cast<const Entangled*>(found.get())->tooltip_object();
+    }
+       
 
-    if(found && ref && found->hovered() && found->is_staged())
+    if(found
+       && ref
+       && hover_object->hovered()
+       && hover_object->is_staged())
     {
         //auto ptr = state._settings_tooltip.to<SettingsTooltip>();
         //if(ptr && ptr->other()

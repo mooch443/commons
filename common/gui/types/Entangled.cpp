@@ -75,6 +75,10 @@ namespace cmn::gui {
     void Entangled::update(const std::function<void(Entangled& base)> create) {
         OpenContextWithArgs(create, *this);
     }
+
+const Drawable* Entangled::tooltip_object() const {
+    return nullptr;
+}
     
     Entangled::~Entangled() {
         auto children = this->children();

@@ -90,6 +90,8 @@ public:
     
     std::optional<Dropdown::TextItem> last_hovered_item() const;
     
+    virtual const Drawable* tooltip_object() const override;
+    
 protected:
     void init();
     void update() override;

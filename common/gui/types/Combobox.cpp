@@ -342,4 +342,23 @@ void Combobox::update_value() {
     _value->set(_settings.prefix);
 }
 
+const Drawable* Combobox::tooltip_object() const
+{
+    if(_value) {
+        const Drawable* rep = _value->representative().get();
+        if(rep
+           && rep->type() == Type::ENTANGLED
+           && static_cast<const Entangled*>(rep)->tooltip_object())
+        {
+            rep = static_cast<const Entangled*>(rep)->tooltip_object();
+        }
+        if(rep
+           && rep->hovered())
+        {
+            return rep;
+        }
+    }
+    return _dropdown ? _dropdown->tooltip_object(): nullptr;
+}
+
 }
