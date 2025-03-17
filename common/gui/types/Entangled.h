@@ -253,7 +253,7 @@ namespace cmn::gui {
                 _current_children[_index] = nullptr;
                 
                 if(current != ptr) {
-                    //Print("wrap<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", ptr);
+                    //Print("wrap<",type_name<T>(),">: replacing ", hex(current), " at ", _index, " with ", hex(ptr));
                     
                     assert(!contains(_new_children, ptr));
                     if(current && _owned[current]) {

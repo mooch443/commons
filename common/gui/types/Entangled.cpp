@@ -516,22 +516,36 @@ void SectionInterface::children_rect_changed() {
             }
         }
         
-        auto oit = _owned.find(d);
-        if(oit != _owned.end()) {
+        if(auto it = std::find(_currently_removed.begin(), _currently_removed.end(), d);
+           it != _currently_removed.end())
+        {
+            /// this seemingly happens whenever an object is *first* replaced
+            /// by something else, and *then* gets deleted.
+            //FormatWarning("Found in currently_removed: ", hex(d));
+            _currently_removed.erase(it);
+        }
+        
+        if (auto it = std::find(_current_children.begin(), _current_children.end(), d);
+            it == _current_children.end())
+        {
+            /*FormatWarning("Cannot find child of type ", d->type(), " in Entangled: ", hex(d));
+            auto kit = std::find(_new_children.begin(), _new_children.end(), d);
+            if(kit != _new_children.end()) {
+                FormatWarning("* Found ", hex(d), " in new children though!");
+            }*/
+            //return;
+        } else
+            *it = nullptr;
+        
+        if(auto oit = _owned.find(d);
+           oit != _owned.end())
+        {
             if (oit->second)
                 delete d;
             else
                 d->set_parent(nullptr);
             _owned.erase(oit);
         }
-        
-        auto it = std::find(_current_children.begin(), _current_children.end(), d);
-        if (it == _current_children.end()) {
-            //FormatWarning("Cannot find child of type ", d->type(), " in Entangled.");
-            return;
-        }
-        
-        *it = nullptr;
     }
     
     void Entangled::clear_children() {
