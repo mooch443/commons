@@ -32,7 +32,7 @@ namespace cmn::gui {
         DrawStructure& _graph;
         Rect _title_bg;
         derived_ptr<StaticText> _text;
-        Text _title;
+        derived_ptr<StaticText> _title;
         derived_ptr<Button> _okay;
         derived_ptr<Button> _abort, _second, _third, _fourth;
         derived_ptr<HorizontalLayout> _buttons;

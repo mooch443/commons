@@ -161,7 +161,7 @@ void Dialog::set_closed() {
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
         _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(650, 0), Font(0.8f))),
-        _title(attr::Str(title), Font(0.9f, Style::Bold)),
+        _title(std::make_shared<StaticText>(attr::Str(title), SizeLimit(650, 0), Font(0.9f, Style::Bold), Margins{0, 0, 0, 0})),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
         _second(second.empty() ? nullptr : Button::MakePtr(attr::Str(second))),
@@ -214,7 +214,7 @@ void Dialog::set_closed() {
         set_background(DarkCyan.exposure(0.2f).alpha(220), Black);
         
         _text->set_background(Transparent, Transparent);
-        _title.set_origin(Vec2(0.5));
+        _title->set_origin(Vec2(0.5));
         
         if(_abort) {
             _abort->on_click([this](auto) {
@@ -338,7 +338,7 @@ void Dialog::set_closed() {
         OpenContext([this]{
             advance_wrap(_title_bg);
             //d.wrap_object(*_text);
-            advance_wrap(_title);
+            advance_wrap(*_title);
             advance_wrap(_layout);
         });
         
@@ -346,7 +346,7 @@ void Dialog::set_closed() {
         
         _layout.set_origin(Vec2(0.5f, 0));
         _layout.set_pos(Vec2(0.5f * width(), _layout.pos().y));
-        _title.set_pos(_title_bg.size() * 0.5f + Vec2(0, _title_bg.height() * 0.2f));
+        _title->set_pos(_title_bg.size() * 0.5f + Vec2(0, _title_bg.height() * 0.2f));
         
         _layout.set_policy(gui::VerticalLayout::Policy::CENTER);
         _buttons->set_policy(gui::HorizontalLayout::Policy::CENTER);
