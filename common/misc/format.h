@@ -996,6 +996,18 @@ struct FormatColoredPrefix {
 };
 
 template<typename... Args>
+struct _FormatPrint : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::INFO, FormatColor::WHITE, Args...> {
+    _FormatPrint(cmn::source_location info, const Args& ...args)
+        : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::INFO, FormatColor::WHITE, Args...>(args..., info)
+    { }
+};
+
+template<typename... Args>
+_FormatPrint(const Args&... args) -> _FormatPrint<Args...>;
+
+#define FormatPrint(...) FormatPrint(cmn::source_location::current(), __VA_ARGS__)
+
+template<typename... Args>
 struct _FormatWarning : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...> {
     _FormatWarning(cmn::source_location info, const Args& ...args)
         : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::WARNING, FormatColor::YELLOW, Args...>(args..., info)
