@@ -374,7 +374,7 @@ std::vector<int> text_search(const std::string &search_text,
 
 std::vector<int> text_search(const std::string &search_text,
                              const std::vector<std::string> &corpus,
-                             const PreprocessedData& data) 
+                             const PreprocessedData& data)
 {
     std::vector<std::tuple<double, std::string, int>> relevanceScores;
     auto search_terms = split_words(search_text);
@@ -420,4 +420,74 @@ std::vector<int> text_search(const std::string &search_text,
     }
 
     return sortedIndices;
+}
+
+namespace cmn::utils {
+
+// Production-ready function to strip HTML tags from a string.
+template<cmn::utils::StringLike Str>
+std::string strip_html(const Str& input) {
+    std::string_view sv(input);
+    std::string output;
+    enum class State { Outside, InsideTag, InsideQuote, InsideComment };
+    State state = State::Outside;
+    char quoteChar = '\0';
+
+    size_t i = 0;
+    while (i < sv.size()) {
+        char c = sv[i];
+        switch (state) {
+            case State::Outside:
+                if (c == '<') {
+                    // Check if we are starting an HTML comment.
+                    if (i + 3 < sv.size() && sv.substr(i, 4) == "<!--") {
+                        state = State::InsideComment;
+                        i += 4;
+                    } else {
+                        state = State::InsideTag;
+                        ++i;
+                    }
+                } else {
+                    output.push_back(c);
+                    ++i;
+                }
+                break;
+
+            case State::InsideTag:
+                if (c == '"' || c == '\'') {
+                    state = State::InsideQuote;
+                    quoteChar = c;
+                    ++i;
+                } else if (c == '>') {
+                    state = State::Outside;
+                    ++i;
+                } else {
+                    ++i;
+                }
+                break;
+
+            case State::InsideQuote:
+                // Remain inside the quote until the matching quote is found.
+                if (c == quoteChar)
+                    state = State::InsideTag;
+                ++i;
+                break;
+
+            case State::InsideComment:
+                // Look for the end of the comment.
+                if (i + 2 < sv.size() && sv.substr(i, 3) == "-->") {
+                    state = State::Outside;
+                    i += 3;
+                } else {
+                    ++i;
+                }
+                break;
+        }
+    }
+    return output;
+}
+template std::string strip_html<std::string>(const std::string& input);
+template std::string strip_html<std::string_view>(const std::string_view& input);
+template std::string strip_html<const char*>(const char*const& input);
+
 }

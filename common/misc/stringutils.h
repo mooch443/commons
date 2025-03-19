@@ -58,13 +58,13 @@ struct is_const_lvalue_ref<const T&> : std::true_type {};
                sv_str.substr(sv_str.size() - sv_needle.size()) == sv_needle;
     }
 
-	/**
-	 * Finds a given needle inside the \p str given as first parameter.
-	 * Case-sensitive.
-	 * @param str haystack
-	 * @param needle the needle
-	 * @return true if it is found
-	 */
+    /**
+     * Finds a given needle inside the \p str given as first parameter.
+     * Case-sensitive.
+     * @param str haystack
+     * @param needle the needle
+     * @return true if it is found
+     */
     template<StringLike Str, NeedleLike Needle>
     [[nodiscard]] constexpr bool contains(const Str& str, const Needle& needle) noexcept {
         if constexpr(std::is_same_v<std::remove_cvref_t<Str>, const char*>)
@@ -497,6 +497,13 @@ std::vector<int> text_search(const std::string &search_text, const std::vector<s
 namespace cmn::utils {
 
 std::string read_file(const std::string& filename);
+
+template<cmn::utils::StringLike Str>
+std::string strip_html(const Str& input);
+
+extern template std::string strip_html<std::string>(const std::string& input);
+extern template std::string strip_html<std::string_view>(const std::string_view& input);
+extern template std::string strip_html<const char*>(const char* const& input);
     
 }
 
