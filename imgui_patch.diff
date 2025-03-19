@@ -1,8 +1,8 @@
 diff --git a/backends/imgui_impl_opengl3.cpp b/backends/imgui_impl_opengl3.cpp
-index 7087a7c5..54672c66 100644
+index 7d0b5362..41213237 100644
 --- a/backends/imgui_impl_opengl3.cpp
 +++ b/backends/imgui_impl_opengl3.cpp
-@@ -121,6 +121,50 @@
+@@ -123,6 +123,50 @@
  #include <TargetConditionals.h>
  #endif
  
@@ -53,7 +53,7 @@ index 7087a7c5..54672c66 100644
  // Clang/GCC warnings with -Weverything
  #if defined(__clang__)
  #pragma clang diagnostic push
-@@ -273,6 +317,29 @@ struct ImGui_ImplOpenGL3_VtxAttribState
+@@ -278,6 +322,29 @@ struct ImGui_ImplOpenGL3_VtxAttribState
  };
  #endif
  
@@ -80,10 +80,10 @@ index 7087a7c5..54672c66 100644
 +#define checkGLError()
 +#endif
 +
- // Functions
- bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
- {
-@@ -450,16 +517,60 @@ static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, int fb_wid
+ // Not static to allow third-party code to use that if they want to (but undocumented)
+ bool ImGui_ImplOpenGL3_InitLoader();
+ bool ImGui_ImplOpenGL3_InitLoader()
+@@ -468,16 +535,60 @@ static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, int fb_wid
  #if defined(GL_CLIP_ORIGIN)
      if (!clip_origin_lower_left) { float tmp = T; T = B; B = tmp; } // Swap top and bottom if origin is upper left
  #endif
@@ -150,7 +150,7 @@ index 7087a7c5..54672c66 100644
  
  #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_BIND_SAMPLER
      if (bd->GlVersion >= 330 || bd->GlProfileIsES3)
-@@ -546,6 +657,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
+@@ -566,6 +677,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
      // Will project scissor/clipping rectangles into framebuffer space
      ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
      ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
@@ -158,7 +158,7 @@ index 7087a7c5..54672c66 100644
  
      // Render command lists
      for (int n = 0; n < draw_data->CmdListsCount; n++)
-@@ -606,8 +718,33 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
+@@ -626,8 +738,33 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
                  // Apply scissor/clipping rectangle (Y is inverted in OpenGL)
                  GL_CALL(glScissor((int)clip_min.x, (int)((float)fb_height - clip_max.y), (int)(clip_max.x - clip_min.x), (int)(clip_max.y - clip_min.y)));
  
@@ -194,16 +194,16 @@ index 7087a7c5..54672c66 100644
  #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_VTX_OFFSET
                  if (bd->GlVersion >= 320)
                      GL_CALL(glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx)), (GLint)pcmd->VtxOffset));
-@@ -687,7 +824,7 @@ bool ImGui_ImplOpenGL3_CreateFontsTexture()
+@@ -709,7 +846,7 @@ bool ImGui_ImplOpenGL3_CreateFontsTexture()
      GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
  
-     // Store our identifier
+     // Store identifier
 -    io.Fonts->SetTexID((ImTextureID)(intptr_t)bd->FontTexture);
 +    io.Fonts->SetTexID((ImTextureID)new ImGui_OpenGL3_TextureID { (uint64_t)bd->FontTexture, 4 });
  
      // Restore state
      GL_CALL(glBindTexture(GL_TEXTURE_2D, last_texture));
-@@ -702,6 +839,7 @@ void ImGui_ImplOpenGL3_DestroyFontsTexture()
+@@ -724,6 +861,7 @@ void ImGui_ImplOpenGL3_DestroyFontsTexture()
      if (bd->FontTexture)
      {
          glDeleteTextures(1, &bd->FontTexture);
@@ -211,7 +211,7 @@ index 7087a7c5..54672c66 100644
          io.Fonts->SetTexID(0);
          bd->FontTexture = 0;
      }
-@@ -844,6 +982,25 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -866,6 +1004,25 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
          "{\n"
          "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
          "}\n";
@@ -237,7 +237,7 @@ index 7087a7c5..54672c66 100644
  
      const GLchar* fragment_shader_glsl_300_es =
          "precision mediump float;\n"
-@@ -855,6 +1012,16 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -877,6 +1034,16 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
          "{\n"
          "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
          "}\n";
@@ -254,7 +254,7 @@ index 7087a7c5..54672c66 100644
  
      const GLchar* fragment_shader_glsl_410_core =
          "in vec2 Frag_UV;\n"
-@@ -869,6 +1036,8 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -891,6 +1058,8 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
      // Select shaders matching our GLSL versions
      const GLchar* vertex_shader = nullptr;
      const GLchar* fragment_shader = nullptr;
@@ -263,7 +263,7 @@ index 7087a7c5..54672c66 100644
      if (glsl_version < 130)
      {
          vertex_shader = vertex_shader_glsl_120;
-@@ -883,11 +1052,14 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -905,11 +1074,14 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
      {
          vertex_shader = vertex_shader_glsl_300_es;
          fragment_shader = fragment_shader_glsl_300_es;
@@ -278,7 +278,7 @@ index 7087a7c5..54672c66 100644
      }
  
      // Create shaders
-@@ -903,6 +1075,20 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -927,6 +1099,20 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
      glCompileShader(frag_handle);
      CheckShader(frag_handle, "fragment shader");
  
@@ -299,7 +299,7 @@ index 7087a7c5..54672c66 100644
      // Link
      bd->ShaderHandle = glCreateProgram();
      glAttachShader(bd->ShaderHandle, vert_handle);
-@@ -910,6 +1096,24 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -934,6 +1120,24 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
      glLinkProgram(bd->ShaderHandle);
      CheckProgram(bd->ShaderHandle, "shader program");
  
@@ -324,7 +324,7 @@ index 7087a7c5..54672c66 100644
      glDetachShader(bd->ShaderHandle, vert_handle);
      glDetachShader(bd->ShaderHandle, frag_handle);
      glDeleteShader(vert_handle);
-@@ -921,6 +1125,20 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -945,6 +1149,20 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
      bd->AttribLocationVtxUV = (GLuint)glGetAttribLocation(bd->ShaderHandle, "UV");
      bd->AttribLocationVtxColor = (GLuint)glGetAttribLocation(bd->ShaderHandle, "Color");
  
@@ -345,7 +345,7 @@ index 7087a7c5..54672c66 100644
      // Create buffers
      glGenBuffers(1, &bd->VboHandle);
      glGenBuffers(1, &bd->ElementsHandle);
-@@ -946,6 +1164,15 @@ void    ImGui_ImplOpenGL3_DestroyDeviceObjects()
+@@ -970,6 +1188,15 @@ void    ImGui_ImplOpenGL3_DestroyDeviceObjects()
      if (bd->VboHandle)      { glDeleteBuffers(1, &bd->VboHandle); bd->VboHandle = 0; }
      if (bd->ElementsHandle) { glDeleteBuffers(1, &bd->ElementsHandle); bd->ElementsHandle = 0; }
      if (bd->ShaderHandle)   { glDeleteProgram(bd->ShaderHandle); bd->ShaderHandle = 0; }
@@ -362,7 +362,7 @@ index 7087a7c5..54672c66 100644
  }
  
 diff --git a/imconfig.h b/imconfig.h
-index 6e4c743d..d3cf3393 100644
+index a1e29e84..0d2199e0 100644
 --- a/imconfig.h
 +++ b/imconfig.h
 @@ -14,6 +14,15 @@
@@ -382,12 +382,23 @@ index 6e4c743d..d3cf3393 100644
  // If your macro uses multiple statements, make sure is enclosed in a 'do { .. } while (0)' block so it can be used as a single statement.
  //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 diff --git a/imgui_draw.cpp b/imgui_draw.cpp
-index 57486a6e..87a7b54b 100644
+index aa0a7fee..a9020c54 100644
 --- a/imgui_draw.cpp
 +++ b/imgui_draw.cpp
-@@ -4018,8 +4018,8 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, Im
-         text_end = text_begin + strlen(text_begin); // ImGui:: functions generally already provides a valid text_end, so this is merely to handle direct calls.
- 
+@@ -4115,8 +4115,8 @@ void ImFont::RenderChar(ImDrawList* draw_list, float size, const ImVec2& pos, Im
+     if (glyph->Colored)
+         col |= ~IM_COL32_A_MASK;
+     float scale = (size >= 0.0f) ? (size / FontSize) : 1.0f;
+-    float x = IM_TRUNC(pos.x);
+-    float y = IM_TRUNC(pos.y);
++    float x = (pos.x);
++    float y = (pos.y);
+     draw_list->PrimReserve(6, 4);
+     draw_list->PrimRectUV(ImVec2(x + glyph->X0 * scale, y + glyph->Y0 * scale), ImVec2(x + glyph->X1 * scale, y + glyph->Y1 * scale), ImVec2(glyph->U0, glyph->V0), ImVec2(glyph->U1, glyph->V1), col);
+ }
+@@ -4125,8 +4125,8 @@ void ImFont::RenderChar(ImDrawList* draw_list, float size, const ImVec2& pos, Im
+ void ImFont::RenderText(ImDrawList* draw_list, float size, const ImVec2& pos, ImU32 col, const ImVec4& clip_rect, const char* text_begin, const char* text_end, float wrap_width, bool cpu_fine_clip)
+ {
      // Align to be pixel perfect
 -    float x = IM_TRUNC(pos.x);
 -    float y = IM_TRUNC(pos.y);

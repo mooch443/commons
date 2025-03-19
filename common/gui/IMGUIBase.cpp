@@ -831,7 +831,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     ptr = io.Fonts->AddFontDefault();
                     im_font_scale = max(1, dpi_scale) * 0.5_F;
                 }
-                //ptr->ConfigData->GlyphOffset = ImVec2(1,0);
+                //ptr->Sources->GlyphOffset = ImVec2(1,0);
                 ptr->FontSize = base_scale * im_font_scale * scale;
 
                 return ptr;
@@ -1614,7 +1614,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             if(ptr->txt().empty())
                 break;
             
-            auto font = _fonts.at(ptr->font().style);
+            ImFont* font = _fonts.at(ptr->font().style);
             auto font_scale = ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
             
             //Vec2 rounded(round(bds.x), round(bds.y));
@@ -1622,7 +1622,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             //Print(ptr->txt(), "scale = ", font_scale, " rounded = ", Vec2(rounded), " (", bds.pos(),")");
             
             if(ptr->shadow() > 0) {
-                Vec2 offset = Vec2(1.5_F * global_scale + font->ConfigData->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
+                Vec2 offset = Vec2(1.5_F * global_scale + font->Sources->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
                 
                 list->AddText(font,
                               font_scale,
