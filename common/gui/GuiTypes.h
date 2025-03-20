@@ -251,13 +251,34 @@ protected:
         static constexpr auto Class = Type::data::values::POLYGON;
         
     public:
-        Polygon();
+        /*Polygon();
         Polygon(std::shared_ptr<std::vector<Vec2>> vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
-        Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);
+        Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent);*/
+        
+        template<typename... Args> Polygon(Args... args)
+            : Drawable(Type::POLYGON)
+        {
+            create(std::forward<Args>(args)...);
+        }
+
+        template<typename... Args> void create(Args... args) {
+            set(FillClr{ Transparent });
+            set(LineClr{ Transparent });
+            set(std::vector<Vertex>{});
+
+            if constexpr (requires { { set(std::forward<Args>(args)...) }->std::same_as<void>; }) {
+                set(std::forward<Args>(args)...);
+            }
+            else {
+                (set(std::forward<Args>(args)), ...);
+            }
+        }
         
         using Drawable::set;
         void set(FillClr clr) { set_fill_clr(clr); }
         void set(LineClr clr) { set_border_clr(clr); }
+        void set(const std::vector<Vertex>& v) { set_vertices(v); }
+        void set(const std::vector<Vec2>& v) { set_vertices(v); }
         
         void set_fill_clr(const Color& clr);
         void set_border_clr(const Color& clr);
@@ -270,12 +291,12 @@ protected:
             set_dirty();
         }
         
-        void create(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
+        /*void create(const std::shared_ptr<std::vector<Vec2>>& vertices, const Color& fill_clr = Transparent, const Color& line_clr = Transparent)
         {
             set_fill_clr(fill_clr);
             set_border_clr(line_clr);
             set_vertices(*vertices);
-        }
+        }*/
         
     protected:
         bool swap_with(Drawable* d) override;

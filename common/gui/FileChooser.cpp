@@ -233,7 +233,7 @@ void FileChooser::set_tabs(const std::vector<Settings>& tabs) {
             }
         });
         auto ptr = std::shared_ptr<Drawable>(button);
-        tabs_elements.push_back(ptr);
+        tabs_elements.push_back(std::move(ptr));
     }
     
     if(_tabs.size() > 1) {

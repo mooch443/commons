@@ -190,7 +190,7 @@ Vertices::Vertices(const Vec2& p0, const Vec2& p1, const Color& clr)
     }, PrimitiveType::LineStrip, MEMORY::COPY)
 { }
 
-Polygon::Polygon()
+/*Polygon::Polygon()
     : Drawable(Type::POLYGON)
 {
     update_size();
@@ -212,7 +212,7 @@ Polygon::Polygon(const std::vector<Vertex>& vertices, const Color& fill_clr, con
         set_fill_clr(c.alpha(100));
     }
     update_size();
-}
+}*/
 
 bool Polygon::in_bounds(Float2_t x, Float2_t y) {
     if(Drawable::in_bounds(x, y)) {
