@@ -22,7 +22,7 @@ namespace cmn::gui {
     public:
         template<typename T, typename... Args>
         static Layout::Ptr Make(Args&&... args) {
-            return Layout::Ptr(std::make_shared<T>(std::forward<Args>(args)...));
+            return Layout::Ptr(new T(std::forward<Args>(args)...));
         }
         
     public:

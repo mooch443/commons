@@ -80,12 +80,12 @@ namespace cmn::gui {
         //Button(Settings, std::function<void()> on_click = nullptr);
         virtual ~Button() {}
         
-        using Ptr = std::shared_ptr<Button>;
+        using Ptr = derived_ptr<Button>;
         
         template<typename... Args>
         static Ptr MakePtr(Args... args)
         {
-            return std::make_shared<Button>(std::forward<Args>(args)...);
+            return derived_ptr<Button>(new Button(std::forward<Args>(args)...));
         }
         
         const std::string& txt() const { return _settings.text; }

@@ -160,14 +160,14 @@ void Dialog::set_closed() {
       : _closed(false),
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(std::make_shared<StaticText>(attr::Str(text), Loc(250, 140), SizeLimit(650, 0), Font(0.8f))),
-        _title(std::make_shared<StaticText>(attr::Str(title), SizeLimit(650, 0), Font(0.9f, Style::Bold), Margins{0, -5, 0, 5})),
+        _text(new StaticText(attr::Str(text), Loc(250, 140), SizeLimit(650, 0), Font(0.8f))),
+        _title(new StaticText(attr::Str(title), SizeLimit(650, 0), Font(0.9f, Style::Bold), Margins{0, -5, 0, 5})),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
         _second(second.empty() ? nullptr : Button::MakePtr(attr::Str(second))),
         _third(third.empty() ? nullptr : Button::MakePtr(attr::Str(third))),
         _fourth(fourth.empty() ? nullptr : Button::MakePtr(attr::Str(fourth))),
-        _buttons(std::make_shared<HorizontalLayout>()),
+        _buttons(new HorizontalLayout),
         _layout(std::vector<Layout::Ptr>{_text, _buttons}),
         _callback(std::move(callback))
     {

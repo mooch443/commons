@@ -44,7 +44,7 @@ public:
             return obj;
         }
         
-        return std::make_unique<T>();
+        return Ptr(std::make_unique<T>());
     }
     
     // Method to return an object to the cache

@@ -36,7 +36,7 @@ sprite::Map& settings_map() {
 }
 
 LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
-    : _gui(gui), _ref(name), _text(std::make_shared<gui::Text>(Str{name}))
+    : _gui(gui), _ref(name), _text(new gui::Text(Str{name}))
 {
     //if(name.empty())
     //    throw std::invalid_argument("Name cannot be empty.");
@@ -96,7 +96,7 @@ LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, S
             replace_ref(name);
         }});
     } else {
-        _combo = std::make_shared<Combobox>(gui, Combobox::OnSelect_t{[this](ParmName name) {
+        _combo = new Combobox(gui, Combobox::OnSelect_t{[this](ParmName name) {
             replace_ref(name);
         }});
         state._last_settings_box = _combo;
@@ -183,7 +183,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::strin
 
 LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert)
 : LabeledField(gui, name),
-_checkbox(std::make_shared<gui::Checkbox>(attr::Str(desc))),
+_checkbox(new gui::Checkbox(attr::Str(desc))),
 _invert(invert)
 {
     replace_docs(settings_scene::temp_docs[name]);
@@ -221,7 +221,7 @@ LabeledCheckbox::~LabeledCheckbox() {
 
 LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
     : LabeledField(gui, name),
-    _text_field(std::make_shared<gui::Textfield>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
+    _text_field(new gui::Textfield(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _text_field->set_placeholder(name);
     _text_field->set_font(Font(0.7f));
@@ -278,7 +278,7 @@ void LabeledTextField::update_ref_in_main_thread() {
 
 LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert)
 : LabeledField(gui, name),
-_list(std::make_shared<gui::List>(
+_list(new gui::List(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
   std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this](List* list, const gui::Item& item){
       auto index = item.ID();
@@ -385,7 +385,7 @@ void LabeledList::update_ref_in_main_thread() {
 
 LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
 : LabeledField(gui, name),
-_dropdown(std::make_shared<gui::Dropdown>(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
+_dropdown(new gui::Dropdown(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     replace_docs(settings_scene::temp_docs[name]);
     
@@ -441,7 +441,7 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
     }), _path(path)
 {
     set_description("");
-    _dropdown = std::make_shared<CustomDropdown>(Box(0, 0, 500, 28));
+    _dropdown = new CustomDropdown(Box(0, 0, 500, 28));
     _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path...");
     
     _dropdown->add_event_handler(EventType::SELECT, [&](Event e) {
@@ -667,7 +667,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     : LabeledField(gui, name)
 {
     // Initialize Dropdown, attach handlers for events
-    _dropdown = Layout::Make<CustomDropdown>(attr::Size(300,40));
+    _dropdown = new CustomDropdown(attr::Size(300,40));
     _dropdown.to<CustomDropdown>()->textfield()->set_placeholder("Please enter a path or matching pattern...");
     _dropdown->on_text_changed([this](std::string){
         // handle text changed
@@ -738,9 +738,9 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     });
     
     // Initialize StaticText
-    _dropdown->set_preview(Layout::Make<gui::StaticText>(StaticText::FadeOut_t{1.f}));
+    _dropdown->set_preview(new gui::StaticText(StaticText::FadeOut_t{1.f}));
     
-    _layout = Layout::Make<gui::PathArrayView>(std::vector<Layout::Ptr>{_dropdown, _dropdown->preview()}, attr::Margins{0, 0, 0, 0});
+    _layout = new gui::PathArrayView(std::vector<Layout::Ptr>{_dropdown, _dropdown->preview()}, attr::Margins{0, 0, 0, 0});
     auto view = static_cast<PathArrayView*>(_layout.get());
     view->text = (StaticText*)_dropdown->preview().get();
     view->control = _dropdown.get();

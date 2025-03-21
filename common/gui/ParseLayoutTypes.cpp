@@ -195,7 +195,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     } else if(auto ptr = state.named_entity(name);
                               ptr != nullptr)
                     {
-                        apply_modifier_to_object(name, ptr, hover_action.parse(context, state));
+                        apply_modifier_to_object(name, Layout::Ptr(ptr), hover_action.parse(context, state));
                         
                     } else {
                         Print("Unknown Action: ", hover_action);
@@ -218,7 +218,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     } else if(auto ptr = state.named_entity(name);
                               ptr != nullptr)
                     {
-                        apply_modifier_to_object(name, ptr, unhover_action.parse(context, state));
+                        apply_modifier_to_object(name, Layout::Ptr(ptr), unhover_action.parse(context, state));
                         
                     } else {
                         Print("Unknown Action: ", unhover_action);

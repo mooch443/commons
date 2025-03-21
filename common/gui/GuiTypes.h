@@ -464,6 +464,8 @@ protected:
         }
         
         template<typename... Args> void create(Args... args) {
+            _settings = {};
+
             if constexpr(not contains_type<Origin, Args...>()) {
                 switch(_settings.font.align) {
                     case Align::Center:

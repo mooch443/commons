@@ -278,7 +278,7 @@ void StaticText::RichString::convert(const std::unique_ptr<Text>& text) const {
 
 void StaticText::add_shadow() {
     if(not _fade_out)
-        _fade_out = std::make_shared<ExternalImage>();
+        _fade_out = new ExternalImage();
     
     Float2_t h = min(height(), Base::default_line_spacing(_settings.default_font) * 3_F);
     auto image = Image::Make(height()+1, 1, 4);

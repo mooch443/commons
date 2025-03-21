@@ -13,9 +13,9 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
-    _description(std::make_shared<Text>(Str("Please choose a file in order to continue."), Loc(10, 10), Font(0.75))),
-    _columns(std::make_shared<HorizontalLayout>()),
-    _overall(std::make_shared<VerticalLayout>()),
+    _description(new Text(Str("Please choose a file in order to continue."), Loc(10, 10), Font(0.75))),
+    _columns(new HorizontalLayout),
+    _overall(new VerticalLayout),
     _base("Choose file", {1200,640}, [this](DrawStructure& graph){
         using namespace gui;
         tf::show();
@@ -114,11 +114,14 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _overall->set_policy(VerticalLayout::CENTER);
     //_overall->set_background(Transparent, Blue);
     
-    _list = std::make_shared<ScrollableList<FileItem>>(Box(
-        0,
-        0, 
-      _base.graph()->width() - 20 - (_current_tab.content ? _current_tab.content->width() + 5 : 0),
-      _base.graph()->height() - 70 - 10 - 100 - 70));
+    _list = derived_ptr(new ScrollableList<FileItem > {
+        Box{
+            0_F,
+            0_F,
+            _base.graph()->width() - 20_F - (_current_tab.content ? _current_tab.content->width() + 5 : 0),
+            _base.graph()->height() - 70 - 10 - 100 - 70_F
+        }
+    });
 
     _list->set_stays_toggled(true);
     //if(_extra)
@@ -128,7 +131,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     
     _button = Button::MakePtr(attr::Str("Open"), attr::Box(_list->pos() + Vec2(0, _list->height() + 40), Size2(100, 30)));
     
-    _textfield = std::make_shared<Dropdown>(attr::Box(0, 0, _list->width(), 30));
+    _textfield = new Dropdown(attr::Box(0, 0, _list->width(), 30));
     //_textfield = std::make_shared
     _textfield->on_select([this](auto, const Dropdown::TextItem &item) {
         file::Path path;
@@ -159,7 +162,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
         }
     });
     
-    _rows = std::make_shared<VerticalLayout>(std::vector<Layout::Ptr>{
+    _rows = new VerticalLayout(std::vector<Layout::Ptr>{
         _textfield, _list
     });
     //_rows->set_background(Transparent, Yellow);
@@ -232,12 +235,11 @@ void FileChooser::set_tabs(const std::vector<Settings>& tabs) {
                 set_tab(button->txt());
             }
         });
-        auto ptr = std::shared_ptr<Drawable>(button);
-        tabs_elements.push_back(std::move(ptr));
+        tabs_elements.push_back(Layout::Ptr(button));
     }
     
     if(_tabs.size() > 1) {
-        _tabs_bar = std::make_shared<HorizontalLayout>(tabs_elements);
+        _tabs_bar = new HorizontalLayout(tabs_elements);
     } else {
         _tabs_bar = nullptr;
     }
@@ -340,7 +342,7 @@ void FileChooser::set_tooltip(int ID, const std::shared_ptr<Drawable>& ptr, cons
         
     } else {
         if(it == _tooltips.end()) {
-            _tooltips[ID] = std::make_shared<Tooltip>(ptr, 400);
+            _tooltips[ID] = new Tooltip(ptr, 400);
             _tooltips[ID]->text().set_default_font(Font(0.5));
             it = _tooltips.find(ID);
         } else
@@ -438,7 +440,7 @@ void FileChooser::file_selected(size_t, file::Path p) {
             
         } else {
             if(!_selected_text)
-                _selected_text = std::make_shared<StaticText>(Str{"Selected: "+_selected_file.str()}, SizeLimit(700, 0), Font(0.6f));
+                _selected_text = new StaticText(Str{"Selected: "+_selected_file.str()}, SizeLimit(700, 0), Font(0.6f));
             else
                 _selected_text->set_txt("Selected: "+_selected_file.str());
             

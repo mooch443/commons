@@ -28,23 +28,34 @@ namespace cmn::gui {
     }
     
 #ifdef _DEBUG_MEMORY
-    std::mutex all_mutex;
-    std::unordered_map<CacheObject*, std::tuple<int, std::shared_ptr<void*>>> all_objects;
-    std::unordered_map<Drawable*, std::tuple<Timer, int, std::shared_ptr<void*>>> all_drawables;
-    Timer drawable_timer;
+    struct DebugMemoryData {
+        std::mutex all_mutex;
+        std::unordered_map<CacheObject*, std::tuple<int, std::shared_ptr<void*>>> all_objects;
+        std::unordered_map<Drawable*, std::tuple<Timer, int, std::shared_ptr<void*>>> all_drawables;
+        Timer drawable_timer;
+    };
+
+    DebugMemoryData& mem() {
+		static std::unique_ptr<DebugMemoryData> data = std::make_unique<DebugMemoryData>();
+		return *data;
+    }
 #endif
 
     size_t CacheObject::memory() {
 #ifdef _DEBUG_MEMORY
-        std::lock_guard<std::mutex> guard(all_mutex);
+        std::lock_guard<std::mutex> guard(mem().all_mutex);
         
         std::set<std::string> resolved, drawbles;
-        for(auto && [ptr, tuple] : all_objects) {
+        for(auto && [ptr, tuple] : mem().all_objects) {
+#ifndef WIN32
             resolved.insert(resolve_stacktrace(tuple));
+#endif
         }
-        for(auto && [ptr, tuple] : all_drawables) {
-            auto && [timer, r, t] = tuple;
+        for(auto && [ptr, tuple] : mem().all_drawables) {
+            auto && [timer, r, t] = tuple; 
+#ifndef WIN32
             drawbles.insert(resolve_stacktrace({r,t}));
+#endif
         }
         
         auto str = "[CacheObject]\n"+Meta::toStr(resolved)+"\n\n[Drawable]\n"+Meta::toStr(drawbles);
@@ -55,7 +66,7 @@ namespace cmn::gui {
             fclose(f);
         } else
             FormatError("Cannot write 'objects.log'");
-        return all_objects.size() + all_drawables.size();
+        return mem().all_objects.size() + mem().all_drawables.size();
 #else
         return 0;
 #endif
@@ -63,19 +74,19 @@ namespace cmn::gui {
     
     CacheObject::CacheObject() : _changed(true) {
 #ifdef _DEBUG_MEMORY
-        std::lock_guard<std::mutex> guard(all_mutex);
-        all_objects[this] = retrieve_stacktrace();
+        std::lock_guard<std::mutex> guard(mem().all_mutex);
+        mem().all_objects[this] = retrieve_stacktrace();
 #endif
     }
     
     CacheObject::~CacheObject() {
 #ifdef _DEBUG_MEMORY
-        std::lock_guard<std::mutex> guard(all_mutex);
-        auto it = all_objects.find(this);
-        if(it == all_objects.end())
+        std::lock_guard<std::mutex> guard(mem().all_mutex);
+        auto it = mem().all_objects.find(this);
+        if(it == mem().all_objects.end())
             FormatError("Double delete?");
         else
-            all_objects.erase(it);
+            mem().all_objects.erase(it);
 #endif
     }
     
@@ -112,30 +123,30 @@ namespace cmn::gui {
         _z_index(0)
     {
 #ifdef _DEBUG_MEMORY
-        std::lock_guard<std::mutex> guard(all_mutex);
+        std::lock_guard<std::mutex> guard(mem().all_mutex);
         auto && [r, t] = retrieve_stacktrace();
-        all_drawables[this] = { Timer(), r, t };
+        mem().all_drawables[this] = { Timer(), r, t };
         
-        if(drawable_timer.elapsed() > 5) {
+        if(mem().drawable_timer.elapsed() > 5) {
             static std::set<Drawable*> last_time, previous;
             std::set<Drawable*> difference;
             std::set<Drawable*> deleted;
-            for (auto && [object, stack] : all_drawables) {
+            for (auto && [object, stack] : mem().all_drawables) {
                 if(!last_time.count(object)) {
                     difference.insert(object);
                 }
             }
             
             for(auto o : last_time) {
-                if(!all_drawables.count(o))
+                if(!mem().all_drawables.count(o))
                     deleted.insert(o);
             }
             
             auto str = Meta::toStr(difference);
-            DebugHeader(all_drawables.size(), " drawables in memory, ", difference.size()," new, ", deleted.size()," deleted");
+            DebugHeader(mem().all_drawables.size(), " drawables in memory, ", difference.size()," new, ", deleted.size()," deleted");
             
             std::set<std::tuple<Float2_t, Drawable*>> oldest;
-            for (auto && [object, info] : all_drawables) {
+            for (auto && [object, info] : mem().all_drawables) {
                 auto & [timer, r, t] = info;
                 //auto str = resolve_stacktrace({r, t});
                 if(previous.count(object))
@@ -145,7 +156,7 @@ namespace cmn::gui {
             
             std::set<std::tuple<Float2_t, Drawable*>> copy;
             for(auto && [_, object] : oldest) {
-                auto && [timer, r, t] = all_drawables.at(object);
+                auto && [timer, r, t] = mem().all_drawables.at(object);
                 copy.insert({timer.elapsed(), object});//resolve_stacktrace({r, t})});
             }
             
@@ -158,13 +169,15 @@ namespace cmn::gui {
                 
                 if(ten != copy.end()) {
                     auto && [_, object] = *ten;
-                    auto && [timer, r, t] = all_drawables.at(object);
+                    auto && [timer, r, t] = mem().all_drawables.at(object);
+#ifndef WIN32
                     auto trace = resolve_stacktrace({r, t});
                     Print(trace);
+#endif
                 }
             }
             
-            drawable_timer.reset();
+            mem().drawable_timer.reset();
             previous = difference;
             
             for(auto &o : deleted)
@@ -203,12 +216,12 @@ namespace cmn::gui {
         
 #ifdef _DEBUG_MEMORY
         {
-            std::lock_guard<std::mutex> guard(all_mutex);
-            auto it = all_drawables.find(this);
-            if(it == all_drawables.end())
+            std::lock_guard<std::mutex> guard(mem().all_mutex);
+            auto it = mem().all_drawables.find(this);
+            if(it == mem().all_drawables.end())
                 FormatError("Double delete?");
             else
-                all_drawables.erase(it);
+                mem().all_drawables.erase(it);
         }
 #endif
 
@@ -1233,9 +1246,10 @@ void SectionInterface::set_z_index(int index) {
         }
     
         if(section)
-            ss << "('"<<section->HasName::name()<<"',"<<children().size()<<"," <<pos().toStr() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
+            ss << "('"<<section->HasName::name()<<"' "<<children().size()<<" children " <<pos().toStr() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
         else
-            ss << "(" << (type() == Type::ENTANGLED && dynamic_cast<Entangled*>(this)->scroll_enabled() ? "scroll," : "") << children().size() << "," << pos().toStr() << " " << size().width << "x" << size().height << " " << scale().x << (clickable()?",clickable":"") << ")";
+            ss << "(" << (type() == Type::ENTANGLED && dynamic_cast<Entangled*>(this)->scroll_enabled() ? "scroll," : "") << children().size() << " children, " << pos().toStr() << " " << size().width << "x" << size().height << " " << scale().x << (clickable()?",clickable":"") << ")";
+		ss << " " << hex(this).toStr();
             
         if(_bounds_changed)
             ss << "~";

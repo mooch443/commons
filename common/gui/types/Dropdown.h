@@ -133,8 +133,8 @@ namespace cmn::gui {
         };
         
     protected:
-        GETTER_NCONST(std::shared_ptr<Textfield>, textfield){std::make_unique<Textfield>()};
-        GETTER_NCONST(std::shared_ptr<Button>, button);
+        GETTER_NCONST(derived_ptr<Textfield>, textfield){new Textfield};
+        GETTER_NCONST(derived_ptr<Button>, button);
         GETTER_NCONST(ScrollableList<TextItem>, list);
         std::function<void(RawIndex, const TextItem&)> _on_select;
         Textfield::OnEnter_t _on_enter;

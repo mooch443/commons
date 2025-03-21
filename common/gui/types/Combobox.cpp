@@ -21,7 +21,7 @@ tl::expected<std::string, const char*> default_value_of(std::string_view name) {
 }
 
 void Combobox::init() {
-    _dropdown = std::make_shared<Dropdown>(Box(0, 0, 800, 28));
+    _dropdown = new Dropdown(Box(0, 0, 800, 28));
     auto keys = settings_map().keys();
     _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
     _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
@@ -39,7 +39,7 @@ void Combobox::init() {
         }
     });
     
-    _reset_button = std::make_shared<Button>(Str{"<sym>⮌</sym>"}, Size{25,28});
+    _reset_button = new Button(Str{"<sym>⮌</sym>"}, Size{25,28});
     _reset_button->on_click([this](auto){
         if(not _does_not_equal_default)
             return;
