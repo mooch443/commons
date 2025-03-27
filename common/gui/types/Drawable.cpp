@@ -10,7 +10,7 @@
 //#define _DEBUG_MEMORY
 
 namespace cmn::gui {
-
+#ifndef NDEBUG
     struct Handler {
         Drawable *ptr;
         Handler(Drawable* ptr) : ptr(ptr) {
@@ -20,6 +20,7 @@ namespace cmn::gui {
             ptr->_is_in_its_own_handler = false;
         }
     };
+#endif
 
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 1;
@@ -533,7 +534,9 @@ namespace cmn::gui {
             event.select.selected = true;
             
             for(auto &e : _event_handlers[SELECT]) {
+#ifndef NDEBUG
                 Handler handler{this};
+#endif
                 (*e)(event);
             }
             
@@ -551,7 +554,9 @@ namespace cmn::gui {
             event.select.selected = false;
             
             for(auto &e : _event_handlers[SELECT]) {
+#ifndef NDEBUG
                 Handler handler{this};
+#endif
                 (*e)(event);
             }
             
@@ -567,7 +572,9 @@ namespace cmn::gui {
         event.mbutton = {left_button ? 0 : 1, true, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
         
         for(auto &e : _event_handlers[MBUTTON]) {
+#ifndef NDEBUG
             Handler handler{this};
+#endif
             (*e)(event);
         }
         
@@ -581,17 +588,12 @@ namespace cmn::gui {
     }
     
     void Drawable::mup(Float2_t x, Float2_t y, bool left_button) {
+#ifndef NDEBUG
         Handler handler{this};
+#endif
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
         event.mbutton = {left_button ? 0 : 1, false, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
-        
-#ifndef NDEBUG
-        auto ptr = this;
-        auto pptr = parent();
-        Print(" * mup ptr = ", hex(ptr));
-        Print(" * pptr = ", hex(pptr));
-#endif
         
         /**
          * TODO: This has to happen *after* the whole stuff + parent->mup is happening, otherwise we might delete the object in it's own handler.
@@ -609,9 +611,6 @@ namespace cmn::gui {
             parent()->mup(x, y, left_button);
 
         _being_dragged = false;
-#ifndef NDEBUG
-        Print(" / mup ptr = ", hex(ptr));
-#endif
     }
     
     bool Drawable::kdown(Event event) {
@@ -620,7 +619,9 @@ namespace cmn::gui {
         
         bool result = false;
         for(auto &e : _event_handlers[KEY]) {
+#ifndef NDEBUG
             Handler handler{this};
+#endif
             if((*e)(event)) {
                 result = true;
             }
@@ -638,7 +639,9 @@ namespace cmn::gui {
             return false;
         
         for(auto &e : _event_handlers[TEXT_ENTERED]) {
+#ifndef NDEBUG
             Handler handler{this};
+#endif
             (*e)(event);
         }
         
@@ -647,7 +650,9 @@ namespace cmn::gui {
     
     void Drawable::scroll(Event event) {
         for(auto &e : _event_handlers[SCROLL]) {
+#ifndef NDEBUG
             Handler handler{this};
+#endif
             (*e)(event);
         }
         
@@ -670,7 +675,9 @@ namespace cmn::gui {
         
         // hover position changed (only called upon mouse_move)
         for(auto &handler : _event_handlers[HOVER]) {
+#ifndef NDEBUG
             Handler guard{this};
+#endif
             (*handler)(e);
         }
         
