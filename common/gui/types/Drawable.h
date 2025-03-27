@@ -211,7 +211,7 @@ namespace cmn::gui {
         
         //! Click has been initiated on top of this object and is
         //  still continously pressed (might not be hovering anymore).
-        GETTER(bool, pressed);
+        GETTER(bool, pressed){false};
         
         //! Indicates whether the object is draggable
         GETTER(bool, draggable);
