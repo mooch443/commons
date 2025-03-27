@@ -25,11 +25,13 @@ namespace cmn::gui {
         Text* ptext;
         Text* stext;
         
+        bool _begun{false};
+        
     private:
         //GETTER(Bounds, children_bounds);
         
         //! Running index that determines which object is currently expected
-        size_t _index;
+        size_t _index{0};
         
     protected:
         size_t index() const { return _index; }
@@ -137,7 +139,13 @@ namespace cmn::gui {
                 d = (T*)_children.at(_index);
             }
             else {
-                _children.insert(_children.begin() + (int64_t)_index, d);
+                if(_index > _children.size()) {
+                    throw U_EXCEPTION("Inserting at ", _index, " when array is ", _children.size());
+                } else if(_index == _children.size()) {
+                    _children.push_back(d);
+                } else {
+                    _children.insert(_children.begin() + (int64_t)_index, d);
+                }
                 
                 //if(d->type() == Type::VERTICES)
                 //    static_cast<Vertices*>(d)->prepare();
@@ -146,6 +154,7 @@ namespace cmn::gui {
             }
             
             _index++;
+            assert(_index <= _children.size());
             return d;
         }
         
@@ -165,6 +174,7 @@ namespace cmn::gui {
                && static_cast<SingletonObject*>(_children[_index])->ptr() == obj)
             {
                 _index++;
+                assert(_index <= _children.size());
                 return nullptr;
                 
             } else {

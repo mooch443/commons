@@ -11,8 +11,15 @@ namespace cmn::gui {
         if(it != _wrapped_children.end()) {
             auto cit = std::find(_children.begin(), _children.end(), it->second);
             if(cit != _children.end()) {
+                auto index = std::distance(_children.begin(), cit);
+                assert(index >= 0);
                 _children.erase(cit);
                 delete it->second;
+                
+                if(_begun) {
+                    if(size_t(index) < _index)
+                        --_index;
+                }
             }
             
             _wrapped_children.erase(it);
@@ -20,8 +27,16 @@ namespace cmn::gui {
         } else {
             auto it = std::find(_children.begin(), _children.end(), d);
             if(it != _children.end()) {
+                auto index = std::distance(_children.begin(), it);
+                assert(index >= 0);
+                
                 _children.erase(it);
                 delete d;
+                
+                if(_begun) {
+                    if(size_t(index) < _index)
+                        --_index;
+                }
             }
         }
     }
@@ -145,6 +160,9 @@ namespace cmn::gui {
     
     void Section::begin(bool reuse) {
         _enabled = true;
+        if(_begun)
+            throw U_EXCEPTION("Cannot begin section ", this, " twice.");
+        _begun = true;
         if(!_was_enabled)
             children_rect_changed();
         
@@ -230,6 +248,7 @@ namespace cmn::gui {
             d->set_parent(this);
         
         _index++;
+        assert(_index <= _children.size());
         
         // instantly add content of section using update()
         stage()->push_section(custom);
@@ -274,11 +293,16 @@ namespace cmn::gui {
         _children.insert(_children.begin() + _index, obj);
         _wrapped_children[d] = obj;
         _index++;
+        assert(_index <= _children.size());
         
         assert(obj->ptr() && obj->ptr()->parent() == this);
     }
     
     void Section::end() {
+        if(not _begun)
+            throw U_EXCEPTION("Section ", this, " that was ended was not begun.");
+        _begun = false;
+        
         // root has to draw dialogs as well
         if(!parent() && stage())
             stage()->update_dialogs();
@@ -341,6 +365,7 @@ namespace cmn::gui {
             });
             
             _index++;
+            assert(_index <= _children.size());
         }
     }
     
