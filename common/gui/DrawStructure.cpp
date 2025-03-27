@@ -360,6 +360,7 @@ void Dialog::set_closed() {
     
     DrawStructure::~DrawStructure() {
         //auto guard = GUI_LOCK(_lock);
+        //cmn::Print("* Deselecting ", hex(_selected_object));
         _selected_object = _hovered_object = nullptr;
         _active_section = nullptr;
         _root.set_stage(NULL);
@@ -553,7 +554,10 @@ void DrawStructure::close_dialogs() {
     void DrawStructure::erase(gui::Drawable *d) {
         if(_selected_object 
            && (_selected_object == d || _selected_object->is_child_of(d)))
+        {
+            //cmn::Print("* Deselecting erase ", hex(d));
             _selected_object = nullptr;
+        }
         
         if(_hovered_object 
            && (_hovered_object == d || _hovered_object->is_child_of(d)))
@@ -728,6 +732,7 @@ void DrawStructure::close_dialogs() {
         assert(not d || d->is_child_of(&_root));
         Drawable * parent = NULL;
         Drawable * previous = _selected_object;
+        //cmn::Print(" * instead of ", hex(previous), " now selecting ", hex(d));
         _selected_object = d;
         
         if(previous) {

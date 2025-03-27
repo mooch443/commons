@@ -10,6 +10,17 @@
 //#define _DEBUG_MEMORY
 
 namespace cmn::gui {
+
+    struct Handler {
+        Drawable *ptr;
+        Handler(Drawable* ptr) : ptr(ptr) {
+            ptr->_is_in_its_own_handler = true;
+        }
+        ~Handler() {
+            ptr->_is_in_its_own_handler = false;
+        }
+    };
+
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 1;
     CallbackCollection callback;
@@ -199,6 +210,13 @@ namespace cmn::gui {
     }
     
     Drawable::~Drawable() {
+#ifndef NDEBUG
+        if(_is_in_its_own_handler) {
+            FormatError("Cannot delete myself while I am in my own event_handler.");
+        }
+        Print("* Dealloc ", hex(this));
+#endif
+        
         if(parent() && parent()->stage())
             parent()->stage()->erase(this);
         
@@ -514,8 +532,10 @@ namespace cmn::gui {
             Event event(SELECT);
             event.select.selected = true;
             
-            for(auto &e : _event_handlers[SELECT])
+            for(auto &e : _event_handlers[SELECT]) {
+                Handler handler{this};
                 (*e)(event);
+            }
             
             //set_dirty();
             
@@ -530,8 +550,10 @@ namespace cmn::gui {
             Event event(SELECT);
             event.select.selected = false;
             
-            for(auto &e : _event_handlers[SELECT])
+            for(auto &e : _event_handlers[SELECT]) {
+                Handler handler{this};
                 (*e)(event);
+            }
             
             //if(_parent)
             //    _parent->deselect();
@@ -544,8 +566,10 @@ namespace cmn::gui {
         Event event(MBUTTON);
         event.mbutton = {left_button ? 0 : 1, true, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
         
-        for(auto &e : _event_handlers[MBUTTON])
+        for(auto &e : _event_handlers[MBUTTON]) {
+            Handler handler{this};
             (*e)(event);
+        }
         
         if(!_pressed) {
             _pressed = true;
@@ -557,12 +581,24 @@ namespace cmn::gui {
     }
     
     void Drawable::mup(Float2_t x, Float2_t y, bool left_button) {
+        Handler handler{this};
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
         event.mbutton = {left_button ? 0 : 1, false, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
         
-        for(auto &e : _event_handlers[MBUTTON])
+#ifndef NDEBUG
+        auto ptr = this;
+        auto pptr = parent();
+        Print(" * mup ptr = ", hex(ptr));
+        Print(" * pptr = ", hex(pptr));
+#endif
+        
+        /**
+         * TODO: This has to happen *after* the whole stuff + parent->mup is happening, otherwise we might delete the object in it's own handler.
+         */
+        for(auto &e : _event_handlers[MBUTTON]) {
             (*e)(event);
+        }
         
         if(_pressed) {
             _pressed = false;
@@ -573,6 +609,9 @@ namespace cmn::gui {
             parent()->mup(x, y, left_button);
 
         _being_dragged = false;
+#ifndef NDEBUG
+        Print(" / mup ptr = ", hex(ptr));
+#endif
     }
     
     bool Drawable::kdown(Event event) {
@@ -581,6 +620,7 @@ namespace cmn::gui {
         
         bool result = false;
         for(auto &e : _event_handlers[KEY]) {
+            Handler handler{this};
             if((*e)(event)) {
                 result = true;
             }
@@ -597,15 +637,19 @@ namespace cmn::gui {
         if(_event_handlers[TEXT_ENTERED].empty())
             return false;
         
-        for(auto &e : _event_handlers[TEXT_ENTERED])
+        for(auto &e : _event_handlers[TEXT_ENTERED]) {
+            Handler handler{this};
             (*e)(event);
+        }
         
         return true;
     }
     
     void Drawable::scroll(Event event) {
-        for(auto &e : _event_handlers[SCROLL])
+        for(auto &e : _event_handlers[SCROLL]) {
+            Handler handler{this};
             (*e)(event);
+        }
         
         if(parent())
             parent()->scroll(event);
@@ -625,8 +669,10 @@ namespace cmn::gui {
         //event.hover = {true, rx, ry};
         
         // hover position changed (only called upon mouse_move)
-        for(auto &handler : _event_handlers[HOVER])
+        for(auto &handler : _event_handlers[HOVER]) {
+            Handler guard{this};
             (*handler)(e);
+        }
         
         if(parent())
             parent()->hover(copy);

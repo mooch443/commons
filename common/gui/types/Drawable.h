@@ -14,6 +14,10 @@ namespace cmn::gui {
     class DrawableCollection;
 
     using namespace attr;
+
+#ifndef NDEBUG
+    struct Handler;
+#endif
     
     class DrawStructure;
     class CacheObject {
@@ -165,6 +169,13 @@ namespace cmn::gui {
         //! Whether or not this object is currenty playing an animation
         //! (and should thus be re-rendered continously):
         bool _animating = false;
+        
+#ifndef NDEBUG
+        //! This will be true during *event_handlers* being called.
+        //! Makes sure we get a warning if we are deleting ourselves...
+        bool _is_in_its_own_handler = false;
+        friend struct cmn::gui::Handler;
+#endif
         
     protected:
         //! If this is set to true, the next bounds(), rect()
