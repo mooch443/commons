@@ -214,7 +214,7 @@ namespace cmn::gui {
         if(_is_in_its_own_handler) {
             FormatError("Cannot delete myself while I am in my own event_handler.");
         }
-        Print("* Dealloc ", hex(this));
+        //Print("* Dealloc ", hex(this));
 #endif
         
         if(parent() && parent()->stage())
