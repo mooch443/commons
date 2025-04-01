@@ -932,7 +932,7 @@ else()
     endif()
 
     if(APPLE)
-        set(ZLIB_PATCH patch -N -s -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/zlib_patch.patch)
+        set(ZLIB_PATCH patch -N -s -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/zlib_patch.patch || echo 1)
     else()
         set(ZLIB_PATCH "")
     endif()

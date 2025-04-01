@@ -1,3 +1,15 @@
+diff --git a/modules/core/src/system.cpp b/modules/core/src/system.cpp
+index 810f62297a..99042ee9d4 100644
+--- a/modules/core/src/system.cpp
++++ b/modules/core/src/system.cpp
+@@ -45,6 +45,7 @@
+ #include <atomic>
+ #include <iostream>
+ #include <ostream>
++#include <exception>
+ 
+ #ifdef __QNX__
+     #include <unistd.h>
 diff --git a/modules/gapi/src/compiler/gislandmodel.hpp b/modules/gapi/src/compiler/gislandmodel.hpp
 index ade13a6f33..b6862cac07 100644
 --- a/modules/gapi/src/compiler/gislandmodel.hpp
