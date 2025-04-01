@@ -458,6 +458,7 @@ message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
 message(STATUS "ORIGINAL_C_FLAGS=${ORIGINAL_C_FLAGS}")
 
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
     -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
     -DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}
     -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
@@ -929,12 +930,19 @@ else()
     else()
         set(COMMONS_subproject_CMAKE_ARGS1 ${COMMONS_subproject_CMAKE_ARGS})
     endif()
+
+    if(APPLE)
+        set(ZLIB_PATCH patch -N -s -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/zlib_patch.patch)
+    else()
+        set(ZLIB_PATCH "")
+    endif()
     
     EXTERNALPROJECT_ADD(Z_LIB
         PREFIX ${zlib_install_dir}
         GIT_REPOSITORY https://github.com/mooch443/zlib.git
         GIT_TAG master
         UPDATE_COMMAND ""
+        PATCH_COMMAND "${ZLIB_PATCH}"
 
         INSTALL_DIR ${zlib_install_dir}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS1} -DCMAKE_DEBUG_POSTFIX=d -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${zlib_install_dir}
@@ -1458,7 +1466,7 @@ endif()
     set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
 
     if(APPLE)
-        set(OPENCV_PATCH patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_4.9.patch || echo 1)
+        set(OPENCV_PATCH patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_patch.patch || echo 1)
     else()
         set(OPENCV_PATCH "")
     endif()
