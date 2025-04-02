@@ -27,7 +27,7 @@ std::string blob::Prediction::toStr() const {
         auto it = detect_classes.find(clid);
         return (it == detect_classes.end() ? "unknown<"+Meta::toStr(clid)+">" : it->second) + "["+dec<2>( p / 255_F * 100_F).toStr()+"%]";
     }
-    return "pred<null>";
+    return "null";
 }
 
 std::string blob::Pose::Skeleton::toStr() const {

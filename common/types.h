@@ -339,6 +339,8 @@ struct SegmentedOutlines {
             }
             return outline;
         }
+        
+        constexpr bool operator==(const Outline&) const noexcept = default;
     };
     
     std::optional<Outline> original_outline;
@@ -360,6 +362,8 @@ struct SegmentedOutlines {
     void add(const std::vector<Vec2>& pts) {
         lines.emplace_back(Outline::from_vectors(pts));
     }
+    
+    constexpr bool operator==(const SegmentedOutlines&) const noexcept = default;
 };
 
 struct Prediction {
@@ -372,6 +376,8 @@ struct Prediction {
     std::string toStr() const;
     static std::string class_name() { return "Prediction"; }
     constexpr float probability() const { return float(p) / 255.f; }
+    
+    constexpr bool operator==(const Prediction&) const noexcept = default;
 };
 
 struct Pair {
