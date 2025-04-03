@@ -158,8 +158,8 @@ struct Pose {
             std::string toStr() const;
 
             auto operator<=>(const Connection&) const = default;
-            bool operator==(const Connection& other) const noexcept = default;
-            bool operator!=(const Connection& other) const noexcept = default;
+            constexpr bool operator==(const Connection& other) const noexcept = default;
+            constexpr bool operator!=(const Connection& other) const noexcept = default;
 
             static std::string class_name() noexcept { return "Connection"; }
             static Connection fromStr(const std::string&);
@@ -293,7 +293,7 @@ struct Pose {
     static std::string class_name();
     static Pose fromStr(const std::string&);
 
-    bool operator==(const Pose& other) const noexcept;
+    constexpr bool operator==(const Pose& other) const noexcept;
     glz::json_t to_json() const;
     
     /**

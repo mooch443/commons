@@ -119,7 +119,7 @@ std::string blob::Pose::class_name() {
     return "Pose";
 }
 
-bool blob::Pose::operator==(const Pose& other) const noexcept {
+constexpr bool blob::Pose::operator==(const Pose& other) const noexcept {
     return points == other.points;
 }
 
