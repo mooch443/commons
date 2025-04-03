@@ -184,17 +184,16 @@ blob::Pose blob::Pose::deserialize(const std::vector<uint8_t>& buffer) {
 
 namespace cmn::tf {
     
-    
     class ThreadSafety {
         struct DestroyItem {};
+        struct WaitItem {};
         struct DisplayItem {
 			std::string name;
-			cmn::Image* image;
+			cmn::Image::Ptr image;
         };
 
         static std::mutex _opencv_lock;
-        static std::queue<std::variant<DestroyItem, DisplayItem>> images;
-        static std::map<std::string, std::queue<cmn::Image*>> waiting;
+        static std::queue<std::variant<DestroyItem, DisplayItem, WaitItem>> images;
         
     public:
         struct LockGuard {
@@ -213,7 +212,6 @@ namespace cmn::tf {
         ~ThreadSafety();
     };
     
-    decltype(ThreadSafety::waiting) ThreadSafety::waiting;
     std::mutex ThreadSafety::_opencv_lock;
     decltype(ThreadSafety::images) ThreadSafety::images;
     
@@ -246,9 +244,14 @@ namespace cmn::tf {
 
 			if (std::holds_alternative<DestroyItem>(img)) {
 				// Handle DestroyItem
-			}
-            else if (std::holds_alternative<DisplayItem>(img)) {
-                delete std::get<DisplayItem>(img).image;
+                
+			} else if (std::holds_alternative<DisplayItem>(img)) {
+                /// delete image
+                
+            } else if(std::holds_alternative<WaitItem>(img)) {
+                /// nothing
+            } else {
+                /// unknown item type
             }
         }
     }
@@ -267,8 +270,8 @@ namespace cmn::tf {
 		assert(matrix.isContinuous());
 		assert(matrix.type() == CV_8UC(matrix.channels()));
 		
-		Image *ptr = new Image(matrix);
-		images.push(DisplayItem{ name , ptr });
+		auto ptr = Image::Make(matrix);
+		images.push(DisplayItem{ name , std::move(ptr) });
         
         if(!label.empty()) {
             cv::Mat mat = ptr->get();
@@ -278,55 +281,46 @@ namespace cmn::tf {
 
 	void ThreadSafety::show() {
 		std::unique_lock<std::mutex> lock(_opencv_lock);
-        std::map<std::string, Image*> display_map;
+        std::map<std::string, Image::Ptr> display_map;
         bool destroy_windows = false;
+        bool waitKey = false;
         
         static const bool nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
 
 		while(!images.empty()) {
-			auto &&p = std::move(images.front());
+			auto p = std::move(images.front());
 			images.pop();
 
             if (std::holds_alternative<DisplayItem>(p)) {
-                auto&& [name, ptr] = std::get<DisplayItem>(p);
-
-                if (waiting.count(name)) {
-                    waiting[name].push(ptr);
-                    continue;
-                }
-
-                if (ptr == nullptr) {
-                    waiting[name] = std::queue<Image*>();
-                    continue;
-                }
-
-                if (display_map.count(name)) {
-                    delete display_map.at(name);
-                }
-
-                display_map[name] = ptr;
+                auto& [name, ptr] = std::get<DisplayItem>(p);
+                display_map[name] = std::move(ptr);
 			}
 			else if (std::holds_alternative<DestroyItem>(p)) {
-				// Handle DestroyItem
                 destroy_windows = true;
-			}
+                
+            } else if(std::holds_alternative<WaitItem>(p)) {
+                waitKey = true;
+                
+            } else {
+                throw U_EXCEPTION("[tf] Unknown action type.");
+            }
 		}
 
         if (destroy_windows) {
             cv::destroyAllWindows();
         }
         
-        for(auto &p: display_map) {
-			cv::Mat mat = p.second->get();
+        if(not nowindow) {
+            for(auto &p: display_map) {
+                cv::Mat mat = p.second->get();
 #ifdef __linux__
-			resize_image(mat, 1.5, cv::INTER_AREA);
+                resize_image(mat, 1.5, cv::INTER_AREA);
 #endif
-            if(!nowindow)
                 cv::imshow(p.first, mat);
-            delete p.second;
+            }
         }
         
-        if(!nowindow && !display_map.empty()) {
+        if(not waitKey && not nowindow && not display_map.empty()) {
             lock.unlock();
 #if !defined(__EMSCRIPTEN__)
             cv::waitKey(1);
@@ -334,52 +328,17 @@ namespace cmn::tf {
             lock.lock();
         }
         
-        for (auto &pair : waiting) {
-            auto &queue = pair.second;
-            Image* show = NULL;
-            
-            while(!queue.empty()) {
-                auto first = queue.front();
-                queue.pop();
-                
-                if(first) {
-                    if(show)
-                        delete show;
-                    show = first;
-                    
-                } else {
-                    break;
-                }
-            }
-            
-            if(show) {
-                cv::Mat mat = show->get();
-#ifdef __linux__
-                resize_image(mat, 1.5, cv::INTER_AREA);
-#endif
-                if(!nowindow)
-                    cv::imshow(pair.first, mat);
-                delete show;
-                if(!nowindow) {
-                    lock.unlock();
+        if(waitKey && not nowindow) {
+            lock.unlock();
 #if !defined(__EMSCRIPTEN__)
-                    cv::waitKey();
+            cv::waitKey();
 #endif
-                    lock.lock();
-                }
-            }
-        }
-        
-        for (auto &pair : waiting) {
-            if(pair.second.empty()) {
-                waiting.erase(pair.first);
-                break;
-            }
+            lock.lock();
         }
 	}
     
     void ThreadSafety::waitKey(std::string name) {
         LockGuard guard;
-        images.push(DisplayItem{ name, NULL });
+        images.push(DisplayItem{ name, nullptr });
     }
 }
