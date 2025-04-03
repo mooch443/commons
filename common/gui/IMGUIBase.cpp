@@ -1200,68 +1200,72 @@ void InsertIntersection(std::vector<ImVec2>& scanHits, const ImVec2& intersect) 
 
 void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::vector<ImVec2>& output, ImU32 color, const int gap = 1, const int strokeWidth = 1) {
     using namespace std;
-    
+
     ImVec2 min, max;
     CalculateBoundingBox(poly, min, max);
-    
+
     const auto &io = ImGui::GetIO();
-    
+
     // Vertically clip
-    if (min.y < 0) min.y                = 0;
+    if (min.y < 0) min.y = 0;
     if (max.y > io.DisplaySize.y) max.y = io.DisplaySize.y;
-    
+
     // Bounds check
-    if ((max.x < 0) || (min.x > io.DisplaySize.x) || (max.y < 0) || (min.y > io.DisplaySize.y)) return;
-    
-    // so we know we start on the outside of the object we step out by 1.
+    if ((max.x < 0) || (min.x > io.DisplaySize.x) || (max.y < 0) || (min.y > io.DisplaySize.y))
+        return;
+
+    // Expand the bounding box slightly
     min.x -= 1;
     max.x += 1;
-    
+
     // Initialise our starting conditions
     int y = int(min.y);
-    const auto polysize = poly.size();
+    const size_t polysize = poly.size();
     vector<ImVec2> scanHits;
     scanHits.reserve(polysize / 2);
     output.reserve(polysize * gap);
-    
-    // Go through each scan line iteratively, jumping by 'gap' pixels each time
+
+    // Use a small epsilon for floating point comparisons
+    const float eps = 1e-6f;
+
+    // Scan-line algorithm: iterate over each scanline with a step of 'gap' pixels
     while (y < max.y) {
         scanHits.clear();
-        
+
+        // For each segment in the polygon, check if the horizontal line at y intersects it
         for (size_t i = 0; i < polysize - 1; i++) {
             const ImVec2 pa = poly[i];
             const ImVec2 pb = poly[i + 1];
-            
-            // Skip double/dud points
-            if (pa.x == pb.x && pa.y == pb.y) continue;
-            
-            // Test to see if this segment makes the scan-cut
-            if ((pa.y > pb.y && y < pa.y && y > pb.y) || (pa.y < pb.y && y > pa.y && y < pb.y)) {
+
+            // Skip duplicate or nearly identical points
+            if (fabs(pa.x - pb.x) < eps && fabs(pa.y - pb.y) < eps)
+                continue;
+
+            // Use a robust intersection test with half-open interval to avoid double counting
+            if ((pa.y <= y && y < pb.y) || (pb.y <= y && y < pa.y)) {
                 ImVec2 intersect;
-                intersect.y = y;
-                if (pa.x == pb.x) {
+                intersect.y = float(y);
+                if (fabs(pb.x - pa.x) < eps) {
                     intersect.x = pa.x;
                 } else {
-                    intersect.x = (pb.x - pa.x) / (pb.y - pa.y) * (y - pa.y) + pa.x;
+                    // Calculate intersection x using linear interpolation
+                    intersect.x = ((y - pa.y) * (pb.x - pa.x) / (pb.y - pa.y)) + pa.x;
                 }
-                
-                // Add intersection while keeping scanHits sorted
+                // Insert the intersection point in sorted order by x
                 InsertIntersection(scanHits, intersect);
             }
         }
-        
-        // Generate the line segments
-        {
-            auto l = scanHits.size(); // We need pairs of points; this prevents segfault
-            for (size_t i = 0; i + 1 < l; i += 2) {
-                output.push_back(scanHits[i]);
-                output.push_back(scanHits[i + 1]);
-                draw->AddLine(scanHits[i], scanHits[i + 1], color, strokeWidth);
-            }
+
+        // Generate the line segments from intersections in pairs
+        size_t l = scanHits.size();
+        for (size_t i = 0; i + 1 < l; i += 2) {
+            output.push_back(scanHits[i]);
+            output.push_back(scanHits[i + 1]);
+            draw->AddLine(scanHits[i], scanHits[i + 1], color, strokeWidth);
         }
-        
+
         y += gap;
-    } // For each scan line
+    }
 }
 
 void ImRotateStart(int& rotation_start_index, ImDrawList* list)
