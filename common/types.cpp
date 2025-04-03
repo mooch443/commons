@@ -186,8 +186,14 @@ namespace cmn::tf {
     
     
     class ThreadSafety {
+        struct DestroyItem {};
+        struct DisplayItem {
+			std::string name;
+			cmn::Image* image;
+        };
+
         static std::mutex _opencv_lock;
-        static std::queue<std::pair<std::string, cmn::Image*>> images;
+        static std::queue<std::variant<DestroyItem, DisplayItem>> images;
         static std::map<std::string, std::queue<cmn::Image*>> waiting;
         
     public:
@@ -201,6 +207,7 @@ namespace cmn::tf {
         static void add(std::string name, const cv::Mat& matrix, std::string label);
         static void show();
         static void waitKey(std::string name);
+        static void destroyAllWindows();
         
         ThreadSafety() {}
         ~ThreadSafety();
@@ -212,6 +219,9 @@ namespace cmn::tf {
     
     void imshow(const std::string& name, const cv::Mat& mat, std::string label) {
         ThreadSafety::add(name, mat, label);
+    }
+    void destroyAllWindows() {
+        ThreadSafety::destroyAllWindows();
     }
 
     void imshow(const std::string& name, const gpuMat& mat, std::string label) {
@@ -231,10 +241,21 @@ namespace cmn::tf {
     ThreadSafety::~ThreadSafety() {
         LockGuard guard;
         while(!images.empty()) {
-            auto &img = images.front();
-            delete img.second;
+            auto &&img = std::move(images.front());
             images.pop();
+
+			if (std::holds_alternative<DestroyItem>(img)) {
+				// Handle DestroyItem
+			}
+            else if (std::holds_alternative<DisplayItem>(img)) {
+                delete std::get<DisplayItem>(img).image;
+            }
         }
+    }
+
+    void ThreadSafety::destroyAllWindows() {
+        LockGuard guard;
+		images.push(DestroyItem{});
     }
     
     void ThreadSafety::add(std::string name, const cv::Mat& matrix, std::string label) {
@@ -247,7 +268,7 @@ namespace cmn::tf {
 		assert(matrix.type() == CV_8UC(matrix.channels()));
 		
 		Image *ptr = new Image(matrix);
-		images.push({ name , ptr });
+		images.push(DisplayItem{ name , ptr });
         
         if(!label.empty()) {
             cv::Mat mat = ptr->get();
@@ -258,32 +279,42 @@ namespace cmn::tf {
 	void ThreadSafety::show() {
 		std::unique_lock<std::mutex> lock(_opencv_lock);
         std::map<std::string, Image*> display_map;
+        bool destroy_windows = false;
         
         static const bool nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
 
 		while(!images.empty()) {
-			auto p = images.front();
+			auto &&p = std::move(images.front());
 			images.pop();
 
-			std::string name = p.first;
-			Image *ptr = p.second;
+            if (std::holds_alternative<DisplayItem>(p)) {
+                auto&& [name, ptr] = std::get<DisplayItem>(p);
 
-            if(waiting.count(name)) {
-                waiting[name].push(ptr);
-                continue;
-            }
-            
-            if(ptr == NULL) {
-                waiting[name] = std::queue<Image*>();
-                continue;
-            }
-            
-            if(display_map.count(name)) {
-                delete display_map.at(name);
-            }
-            
-            display_map[name] = ptr;
+                if (waiting.count(name)) {
+                    waiting[name].push(ptr);
+                    continue;
+                }
+
+                if (ptr == nullptr) {
+                    waiting[name] = std::queue<Image*>();
+                    continue;
+                }
+
+                if (display_map.count(name)) {
+                    delete display_map.at(name);
+                }
+
+                display_map[name] = ptr;
+			}
+			else if (std::holds_alternative<DestroyItem>(p)) {
+				// Handle DestroyItem
+                destroy_windows = true;
+			}
 		}
+
+        if (destroy_windows) {
+            cv::destroyAllWindows();
+        }
         
         for(auto &p: display_map) {
 			cv::Mat mat = p.second->get();
@@ -349,6 +380,6 @@ namespace cmn::tf {
     
     void ThreadSafety::waitKey(std::string name) {
         LockGuard guard;
-        images.push({ name, NULL });
+        images.push(DisplayItem{ name, NULL });
     }
 }
