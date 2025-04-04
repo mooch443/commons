@@ -301,10 +301,6 @@ namespace cmn::tf {
                 throw U_EXCEPTION("[tf] Unknown action type.");
             }
 		}
-
-        if (destroy_windows) {
-            cv::destroyAllWindows();
-        }
         
         if(not nowindow) {
             for(auto &p: display_map) {
@@ -330,6 +326,10 @@ namespace cmn::tf {
             cv::waitKey();
 #endif
             lock.lock();
+        }
+        
+        if (not nowindow && destroy_windows) {
+            cv::destroyAllWindows();
         }
 	}
     
