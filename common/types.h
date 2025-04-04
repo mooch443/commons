@@ -293,7 +293,9 @@ struct Pose {
     static std::string class_name();
     static Pose fromStr(const std::string&);
 
-    constexpr bool operator==(const Pose& other) const noexcept;
+    constexpr bool operator==(const Pose& other) const noexcept {
+        return points == other.points;
+    }
     glz::json_t to_json() const;
     
     /**

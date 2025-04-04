@@ -119,10 +119,6 @@ std::string blob::Pose::class_name() {
     return "Pose";
 }
 
-constexpr bool blob::Pose::operator==(const Pose& other) const noexcept {
-    return points == other.points;
-}
-
 glz::json_t blob::Pose::to_json() const {
     std::vector<glz::json_t> j;
     for(size_t i = 0; i < points.size(); ++i) {
