@@ -278,7 +278,7 @@ if(APPLE)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Metal")
     endif()
     
-    message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
+    #message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
     target_link_libraries(Commons::OpenGL INTERFACE ${EXTRA_LIBS})
 
 else()
@@ -519,10 +519,14 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/commons/CMakeModules" )
 
+set(dialogs_PATCH_COMMAND patch
+    -N -s -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff" || echo 1)
+
 FetchContent_Declare(
     dialogs
     GIT_REPOSITORY https://github.com/samhocevar/portable-file-dialogs.git
     GIT_TAG 0.1.0
+    PATCH_COMMAND ${dialogs_PATCH_COMMAND}
 )
 
 FetchContent_MakeAvailable(dialogs)
@@ -1105,7 +1109,7 @@ if(${COMMONS_BUILD_PNG})
     set(PNG_LIBRARY "png")
 
     message(STATUS "PNG_LIBRARY = ${PNG_LIBRARY}")
-    message(STATUS "COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}")
+    #message(STATUS "COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}")
 
     # have to apply a patch solely for M1 builds
     # https://github.com/glennrp/libpng/issues/372
@@ -1472,7 +1476,7 @@ endif()
     endif()
 
     if(UNIX)
-        message(STATUS "Using custom configure command CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV")
+        #message(STATUS "Using custom configure command CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV")
         ExternalProject_add(CustomOpenCV
             PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
