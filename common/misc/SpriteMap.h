@@ -392,10 +392,13 @@ concept Iterable = requires(T obj) {
         }
         
         void unregister_callbacks(CallbackCollection&& collection) {
+            auto guard = LOGGED_LOCK(mutex());
             for(auto &[name, id] : collection._ids) {
-                if(has(name)) {
-                    operator[](name).get().unregisterCallback(id);
-                }
+                auto it = _props.find(name);
+                if(it != _props.end()) {
+                    it->second->unregisterCallback(id);
+                } else
+                    FormatWarning("Cannot find property ", name, " from callback holder.");
             }
             collection._ids.clear();
         }
