@@ -15,11 +15,15 @@ namespace cmn {
 
 #define ADD_SETTING_NAME2(NAME) else if constexpr( Variables:: NAME == field ) return f( _store.NAME );
 
+#define COMPARE_ENUM_NAME(NAME) else if ( field == #NAME ) return Variables:: NAME;
+
 // Macro to generate a lambda that updates the setting.
 // This lambda captures nothing and takes a pointer to the current object.
 #define UPDATE_UPDATER(NAME) +[](Store& self) { \
-self.NAME = SETTING(NAME).value<track::Settings::NAME##_t>(); \
+    self.NAME = FAST_SETTING(NAME); \
 }
+    //self.NAME = SETTING(NAME).value<track::Settings::NAME##_t>(); \
+//}
 
 // New SIMPLE_APPLY macros to generate a comma-separated list.
 #define SIMPLE_APPLY_1(m, a)         m(a)
@@ -53,19 +57,25 @@ SIMPLE_APPLY_5, SIMPLE_APPLY_4, SIMPLE_APPLY_3, SIMPLE_APPLY_2, SIMPLE_APPLY_1)(
 // Macro to generate declarations for each setting, a constexpr array of names,
 // an array of updater lambdas, and an update_settings() member function.
 #define ADD_SETTINGS(...)                                                       \
+    static constexpr size_t N_settings = COUNT(__VA_ARGS__); \
     struct Store {  \
         MAP(ADD_SETTING_DECL, __VA_ARGS__)                                          \
     } _store; \
     \
-    static inline constexpr std::array<std::string_view, COUNT(__VA_ARGS__)>      \
+    static inline constexpr std::array<std::string_view, N_settings>      \
         setting_names = { STRINGIZE(__VA_ARGS__) };                             \
-    static inline constexpr std::array<void(*)(Store&), COUNT(__VA_ARGS__)> \
+    static inline constexpr std::array<void(*)(Store&), N_settings> \
         setting_updaters = { \
             SIMPLE_APPLY(UPDATE_UPDATER, __VA_ARGS__) \
         }; \
     enum class Variables { \
         SIMPLE_APPLY(IDENTITY, __VA_ARGS__) \
     }; \
+    inline Variables get_enum_name(std::string_view field) {\
+        if constexpr(false) (void)0; \
+        MAP(COMPARE_ENUM_NAME, __VA_ARGS__)                                          \
+        else throw RuntimeError("Cannot find field ", field, "."); \
+    } \
     template< ct::utils::fixed_string field > \
     inline const auto& get() {\
         auto f = [](auto& variable) -> auto& { return variable; }; \
@@ -85,14 +95,14 @@ template<bool round_based>
 struct RBSettings {
 public:
     struct ThreadObject {
-        std::thread::id _thread_id;
-        
-        //! saves the callback handles so we can unregister them later
-        CallbackCollection _callback_collection;
+        std::thread::id _thread_id{std::this_thread::get_id()};
         
         std::mutex _update_settings_mutex;
         //! everything that was changed during the previous round
         std::set<std::string_view> _updated_settings;
+        
+        //! saves the callback handles so we can unregister them later
+        CallbackCollection _callback_collection;
         
         //! this is locked during update cycles
         bool _round_lock{false};
@@ -108,30 +118,42 @@ public:
                      track_only_classes,
                      track_conf_threshold,
                      track_max_individuals);
+        
+        std::array<std::atomic<bool>, N_settings> setting_was_updated;
         /// `Settings::<NAME>_t NAME;` ...
         
-        ThreadObject()
-        : _thread_id(std::this_thread::get_id()),
-        _callback_collection(GlobalSettings::map().register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(setting_names,
-                                                                                                               [this](auto name)
-                                                                                                               {
-            std::lock_guard guard{_update_settings_mutex};
-            _updated_settings.insert(name);
-        })
-                             )
-        {
-            update_settings(true);
+        /*ThreadObject() {
+            //Print("* alloc ", hex(this));
+        }*/
+        ThreadObject() {
+            //std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
         }
+        ~ThreadObject() {
+            /*if(_thread_id != std::this_thread::get_id()) {
+                Print("* sus ", hex(this));
+            }*/
+            //Print("* dealloc ", hex(this));
+            std::lock_guard guard{_update_settings_mutex};
+            GlobalSettings::map().unregister_callbacks(std::move(_callback_collection));
+        }
+        
+        ThreadObject(ThreadObject&&) = delete;
+        ThreadObject(const ThreadObject&) = delete;
         
         //! Call `update_settings()` to refresh any settings that changed
         void update_settings(bool force = false) {
             if(force) {
-                for(auto fn : setting_updaters) {
+                for(auto& fn : setting_updaters) {
                     fn(_store);
                 }
                 return;
             }
             
+            /*for(size_t i = 0; i < N_settings; ++i) {
+                bool expected = true;
+                if(setting_was_updated[i].compare_exchange_weak(expected, false)) {
+                    setting_updaters[i](_store);
+                }*/
             std::lock_guard guard{_update_settings_mutex};
             for (auto name : _updated_settings) {
                 auto it = std::find(setting_names.begin(), setting_names.end(), name);
@@ -158,14 +180,28 @@ public:
             _round_lock = false;
 #endif
         }
-        
-        ~ThreadObject() {
-            GlobalSettings::map().unregister_callbacks(std::move(_callback_collection));
-        }
     };
     
 private:
-    inline static thread_local ThreadObject object;
+    inline static thread_local std::shared_ptr<ThreadObject> object{[](){
+        auto ptr = std::make_shared<ThreadObject>();
+        std::lock_guard guard{ptr->_update_settings_mutex};
+        ptr->_callback_collection = GlobalSettings::map().
+        register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
+            ptr->setting_names,
+            [wptr = std::weak_ptr(ptr)](auto name) {
+                std::shared_ptr<ThreadObject> lock = wptr.lock();
+                if(not lock)
+                    return;
+                
+                //auto var = lock->get_enum_name(name);
+                //lock->setting_was_updated[static_cast<size_t>(var)] = true;
+                std::lock_guard guard{lock->_update_settings_mutex};
+                lock->_updated_settings.insert(name);
+            });
+        ptr->update_settings(true);
+        return ptr;
+    }()};
     RBSettings() {}
     
 public:
@@ -173,27 +209,43 @@ public:
         ThreadObject* settings;
         
         Guard(ThreadObject* settings)
-        : settings(settings)
+            : settings(settings)
         {
+            assert(settings->_thread_id == std::this_thread::get_id());
             settings->start_round();
         }
         
         ~Guard() {
+            if(not settings)
+                return; /// we have been moved from
+            assert(settings->_thread_id == std::this_thread::get_id());
             settings->end_round();
         }
         
+        Guard(Guard&& g) : settings(g.settings) {
+            g.settings = nullptr;
+        }
+        Guard(const Guard&) = delete;
+        Guard& operator=(Guard&& g) {
+            settings = g.settings;
+            g.settings = nullptr;
+            return *this;
+        }
+        
         template<ThreadObject::Variables key>
-        const auto& get() {
+        const auto& get() const {
+            assert(settings->_thread_id == std::this_thread::get_id());
             return settings->template get<key>();
         }
         template<ct::utils::fixed_string key>
-        const auto& get() {
+        const auto& get() const {
+            assert(settings->_thread_id == std::this_thread::get_id());
             return settings->template get<key>();
         }
     };
     
     static Guard round() {
-        return Guard{&object};
+        return Guard{object.get()};
     }
 };
 
