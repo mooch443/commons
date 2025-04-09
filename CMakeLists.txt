@@ -1131,7 +1131,7 @@ if(${COMMONS_BUILD_PNG})
         GIT_TAG v1.6.47
 
         INSTALL_DIR ${png_install_dir}
-        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON
+        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON -DPNG_TOOLS:BOOL=OFF
     )
 
     include_directories(${png_install_dir}/include)
