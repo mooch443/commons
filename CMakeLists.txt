@@ -518,9 +518,11 @@ endif()
 #ADD_DEFINITIONS(-DCV_STATIC_ANALYSIS=0)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/commons/CMakeModules" )
-
-set(dialogs_PATCH_COMMAND patch
-    -N -s -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff" || echo 1)
+if(WIN32)
+    set(dialogs_PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff")
+else()
+    set(dialogs_PATCH_COMMAND patch -N -s -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff" || echo 1)
+endif()
 
 FetchContent_Declare(
     dialogs
@@ -528,6 +530,7 @@ FetchContent_Declare(
     GIT_TAG main
     #GIT_TAG 0.1.0
     PATCH_COMMAND ${dialogs_PATCH_COMMAND}
+    UPDATE_DISCONNECTED 1
 )
 
 FetchContent_MakeAvailable(dialogs)
