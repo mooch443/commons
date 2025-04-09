@@ -524,8 +524,9 @@ set(dialogs_PATCH_COMMAND patch
 
 FetchContent_Declare(
     dialogs
-    GIT_REPOSITORY https://github.com/samhocevar/portable-file-dialogs.git
-    GIT_TAG 0.1.0
+    GIT_REPOSITORY https://github.com/mooch443/portable-file-dialogs.git
+    GIT_TAG main
+    #GIT_TAG 0.1.0
     PATCH_COMMAND ${dialogs_PATCH_COMMAND}
 )
 
