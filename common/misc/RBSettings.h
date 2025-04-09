@@ -91,7 +91,7 @@ SIMPLE_APPLY_5, SIMPLE_APPLY_4, SIMPLE_APPLY_3, SIMPLE_APPLY_2, SIMPLE_APPLY_1)(
         else static_assert(static_cast<int>(field) == -1, "Unknown field."); \
     }
 
-template<bool round_based>
+template<bool round_based, bool use_atomic>
 struct RBSettings {
 public:
     struct ThreadObject {
@@ -126,7 +126,8 @@ public:
             //Print("* alloc ", hex(this));
         }*/
         ThreadObject() {
-            //std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
+            if constexpr(use_atomic)
+                std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
         }
         ~ThreadObject() {
             /*if(_thread_id != std::this_thread::get_id()) {
@@ -149,17 +150,25 @@ public:
                 return;
             }
             
-            /*for(size_t i = 0; i < N_settings; ++i) {
-                bool expected = true;
-                if(setting_was_updated[i].compare_exchange_weak(expected, false)) {
-                    setting_updaters[i](_store);
-                }*/
-            std::lock_guard guard{_update_settings_mutex};
-            for (auto name : _updated_settings) {
-                auto it = std::find(setting_names.begin(), setting_names.end(), name);
-                if (it != setting_names.end()) {
-                    auto index = std::distance(setting_names.begin(), it);
-                    setting_updaters[index](_store);
+            if constexpr(use_atomic) {
+                for(size_t i = 0; i < N_settings; ++i) {
+                    auto& value = setting_was_updated[i];
+                    if(value.load()) {
+                        bool expected = true;
+                        if(value.compare_exchange_weak(expected, false)) {
+                            setting_updaters[i](_store);
+                        }
+                    }
+                }
+                
+            } else {
+                std::lock_guard guard{_update_settings_mutex};
+                for (auto name : _updated_settings) {
+                    auto it = std::find(setting_names.begin(), setting_names.end(), name);
+                    if (it != setting_names.end()) {
+                        auto index = std::distance(setting_names.begin(), it);
+                        setting_updaters[index](_store);
+                    }
                 }
             }
         }
@@ -185,19 +194,22 @@ public:
 private:
     inline static thread_local std::shared_ptr<ThreadObject> object{[](){
         auto ptr = std::make_shared<ThreadObject>();
-        std::lock_guard guard{ptr->_update_settings_mutex};
+        //std::lock_guard guard{ptr->_update_settings_mutex};
         ptr->_callback_collection = GlobalSettings::map().
-        register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
+          register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
             ptr->setting_names,
             [wptr = std::weak_ptr(ptr)](auto name) {
                 std::shared_ptr<ThreadObject> lock = wptr.lock();
                 if(not lock)
                     return;
                 
-                //auto var = lock->get_enum_name(name);
-                //lock->setting_was_updated[static_cast<size_t>(var)] = true;
-                std::lock_guard guard{lock->_update_settings_mutex};
-                lock->_updated_settings.insert(name);
+                if constexpr(use_atomic) {
+                    auto var = lock->get_enum_name(name);
+                    lock->setting_was_updated[static_cast<size_t>(var)] = true;
+                } else {
+                    std::lock_guard guard{lock->_update_settings_mutex};
+                    lock->_updated_settings.insert(name);
+                }
             });
         ptr->update_settings(true);
         return ptr;
