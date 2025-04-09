@@ -7,6 +7,60 @@
 
 namespace cmn {
 
+// A fixed-capacity lock-free queue suitable for multiple producers (callbacks)
+// and a single consumer (the round updater)
+template <typename T, size_t Capacity>
+class MPSCQueue {
+public:
+    MPSCQueue() : head(0), tail(0) {}
+
+    // Called from the callback (multiple producers)
+    bool push(const T& item) {
+        // Load the current tail and head with proper memory order
+        size_t current_tail = tail.load(std::memory_order_relaxed);
+        size_t current_head = head.load(std::memory_order_acquire);
+        // Check if there is space; note: you must choose a Capacity that never gets exceeded
+        if (current_tail - current_head >= Capacity) {
+            return false; // Queue full
+        }
+        // Reserve the slot by fetching the tail index atomically.
+        size_t pos = tail.fetch_add(1, std::memory_order_relaxed);
+        buffer[pos % Capacity] = item;
+        // The store to buffer is visible once the tail is updated.
+        return true;
+    }
+
+    // Called from the consumer (single thread in round() updater)
+    bool pop(T& out) {
+#ifndef NDEBUG
+        if (!consumer_initialized) {
+            consumer_thread = std::this_thread::get_id();
+            consumer_initialized = true;
+        } else {
+            assert(std::this_thread::get_id() == consumer_thread &&
+                   "MPSCQueue pop() must be called from a single consumer thread");
+        }
+#endif
+        size_t current_head = head.load(std::memory_order_relaxed);
+        if (current_head >= tail.load(std::memory_order_acquire)) {
+            return false; // Queue empty
+        }
+        out = buffer[current_head % Capacity];
+        head.store(current_head + 1, std::memory_order_release);
+        return true;
+    }
+
+private:
+    std::array<T, Capacity> buffer;
+    std::atomic<size_t> head; // consumer's read position
+    std::atomic<size_t> tail; // producers' write position
+    
+#ifndef NDEBUG
+    std::thread::id consumer_thread;
+    bool consumer_initialized = false;
+#endif
+};
+
 // Macro to generate a single setting declaration.
 //#define ADD_SETTING_DECL(NAME) std::conditional<round_based, track::Settings::NAME##_t , std::optional< track::Settings::NAME##_t > > NAME;
 #define ADD_SETTING_DECL(NAME) track::Settings::NAME##_t NAME;
@@ -119,27 +173,48 @@ public:
                      track_conf_threshold,
                      track_max_individuals);
         
-        std::array<std::atomic<bool>, N_settings> setting_was_updated;
+        //std::array<std::atomic<bool>, N_settings> setting_was_updated;
         /// `Settings::<NAME>_t NAME;` ...
+        
+        // Choose a capacity that fits your expected burst of updates.
+        static constexpr size_t QueueCapacity = 128;
+        MPSCQueue<Variables, QueueCapacity> updatedQueue;
         
         /*ThreadObject() {
             //Print("* alloc ", hex(this));
         }*/
         ThreadObject() {
-            if constexpr(use_atomic)
-                std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
+            //if constexpr(use_atomic)
+            //    std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
         }
         ~ThreadObject() {
             /*if(_thread_id != std::this_thread::get_id()) {
                 Print("* sus ", hex(this));
             }*/
             //Print("* dealloc ", hex(this));
-            std::lock_guard guard{_update_settings_mutex};
             GlobalSettings::map().unregister_callbacks(std::move(_callback_collection));
         }
         
         ThreadObject(ThreadObject&&) = delete;
         ThreadObject(const ThreadObject&) = delete;
+        
+        /*template <std::size_t... Is>
+            requires (use_atomic)
+        void _update_settings(std::index_sequence<Is...>) {
+            (..., (try_update<Is>()));
+        }*/
+        
+        /*template <std::size_t I>
+            requires (use_atomic)
+        void try_update() {
+            auto& value = setting_was_updated[I];
+            if (value.load()) {
+                bool expected = true;
+                if (value.compare_exchange_weak(expected, false)) {
+                    setting_updaters[I](_store);
+                }
+            }
+        }*/
         
         //! Call `update_settings()` to refresh any settings that changed
         void update_settings(bool force = false) {
@@ -151,14 +226,11 @@ public:
             }
             
             if constexpr(use_atomic) {
-                for(size_t i = 0; i < N_settings; ++i) {
-                    auto& value = setting_was_updated[i];
-                    if(value.load()) {
-                        bool expected = true;
-                        if(value.compare_exchange_weak(expected, false)) {
-                            setting_updaters[i](_store);
-                        }
-                    }
+                Variables var;
+                // Drain the queue; each pop gives you the enum for an updated setting.
+                while(updatedQueue.pop(var)) {
+                    // Use the enum directly as an index into your updater array.
+                    setting_updaters[static_cast<size_t>(var)](_store);
                 }
                 
             } else {
@@ -205,7 +277,8 @@ private:
                 
                 if constexpr(use_atomic) {
                     auto var = lock->get_enum_name(name);
-                    lock->setting_was_updated[static_cast<size_t>(var)] = true;
+                    lock->updatedQueue.push(var);
+                    //lock->setting_was_updated[static_cast<size_t>(var)] = true;
                 } else {
                     std::lock_guard guard{lock->_update_settings_mutex};
                     lock->_updated_settings.insert(name);
@@ -255,6 +328,26 @@ public:
             return settings->template get<key>();
         }
     };
+    
+    template<ThreadObject::Variables key>
+    static const auto& get() {
+        auto &settings = *object;
+        assert(settings._thread_id == std::this_thread::get_id());
+        return settings.template get<key>();
+    }
+    template<ct::utils::fixed_string key>
+    static const auto& get() {
+        auto &settings = *object;
+        assert(settings._thread_id == std::this_thread::get_id());
+        return settings.template get<key>();
+    }
+    
+    static void start_round() {
+        object->start_round();
+    }
+    static void end_round() {
+        object->end_round();
+    }
     
     static Guard round() {
         return Guard{object.get()};
