@@ -469,7 +469,7 @@ void Graph::update() {
                 label_height
             }
           },
-          FillClr{Black.alpha(50)},
+          FillClr{Black.alpha(150)},
           LineClr{White.alpha(200)},
           Origin(1, 0));
         advance_wrap(_title);
