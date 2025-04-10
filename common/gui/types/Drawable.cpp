@@ -717,7 +717,9 @@ namespace cmn::gui {
         set_clickable(true);
         _drag_handle = add_event_handler(MBUTTON, [this](Event e) {
             if (e.mbutton.pressed && e.mbutton.button == 0) {// save previous relative position
-                if (!parent() || !parent()->stage() || parent()->stage()->hovered_object() == this) {
+                if (!parent() || !parent()->stage() ||  parent()->stage()->hovered_object() == this ||
+                    (parent()->stage()->hovered_object() && parent()->stage()->hovered_object()->is_child_of(this)))
+                {
                     _relative_drag_start = Vec2(e.mbutton.x, e.mbutton.y);
                     _absolute_drag_start = global_bounds().pos();
                     _being_dragged = true;

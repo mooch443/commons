@@ -102,6 +102,7 @@ namespace cmn::gui {
         std::string _title_text;
         Text _title;
         
+        derived_ptr<Entangled> _graphs_view;
         std::shared_ptr<Circle> _last_hovered_circle;
         
     public:

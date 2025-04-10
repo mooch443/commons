@@ -62,396 +62,420 @@ void Graph::update() {
     if(!content_changed())
         return;
     
-    auto fns = functions();
-#ifndef _MSC_VER
-    std::vector<size_t> indices(arange<size_t>(0, fns.size()));
-#else
-    // visual studio 2017
-    std::vector<size_t> indices(fns.size());
-    for (size_t i=0; i<fns.size(); ++i)
-        indices[i] = i;
-#endif
-    
-    size_t highlighted = fns.size();
-    
     struct Label {
         std::string name;
         Color color;
         Label(const std::string& name = "", const Color& color = Color())
             : name(name), color(color)
         {}
-        void convert(std::shared_ptr<Text> ptr) const {
+        void convert(const std::shared_ptr<Text>& ptr) const {
             ptr->set_txt(name);
             ptr->set_color(color);
             ptr->set_font(Font(0.5));
             ptr->set_clickable(true);
         }
     };
-    std::vector<std::shared_ptr<Label>> function_names;
-    for(auto &f : fns)
-        function_names.push_back(std::make_shared<Label>(f._name, f._color));
-    update_vector_elements(_labels, function_names);
-    
-    auto ctx = OpenContext();
     
     const Color fg_ = gui::White;
     const Color fg = fg_.alpha(255);
     
-    const Rangef& rx = x_range();
-    const Rangef& ry = y_range();
+    Float2_t max_text_length = 0;
     
-    const float lengthx = rx.end - rx.start;
-    const float lengthy = ry.end - ry.start;
-    
-    const float x_offset_percent = rx.start < 0 && lengthx > 0 ? cmn::abs(rx.start / lengthx) : 0;
-    const float y_offset_percent = ry.start < 0 && lengthy > 0 ? cmn::abs(ry.start / lengthy) : 0;
-    
-    static const Font x_label_font(0.5, Align::Center);
-    static const Font y_label_font(0.5, Align::Right);
-    
-    const float max_width = width() - _margin.x * 2;
-    const float max_height = height() - _margin.y * 2 - Base::default_line_spacing(x_label_font);
-    
-    const float y_axis_offset = x_offset_percent * max_width;
-    const float custom_y_axis_offset = lengthx != 0 ? cmn::abs((_zero - rx.start) / lengthx) * max_width : 0;
-    
-    Vec2 function_label_pt(20, 15 + (_title.txt().empty() ? 0 : (Base::default_line_spacing(title_font) + 5)));
-    float max_text_length = 0;
-    
-    for(size_t i=0; i<_labels.size(); i++) {
-        auto text = _labels.at(i);
-        text->set_pos(function_label_pt);
+    _graphs_view->OpenContextWithArgs([this, fg, &max_text_length](Entangled& view)
+    {
+        view.set_scroll_enabled(true);
+        view.set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
         
-        max_text_length = max(max_text_length, text->width() + text->pos().x);
+        const auto& fns = functions();
         
-        auto gb = text->global_bounds();
-        gb.width = max_text_length;
+#ifndef _MSC_VER
+        std::vector<size_t> indices(arange<size_t>(0, fns.size()));
+#else
+        // visual studio 2017
+        std::vector<size_t> indices(fns.size());
+        for (size_t i=0; i<fns.size(); ++i)
+            indices[i] = i;
+#endif
+        std::vector<std::shared_ptr<Label>> function_names;
+        for(auto &f : fns)
+            function_names.push_back(std::make_shared<Label>(f._name, f._color));
+        update_vector_elements(_labels, function_names);
         
-        if(stage() && gb.contains(stage()->mouse_position())) {
-            highlighted = i;
-            text->set_color(White);
+        size_t highlighted = fns.size();
+        
+        const Rangef& rx = x_range();
+        const Rangef& ry = y_range();
+        
+        const float lengthx = rx.end - rx.start;
+        const float lengthy = ry.end - ry.start;
+        
+        const float x_offset_percent = rx.start < 0 && lengthx > 0 ? cmn::abs(rx.start / lengthx) : 0;
+        const float y_offset_percent = ry.start < 0 && lengthy > 0 ? cmn::abs(ry.start / lengthy) : 0;
+        
+        static const Font x_label_font(0.5, Align::Center);
+        static const Font y_label_font(0.5, Align::Right);
+        
+        const float max_width = width() - _margin.x * 2;
+        const float max_height = height() - _margin.y * 2 - Base::default_line_spacing(x_label_font);
+        
+        const float y_axis_offset = x_offset_percent * max_width;
+        const float custom_y_axis_offset = lengthx != 0 ? cmn::abs((_zero - rx.start) / lengthx) * max_width : 0;
+        
+        Vec2 function_label_pt(-20, 15 + (_title.txt().empty() ? 0 : (Base::default_line_spacing(title_font) + 5)));
+        
+        for(size_t i=0; i<_labels.size(); i++) {
+            auto text = _labels.at(i);
+            text->set_pos(function_label_pt);
+            text->set_origin(Vec2(1, 0));
+            
+            max_text_length = max(max_text_length, text->width() + text->pos().x);
+            
+            auto gb = text->global_bounds();
+            gb.width = max_text_length;
+            
+            if(stage() && gb.contains(stage()->mouse_position())) {
+                highlighted = i;
+                text->set_color(White);
+            }
+            
+            function_label_pt += Vec2(0, text->height());
         }
         
-        function_label_pt += Vec2(0, text->height());
-    }
-    
-    std::sort(indices.begin(), indices.end(), [highlighted](size_t A, size_t B) -> bool {
-        // If one element is highlighted, it should come first
-        if (A == highlighted || B == highlighted) {
-            return B != highlighted;
-        }
+        std::sort(indices.begin(), indices.end(), [highlighted](size_t A, size_t B) -> bool {
+            // If one element is highlighted, it should come first
+            if (A == highlighted || B == highlighted) {
+                return B != highlighted;
+            }
+            
+            // If neither is highlighted, use natural ordering
+            return A < B;
+        });
         
-        // If neither is highlighted, use natural ordering
-        return A < B;
-    });
-    
-    add<Vertices>(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,
-                  Vec2(max_width, (1.0f - y_offset_percent) * max_height) + _margin,
-                  fg);
-    
-    add<Vertices>(Vec2(custom_y_axis_offset, 0) + _margin,
-                  Vec2(custom_y_axis_offset, max_height) + _margin,
-                  fg);
-    //advance(new Vertices(Vec2(custom_y_axis_offset, 0) + _margin,
-    //                     Vec2(custom_y_axis_offset, max_height) + _margin,
-    //                     fg));
-    
-    auto label_point_x = [&](float x_visual, float value) {
-        float x = max_width * x_visual - y_axis_offset;
-        if(lengthx > 5)
-            value = roundf(value * 100) / 100;
+        view.add<Vertices>(Vec2(0, (1.0f - y_offset_percent) * max_height) + _margin,
+                      Vec2(max_width, (1.0f - y_offset_percent) * max_height) + _margin,
+                      fg);
         
-        if(std::isnan(x))
-            return (Text*)nullptr;
+        view.add<Vertices>(Vec2(custom_y_axis_offset, 0) + _margin,
+                      Vec2(custom_y_axis_offset, max_height) + _margin,
+                      fg);
+        //advance(new Vertices(Vec2(custom_y_axis_offset, 0) + _margin,
+        //                     Vec2(custom_y_axis_offset, max_height) + _margin,
+        //                     fg));
         
-        Vec2 pt(x, (1.0f - y_offset_percent) * max_height);
-        pt += _margin;
+        auto label_point_x = [&](float x_visual, float value) {
+            float x = max_width * x_visual - y_axis_offset;
+            if(lengthx > 5)
+                value = roundf(value * 100) / 100;
+            
+            if(std::isnan(x))
+                return (Text*)nullptr;
+            
+            Vec2 pt(x, (1.0f - y_offset_percent) * max_height);
+            pt += _margin;
+            
+            std::stringstream ss;
+            ss << value;
+            std::string str = ss.str();
+            
+            view.add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
+            //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
+            return view.add<Text>(Str{str}, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), TextClr{fg}, x_label_font);
+            //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
+        };
         
-        std::stringstream ss;
-        ss << value;
-        std::string str = ss.str();
-        
-        add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
-        //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
-        return add<Text>(Str{str}, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), TextClr{fg}, x_label_font);
-        //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
-    };
-    
-    auto label_point_y = [&](float y_visual, float value) {
-        float y = y_visual * max_height;
-        if(lengthy > 5)
-            value = roundf(value * 100) / 100;
-        
-        Vec2 pt(custom_y_axis_offset, y);
-        pt += _margin;
-        
-        std::stringstream ss;
-        ss << std::setprecision(2) << value;
-        std::string str = ss.str();
-        
-        add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
-        add<Text>(Str{str}, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), TextClr{fg}, y_label_font);
-        //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
-        //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
-    };
+        auto label_point_y = [&](float y_visual, float value) {
+            float y = y_visual * max_height;
+            if(lengthy > 5)
+                value = roundf(value * 100) / 100;
+            
+            Vec2 pt(custom_y_axis_offset, y);
+            pt += _margin;
+            
+            std::stringstream ss;
+            ss << std::setprecision(2) << value;
+            std::string str = ss.str();
+            
+            view.add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
+            view.add<Text>(Str{str}, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), TextClr{fg}, y_label_font);
+            //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
+            //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
+        };
 #define TYPE_IS(X) ( (int)f._type & (int)Type:: X )
-    
-    if(_xyaxis & (char)Axis::X) {
-        bool has_discrete = false;
-        for(auto &f : fns) {
-            if(TYPE_IS(DISCRETE)) {
-                has_discrete = true;
-                break;
-            }
-        }
         
-        if(has_discrete) {
-            float spacing = max(1, round(rx.length() * 0.1f));
-            for(auto i = round(rx.start); i<=round(rx.end); i+=spacing) {
-                float x = (i-rx.start) / lengthx + x_offset_percent;
-                label_point_x(x, i);
+        if(_xyaxis & (char)Axis::X) {
+            bool has_discrete = false;
+            for(auto &f : fns) {
+                if(TYPE_IS(DISCRETE)) {
+                    has_discrete = true;
+                    break;
+                }
             }
             
-        } else {
-            // label x starting at 0 / rx.start
-            float spacing = lengthx * 0.1f;
-            for (float i=rx.start < 0 && rx.end > 0 ? 0 : rx.start; i<rx.end; i+=spacing) {
-                float x = (i-rx.start) / lengthx + x_offset_percent;
-                label_point_x(x, i);
-            }
-            
-            // label x starting at rx.start, if it crosses zero
-            if(rx.start < 0 && rx.end > 0) {
-                for (float i=rx.start; i<-spacing*0.8; i+=spacing) {
+            if(has_discrete) {
+                float spacing = max(1, round(rx.length() * 0.1f));
+                for(auto i = round(rx.start); i<=round(rx.end); i+=spacing) {
                     float x = (i-rx.start) / lengthx + x_offset_percent;
                     label_point_x(x, i);
                 }
+                
+            } else {
+                // label x starting at 0 / rx.start
+                float spacing = lengthx * 0.1f;
+                for (float i=rx.start < 0 && rx.end > 0 ? 0 : rx.start; i<rx.end; i+=spacing) {
+                    float x = (i-rx.start) / lengthx + x_offset_percent;
+                    label_point_x(x, i);
+                }
+                
+                // label x starting at rx.start, if it crosses zero
+                if(rx.start < 0 && rx.end > 0) {
+                    for (float i=rx.start; i<-spacing*0.8; i+=spacing) {
+                        float x = (i-rx.start) / lengthx + x_offset_percent;
+                        label_point_x(x, i);
+                    }
+                }
             }
         }
-    }
-    
-    if(_xyaxis & (char)Axis::Y) {
-        // label y
-        auto spacing = (lengthy) * 0.1f;
-        float limit = ry.start < 0 && ry.end > 0 ? 0 : ry.start;
-        for (float i=10-y_offset_percent*10; i>=0; i--) {
-            float x = limit + i * spacing;
-            float y = (x-ry.start) / lengthy;
-            label_point_y(1-y, x);
-        }
         
-        if(ry.start < 0 && ry.end > 0) {
-            for (float i=10-(1-y_offset_percent)*10; i>=0; i--) {
-                float x = ry.start + i * spacing;
+        if(_xyaxis & (char)Axis::Y) {
+            // label y
+            auto spacing = (lengthy) * 0.1f;
+            float limit = ry.start < 0 && ry.end > 0 ? 0 : ry.start;
+            for (float i=10-y_offset_percent*10; i>=0; i--) {
+                float x = limit + i * spacing;
                 float y = (x-ry.start) / lengthy;
                 label_point_y(1-y, x);
             }
+            
+            if(ry.start < 0 && ry.end > 0) {
+                for (float i=10-(1-y_offset_percent)*10; i>=0; i--) {
+                    float x = ry.start + i * spacing;
+                    float y = (x-ry.start) / lengthy;
+                    label_point_y(1-y, x);
+                }
+            }
         }
-    }
-    
-    auto split_polygon = [this, &max_height, &y_offset_percent](const std::vector<Vertex>& vertices){
-        auto work = std::make_shared<std::vector<Vec2>>();
-        const Vec2 null = Vec2(0, (1.0f - y_offset_percent) * max_height + _margin.y);
         
-        auto make_polygon = [&]() {
-            if(work->empty())
-                return;
+        auto split_polygon = [this, &view, &max_height, &y_offset_percent](const std::vector<Vertex>& vertices){
+            auto work = std::make_shared<std::vector<Vec2>>();
+            const Vec2 null = Vec2(0, (1.0f - y_offset_percent) * max_height + _margin.y);
             
-            if(work->back().y != null.y)
-                work->push_back(Vec2(work->back().x, null.y));
+            auto make_polygon = [&]() {
+                if(work->empty())
+                    return;
+                
+                if(work->back().y != null.y)
+                    work->push_back(Vec2(work->back().x, null.y));
+                
+                view.add<Polygon>(*work, FillClr{vertices.front().clr().alpha(50)});
+                //auto ptr = new Polygon(work);
+                //ptr->set_fill_clr(vertices.front().color().alpha(50));
+                //advance(ptr);
+                
+                work = std::make_shared<std::vector<Vec2>>();
+            };
             
-            add<Polygon>(*work, FillClr{vertices.front().clr().alpha(50)});
-            //auto ptr = new Polygon(work);
-            //ptr->set_fill_clr(vertices.front().color().alpha(50));
-            //advance(ptr);
+            float percent;
+            Vec2 previous(GlobalSettings::invalid());
+            for(auto &v : vertices) {
+                auto p = v.position() - null;
+                
+                if(GlobalSettings::is_invalid(previous.x))
+                    work->push_back(Vec2(p.x, 0) + null);
+                
+                else if(p.y != previous.y && (percent = crosses_zero(p.y, previous.y)) >= 0 && percent <= 1)
+                {
+                    auto pt = null + previous + (p - previous) * percent;
+                    work->push_back(pt);
+                    make_polygon();
+                    work->push_back(pt);
+                }
+                
+                work->push_back(p + null);
+                previous = p;
+            }
             
-            work = std::make_shared<std::vector<Vec2>>();
+            if(!GlobalSettings::is_invalid(previous.x))
+                make_polygon();
         };
         
-        float percent;
-        Vec2 previous(GlobalSettings::invalid());
-        for(auto &v : vertices) {
-            auto p = v.position() - null;
-            
-            if(GlobalSettings::is_invalid(previous.x))
-                work->push_back(Vec2(p.x, 0) + null);
-            
-            else if(p.y != previous.y && (percent = crosses_zero(p.y, previous.y)) >= 0 && percent <= 1)
-            {
-                auto pt = null + previous + (p - previous) * percent;
-                work->push_back(pt);
-                make_polygon();
-                work->push_back(pt);
-            }
-            
-            work->push_back(p + null);
-            previous = p;
-        }
+        std::vector<Vertex> vertices;
         
-        if(!GlobalSettings::is_invalid(previous.x))
-            make_polygon();
-    };
-    
-    std::vector<Vertex> vertices;
-    
-    for (auto idx : indices) {
-        auto &f = fns.at(idx);
-        
-        if(f._points) {
-            auto it = _gui_points.find(f._name);
-            if(it == _gui_points.end()) {
-                std::vector<std::shared_ptr<Circle>> gpt;
-                for(auto &pt : f._points->points) {
-                    float percentx = (pt.x-rx.start) / lengthx + x_offset_percent;
-                    
-                    float x = percentx * max_width - y_axis_offset;
-                    float y = (1.0f - (pt.y / lengthy + y_offset_percent)) * max_height;
-                    
-                    if(x < 0 || x > max_width || y < 0 || y > max_height)
-                        continue;
-                    
-                    auto current = Vec2(x, y) + _margin;
-                    auto ptr = Circle::MakePtr(attr::Loc(OFFSET(current)), attr::Radius(3), attr::LineClr(f._color));
-                    ptr->add_custom_data("graph_point", (void*)new float(pt.x), [](void* ptr) { delete (float*)ptr; });
-                    
-                    if(f._points->_hover_fn) {
-                        ptr->set_clickable(true);
-                        ptr->on_hover([n = f._name, x = pt.x, points = f._points, ptr, this](auto e){
-                            if(e.hover.hovered && _last_hovered_circle != ptr) {
-                                points->_hover_fn(n, x);
-                                this->highlight_point(ptr);
-                            }
-                        });
-                    }
-                    gpt.push_back(ptr);
-                }
-                auto [bit, b] = _gui_points.insert({f._name, gpt});
-                it = bit;
-            }
+        for (auto idx : indices) {
+            auto &f = fns.at(idx);
             
-            for(auto &pt : it->second) {
-                advance_wrap(*pt);
-            }
-            
-            continue;
-        }
-        
-        const int step_nr = narrow_cast<int>(max_width / (TYPE_IS(DISCRETE) || TYPE_IS(POINTS) ? 1 : 4));
-        const float step_size = 1.0f / step_nr;
-        const float stepx = lengthx * step_size;
-        
-        Vec2 prev(0, 0);
-        float prev_y0 = 0.0f;
-        float prev_x0 = GlobalSettings::invalid();
-        
-        vertices.clear();
-        
-        Color clr;
-        Vec2 crt;
-        
-        for (size_t i=0; i<size_t(step_nr); i++) {
-            float x0 = rx.start + i * stepx;
-            if (TYPE_IS(DISCRETE) || TYPE_IS(POINTS))
-                x0 = roundf(x0);
-            
-            if (!GlobalSettings::is_invalid(prev_x0) && x0 == prev_x0)
-                continue;
-            
-            clr = f._color;
-            if(idx == highlighted)
-                clr = clr.exposure(1.5);
-            auto org_clr = clr;
-            
-            if(lengthx == 0 || lengthy == 0)
-                continue;
-            
-            float percentx = (x0-rx.start) / lengthx + x_offset_percent;
-            float x = percentx * max_width - y_axis_offset;
-            
-            double output = f._get_y(x0);
-            float y0 = GlobalSettings::is_invalid(output)
-                ? GlobalSettings::invalid()
-                : narrow_cast<float>(output);
-            float y;
-            
-            if (GlobalSettings::is_invalid(y0)) {
-                // no value can be found at this location
-                // just use the previous one and make it visible
-                y = prev_y0;
-                clr = fg;
-            } else
-                y = (1.0f - ((y0) / lengthy + y_offset_percent)) * max_height;
-            
-            prev_y0 = y0;
-            prev_x0 = x0;
-            
-            Vec2 current(x, y);
-            current += _margin;
-            
-            if(TYPE_IS(POINTS))
-            {
-                if(!GlobalSettings::is_invalid(y0))
-                    add<Circle>(Loc(current), Radius(3), LineClr(org_clr));
-            }
-            
-            if (f._type != Graph::POINTS && ((current.y >= _margin.y && current.y <= height())
-                || (i && (prev.y >= _margin.y && prev.y <= height()))))
-            {
-                crt = current;
-                
-                if(current.y >= _margin.y && current.y <= height()) {
-                    if(i && (prev.y < _margin.y || prev.y > height())) {
-                        if(TYPE_IS(AREA) || idx == highlighted)
-                            split_polygon(vertices);
-                        add<Vertices>(vertices, PrimitiveType::LineStrip);
-                        vertices.clear();
+            if(f._points) {
+                auto it = _gui_points.find(f._name);
+                if(it == _gui_points.end()) {
+                    std::vector<std::shared_ptr<Circle>> gpt;
+                    for(auto &pt : f._points->points) {
+                        float percentx = (pt.x-rx.start) / lengthx + x_offset_percent;
                         
-                        prev.y = min(max_height, max(_margin.y, prev.y));
-                        vertices.push_back(Vertex(OFFSET(prev), clr));
+                        float x = percentx * max_width - y_axis_offset;
+                        float y = (1.0f - (pt.y / lengthy + y_offset_percent)) * max_height;
+                        
+                        if(x < 0 || x > max_width || y < 0 || y > max_height)
+                            continue;
+                        
+                        auto current = Vec2(x, y) + _margin;
+                        auto ptr = Circle::MakePtr(attr::Loc(OFFSET(current)), attr::Radius(3), attr::LineClr(f._color));
+                        ptr->add_custom_data("graph_point", (void*)new float(pt.x), [](void* ptr) { delete (float*)ptr; });
+                        
+                        if(f._points->_hover_fn) {
+                            ptr->set_clickable(true);
+                            ptr->on_hover([n = f._name, x = pt.x, points = f._points, ptr, this](auto e){
+                                if(e.hover.hovered && _last_hovered_circle != ptr) {
+                                    points->_hover_fn(n, x);
+                                    this->highlight_point(ptr);
+                                }
+                            });
+                        }
+                        gpt.push_back(ptr);
                     }
-                    
-                } else {
-                    crt.y = min(max_height, max(_margin.y, crt.y));
+                    auto [bit, b] = _gui_points.insert({f._name, gpt});
+                    it = bit;
                 }
                 
-                vertices.push_back(Vertex(OFFSET(crt), clr));
+                for(auto &pt : it->second) {
+                    view.advance_wrap(*pt);
+                }
+                
+                continue;
             }
             
-            prev = current;
+            const int step_nr = narrow_cast<int>(max_width / (TYPE_IS(DISCRETE) || TYPE_IS(POINTS) ? 1 : 4));
+            const float step_size = 1.0f / step_nr;
+            const float stepx = lengthx * step_size;
+            
+            Vec2 prev(0, 0);
+            float prev_y0 = 0.0f;
+            float prev_x0 = GlobalSettings::invalid();
+            
+            vertices.clear();
+            
+            Color clr;
+            Vec2 crt;
+            
+            for (size_t i=0; i<size_t(step_nr); i++) {
+                float x0 = rx.start + i * stepx;
+                if (TYPE_IS(DISCRETE) || TYPE_IS(POINTS))
+                    x0 = roundf(x0);
+                
+                if (!GlobalSettings::is_invalid(prev_x0) && x0 == prev_x0)
+                    continue;
+                
+                clr = f._color;
+                if(idx == highlighted)
+                    clr = clr.exposure(1.5);
+                auto org_clr = clr;
+                
+                if(lengthx == 0 || lengthy == 0)
+                    continue;
+                
+                float percentx = (x0-rx.start) / lengthx + x_offset_percent;
+                float x = percentx * max_width - y_axis_offset;
+                
+                double output = f._get_y(x0);
+                float y0 = GlobalSettings::is_invalid(output)
+                ? GlobalSettings::invalid()
+                : output;
+                float y;
+                
+                if (GlobalSettings::is_invalid(y0)) {
+                    // no value can be found at this location
+                    // just use the previous one and make it visible
+                    y = prev_y0;
+                    clr = fg;
+                } else
+                    y = (1.0f - ((y0) / lengthy + y_offset_percent)) * max_height;
+                
+                prev_y0 = y0;
+                prev_x0 = x0;
+                
+                Vec2 current(x, y);
+                current += _margin;
+                
+                if(TYPE_IS(POINTS))
+                {
+                    if(!GlobalSettings::is_invalid(y0))
+                        view.add<Circle>(Loc(current), Radius(3), LineClr(org_clr));
+                }
+                
+                if (f._type != Graph::POINTS && ((current.y >= _margin.y && current.y <= height())
+                                                 || (i && (prev.y >= _margin.y && prev.y <= height()))))
+                {
+                    crt = current;
+                    
+                    if(current.y >= _margin.y && current.y <= height()) {
+                        if(i && (prev.y < _margin.y || prev.y > height())) {
+                            if(TYPE_IS(AREA) || idx == highlighted)
+                                split_polygon(vertices);
+                            view.add<Vertices>(vertices, PrimitiveType::LineStrip);
+                            vertices.clear();
+                            
+                            prev.y = min(max_height, max(_margin.y, prev.y));
+                            vertices.push_back(Vertex(OFFSET(prev), clr));
+                        }
+                        
+                    } else {
+                        crt.y = min(max_height, max(_margin.y, crt.y));
+                    }
+                    
+                    vertices.push_back(Vertex(OFFSET(crt), clr));
+                }
+                
+                prev = current;
+            }
+            
+            if(f._type != Graph::POINTS && !vertices.empty()) {
+                if(TYPE_IS(AREA) || idx == highlighted)
+                    split_polygon(vertices);
+                view.add<Vertices>(vertices, PrimitiveType::LineStrip);
+            }
         }
-        
-        if(f._type != Graph::POINTS && !vertices.empty()) {
-            if(TYPE_IS(AREA) || idx == highlighted)
-                split_polygon(vertices);
-            add<Vertices>(vertices, PrimitiveType::LineStrip);
-        }
-    }
 #undef TYPE_IS
-    
-    for(auto line : _lines) {
-        Line::Vertices_t positions;
-        for(auto &p : line.v) {
-            positions.push_back(Vertex(transform_point(p), line.color));
+        for(auto& line : _lines) {
+            Line::Vertices_t positions;
+            for(auto &p : line.v) {
+                positions.push_back(Vertex(transform_point(p), line.color));
+            }
+            view.add<Line>(positions, Line::Thickness_t{ line.thickness });
         }
-        add<Line>(positions, Line::Thickness_t{ line.thickness });
+    }, *_graphs_view);
+    
+    auto ctx = OpenContext();
+    advance_wrap(*_graphs_view);
+    
+    float max_label_length = _title.width();
+    float label_height = _title.pos().y + _title.height() + 5;
+    float max_label_pos = 0;
+    for(auto &l : _labels) {
+        if(l->width() > max_label_length)
+            max_label_length = l->width();
+        max_label_pos = max(max_label_pos, l->height() + l->pos().y);
     }
+    label_height = max(label_height, max_label_pos) + 5;
+    max_label_length += 10;
     
     if(!_title_text.empty()) {
         update_title();
         
-        _title.set_pos(Vec2(20, 15));
+        _title.set_origin(Vec2(1, 0));
+        _title.set_pos(Vec2(-20, 10));
         _title.set_color(fg);
-        add<Rect>(Box(_title.pos() - Vec2(1, 1),
-                         Size2(_title.width(), Base::default_line_spacing(title_font)) + Size2(2,2)),
-                  FillClr{Black.alpha(_title.hovered() ? 150 : 50)});
-        
-        add<Rect>(Box(_title.pos() + Vec2(0, _title.height() + 5) - Vec2(1, 1),
-                        Size2(max_text_length, _labels.size() * Base::default_line_spacing(Font(0.5)))),
-                  FillClr{Black.alpha(150)});
+        add<Rect>(Box{
+            _title.pos() + Vec2(5, -5),
+            Size2{
+                max_label_length,
+                label_height
+            }
+          },
+          FillClr{Black.alpha(50)},
+          LineClr{White.alpha(200)},
+          Origin(1, 0));
         advance_wrap(_title);
     }
     
-    for(auto l : _labels)
+    for(auto& l : _labels)
         advance_wrap(*l);
 }
 
@@ -534,8 +558,11 @@ Graph::Graph(const Bounds& bounds,
              const Rangef& y_range)
     : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(Str{name}, title_font)
 {
+    _graphs_view = new Entangled;
+    
     set_bounds(bounds);
-    set_background(Black.alpha(175), Transparent);
+    _graphs_view->set_bounds(Bounds(Vec2(), bounds.size()));
+    set_background(Yellow.alpha(175), White);
     set_ranges(x_range, y_range);
     set_clickable(true);
     add_event_handler(HOVER, [this](Event e) {
