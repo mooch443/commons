@@ -1,3 +1,10 @@
+/**
+ * @file RBSettings.h
+ * @brief Round-based and atomic-capable settings management with thread-local isolation and efficient update tracking.
+ *
+ * Provides a generic way to define, access, and update named configuration settings with support for
+ * round-based updates or atomic async update notification using a lock-free MPSC queue.
+ */
 #pragma once
 
 #include <commons.pc.h>
@@ -7,8 +14,15 @@
 
 namespace cmn {
 
-// A fixed-capacity lock-free queue suitable for multiple producers (callbacks)
-// and a single consumer (the round updater)
+/**
+ * @brief Lock-free multi-producer, single-consumer queue.
+ *
+ * Used to track updated settings when operating in atomic update mode.
+ * Safe for multiple producers (callback threads) and one consumer (the updater).
+ *
+ * @tparam T Type of the elements in the queue.
+ * @tparam Capacity Maximum number of elements before overwriting occurs.
+ */
 template <typename T, size_t Capacity>
 class MPSCQueue {
 public:
@@ -84,8 +98,17 @@ private:
 #undef STRINGIZE_SINGLE
 #define STRINGIZE_SINGLE(NAME) IDENTITY(#NAME)
 
-// Macro to generate declarations for each setting, a constexpr array of names,
-// an array of updater lambdas, and an update_settings() member function.
+/**
+ * @brief Macro to generate settings structure and associated metadata.
+ *
+ * Generates:
+ * - The actual storage container (`Store`)
+ * - Enum of setting names
+ * - Arrays of setting names and update lambdas
+ * - Accessors to retrieve a setting by name or enum
+ *
+ * @param __VA_ARGS__ Names of the settings to register.
+ */
 #define ADD_SETTINGS(...)                                                       \
     static constexpr size_t N_settings = COUNT(__VA_ARGS__); \
     struct Store {  \
@@ -123,6 +146,12 @@ private:
         else static_assert(static_cast<int>(field) == -1, "Unknown field."); \
     }
 
+ /**
+  * @brief Thread-local round-based or atomic-capable settings manager.
+  *
+  * @tparam round_based If true, settings are only updated at round boundaries.
+  * @tparam use_atomic If true, updated settings are tracked via MPSC queue; else with mutex-protected set.
+  */
 template<bool round_based, bool use_atomic>
 struct RBSettings {
     template<bool>
@@ -140,6 +169,11 @@ struct RBSettings {
     };
     
 public:
+    /**
+     * @brief Thread-local object that owns actual settings and handles updates.
+     *
+     * Includes setting storage, callback registration, update tracking, and round lifecycle support.
+     */
     struct ThreadObject : public UpdateState<use_atomic> {
         std::atomic<size_t> external_access_count{0};
         std::thread::id _thread_id{std::this_thread::get_id()};
@@ -238,9 +272,17 @@ public:
         ThreadObject(ThreadObject&&) = delete;
         ThreadObject(const ThreadObject&) = delete;
         
-        //! Call `update_settings()` to refresh any settings that changed
-        void update_settings(bool force = false) {
-            if(force) {
+        /**
+         * @brief Applies pending setting updates.
+         *
+         * - In atomic mode: drains the MPSC queue for updated enum entries.
+         * - In non-atomic mode: locks the set of updated names and applies them.
+         *
+         * @param force If true, all settings are updated regardless of change tracking.
+         */
+        template<bool force = false>
+        void update_settings() {
+            if constexpr(force) {
                 for(auto& fn : setting_updaters) {
                     fn(_store);
                 }
@@ -266,7 +308,14 @@ public:
                 }
             }
         }
-        
+       
+        /**
+         * @brief Grants external threads access to the settings object.
+         *
+         * Increments a counter tracking concurrent external accesses. Must be matched with `external_thread_done()`.
+         *
+         * @return Pointer to the thread-local settings object.
+         */
         ThreadObject* get_external_ptr() {
 #ifndef NDEBUG
             external_access_count.fetch_add(1, std::memory_order_relaxed);
@@ -274,6 +323,11 @@ public:
             return this;
         }
         
+        /**
+         * @brief Marks completion of external thread access to the settings object.
+         *
+         * Decrements the external access count. Must be called once per `get_external_ptr()` call.
+         */
         void external_thread_done() {
 #ifndef NDEBUG
             size_t prev = external_access_count.fetch_sub(1, std::memory_order_relaxed);
@@ -304,6 +358,20 @@ public:
     };
     
 private:
+    /**
+     * @brief Thread-local singleton instance of settings with callback-based update tracking.
+     *
+     * This thread-local `object` is created once per thread and holds the full configuration state,
+     * including all settings and their update logic. It registers callbacks with the global
+     * settings system to be notified when any setting changes. These changes are collected either
+     * through an atomic MPSC queue (for lock-free update tracking) or a mutex-protected set,
+     * depending on the `use_atomic` flag.
+     *
+     * On first access, the shared pointer is initialized and:
+     * - Registers callbacks for all settings
+     * - Wraps the callback in logic that queues the updated setting name
+     * - Immediately applies all settings (`update_settings<true>()`)
+     */
     inline static thread_local std::shared_ptr<ThreadObject> object{[](){
         auto ptr = std::make_shared<ThreadObject>();
         
@@ -325,13 +393,18 @@ private:
             }
         });
         
-        ptr->update_settings(true);
+        ptr->template update_settings<true>();
         return ptr;
     }()};
     
     RBSettings() = default;
     
 public:
+    /**
+     * @brief RAII helper to begin and end a settings round.
+     *
+     * Automatically calls start_round() on construction and end_round() on destruction.
+     */
     struct Guard {
         ThreadObject* settings;
         
@@ -360,12 +433,22 @@ public:
         }
     };
     
+    /**
+     * @brief Returns reference to a setting by enum key.
+     *
+     * @tparam key Enum identifier for the setting.
+     */
     template<ThreadObject::Variables key>
     static const auto& get() {
         auto &settings = *object;
         assert(settings._thread_id == std::this_thread::get_id());
         return settings.template get<key>();
     }
+    /**
+     * @brief Returns reference to a setting by fixed string key.
+     *
+     * @tparam key Compile-time fixed string name of the setting.
+     */
     template<ct::utils::fixed_string key>
     static const auto& get() {
         auto &settings = *object;
