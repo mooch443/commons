@@ -146,6 +146,23 @@ private:
         else static_assert(static_cast<int>(field) == -1, "Unknown field."); \
     }
 
+// Define a helper that can be specialized based on whether to use atomic.
+template<bool UseAtomic>
+struct RBUpdateStateHelper;  // Primary template (unspecialized)
+
+// Specialization for the atomic variant (true): no members.
+template<>
+struct RBUpdateStateHelper<true> {
+    // Empty: atomic variant has no members.
+};
+
+// Specialization for the non-atomic variant (false):
+template<>
+struct RBUpdateStateHelper<false> {
+    std::mutex _update_settings_mutex;
+    std::set<std::string_view> _updated_settings;
+};
+
  /**
   * @brief Thread-local round-based or atomic-capable settings manager.
   *
@@ -154,19 +171,7 @@ private:
   */
 template<bool round_based, bool use_atomic>
 struct RBSettings {
-    template<bool>
-    struct UpdateState;
-    
-    template<>
-    struct UpdateState<true> {
-        // No members for the atomic variant
-    };
-
-    template<>
-    struct UpdateState<false> {
-        std::mutex _update_settings_mutex;
-        std::set<std::string_view> _updated_settings;
-    };
+    using UpdateState = RBUpdateStateHelper<use_atomic>;
     
 public:
     /**
@@ -174,7 +179,7 @@ public:
      *
      * Includes setting storage, callback registration, update tracking, and round lifecycle support.
      */
-    struct ThreadObject : public UpdateState<use_atomic> {
+    struct ThreadObject : public UpdateState {
         std::atomic<size_t> external_access_count{0};
         std::thread::id _thread_id{std::this_thread::get_id()};
         
