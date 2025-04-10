@@ -61,6 +61,8 @@ private:
 #endif
 };
 
+#include <misc/PBSettingsMacros.h>
+
 // Macro to generate a single setting declaration.
 //#define ADD_SETTING_DECL(NAME) std::conditional<round_based, track::Settings::NAME##_t , std::optional< track::Settings::NAME##_t > > NAME;
 #define ADD_SETTING_DECL(NAME) track::Settings::NAME##_t NAME;
@@ -79,99 +81,147 @@ private:
     //self.NAME = SETTING(NAME).value<track::Settings::NAME##_t>(); \
 //}
 
-// New SIMPLE_APPLY macros to generate a comma-separated list.
-#define SIMPLE_APPLY_1(m, a)         m(a)
-#define SIMPLE_APPLY_2(m, a, b)      m(a), m(b)
-#define SIMPLE_APPLY_3(m, a, b, c)   m(a), m(b), m(c)
-#define SIMPLE_APPLY_4(m, a, b, c, d) m(a), m(b), m(c), m(d)
-#define SIMPLE_APPLY_5(m, a, b, c, d, e) m(a), m(b), m(c), m(d), m(e)
-#define SIMPLE_APPLY_6(m, a, b, c, d, e, f) m(a), m(b), m(c), m(d), m(e), m(f)
-#define SIMPLE_APPLY_7(m, a, b, c, d, e, f, g) m(a), m(b), m(c), m(d), m(e), m(f), m(g)
-#define SIMPLE_APPLY_8(m, a, b, c, d, e, f, g, h) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h)
-#define SIMPLE_APPLY_9(m, a, b, c, d, e, f, g, h, i) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i)
-#define SIMPLE_APPLY_10(m, a, b, c, d, e, f, g, h, i, j) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j)
-#define SIMPLE_APPLY_11(m, a, b, c, d, e, f, g, h, i, j, k) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k)
-#define SIMPLE_APPLY_12(m, a, b, c, d, e, f, g, h, i, j, k, l) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l)
-#define SIMPLE_APPLY_13(m, a, b, c, d, e, f, g, h, i, j, k, l, m1) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1)
-#define SIMPLE_APPLY_14(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n)
-#define SIMPLE_APPLY_15(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o)
-#define SIMPLE_APPLY_16(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o, p) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o), m(p)
-#define SIMPLE_APPLY_17(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o, p, q) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o), m(p), m(q)
-#define SIMPLE_APPLY_18(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o, p, q, r) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o), m(p), m(q), m(r)
-#define SIMPLE_APPLY_19(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o, p, q, r, s) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o), m(p), m(q), m(r), m(s)
-#define SIMPLE_APPLY_20(m, a, b, c, d, e, f, g, h, i, j, k, l, m1, n, o, p, q, r, s, t) m(a), m(b), m(c), m(d), m(e), m(f), m(g), m(h), m(i), m(j), m(k), m(l), m(m1), m(n), m(o), m(p), m(q), m(r), m(s), m(t)
-
-#define SIMPLE_APPLY_CHOOSER(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,NAME,...) NAME
-#define SIMPLE_APPLY(m, ...) SIMPLE_APPLY_CHOOSER(__VA_ARGS__, \
-SIMPLE_APPLY_20, SIMPLE_APPLY_19, SIMPLE_APPLY_18, SIMPLE_APPLY_17, SIMPLE_APPLY_16, \
-SIMPLE_APPLY_15, SIMPLE_APPLY_14, SIMPLE_APPLY_13, SIMPLE_APPLY_12, SIMPLE_APPLY_11, \
-SIMPLE_APPLY_10, SIMPLE_APPLY_9, SIMPLE_APPLY_8, SIMPLE_APPLY_7, SIMPLE_APPLY_6, \
-SIMPLE_APPLY_5, SIMPLE_APPLY_4, SIMPLE_APPLY_3, SIMPLE_APPLY_2, SIMPLE_APPLY_1)(m, __VA_ARGS__)
+#undef STRINGIZE_SINGLE
+#define STRINGIZE_SINGLE(NAME) IDENTITY(#NAME)
 
 // Macro to generate declarations for each setting, a constexpr array of names,
 // an array of updater lambdas, and an update_settings() member function.
 #define ADD_SETTINGS(...)                                                       \
     static constexpr size_t N_settings = COUNT(__VA_ARGS__); \
     struct Store {  \
-        MAP(ADD_SETTING_DECL, __VA_ARGS__)                                          \
+        _SIMPLE_APPLY(ADD_SETTING_DECL, _SEP_EMPTY, __VA_ARGS__)                                          \
     } _store; \
     \
     static inline constexpr std::array<std::string_view, N_settings>      \
-        setting_names = { STRINGIZE(__VA_ARGS__) };                             \
+        setting_names = { \
+        SIMPLE_APPLY(STRINGIZE_SINGLE, __VA_ARGS__) \
+    };  \
     static inline constexpr std::array<void(*)(Store&), N_settings> \
         setting_updaters = { \
-            SIMPLE_APPLY(UPDATE_UPDATER, __VA_ARGS__) \
+            _SIMPLE_APPLY(UPDATE_UPDATER, _SEP_INDIRECT, __VA_ARGS__) \
         }; \
     enum class Variables { \
         SIMPLE_APPLY(IDENTITY, __VA_ARGS__) \
     }; \
     inline Variables get_enum_name(std::string_view field) {\
         if constexpr(false) (void)0; \
-        MAP(COMPARE_ENUM_NAME, __VA_ARGS__)                                          \
+        _SIMPLE_APPLY(COMPARE_ENUM_NAME, _SEP_EMPTY, __VA_ARGS__)                                          \
         else throw RuntimeError("Cannot find field ", field, "."); \
     } \
     template< ct::utils::fixed_string field > \
     inline const auto& get() {\
         auto f = [](auto& variable) -> auto& { return variable; }; \
         if constexpr(false) (void)0; \
-        MAP(ADD_SETTING_NAME, __VA_ARGS__)                                          \
+        _SIMPLE_APPLY(ADD_SETTING_NAME, _SEP_EMPTY, __VA_ARGS__)                                          \
         else static_assert(static_cast<int>(field) == -1, "Unknown field."); \
     } \
     template< Variables field > \
     inline const auto& get() {\
         auto f = [](auto& variable) -> auto& { return variable; }; \
         if constexpr(false) (void)0; \
-        MAP(ADD_SETTING_NAME2, __VA_ARGS__)                                          \
+        _SIMPLE_APPLY(ADD_SETTING_NAME2, _SEP_EMPTY, __VA_ARGS__)                                          \
         else static_assert(static_cast<int>(field) == -1, "Unknown field."); \
     }
 
 template<bool round_based, bool use_atomic>
 struct RBSettings {
-public:
-    struct ThreadObject {
-        std::thread::id _thread_id{std::this_thread::get_id()};
-        
+    template<bool>
+    struct UpdateState;
+    
+    template<>
+    struct UpdateState<true> {
+        // No members for the atomic variant
+    };
+
+    template<>
+    struct UpdateState<false> {
         std::mutex _update_settings_mutex;
-        //! everything that was changed during the previous round
         std::set<std::string_view> _updated_settings;
+    };
+    
+public:
+    struct ThreadObject : public UpdateState<use_atomic> {
+        std::atomic<size_t> external_access_count{0};
+        std::thread::id _thread_id{std::this_thread::get_id()};
         
         //! saves the callback handles so we can unregister them later
         CallbackCollection _callback_collection;
         
+#ifndef NDEBUG
         //! this is locked during update cycles
         bool _round_lock{false};
+#endif
         
-        ADD_SETTINGS(track_max_speed,
+        ADD_SETTINGS(smooth_window,
+                     cm_per_pixel,
+                     frame_rate,
+                     track_enforce_frame_rate,
+                     track_max_reassign_time,
+                     speed_extrapolation,
+                     calculate_posture,
+                     track_max_speed,
                      track_size_filter,
                      track_threshold,
-                     track_speed_decay,
-                     track_pause,
+                     track_threshold_2,
+                     threshold_ratio_range,
+                     track_max_individuals,
+                     track_posture_threshold,
+                     outline_smooth_step,
+                     outline_smooth_samples,
+                     outline_resample,
+                     manual_matches,
+                     manual_splits,
+                     track_ignore_bdx,
+                     midline_resolution,
+                     meta_mass_mg,
+                     individual_names,
+                     midline_stiff_percentage,
+                     match_min_probability,
+                     posture_direction_smoothing,
+                     tags_path,
+                     grid_points,
+                     recognition_shapes,
+                     grid_points_scaling,
                      track_ignore,
                      track_include,
-                     track_ignore_bdx,
+                     tracklet_punish_timedelta,
+                     huge_timestamp_seconds,
+                     manually_approved,
+                     track_speed_decay,
+                     midline_invert,
+                     track_time_probability_enabled,
+                     posture_head_percentage,
+                     track_threshold_is_absolute,
+                     track_background_subtraction,
+                     blobs_per_thread,
+                     individual_prefix,
+                     video_length,
+                     analysis_range,
+                     visual_field_eye_offset,
+                     visual_field_eye_separation,
+                     visual_field_history_smoothing,
+                     tracklet_punish_speeding,
+                     match_mode,
+                     track_do_history_split,
+                     posture_closing_steps,
+                     posture_closing_size,
+                     individual_image_scale,
+                     track_pause,
+                     track_trusted_probability,
+                     accumulation_tracklet_add_factor,
+                     output_interpolate_positions,
+                     track_consistent_categories,
+                     categories_ordered,
+                     track_only_categories,
                      track_only_classes,
                      track_conf_threshold,
-                     track_max_individuals);
+                     tracklet_max_length,
+                     individual_image_size,
+                     categories_train_min_tracklet_length,
+                     categories_apply_min_tracklet_length,
+                     meta_encoding,
+                     outline_compression,
+                     image_invert);
         
         //std::array<std::atomic<bool>, N_settings> setting_was_updated;
         /// `Settings::<NAME>_t NAME;` ...
@@ -180,41 +230,13 @@ public:
         static constexpr size_t QueueCapacity = 128;
         MPSCQueue<Variables, QueueCapacity> updatedQueue;
         
-        /*ThreadObject() {
-            //Print("* alloc ", hex(this));
-        }*/
-        ThreadObject() {
-            //if constexpr(use_atomic)
-            //    std::fill(setting_was_updated.begin(), setting_was_updated.begin() + N_settings, true);
-        }
+        ThreadObject() = default;
         ~ThreadObject() {
-            /*if(_thread_id != std::this_thread::get_id()) {
-                Print("* sus ", hex(this));
-            }*/
-            //Print("* dealloc ", hex(this));
             GlobalSettings::map().unregister_callbacks(std::move(_callback_collection));
         }
         
         ThreadObject(ThreadObject&&) = delete;
         ThreadObject(const ThreadObject&) = delete;
-        
-        /*template <std::size_t... Is>
-            requires (use_atomic)
-        void _update_settings(std::index_sequence<Is...>) {
-            (..., (try_update<Is>()));
-        }*/
-        
-        /*template <std::size_t I>
-            requires (use_atomic)
-        void try_update() {
-            auto& value = setting_was_updated[I];
-            if (value.load()) {
-                bool expected = true;
-                if (value.compare_exchange_weak(expected, false)) {
-                    setting_updaters[I](_store);
-                }
-            }
-        }*/
         
         //! Call `update_settings()` to refresh any settings that changed
         void update_settings(bool force = false) {
@@ -234,8 +256,8 @@ public:
                 }
                 
             } else {
-                std::lock_guard guard{_update_settings_mutex};
-                for (auto name : _updated_settings) {
+                std::lock_guard guard{this->_update_settings_mutex};
+                for (auto name : this->_updated_settings) {
                     auto it = std::find(setting_names.begin(), setting_names.end(), name);
                     if (it != setting_names.end()) {
                         auto index = std::distance(setting_names.begin(), it);
@@ -243,6 +265,20 @@ public:
                     }
                 }
             }
+        }
+        
+        ThreadObject* get_external_ptr() {
+#ifndef NDEBUG
+            external_access_count.fetch_add(1, std::memory_order_relaxed);
+#endif
+            return this;
+        }
+        
+        void external_thread_done() {
+#ifndef NDEBUG
+            size_t prev = external_access_count.fetch_sub(1, std::memory_order_relaxed);
+            assert(prev > 0 && "External access count underflow: no external thread active to release!");
+#endif
         }
         
         void start_round() {
@@ -253,41 +289,47 @@ public:
 #endif
             update_settings();
         }
+        
         void end_round() {
-            /// nothing
 #ifndef NDEBUG
+            // Ensure that no external thread accesses remain when ending the round.
+            assert(external_access_count.load(std::memory_order_relaxed) == 0 &&
+                   "External thread(s) still active at end of round!");
             if(not _round_lock)
                 throw RuntimeError("Cannot end a round. No round was started.");
             _round_lock = false;
 #endif
+            // (Release round resources if needed)
         }
     };
     
 private:
     inline static thread_local std::shared_ptr<ThreadObject> object{[](){
         auto ptr = std::make_shared<ThreadObject>();
-        //std::lock_guard guard{ptr->_update_settings_mutex};
+        
         ptr->_callback_collection = GlobalSettings::map().
           register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
             ptr->setting_names,
-            [wptr = std::weak_ptr(ptr)](auto name) {
-                std::shared_ptr<ThreadObject> lock = wptr.lock();
-                if(not lock)
-                    return;
+        [wptr = std::weak_ptr(ptr)](auto name) {
+            std::shared_ptr<ThreadObject> lock = wptr.lock();
+            if(not lock)
+                return;
+            
+            if constexpr(use_atomic) {
+                auto var = lock->get_enum_name(name);
+                lock->updatedQueue.push(var);
                 
-                if constexpr(use_atomic) {
-                    auto var = lock->get_enum_name(name);
-                    lock->updatedQueue.push(var);
-                    //lock->setting_was_updated[static_cast<size_t>(var)] = true;
-                } else {
-                    std::lock_guard guard{lock->_update_settings_mutex};
-                    lock->_updated_settings.insert(name);
-                }
-            });
+            } else {
+                std::lock_guard guard{lock->_update_settings_mutex};
+                lock->_updated_settings.insert(name);
+            }
+        });
+        
         ptr->update_settings(true);
         return ptr;
     }()};
-    RBSettings() {}
+    
+    RBSettings() = default;
     
 public:
     struct Guard {
@@ -316,17 +358,6 @@ public:
             g.settings = nullptr;
             return *this;
         }
-        
-        template<ThreadObject::Variables key>
-        const auto& get() const {
-            assert(settings->_thread_id == std::this_thread::get_id());
-            return settings->template get<key>();
-        }
-        template<ct::utils::fixed_string key>
-        const auto& get() const {
-            assert(settings->_thread_id == std::this_thread::get_id());
-            return settings->template get<key>();
-        }
     };
     
     template<ThreadObject::Variables key>
@@ -351,6 +382,10 @@ public:
     
     static Guard round() {
         return Guard{object.get()};
+    }
+    
+    static ThreadObject* current() {
+        return object.get();
     }
 };
 
