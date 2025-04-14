@@ -229,7 +229,8 @@ public:
     BlobPtr threshold(int32_t value, const cmn::Background& background);
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> color_image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> gray_image(const cmn::Background* background = NULL, const cmn::Bounds& restricted = cmn::Bounds(-1,-1,-1,-1), uchar padding = 1) const;
-    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> alpha_image(const cmn::Background& background, int32_t threshold) const;
+    cmn::Vec2 alpha_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
+    cmn::Vec2 rgba_image(const cmn::Background& background, int32_t threshold, cmn::Image& image) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> difference_image(const cmn::Background& background, int32_t threshold) const;
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> thresholded_image(const cmn::Background& background, int32_t threshold) const;
 

@@ -1192,13 +1192,19 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return {b.pos(), std::move(image)};
     }
     
-    std::tuple<Vec2, Image::Ptr> Blob::alpha_image(const cmn::Background& background, int32_t threshold) const {
+    Vec2 Blob::alpha_image(const cmn::Background& background, int32_t threshold, Image& image) const {
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
         constexpr uint8_t out_channels = 4;
-        auto image = Image::Make(b.height, b.width, out_channels);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        if(image.rows != b.height
+           || image.cols != b.width
+           || image.channels() != out_channels)
+        {
+            image.create(b.height, b.width, out_channels);
+        }
+        
+        std::fill(image.data(), image.data() + image.size(), uchar(0));
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
@@ -1217,7 +1223,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             
             for (auto &line : hor_lines()) {
                 //auto image_ptr = image->data() + ((line.y - _y) * image->cols * out_channels + (line.x0 - _x) * out_channels);
-                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * out_channels;
+                auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * out_channels;
                 if constexpr(input.channels == 0) {
                     /// defaulting to 255 here for alpha as well,
                     /// this may be wrong
@@ -1253,15 +1259,79 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         if(maximum > 0) {
             for (auto &line : hor_lines()) {
-                auto image_ptr = image->data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image->cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * ptr_safe_t(out_channels);
+                auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * ptr_safe_t(out_channels);
                 for (auto x=line.x0; x<=line.x1; ++x, image_ptr += out_channels) {
                     *(image_ptr + 3) = min(255, float(*(image_ptr + 3)) / (maximum * 0.6) * 255);
                 }
             }
         }
         
-        return {b.pos(), std::move(image)};
+        return b.pos();
     }
+
+Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Image& image) const {
+    Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+    b.restrict_to(background.bounds());
+    
+    constexpr uint8_t out_channels = 4;
+    if(image.rows != b.height
+       || image.cols != b.width
+       || image.channels() != out_channels)
+    {
+        image.create(b.height, b.width, out_channels);
+    }
+    
+    std::fill(image.data(), image.data() + image.size(), uchar(0));
+    
+    auto _x = (coord_t)b.x;
+    auto _y = (coord_t)b.y;
+    
+    auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>()
+    {
+        static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
+        static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
+        
+        const uchar* ptr;
+        if constexpr(input.channels > 0) {
+            ptr = _pixels->data();
+        }
+        
+        for (auto &line : hor_lines()) {
+            //auto image_ptr = image->data() + ((line.y - _y) * image->cols * out_channels + (line.x0 - _x) * out_channels);
+            auto image_ptr = image.data() + ((ptr_safe_t(line.y) - ptr_safe_t(_y)) * image.cols + (ptr_safe_t(line.x0) - ptr_safe_t(_x))) * out_channels;
+            if constexpr(input.channels == 0) {
+                /// defaulting to 255 here for alpha as well,
+                /// this may be wrong
+                const size_t N = line.length() * out_channels;
+                std::fill(image_ptr, image_ptr + N, 255);
+                image_ptr += N;
+                
+            } else {
+                for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += out_channels) {
+                    /// *out_channels* == 4, *output_channels* == 3
+                    /// need to account for that here ^
+                    assert(ptr < _pixels->data() + _pixels->size());
+                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
+                    if (threshold == 0
+                        || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold))
+                    {
+                        //if(background.is_value_different<output>(x, line.y, background.diff<output, method>(x, line.y, value), threshold)) {
+                        write_pixel_value<output>(image_ptr, pixel_value);
+                        *(image_ptr + output.channels) = 255;
+                    }
+                }
+            }
+        }
+    };
+    
+    constexpr OutputInfo output{
+        .channels = out_channels-1,
+        .encoding = meta_encoding_t::gray
+    };
+    
+    call_image_mode_function<output>(input_info(), KnownOutputType{}, work);
+    return b.pos();
+}
 
     std::tuple<Vec2, Image::Ptr> Blob::equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, uint8_t padding, OutputInfo output) const {
         auto image = Image::Make();

@@ -31,8 +31,9 @@ constexpr inline uint8_t required_storage_channels(cmn::meta_encoding_t::Class m
 constexpr inline uint8_t required_image_channels(cmn::meta_encoding_t::Class mode) {
     switch (mode) {
         case meta_encoding_t::gray:
-        case meta_encoding_t::r3g3b2:
             return 1;
+        case meta_encoding_t::r3g3b2:
+            return 3;
         case meta_encoding_t::rgb8:
             return 3;
         case meta_encoding_t::binary:
