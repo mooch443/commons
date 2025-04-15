@@ -11,7 +11,7 @@ enum class Axis {
     Y = 2
 };
 
-IMPLEMENT(Graph::title_font) = Font(0.75, Style::Bold);
+IMPLEMENT(Graph::title_font) = Font(0.6, Style((uint32_t)Style::Monospace | (uint32_t)Style::Bold));
 IMPLEMENT(Graph::_colors);
 
 #define OFFSET(NR) (NR)
@@ -69,9 +69,10 @@ void Graph::update() {
             : name(name), color(color)
         {}
         void convert(const std::shared_ptr<Text>& ptr) const {
-            ptr->set_txt(name);
-            ptr->set_color(color);
-            ptr->set_font(Font(0.5));
+            const size_t max_text_len = 25;
+            ptr->set_txt(utils::ShortenText(name, max_text_len));
+            ptr->set_color(Color::blend(color, Gray));
+            ptr->set_font(Font(0.45, Style::Monospace));
             ptr->set_clickable(true);
         }
     };
@@ -115,18 +116,18 @@ void Graph::update() {
         static const Font x_label_font(0.5, Align::Center);
         static const Font y_label_font(0.5, Align::Right);
         
-        const float max_width = width() - _margin.x * 2;
-        const float max_height = height() - _margin.y * 2 - Base::default_line_spacing(x_label_font);
+        const float max_width = (view.width() == 0 ? width() : view.width()) - _margin.x * 2;
+        const float max_height = (view.height() == 0 ? height() : view.height()) - _margin.y * 2 - Base::default_line_spacing(x_label_font);
         
         const float y_axis_offset = x_offset_percent * max_width;
         const float custom_y_axis_offset = lengthx != 0 ? cmn::abs((_zero - rx.start) / lengthx) * max_width : 0;
         
-        Vec2 function_label_pt(-20, 15 + (_title.txt().empty() ? 0 : (Base::default_line_spacing(title_font) + 5)));
+        Vec2 function_label_pt(10, 15 + (_title.txt().empty() ? 0 : (_title.height() + 5)));
         
         for(size_t i=0; i<_labels.size(); i++) {
             auto text = _labels.at(i);
             text->set_pos(function_label_pt);
-            text->set_origin(Vec2(1, 0));
+            //text->set_origin(Vec2(1, 0));
             
             max_text_length = max(max_text_length, text->width() + text->pos().x);
             
@@ -443,6 +444,8 @@ void Graph::update() {
     }, *_graphs_view);
     
     auto ctx = OpenContext();
+    //add<Rect>(Box{Vec2(5,5), size()}, FillClr{Black.alpha(10)});
+    
     advance_wrap(*_graphs_view);
     
     float max_label_length = _title.width();
@@ -456,27 +459,29 @@ void Graph::update() {
     label_height = max(label_height, max_label_pos) + 5;
     max_label_length += 10;
     
+    _graphs_view->set_bounds(Bounds(Vec2(max_label_length + 10,0), size() - Size2(max_label_length + 10, 0)));
+    
     if(!_title_text.empty()) {
         update_title();
         
-        _title.set_origin(Vec2(1, 0));
-        _title.set_pos(Vec2(-20, 10));
+        _title.set_pos(Vec2(10, 10));
         _title.set_color(fg);
         add<Rect>(Box{
-            _title.pos() + Vec2(5, -5),
+            _title.pos() + Vec2(-5, -5),
             Size2{
                 max_label_length,
-                label_height
+                min(height() - 5, label_height)
             }
           },
-          FillClr{Black.alpha(150)},
-          LineClr{White.alpha(200)},
-          Origin(1, 0));
+          FillClr{Transparent},
+          LineClr{White.alpha(100)});
         advance_wrap(_title);
     }
     
-    for(auto& l : _labels)
-        advance_wrap(*l);
+    for(auto& l : _labels) {
+        if(l->pos().y + l->height() < height() - 5)
+            advance_wrap(*l);
+    }
 }
 
 Vec2 Graph::transform_point(Vec2 pt) {
@@ -561,8 +566,7 @@ Graph::Graph(const Bounds& bounds,
     _graphs_view = new Entangled;
     
     set_bounds(bounds);
-    _graphs_view->set_bounds(Bounds(Vec2(), bounds.size()));
-    set_background(Yellow.alpha(175), White);
+    set_background(Black.alpha(175), White);
     set_ranges(x_range, y_range);
     set_clickable(true);
     add_event_handler(HOVER, [this](Event e) {
