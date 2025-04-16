@@ -22,7 +22,7 @@ consteval inline uint8_t required_storage_channels() noexcept {
     } else if constexpr(mode == meta_encoding_t::binary) {
         return 0;
     } else
-        static_assert(false, "Unknown storage mode.");
+        static_assert(static_cast<uint32_t>(mode) == std::numeric_limits<uint32_t>::max(), "Unknown storage mode.");
 }
 
 template<cmn::meta_encoding_t::Class mode>
@@ -34,7 +34,7 @@ consteval inline uint8_t required_image_channels() noexcept {
     } else if constexpr(mode == meta_encoding_t::binary) {
         return 1;
     } else
-        static_assert(false, "Unknown image mode.");
+        static_assert(static_cast<uint32_t>(mode) == std::numeric_limits<uint32_t>::max(), "Unknown image mode.");
 }
 
 constexpr inline uint8_t required_storage_channels(cmn::meta_encoding_t::Class mode) {

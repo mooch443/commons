@@ -85,6 +85,12 @@ namespace cmn::gui {
             float thickness;
         };
         
+        enum class DisplayLabels {
+            Hidden,
+            Outside,
+            Inside
+        };
+        
     private:
         std::string _name;
         GETTER(std::vector<Function>, functions);
@@ -104,10 +110,14 @@ namespace cmn::gui {
         
         derived_ptr<Entangled> _graphs_view;
         std::shared_ptr<Circle> _last_hovered_circle;
+        DisplayLabels _display_labels{DisplayLabels::Inside};
         
     public:
         Graph(const Bounds& bounds, const std::string& name, const Rangef& x_range = Rangef(-FLT_MAX, FLT_MAX), const Rangef& y_range = Rangef(-FLT_MAX, FLT_MAX));
         virtual ~Graph() {}
+        
+        using Entangled::set;
+        void set(DisplayLabels);
         
         std::string name() const override { return _name; }
         

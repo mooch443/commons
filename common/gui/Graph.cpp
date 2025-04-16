@@ -16,6 +16,14 @@ IMPLEMENT(Graph::_colors);
 
 #define OFFSET(NR) (NR)
 
+void Graph::set(Graph::DisplayLabels display) {
+    if(display == _display_labels)
+        return;
+    
+    _display_labels = display;
+    set_content_changed(true);
+}
+
 void Graph::set_title(const std::string &str) {
     _title_text = str;
     set_content_changed(true);
@@ -84,8 +92,8 @@ void Graph::update() {
     
     _graphs_view->OpenContextWithArgs([this, fg, &max_text_length](Entangled& view)
     {
-        view.set_scroll_enabled(true);
-        view.set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
+        //view.set_scroll_enabled(true);
+        //view.set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
         
         const auto& fns = functions();
         
@@ -459,28 +467,34 @@ void Graph::update() {
     label_height = max(label_height, max_label_pos) + 5;
     max_label_length += 10;
     
-    _graphs_view->set_bounds(Bounds(Vec2(max_label_length + 10,0), size() - Size2(max_label_length + 10, 0)));
-    
-    if(!_title_text.empty()) {
-        update_title();
-        
-        _title.set_pos(Vec2(10, 10));
-        _title.set_color(fg);
-        add<Rect>(Box{
-            _title.pos() + Vec2(-5, -5),
-            Size2{
-                max_label_length,
-                min(height() - 5, label_height)
-            }
-          },
-          FillClr{Transparent},
-          LineClr{White.alpha(100)});
-        advance_wrap(_title);
+    if(_display_labels == DisplayLabels::Outside) {
+        _graphs_view->set_bounds(Bounds(Vec2(max_label_length + 10,0), size() - Size2(max_label_length + 10, 0)));
+    } else {
+        _graphs_view->set_bounds(Bounds(Vec2(), size()));
     }
     
-    for(auto& l : _labels) {
-        if(l->pos().y + l->height() < height() - 5)
-            advance_wrap(*l);
+    if(_display_labels != DisplayLabels::Hidden) {
+        if(!_title_text.empty()) {
+            update_title();
+            
+            _title.set_pos(Vec2(10, 10));
+            _title.set_color(fg);
+            add<Rect>(Box{
+                _title.pos() + Vec2(-5, -5),
+                Size2{
+                    max_label_length,
+                    min(height() - 5, label_height)
+                }
+            },
+                      FillClr{Transparent},
+                      LineClr{White.alpha(100)});
+            advance_wrap(_title);
+        }
+        
+        for(auto& l : _labels) {
+            if(l->pos().y + l->height() < height() - 5)
+                advance_wrap(*l);
+        }
     }
 }
 

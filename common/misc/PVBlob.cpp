@@ -1269,8 +1269,8 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return b.pos();
     }
 
-Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Image& image) const {
-    Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Image& image, uint8_t padding) const {
+    Bounds b(bounds().pos()-Vec2(padding), bounds().size()+Vec2(padding * 2));
     b.restrict_to(background.bounds());
     
     constexpr uint8_t out_channels = 4;
