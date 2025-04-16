@@ -15,6 +15,7 @@
 
 #include <misc/Timer.h>
 #include <misc/GlobalSettings.h>
+#include <processing/encoding.h>
 
 namespace cmn {
 using namespace cv;
@@ -297,7 +298,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
     //! Read requested frame
     // check whether we already have information on the color
     // channels and dimensions:
-    const uint8_t _required_channels = required_channels(_colored);
+    const uint8_t _required_channels = required_storage_channels(_colored == ImageMode::RGB ? meta_encoding_t::rgb8 : (_colored == ImageMode::R3G3B2 ? meta_encoding_t::r3g3b2 : meta_encoding_t::gray));
     
     if(_channels == 0) {
         /// have not detected the number of channels of the video yet:

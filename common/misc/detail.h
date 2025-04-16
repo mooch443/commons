@@ -512,7 +512,7 @@ enum class ImageMode {
     RGBA
 };
 
-uint8_t required_channels(ImageMode mode);
+/*uint8_t required_channels(ImageMode mode);
 
 template<ImageMode mode>
 consteval uint8_t required_channels() noexcept {
@@ -534,7 +534,7 @@ consteval uint8_t required_channels() noexcept {
                             ImageMode::RGB,
                             ImageMode::RGBA), "Unknown mode.");
     }
-}
+}*/
 
 template<typename Vec>
 constexpr uint8_t vec_to_r3g3b2(const Vec& bgr) {

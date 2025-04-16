@@ -621,7 +621,7 @@ std::string HorizontalLine::toStr() const {
     return "HL("+std::to_string(y)+" "+std::to_string(x0)+","+std::to_string(x1)+")";
 }
 
-    uint8_t required_channels(ImageMode mode) {
+    /*uint8_t required_channels(ImageMode mode) {
         switch (mode) {
             case ImageMode::GRAY:
                 return required_channels<ImageMode::GRAY>();
@@ -635,6 +635,6 @@ std::string HorizontalLine::toStr() const {
             default:
                 throw U_EXCEPTION("Unknown mode: ", (int)mode);
         }
-    }
+    }*/
 
 }
