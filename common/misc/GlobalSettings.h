@@ -1,8 +1,3 @@
-/**
- * Project Untitled
- */
-
-
 #ifndef _GLOBALSETTINGS_H
 #define _GLOBALSETTINGS_H
 
@@ -27,6 +22,19 @@ namespace cmn {
         LOAD,
         STARTUP,
         SYSTEM
+    )
+    
+    ENUM_CLASS(SeasonType,
+        SPRING,
+        SUMMER,
+        AUTUMN,
+        WINTER,
+        EASTER,
+        CHRISTMAS,
+        HALLOWEEN,
+        STAR_WARS_DAY,
+        PRIDE_MONTH,
+        NEW_YEAR
     )
     
     typedef AccessLevelType::Class AccessLevel;
@@ -208,6 +216,12 @@ namespace cmn {
          * @param str the string
          */
         static std::map<std::string, std::string> load_from_string(sprite::MapSource, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false, const std::vector<std::string>& exclude = {}, const sprite::Map* additional = nullptr);
+
+        /**
+         * Returns the current season based on the local date.
+         */
+        static SeasonType::Class currentSeason();
+        static std::pair<int,int> calculateEasterDate(int year);
     };
     
     /*namespace detail {

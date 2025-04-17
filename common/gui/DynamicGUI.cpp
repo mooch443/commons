@@ -270,6 +270,12 @@ void Context::init() const {
             VarFunc("/", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
             }),
+            VarFunc("lower", [](const VarProps& props) -> std::string {
+                return utils::lowercase(props.first());
+            }),
+            VarFunc("upper", [](const VarProps& props) -> std::string {
+                return utils::uppercase(props.first());
+            }),
             VarFunc("cmap", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);
                 using namespace cmn::cmap;

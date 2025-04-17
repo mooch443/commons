@@ -286,4 +286,68 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
     return rejected;
 }
 
+std::pair<int,int> GlobalSettings::calculateEasterDate(int year) {
+    int a = year % 19;
+    int b = year / 100;
+    int c = year % 100;
+    int d = b / 4;
+    int e = b % 4;
+    int f = (b + 8) / 25;
+    int g = (b - f + 1) / 3;
+    int h = (19 * a + b - d - g + 15) % 30;
+    int i = c / 4;
+    int k = c % 4;
+    int l = (32 + 2 * e + 2 * i - h - k) % 7;
+    int m = (a + 11 * h + 22 * l) / 451;
+    int monthE = (h + l - 7 * m + 114) / 31;
+    int dayE = ((h + l - 7 * m + 114) % 31) + 1;
+    return {monthE, dayE};
+}
+
+SeasonType::Class GlobalSettings::currentSeason() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm local_tm = *std::localtime(&t);
+    int year = local_tm.tm_year + 1900;
+    int month = local_tm.tm_mon + 1;
+    int day = local_tm.tm_mday;
+    auto [eMonth, eDay] = calculateEasterDate(year);
+    // Compute day-of-year for current date and Easter date
+    std::tm easterTm = {};
+    easterTm.tm_year = local_tm.tm_year;
+    easterTm.tm_mon = eMonth - 1;
+    easterTm.tm_mday = eDay;
+    std::mktime(&easterTm);
+    int easterYday = easterTm.tm_yday + 1;
+    int currentYday = local_tm.tm_yday + 1;
+    // New Year's holiday: Dec 31 and Jan 1
+    if ((month == 12 && day == 31) || (month == 1 && day == 1))
+        return SeasonType::NEW_YEAR;
+    // Easter holiday: one week before Good Friday through Easter Monday
+    if (currentYday >= easterYday - 9 && currentYday <= easterYday + 1)
+        return SeasonType::EASTER;
+
+    // Star Wars Day: May 4
+    if (month == 5 && day == 4)
+        return SeasonType::STAR_WARS_DAY;
+
+    // Pride Month: week before and month of June
+    if ((month == 5 && day >= 25) || month == 6)
+        return SeasonType::PRIDE_MONTH;
+
+    // Christmas holiday: one week before Dec 24 through Dec 26
+    if (month == 12 && day >= 17 && day <= 26)
+        return SeasonType::CHRISTMAS;
+    switch (month) {
+        case 3: case 4: case 5:
+            return SeasonType::SPRING;
+        case 6: case 7: case 8:
+            return SeasonType::SUMMER;
+        case 9: case 10: case 11:
+            return SeasonType::AUTUMN;
+        default:
+            return SeasonType::WINTER;
+    }
+}
+
 }
