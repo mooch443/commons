@@ -1040,6 +1040,14 @@ bool SectionInterface::is_animating() noexcept {
             Drawable::set_scale(scale);
         }
     }
+
+FillClr SectionInterface::bg_fill_color() const {
+    return FillClr{_bg.fill ? _bg.fill.value() : Transparent};
+}
+
+LineClr SectionInterface::bg_line_color() const {
+    return LineClr{_bg.line ? _bg.line.value() : Transparent};
+}
     
     /*void SectionInterface::set_background(const Color& color) {
         set_background(color, _outline ? _outline->lineclr() : Transparent);
