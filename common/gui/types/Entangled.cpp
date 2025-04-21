@@ -118,8 +118,8 @@ const Drawable* Entangled::tooltip_object() const {
         _scroll_enabled = enable;
         
         clear_cache();
-        if(background())
-            background()->clear_cache();
+        //if(background())
+        //    background()->clear_cache();
         
         children_rect_changed();
     }
@@ -423,8 +423,8 @@ void SectionInterface::before_draw() {
             ptr->set_bounds_changed();
             //ptr->children_rect_changed();
             
-            if(ptr->_background)
-                ptr->_background->set_bounds_changed();
+            //if(ptr->_background)
+            //    ptr->_background->set_bounds_changed();
             
             apply_to_objects(ptr->children(), [&q](auto c){
                 if(c->type() == Type::ENTANGLED || c->type() == Type::SECTION) {
@@ -478,8 +478,8 @@ void SectionInterface::children_rect_changed() {
     _has_children_rect_changed = true;
     
     set_bounds_changed();
-    if(_background)
-        _background->set_bounds_changed();
+    //if(_background)
+    //    _background->set_bounds_changed();
     
 #ifndef NDEBUG
     if(last_print.elapsed() > 10) {

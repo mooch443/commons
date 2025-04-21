@@ -1041,7 +1041,7 @@ bool SectionInterface::is_animating() noexcept {
         }
     }
     
-    void SectionInterface::set_background(const Color& color) {
+    /*void SectionInterface::set_background(const Color& color) {
         set_background(color, _outline ? _outline->lineclr() : Transparent);
     }
     
@@ -1054,7 +1054,7 @@ bool SectionInterface::is_animating() noexcept {
         
         if(_bg_fill_color != Transparent) {
             if(!_background) {
-                _background = new Rect();
+                _background = std::make_shared<Rect>();
                 _background->set_parent(this);
                 _background->set_z_index(_z_index);
             }
@@ -1062,13 +1062,12 @@ bool SectionInterface::is_animating() noexcept {
             _background->set_fillclr(_bg_fill_color);
             
         } else if(_background) {
-            delete _background;
-            _background = NULL;
+            _background.reset();
         }
         
         if(_bg_line_color != Transparent) {
             if(!_outline) {
-                _outline = new Rect(FillClr{Transparent}, LineClr{_bg_line_color});
+                _outline = std::make_shared<Rect>(FillClr{Transparent}, LineClr{_bg_line_color});
                 _outline->set_parent(this);
                 _outline->set_z_index(_z_index);
             }
@@ -1076,12 +1075,11 @@ bool SectionInterface::is_animating() noexcept {
             _outline->set_lineclr(_bg_line_color);
             
         } else if(_outline) {
-            delete _outline;
-            _outline = NULL;
+            _outline.reset();
         }
         
         set_dirty();
-    }
+    }*/
 
     void SectionInterface::on_visibility_change(bool visible) {
         Drawable::on_visibility_change(visible);
@@ -1111,26 +1109,55 @@ void SectionInterface::set_z_index(int index) {
 }
 
     SectionInterface::~SectionInterface() {
-        if(_background) {
+        /*if(_background) {
             _background->_parent = NULL; // at this point the object is purely virtual,
             // just clear the parent and be done with it
-            delete _background;
-            _background = nullptr;
+            _background.reset();
         }
         
         if(_outline) {
             _outline->_parent = NULL; // at this point the object is purely virtual,
                 // just clear the parent and be done with it
-            delete _outline;
-            _outline = nullptr;
-        }
+            _outline.reset();
+        }*/
         
         if(_stage)
             _stage->erase(this);
         clear_cache();
     }
+
+void SectionInterface::reset_bg() {
+    if(_bg) {
+        _bg.fill.reset();
+        _bg.line.reset();
+        set_dirty();
+    }
+}
     
-    void SectionInterface::update_bounds() {
+    void SectionInterface::set(LineClr line) {
+        if(not _bg.line && line == Transparent)
+            return;
+        
+        if(not _bg.line
+           || _bg.line.value() != line)
+        {
+            _bg.line = line;
+            set_dirty();
+        }
+    }
+    void SectionInterface::set(FillClr fill) {
+        if(not _bg.fill && fill == Transparent)
+            return;
+        
+        if(not _bg.fill
+           || _bg.fill.value() != fill)
+        {
+            _bg.fill = fill;
+            set_dirty();
+        }
+    }
+
+    /*void SectionInterface::update_bounds() {
         if(!_bounds_changed)
             return;
         
@@ -1140,7 +1167,7 @@ void SectionInterface::set_z_index(int index) {
             _outline->set_bounds(Bounds(Vec2(), size()));
         
         Drawable::update_bounds();
-    }
+    }*/
     
     /*void SectionInterface::on_add(DrawStructure* d, SectionInterface* s) {
         _draw_structure = d;

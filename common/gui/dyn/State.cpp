@@ -310,8 +310,10 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     
     if(patterns.contains("alpha")) {
         try {
-            auto line = resolve_variable_type<float>(patterns.at("alpha"), context, state);
-            LabeledField::delegate_to_proper_type(Alpha{line}, ptr);
+            auto text = parse_text(patterns.at("alpha"), context, state);
+            //auto line = resolve_variable_type<float>(patterns.at("alpha"), context, state);
+            auto alpha = Meta::fromStr<Float2_t>(text);
+            LabeledField::delegate_to_proper_type(Alpha{alpha}, ptr);
             
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());

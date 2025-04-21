@@ -1408,12 +1408,12 @@ void IMGUIBase::draw_debug_rectangle(Drawable *o) {
     auto list = ImGui::GetForegroundDrawList();
     list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(200));
     std::string text;
-    if(o->parent() && o->parent()->background() == o) {
+    /*if(o->parent() && o->parent()->background().get() == o) {
         if(dynamic_cast<Entangled*>(o->parent()))
             text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
         else
             text = Meta::toStr(*(Drawable*)o->parent());
-    } else
+    } else*/
         text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds());
     auto font = _fonts.at(Style::Regular);
     auto _font = Font(0.3, Style::Regular);
@@ -1502,8 +1502,42 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     }
     
     Float2_t global_scale = (transform.transformPoint(Vec2(1)) - transform.transformPoint(Vec2(0))).x;
+    auto type = o->type();
     
-    switch (o->type()) {
+    if(order.type == DrawOrder::BACKGROUND
+       || order.type == DrawOrder::BACKGROUND_LINE)
+    {
+        if(order.ptr->type() == Type::SECTION
+           || order.ptr->type() == Type::ENTANGLED)
+        {
+            auto ptr = static_cast<SectionInterface*>(order.ptr);
+            if(order.type == DrawOrder::BACKGROUND) {
+                if(ptr->bg().fill
+                   && ptr->bg().fill.value().a > 0)
+                {
+                    //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().fill.value()));
+                    list->AddRectFilled((ImVec2)transform.transformPoint(Vec2()),
+                                        (ImVec2)transform.transformPoint(o->size()),
+                                        cvtClr(ptr->bg().fill.value()));
+                    
+                }
+                type = Type::NONE;
+                
+            } else if(order.type == DrawOrder::BACKGROUND_LINE) {
+                if(ptr->bg().line
+                   && ptr->bg().line.value().a > 0)
+                {
+                    //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().line.value()));
+                    list->AddRect((ImVec2)transform.transformPoint(Vec2()),
+                                  (ImVec2)transform.transformPoint(o->size()),
+                                  cvtClr(ptr->bg().line.value()));
+                }
+                type = Type::NONE;
+            }
+        }
+    }
+    
+    switch (type) {
         case Type::CIRCLE: {
             auto ptr = static_cast<Circle*>(o);
             
@@ -1774,12 +1808,12 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     if(graph()->is_key_pressed(Codes::RShift)) {
         list->AddRect(bds.pos(), bds.pos() + bds.size(), (ImColor)Red.alpha(125));
         std::string text;
-        if(o->parent() && o->parent()->background() == o) {
+        /*if(o->parent() && o->parent()->bg() == o) {
             if(dynamic_cast<Entangled*>(o->parent()))
                 text = dynamic_cast<Entangled*>(o->parent())->name() + " " + Meta::toStr(o->parent()->bounds());
             else
                 text = Meta::toStr(*(Drawable*)o->parent());
-        } else
+        } else*/
             text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds());
         auto font = _fonts.at(Style::Regular);
         auto _font = Font(0.3, Style::Regular);
@@ -1873,15 +1907,56 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 }
                 break;
             }*/
+            case Type::SECTION: {
+                auto ptr = static_cast<SectionInterface*>(o);
+                if(ptr->rotation() != 0)
+                    draw_order.emplace_back(DrawOrder::START_ROTATION, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                
+                if(ptr->bg().fill) {
+                    //Rect bg{FillClr{ptr->bg().fill.value()}};
+                    //bg.set(Size{ptr->size()});
+                    if(o->z_index() != 0)
+                        above_z.emplace_back(DrawOrder::BACKGROUND, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                    else
+                        draw_order.emplace_back(DrawOrder::BACKGROUND, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                    //redraw(&bg, draw_order, above_z, true, oclip_rect);
+                }
+                
+                apply_to_objects(ptr->children(), [&](Drawable* c){
+                    redraw(c, draw_order, above_z, false, clip_rect);
+                });
+                
+                if(ptr->bg().line) {
+                    //Rect bg{LineClr{ptr->bg().line.value()}};
+                    //bg.set(Size{ptr->size()});
+                    //redraw(&bg, draw_order, above_z, true, oclip_rect);
+                    if(o->z_index() != 0)
+                        above_z.emplace_back(DrawOrder::BACKGROUND_LINE, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                    else
+                        draw_order.emplace_back(DrawOrder::BACKGROUND_LINE, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                }
+                
+                if(ptr->rotation() != 0) {
+                    draw_order.emplace_back(DrawOrder::END_ROTATION, draw_order.size() + above_z.size(), ptr, transform, bounds, clip_rect);
+                }
+                
+                break;
+            }
             case Type::ENTANGLED: {
                 auto ptr = static_cast<Entangled*>(o);
                 if(ptr->rotation() != 0)
                     draw_order.emplace_back(DrawOrder::START_ROTATION, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
                 
                 auto oclip_rect = clip_rect;
-                auto bg = static_cast<Entangled*>(o)->background();
-                if(bg) {
-                    redraw(bg, draw_order, above_z, true, oclip_rect);
+                //auto bg = static_cast<Entangled*>(o)->background();
+                if(ptr->bg().fill) {
+                    //Rect bg{FillClr{ptr->bg().fill.value()}};
+                    //bg.set(Size{ptr->size()});
+                    if(o->z_index() != 0)
+                        above_z.emplace_back(DrawOrder::BACKGROUND, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                    else
+                        draw_order.emplace_back(DrawOrder::BACKGROUND, draw_order.size() + above_z.size(), o, transform, bounds, clip_rect);
+                    //redraw(&bg, draw_order, above_z, true, oclip_rect);
                 }
                 
                 assert(!ptr->begun());
@@ -1919,9 +1994,17 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     });
                 }
                 
-                auto ol = static_cast<Entangled*>(o)->outline();
-                if(ol) {
-                    redraw(ol, draw_order, above_z, true, oclip_rect);
+                if(ptr->bg().line) {
+                    auto bds = bounds;
+                    bds.width += 1;
+                    bds.height += 1;
+                    //Rect bg{LineClr{ptr->bg().line.value()}};
+                    //bg.set(Size{ptr->size()});
+                    //redraw(&bg, draw_order, above_z, true, oclip_rect);
+                    if(o->z_index() != 0)
+                        above_z.emplace_back(DrawOrder::BACKGROUND_LINE, draw_order.size() + above_z.size(), o, transform, bounds, oclip_rect);
+                    else
+                        draw_order.emplace_back(DrawOrder::BACKGROUND_LINE, draw_order.size() + above_z.size(), o, transform, bounds, oclip_rect);
                 }
                 
                 if(ptr->rotation() != 0) {

@@ -580,7 +580,9 @@ Graph::Graph(const Bounds& bounds,
     _graphs_view = new Entangled;
     
     set_bounds(bounds);
-    set_background(Black.alpha(175), White);
+    //set_background(Black.alpha(175), White);
+    set(FillClr{Black.alpha(175)});
+    set(LineClr{White});
     set_ranges(x_range, y_range);
     set_clickable(true);
     add_event_handler(HOVER, [this](Event e) {

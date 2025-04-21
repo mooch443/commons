@@ -41,9 +41,9 @@ namespace cmn::gui {
     
     
     ////////////////////////////////////////////////////////////
-    Transform::Transform(Float2_t a00, Float2_t a01, Float2_t a02,
-                         Float2_t a10, Float2_t a11, Float2_t a12,
-                         Float2_t a20, Float2_t a21, Float2_t a22)
+    Transform::Transform(floating_t a00, floating_t a01, floating_t a02,
+                         floating_t a10, floating_t a11, floating_t a12,
+                         floating_t a20, floating_t a21, floating_t a22)
     {
         m_matrix[0] = a00; m_matrix[4] = a01; m_matrix[8]  = 0_F; m_matrix[12] = a02;
         m_matrix[1] = a10; m_matrix[5] = a11; m_matrix[9]  = 0_F; m_matrix[13] = a12;
@@ -54,7 +54,7 @@ namespace cmn::gui {
     Transform Transform::getInverse() const
     {
         // Compute the determinant
-        Float2_t det = m_matrix[0] * (m_matrix[15] * m_matrix[5] - m_matrix[7] * m_matrix[13]) -
+        floating_t det = m_matrix[0] * (m_matrix[15] * m_matrix[5] - m_matrix[7] * m_matrix[13]) -
         m_matrix[1] * (m_matrix[15] * m_matrix[4] - m_matrix[7] * m_matrix[12]) +
         m_matrix[3] * (m_matrix[13] * m_matrix[4] - m_matrix[5] * m_matrix[12]);
         
@@ -78,7 +78,7 @@ namespace cmn::gui {
         }
     }
     
-Vec2 Transform::transformPoint(Float2_t x, Float2_t y) const
+Vec2 Transform::transformPoint(floating_t x, floating_t y) const
 {
     return Vec2(m_matrix[0] * x + m_matrix[4] * y + m_matrix[12],
                     m_matrix[1] * x + m_matrix[5] * y + m_matrix[13]);
@@ -105,10 +105,10 @@ Bounds Transform::transformRect(const Bounds& rectangle) const
     };
     
     // Compute the bounding rectangle of the transformed points
-    Float2_t left = points[0].x;
-    Float2_t top = points[0].y;
-    Float2_t right = points[0].x;
-    Float2_t bottom = points[0].y;
+    floating_t left = points[0].x;
+    floating_t top = points[0].y;
+    floating_t right = points[0].x;
+    floating_t bottom = points[0].y;
     for (int i = 1; i < 4; ++i)
     {
         if      (points[i].x < left)   left = points[i].x;
@@ -124,8 +124,8 @@ Bounds Transform::transformRect(const Bounds& rectangle) const
 ////////////////////////////////////////////////////////////
 Transform& Transform::combine(const Transform& transform)
 {
-    const Float2_t* a = m_matrix;
-    const Float2_t* b = transform.m_matrix;
+    const floating_t* a = m_matrix;
+    const floating_t* b = transform.m_matrix;
     
     *this = Transform(a[0] * b[0]  + a[4] * b[1]  + a[12] * b[3],
                       a[0] * b[4]  + a[4] * b[5]  + a[12] * b[7],
@@ -142,7 +142,7 @@ Transform& Transform::combine(const Transform& transform)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::translate(Float2_t x, Float2_t y)
+Transform& Transform::translate(floating_t x, floating_t y)
 {
     Transform translation(1, 0, x,
                           0, 1, y,
@@ -160,11 +160,11 @@ Transform& Transform::translate(const Vec2& offset)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::rotate(Float2_t angle)
+Transform& Transform::rotate(floating_t angle)
 {
-    Float2_t rad = angle * 3.141592654_F / 180_F;
-    Float2_t cos = std::cos(rad);
-    Float2_t sin = std::sin(rad);
+    floating_t rad = angle * floating_t(3.141592654) / floating_t(180);
+    floating_t cos = std::cos(rad);
+    floating_t sin = std::sin(rad);
     
     Transform rotation(cos, -sin, 0,
                        sin,  cos, 0,
@@ -175,7 +175,7 @@ Transform& Transform::rotate(Float2_t angle)
 
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::scale(Float2_t scaleX, Float2_t scaleY)
+Transform& Transform::scale(floating_t scaleX, floating_t scaleY)
 {
     Transform scaling(scaleX, 0,      0,
                       0,      scaleY, 0,
@@ -192,7 +192,7 @@ Transform& Transform::scale(const Vec2& factors)
 }
 
 ////////////////////////////////////////////////////////////
-Transform& Transform::scale(const Float2_t factor)
+Transform& Transform::scale(const floating_t factor)
 {
     Transform scaling(factor, 0,      0,
                       0,      factor, 0,
@@ -221,7 +221,7 @@ Vec2 operator *(const Transform& left, const Vec2& right)
     return left.transformPoint(right);
 }
     
-    const Float2_t* Transform::getMatrix() const {
+    const Transform::floating_t* Transform::getMatrix() const {
         return m_matrix;
     }
 

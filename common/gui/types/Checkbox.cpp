@@ -29,7 +29,7 @@ namespace cmn::gui {
     }
     
     void Checkbox::update() {
-        set_background(_settings.fill_clr.alpha(hovered() ? 150 : 100));
+        Entangled::set(FillClr{_settings.fill_clr.alpha(hovered() ? 150 : 100)});
         
         OpenContext([this](){
             advance_wrap(_box);

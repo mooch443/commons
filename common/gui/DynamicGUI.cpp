@@ -147,6 +147,9 @@ void Context::init() const {
                 REQUIRE_EXACTLY(2, props);
                 return utils::repeat(props.last(), Meta::fromStr<uint8_t>(props.first()));
             }),
+            VarFunc("mouse", [this](const VarProps&) -> Vec2 {
+                return _last_mouse;
+            }),
             VarFunc("time", [](const VarProps&) -> double {
                 auto ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
                 return static_cast<double>(ms.count()) / 1000.0;
@@ -291,6 +294,12 @@ void Context::init() const {
                     mean += v;
                 mean /= vector.size();
                 return mean;
+            }),
+            VarFunc("distance", [](const VarProps& props) -> Float2_t {
+                REQUIRE_EXACTLY(2, props);
+                auto A = Meta::fromStr<Vec2>(props.first());
+                auto B = Meta::fromStr<Vec2>(props.last());
+                return euclidean_distance(A, B);
             }),
             VarFunc("join", [](const VarProps& props) -> std::string {
                 REQUIRE_AT_LEAST(1, props);
@@ -884,6 +893,8 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
 {
     reload(graph);
     
+    context._last_mouse = graph.mouse_position();
+    
     /*if(state.ifs.size() > 3000) {
         for(auto it = state.ifs.begin(); it != state.ifs.end() && state.ifs.size() > 2000;) {
             if(it->second._if
@@ -1009,6 +1020,31 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
                    ptr != nullptr)
                 {
                     return ptr->hovered();
+                }
+            }
+        }
+        return false;
+    }));
+    
+    context.system_variables().emplace(VarFunc("pos", [object_handler = state._current_object_handler](const VarProps& props) -> Size2 {
+        if(props.parameters.empty()) {
+            auto lock = object_handler.lock();
+            if(lock) {
+                if(auto ptr = lock->get();
+                   ptr != nullptr)
+                {
+                    return ptr->global_bounds().pos();
+                }
+            }
+            
+        } else if(props.parameters.size() == 1) {
+            if(auto lock = object_handler.lock();
+               lock != nullptr)
+            {
+                if(auto ptr = lock->retrieve_named(props.first());
+                   ptr != nullptr)
+                {
+                    return ptr->global_bounds().pos();
                 }
             }
         }

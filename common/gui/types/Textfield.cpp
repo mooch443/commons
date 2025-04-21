@@ -462,6 +462,7 @@ void Textfield::set_fill_color(const Color &c) {
     
     _settings.fill_color = c;
     set_content_changed(true);
+    Entangled::set(FillClr{c});
 }
 
 void Textfield::set_line_color(const Color &c) {
@@ -470,6 +471,7 @@ void Textfield::set_line_color(const Color &c) {
     
     _settings.line_color = c;
     set_content_changed(true);
+    Entangled::set(LineClr{c});
 }
 
 void Textfield::set_postfix(const std::string &p) {
@@ -500,7 +502,9 @@ void Textfield::set_postfix(const std::string &p) {
         else if(selected())
             base_color = base_color.alpha(230);
         
-        set_background(base_color, border_color);
+        set(FillClr{base_color});
+        set(LineClr{border_color});
+        //set_background(base_color, border_color);
         
         if(content_changed()) {
             // assumes test_text is only gonna be used in one thread at a time

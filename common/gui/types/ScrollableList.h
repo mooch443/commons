@@ -685,13 +685,22 @@ namespace cmn::gui {
                     
                     update_items();
                 }
-
+                
                 if(_foldable) {
-                    _list.set_background(_list_fill_clr, _list_line_clr);
-                    set_background(Transparent, Transparent);
+                    _list.set(FillClr{(Color)_list_fill_clr});
+                    _list.set(LineClr{(Color)_list_line_clr});
+                    reset_bg();
+                    
+                    //_list.set_background(_list_fill_clr, _list_line_clr);
+                    //set_background(Transparent, Transparent);
+                    
                 } else {
-                    _list.set_background(Transparent, Transparent);
-                    set_background(_list_fill_clr, _list_line_clr);
+                    Entangled::set(FillClr{(Color)_list_fill_clr});
+                    Entangled::set(LineClr{(Color)_list_line_clr});
+                    _list.reset_bg();
+                    
+                    //_list.set_background(Transparent, Transparent);
+                    //set_background(_list_fill_clr, _list_line_clr);
                 }
 
                 const float item_height = _line_spacing;

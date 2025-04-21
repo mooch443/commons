@@ -20,7 +20,9 @@ void ErrorElement::update() {
     if(not content_changed())
         return;
     
-    set_background(_settings.fill_clr, _settings.line_clr);
+    set(FillClr{_settings.fill_clr});
+    set(LineClr{_settings.line_clr});
+    //set_background(_settings.fill_clr, _settings.line_clr);
     _text->set_txt(_settings.content);
     _text->set_default_font(_settings.font);
     //auto_size();

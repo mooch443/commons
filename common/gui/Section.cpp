@@ -62,7 +62,7 @@ namespace cmn::gui {
         
         return false;*/
     }
-    
+
     void Section::collect(std::vector<Drawable*>& ret) {
         if(not is_displayed()) {
             set_rendered(false);
@@ -71,8 +71,9 @@ namespace cmn::gui {
         
         set_rendered(true);
         
-        if(_background) {
-            ret.push_back(_background);
+        if(bg()) {
+            ret.push_back(this);
+            return;
         }
         
         apply_to_objects(_children, [&](Drawable* d) {

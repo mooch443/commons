@@ -237,22 +237,34 @@ void StaticText::set_default_font(Font font) {
             } //else
                 //_fade_out = nullptr;
             
-            if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
+            if(bg().fill) {
+                Entangled::set(FillClr{bg().fill.value().alpha(_settings.alpha * _settings.fill_alpha * 255)});
+            }
+            if(bg().line) {
+                Entangled::set(LineClr{bg().line.value().alpha(_settings.alpha * _settings.fill_alpha * 255)});
+            }
+            
+            /*if(bg_fill_color() != Transparent || bg_line_color() != Transparent)
                 set_background(bg_fill_color() != Transparent
                                ? bg_fill_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
                                : Transparent,
                     bg_line_color() != Transparent
                                ? bg_line_color().alpha(_settings.alpha * _settings.fill_alpha * 255)
-                               : Transparent);
+                               : Transparent);*/
             
             set_content_changed(false);
         }
     }
 
-void StaticText::set_background(const Color& color, const Color& line) {
+void StaticText::set(FillClr fill) {
+    _settings.fill_alpha = double(fill.a) / 255.0;
+    Entangled::set(fill);
+}
+
+/*void StaticText::set_background(const Color& color, const Color& line) {
     _settings.fill_alpha = double(color.a) / 255.0;
     Entangled::set_background(color, line);
-}
+}*/
 
 StaticText::RichString::RichString(const std::string& str, const Font& font, const Vec2& pos, const Color& clr)
     : str(str), font(font), pos(pos), clr(clr)
@@ -284,7 +296,7 @@ void StaticText::add_shadow() {
     auto image = Image::Make(height()+1, 1, 4);
     image->set_to(0);
     
-    auto bg = _bg_fill_color;
+    auto bg = bg_fill_color();
     auto ptr = parent();
     while(bg.a == 0 && ptr) {
         bg = ptr->bg_fill_color();

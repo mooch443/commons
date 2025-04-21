@@ -165,8 +165,10 @@ namespace cmn::gui {
             _fade_out = nullptr;
         }
         
-        using Entangled::set_background;
-        void set_background(const Color& color, const Color& line) override;
+        virtual void set(FillClr) override;
+        
+        //using Entangled::set_background;
+        //void set_background(const Color& color, const Color& line) override;
         virtual std::string toStr() const override {
             return std::string(type().name()) + " " + Meta::toStr(_settings.txt);
         }

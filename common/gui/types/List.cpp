@@ -26,7 +26,8 @@ namespace cmn::gui {
     {
         //set_bounds({size.pos(), Size2(size.width, (_folded ?  0 : _row_height * _items.size()) + margin*2 + (title_height+title_margin*3))});
         set_bounds(Bounds(size.pos(), Size2(size.width, _row_height)));
-        set_background(Transparent, Black.alpha(255));
+        set(LineClr{Black.alpha(255)});
+        //set_background(Transparent, Black.alpha(255));
         set_items(std::move(items));
         set_clickable(true);
         //set_scroll_enabled(true);
@@ -301,7 +302,7 @@ const Drawable* List::tooltip_object() const
         if(foldable()) {
             Entangled::set_size(Size2(width(), _row_height));//(1 + (_folded ? 0 : _items.size())) * _row_height));
         } else
-            set_background(Black.alpha(150));
+            set(FillClr{Black.alpha(150)});
         
         if(scroll_enabled())
             set_scroll_limits(Rangef(0, 0), Rangef(0, max(0, row_height() * (_items.size() + 1) - height())));

@@ -33,18 +33,19 @@
 
 namespace cmn::gui {
 class Transform {
-    Float2_t m_matrix[16];
+    using floating_t = double;
+    floating_t m_matrix[16];
     
 public:
     Transform();
-    Transform(Float2_t a00, Float2_t a01, Float2_t a02,
-              Float2_t a10, Float2_t a11, Float2_t a12,
-              Float2_t a20, Float2_t a21, Float2_t a22);
+    Transform(floating_t a00, floating_t a01, floating_t a02,
+              floating_t a10, floating_t a11, floating_t a12,
+              floating_t a20, floating_t a21, floating_t a22);
 
-    const Float2_t* getMatrix() const;
+    const floating_t* getMatrix() const;
     
     Transform getInverse() const;
-    Vec2 transformPoint(Float2_t x, Float2_t y) const;
+    Vec2 transformPoint(floating_t x, floating_t y) const;
     Vec2 transformPoint(const Vec2& pt) const;
     
     bool operator==(const Transform&) const noexcept = default;
@@ -55,11 +56,11 @@ public:
     Transform& combine(const Transform& other);
     
     Transform& translate(const Vec2&);
-    Transform& translate(Float2_t x, Float2_t y);
-    Transform& rotate(Float2_t angle);
-    Transform& scale(Float2_t x, Float2_t y);
+    Transform& translate(floating_t x, floating_t y);
+    Transform& rotate(floating_t angle);
+    Transform& scale(floating_t x, floating_t y);
     Transform& scale(const Vec2& factors);
-    Transform& scale(const Float2_t factor);
+    Transform& scale(const floating_t factor);
     
     cv::Mat toCV() const {
         cv::Mat t(2,3,CV_64F,cv::Scalar(0.0));

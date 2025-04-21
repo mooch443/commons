@@ -211,9 +211,12 @@ void Dialog::set_closed() {
             buttons.push_back(_abort);
         _buttons->set_children(buttons);
         
-        set_background(DarkCyan.exposure(0.2f).alpha(220), Black);
+        set(FillClr{DarkCyan.exposure(0.2f).alpha(220)});
+        set(LineClr{Black});
+        //set_background(DarkCyan.exposure(0.2f).alpha(220), Black);
         
-        _text->set_background(Transparent, Transparent);
+        //_text->set_background(Transparent, Transparent);
+        _text->reset_bg();
         _title->set_origin(Vec2(0.5));
         
         if(_abort) {

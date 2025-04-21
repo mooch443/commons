@@ -78,10 +78,15 @@ namespace cmn::gui {
             
             if (!is_background && o->type() == Type::ENTANGLED) {
                 bool prepend = false;
-                Drawable* bg = static_cast<SectionInterface*>(o)->background();
+                auto ptr = static_cast<SectionInterface*>(o);
                 
-                if(bg) {
-                    auto str = fn(bg, true);
+                if(ptr->bg()) {
+                    Rect bg;
+                    if(ptr->bg().fill)
+                        bg.set(FillClr{ptr->bg().fill.value()});
+                    if(ptr->bg().line)
+                        bg.set(LineClr{ptr->bg().line.value()});
+                    auto str = fn(&bg, true);
                     if(!str.empty()) {
                         prepend = true;
                         ss << str;

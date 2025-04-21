@@ -50,8 +50,8 @@ namespace cmn::gui {
         using Entangled::set;
         void set(attr::Font font)   { _settings.font = font; }
         void set(attr::Loc loc) override    { _settings.bounds << loc; Entangled::set(loc); }
-        void set(attr::FillClr clr) override { _settings.fill_clr = clr; }
-        void set(attr::LineClr clr) override { _settings.line_clr = clr; }
+        void set(attr::FillClr clr) override;
+        void set(attr::LineClr clr) override;
         void set(attr::TextClr clr) { _settings.text_clr = clr; _text.set(clr); }
         void set(attr::Margins margins) {
             if(_settings.margins == margins)

@@ -5,7 +5,9 @@ namespace cmn::gui {
 
 void Button::init() {
     set_clickable(true);
-    set_background(_settings.fill_clr, _settings.line_clr);
+    Entangled::set(FillClr{_settings.fill_clr});
+    Entangled::set(LineClr{_settings.line_clr});
+    //set_background(_settings.fill_clr, _settings.line_clr);
     set_scroll_enabled(true);
     set_bounds(_settings.bounds);
     set_scroll_limits(Rangef(), Rangef());
@@ -55,7 +57,9 @@ void Button::init() {
             }
         }
         
-        set_background(clr, _settings.line_clr);
+        Entangled::set(FillClr{clr});
+        Entangled::set(LineClr{_settings.line_clr});
+        //set_background(clr, _settings.line_clr);
         
         Vec2 offset = _settings.margins.pos() + (pressed() ? Vec2(0.5) : Vec2(0));
         if(_settings.font.align == Align::Center) {
@@ -123,4 +127,12 @@ void Button::init() {
     Size2 Button::text_dims() {
         return _text.size();
     }
+
+void Button::set(attr::FillClr clr) {
+    _settings.fill_clr = clr;
+}
+void Button::set(attr::LineClr clr) {
+    _settings.line_clr = clr;
+}
+
 }

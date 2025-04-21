@@ -467,7 +467,7 @@ namespace cmn::gui {
         
     public:
         SectionInterface(const Type::Class& type, DrawStructure* s)
-            : Drawable(type), _background(NULL), _stage(s)
+            : Drawable(type), _stage(s)
         {}
         SectionInterface(const SectionInterface&) = delete;
         SectionInterface(SectionInterface&&) = default;
@@ -483,8 +483,8 @@ namespace cmn::gui {
 
         virtual void on_visibility_change(bool visible) override;
         
-        void set_background(const Color& color);
-        virtual void set_background(const Color& color, const Color& line);
+        //void set_background(const Color& color);
+        //virtual void set_background(const Color& color, const Color& line);
         
         virtual std::vector<Drawable*>& children() = 0;
         
@@ -503,26 +503,37 @@ namespace cmn::gui {
         
     public:
         using Drawable::set;
-        virtual void set(FillClr clr) { set_background(clr, _bg_line_color); }
-        virtual void set(LineClr clr) { set_background(_bg_fill_color, clr); }
+        virtual void set(FillClr clr);
+        virtual void set(LineClr clr);
+        virtual void reset_bg();
         
     protected:
         friend class Drawable;
         friend class Entangled;
         friend class DrawableCollection;
         
-        GETTER_PTR(Rect*, background){nullptr};
-        GETTER_PTR(Rect*, outline){nullptr};
-        GETTER_PTR(DrawStructure*, stage);
-        GETTER_I(Color, bg_fill_color, Transparent);
-        GETTER_I(Color, bg_line_color, Transparent);
+        struct SectionBackground {
+            std::optional<LineClr> line;
+            std::optional<FillClr> fill;
+            
+            operator bool() const {
+                return line || fill;
+            }
+            
+        };
         
-        void update_bounds() override;
+        GETTER_NCONST(SectionBackground, bg);
+        GETTER_PTR(DrawStructure*, stage);
+        
+        //void update_bounds() override;
         
     public:
         void set_parent(SectionInterface* parent) override;
         void clear_parent_dont_check() override;
         virtual void set_z_index(int) override;
+        
+        FillClr bg_fill_color() const;
+        LineClr bg_line_color() const;
         
     protected:
         virtual void remove_child(Drawable *child) = 0;

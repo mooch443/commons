@@ -81,6 +81,8 @@ namespace cmn::gui {
         struct DrawOrder {
             enum Type {
                 DEFAULT = 0,
+                BACKGROUND,
+                BACKGROUND_LINE,
                 //POP,
                 END_ROTATION,
                 START_ROTATION
