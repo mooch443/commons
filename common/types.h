@@ -56,6 +56,9 @@ using lines_t = std::vector<HorizontalLine>;
 using line_ptr_t = std::unique_ptr<lines_t>;
 using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
 
+using ObjectClass_t = std::map<uint16_t, std::string>;
+using MaybeObjectClass_t = std::optional<ObjectClass_t>;
+
 enum class Focus {
     Center,
     Left,

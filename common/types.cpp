@@ -18,14 +18,20 @@ blob::Pair::Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags, 
 }
 
 std::string blob::Prediction::toStr() const {
-    std::map<uint16_t, std::string> detect_classes;
-    if(GlobalSettings::has("detect_classes")) {
-        detect_classes = SETTING(detect_classes).value<std::map<uint16_t, std::string>>();
-    }
-    
     if(valid()) {
-        auto it = detect_classes.find(clid);
-        return (it == detect_classes.end() ? "unknown<"+Meta::toStr(clid)+">" : it->second) + "["+dec<2>( p / 255_F * 100_F).toStr()+"%]";
+        MaybeObjectClass_t detect_classes;
+        if(GlobalSettings::has("detect_classes")) {
+            detect_classes = SETTING(detect_classes).value<MaybeObjectClass_t>();
+        }
+        
+        if(detect_classes.has_value())
+        {
+            auto it = detect_classes->find(clid);
+            return (it == detect_classes->end()
+                    ? "unknown<"+Meta::toStr(clid)+">"
+                    : it->second)
+                + "["+dec<2>( p / 255_F * 100_F).toStr()+"%]";
+        }
     }
     return "null";
 }

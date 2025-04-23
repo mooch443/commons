@@ -319,6 +319,15 @@ public:
         return console_color<string_color, colors>(Meta::toStr(value));
     }
     
+    // Support for std::optional – prints "null" for std::nullopt, otherwise formats the contained value
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
+        requires is_instantiation<std::optional, K>::value
+    static std::string parse_value(const T& opt) {
+        if (!opt)
+            return console_color<keyword_color, colors>("null");
+        return parse_value(*opt);
+    }
+    
     template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires are_the_same<K, std::string_view>
     static std::string parse_value(const T& value) {
