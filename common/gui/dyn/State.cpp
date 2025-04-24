@@ -533,6 +533,10 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         if(item_template.contains("tooltip") && item_template["tooltip"].is_string()) {
             item.set_tooltip(parse_text(item_template["tooltip"].get<std::string>(), context, state));
         }
+        
+        if(item_template.contains("disabled") && item_template["disabled"].is_string()) {
+            item.set_disabled(parse_text(item_template["disabled"].get<std::string>(), context, state) == "true");
+        }
         if(item_template.contains("action") && item_template["action"].is_string()) {
             auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
             
