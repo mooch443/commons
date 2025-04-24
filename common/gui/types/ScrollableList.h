@@ -364,6 +364,7 @@ namespace cmn::gui {
                 _items.push_back(Item<T>(item));
             }
             
+            update_items();
             set_content_changed(true);
             return _items.size();
         }
@@ -430,14 +431,15 @@ namespace cmn::gui {
             set_label_font(font);
         }
         void set(const ListDims_t& dims) {
-            if(dims == _list_dims)
+            if(dims.Equals(_list_dims))
                 return;
             _list_dims = dims;
             refresh_dims();
+            set_bounds_changed();
             set_content_changed(true);
         }
         void set(const LabelDims_t& dims) {
-            if(dims == _label_dims)
+            if(dims.Equals(_label_dims))
                 return;
             
             _label_dims = dims;
@@ -640,13 +642,13 @@ namespace cmn::gui {
             //set_content_changed(true);
         }
         
-        /*void update_bounds() override {
+        void update_bounds() override {
             if(!bounds_changed())
                 return;
             
             Entangled::update_bounds();
-         
-        }*/
+            update_items();
+        }
         
     public:
         void set_bounds(const Bounds& bounds) override {

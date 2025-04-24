@@ -519,6 +519,47 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
 bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state)
 {
     ListContents &obj = std::get<ListContents>(object);
+    
+    size_t index=0;
+    auto convert_to_item = [&gc = context, &index, &obj](const glz::json_t& item_template, Context& context, State& state) -> DetailTooltipItem
+    {
+        DetailTooltipItem item;
+        if(item_template.contains("text") && item_template["text"].is_string()) {
+            item.set_name(parse_text(item_template["text"].get<std::string>(), context, state));
+        }
+        if(item_template.contains("detail") && item_template["detail"].is_string()) {
+            item.set_detail(parse_text(item_template["detail"].get<std::string>(), context, state));
+        }
+        if(item_template.contains("tooltip") && item_template["tooltip"].is_string()) {
+            item.set_tooltip(parse_text(item_template["tooltip"].get<std::string>(), context, state));
+        }
+        if(item_template.contains("action") && item_template["action"].is_string()) {
+            auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
+            
+            if(not obj.on_select_actions.contains(index)
+               || std::get<0>(obj.on_select_actions.at(index)) != action.name)
+            {
+                obj.on_select_actions[index] = std::make_tuple(
+                    index, [&gc = gc, index = index, action = action, context](){
+                        Print("Clicked item at ", index, " with action ", action);
+                        State state;
+                        Action _action = action.parse(context, state);
+                        if(_action.parameters.empty())
+                            _action.parameters = { Meta::toStr(index) };
+                        if(auto it = gc.actions.find(action.name); it != gc.actions.end()) {
+                            try {
+                                it->second(_action);
+                            } catch(const std::exception& ex) {
+                                // pass
+                            }
+                        }
+                    }
+                );
+            }
+        }
+        return item;
+    };
+    
     if(context.has(obj.variable)) {
         if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             
@@ -533,51 +574,13 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             
             Context tmp = context;
             
-            size_t index=0;
-            auto convert_to_item = [&gc = context, &index, &obj](sprite::Map&, const glz::json_t& item_template, Context& context, State& state) -> DetailTooltipItem
-            {
-                DetailTooltipItem item;
-                if(item_template.contains("text") && item_template["text"].is_string()) {
-                    item.set_name(parse_text(item_template["text"].get<std::string>(), context, state));
-                }
-                if(item_template.contains("detail") && item_template["detail"].is_string()) {
-                    item.set_detail(parse_text(item_template["detail"].get<std::string>(), context, state));
-                }
-                if(item_template.contains("tooltip") && item_template["tooltip"].is_string()) {
-                    item.set_tooltip(parse_text(item_template["tooltip"].get<std::string>(), context, state));
-                }
-                if(item_template.contains("action") && item_template["action"].is_string()) {
-                    auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
-                    
-                    if(not obj.on_select_actions.contains(index)
-                       || std::get<0>(obj.on_select_actions.at(index)) != action.name)
-                    {
-                        obj.on_select_actions[index] = std::make_tuple(
-                            index, [&gc = gc, index = index, action = action, context](){
-                                Print("Clicked item at ", index, " with action ", action);
-                                State state;
-                                Action _action = action.parse(context, state);
-                                _action.parameters = { Meta::toStr(index) };
-                                if(auto it = gc.actions.find(action.name); it != gc.actions.end()) {
-                                    try {
-                                        it->second(_action);
-                                    } catch(const std::exception& ex) {
-                                        // pass
-                                    }
-                                }
-                            }
-                        );
-                    }
-                }
-                return item;
-            };
             
             for(auto &v : vector) {
                 //auto previous = state._variable_values;
                 tmp.variables["i"] = v;
                 try {
                     auto &ref = v->value<sprite::Map&>({});
-                    auto item = convert_to_item(ref, obj.item, tmp, state);
+                    auto item = convert_to_item(obj.item, tmp, state);
                     ptrs.emplace_back(std::move(item));
                     ++index;
                 } catch(const std::exception& ex) {
@@ -588,6 +591,43 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             
             o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
         }
+        else {
+            auto variable = context.variable(obj.variable);
+            Print("Variable ", obj.variable, " has unknown type ", variable->class_name(),".");
+            
+        }
+    }
+    else if(auto text = parse_text(obj.variable, context, state);
+            not text.empty()
+            && utils::beginsWith(text, '[')
+            && utils::endsWith(text, ']'))
+    {
+        Print("Array: ", no_quotes(text));
+        auto vector = Meta::fromStr<std::vector<std::string>>(text);
+        
+        IndexScopeHandler handler{state._current_index};
+        std::vector<DetailTooltipItem> ptrs;
+        obj._state = std::make_unique<State>();
+        obj._state->_current_object_handler = state._current_object_handler;
+        
+        Context tmp = context;
+        for(auto &v : vector) {
+            //auto previous = state._variable_values;
+            tmp.variables["i"] = VarFunc("i", [v](const VarProps&) -> std::string{
+                return v;
+            }).second;
+            
+            try {
+                auto item = convert_to_item( obj.item, tmp, state);
+                ptrs.emplace_back(std::move(item));
+                ++index;
+            } catch(const std::exception& ex) {
+                FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("null"), " and type string.");
+            }
+            //state._variable_values = std::move(previous);
+        }
+        
+        o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
     }
     return false;
 }
