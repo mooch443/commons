@@ -69,28 +69,33 @@ public:
         return uint8_t(((x + 128u) * 257u) >> 16);
     }
 
-    static constexpr Color blend(const Color& A, const Color& B) noexcept {
-        // integer‐only “A over B” composite: A is foreground, B is background
-        const uint16_t fgA   = A.a;                // source alpha
-        const uint16_t invFg = 255 - fgA;          // (1 - alpha_src)
-        // background alpha contribution = B.a * invFg/255
-        const uint16_t bgA   = div255(uint32_t(B.a) * invFg);
-        // composite alpha
-        const uint16_t outA  = fgA + bgA;
+    static constexpr Color blend(const Color& A, const Color& B) noexcept
+    {
+        // integer-only “A over B” composite:  A = foreground, B = background
+        const uint16_t fgA = A.a;
+        const uint16_t invFg = 255 - fgA;                       // 1 – αsrc
+        const uint16_t bgA = div255(uint32_t(B.a) * invFg);   // B.a * (1-αsrc) / 255
+        const uint16_t outA = fgA + bgA;                       // composite α
 
-        // premultiplied channel sums
-        uint32_t sumR = uint32_t(A.r) * fgA + uint32_t(B.r) * bgA;
-        uint32_t sumG = uint32_t(A.g) * fgA + uint32_t(B.g) * bgA;
-        uint32_t sumB = uint32_t(A.b) * fgA + uint32_t(B.b) * bgA;
+        // Premultiplied channel sums
+        const uint32_t sumR = uint32_t(A.r) * fgA + uint32_t(B.r) * bgA;
+        const uint32_t sumG = uint32_t(A.g) * fgA + uint32_t(B.g) * bgA;
+        const uint32_t sumB = uint32_t(A.b) * fgA + uint32_t(B.b) * bgA;
 
-        // unpremultiply to straight RGB by dividing by outA (with rounding)
-        uint8_t outR = uint8_t((sumR + outA/2) / outA);
-        uint8_t outG = uint8_t((sumG + outA/2) / outA);
-        uint8_t outB = uint8_t((sumB + outA/2) / outA);
+        /*  Ensure a non-zero denominator with no branches.
+            - When outA ≠ 0 → denom == outA.
+            - When outA  == 0 → denom == 1  (so division is well-defined at
+              run time *and* in a constant-expression).                         */
+        const uint16_t denom = outA | (outA == 0);   // 0 → 1, all others unchanged
+
+        // Un-premultiply (integer-rounded) to straight RGB
+        const uint8_t outR = uint8_t((sumR + denom / 2) / denom);
+        const uint8_t outG = uint8_t((sumG + denom / 2) / denom);
+        const uint8_t outB = uint8_t((sumB + denom / 2) / denom);
 
         return Color{ outR, outG, outB, uint8_t(outA) };
     }
-    
+
     constexpr Color limit_alpha(uint8_t max_alpha) {
         return alpha(min(max_alpha, a));
     }

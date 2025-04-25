@@ -60,7 +60,7 @@ namespace cmn {
         //assert(y < rows);
         //assert(x < cols);
         assert((ptr_safe_t(x) * ptr_safe_t(dims)
-                + ptr_safe_t(y) * ptr_safe_t(cols) * ptr_safe_t(dims)) <= size());
+                + ptr_safe_t(y) * ptr_safe_t(cols) * ptr_safe_t(dims)) < size());
         
         return data() + (ptr_safe_t(x) * ptr_safe_t(dims)
                          + ptr_safe_t(y) * ptr_safe_t(cols) * ptr_safe_t(dims));
