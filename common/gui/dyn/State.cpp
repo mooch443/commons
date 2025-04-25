@@ -230,7 +230,8 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     }
     if(patterns.contains("color")) {
         try {
-            auto clr = resolve_variable_type<Color>(patterns.at("color"), context, state);
+            auto clrText = parse_text(patterns.at("color"), context, state);
+            auto clr = Meta::fromStr<Color>(clrText);
             LabeledField::delegate_to_proper_type(TextClr{clr}, ptr);
             
         } catch(const std::exception& e) {
@@ -606,7 +607,6 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             && utils::beginsWith(text, '[')
             && utils::endsWith(text, ']'))
     {
-        Print("Array: ", no_quotes(text));
         auto vector = Meta::fromStr<std::vector<std::string>>(text);
         
         IndexScopeHandler handler{state._current_index};

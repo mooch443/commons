@@ -60,16 +60,39 @@ public:
     Color(const cv::Vec3b& v) : Color(v[0], v[1], v[2]) {}
     Color(const cv::Vec4b& v) : Color(v[0], v[1], v[2], v[3]) {}
     
-    static constexpr Color blend(const Color& A, const Color& B) {
-        auto alphabg = A.a / 255.0;
-        auto alphafg = B.a / 255.0;
-        auto alpha = alphabg + alphafg * ( 1 - alphabg );
-        return Color(
-            (uint8_t)saturate((A.r * alphabg + B.r * alphafg * ( 1 - alphabg )) / alpha),
-            (uint8_t)saturate((A.g * alphabg + B.g * alphafg * ( 1 - alphabg )) / alpha),
-            (uint8_t)saturate((A.b * alphabg + B.b * alphafg * ( 1 - alphabg )) / alpha),
-            (uint8_t)(alpha * 255.0)
-        );
+    constexpr Color bgra() const {
+        return Color{ b, g, r, a };
+    }
+    
+    // fast integer divide by 255, exact to within ±1
+    static constexpr uint8_t div255(uint32_t x) noexcept {
+        return uint8_t(((x + 128u) * 257u) >> 16);
+    }
+
+    static constexpr Color blend(const Color& A, const Color& B) noexcept {
+        // integer‐only “A over B” composite: A is foreground, B is background
+        const uint16_t fgA   = A.a;                // source alpha
+        const uint16_t invFg = 255 - fgA;          // (1 - alpha_src)
+        // background alpha contribution = B.a * invFg/255
+        const uint16_t bgA   = div255(uint32_t(B.a) * invFg);
+        // composite alpha
+        const uint16_t outA  = fgA + bgA;
+
+        // premultiplied channel sums
+        uint32_t sumR = uint32_t(A.r) * fgA + uint32_t(B.r) * bgA;
+        uint32_t sumG = uint32_t(A.g) * fgA + uint32_t(B.g) * bgA;
+        uint32_t sumB = uint32_t(A.b) * fgA + uint32_t(B.b) * bgA;
+
+        // unpremultiply to straight RGB by dividing by outA (with rounding)
+        uint8_t outR = uint8_t((sumR + outA/2) / outA);
+        uint8_t outG = uint8_t((sumG + outA/2) / outA);
+        uint8_t outB = uint8_t((sumB + outA/2) / outA);
+
+        return Color{ outR, outG, outB, uint8_t(outA) };
+    }
+    
+    constexpr Color limit_alpha(uint8_t max_alpha) {
+        return alpha(min(max_alpha, a));
     }
     
 #if CMN_WITH_IMGUI_INSTALLED

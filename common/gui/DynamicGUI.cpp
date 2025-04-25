@@ -160,6 +160,14 @@ void Context::init() const {
             VarFunc("max", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return max(A, B);});
             }),
+            
+            VarFunc("saturate", [](const VarProps& props) {
+                REQUIRE_EXACTLY(3, props);
+                auto v = Meta::fromStr<double>(props.parameters.at(0));
+                auto mi = Meta::fromStr<double>(props.parameters.at(1));
+                auto ma = Meta::fromStr<double>(props.parameters.at(2));
+                return saturate(v, mi, ma);
+            }),
             VarFunc("bool", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(1, props);
                 return convert_to_bool(props.parameters.front());

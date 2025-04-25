@@ -108,6 +108,21 @@ concept CallableWithNArgs = requires (F&& f) {
         static Ptr Make(Args&&...args) {
             return std::make_unique<Image>(std::forward<Args>(args)...);
         }
+
+        /**
+         * Create a new Image filled with zeros.
+         *
+         * @param rows Number of rows.
+         * @param cols Number of columns.
+         * @param dims Number of dimensions/channels (default 1).
+         * @param index Optional image index (default -1).
+         * @return Ptr to the newly created zero-filled Image.
+         */
+        static Ptr Zeros(uint rows, uint cols, uint dims = 1, long_t index = -1) {
+            auto img = Make(rows, cols, dims, index);
+            img->set_to(static_cast<uchar>(0));
+            return img;
+        }
         
         class CustomData {
         public:
