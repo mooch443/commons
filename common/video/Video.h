@@ -26,6 +26,7 @@ namespace cmn { class Video; }
  */
 class cmn::Video {
     GETTER_I(ImageMode, colored, ImageMode::GRAY);
+    uint8_t _color_channel{1};
     mutable std::mutex _mutex;
     
 public:

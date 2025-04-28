@@ -23,6 +23,7 @@ using namespace cv;
 // Move constructor
 Video::Video(Video&& other) noexcept
     : _colored(other._colored),
+      _color_channel(other._color_channel),
       _mutex(), // Mutexes are not moveable; we'll just construct a new one.
       _last_index(other._last_index),
       _camera_matrix(std::move(other._camera_matrix)),
@@ -55,6 +56,7 @@ Video& Video::operator=(Video&& other) noexcept {
         // Clean up resources of *this if needed (e.g., _thread, _cap)
 
         _colored = other._colored;
+        _color_channel = other._color_channel;
         // Mutexes are not moveable, so we don't try to move them.
         _last_index = other._last_index;
         _camera_matrix = std::move(other._camera_matrix);
@@ -85,7 +87,13 @@ Video& Video::operator=(Video&& other) noexcept {
 /**
  * Constructor of @class Video.
  */
-Video::Video() : _maps_calculated(false), _cap(NULL), _please_stop(false), _thread(NULL) {
+Video::Video()
+      : _maps_calculated(false),
+        _cap(NULL),
+        _please_stop(false),
+        _thread(NULL)
+{
+    _color_channel = SETTING(color_channel).value<uint8_t>();
 /*#if CV_MAJOR_VERSION >= 3
 #ifdef USE_GPU_MAT
     if(cv::cuda::getCudaEnabledDeviceCount() > 0) {
@@ -343,12 +351,11 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
                     throw InvalidArgumentException("Cannot convert ", read.channels(), " channel video to ", _required_channels, " channel images.");
                 
             } else {
-                static const uint8_t color_channel = SETTING(color_channel).value<uint8_t>();
-                if(color_channel >= 3) {
+                if(_color_channel >= 3) {
                     // turn into HUE
                     if(read.channels() == 3) {
                         cv::cvtColor(read, read, cv::COLOR_BGR2HSV);
-                        extractu8(read, frame, color_channel % 3);
+                        extractu8(read, frame, _color_channel % 3);
                         
                     } else Print("Cannot copy to read frame with ",read.channels()," channels.");
                 } else {
@@ -356,7 +363,7 @@ void Video::frame(Frame_t index, cv::Mat& frame, bool, cmn::source_location loc)
                         frame = cv::Mat(read.rows, read.cols, CV_8UC1);
                     }
                     
-                    extractu8(read, frame, color_channel);
+                    extractu8(read, frame, _color_channel);
                 }
             }
         } else
