@@ -1,11 +1,7 @@
 #ifndef _MISC_UTILS
 #define _MISC_UTILS
 
-#include <string>
-#include <vector>
-#include <algorithm>
-#include <array>
-#include <set>
+#include <commons.pc.h>
 
 /**
  * Provides a wrapper for a vector of enum values.
