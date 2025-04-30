@@ -77,9 +77,16 @@ namespace cmn {
          */
         ~GlobalSettings();
         
-        static Float2_t& invalid() {
-            static Float2_t _invalid = infinity<Float2_t>();
+    private:
+        static std::atomic<Float2_t>& invalid_raw() {
+            static std::atomic<Float2_t> _invalid{ infinity<Float2_t>()
+            };
             return _invalid;
+        }
+        
+    public:
+        static Float2_t invalid() {
+            return invalid_raw().load();
         }
         
         static constexpr bool is_invalid_inf(Float2_t v) {
@@ -100,7 +107,7 @@ namespace cmn {
             } else
                 set_is_invalid_fn(is_invalid_);
             
-            invalid() = v;
+            invalid_raw() = v;
         }
 
         static auto& is_invalid_mutex() {

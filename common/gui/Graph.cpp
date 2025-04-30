@@ -385,8 +385,8 @@ void Graph::update() {
                 
                 double output = f._get_y(x0);
                 float y0 = GlobalSettings::is_invalid(output)
-                ? GlobalSettings::invalid()
-                : output;
+                    ? GlobalSettings::invalid()
+                    : output;
                 float y;
                 
                 if (GlobalSettings::is_invalid(y0)) {
