@@ -93,7 +93,10 @@ Video::Video()
         _please_stop(false),
         _thread(NULL)
 {
-    _color_channel = SETTING(color_channel).value<uint8_t>();
+    auto color_channel = SETTING(color_channel).value<std::optional<uint8_t>>();
+    if(color_channel.has_value()) {
+        _color_channel = color_channel.value();
+    }
 /*#if CV_MAJOR_VERSION >= 3
 #ifdef USE_GPU_MAT
     if(cv::cuda::getCudaEnabledDeviceCount() > 0) {
