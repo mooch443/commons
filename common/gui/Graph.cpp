@@ -6,6 +6,9 @@
 
 namespace cmn::gui {
 
+static const Font x_label_font(0.5, Align::Center);
+static const Font y_label_font(0.5, Align::Right);
+
 struct GraphLabel {
     std::string name;
     Color color;
@@ -122,9 +125,6 @@ void Graph::update() {
         
         const float x_offset_percent = rx.start < 0 && lengthx > 0 ? cmn::abs(rx.start / lengthx) : 0;
         const float y_offset_percent = ry.start < 0 && lengthy > 0 ? cmn::abs(ry.start / lengthy) : 0;
-        
-        static const Font x_label_font(0.5, Align::Center);
-        static const Font y_label_font(0.5, Align::Right);
         
         const float max_width = (view.width() == 0 ? width() : view.width()) - _margin.x * 2;
         const float max_height = (view.height() == 0 ? height() : view.height()) - _margin.y * 2 - Base::default_line_spacing(x_label_font);
@@ -654,7 +654,7 @@ Graph::Function Graph::add_function(const Graph::Function &function) {
     b.wrap_object(_gui_obj);
 }*/
 
-void Graph::recompute_sample_cache(int step_nr)
+void Graph::recompute_sample_cache(int)
 {
     const auto& fns = functions();
     
@@ -725,10 +725,7 @@ void Graph::recompute_sample_cache(int step_nr)
 
     const float lengthx   = rx.end - rx.start;
     const float lengthy   = ry.end - ry.start;
-    
-    static const Font x_label_font(0.5, Align::Center);
-    static const Font y_label_font(0.5, Align::Right);
-    
+
     const float max_width = (_graphs_view->width() == 0 ? width() : _graphs_view->width()) - _margin.x * 2;
     const float max_height = (_graphs_view->height() == 0 ? height() : _graphs_view->height()) - _margin.y * 2 - Base::default_line_spacing(x_label_font);
     

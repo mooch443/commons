@@ -52,6 +52,14 @@ namespace cmn::gui {
         virtual void set_frame_buffer_receiver(std::function<void(Image::Ptr&&)>) {}
         
         GETTER_SETTER(Color, clear_color);
-        GETTER_SETTER(bool, frame_capture_enabled);
+        std::atomic<bool> _frame_capture_enabled{false};
+        
+    public:
+        bool frame_capture_enabled() const {
+            return _frame_capture_enabled.load();
+        }
+        void set_frame_capture_enabled(bool v) {
+            _frame_capture_enabled = v;
+        }
     };
 }
