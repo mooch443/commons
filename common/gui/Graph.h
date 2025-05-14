@@ -85,6 +85,13 @@ namespace cmn::gui {
             float thickness;
         };
         
+        // --------------------------------------------------------------------
+        //  Per–function cache of y-samples (pre-computed in a worker thread)
+        struct SampleCache {
+            int step_nr;                  ///< pixel granularity used
+            std::vector<Vec2> samples;    ///< screen-space (x,y); y==NaN ⇒ “no value”
+        };
+        
         enum class DisplayLabels {
             Hidden,
             Outside,
@@ -96,6 +103,7 @@ namespace cmn::gui {
         GETTER(std::vector<Function>, functions);
         std::unordered_map<std::string, std::vector<std::shared_ptr<Circle>>> _gui_points;
         std::vector<GLine> _lines;
+        std::unordered_map<const Function*, SampleCache> _sample_cache;
         
         GETTER(Vec2, margin);
         //GETTER(cv::Size, size);
@@ -111,6 +119,7 @@ namespace cmn::gui {
         derived_ptr<Entangled> _graphs_view;
         std::shared_ptr<Circle> _last_hovered_circle;
         DisplayLabels _display_labels{DisplayLabels::Inside};
+        float _max_label_length{10}, _label_height{0};
         
     public:
         Graph(const Bounds& bounds, const std::string& name, const Rangef& x_range = Rangef(-FLT_MAX, FLT_MAX), const Rangef& y_range = Rangef(-FLT_MAX, FLT_MAX));
@@ -133,6 +142,19 @@ namespace cmn::gui {
         //void display(gui::DrawStructure& base, const Vec2& pos = Vec2(0, 0), float scale = 1.0, float transparency = 1.0);
         bool empty() const { return _functions.empty(); }
         void clear();
+        
+        /** Pre-compute y-samples for every Function.
+         *  Call this from a worker thread; when it’s finished, let the GUI
+         *  thread know with `set_content_changed(true)` so a repaint happens.
+         *  @param step_nr  desired pixel granularity;  -1 picks a reasonable
+         *                  default based on current width().
+         */
+        void recompute_sample_cache(int step_nr = -1);
+        
+        virtual void update_sample_cache_automatically();
+
+        /// Drop all cached samples (called automatically by clear()).
+        void clear_sample_cache();
         
         void set_margin(const Vec2& margin);
         

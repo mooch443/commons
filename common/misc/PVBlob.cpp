@@ -809,34 +809,43 @@ pv::BlobPtr CompressedBlob::unpack() const {
         
         if(output.encoding == meta_encoding_t::binary)
             return {output, nullptr};
+        return std::make_tuple(output, calculate_pixels(input, output, average));
+    }
+
+std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(InputInfo input, OutputInfo output, const cv::Mat& average) const
+{
+    assert(input.channels == average.channels());
+    
+    if(output.encoding == meta_encoding_t::binary)
+        return nullptr;
+    
+    auto res = std::make_unique<std::vector<uchar>>();
+    res->resize(num_pixels() * output.channels);
+    auto ptr = res->data();
+    
+    call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod>() {
+        static_assert(is_in(input.channels, 0, 1, 3), "Only 1 or 3 channels input is supported.");
+        static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
         
-        auto res = std::make_unique<std::vector<uchar>>();
-        res->resize(num_pixels() * output.channels);
-        auto ptr = res->data();
-        
-        call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod>() {
-            static_assert(is_in(input.channels, 0, 1, 3), "Only 1 or 3 channels input is supported.");
-            static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
-            
-            for(auto &hl : *_hor_lines) {
-                for (ushort x=hl.x0; x<=hl.x1; ++x, ptr += output.channels) {
-                    assert(ptr < res->data() + res->size());
-                    auto value = diffable_pixel_value<input, output>(average.ptr(hl.y, x));
+        for(auto &hl : *_hor_lines) {
+            for (ushort x=hl.x0; x<=hl.x1; ++x, ptr += output.channels) {
+                assert(ptr < res->data() + res->size());
+                auto value = diffable_pixel_value<input, output>(average.ptr(hl.y, x));
+                
+                if constexpr(output.channels == 1) {
+                    *ptr = value;
                     
-                    if constexpr(output.channels == 1) {
-                        *ptr = value;
-                        
-                    } else if constexpr(output.channels == 3) {
-                        *(ptr + 0) = value[0];
-                        *(ptr + 1) = value[1];
-                        *(ptr + 2) = value[2];
-                    }
+                } else if constexpr(output.channels == 3) {
+                    *(ptr + 0) = value[0];
+                    *(ptr + 1) = value[1];
+                    *(ptr + 2) = value[2];
                 }
             }
-        });
-        
-        return {output, std::move(res)};
-    }
+        }
+    });
+    
+    return res;
+}
 
     std::tuple<OutputInfo, std::unique_ptr<std::vector<uchar>>> Blob::calculate_pixels(const cmn::Background& background) const
     {

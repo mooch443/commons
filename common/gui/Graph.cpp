@@ -6,6 +6,21 @@
 
 namespace cmn::gui {
 
+struct GraphLabel {
+    std::string name;
+    Color color;
+    GraphLabel(const std::string& name = "", const Color& color = Color())
+        : name(name), color(color)
+    {}
+    void convert(const std::shared_ptr<Text>& ptr) const {
+        const size_t max_text_len = 25;
+        ptr->set_txt(utils::ShortenText(name, max_text_len));
+        ptr->set_color(Color::blend(color, Gray));
+        ptr->set_font(Font(0.45, Style::Monospace));
+        ptr->set_clickable(true);
+    }
+};
+
 enum class Axis {
     X = 1,
     Y = 2
@@ -66,24 +81,15 @@ void Graph::update_title() {
     }
 }
 
+void Graph::update_sample_cache_automatically() {
+    recompute_sample_cache();
+}
+
 void Graph::update() {
     if(!content_changed())
         return;
     
-    struct Label {
-        std::string name;
-        Color color;
-        Label(const std::string& name = "", const Color& color = Color())
-            : name(name), color(color)
-        {}
-        void convert(const std::shared_ptr<Text>& ptr) const {
-            const size_t max_text_len = 25;
-            ptr->set_txt(utils::ShortenText(name, max_text_len));
-            ptr->set_color(Color::blend(color, Gray));
-            ptr->set_font(Font(0.45, Style::Monospace));
-            ptr->set_clickable(true);
-        }
-    };
+    update_sample_cache_automatically();
     
     const Color fg_ = gui::White;
     const Color fg = fg_.alpha(255);
@@ -105,10 +111,6 @@ void Graph::update() {
         for (size_t i=0; i<fns.size(); ++i)
             indices[i] = i;
 #endif
-        std::vector<std::shared_ptr<Label>> function_names;
-        for(auto &f : fns)
-            function_names.push_back(std::make_shared<Label>(f._name, f._color));
-        update_vector_elements(_labels, function_names);
         
         size_t highlighted = fns.size();
         
@@ -355,6 +357,73 @@ void Graph::update() {
             const float step_size = 1.0f / step_nr;
             const float stepx = lengthx * step_size;
             
+            if (auto cache_it = _sample_cache.find(&f);
+                cache_it != _sample_cache.end()
+                && cache_it->second.step_nr == step_nr)
+            {
+                const auto& pcm = cache_it->second.samples;
+
+                Color base = f._color;
+                if (idx == highlighted) base = base.exposure(1.5);
+
+                vertices.clear();
+
+                Vec2  prev_sample;
+                bool  prev_valid     = false;
+                bool  prev_in_view   = false;
+                const float y_min    = _margin.y;
+                const float y_max    = _margin.y + max_height;
+
+                auto flush_segment = [&]{
+                    if (!vertices.empty()) {
+                        if (TYPE_IS(AREA) || idx == highlighted)
+                            split_polygon(vertices);
+                        view.add<Vertices>(vertices, PrimitiveType::LineStrip);
+                        vertices.clear();
+                    }
+                };
+
+                for (const Vec2& cur : pcm)
+                {
+                    const bool cur_valid = !std::isnan(cur.y);
+                    if (!cur_valid) {
+                        flush_segment();
+                        prev_valid = false;
+                        continue;
+                    }
+
+                    const bool cur_in_view = (cur.y >= y_min && cur.y <= y_max);
+
+                    if (cur_in_view) {
+                        if (prev_valid && !prev_in_view) {
+                            Vec2 clipped = prev_sample;
+                            clipped.y = std::clamp(clipped.y, y_min, y_max);
+                            vertices.push_back(Vertex(OFFSET(clipped), base));
+                        }
+                        vertices.push_back(Vertex(OFFSET(cur), base));
+                    }
+                    else { // current sample is outside view vertically
+                        if (prev_valid && prev_in_view) {
+                            Vec2 clipped = cur;
+                            clipped.y = std::clamp(clipped.y, y_min, y_max);
+                            vertices.push_back(Vertex(OFFSET(clipped), base));
+                            flush_segment();
+                        }
+                        // both points are outside → no vertices added
+                    }
+
+                    prev_sample  = cur;
+                    prev_valid   = true;
+                    prev_in_view = cur_in_view;
+                }
+
+                flush_segment();
+                continue;   // skip slow sampling loop
+                
+            } else if(cache_it != _sample_cache.end()) {
+                clear_sample_cache();
+            }
+            
             Vec2 prev(0, 0);
             float prev_y0 = 0.0f;
             float prev_x0 = GlobalSettings::invalid();
@@ -451,51 +520,6 @@ void Graph::update() {
         }
     }, *_graphs_view);
     
-    auto ctx = OpenContext();
-    //add<Rect>(Box{Vec2(5,5), size()}, FillClr{Black.alpha(10)});
-    
-    advance_wrap(*_graphs_view);
-    
-    float max_label_length = _title.width();
-    float label_height = _title.pos().y + _title.height() + 5;
-    float max_label_pos = 0;
-    for(auto &l : _labels) {
-        if(l->width() > max_label_length)
-            max_label_length = l->width();
-        max_label_pos = max(max_label_pos, l->height() + l->pos().y);
-    }
-    label_height = max(label_height, max_label_pos) + 5;
-    max_label_length += 10;
-    
-    if(_display_labels == DisplayLabels::Outside) {
-        _graphs_view->set_bounds(Bounds(Vec2(max_label_length + 10,0), size() - Size2(max_label_length + 10, 0)));
-    } else {
-        _graphs_view->set_bounds(Bounds(Vec2(), size()));
-    }
-    
-    if(_display_labels != DisplayLabels::Hidden) {
-        if(!_title_text.empty()) {
-            update_title();
-            
-            _title.set_pos(Vec2(10, 10));
-            _title.set_color(fg);
-            add<Rect>(Box{
-                _title.pos() + Vec2(-5, -5),
-                Size2{
-                    max_label_length,
-                    min(height() - 5, label_height)
-                }
-            },
-                      FillClr{Transparent},
-                      LineClr{White.alpha(100)});
-            advance_wrap(_title);
-        }
-        
-        for(auto& l : _labels) {
-            if(l->pos().y + l->height() < height() - 5)
-                advance_wrap(*l);
-        }
-    }
 }
 
 Vec2 Graph::transform_point(Vec2 pt) {
@@ -593,6 +617,8 @@ Graph::Graph(const Bounds& bounds,
     _title.on_hover([this](auto){
         update_title();
     });
+    
+    recompute_sample_cache();
 }
 
 void Graph::set_ranges(const Rangef& x_range, const Rangef& y_range) {
@@ -628,7 +654,156 @@ Graph::Function Graph::add_function(const Graph::Function &function) {
     b.wrap_object(_gui_obj);
 }*/
 
-void Graph::clear() {
+void Graph::recompute_sample_cache(int step_nr)
+{
+    const auto& fns = functions();
+    
+    std::vector<std::shared_ptr<GraphLabel>> function_names;
+    for(auto &f : fns)
+        function_names.push_back(std::make_shared<GraphLabel>(f._name, f._color));
+    update_vector_elements(_labels, function_names);
+    
+    float max_label_length = _title.width();
+    float label_height = _title.pos().y + _title.height() + 5;
+    float max_label_pos = 0;
+    for(auto &l : _labels) {
+        if(l->width() > max_label_length)
+            max_label_length = l->width();
+        max_label_pos = max(max_label_pos, l->height() + l->pos().y);
+    }
+    label_height = max(label_height, max_label_pos) + 5;
+    max_label_length += 10;
+    
+    _max_label_length = max_label_length;
+    _label_height = label_height;
+    
+    if(_display_labels == DisplayLabels::Outside) {
+        auto bds = Bounds(Vec2(max_label_length + 10,0), size() - Size2(max_label_length + 10, 0));
+        if(bds != _graphs_view->bounds()) {
+            _graphs_view->set_bounds(bds);
+        }
+    } else {
+        _graphs_view->set_bounds(Bounds(Vec2(), size()));
+    }
+    
+    {
+        const Color fg_ = gui::White;
+        const Color fg = fg_.alpha(255);
+        auto ctx = OpenContext();
+        //add<Rect>(Box{Vec2(5,5), size()}, FillClr{Black.alpha(10)});
+        
+        advance_wrap(*_graphs_view);
+        
+        if(_display_labels != DisplayLabels::Hidden) {
+            if(!_title_text.empty()) {
+                update_title();
+                
+                _title.set_pos(Vec2(10, 10));
+                _title.set_color(fg);
+                add<Rect>(Box{
+                    _title.pos() + Vec2(-5, -5),
+                    Size2{
+                        _max_label_length,
+                        min(height() - 5, _label_height)
+                    }
+                },
+                          FillClr{Transparent},
+                          LineClr{White.alpha(100)});
+                advance_wrap(_title);
+            }
+            
+            for(auto& l : _labels) {
+                if(l->pos().y + l->height() < height() - 5)
+                    advance_wrap(*l);
+            }
+        }
+    }
+    
+    
+    const Rangef& rx = _x_range;
+    const Rangef& ry = _y_range;
+
+    const float lengthx   = rx.end - rx.start;
+    const float lengthy   = ry.end - ry.start;
+    
+    static const Font x_label_font(0.5, Align::Center);
+    static const Font y_label_font(0.5, Align::Right);
+    
+    const float max_width = (_graphs_view->width() == 0 ? width() : _graphs_view->width()) - _margin.x * 2;
+    const float max_height = (_graphs_view->height() == 0 ? height() : _graphs_view->height()) - _margin.y * 2 - Base::default_line_spacing(x_label_font);
+    
+    //const float max_width  = width()  - _margin.x * 2;
+    //const float max_height = height() - _margin.y * 2;
+
+    
+    //if (step_nr <= 0)
+     //   step_nr = narrow_cast<int>(max_width / 4);
+    //step_nr = std::max(1, step_nr);
+
+    //const float stepx = lengthx / step_nr;
+
+    const float x_off_pct = rx.start < 0 && lengthx > 0 ? cmn::abs(rx.start / lengthx) : 0;
+    const float y_off_pct = ry.start < 0 && lengthy > 0 ? cmn::abs(ry.start / lengthy) : 0;
+    const float y_axis_off = x_off_pct * max_width;
+
+    std::unordered_map<const Function*, SampleCache> new_cache;
+
+    for (const auto& f : _functions)
+    {
+        if (f._points)   // explicit scatter points handled elsewhere
+            continue;
+        
+#define TYPE_IS(X) ( (int)f._type & (int)Type:: X )
+    
+        const int step_nr = narrow_cast<int>(max_width / (TYPE_IS(DISCRETE) || TYPE_IS(POINTS) ? 1 : 4));
+        const float step_size = 1.0f / step_nr;
+        const float stepx = lengthx * step_size;
+
+        SampleCache cache;
+        cache.step_nr = step_nr;
+        cache.samples.reserve(step_nr);
+
+        float prev_x0 = GlobalSettings::invalid();
+        float prev_y0 = 0.f;
+
+        for (int i = 0; i < step_nr; ++i)
+        {
+            float x0 = rx.start + i * stepx;
+            if ((f._type & Type::DISCRETE) || (f._type & Type::POINTS))
+                x0 = roundf(x0);
+
+            double out = (!GlobalSettings::is_invalid(prev_x0) && x0 == prev_x0)
+                            ? prev_y0
+                            : f._get_y(x0);
+
+            float y0 = GlobalSettings::is_invalid(out) ? GlobalSettings::invalid()
+                                                       : static_cast<float>(out);
+
+            const float pct_x = (x0 - rx.start) / lengthx + x_off_pct;
+            const float xs = pct_x * max_width - y_axis_off + _margin.x;
+            float ys;
+            if (GlobalSettings::is_invalid(y0))
+                ys = std::numeric_limits<float>::quiet_NaN();
+            else
+                ys = (1.0f - ((y0) / lengthy + y_off_pct)) * max_height + _margin.y;
+
+            cache.samples.emplace_back(xs, ys);
+            prev_x0 = x0;
+            prev_y0 = y0;
+        }
+        new_cache.emplace(&f, std::move(cache));
+    }
+    _sample_cache.swap(new_cache);
+}
+
+void Graph::clear_sample_cache()
+{
+    _sample_cache.clear();
+}
+
+void Graph::clear()
+{
+    clear_sample_cache();      // <<< NEW
     _gui_points.clear();
     _functions.clear();
     _lines.clear();

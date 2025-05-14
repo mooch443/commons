@@ -7,6 +7,9 @@ template<class T> struct is_container : public std::false_type {};
 template<class T, class Alloc>
 struct is_container<std::vector<T, Alloc>> : public std::true_type {};
 
+template<class T>
+struct is_container<std::initializer_list<T>> : public std::true_type {};
+
 template<class T, size_t Size>
 struct is_container<std::array<T, Size>> : public std::true_type {};
 

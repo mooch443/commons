@@ -117,6 +117,8 @@ public:
     std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cmn::Background& background) const;
     std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cv::Mat& background) const;
     
+    std::unique_ptr<std::vector<uchar>> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const cv::Mat& background) const;
+    
     bool properties_ready() const { return _properties.ready; }
     
     std::string toStr() const;
