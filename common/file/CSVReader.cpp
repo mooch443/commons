@@ -14,11 +14,11 @@ namespace cmn {
 
 FileBuffer::FileBuffer(const file::Path& path) {
 #ifdef _WIN32
-    hFile_ = ::CreateFileA(path.string().c_str(), GENERIC_READ,
+    hFile_ = ::CreateFileA(path.c_str(), GENERIC_READ,
                            FILE_SHARE_READ, nullptr,
                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile_ == INVALID_HANDLE_VALUE)
-        throw std::runtime_error("Cannot open file: " + path.string());
+        throw std::runtime_error("Cannot open file: " + path.str());
 
     LARGE_INTEGER li{};
     if (!::GetFileSizeEx(hFile_, &li))
