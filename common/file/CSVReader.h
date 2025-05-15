@@ -1,10 +1,14 @@
 #pragma once
 #include <commons.pc.h>
-#include <unordered_map>
-#include <optional>
-#include <algorithm>
-#include <fstream>
 #include <file/Path.h>        // assumes project provides this
+#include <cstddef>
+#ifdef _WIN32
+  #include <windows.h>
+#else
+  #include <sys/mman.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+#endif
 
 namespace cmn {
 
@@ -207,6 +211,8 @@ public:
     Table<std::optional<NumberT>> readNumericTableOptional() {
         return convertToOptionalNumeric<NumberT>(readTable());
     }
+    
+    std::size_t fastLineCount() const;
 
 private:
     std::string_view data_;
@@ -214,6 +220,36 @@ private:
     char delim_;
     bool hasHeader_{false};
     std::vector<std::string> header_;
+};
+
+/**
+ * @brief RAII memory‑mapped read‑only view of a whole file.
+ *
+ * On POSIX systems `mmap(2)` is used, on Windows `CreateFileMapping`.
+ * Throws `std::runtime_error` on failure.
+ */
+class FileBuffer {
+public:
+    explicit FileBuffer(const file::Path& path);
+    ~FileBuffer();
+
+    std::string_view view() const { return {data_, size_}; }
+
+    // non‑copyable, movable
+    FileBuffer(const FileBuffer&)            = delete;
+    FileBuffer& operator=(const FileBuffer&) = delete;
+    FileBuffer(FileBuffer&&)                 = default;
+    FileBuffer& operator=(FileBuffer&&)      = default;
+
+private:
+#ifdef _WIN32
+    HANDLE  hFile_{INVALID_HANDLE_VALUE};
+    HANDLE  hMap_{nullptr};
+#else
+    int     fd_{-1};
+#endif
+    std::size_t   size_{0};
+    const char*   data_{nullptr};
 };
 
 /**
@@ -229,9 +265,6 @@ public:
                     char delimiter = ';',
                     bool hasHeader = false);
 
-    /** Read a row; returns empty vector at EOF */
-    std::vector<std::string> nextRow();
-
     /** Read the entire stream and return rows as vector of maps. */
     std::unordered_map<std::string,
                        std::unordered_map<std::string, std::string>>
@@ -239,23 +272,17 @@ public:
 
     StringTable readTable();
 
-    const std::vector<std::string>& header() const { return header_; }
-
-    /** Convenience: true if the underlying stream hasn’t reached EOF. */
-    [[nodiscard]] bool hasNext() {
-        return static_cast<bool>(in_.peek()) && !in_.eof();
-    }
-
     template<typename NumberT>
-    Table<std::optional<NumberT>> readNumericTableOptional() {
-        return convertToOptionalNumeric<NumberT>(readTable());
-    }
+    Table<std::optional<NumberT>> readNumericTableOptional();
+
+    const std::vector<std::string>& header() const { return header_; }
+    std::size_t fastLineCount() const { return rdr_.fastLineCount(); }
 
 private:
-    std::ifstream in_;
-    char delim_;
-    bool hasHeader_{false};
+    
     std::vector<std::string> header_;
+    FileBuffer      buf_;
+    CSVReader       rdr_;
 };
 
 } // namespace cmn
