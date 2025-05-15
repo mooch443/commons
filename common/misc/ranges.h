@@ -218,6 +218,9 @@ struct Range {
     static Range<T> fromStr(const std::string& str)
     {
         auto parts = util::parse_array_parts(util::truncate(str));
+        if(parts.empty())
+            return Range();
+        
         if (parts.size() != 2) {
             throw CustomException(type_v<std::invalid_argument>,"Illegal Rangel format.");
         }
