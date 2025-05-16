@@ -257,8 +257,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         return blobs;
     }
     
-    pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size) {
-        CPULabeling::ListCache_t cache;
+    pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const Background* bg, uint8_t use_closing, uint8_t closing_size, CPULabeling::ListCache_t&& cache) {
         auto blobs = _threshold_blob(cache, blob, threshold, bg, use_closing, closing_size);
         
         size_t max_size = 0;

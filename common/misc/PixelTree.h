@@ -153,7 +153,7 @@ namespace cmn::pixel {
     
     std::vector<std::unique_ptr<std::vector<Vec2>>> find_outer_points(pv::BlobWeakPtr blob, int threshold);
 
-    pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2);
+    pv::BlobPtr threshold_get_biggest_blob(pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, uint8_t use_closing = 0, uint8_t closing_size = 2, CPULabeling::ListCache_t&& = CPULabeling::ListCache_t{});
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1, -1));
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1,-1));
 

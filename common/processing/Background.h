@@ -293,6 +293,11 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         CallbackCollection _callback;
         
     public:
+        /// create a dummy background with no image
+        /// supposed to be used in cases of no background subtraction for example
+        Background(Size2, meta_encoding_t::Class encoding);
+        
+        /// create a real background with an image
         Background(Image::Ptr&& image, meta_encoding_t::Class encoding);
         ~Background();
         
@@ -374,13 +379,15 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
                 ? (_grid->thresholds().data()
                     + ptr_safe_t(x0) + ptr_safe_t(y) * (ptr_safe_t)_grid->bounds().width)
                 : NULL;*/
-            auto ptr_image = _grey_image->data() + (ptr_safe_t(x0) + ptr_safe_t(y) * ptr_safe_t(_grey_image->cols)) * bg_channels;
+            auto ptr_image = not _grey_image ? nullptr : (_grey_image->data() + (ptr_safe_t(x0) + ptr_safe_t(y) * ptr_safe_t(_grey_image->cols)) * bg_channels);
             auto ptr_values = values.data();
             auto end = values.data() + (ptr_safe_t(x1) - ptr_safe_t(x0) + 1) * input.channels;
             assert(end <= values.data() + values.size());
             ptr_safe_t count = 0;
             
-            if constexpr (method == DifferenceMethod_t::sign) {
+            if constexpr (method == DifferenceMethod_t::sign)
+            {
+                assert(ptr_image != nullptr);
                 /*if(ptr_grid) {
                     for (; ptr_values != end; ++ptr_grid, ptr_image += bg_channels, ptr_values += input.channels)
                         count += int32_t(*ptr_image) - int32_t(diffable_pixel_value<input, output>(ptr_values)) >= int32_t(*ptr_grid) * threshold;
@@ -389,7 +396,9 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
                         count += int32_t(*ptr_image) - int32_t(diffable_pixel_value<input, output>(ptr_values)) >= int32_t(threshold);
                 //}
                 
-            } else if constexpr(method == DifferenceMethod_t::absolute) {
+            } else if constexpr(method == DifferenceMethod_t::absolute)
+            {
+                assert(ptr_image != nullptr);
                 /*if(ptr_grid) {
                     for (; ptr_values != end; ++ptr_grid, ptr_image += bg_channels, ptr_values += input.channels)
                         count += std::abs(int32_t(*ptr_image) - int32_t(diffable_pixel_value<input, output>(ptr_values))) >= int32_t(*ptr_grid) * threshold;
@@ -397,7 +406,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
                     for (; ptr_values != end; ptr_image += bg_channels, ptr_values += input.channels)
                         count += std::abs(int32_t(*ptr_image) - int32_t(diffable_pixel_value<input, output>(ptr_values))) >= int32_t(threshold);
                 //}
-            } else {
+            } else if constexpr(method == DifferenceMethod_t::none) {
                 /*if(ptr_grid) {
                     for (; ptr_values != end; ptr_image += bg_channels, ptr_values += input.channels)
                         count += int32_t(diffable_pixel_value<input, output>(ptr_values)) >= int32_t(*ptr_grid) * threshold;
@@ -405,6 +414,8 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
                     for (; ptr_values != end; ptr_values += input.channels)
                         count += int32_t(diffable_pixel_value<input, output>(ptr_values)) >= int32_t(threshold);
                 //}
+            } else {
+                static_assert(method != method, "Unknown difference method used.");
             }
             
             return count;

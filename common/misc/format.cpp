@@ -41,7 +41,7 @@ void log_to_callback(const std::string& str, PrefixLiterals::Prefix prefix, bool
         return;
     log_callback_function(prefix, str, force);
 }
-void log_to_terminal(const std::string& str, bool force_display) {
+void log_to_terminal(const std::string& str, bool force_display, bool newline) {
 #if defined(WIN32) && !defined(__EMSCRIPTEN__)
     static std::once_flag tag;
     std::call_once(tag, []() {
@@ -66,8 +66,12 @@ void log_to_terminal(const std::string& str, bool force_display) {
     });
 #endif
 
-    if(!runtime_is_quiet || force_display)
-        printf("\n%s\r", str.c_str());
+    if(!runtime_is_quiet || force_display) {
+        if(newline)
+            printf("\n%s\r", str.c_str());
+        else
+            printf("%s", str.c_str());
+    }
 }
 
 bool has_log_callback() {

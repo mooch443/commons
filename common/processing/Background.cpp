@@ -53,6 +53,12 @@ namespace cmn {
                 : ImageMode::R3G3B2);
     }
 
+Background::Background(Size2 dimensions, meta_encoding_t::Class encoding)
+    : _bounds(Vec2(), dimensions)
+{
+    
+}
+
     Background::Background(Image::Ptr&& image, meta_encoding_t::Class encoding)
         : _image(std::move(image)), /*_grid(grid),*/ _bounds(_image->bounds())
     {

@@ -289,6 +289,9 @@ pv::BlobPtr CompressedBlob::unpack() const {
     std::vector<ShortHorizontalLine>
         ShortHorizontalLine::compress(const std::vector<HorizontalLine>& lines)
     {
+        if(lines.empty())
+            return {};
+        
 //#if defined(USE_NEON)
         std::vector<pv::ShortHorizontalLine> ret((NoInitializeAllocator<pv::ShortHorizontalLine>()));
         ret.resize(lines.size());
@@ -1071,7 +1074,7 @@ std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(InputInfo input, Outp
             return _threshold<output, method>(*this, value, background);
         });
     }
-    
+
     std::tuple<Vec2, Image::Ptr> Blob::gray_image(const cmn::Background* background, const Bounds& restricted, uchar padding) const {
         Bounds b(bounds().pos() - float(padding), bounds().size() + float(padding) * 2);
         if(background)

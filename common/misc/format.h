@@ -863,7 +863,7 @@ void set_log_file(const std::string&);
 bool has_log_file();
 #endif
 
-void log_to_terminal(const std::string&, bool force_display = false);
+void log_to_terminal(const std::string&, bool force_display = false, bool newline = true);
 void log_to_callback(const std::string&, PrefixLiterals::Prefix = PrefixLiterals::Prefix::INFO, bool force = false);
 void set_runtime_quiet(bool);
 void* set_debug_callback(std::function<void(PrefixLiterals::Prefix, const std::string&, bool)>);
@@ -908,6 +908,30 @@ void Print(const Args & ... args) {
         str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
             + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
             + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>";
+        write_log_message(str);
+    }
+#endif
+    if (has_log_callback())
+        log_to_callback(format<FormatterType::NONE>(args...));
+}
+
+template<typename... Args>
+void NoNLPrint(const Args & ... args) {
+    static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
+    
+    auto str =
+        console_color<bracket_color, FormatterType::UNIX>( "[" )
+        + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
+        + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
+        + format<FormatterType::UNIX>(args...);
+    
+    log_to_terminal(str, false, false);
+
+#if COMMONS_FORMAT_LOG_TO_FILE
+    if (has_log_file()) {
+        str = console_color<bracket_color, FormatterType::HTML>("[")
+            + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...);
         write_log_message(str);
     }
 #endif
