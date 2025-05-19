@@ -7,7 +7,7 @@ namespace cmn::file {
 std::string sanitize_filename(const std::string& s) {
     std::ostringstream os;
     for (char c : s) {
-        if (std::isalnum(c) || c == '-' || c == '_' || c == '.') {
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == ' ') {
             os << c;
         }
     }

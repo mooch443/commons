@@ -14,7 +14,6 @@
 
 namespace cmn {
 
-gpuMat gpu_dilation_element;
 std::shared_mutex mutex;
 
 GenericThreadPool _contour_pool(5, "contour_pool");
@@ -273,6 +272,8 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     static bool use_adaptive_threshold = false;
     static int32_t dilation_size = 0;
     static bool tags_enable = false, image_invert = false;
+    static bool tags_equalize_hist = false;
+    static int tags_threshold = 15;
     
     std::call_once(registered_callback, [](){
         static const auto callback = [](std::string_view key) {
@@ -299,6 +300,10 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 image_invert = value.template value<bool>();
             else if (key == "tags_enable")
                 tags_enable = value.template value<bool>();
+            else if (key == "tags_equalize_hist")
+                tags_equalize_hist = value.template value<bool>();
+            else if (key == "tags_threshold")
+                tags_threshold = value.template value<int>();
         };
         
         GlobalSettings::map().register_callbacks({
@@ -312,7 +317,9 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
             "use_adaptive_threshold",
             "dilation_size",
             "image_invert",
-            "tags_enable"
+            "tags_enable",
+            "tags_equalize_hist",
+            "tags_threshold"
             
         }, callback);
     });
@@ -406,8 +413,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         }
         
         if (dilation_size != 0) {
-            static std::once_flag flag;
-            std::call_once(flag, []() {
+            std::call_once(dilation_flag, [this]() {
                 const cv::Mat element = cv::Mat::ones(abs(dilation_size), abs(dilation_size), CV_8UC1);
                 element.copyTo(gpu_dilation_element);
             });
@@ -428,13 +434,15 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         //      2. dilate + erode
         //      3. use dilation flag
         if (use_closing) {
-            static gpuMat closing_element;
-            static std::once_flag flag;
+            if(_last_morph_size != closing_size) {
+                morph_flag = std::make_unique<std::once_flag>();
+            }
             
-            std::call_once(flag, []() {
+            std::call_once(*morph_flag, [this]() {
                 const int morph_size = closing_size;
                 const cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2 * morph_size + 1, 2 * morph_size + 1), cv::Point(morph_size, morph_size));
                 element.copyTo(closing_element);
+                _last_morph_size = closing_size;
             });
             
             if (use_adaptive_threshold) {
@@ -616,9 +624,6 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 FormatWarning("OUTPUT != input: ", Size2(input.cols, input.rows), " OUTPUT: ", Size2(OUTPUT->cols, OUTPUT->rows));
             CALLCV(cv::subtract(*_average, input, *OUTPUT));
         }
-
-        static const auto tags_equalize_hist = SETTING(tags_equalize_hist).value<bool>();
-        static const auto tags_threshold = SETTING(tags_threshold).value<int>();
         
         // BIT: tags_equalize_hist
         // Will stretch the histogram of the tag difference image so that

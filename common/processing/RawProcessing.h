@@ -32,6 +32,14 @@ class cmn::RawProcessing {
     const gpuMat* _average;
     const gpuMat* _float_average;
     
+    gpuMat gpu_dilation_element;
+    
+    gpuMat closing_element;
+    std::unique_ptr<std::once_flag> morph_flag{new std::once_flag};
+    std::once_flag dilation_flag;
+    
+    int _last_morph_size{-1};
+    
     //const LuminanceGrid *_grid;
     //gpuMat _binary;
     //gpuMat _difference;
