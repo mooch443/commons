@@ -18,7 +18,7 @@ struct CTimer {
         uint64_t samples{0};
         
         std::string toStr() const {
-            return dec<4>(count / double(samples) * 1000).toStr()+"ms total = "+ dec<4>(count).toStr()+"s";
+            return cmn::dec<4>(count / double(samples) * 1000).toStr()+"ms total = "+ cmn::dec<4>(count).toStr()+"s";
         }
     };
     
@@ -35,7 +35,7 @@ struct CTimer {
         field.samples++;
         
         if(field.samples % 10000 == 0) {
-            Print("! [", _name, "] ", field);
+            cmn::Print("! [", _name, "] ", field);
             field.count /= double(field.samples);
             field.samples = 1;
         }

@@ -160,6 +160,9 @@ void Blob::calculate_moments() {
 
     _properties.center = Vec2(_moments.m[1][0] / _moments.m[0][0],
                               _moments.m[0][1] / _moments.m[0][0]);
+    
+    assert(not cmn::isnan(_properties.center.x)
+           && not cmn::isnan(_properties.center.y));
 
     // Parallel processing of the second loop
     distribute_indexes([&](auto, auto start, auto end, int64_t thread_index) {
