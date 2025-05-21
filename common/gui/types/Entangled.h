@@ -6,6 +6,10 @@
 //#include <set>
 #include <misc/ranges.h>
 
+#ifdef NDEBUG
+//#define COMMONS_COUNT_ITERATIONS true
+#endif
+
 namespace cmn::gui {
     struct Margin {
         //float left, top,

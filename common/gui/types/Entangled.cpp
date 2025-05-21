@@ -369,7 +369,7 @@ bool Entangled::is_animating() noexcept {
 }
 
 void Entangled::before_draw() {
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
     static size_t iterations{0};
     static Timer last_print;
         
@@ -391,7 +391,7 @@ void Entangled::before_draw() {
     else if(_content_changed_while_updating)
         set_dirty();
     
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
     if(last_print.elapsed() > 10) {
         Print("Iterations[Entangled::before_draw] = ", iterations);
         last_print.reset();
@@ -400,7 +400,7 @@ void Entangled::before_draw() {
 }
     
 void SectionInterface::before_draw() {
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
     static size_t iterations{0}, processed_objects{0}, Nsamples{0};
     static Timer last_print;
 #endif
@@ -415,7 +415,7 @@ void SectionInterface::before_draw() {
             auto ptr = q.front();
             q.pop();
             
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
             ++iterations;
 #endif
             ptr->_has_children_rect_changed = true;
@@ -441,7 +441,7 @@ void SectionInterface::before_draw() {
             r->_has_children_rect_changed = false;
         }
         
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
         processed_objects += reset.size();
         ++Nsamples;
         if(last_print.elapsed() > 10) {
@@ -470,7 +470,7 @@ void SectionInterface::children_rect_changed() {
     if(_has_children_rect_changed)
         return;
     
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
     static size_t iterations{0};
     static Timer last_print;
 #endif
@@ -481,7 +481,7 @@ void SectionInterface::children_rect_changed() {
     //if(_background)
     //    _background->set_bounds_changed();
     
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_ITERATIONS
     if(last_print.elapsed() > 10) {
         Print("Iterations[children_rect_changed] = ", iterations);
         last_print.reset();

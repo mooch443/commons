@@ -9,6 +9,11 @@
 #include <gui/types/Drawable.h>
 #endif
 
+#ifdef NDEBUG
+//#define COMMONS_SHOW_RESOLUTION_CHANGES true
+//#define COMMONS_COUNT_OBJECTS true
+#endif
+
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/fetch.h>
 #endif
@@ -67,7 +72,7 @@ namespace cmn::gui {
         GETTER_I(bool, focussed, true);
         std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_OBJECTS
         std::unordered_map<Type::Class, size_t> _type_counts;
 #endif
         Timer _last_debug_print;

@@ -467,7 +467,7 @@ GLFWmonitor* get_monitor_for(GLFWwindow* window) {
                 continue;
             
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
-#ifndef NDEBUG
+#ifdef COMMONS_SHOW_RESOLUTION_CHANGES
             auto name = glfwGetMonitorName(monitors[i]);
             Print("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
 #endif
@@ -610,7 +610,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     xscale = yscale = emscripten_get_device_pixel_ratio();
 #endif
 
-#ifndef NDEBUG
+#ifdef COMMONS_SHOW_RESOLUTION_CHANGES
     Print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
 #endif
     
@@ -1117,7 +1117,7 @@ void IMGUIBase::process_main_queue() {
             && (size.width * _dpi_scale != _last_framebuffer_size.width 
                 || size.height * _dpi_scale != _last_framebuffer_size.height))
         {
-#ifndef NDEBUG
+#ifdef COMMONS_SHOW_RESOLUTION_CHANGES
             //Print("Changed framebuffer size to ", fw,"x",fh);
 #endif
             _last_framebuffer_size = size.mul(_dpi_scale);
@@ -1149,7 +1149,7 @@ void IMGUIBase::process_main_queue() {
         auto objects = s.collect();
         _objects_drawn = 0;
         _skipped = 0;
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_OBJECTS
         _type_counts.clear();
 #endif
         _draw_order.clear();
@@ -1172,7 +1172,7 @@ void IMGUIBase::process_main_queue() {
             draw_element(order);
         }
         
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_OBJECTS
         if(_last_debug_print.elapsed() > 60) {
             auto str = Meta::toStr(_type_counts);
             Print(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
@@ -1893,7 +1893,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         } else
         
         o->set_was_visible(true);
-#ifndef NDEBUG
+#ifdef COMMONS_COUNT_OBJECTS
         ++_type_counts[o->type()];
 #endif
         
