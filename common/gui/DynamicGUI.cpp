@@ -325,6 +325,19 @@ void Context::init() const {
                 }
                 return ss.str();
             }),
+            VarFunc("concat", [](const VarProps& props) -> std::vector<std::string> {
+                REQUIRE_AT_LEAST(2, props);
+                
+                std::vector<std::string> combination;
+                for(auto &p : props.parameters) {
+                    auto parts = Meta::fromStr<std::vector<std::string>>(p);
+                    combination.insert(combination.end(),
+                                        std::make_move_iterator(parts.begin()),
+                                        std::make_move_iterator(parts.end()));
+                }
+                
+                return combination;
+            }),
             VarFunc("for", [this](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 
