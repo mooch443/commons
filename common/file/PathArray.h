@@ -520,7 +520,57 @@ public:
 // Alias for production code
 using PathArray = _PathArray<>;
 
-std::string sanitize_filename(const std::string& s);
+namespace detail {
+    [[nodiscard]] inline constexpr bool is_ascii_alnum(char c) noexcept
+    {
+        return  ('0' <= c && c <= '9') ||
+            ('A' <= c && c <= 'Z') ||
+            ('a' <= c && c <= 'z');
+    }
+
+    [[nodiscard]] inline constexpr bool is_allowed(char c) noexcept
+    {
+        return is_ascii_alnum(c) || c == '-' || c == '_' || c == '.';
+    }
+}
+
+template<utils::StringLike Str>
+[[nodiscard]] constexpr inline std::string sanitize_filename(Str&& in)
+{
+    std::string_view src{ std::forward<Str>(in) };
+    std::string      out;
+    out.reserve(src.size());        // <= 1 allocation (ignored in const-expr)
+
+    bool have_output = false;     // have we emitted any non-space yet?
+    bool pending_space = false;     // one space waiting to be flushed
+
+    for (char c : src)
+    {
+        // drop everything we never allow
+        if (!(detail::is_allowed(c) || c == ' '))
+            continue;
+
+        if (c == ' ')
+        {
+            if (!have_output)       // still in leading spaces: skip
+                continue;
+            pending_space = true;   // might become an inner space
+            continue;
+        }
+
+        // flush exactly one queued space (if it was inner)
+        if (pending_space)
+        {
+            out.push_back(' ');
+            pending_space = false;
+        }
+        out.push_back(c);
+        have_output = true;
+    }
+    // any space still pending here was trailing -> discard it
+    return out;
+}
+
 std::string find_basename(const file::PathArray& pathArray);
 std::optional<file::Path> find_parent(const file::PathArray& pathArray);
 

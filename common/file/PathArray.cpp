@@ -4,16 +4,7 @@
 #include <cctype>
 
 namespace cmn::file {
-std::string sanitize_filename(const std::string& s) {
-    std::ostringstream os;
-    for (char c : s) {
-        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == ' ') {
-            os << c;
-        }
-    }
-    return os.str();
-}
-
+    
 std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
     auto& paths = pathArray.get_paths();
     
