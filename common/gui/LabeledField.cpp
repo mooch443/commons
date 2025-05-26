@@ -799,7 +799,7 @@ void LabeledPathArray::updateStaticText(const std::vector<file::Path>& matches) 
     if (matches.empty()) {
         _dropdown->preview()->set_txt("No matches found");
     } else {
-        _dropdown->preview()->set_txt(settings::htmlify( Meta::toStr(matches) ));
+        _dropdown->preview()->set_txt(settings::htmlify( utils::find_replace( Meta::toStr(matches), "\"", "" ) ));
     }
 }
 

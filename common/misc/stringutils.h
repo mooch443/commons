@@ -496,8 +496,6 @@ std::vector<int> text_search(const std::string &search_text, const std::vector<s
 
 namespace cmn::utils {
 
-std::string read_file(const std::string& filename);
-
 template<cmn::utils::StringLike Str>
 std::string strip_html(const Str& input);
 

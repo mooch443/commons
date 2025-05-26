@@ -134,10 +134,6 @@ _split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = f
     std::vector<std::basic_string_view<typename std::wstring::value_type>> split(std::wstring& s, char c, bool skip_empty, bool trim) {
         return _split_with_reserve<std::wstring>(s, c, skip_empty, trim);
     }
-
-    std::string read_file(const std::string& filename) {
-        return cmn::file::Path(filename).read_file();
-    }
 }
 
 static inline constexpr std::size_t InvalidMultibyteSequence = static_cast<std::size_t>(-1);

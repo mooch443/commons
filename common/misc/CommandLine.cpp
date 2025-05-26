@@ -131,6 +131,16 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
     void CommandLine::load_settings(const sprite::Map* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
         if(not map)
             map = &GlobalSettings::map();
+        
+        auto keys = GlobalSettings::map().keys();
+        for(auto it = _options.begin(); it != _options.end();) {
+            auto &option = *it;
+            if(contains(keys, utils::lowercase(option.name))) {
+                _settings.push_back(option);
+                it = _options.erase(it);
+            } else
+                ++it;
+        }
             
         for(auto &s : _settings) {
             if(contains(exclude, s.name))

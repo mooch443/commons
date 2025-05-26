@@ -59,7 +59,7 @@ void GenericVideo::processImage(const gpuMat& display, gpuMat&out, bool do_mask)
     timing.start_measure();
     
     gpuMat use;
-    assert(display.channels() == 1);
+    assert(is_in(display.channels(), 1, 3));
     use = display;
     
     if (has_mask() && do_mask) {
