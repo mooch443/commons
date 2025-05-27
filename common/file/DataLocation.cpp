@@ -39,7 +39,9 @@ void DataLocation::register_path(std::string purpose, std::function<file::Path (
         throw U_EXCEPTION("Purpose ",purpose," already found in map with keys ",extract_keys(ptr->location_funcs),". Cannot register twice.");
     }
     
+#ifndef NDEBUG
     Print("Registering purpose ", purpose);
+#endif
     ptr->location_funcs.insert({purpose, fn});
 }
 
@@ -53,7 +55,9 @@ void DataLocation::replace_path(std::string purpose, std::function<file::Path (c
     if(it != ptr->location_funcs.end())
         ptr->location_funcs.erase(it);
     
+#ifndef NDEBUG
     Print("Replacing purpose ", purpose);
+#endif
     ptr->location_funcs.insert({purpose, fn});
 }
 

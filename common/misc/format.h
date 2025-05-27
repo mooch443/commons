@@ -939,7 +939,7 @@ void NoNLPrint(const Args & ... args) {
         log_to_callback(format<FormatterType::NONE>(args...));
 }
 
-template<utils::StringLike Prefix, typename... Args>
+template<FormatColor prefix_color = FormatColor::YELLOW, utils::StringLike Prefix, typename... Args>
 void prefixed_print(Prefix&& prefix, const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
     
@@ -947,7 +947,7 @@ void prefixed_print(Prefix&& prefix, const Args & ... args) {
         console_color<bracket_color, FormatterType::UNIX>( "[" )
         + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
         + " "
-        + console_color<FormatColor::YELLOW, FormatterType::UNIX>( prefix )
+        + console_color<prefix_color, FormatterType::UNIX>( prefix )
         + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
         + format<FormatterType::UNIX>(args...);
     
@@ -957,6 +957,8 @@ void prefixed_print(Prefix&& prefix, const Args & ... args) {
     if (has_log_file()) {
         str = "<row>" + console_color<bracket_color, FormatterType::HTML>("[")
             + console_color<FormatColor::CYAN, FormatterType::HTML>(current_time_string())
+            + " "
+            + console_color<prefix_color, FormatterType::HTML>( prefix )
             + console_color<bracket_color, FormatterType::HTML>("] ") + format<FormatterType::HTML>(args...) + "</row>";
         write_log_message(str);
     }

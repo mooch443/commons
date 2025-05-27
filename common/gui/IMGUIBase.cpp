@@ -144,7 +144,7 @@ class PolyCache : public CacheObject {
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
-                    Print("Cannot find GPU texture of ",this);
+                    GUIPrint("Cannot find GPU texture of ",this);
             }
 #endif
             
@@ -469,7 +469,7 @@ GLFWmonitor* get_monitor_for(GLFWwindow* window) {
             glfwGetMonitorWorkarea(monitors[i], &mx, &my, &mw, &mh);
 #ifdef COMMONS_SHOW_RESOLUTION_CHANGES
             auto name = glfwGetMonitorName(monitors[i]);
-            Print("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
+            GUIPrint("Monitor ",name,": ",mx,",",my," ",mw,"x",mh);
 #endif
             if(Bounds(mx+5, my+5, mw-10, mh-10).overlaps(Bounds(x+5, y+5, ws.width-10, ws.height-10))) {
                 monitor = monitors[i];
@@ -479,7 +479,7 @@ GLFWmonitor* get_monitor_for(GLFWwindow* window) {
         
         if(not monitor) {
             // assume fullscreen?
-            Print("No monitor found.");
+            GUIPrint("No monitor found.");
         }
 #endif
     }
@@ -525,7 +525,7 @@ Size2 frame_buffer_scale(GLFWwindow* window, Float2_t r) {
     if (window_size.width > 0 && window_size.height > 0)
         DisplayFramebufferScale = fb.div(window_size);
 
-    //Print("Size: ", DisplaySize, " Scale: ", DisplayFramebufferScale);
+    //GUIPrint("Size: ", DisplaySize, " Scale: ", DisplayFramebufferScale);
     return window_size;
 }
 
@@ -578,14 +578,14 @@ void IMGUIBase::center(const Size2 &size) {
 #if !defined(__APPLE__)
     offset = 0;
 #endif
-    Print("Calculated bounds = ", bounds, " from window size = ", window_size, " and work area = ", work_area, " with offset = ", offset);
     bounds.restrict_to(Bounds(work_area.size()));
     bounds << Vec2(work_area.width / 2 - bounds.width / 2,
                     work_area.height / 2 - bounds.height / 2 + offset);
     bounds.restrict_to(Bounds(work_area.size()));
-    Print("Restricting bounds to work area: ", work_area, " -> ", bounds);
-
-    Print("setting bounds = ", bounds);
+#ifndef NDEBUG
+    GUIPrint("Restricting bounds to work area: ", work_area, " -> ", bounds);
+#endif
+    GUIPrint("Bounds", bounds, " from window size", window_size, " and work area", work_area, " with offset: ", offset, " and dpi: ", _dpi_scale);
     //window()->set_window_size(window_size);
     set_window_bounds(bounds);
 }
@@ -611,7 +611,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #endif
 
 #ifdef COMMONS_SHOW_RESOLUTION_CHANGES
-    Print("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
+    GUIPrint("Content scale: ", xscale,"x",yscale, " monitor = ", base->_work_area);
 #endif
     
     Float2_t dpi_scale = 1 / Float2_t(max(xscale, yscale));//max(float(fw) / float(width), float(fh) / float(height));
@@ -695,7 +695,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 #if defined(__EMSCRIPTEN__)
         width = canvas_get_width();
         height = canvas_get_height();
-        Print("Canvas size: ", width, " ", height);
+        GUIPrint("Canvas size: ", width, " ", height);
 #endif
 
 #ifdef WIN32
@@ -716,8 +716,33 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         }
         
         base_pointers[_platform->window_handle()] = this;
+        
+        Float2_t dpi_scale = 1 / Float2_t(max(xscale, yscale));
+        //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
+#if defined(__EMSCRIPTEN__)
+        //GUIPrint("dpi:",emscripten_get_device_pixel_ratio());
+        dpi_scale = 0.5;
+        //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
+        //io.FontGlobalScale = 1.f / dpi_scale;
+#endif
+        im_font_scale = max(1, dpi_scale) * 0.75_F;
+        _dpi_scale = dpi_scale;
         center({});
 
+        //io.FontAllowUserScaling = true;
+        //io.WantCaptureMouse = false;
+        //io.WantCaptureKeyboard = false;
+        
+        int fw, fh;
+        //glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
+        //auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
+
+        auto fb = get_frame_buffer_size(_platform->window_handle(), 1);
+        fw = fb.width;
+        fh = fb.height;
+        set_last_framebuffer(Size2(fw, fh));
+        //_last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
+        
         glfwSetDropCallback(_platform->window_handle(), [](GLFWwindow* window, int N, const char** texts){
             std::vector<file::Path> _paths;
             for(int i=0; i<N; ++i)
@@ -742,32 +767,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             FormatExcept("Cannot find file ",path.str(),"");
         
         auto& io = ImGui::GetIO();
-        //io.FontAllowUserScaling = true;
-        //io.WantCaptureMouse = false;
-        //io.WantCaptureKeyboard = false;
-        
-        
-        const Float2_t base_scale = 32;
-        //float dpi_scale = max(float(fw) / float(width), float(fh) / float(height));
-        Float2_t dpi_scale = 1 / Float2_t(max(xscale, yscale));
-#if defined(__EMSCRIPTEN__)
-        //Print("dpi:",emscripten_get_device_pixel_ratio());
-        dpi_scale = 0.5;
-        //io.DisplayFramebufferScale = { dpi_scale, dpi_scale };
-        //io.FontGlobalScale = 1.f / dpi_scale;
-#endif
-        im_font_scale = max(1, dpi_scale) * 0.75_F;
-        _dpi_scale = dpi_scale;
-        
-        int fw, fh;
-        //glfwGetFramebufferSize(_platform->window_handle(), &fw, &fh);
-        //auto fb = get_frame_buffer_size(_platform->window_handle(), get_scale_multiplier());
-
-        auto fb = get_frame_buffer_size(_platform->window_handle(), 1);
-        fw = fb.width;
-        fh = fb.height;
-        set_last_framebuffer(Size2(fw, fh));
-        //_last_framebuffer_size = Size2(fw, fh);//.mul(_dpi_scale);
+        const Float2_t base_font_scale = 32;
         
         if (!soft) {
             io.Fonts->Clear();
@@ -785,7 +785,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     config.MergeMode = false;
                 auto full = path.str() + suffix + ".ttf";
 #if defined(__EMSCRIPTEN__)
-                Print("Loading font...");
+                GUIPrint("Loading font...");
                 auto ptr = io.Fonts->AddFontFromMemoryTTF((void*)font_data.data(), font_data.size() * sizeof(decltype(font_data)::value_type), base_scale * im_font_scale * scale, &config);
 #else
                 static const ImWchar all_ranges[] = {
@@ -824,7 +824,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     0x0
                 };
 
-                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_scale * im_font_scale * scale, &config, all_ranges); //add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
+                auto ptr = io.Fonts->AddFontFromFileTTF(full.c_str(), base_font_scale * im_font_scale * scale, &config, all_ranges); //add_all_ranges ? all_ranges : io.Fonts->GetGlyphRangesCyrillic());
 #endif
                 if (!ptr) {
                     FormatWarning("Cannot load font ", path.str()," with index ",config.FontNo,". {CWD=", file::cwd(),"}");
@@ -832,7 +832,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     im_font_scale = max(1, dpi_scale) * 0.5_F;
                 }
                 //ptr->Sources->GlyphOffset = ImVec2(1,0);
-                ptr->FontSize = base_scale * im_font_scale * scale;
+                ptr->FontSize = base_font_scale * im_font_scale * scale;
 
                 return ptr;
             };
@@ -967,8 +967,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
         exec_main_queue([window = _platform->window_handle()](){
             IMGUIBase::update_size_scale(window);
         });
-
-        Print("IMGUIBase::init complete");
+        
+#ifndef NDEBUG
+        GUIPrint("IMGUIBase::init complete");
+#endif
     }
 
 void IMGUIBase::process_main_queue() {
@@ -1175,7 +1177,7 @@ void IMGUIBase::process_main_queue() {
 #ifdef COMMONS_COUNT_OBJECTS
         if(_last_debug_print.elapsed() > 60) {
             auto str = Meta::toStr(_type_counts);
-            Print(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
+            GUIPrint(_objects_drawn," drawn, ",_skipped,"skipped, types: ",str);
             _last_debug_print.reset();
         }
 #endif
@@ -1584,7 +1586,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 //t = t.combine(order.transform);
                 
                 Vec2 prev{t.transformPoint(ptr->relative()->back())};
-                const size_t N = ptr->relative()->size();
+                //const size_t N = ptr->relative()->size();
                 for(auto &pt : *ptr->relative()) {
                     auto cvt = t.transformPoint(pt);
                     //if(N <= 100 || sqdistance(cvt, prev) > SQR(5))
@@ -1710,7 +1712,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             tex_cache->set_changed(false);
             
             ImU32 col = IM_COL32_WHITE;
-            uchar a = static_cast<ExternalImage*>(o)->color().a;
+            //uchar a = static_cast<ExternalImage*>(o)->color().a;
             if(static_cast<ExternalImage*>(o)->color() != Transparent && static_cast<ExternalImage*>(o)->color() != White)
                 col = (ImColor)static_cast<ExternalImage*>(o)->color();
             
@@ -2078,7 +2080,7 @@ Size2 IMGUIBase::real_dimensions() {
     Event IMGUIBase::toggle_fullscreen(DrawStructure &graph) {
         static int _wndPos[2];
         
-        Print("Enabling full-screen.");
+        GUIPrint("Enabling full-screen.");
         _platform->toggle_full_screen();
         
         Event event(WINDOW_RESIZED);

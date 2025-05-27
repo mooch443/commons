@@ -44,6 +44,8 @@ namespace cmn::gui {
 #pragma clang diagnostic pop
 #endif
 
+#define GUIPrint(...) prefixed_print<FormatColor::GRAY>("GUI", __VA_ARGS__ )
+
     class IMGUIBase : public Base {
     protected:
         struct baseFunctor {

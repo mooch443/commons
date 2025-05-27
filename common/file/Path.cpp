@@ -765,7 +765,7 @@ Path Path::absolute() const {
 #else
         if (!chdir(path.c_str()))
 #endif
-            Print("Changed directory to ", path," (", path.absolute(), ").");
+            Print(" * cwd -> ", path.absolute());
         else {
             FormatError("Cannot change directory to ",path,". ");
         }
