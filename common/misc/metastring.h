@@ -673,7 +673,7 @@ auto truncate(const Str& str) {
         std::string_view trimmed = utils::trim(sv.substr(1, sv.size() - 2));
 
         if constexpr (std::is_rvalue_reference_v<Str&&>
-                      || (std::is_lvalue_reference_v<Str> && std::is_const_v<std::remove_reference_t<Str>>)) 
+                      || (std::is_lvalue_reference_v<Str> && std::is_const_v<std::remove_reference_t<Str>>))
         {
             if constexpr (std::is_same_v<StrDecayed, std::string>) {
                 return std::string(trimmed);
@@ -781,7 +781,7 @@ inline std::string name<std::invalid_argument>() {
     return "invalid_argument";
 }
 
-template<> 
+template<>
 inline std::string name<illegal_syntax>() {
     return "illegal_syntax";
 }
@@ -894,7 +894,7 @@ std::string name() {
     
 template< template < typename...> class Tuple, typename ...Ts >
 std::string tuple_name (Tuple< Ts... >&& tuple)
-{        
+{
     std::stringstream ss;
     ss << "tuple<";
     std::apply([&](auto&&... args) {
@@ -908,7 +908,7 @@ std::string tuple_name (Tuple< Ts... >&& tuple)
     
 template<class Q>
     requires (is_instantiation<std::tuple, Q>::value)
-std::string name() { 
+std::string name() {
     return tuple_name(Q{});
 }
 
@@ -964,14 +964,25 @@ std::string name() {
 template<class Q>
     requires (not is_map<Q>::value && (is_container<Q>::value || is_set<Q>::value || is_deque<Q>::value))
 std::string toStr(const Q& obj) {
-    std::stringstream ss;
-    auto start = obj.begin(), end = obj.end();
-    for(auto it=start; it != end; ++it) {
-        if(it != start)
-            ss << ",";
-        ss << Meta::toStr(*it);
+    std::string out;
+
+    // Reserve some capacity if the container exposes size()
+    if constexpr (requires(const Q& c) { c.size(); }) {
+        out.reserve(obj.size() * 4 + 2);       // heuristic: average 4 bytes per element
     }
-    return "[" + ss.str() + "]";
+    
+    bool first = true;
+    out.push_back('[');
+
+    for (const auto& elem : obj) {
+        if (!first)
+            out.push_back(',');
+        first = false;
+        out += Meta::toStr(elem);
+    }
+
+    out.push_back(']');
+    return out;
 }
     
 template<class Q>
@@ -1078,8 +1089,8 @@ std::string toStr(const Q& obj) {
     return "ptr<"+K::class_name() + ">" + (obj == nullptr ? "null" : Meta::toStr<K>(*obj));
 }
 
-template<class Q, 
-    class C = typename std::remove_reference<Q>::type, 
+template<class Q,
+    class C = typename std::remove_reference<Q>::type,
     class K = typename std::remove_pointer<C>::type>
   requires _is_dumb_pointer<C> && _has_class_name<K> && _has_tostr_method<K>
 std::string toStr(C obj) {
@@ -1173,7 +1184,7 @@ std::string toStr(const Q& obj)
     * Invalid values will throw exceptions.
     */
 template<class Q>
-    requires std::signed_integral<typename std::remove_cv<Q>::type> 
+    requires std::signed_integral<typename std::remove_cv<Q>::type>
              && (!_clean_same<bool, Q>)
 Q fromStr(const std::string& str)
 {
@@ -1182,7 +1193,7 @@ Q fromStr(const std::string& str)
     return Q(std::stoll(str));
 }
 template<class Q>
-    requires std::unsigned_integral<typename std::remove_cv<Q>::type> 
+    requires std::unsigned_integral<typename std::remove_cv<Q>::type>
              && (!_clean_same<bool, Q>)
 Q fromStr(const std::string& str)
 {

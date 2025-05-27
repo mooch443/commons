@@ -246,6 +246,9 @@ public:
             for (const auto& path_str : temp_paths) {
                 add_path(path_str);
             }
+        } else if(sv.front() == '\"' && sv.back() == '\"') {
+            /// we are dealing with a single string
+            add_path(Meta::fromStr<std::string>((std::string)sv));
         } else {
             add_path((std::string)sv);
         }
