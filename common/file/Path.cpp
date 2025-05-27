@@ -53,7 +53,7 @@ Path Path::absolute() const {
     }
     
     std::filesystem::path path(_str);
-    path = std::filesystem::canonical(std::filesystem::absolute(path)).string();
+    path = std::filesystem::absolute(path).string();
     _stat_cache.absolute = path.string();
     _stat_cache.update();
     return _stat_cache.absolute.value();
