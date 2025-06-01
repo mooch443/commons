@@ -23,6 +23,7 @@ public:
     ATTRIBUTE_ALIAS(OnEnter_t, VoidFn)
     ATTRIBUTE_ALIAS(OnTextChanged_t, VoidFn)
     ATTRIBUTE_ALIAS(OnTab_t, VoidFn)
+    ATTRIBUTE_ALIAS(OnClearText_t, VoidFn);
     
     struct ReadOnly {
         bool read_only;
@@ -53,6 +54,7 @@ protected:
         OnEnter_t on_enter = nullptr;
         OnTab_t on_tab = nullptr;
         OnTextChanged_t on_text_changed = nullptr;
+        OnClearText_t on_clear = nullptr;
         
         std::string text;
         std::string postfix;
@@ -101,6 +103,7 @@ public:
     void set(OnTextChanged_t change) { on_text_changed(change); }
     void set(Placeholder_t p) { set_placeholder(p); }
     void set(ClearText_t c);
+    void set(OnClearText_t c);
     
 public:
     void set_text_color(const Color& c);

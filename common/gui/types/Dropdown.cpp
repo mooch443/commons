@@ -128,13 +128,21 @@ void Dropdown::init() {
             on_text_changed();
         }));
         
+        _textfield->set(Textfield::OnClearText_t([this]{
+            _set_open(true);
+            if(stage())
+                stage()->select(_textfield.get());
+            if(_on_clear)
+                _on_clear();
+        }));
+        
         _textfield->on_enter([this](){
             if(_on_enter) {
                 _on_enter();
                 return;
             }
             
-            if(!_list.items().empty()) {
+            if(not _list.items().empty()) {
                 if(_closes_after_select) {
                     if (stage())
                         stage()->select(NULL);
@@ -202,6 +210,10 @@ void Dropdown::init() {
             }
         });
     }
+}
+
+void Dropdown::set(Textfield::OnClearText_t c) {
+    _on_clear = c;
 }
 
     Dropdown::~Dropdown() {

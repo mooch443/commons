@@ -574,6 +574,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             if(combo) {
                 auto parm = combo->_combo->parameter();
                 ref->replace_ref(parm);
+                
+                if(obj.contains("cleartext")
+                   && obj.at("cleartext").is_string())
+                {
+                    
+                    combo->set(ClearText_t{ get(std::string(""), "cleartext") });
+                }
             }
         }
         

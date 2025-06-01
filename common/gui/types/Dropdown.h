@@ -138,6 +138,7 @@ namespace cmn::gui {
         GETTER_NCONST(ScrollableList<TextItem>, list);
         std::function<void(RawIndex, const TextItem&)> _on_select;
         Textfield::OnEnter_t _on_enter;
+        Textfield::OnClearText_t _on_clear;
         
         GETTER(std::vector<TextItem>, items);
         std::vector<TextItem> _original_items;
@@ -171,6 +172,8 @@ namespace cmn::gui {
         void set(ListLineClr_t dims) { _list.set(dims); }
         void set(LabelColor_t dims) { _list.set(dims); }
         void set(LabelBorderColor_t dims) { _list.set(dims); }
+        void set(ClearText_t c) { if(_textfield) _textfield->set(c); }
+        void set(Textfield::OnClearText_t);
         void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }
         void set(const std::vector<TextItem>& options) { set_items(options); }
         void set(const std::vector<std::string>& options) { set_items(std::vector<TextItem>(options.begin(), options.end())); }

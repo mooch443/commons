@@ -669,6 +669,8 @@ void Textfield::set_postfix(const std::string &p) {
                     
                     if(_settings.on_text_changed)
                         _settings.on_text_changed();
+                    if(_settings.on_clear)
+                        _settings.on_clear();
                 });
             }
             _clear_button->set(Str{_settings.clear_text.value()});
@@ -744,6 +746,10 @@ void Textfield::set(ClearText_t c) {
     }
     _settings.clear_text = c;
     set_content_changed(true);
+}
+
+void Textfield::set(Textfield::OnClearText_t c) {
+    _settings.on_clear = c;
 }
 
 }

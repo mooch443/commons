@@ -24,12 +24,21 @@ void Combobox::init() {
     _dropdown = new Dropdown(Box(0, 0, 800, 28));
     auto keys = settings_map().keys();
     _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
+    _dropdown->set(Textfield::OnClearText_t([this]{
+        set_content_changed(true);
+        _value = nullptr;
+        update_value();
+    }));
     _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
         auto name = item.name();
         if(settings_map().has(name)) {
             set(ParmName{name});
             if(_settings.on_select)
                 _settings.on_select(ParmName{name});
+        } else {
+            set(ParmName{});
+            if(_settings.on_select)
+                _settings.on_select(ParmName{});
         }
         _dropdown->set_opened(false);
         if(_value) {
@@ -246,6 +255,10 @@ void Combobox::set(attr::Str content) {
 void Combobox::set(Placeholder_t p) {
     if(_dropdown && _dropdown->textfield())
         _dropdown->textfield()->set(p);
+}
+void Combobox::set(ClearText_t c) {
+    if(_dropdown)
+        _dropdown->set(c);
 }
 void Combobox::set(attr::Prefix prefix) {
     if(_settings.prefix != prefix) {
