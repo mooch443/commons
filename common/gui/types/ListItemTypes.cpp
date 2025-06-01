@@ -41,12 +41,15 @@ bool DetailItem::operator!=(const DetailItem& other) const {
 DetailTooltipItem::DetailTooltipItem(const std::string& name,
                                      const std::string& detail,
                                      const std::string& tooltip,
-                                     bool disabled)
-    : _name(name), _detail(detail), _tooltip(tooltip), _disabled(disabled)
-{}
+                                     std::variant<bool, std::string> disabled)
+    : _name(name), _detail(detail), _tooltip(tooltip), _disabled_template(disabled), _disabled(false)
+{
+    if(std::holds_alternative<bool>(_disabled_template))
+        _disabled = std::get<bool>(_disabled_template);
+}
 
 bool DetailTooltipItem::operator!=(const DetailTooltipItem& other) const {
-    return _name != other._name || _detail != other._detail || _tooltip != other._tooltip;
+    return _name != other._name || _detail != other._detail || _tooltip != other._tooltip || _disabled != other._disabled || _disabled_template != other._disabled_template;
 }
 
 }

@@ -537,7 +537,9 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         
         if(item_template.contains("disabled") && item_template["disabled"].is_string()) {
             item.set_disabled(parse_text(item_template["disabled"].get<std::string>(), context, state) == "true");
-        }
+        } else
+            item.set_disabled(false);
+        
         if(item_template.contains("action") && item_template["action"].is_string()) {
             auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
             
@@ -643,6 +645,8 @@ bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure
         i.set_detail(parse_text(i.detail(), context, state));
         i.set_tooltip(parse_text(i.tooltip(), context, state));
         i.set_name(parse_text(i.name(), context, state));
+        if(std::holds_alternative<std::string>(i.disabled_template()))
+            i.set_disabled(Meta::fromStr<bool>(parse_text(std::get<std::string>(i.disabled_template()), context, state)));
     }
     o.to<ScrollableList<DetailTooltipItem>>()->set_items(items);
     return false;

@@ -37,11 +37,11 @@ std::string blob::Prediction::toStr() const {
 }
 
 std::string blob::Pose::Skeleton::toStr() const {
-    return "[" + Meta::toStr(name()) + "," + Meta::toStr(_connections) + "]";
+    return Meta::toStr(_connections);
 }
 
 glz::json_t blob::Pose::Skeleton::to_json() const {
-    return glz::json_t{ name(), cvt2json(connections()) };
+    return cvt2json(connections());
 }
 
 std::string blob::Pose::Skeleton::Connection::toStr() const {
@@ -68,19 +68,59 @@ blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(const
 }
 
 blob::Pose::Skeleton blob::Pose::Skeleton::fromStr(const std::string &str) {
-    auto outer = util::parse_array_parts(util::truncate(str));
-    if(outer.size() < 2)
-        throw InvalidArgumentException("Invalid skeleton string: ", str);
-
-    auto array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
-    return Skeleton(Meta::fromStr<std::string>(outer.at(0)), std::move(array));
+    std::vector<blob::Pose::Skeleton::Connection> array;
+    
+    try {
+        array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(str);
+        
+    } catch(...) {
+        auto outer = util::parse_array_parts(util::truncate(str));
+        if(outer.size() < 2)
+            throw InvalidArgumentException("Invalid skeleton string: ", str);
+        array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
+    }
+    
+    return Skeleton(std::move(array));
 }
 
-void blob::Pose::Skeleton::add(Skeleton && s) {
+glz::json_t blob::Pose::Skeletons::to_json() const {
+    return cvt2json(_skeletons);
+}
+
+std::string blob::Pose::Skeletons::toStr() const {
+    return Meta::toStr(_skeletons);
+}
+
+blob::Pose::Skeletons blob::Pose::Skeletons::fromStr(const std::string& str) {
+    try {
+        return blob::Pose::Skeletons{
+            ._skeletons = Meta::fromStr<std::map<std::string, Skeleton>>(str)
+        };
+        
+    } catch(...) {
+        /// support old format too
+        try {
+            return blob::Pose::Skeletons{
+                ._skeletons = {{"", Meta::fromStr<Skeleton>(str) }}
+            };
+            
+        } catch(...) { }
+        
+        throw;
+    }
+}
+
+std::optional<blob::Pose::Skeleton> blob::Pose::Skeletons::get(const std::string& name) const
+{
+    auto it = _skeletons.find(name);
+    return it != _skeletons.end() ? it->second : std::optional<blob::Pose::Skeleton>{};
+}
+
+/*void blob::Pose::Skeleton::add(Skeleton && s) {
     std::unique_lock guard(_mutex);
     auto name = s.name();
     _registered[name] = std::move(s);
-}
+}*/
 
 blob::Pose::Skeleton blob::Pose::Skeleton::get(const std::string &name) {
     std::unique_lock guard(_mutex);

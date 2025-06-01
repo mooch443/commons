@@ -70,13 +70,16 @@ namespace cmn::gui {
     };
 
     class DetailTooltipItem {
+        using disabled_t = std::variant<bool, std::string>;
+        
         GETTER_SETTER(std::string, name);
         GETTER_SETTER(std::string, detail);
         GETTER_SETTER(std::string, tooltip);
+        GETTER_SETTER(disabled_t, disabled_template);
         GETTER_SETTER(bool, disabled);
         
     public:
-        DetailTooltipItem(const std::string& name = "", const std::string& detail = "", const std::string& tooltip = "", bool disabled = false);
+        DetailTooltipItem(const std::string& name = "", const std::string& detail = "", const std::string& tooltip = "", std::variant<bool, std::string> disabled_template = false);
         virtual ~DetailTooltipItem(){}
         virtual operator std::string() const {
             return _name;

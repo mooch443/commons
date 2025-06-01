@@ -173,23 +173,21 @@ struct Pose {
         static std::mutex _mutex;
         static std::unordered_map<std::string, Skeleton> _registered;
         
-        GETTER(std::string, name);
         GETTER(std::vector<Connection>, connections);
         
     public:
         Skeleton() = default;
-        Skeleton(std::string name, std::vector<Connection>&& connections)
-            : _name(name),
-              _connections(std::move(connections))
+        Skeleton(std::vector<Connection>&& connections)
+            : _connections(std::move(connections))
         {}
 
         std::strong_ordering operator<=>(const Skeleton& other) const {
             // first compare the name, then the connections (manually)
-            auto cmp = _name <=> other._name;
-            if(cmp != 0)
-                return cmp;
+            //auto cmp = _name <=> other._name;
+            //if(cmp != 0)
+            //    return cmp;
             for(size_t i = 0; i < _connections.size(); ++i) {
-                cmp = _connections[i] <=> other._connections[i];
+                auto cmp = _connections[i] <=> other._connections[i];
                 if(cmp != 0)
                     return cmp;
             }
@@ -204,9 +202,30 @@ struct Pose {
         std::string toStr() const;
         glz::json_t to_json() const;
         static std::string class_name() noexcept { return "Skeleton"; }
-        static void add(Skeleton&&);
+        //static void add(Skeleton&&);
         static Skeleton get(const std::string&);
         static bool exists(const std::string& name);
+    };
+    
+    struct Skeletons {
+        std::map<std::string, Skeleton> _skeletons;
+        
+        std::optional<Skeleton> get(const std::string& name) const;
+        
+        std::string toStr() const;
+        glz::json_t to_json() const;
+        static std::string class_name() noexcept { return "Skeletons"; }
+        static Skeletons fromStr(const std::string&);
+        
+        std::strong_ordering operator<=>(const Skeletons& other) const {
+            // first compare the name, then the connections (manually)
+            //auto cmp = _name <=> other._name;
+            //if(cmp != 0)
+            //    return cmp;
+            return _skeletons <=> other._skeletons;
+        }
+        bool operator==(const Skeletons& other) const noexcept = default;
+        bool operator!=(const Skeletons& other) const noexcept = default;
     };
     
     //! coordinates of the bones

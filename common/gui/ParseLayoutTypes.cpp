@@ -850,9 +850,17 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                     auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
                     auto tooltip = item.contains("tooltip") && item["tooltip"].is_string() ? item["tooltip"].get<std::string>() : "";
                     auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
-                    auto disabled = item.contains("disabled") && item["disabled"].is_boolean() ? item["disabled"].get<bool>() : false;
-                    if(item.contains("disabled") && item["disabled"].is_string()) {
-                        disabled = Meta::fromStr<bool>(parse_text(item["disabled"].get<std::string>(), context, state));
+                    std::variant<bool, std::string> disabled;
+                    
+                    if(item.contains("disabled")
+                       && item["disabled"].is_boolean())
+                    {
+                        disabled = item["disabled"].get<bool>();
+                        
+                    } else if(item.contains("disabled")
+                              && item["disabled"].is_string())
+                    {
+                        disabled = item["disabled"].get<std::string>();
                     }
                     
                     actions.push_back(PreAction::fromStr(action));
