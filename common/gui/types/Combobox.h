@@ -39,7 +39,7 @@ protected:
     
     bool _does_not_equal_default{false};
     HorizontalLayout _layout;
-    derived_ptr<Dropdown> _dropdown;
+    GETTER(derived_ptr<Dropdown>, dropdown);
     derived_ptr<Button> _reset_button;
     std::unique_ptr<dyn::LabeledField> _value;
     

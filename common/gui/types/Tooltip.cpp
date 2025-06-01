@@ -1,5 +1,6 @@
 #include "Tooltip.h"
 #include <gui/DrawStructure.h>
+#include <gui/types/Combobox.h>
 
 namespace cmn::gui {
     Tooltip::Tooltip(std::nullptr_t, float max_width) : Tooltip(std::weak_ptr<Drawable>{}, max_width) { }
@@ -81,6 +82,40 @@ namespace cmn::gui {
                   && mp.x - text_dims.width < 10)
         {
             mp.x = text_dims.width + 10;
+        }
+        
+        /// try to optimize tooltip position based on the
+        /// position of the connected object
+        if(auto lock = _other.lock();
+           lock)
+        {
+            auto bds = lock->global_bounds();
+            //bds << bds.pos() + Vec2(bds.size().mul(o));
+            
+            if(auto ptr = dynamic_cast<Combobox*>(lock.get());
+               ptr == nullptr)
+            {
+                if(mp.y >= bds.y && o.y > 0.5) {
+                    mp.y = bds.y;
+                } else if(mp.y <= bds.y + bds.height) {
+                    mp.y = bds.y + bds.height;
+                }
+                
+            } else {
+                if(mp.y >= bds.y
+                   && (not ptr->dropdown()
+                       || ptr->dropdown()->inverted()))
+                {
+                    mp.y = bds.y;
+                }
+                
+                if(mp.y < bds.y + bds.height
+                   && (ptr->dropdown()
+                    && not ptr->dropdown()->inverted()))
+                {
+                    mp.y = bds.y + bds.height;
+                }
+            }
         }
         
         if(!content_changed()) {
