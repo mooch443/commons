@@ -329,9 +329,9 @@ struct is_robin_hood_set<robin_hood::detail::Table<T, S, K, V, Args...>> : publi
 template<typename T>
 concept robin_hood_type = is_robin_hood_map<T>::value || is_robin_hood_set<T>::value;
 
-/// Custom concept to check if a type is either a container or a set.
+/// Custom concept to check if a type is either a container, a set, or an initializer_list.
 template<typename T>
-concept set_or_container = container_type<T> || set_type<T>;
+concept set_or_container = container_type<T> || set_type<T> || std::is_same_v<std::remove_cvref_t<T>, std::initializer_list<typename std::remove_cvref_t<T>::value_type>>;
 
 /// Trait to check if a type is a tuple.
 template <typename T> struct is_tuple : std::false_type {};
