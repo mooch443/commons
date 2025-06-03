@@ -414,7 +414,9 @@ Size2 FfmpegVideoCapture::dimensions() const {
 
 int FfmpegVideoCapture::frame_rate() const {
     if (!is_open()) return -1;
-    if(codecContext->framerate.num <= 0) {
+    if(codecContext->framerate.num <= 0
+        || codecContext->framerate.den <= 0
+        || codecContext->framerate.num / codecContext->framerate.den >= 1000) {
         static constexpr std::string_view msg{"The video-stream does not provide frame-rate information."};
         
         if(formatContext
