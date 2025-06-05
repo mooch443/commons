@@ -58,6 +58,17 @@ Path Path::absolute() const {
     _stat_cache.update();
     return _stat_cache.absolute.value();
 }
+std::optional<Path> Path::canonical() const {
+    try {
+        std::filesystem::path path(_str);
+        return Path(std::filesystem::weakly_canonical(path).string());
+    } catch(const std::exception& ex) {
+#ifndef NDEBUG
+        FormatExcept("Cannot turn ", *this, " into canonical form: ", ex.what());
+#endif
+        return std::nullopt;
+    }
+}
 #else
     std::string getCanonicalPath(const std::string& filePath) {
         std::vector<std::string> pathComponents;

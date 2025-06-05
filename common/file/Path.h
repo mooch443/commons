@@ -204,6 +204,7 @@ public:
     std::string_view extension() const;
     
     [[nodiscard]] file::Path absolute() const;
+    [[nodiscard]] std::optional<file::Path> canonical() const;
     
     explicit operator std::string() const { return str(); }
     std::string toStr() const { return Meta::toStr<std::string>(str()); }
