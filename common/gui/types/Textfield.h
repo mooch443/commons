@@ -23,7 +23,7 @@ public:
     ATTRIBUTE_ALIAS(OnEnter_t, VoidFn)
     ATTRIBUTE_ALIAS(OnTextChanged_t, VoidFn)
     ATTRIBUTE_ALIAS(OnTab_t, VoidFn)
-    ATTRIBUTE_ALIAS(OnClearText_t, VoidFn);
+    ATTRIBUTE_ALIAS(OnClearText_t, VoidFn)
     
     struct ReadOnly {
         bool read_only;
