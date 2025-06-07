@@ -146,7 +146,7 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             if(contains(exclude, s.name))
                 continue;
             
-            std::string value = s.value;
+            std::string value = s.value ? *s.value : "";
             if(value.empty()) {
                 if(map->is_type<bool>(s.name))
                     value = "true"; // by default set option to true if its bool and no value was given

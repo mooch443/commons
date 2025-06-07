@@ -12,7 +12,7 @@ namespace cmn {
     public:
         struct Option {
             std::string name;
-            std::string value;
+            std::optional<std::string> value;
             
             bool operator==(const std::string& other) const {
                 return name == other;

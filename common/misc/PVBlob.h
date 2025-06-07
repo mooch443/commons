@@ -118,6 +118,7 @@ public:
     std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cv::Mat& background) const;
     
     std::unique_ptr<std::vector<uchar>> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const cv::Mat& background) const;
+    static std::unique_ptr<std::vector<uchar>> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const std::vector<cmn::HorizontalLine>&, const cv::Mat& background, std::optional<uint64_t> num_pixels);
     
     bool properties_ready() const { return _properties.ready; }
     
@@ -182,6 +183,7 @@ protected:
 public:
     Blob();
     Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags, cmn::blob::Prediction&& pred);
+    Blob(cmn::blob::line_ptr_t&& lines, uint8_t flags, cmn::blob::Prediction&& pred = {});
     //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
     Blob(const cmn::blob::line_ptr_t::element_type& lines, const cmn::blob::pixel_ptr_t::element_type& pixels, uint8_t flags, cmn::blob::Prediction pred);
     Blob(const cmn::blob::line_ptr_t::element_type& lines, uint8_t flags);
@@ -266,6 +268,7 @@ public:
     void add_offset(const cmn::Vec2& off);
     void scale_coordinates(const cmn::Vec2& scale);
     size_t memory_size() const;
+    [[nodiscard]] bool empty() const;
     
     bool operator!=(const pv::Blob& other) const;
     bool operator==(const pv::Blob& other) const;

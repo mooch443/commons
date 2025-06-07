@@ -711,6 +711,24 @@ pv::BlobPtr CompressedBlob::unpack() const {
         if(is_tag())
             Print("This blob is a tag ", *this);
     }
+
+    Blob::Blob(line_ptr_t&& lines, uint8_t flags, Prediction&& pred)
+        : _hor_lines(std::move(lines)), _pixels(nullptr), _prediction(std::move(pred))
+    {
+    #ifdef _DEBUG_MEMORY
+        std::lock_guard<std::mutex> guard(all_mutex_blob);
+        all_blobs_map[this] = retrieve_stacktrace();
+    #endif
+        
+        if(!_hor_lines)
+            throw U_EXCEPTION("Blob initialized with NULL lines array");
+        
+        init();
+        _flags |= flags;
+        assert(not _pixels || _pixels->size() == channels() * num_pixels());
+        if(is_tag())
+            Print("This blob is a tag ", *this);
+    }
     /*Blob::Blob(const cmn::Blob* blob, pixel_ptr_t&& pixels)
         : Blob(std::make_unique<line_ptr_t::element_type>(*blob->lines()),
                std::move(pixels),
@@ -820,22 +838,40 @@ pv::BlobPtr CompressedBlob::unpack() const {
 
 std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(InputInfo input, OutputInfo output, const cv::Mat& average) const
 {
+    if(empty())
+        return nullptr;
+    return calculate_pixels(input, output, *_hor_lines, average, num_pixels());
+}
+
+std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input, cmn::OutputInfo output, const std::vector<HorizontalLine>& lines, const cv::Mat& average, std::optional<uint64_t> num_pixels)
+{
     assert(input.channels == average.channels());
     
     if(output.encoding == meta_encoding_t::binary)
         return nullptr;
     
     auto res = std::make_unique<std::vector<uchar>>();
-    res->resize(num_pixels() * output.channels);
+    if(not num_pixels) {
+        uint64_t N = 0;
+        for(auto& line : lines) {
+            N += line.length();
+        }
+        num_pixels = N;
+    }
+    
+    res->resize(num_pixels.value() * output.channels);
+    
     auto ptr = res->data();
     
     call_image_mode_function(input, output, [&]<InputInfo input, OutputInfo output, DifferenceMethod>() {
         static_assert(is_in(input.channels, 0, 1, 3), "Only 1 or 3 channels input is supported.");
         static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
         
-        for(auto &hl : *_hor_lines) {
+        for(auto &hl : lines) {
             for (ushort x=hl.x0; x<=hl.x1; ++x, ptr += output.channels) {
                 assert(ptr < res->data() + res->size());
+                if(ptr >= res->data() + res->size())
+                    throw U_EXCEPTION("ptr is larger than ", res->size(),".");
                 auto value = diffable_pixel_value<input, output>(average.ptr(hl.y, x));
                 
                 if constexpr(output.channels == 1) {
@@ -1823,6 +1859,10 @@ void Blob::set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels)
         overall += _hor_lines->size() * sizeof(decltype(_hor_lines)::element_type::value_type);
         return overall;
     }
+
+bool Blob::empty() const {
+    return not _hor_lines || _hor_lines->empty();
+}
     
     std::string Blob::toStr() const {
         return "pv::Blob<" + Meta::toStr(blob_id()) + " " + Meta::toStr(bounds().pos() + bounds().size() * 0.5) + " " + Meta::toStr(_pixels ? _pixels->size() * SQR(setting(cm_per_pixel)) : -1) + ">";
