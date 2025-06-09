@@ -47,6 +47,19 @@ namespace cmn {
         typedef std::unordered_map<std::string, std::string> docs_map_t;
         typedef std::unordered_map<std::string, AccessLevel, MultiStringHash, MultiStringEqual> user_access_map_t;
         
+        /**
+         * Configuration options for loading settings.
+         */
+        struct LoadOptions {
+            sprite::MapSource source = sprite::MapSource("<none>");
+            std::map<std::string, std::string> deprecations;
+            AccessLevel access = AccessLevelType::PUBLIC;
+            bool correct_deprecations = true;
+            std::vector<std::string> exclude = {};
+            sprite::Map* target = nullptr;
+            const sprite::Map* additional = nullptr;
+        };
+        
     private:
         
         /**
@@ -216,13 +229,19 @@ namespace cmn {
          * Loads parameters from a file.
          * @param filename Name of the file
          */
-        static std::map<std::string, std::string> load_from_file(const std::map<std::string, std::string>& deprecations, const std::string& filename, AccessLevel access, const std::vector<std::string>& exclude = {}, sprite::Map* = nullptr, const sprite::Map* additional = nullptr);
+        static std::map<std::string, std::string> load_from_file(
+            const std::string& filename,
+            LoadOptions options
+        );
         
         /**
          * Loads parameters from a string.
          * @param str the string
          */
-        static std::map<std::string, std::string> load_from_string(sprite::MapSource, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string& str, AccessLevel access, bool correct_deprecations = false, const std::vector<std::string>& exclude = {}, const sprite::Map* additional = nullptr);
+        static std::map<std::string, std::string> load_from_string(
+            const std::string& str,
+            LoadOptions options
+        );
 
         /**
          * Returns the current season based on the local date.

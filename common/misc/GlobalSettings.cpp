@@ -196,15 +196,39 @@ bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
  * Loads parameters from a file.
  * @param filename Name of the file
  */
-std::map<std::string, std::string> GlobalSettings::load_from_file(const std::map<std::string, std::string>& deprecations, const std::string &filename, AccessLevel access, const std::vector<std::string>& exclude, sprite::Map* target, const sprite::Map* additional) {
-    return load_from_string(sprite::MapSource{filename}, deprecations, target ? *target : GlobalSettings::map(), utils::read_file(filename), access, false, exclude, additional);
+std::map<std::string, std::string> GlobalSettings::load_from_file(
+    const std::string& filename,
+    LoadOptions options
+) {
+    const auto& fileContent = utils::read_file(filename);
+    if(not options.target)
+        options.target = &GlobalSettings::map();
+    options.source = sprite::MapSource{filename};
+    
+    return load_from_string(
+        fileContent,
+        options
+    );
 }
 
 /**
  * Loads parameters from a string.
  * @param str the string
  */
-std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapSource source, const std::map<std::string, std::string>& deprecations, sprite::Map& map, const std::string &file, AccessLevel access, bool correct_deprecations, const std::vector<std::string>& exclude, const sprite::Map* additional) {
+std::map<std::string, std::string> GlobalSettings::load_from_string(
+    const std::string& file,
+    LoadOptions options
+) {
+    if(not options.target)
+        throw InvalidArgumentException("load_from_string needs a target to write to.");
+    
+    const auto& deprecations = options.deprecations;
+    AccessLevel access = options.access;
+    bool correct_deprecations = options.correct_deprecations;
+    const auto& exclude = options.exclude;
+    const sprite::Map* additional = options.additional;
+    sprite::Map& map = *options.target;
+    
     /*struct G {
         std::string s;
         G(const std::string& name) : s(name) {
@@ -256,7 +280,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(sprite::MapS
                                 additional->at(var).get().copy_to(map);
                                 map[var].get().set_value_from_string(val);
                             } else {
-                                sprite::parse_values(source, map,"{"+var+":"+val+"}");
+                                sprite::parse_values(options.source, map,"{"+var+":"+val+"}");
                             }
                             
                             rejected.insert({var, val});
