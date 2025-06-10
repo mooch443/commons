@@ -1,7 +1,7 @@
 #include "CircularGraph.h"
 #include <misc/Timer.h>
 
-//#define EXPERIMENTAL_FAST_COSINE
+#define EXPERIMENTAL_FAST_COSINE
 #ifdef EXPERIMENTAL_FAST_COSINE
 
 namespace fast {
