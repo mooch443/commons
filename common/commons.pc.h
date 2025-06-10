@@ -213,7 +213,8 @@ public:
 
 #ifndef CMN_WITH_IMGUI_INSTALLED
     #if __has_include ( <imgui.h> )
-    #include <imgui.h>
+        #include <imconfig.h>
+        #include <imgui.h>
         #define CMN_WITH_IMGUI_INSTALLED true
     #else
         #define CMN_WITH_IMGUI_INSTALLED false

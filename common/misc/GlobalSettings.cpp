@@ -211,6 +211,43 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(
     );
 }
 
+bool Deprecations::is_deprecated(std::string_view name) const
+{
+    auto lower = utils::lowercase(name);
+    return deprecations.find(lower) != deprecations.end();
+}
+
+bool Deprecations::correct_deprecation(std::string_view name, std::string_view val, const sprite::Map *additional, sprite::Map &output) const
+{
+    auto lower = utils::lowercase(name);
+    auto it = deprecations.find(lower);
+    if(it == deprecations.end())
+        return false;
+    
+    if(auto& resolution = it->second.replacement;
+       not resolution.has_value())
+    {
+        FormatWarning("Parameter ", lower, " is deprecated and has no replacement.", it->second.has_note() ? " Deprecation note: "+it->second.note.value() : "");
+        
+    } else {
+        if(not output.has(*resolution)
+           && additional
+           && additional->has(*resolution))
+        {
+            additional->at(*resolution).get().copy_to(output);
+        }
+        
+        if(it->second.has_apply()) {
+            it->second.apply_fn(it->second, val, output);
+        } else {
+            auto& obj = output[*resolution].get();
+            obj.set_value_from_string((std::string)val);
+        }
+    }
+    
+    return true;
+}
+
 /**
  * Loads parameters from a string.
  * @param str the string
@@ -257,22 +294,14 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(
                         if(access_level(var) <= access
                            && not contains(exclude, var))
                         {
-                            std::string lower(utils::lowercase(var));
-                            auto it = deprecations.find(lower);
-                            if(it != deprecations.end()) {
-                                if(correct_deprecations) {
-                                    auto& resolution = deprecations.at(lower);
-                                    if(not map.has(resolution)
-                                       && additional
-                                       && additional->has(resolution))
-                                    {
-                                        additional->at(resolution).get().copy_to(map);
-                                    }
-                                    
-                                    auto& obj = map[resolution].get();
-                                    obj.set_value_from_string(val);
-                                }
-                                
+                            if(correct_deprecations
+                               && deprecations.correct_deprecation(var, val, additional, map))
+                            {
+                                /// nothing?
+                            } else if(not correct_deprecations
+                                      && deprecations.is_deprecated(var))
+                            {
+                                /// nothing
                             } else if(map.has(var)) {
                                 auto& obj = map[var].get();
                                 obj.set_value_from_string(val);
@@ -280,21 +309,18 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(
                                 additional->at(var).get().copy_to(map);
                                 map[var].get().set_value_from_string(val);
                             } else {
-                                sprite::parse_values(options.source, map,"{"+var+":"+val+"}");
+                                sprite::parse_values(options.source, map,"{"+var+":"+val+"}", nullptr, {}, {});
                             }
                             
                             rejected.insert({var, val});
                         }
                     }
                 }
-            } catch(const UtilsException& e) {
+            } catch(const std::exception& e) {
                 if(GlobalSettings::is_runtime_quiet())
                 {
                     if(str.length() > 150) {
-                        auto fr = str.substr(0, 50);
-                        auto en = str.substr(str.length() - 50 - 1);
-                        
-                        str = fr + " [...] " + en;
+                        str = utils::ShortenText(str, 150);
                     }
                     Print("Line ", str," cannot be loaded. (",std::string(e.what()),")");
                 }

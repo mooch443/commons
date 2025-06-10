@@ -505,7 +505,7 @@ namespace cmn {
             return INVALID;
         }
         
-        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude, const std::map<std::string, std::string>& deprecations) {
+        std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude, const Deprecations& deprecations) {
             str = utils::trim(str);
             if(str.empty())
                 return {};
@@ -534,14 +534,23 @@ namespace cmn {
                         || (value.front() == '\'' && value.back() == '\'')))
                     value = util::unescape(value.substr(1, value.length()-2u));
 
-                if (deprecations.contains(key)) {
-                    key = deprecations.at(key);
+                /// check if the key is deprecated, and if yes, if the new value
+                /// is part of the exclusions:
+                if(deprecations.is_deprecated(key))
+                {
+                    auto r = deprecations.deprecations.at(utils::lowercase(key)).replacement;
+                    if(r.has_value() && contains(exclude, *r)) {
+                        continue;
+                    }
                 }
-
+                
                 if (contains(exclude, key))
                     continue;
-
-                if(map.has(key)) {
+                
+                if(deprecations.correct_deprecation(key, value, additional, map)) {
+                    /// corrected a deprecation here
+                    
+                } else if(map.has(key)) {
                     // try to set with existing type
                     map[key].get().set_value_from_string(value);
                 } else if(additional && additional->has(key)) {
@@ -612,7 +621,7 @@ namespace cmn {
         
         Map parse_values(sprite::MapSource source, std::string str, const sprite::Map* additional) {
             Map map;
-            parse_values(source, map, str, additional);
+            parse_values(source, map, str, additional, {}, {});
             return map;
         }
     }

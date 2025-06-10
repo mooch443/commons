@@ -341,6 +341,9 @@ template <typename... Ts> struct is_tuple<std::tuple<Ts...>> : std::true_type {}
 template< typename T >
 inline constexpr bool is_tuple_v = is_tuple<T>::value;
 
+template<typename T>
+concept Tuple = is_tuple_v<T>;
+
 template <typename T>
 concept HasNotEqualOperator = requires(T a, T b) {
 { a != b } -> std::same_as<bool>;
