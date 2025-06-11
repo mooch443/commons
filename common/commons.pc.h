@@ -683,18 +683,63 @@ auto insert_sorted(std::vector<T>& vector, const T& element) {
 
 namespace cmn {
 
+/**
+ * @class TrivialOptional
+ * @brief A minimal optional implementation for arithmetic types that uses a reserved invalid value.
+ *
+ * @details
+ * Limitations:
+ * - Only supports arithmetic types (integral and floating-point).
+ * - Uses a sentinel value (e.g., -1 or infinity) which may conflict with valid data values.
+ *
+ * Advantages:
+ * - Zero overhead: occupies the same memory as the underlying type (no extra tag or allocation).
+ * - Trivially copyable and constexpr-friendly.
+ * - Fast operations with no heap allocations or additional flags.
+ *
+ * Use std::optional<T> when:
+ * - You need a robust optional without sentinel collision risks.
+ * - You require full support for all T values, in-place construction, or monadic utilities.
+ */
 enum class TrivialIllegalValueType {
     NegativeOne,
-    Infinity
+    Infinity,
+    Lowest
 };
 
-template<typename Numeric, TrivialIllegalValueType InvalidValueType = std::unsigned_integral<Numeric> ? TrivialIllegalValueType::NegativeOne : TrivialIllegalValueType::Infinity>
+template<typename Numeric,
+         TrivialIllegalValueType InvalidValueType =
+               std::unsigned_integral<Numeric>
+                 ? TrivialIllegalValueType::NegativeOne
+                 : (std::signed_integral<Numeric> || not std::numeric_limits<Numeric>::has_infinity
+                       ? TrivialIllegalValueType::Lowest
+                       : TrivialIllegalValueType::Infinity)>
+    /// TrivialOptional can only be used with integral or floating-point types.
+    requires ((std::integral<Numeric> || std::floating_point<Numeric>) && not std::same_as<Numeric, bool>)
 class TrivialOptional {
-    static_assert(std::is_arithmetic<Numeric>::value, "TrivialOptional can only be used with arithmetic types.");
+public:
+    static_assert(
+        std::unsigned_integral<Numeric>
+        || std::signed_integral<Numeric>
+        || std::floating_point<Numeric>,
+        "TrivialOptional can only be used with integral or floating-point types"
+    );
+    static_assert(
+        InvalidValueType != TrivialIllegalValueType::Infinity
+                  || std::numeric_limits<Numeric>::has_infinity,
+        "Floating-point TrivialOptional requires IEEE-style infinity"
+    );
 
-    static constexpr Numeric InvalidValue = InvalidValueType == TrivialIllegalValueType::NegativeOne
+    static constexpr Numeric InvalidValue =
+        InvalidValueType == TrivialIllegalValueType::NegativeOne
             ? static_cast<Numeric>(-1)
-            : std::numeric_limits<Numeric>::infinity();
+            : (InvalidValueType == TrivialIllegalValueType::Infinity
+                ? std::numeric_limits<Numeric>::infinity()
+                : std::numeric_limits<Numeric>::lowest());
+    
+    static constexpr TrivialIllegalValueType InvalidType = InvalidValueType;
+    
+private:
     Numeric value_{InvalidValue};
 
 public:
@@ -714,6 +759,17 @@ public:
         assert(value != InvalidValue);
         value_ = value;
         return *this;
+    }
+    // Support brace-list assignment: {} resets, {value} assigns that value
+    constexpr TrivialOptional& operator=(std::initializer_list<Numeric> il) noexcept {
+        if (il.size() == 0) {
+            // empty list clears the optional
+            return *this = std::nullopt;
+        } else {
+            // single-element list assigns that value
+            assert(il.size() == 1 && "TrivialOptional initializer-list assignment requires at most one element");
+            return *this = *il.begin();
+        }
     }
     constexpr TrivialOptional& operator=(std::nullopt_t) noexcept {
         value_ = InvalidValue;
