@@ -785,6 +785,31 @@ public:
     std::string toStr() const {
         return has_value() ? std::to_string(value_) : "nullopt";
     }
+    
+    static std::string class_name() {
+        return "TOptional<"+(std::string)typeid(Numeric).name()+">";
+    }
+    
+    glz::json_t to_json() const {
+        return has_value() ? glz::json_t{ value() } : glz::json_t{};
+    }
+    
+    /// we do not have Meta:: available here yet, so we have to go with our manual
+    /// implementation for fromStr
+    static TrivialOptional fromStr(const std::string& str) {
+        if (str == "null")
+            return {};
+        if constexpr (std::is_integral_v<Numeric>) {
+            long long v = std::stoll(str);
+            return TrivialOptional(static_cast<Numeric>(v));
+        } else if constexpr (std::is_floating_point_v<Numeric>) {
+            long double v = std::stold(str);
+            return TrivialOptional(static_cast<Numeric>(v));
+        } else {
+            static_assert(std::is_integral_v<Numeric> || std::is_floating_point_v<Numeric>,
+                          "TrivialOptional::fromStr not implemented for this type");
+        }
+    }
 };
 
 struct timestamp_t {
