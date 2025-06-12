@@ -9,12 +9,21 @@ message(STATUS "hash_map: ${HASH_HDR} ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_m
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
     set(SRCS ${SRCS} gui/MetalImpl.mm)
+    # after add_executable() or target_sources() for your target…
+    set_source_files_properties(
+        gui/MetalImpl.mm
+        PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+    )
 else()
     message(STATUS "Skipping metal implementation")
 endif()
 
 if(APPLE)
    set(SRCS ${SRCS} gui/MacProgressBar.mm)
+   set_source_files_properties(
+        gui/MacProgressBar.mm
+        PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+    )
    message(STATUS "Adding MacProgressBar")
 endif()
 
