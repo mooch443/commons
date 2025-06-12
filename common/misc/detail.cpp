@@ -672,9 +672,11 @@ inline bool try_apply_std_locale(const char* name) noexcept {
 
 // On POSIX: also set LC_ALL so C APIs match.
 inline void apply_c_locale(const char* name) noexcept {
+#ifndef UTF8_LOCALE_WINDOWS
     if (name[0]) {
         ::setenv("LC_ALL", name, /*overwrite*/1);
     }
+#endif
     // else: leave user’s LC_* alone
 }
 
