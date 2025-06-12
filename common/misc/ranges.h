@@ -113,13 +113,13 @@ public:
     constexpr iterator end() { return iterator(num_steps(), this); }
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1920
-    template<typename K, typename V = typename std::enable_if< is_container<K>::value, void >::type>
-    operator K() { return K(begin(), end()); }
+    template<typename K, typename V = typename std::enable_if< is_container<K>::value && not is_initializer_list<K>::value, void >::type>
+    explicit operator K() { return K(begin(), end()); }
 
-    template<typename K, typename V = typename std::enable_if< is_container<K>::value, void >::type>
-    operator K() const { return K(begin(), end()); }
+    template<typename K, typename V = typename std::enable_if< is_container<K>::value && not is_initializer_list<K>::value, void >::type>
+    explicit operator K() const { return K(begin(), end()); }
 #else
-    template<typename K, typename V = typename std::enable_if< is_container<K>::value, void >::type>
+    template<typename K, typename V = typename std::enable_if< is_container<K>::value && not is_initializer_list<K>::value, void >::type>
     operator K() {
         std::vector<T> v;
         v.reserve(size());
@@ -128,7 +128,7 @@ public:
         return v;
     }
 
-    template<typename K, typename V = typename std::enable_if< is_container<K>::value, void >::type>
+    template<typename K, typename V = typename std::enable_if< is_container<K>::value && not is_initializer_list<K>::value, void >::type>
     operator K() const {
         std::vector<T> v;
         v.reserve(size());

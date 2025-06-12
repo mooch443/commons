@@ -2,6 +2,10 @@
 
 namespace cmn {
 
+template<class T> struct is_initializer_list : public std::false_type {};
+template<class T>
+struct is_initializer_list<std::initializer_list<T>> : public std::true_type {};
+
 template<class T> struct is_container : public std::false_type {};
 
 template<class T, class Alloc>
