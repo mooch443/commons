@@ -997,4 +997,20 @@ public:
 };
 
 
+#if defined(_WIN32) || defined(_WIN64)
+    #define UTF8_LOCALE_WINDOWS
+#else
+    #define UTF8_LOCALE_POSIX
+#endif
+
+namespace utf8loc {
+
+    /**
+     * Enable the best-available UTF-8 locale for both C++ std:: and C APIs.
+     * Should be called at the very start of main().
+     */
+    void enable_utf8() noexcept;
+
+} // namespace utf8loc
+
 }

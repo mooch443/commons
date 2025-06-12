@@ -646,4 +646,68 @@ std::string HorizontalLine::toStr() const {
         }
     }*/
 
+
+namespace utf8loc {
+
+// A constexpr list of POSIX locale names to try, in priority order:
+consteval auto candidate_locales() noexcept {
+    return std::array<const char*,3>{
+        "C.UTF-8",  // POSIX-neutral UTF-8
+        "",         // pick up the user’s LANG/LC_* env
+        "en_US.UTF-8"
+    };
+}
+
+// Try to construct & apply `std::locale(name)`. If `name==""` we leave LC_ALL alone.
+inline bool try_apply_std_locale(const char* name) noexcept {
+    try {
+        std::locale loc{name};
+        std::locale::global(loc);
+        return true;
+    }
+    catch(...) {
+        return false;
+    }
+}
+
+// On POSIX: also set LC_ALL so C APIs match.
+inline void apply_c_locale(const char* name) noexcept {
+    if (name[0]) {
+        ::setenv("LC_ALL", name, /*overwrite*/1);
+    }
+    // else: leave user’s LC_* alone
+}
+
+// Public entry point: call at the very top of main().
+void enable_utf8() noexcept {
+#ifdef UTF8_LOCALE_WINDOWS
+    // Let CRT pick up the system’s ANSI code page (UTF-8 if they've opted in)
+    std::setlocale(LC_ALL, "");
+    // If you want to be extra-sure for Windows terminals, you can also:
+    //     UINT cp = GetConsoleOutputCP();
+    //     if (cp != CP_UTF8) SetConsoleOutputCP(CP_UTF8);
+#else
+    bool applied = false;
+    auto locales = candidate_locales();
+    for (auto name : locales) {
+        if (try_apply_std_locale(name)) {
+            apply_c_locale(name);
+            applied = true;
+            break;
+        }
+    }
+    if (!applied) {
+        // absolute fallback to ASCII-only “C”
+        std::locale::global(std::locale("C"));
+        ::setenv("LC_ALL","C",1);
+    }
+#endif
+
+    // Re-imbue the iostreams so they use the new global locale:
+    std::cout.imbue(std::locale());
+    std::cerr.imbue(std::locale());
+}
+
+} // namespace utf8loc
+
 }
