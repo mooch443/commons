@@ -723,7 +723,7 @@ std::optional<Path> Path::canonical() const {
             
         } else {
             if(!delete_file())
-                FormatWarning("Cannot remove file ",str()," from its original location after moving.");
+                FormatWarning("Cannot remove file ",str()," from its original location after moving. This might mean that it has been left there and you will have to empty your temp folder manually.");
             return true;
         }
         
