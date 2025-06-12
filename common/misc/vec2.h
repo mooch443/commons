@@ -6,12 +6,12 @@ namespace cmn {
     using Float2_t = float;
 
     /// a constructor literal for the float2_t type
-    constexpr inline Float2_t operator "" _F(long double value) {
+    constexpr inline Float2_t operator ""_F(long double value) {
         return static_cast<Float2_t>(value);
     }
 
     /// the same but for integer
-    constexpr inline Float2_t operator "" _F(unsigned long long value) {
+    constexpr inline Float2_t operator ""_F(unsigned long long value) {
         return static_cast<Float2_t>(value);
     }
 
