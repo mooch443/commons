@@ -309,7 +309,7 @@ namespace cmn::gui {
                 auto &bin_x = _bin_x.at(i);
                 auto &bin_y = _bin_y.at(i);
                 
-                bin_x = range;
+                bin_x = (std::vector<float>)range;
                 bin_y.resize(bin_x.size());
                 
                 size_t bin = 0, next = 1, end = bin_y.size();
