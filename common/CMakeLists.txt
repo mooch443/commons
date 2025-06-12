@@ -87,9 +87,9 @@ target_link_libraries(commons
 )
 
 option(COMMONS_DONT_USE_PCH OFF)
-if(${CMAKE_VERSION} VERSION_LESS "3.16.0" OR COMMONS_DONT_USE_PCH)
+if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
     message("Please consider to switch to CMake 3.16.0")
-else()
+elseif(NOT COMMONS_DONT_USE_PCH)
     target_precompile_headers(commons
       PUBLIC
         commons.pc.h
