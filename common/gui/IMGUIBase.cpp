@@ -1520,7 +1520,8 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().fill.value()));
                     list->AddRectFilled((ImVec2)transform.transformPoint(Vec2()),
                                         (ImVec2)transform.transformPoint(o->size()),
-                                        cvtClr(ptr->bg().fill.value()));
+                                        cvtClr(ptr->bg().fill.value()),
+                                        2);
                     
                 }
                 type = Type::NONE;
@@ -1532,7 +1533,8 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().line.value()));
                     list->AddRect((ImVec2)transform.transformPoint(Vec2()),
                                   (ImVec2)transform.transformPoint(o->size()),
-                                  cvtClr(ptr->bg().line.value()));
+                                  cvtClr(ptr->bg().line.value()),
+                                  2);
                 }
                 type = Type::NONE;
             }
@@ -1746,16 +1748,20 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             if(rect.size().empty())
                 break;
-            
+            ImDrawFlags flags = ptr->corners().to_imdraw_flags();
             if(ptr->fillclr().a > 0)
                 list->AddRectFilled((ImVec2)transform.transformPoint(Vec2()),
                                     (ImVec2)transform.transformPoint(o->size()),
-                                    cvtClr(ptr->fillclr()));
+                                    cvtClr(ptr->fillclr()),
+                                    ptr->corners().radius,
+                                    flags);
             
             if(ptr->lineclr().a > 0)
                 list->AddRect((ImVec2)transform.transformPoint(Vec2()),
                               (ImVec2)transform.transformPoint(o->size()),
-                              cvtClr(ptr->lineclr()));
+                              cvtClr(ptr->lineclr()),
+                              ptr->corners().radius,
+                              flags);
             
             break;
         }
