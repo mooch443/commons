@@ -7,6 +7,7 @@
 #include <gui/Event.h>
 #include <misc/colors.h>
 #include <gui/ControlsAttributes.h>
+#include <gui/CornerFlags.h>
 
 namespace cmn::gui {
     class Base;
@@ -505,6 +506,7 @@ namespace cmn::gui {
         using Drawable::set;
         virtual void set(FillClr clr);
         virtual void set(LineClr clr);
+        virtual void set(CornerFlags corners);
         virtual void reset_bg();
         
     protected:
@@ -515,6 +517,7 @@ namespace cmn::gui {
         struct SectionBackground {
             std::optional<LineClr> line;
             std::optional<FillClr> fill;
+            CornerFlags flags;
             
             operator bool() const {
                 return line || fill;

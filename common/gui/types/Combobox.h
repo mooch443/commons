@@ -32,6 +32,7 @@ public:
         attr::Str content;
         
         OnSelect_t on_select;
+        CornerFlags corners{};
     };
     
 protected:
@@ -77,6 +78,7 @@ public:
     void set(LabelBorderColor_t clr);
     void set(Placeholder_t);
     void set(ClearText_t);
+    void set(CornerFlags) override;
     
     void set(std::function<void()> on_click) {
         if(on_click)

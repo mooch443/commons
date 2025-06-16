@@ -106,6 +106,8 @@ void Combobox::update_defaults() {
         auto s = _settings.bounds.size();
         _settings.bounds << Size2();
         set_size(s);
+        
+        set(_settings.corners);
     }
 }
 
@@ -220,6 +222,27 @@ void Combobox::set(attr::TextClr clr) {
     }
 }
 
+void Combobox::set(CornerFlags flags) {
+    _settings.corners = flags;
+    
+    if(_value) {
+        auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left());
+        _dropdown->set(left_box);
+        
+        auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
+        if(_reset_button && _does_not_equal_default) {
+            _value->set(CornerFlags(false, false, false, false));
+            _reset_button->set(right_box);
+        } else {
+            _value->set(right_box);
+        }
+    } else {
+        _dropdown->set(flags);
+    }
+    
+    Entangled::set(flags);
+}
+
 void Combobox::set(ListLineClr_t clr) {
     if(_dropdown)
         _dropdown->list().set(clr);
@@ -331,6 +354,7 @@ void Combobox::set_size(const Size2& p) {
 void Combobox::update_value() {
     update_defaults();
     
+    set(_settings.corners);
     if(not _value)
         return;
     

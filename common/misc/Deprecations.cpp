@@ -16,7 +16,7 @@ bool Deprecations::correct_deprecation(std::string_view name, std::string_view v
         return false;
     
     if(auto& resolution = it->second.replacement;
-       not resolution.has_value())
+       not resolution.has_value() || resolution->empty())
     {
         FormatWarning("Parameter ", lower, " is deprecated and has no replacement.", it->second.has_note() ? " Deprecation note: "+it->second.note.value() : "");
         

@@ -264,6 +264,7 @@ protected:
         HPolicy hpolicy{HPolicy::LEFT};
         VPolicy vpolicy{VPolicy::TOP};
         MinCellSize minCellSize;
+        CornerFlags corners{};
         
     } _settings;
     
@@ -312,6 +313,7 @@ public:
     void set(CellFillInterval);
     void set(MinCellSize);
     void set(const std::vector<Layout::Ptr>& objects);
+    void set(CornerFlags) override;
     
     virtual std::string name() const override { return "GridLayout"; }
     

@@ -88,6 +88,7 @@ public:
     Color horizontal_clr;
     Color cellFillClr;
     Color cellLineClr;
+    CornerFlags corners{};
     uint16_t cellFillInterval{1};
     Size2 minCellSize;
     TextClr textClr;

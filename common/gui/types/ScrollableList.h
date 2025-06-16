@@ -427,6 +427,10 @@ namespace cmn::gui {
         }
         
         using Entangled::set;
+        void set(CornerFlags flags) override {
+            _list.set(flags);
+            Entangled::set(flags);
+        }
         void set(const LabelFont_t& font) {
             set_label_font(font);
         }

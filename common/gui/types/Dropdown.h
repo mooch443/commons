@@ -184,6 +184,7 @@ namespace cmn::gui {
         void set(Textfield::OnEnter_t on_enter) {
             _on_enter = on_enter;
         }
+        void set(CornerFlags) override;
         
         void set_bounds(const Bounds& bounds) override;
         void set_size(const Size2& size) override;

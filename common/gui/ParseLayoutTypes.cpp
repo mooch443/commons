@@ -93,6 +93,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     pad = get(_defaults.pad, "pad");
     name = get(std::string(), "name");
     fill = get(_defaults.fill, "fill");
+    corners = get(_defaults.corners, "corners");
     line = get(_defaults.line, "line");
     clickable = get(_defaults.clickable, "clickable");
     max_size = get(_defaults.max_size, "max_size");
@@ -125,6 +126,15 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             LabeledField::delegate_to_proper_type(attr::LineClr{line}, ptr);
         if(fill != Transparent)
             LabeledField::delegate_to_proper_type(attr::FillClr{fill}, ptr);
+    }
+    
+    if(auto pattern = state.get_pattern(hash, "corners");
+       pattern.has_value())
+    {
+        auto str = parse_text(pattern.value()->original, context, state);
+        LabeledField::delegate_to_proper_type(Meta::fromStr<CornerFlags>(str), ptr);
+    } else {
+        LabeledField::delegate_to_proper_type(corners, ptr);
     }
     LabeledField::delegate_to_proper_type(attr::Margins{pad}, ptr);
     LabeledField::delegate_to_proper_type(font, ptr);
@@ -609,6 +619,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         if(max_size != Vec2(0)) ref->set(attr::SizeLimit{max_size});
         ref->set(attr::TextClr{textClr});
         ref->set(attr::HighlightClr{highlight_clr});
+        ref->set(corners);
         
         if (obj.contains("label")) {
             auto &o = obj.at("label");

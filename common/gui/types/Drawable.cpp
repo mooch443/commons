@@ -1134,12 +1134,24 @@ void SectionInterface::set_z_index(int index) {
         clear_cache();
     }
 
+
+
 void SectionInterface::reset_bg() {
     if(_bg) {
         _bg.fill.reset();
         _bg.line.reset();
+        _bg.flags = CornerFlags();
         set_dirty();
     }
+}
+
+void SectionInterface::set(CornerFlags flags) {
+    if(flags == _bg.flags) {
+        return;
+    }
+    
+    _bg.flags = flags;
+    set_dirty();
 }
     
     void SectionInterface::set(LineClr line) {

@@ -766,9 +766,21 @@ void GridLayout::update() {
                     bds << bds.pos() + Vec2(0, margins().y);
                     if(col + 1 < _grid_info.numCols)
                         bds << bds.pos() + Vec2(1,0);
+                    
+                    auto corners = _settings.corners;
+                    if(col != 0 || row != 0)
+                        corners.set(CornerFlags::TopLeft, false);
+                    if(col + 1 != _grid_info.numCols || row != 0)
+                        corners.set(CornerFlags::TopRight, false);
+                    if(col != 0 || row + 1 != _grid_info.numRows)
+                        corners.set(CornerFlags::BottomLeft, false);
+                    if(col + 1 != _grid_info.numCols || row + 1 != _grid_info.numRows)
+                        corners.set(CornerFlags::BottomRight, false);
+                    
                     add<Rect>(Box{bds},
                               FillClr{(Color)_settings.cellFillClr},
-                              LineClr{(Color)_settings.cellLineClr});
+                              LineClr{(Color)_settings.cellLineClr},
+                              corners);
                 }
             }
         }
@@ -784,6 +796,11 @@ void GridLayout::update() {
 
 void GridLayout::auto_size() {
     // nothing?
+}
+
+void GridLayout::set(CornerFlags flags) {
+    _settings.corners = flags;
+    Layout::set(flags);
 }
 
 

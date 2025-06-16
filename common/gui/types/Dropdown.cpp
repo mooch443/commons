@@ -216,6 +216,12 @@ void Dropdown::set(Textfield::OnClearText_t c) {
     _on_clear = c;
 }
 
+void Dropdown::set(CornerFlags flags) {
+    if(_textfield)
+        _textfield->set(flags);
+    Entangled::set(flags);
+}
+
     Dropdown::~Dropdown() {
         _button = nullptr;
         _textfield = nullptr;

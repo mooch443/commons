@@ -1518,10 +1518,13 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                    && ptr->bg().fill.value().a > 0)
                 {
                     //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().fill.value()));
+                    auto corners = ptr->bg().flags;
+                    ImDrawFlags flags = corners.to_imdraw_flags();
                     list->AddRectFilled((ImVec2)transform.transformPoint(Vec2()),
                                         (ImVec2)transform.transformPoint(o->size()),
                                         cvtClr(ptr->bg().fill.value()),
-                                        2);
+                                        corners.radius,
+                                        flags);
                     
                 }
                 type = Type::NONE;
@@ -1531,10 +1534,14 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                    && ptr->bg().line.value().a > 0)
                 {
                     //list->AddRectFilled(bds.pos(), bds.size(), cvtClr(ptr->bg().line.value()));
+                    
+                    auto corners = ptr->bg().flags;
+                    ImDrawFlags flags = corners.to_imdraw_flags();
                     list->AddRect((ImVec2)transform.transformPoint(Vec2()),
                                   (ImVec2)transform.transformPoint(o->size()),
                                   cvtClr(ptr->bg().line.value()),
-                                  2);
+                                  corners.radius,
+                                  flags);
                 }
                 type = Type::NONE;
             }

@@ -25,6 +25,7 @@ struct DefaultSettings {
     Color horizontalClr{DarkGray.alpha(150)};
     Color cellFillClr{Transparent};
     Color cellLineClr{Transparent};
+    CornerFlags corners{};
     uint16_t cellFillInterval{1};
     Size2 minCellSize;
     Color highlightClr{Drawable::accent_color};

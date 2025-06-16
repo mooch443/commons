@@ -131,6 +131,11 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
     void CommandLine::load_settings(const sprite::Map* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
         if(not map)
             map = &GlobalSettings::map();
+        if(map != &GlobalSettings::map()
+           && not additional)
+        {
+            additional = &GlobalSettings::map();
+        }
         
         auto keys = GlobalSettings::map().keys();
         for(auto it = _options.begin(); it != _options.end();) {
@@ -147,14 +152,24 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                 continue;
             
             std::string value = s.value ? *s.value : "";
+            const sprite::PropertyType* prop{nullptr};
+            if(map->has(s.name))
+                prop = &map->at(s.name).get();
+            else if(additional && additional->has(s.name))
+                prop = &additional->at(s.name).get();
+            
             if(value.empty()) {
-                if(map->is_type<bool>(s.name))
+                if(prop
+                   && prop->is_type<bool>())
+                {
                     value = "true"; // by default set option to true if its bool and no value was given
+                }
             }
             
-            if((map->is_type<file::Path>(s.name)
-               || map->is_type<std::string>(s.name)
-                || map->is_type<file::PathArray>(s.name))
+            if(prop
+               && (prop->is_type<file::Path>()
+                   || prop->is_type<std::string>()
+                   || prop->is_type<file::PathArray>())
                && (value.empty() || !(
                         (value[0] == value[value.length()-1] && value[0] == '\'')
                      || (value[0] == value[value.length()-1] && value[0] == '"')
