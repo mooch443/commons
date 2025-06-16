@@ -17,8 +17,7 @@ namespace cmn {
 #endif
 
     class Data {
-    protected:
-        bool _supports_fast;
+        GETTER(bool, supports_fast);
         
     public:
         Data() : _supports_fast(false) {}
@@ -217,7 +216,7 @@ namespace cmn {
         uint64_t _file_offset;
         bool _mmapped;
         int fd;
-        char* _data;
+        GETTER_PTR(char*, data);
 
 #if defined(__EMSCRIPTEN__)
         std::vector<char> _data_container;
@@ -235,7 +234,7 @@ namespace cmn {
     public:
         virtual bool is_read_mode() const;
         virtual bool is_write_mode() const;
-        
+
     public:
         virtual void start_reading();
         virtual void start_modifying();
@@ -249,12 +248,13 @@ namespace cmn {
         const std::string& project_name() const { return _project_name; }
         
         //long read_size() const { if(!_mmapped) throw U_EXCEPTION("Must be mmapped."); return _reading_file_size; }
-		uint64_t current_offset() const;
-		virtual uint64_t tell() const override;
-        
+        uint64_t current_offset() const;
+        virtual uint64_t tell() const override;
+
     public:
         DataFormat(const file::Path& filename, const std::string& proj_name = "untitled");
         DataFormat(DataFormat&& other) noexcept;
+        DataFormat& operator=(DataFormat&& other) noexcept;
         virtual ~DataFormat();
         
         // reading some data from the opened file
@@ -267,16 +267,25 @@ namespace cmn {
         
         virtual void seek(uint64_t pos) override {
             if(!_mmapped) {
+                /// no action needed
+                if(_file_offset == pos)
+                    return;
+                
                 if(!f)
                     throw U_EXCEPTION("File not open.");
 #ifdef WIN32
-				_fseeki64(f.get(), (int64_t)pos, SEEK_SET);
+                _fseeki64(f.get(), (int64_t)pos, SEEK_SET);
 #else
                 fseeko(f.get(), (off_t)pos, SEEK_SET);
 #endif
             }
             _file_offset = pos;
         }
+
+    public:
+        enum class AccessPattern { Random, Sequential };
+        /// Hint the kernel about our expected access pattern.
+        void hint_access_pattern(AccessPattern pattern) const;
 
     protected:
         virtual void _read_header() {}

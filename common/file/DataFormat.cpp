@@ -1,4 +1,5 @@
 #include "DataFormat.h"
+#include <utility>
 #ifndef WIN32
 #include <sys/mman.h>
 #endif
@@ -22,7 +23,7 @@ char* memGetAddr( mappedRegion *hReg)
     return (char *)((*hReg)->addr);
 }
 
-int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t length = 0) {
+int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t length = 0, DataFormat::AccessPattern pattern = DataFormat::AccessPattern::Random) {
     unsigned int i;
     int exists = 1;
     char buffer[1024];
@@ -57,9 +58,14 @@ int memmap(bool create, const file::Path& path, mappedRegion* hReg, uint64_t len
     if (!create) {
         assert(path.exists());
         Print("Opening for reading...");
+        // Hint Windows cache manager based on expected pattern
+        DWORD flagsAndAttributes = FILE_ATTRIBUTE_NORMAL |
+            (pattern == DataFormat::AccessPattern::Sequential
+                 ? FILE_FLAG_SEQUENTIAL_SCAN
+                 : FILE_FLAG_RANDOM_ACCESS);
         hFile = CreateFile ( path.c_str(), GENERIC_READ,
             FILE_SHARE_READ, &sa, OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL, NULL);
+            flagsAndAttributes, NULL);
     }
     else {
         hFile = CreateFile ( path.c_str(), GENERIC_READ | GENERIC_WRITE,
@@ -176,10 +182,10 @@ bool DataFormat::is_write_mode() const {
 }
 
 uint64_t DataFormat::current_offset() const {
-	return _file_offset;
+    return _file_offset;
 }
 uint64_t DataFormat::tell() const {
-	return current_offset(); /*ftell(f);*/
+    return current_offset(); /*ftell(f);*/
 }
 
 void DataFormat::start_reading() {
@@ -192,11 +198,11 @@ void DataFormat::start_reading() {
     _reading_file_size = _data_container.size();
 #else
 /*#if defined(WIN32)
-	_supports_fast = false;
-	_mmapped = false;
+    _supports_fast = false;
+    _mmapped = false;
 
-	f = _filename.fopen("rb");
-	if (!f)
+    f = _filename.fopen("rb");
+    if (!f)
         throw U_EXCEPTION("Cannot open file ",_filename,".");
 #else*/
 
@@ -206,7 +212,7 @@ void DataFormat::start_reading() {
     _reading_file_size = _filename.file_size();
     
 #if defined(WIN32)
-    int result = memmap(false, _filename, &reg);
+    int result = memmap(false, _filename, &reg, 0, AccessPattern::Random);
     if (result != 0) {
         //if (reg)
         //    memunmap(&reg);
@@ -227,11 +233,35 @@ void DataFormat::start_reading() {
 #endif
     _supports_fast = true;
     _mmapped = true;
+    // Give the kernel a default hint: assume mostly-random access until told otherwise
+    hint_access_pattern(AccessPattern::Random);
 //#endif
     _open_for_modifying = false;
     _open_for_writing = false;
     _file_offset = 0;
     _read_header();
+}
+
+void DataFormat::hint_access_pattern(AccessPattern pattern) const {
+#if defined(__unix__) || defined(__APPLE__)
+    int advice = (pattern == AccessPattern::Sequential
+                  ? POSIX_MADV_SEQUENTIAL
+                  : POSIX_MADV_NORMAL);
+                  //: POSIX_MADV_RANDOM);
+    // Tell the kernel how we'll access the mapping
+    posix_madvise(_data, _reading_file_size, advice);
+#elif defined(WIN32)
+    // Use PrefetchVirtualMemory on Windows 8+ for sequential access
+    static auto pfnPrefetch = (decltype(&PrefetchVirtualMemory))GetProcAddress(
+        GetModuleHandleA("kernel32"), "PrefetchVirtualMemory");
+    if (pattern == AccessPattern::Sequential
+        && pfnPrefetch)
+    {
+        WIN32_MEMORY_RANGE_ENTRY range{ (PVOID)_data, (SIZE_T)_reading_file_size };
+        pfnPrefetch(GetCurrentProcess(), 1, &range, 0);
+    }
+    // No-op for random or unsupported versions
+#endif
 }
 
 void DataFormat::start_writing(bool overwrite) {
@@ -638,6 +668,18 @@ DataFormat::DataFormat(DataFormat&& other) noexcept
     other._open_for_writing = false;
     other._open_for_modifying = false;
     other._header_written = false;
+}
+
+DataFormat& DataFormat::operator=(DataFormat&& other) noexcept
+{
+    if (this != &other) {
+        // Release any resources currently held
+        this->~DataFormat();
+
+        // Reconstruct *this in place using the move‑constructor
+        new (this) DataFormat(std::move(other));
+    }
+    return *this;
 }
 
 }

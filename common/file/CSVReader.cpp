@@ -226,6 +226,18 @@ StringTable CSVStreamReader::readTable() {
     return rdr_.readTable();
 }
 
+bool CSVStreamReader::hasNext() const {
+    return rdr_.hasNext();
+}
+
+std::vector<std::string> CSVStreamReader::nextRow() {
+    return rdr_.nextRow();
+}
+
+void CSVStreamReader::rewind() {
+    rdr_.reset(buf_.view());
+}
+
 template<typename NumberT>
 Table<std::optional<NumberT>>
 CSVStreamReader::readNumericTableOptional() {

@@ -274,13 +274,16 @@ public:
 
     template<typename NumberT>
     Table<std::optional<NumberT>> readNumericTableOptional();
-
-    const std::vector<std::string>& header() const { return header_; }
+    auto& header() const { return rdr_.header(); }
     std::size_t fastLineCount() const { return rdr_.fastLineCount(); }
 
+    /** Sequential access without caching the whole file */
+    bool hasNext() const;
+    std::vector<std::string> nextRow();
+    /** Rewind to beginning (keeps same delimiter / header flag) */
+    void rewind();
+
 private:
-    
-    std::vector<std::string> header_;
     FileBuffer      buf_;
     CSVReader       rdr_;
 };
