@@ -136,6 +136,13 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
         {
             additional = &GlobalSettings::map();
         }
+
+        // Helper to check if a string is properly quoted with matching single or double quotes
+        static constexpr auto is_quoted = [](const std::string& v) -> bool {
+            return !v.empty() &&
+                ((v.front() == '\'' && v.back() == '\'') ||
+                    (v.front() == '"' && v.back() == '"'));
+            };
         
         auto keys = GlobalSettings::map().keys();
         for(auto it = _options.begin(); it != _options.end();) {
@@ -152,12 +159,14 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                 continue;
             
             std::string value = s.value ? *s.value : "";
-            const sprite::PropertyType* prop{nullptr};
+            sprite::PropertyType* prop{nullptr};
             if(map->has(s.name))
-                prop = &map->at(s.name).get();
-            else if(additional && additional->has(s.name))
-                prop = &additional->at(s.name).get();
-            
+                prop = &(*map)[s.name].get();
+            else if (additional && additional->has(s.name)) {
+				additional->at(s.name).get().copy_to(*map);
+                prop = &(*map)[s.name].get();
+            }
+
             if(value.empty()) {
                 if(prop
                    && prop->is_type<bool>())
@@ -166,19 +175,19 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                 }
             }
             
-            if(prop
-               && (prop->is_type<file::Path>()
-                   || prop->is_type<std::string>()
-                   || prop->is_type<file::PathArray>())
-               && (value.empty() || !(
-                        (value[0] == value[value.length()-1] && value[0] == '\'')
-                     || (value[0] == value[value.length()-1] && value[0] == '"')
-                  ))
-               )
-            {
-                sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':'" + value + "'}", additional, exclude, {});
-            } else
-                sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':" + value + "}", additional, exclude, {});
+            // If the property is a string-like type and the value is not quoted, quote it for parsing
+            if(prop)
+				prop->set_value_from_string(value);
+            else {
+				/// in theory this case should barely ever be of use, but it is here for completeness
+                if (is_quoted(value)) {
+                    sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':" + value + "}", additional, exclude, {});
+                }
+                else {
+                    // If the value is not quoted, we assume it is a string and quote it
+                    sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':" + Meta::toStr(value) + "}", additional, exclude, {});
+                }
+            }
             _settings_keys[s.name] = value;
         }
     }
