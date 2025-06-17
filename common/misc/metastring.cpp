@@ -1,4 +1,5 @@
 #include <commons.pc.h>
+#include <cerrno>   // for ENODATA, ENOSR, ENOSTR, ETIME
 
 namespace cmn::util {
 const char* to_readable_errc(const std::errc& error_code) {
@@ -43,18 +44,39 @@ const char* to_readable_errc(const std::errc& error_code) {
         case std::errc::no_child_process: return "No child processes";
         case std::errc::no_link: return "Link has been severed";
         case std::errc::no_lock_available: return "No locks available";
+        // ------------------------------------------------------------------
+        // POSIX‑STREAM error codes: present but [[deprecated]] since C++23.
+        // We keep them only for pre‑C++23 builds; otherwise we match on the
+        // underlying POSIX errno values (still valid, never deprecated).
+        // ------------------------------------------------------------------
+#if __cplusplus < 202302L       // up to C++20 → safe to use the names
         case std::errc::no_message_available: return "No message of desired type";
-        case std::errc::no_message: return "No message";
+        case std::errc::stream_timeout:       return "Stream timeout";
+        case std::errc::not_a_stream:         return "Not a stream";
+        case std::errc::no_stream_resources:  return "No stream resources";
+#else                           // C++23 or newer
+#ifdef ENODATA
+        case static_cast<std::errc>(ENODATA): return "No message of desired type";
+#endif
+#ifdef ENOSR
+        case static_cast<std::errc>(ENOSR):   return "No stream resources";
+#endif
+#ifdef ENOSTR
+        case static_cast<std::errc>(ENOSTR):  return "Not a stream";
+#endif
+#ifdef ETIME
+        case static_cast<std::errc>(ETIME):   return "Stream timeout";
+#endif
+#endif
         case std::errc::no_protocol_option: return "Protocol not available";
         case std::errc::no_space_on_device: return "No space left on device";
-        case std::errc::no_stream_resources: return "No stream resources";
         case std::errc::no_such_device_or_address: return "No such device or address";
         case std::errc::no_such_device: return "No such device";
         case std::errc::no_such_file_or_directory: return "No such file or directory";
         case std::errc::no_such_process: return "No such process";
+        case std::errc::no_message: return "No message";
         case std::errc::not_a_directory: return "Not a directory";
         case std::errc::not_a_socket: return "Socket operation on non-socket";
-        case std::errc::not_a_stream: return "Not a stream";
         case std::errc::not_connected: return "Socket is not connected";
         case std::errc::not_enough_memory: return "Not enough space";
         case std::errc::not_supported: return "Operation not supported";
@@ -72,7 +94,6 @@ const char* to_readable_errc(const std::errc& error_code) {
         //case std::errc::resource_unavailable_try_again: return "Resource temporarily unavailable";
         case std::errc::result_out_of_range: return "Numerical result out of range";
         case std::errc::state_not_recoverable: return "State not recoverable";
-        case std::errc::stream_timeout: return "Stream timeout";
         case std::errc::text_file_busy: return "Text file busy";
         case std::errc::timed_out: return "Connection timed out";
         case std::errc::too_many_files_open_in_system: return "Too many open files in system";
