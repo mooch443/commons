@@ -299,6 +299,17 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         }
     }
     
+    if(auto it = patterns.find("corners");
+       it != patterns.end())
+    {
+        try {
+            auto corners = Meta::fromStr<CornerFlags>(parse_text(it->second, context, state));
+            LabeledField::delegate_to_proper_type(corners, ptr);
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, "(corners):", e.what());
+        }
+    }
+    
     if(patterns.contains("pad")) {
         try {
             auto line = resolve_variable_type<Bounds>(patterns.at("pad"), context, state);

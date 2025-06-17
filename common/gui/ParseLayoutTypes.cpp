@@ -632,6 +632,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
                 ref->set(label_font);
+                
+                CornerFlags corners{ dyn::get(state, p, CornerFlags{}, "corners", hash, "label_") };
+                ref->set(LabelCornerFlags{corners});
             }
         }
         

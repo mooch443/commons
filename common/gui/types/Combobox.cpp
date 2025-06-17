@@ -222,16 +222,16 @@ void Combobox::set(attr::TextClr clr) {
     }
 }
 
-void Combobox::set(CornerFlags flags) {
+void Combobox::set(CornerFlags_t flags) {
     _settings.corners = flags;
     
     if(_value) {
-        auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left());
+        auto left_box = CornerFlags_t(flags.top_left(), false, false, flags.bottom_left());
         _dropdown->set(left_box);
         
-        auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
+        auto right_box = CornerFlags_t(false, flags.top_right(), flags.bottom_right(), false);
         if(_reset_button && _does_not_equal_default) {
-            _value->set(CornerFlags(false, false, false, false));
+            _value->set(CornerFlags_t(false, false, false, false));
             _reset_button->set(right_box);
         } else {
             _value->set(right_box);

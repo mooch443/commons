@@ -312,7 +312,7 @@ private:
     struct Settings {
         Color lineclr = Transparent,
               fillclr = Black;
-        CornerFlags corners = CornerFlags{};
+        CornerFlags_t corners = CornerFlags_t{};
     } _settings;
     
 public:
@@ -342,7 +342,7 @@ public:
     using Drawable::set;
     void set(LineClr clr) { set_lineclr(clr); }
     void set(FillClr clr) { set_fillclr(clr); }
-    void set(CornerFlags flags) {
+    void set(CornerFlags_t flags) {
         if(flags == _settings.corners)
             return;
         _settings.corners = flags;

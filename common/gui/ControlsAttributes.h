@@ -2,6 +2,7 @@
 
 #include <commons.pc.h>
 #include <gui/types/Basic.h>
+#include <gui/CornerFlags.h>
 
 namespace cmn::gui {
 namespace attr {
@@ -91,6 +92,7 @@ ATTRIBUTE_ALIAS(Prefix, std::string)
 ATTRIBUTE_ALIAS(ParmName, std::string)
 ATTRIBUTE_ALIAS(Name, std::string)
 
+ATTRIBUTE_ALIAS(CornerFlags_t, CornerFlags)
 ATTRIBUTE_ALIAS(Placeholder_t, std::string)
 
 // Macro for defining a NumberAlias

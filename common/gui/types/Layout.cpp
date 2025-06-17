@@ -798,7 +798,7 @@ void GridLayout::auto_size() {
     // nothing?
 }
 
-void GridLayout::set(CornerFlags flags) {
+void GridLayout::set(CornerFlags_t flags) {
     _settings.corners = flags;
     Layout::set(flags);
 }

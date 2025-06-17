@@ -1145,7 +1145,7 @@ void SectionInterface::reset_bg() {
     }
 }
 
-void SectionInterface::set(CornerFlags flags) {
+void SectionInterface::set(CornerFlags_t flags) {
     if(flags == _bg.flags) {
         return;
     }

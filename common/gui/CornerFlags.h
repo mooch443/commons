@@ -101,5 +101,4 @@ struct CornerFlags {
     glz::json_t to_json() const;
 };
 
-
 }

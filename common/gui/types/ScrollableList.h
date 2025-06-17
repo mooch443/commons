@@ -63,6 +63,7 @@ namespace cmn::gui {
         GETTER(ListLineClr_t, list_line_clr){200,200,200,200};
         LabelColor_t _label_fill_clr{100,100,100,200};
         LabelBorderColor_t _label_line_clr{200,200,200,200};
+        LabelCornerFlags _label_corner_flags{};
         
         template <typename Q = T>
         class Item {
@@ -427,9 +428,16 @@ namespace cmn::gui {
         }
         
         using Entangled::set;
-        void set(CornerFlags flags) override {
+        void set(CornerFlags_t flags) override {
             _list.set(flags);
             Entangled::set(flags);
+        }
+        void set(LabelCornerFlags flags) {
+            if(flags == _label_corner_flags)
+                return;
+            
+            _label_corner_flags = flags;
+            set_content_changed(true);
         }
         void set(const LabelFont_t& font) {
             set_label_font(font);
@@ -737,7 +745,7 @@ namespace cmn::gui {
                 
                 if(_foldable && _folded) {
                     auto ctx = OpenContext();
-                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
+                    add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr }, CornerFlags_t{(CornerFlags)_label_corner_flags});
                     advance_wrap(*_label_text);
                     
                 } else {
@@ -913,7 +921,7 @@ namespace cmn::gui {
                     
                     if(_foldable) {
                         auto ctx = OpenContext();
-                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr });
+                        add<Rect>(Box{0.f, 0.f, _label_dims.width, _label_dims.height}, FillClr{ (Color)color }, LineClr{ (Color)_label_line_clr }, CornerFlags_t{(CornerFlags)_label_corner_flags});
                         
                         advance_wrap(*_label_text);
                         advance_wrap(_list);

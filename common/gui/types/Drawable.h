@@ -506,7 +506,7 @@ namespace cmn::gui {
         using Drawable::set;
         virtual void set(FillClr clr);
         virtual void set(LineClr clr);
-        virtual void set(CornerFlags corners);
+        virtual void set(CornerFlags_t corners);
         virtual void reset_bg();
         
     protected:

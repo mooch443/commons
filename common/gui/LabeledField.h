@@ -182,6 +182,12 @@ public:
                         return true;
                     }
                 }
+                else if (object.is<ScrollableList<TextItem>>()) {
+                    if constexpr (takes_attribute<ScrollableList<TextItem>, T>) {
+                        object.to<ScrollableList<TextItem>>()->set(attribute);
+                        return true;
+                    }
+                }
                 else if (object.is<ScrollableList<DetailItem>>()) {
                     if constexpr (takes_attribute<ScrollableList<DetailItem>, T>) {
                         object.to<ScrollableList<DetailItem>>()->set(attribute);
