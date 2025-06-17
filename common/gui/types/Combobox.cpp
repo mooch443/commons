@@ -226,21 +226,28 @@ void Combobox::set(CornerFlags_t flags) {
     _settings.corners = flags;
     
     if(_value) {
-        auto left_box = CornerFlags_t(flags.top_left(), false, false, flags.bottom_left());
-        _dropdown->set(left_box);
+        auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left());
+        _dropdown->set(LabelCornerFlags{left_box});
         
-        auto right_box = CornerFlags_t(false, flags.top_right(), flags.bottom_right(), false);
+        auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
         if(_reset_button && _does_not_equal_default) {
-            _value->set(CornerFlags_t(false, false, false, false));
-            _reset_button->set(right_box);
-        } else {
-            _value->set(right_box);
+            if(not _value->set(LabelCornerFlags(false, false, false, false))) {
+                _value->set(CornerFlags_t(false, false, false, false));
+            }
+            _reset_button->set(CornerFlags_t{right_box});
+        } else if(not _value->set(LabelCornerFlags{right_box})) {
+            _value->set(CornerFlags_t{right_box});
         }
     } else {
-        _dropdown->set(flags);
+        _dropdown->set(LabelCornerFlags{(CornerFlags)flags});
     }
     
     Entangled::set(flags);
+}
+
+void Combobox::set(LabelCornerFlags flags) {
+    _settings.label_corners = flags;
+    set(CornerFlags_t{(CornerFlags)flags});
 }
 
 void Combobox::set(ListLineClr_t clr) {

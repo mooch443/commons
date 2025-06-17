@@ -33,6 +33,7 @@ public:
         
         OnSelect_t on_select;
         CornerFlags_t corners{};
+        LabelCornerFlags label_corners{};
     };
     
 protected:
@@ -79,6 +80,7 @@ public:
     void set(Placeholder_t);
     void set(ClearText_t);
     void set(CornerFlags_t) override;
+    void set(LabelCornerFlags);
     
     void set(std::function<void()> on_click) {
         if(on_click)

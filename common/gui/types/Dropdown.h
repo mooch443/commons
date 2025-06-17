@@ -185,6 +185,7 @@ namespace cmn::gui {
             _on_enter = on_enter;
         }
         void set(CornerFlags_t) override;
+        void set(LabelCornerFlags);
         
         void set_bounds(const Bounds& bounds) override;
         void set_size(const Size2& size) override;

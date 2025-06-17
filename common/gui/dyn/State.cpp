@@ -303,7 +303,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
        it != patterns.end())
     {
         try {
-            auto corners = Meta::fromStr<CornerFlags>(parse_text(it->second, context, state));
+            auto corners = Meta::fromStr<CornerFlags_t>(parse_text(it->second, context, state));
             LabeledField::delegate_to_proper_type(corners, ptr);
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, "(corners):", e.what());

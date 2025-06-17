@@ -217,9 +217,18 @@ void Dropdown::set(Textfield::OnClearText_t c) {
 }
 
 void Dropdown::set(CornerFlags_t flags) {
+    _list.set(flags);
+}
+
+void Dropdown::set(LabelCornerFlags flags) {
+    CornerFlags_t _flags{(CornerFlags)flags};
+    
+    _list.set(flags);
+    if(_button)
+        _button->set(_flags);
     if(_textfield)
-        _textfield->set(flags);
-    Entangled::set(flags);
+        _textfield->set(_flags);
+    Entangled::set(_flags);
 }
 
     Dropdown::~Dropdown() {

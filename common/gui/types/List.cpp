@@ -90,6 +90,22 @@ namespace cmn::gui {
             return false;
         });
     }
+
+void List::set(CornerFlags_t flags) {
+    if(flags == _corners)
+        return;
+    
+    _corners = flags;
+    set_content_changed(true);
+}
+
+void List::set(LabelCornerFlags flags) {
+    if(flags == _label_corners)
+        return;
+    
+    _label_corners = flags;
+    set_content_changed(true);
+}
     
     void List::set_items(std::vector<std::shared_ptr<Item>>&& items) {
         for(size_t i=0; i<items.size(); ++i) {
@@ -334,6 +350,19 @@ const Drawable* List::tooltip_object() const
         
         _title_background.set_fillclr(tbg);
         
+        auto label_corners = CornerFlags_t{(CornerFlags)_label_corners};
+        if(_foldable && not _folded) {
+            if(inverted) {
+                label_corners.set(CornerFlags::TopLeft, false);
+                label_corners.set(CornerFlags::TopRight, false);
+            } else {
+                label_corners.set(CornerFlags::BottomLeft, false);
+                label_corners.set(CornerFlags::BottomRight, false);
+            }
+        }
+        _title_background.set(label_corners);
+        Entangled::set(label_corners);
+        
         const Color bg = _accent_color.saturation(0.25);
         const Color highlight = bg.exposure(1.5);
         
@@ -382,6 +411,34 @@ const Drawable* List::tooltip_object() const
             auto &item = _items.at(i);
             auto r = _rects.at(i);
 
+            if(bool last_element = i+1==_rects.size(),
+               first_element = i == 0;
+               first_element)
+            {
+                /**  _______
+                    /       \
+                    |       |
+                    \______ /
+                 */
+                r->set(CornerFlags_t{
+                    last_element && inverted && _corners.top_left(),
+                    last_element && inverted && _corners.top_right(),
+                    last_element && (not inverted) && _corners.bottom_right(),
+                    last_element && (not inverted) && _corners.bottom_left(),
+                    _corners.radius
+                });
+            } else if(last_element) {
+                r->set(CornerFlags_t{
+                    inverted && _corners.top_left(),
+                    inverted && _corners.top_right(),
+                    (not inverted) && _corners.bottom_right(),
+                    (not inverted) && _corners.bottom_left(),
+                    _corners.radius
+                });
+            } else {
+                r->set(CornerFlags_t(false, false, false, false, _corners.radius));
+            }
+            
             r->set_bounds(Bounds(offset, Vec2(size.width, _row_height)));
             add<Text>(Str(*item),
                       Loc(offset + Vec2(size.width, _row_height)*0.5f),

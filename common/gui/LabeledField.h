@@ -110,9 +110,11 @@ public:
     }
     
     template<typename T>
-    void set(T attribute) {
+    bool set(T attribute) {
+        bool applied = false;
         for(auto &ptr : apply_set())
-            delegate_to_proper_type(attribute, ptr);
+            applied = delegate_to_proper_type(attribute, ptr) || applied;
+        return applied;
     }
     
     static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, State&, const LayoutContext&, bool invert = false);

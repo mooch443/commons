@@ -132,7 +132,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
        pattern.has_value())
     {
         auto str = parse_text(pattern.value()->original, context, state);
-        LabeledField::delegate_to_proper_type(Meta::fromStr<CornerFlags>(str), ptr);
+        LabeledField::delegate_to_proper_type(Meta::fromStr<CornerFlags_t>(str), ptr);
     } else {
         LabeledField::delegate_to_proper_type(corners, ptr);
     }
@@ -954,6 +954,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 Str folded_label{dyn::get(state, p, std::string(), "text", hash, "label_")};
                 if(not folded_label.empty())
                     list->set(folded_label);
+                
+                LabelCornerFlags corners{dyn::get(state, p, LabelCornerFlags(), "corners", hash, "label_")};
+                list->set(corners);
             }
         }
 
