@@ -160,6 +160,16 @@ constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
     return std::make_tuple(pixel_value, grey_value);
 }
 
+template<InputInfo input, OutputInfo output, typename Pixel>
+constexpr uchar to_grey_value(Pixel pixel_value) noexcept {
+    if constexpr(output.channels == 3) {
+        return bgr2gray(pixel_value);
+    } else if constexpr(output.is_r3g3b2()) {
+        return bgr2gray(r3g3b2_to_vec(pixel_value));
+    } else {
+        return pixel_value;
+    }
+}
     template<OutputInfo output, typename Pixel>
         requires (std::same_as<Pixel, RGBArray> || std::is_integral_v<Pixel>)
     constexpr void write_pixel_value(uchar* image_ptr, Pixel value) {

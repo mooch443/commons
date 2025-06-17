@@ -212,7 +212,9 @@ namespace cmn::pixel {
                 for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
                     //assert(px < px_end);
                     
-                    auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
+                    auto pixel_value = diffable_pixel_value<input, output>(px);
+                    auto grey_value = to_grey_value<input, output>(pixel_value);
+                    //auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
                     if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold)) {
                         if(start) {
                             pixels.insert(pixels.end(), start, px);
