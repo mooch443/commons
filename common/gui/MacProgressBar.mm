@@ -80,14 +80,14 @@ void MacProgressBar::set_percent(double value) {
 
 void MacProgressBar::set_visible(bool visible)
 {
-    dispatch_async(dispatch_get_main_queue(), ^{
+    /*dispatch_async(dispatch_get_main_queue(), ^{
         if (visible) {
             [[NSApp dockTile] setContentView:[TRexProgressView sharedProgressView]];
         } else {
             [[NSApp dockTile] setContentView:nil];
         }
         [[NSApp dockTile] display];
-    });
+    });*/
 }
 
 }

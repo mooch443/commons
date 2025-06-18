@@ -138,7 +138,8 @@ extern "C"{
             method_exchangeImplementations(originalMethod, swizzledMethod);
         }
     });
-    
+ 
+    cmn::gui::MetalImpl::SetDockIcon("AlterIcons");
 }
 
 - (BOOL)swz_application:(NSApplication *)sender openFile:(NSString *)filename{
@@ -160,6 +161,24 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 namespace cmn::gui {
+
+void MetalImpl::SetDockIcon(const char* icnsNameWithoutExtension)
+{
+    @autoreleasepool
+    {
+        // Locate AlterIcons.icns that you added to your bundle’s Resources
+        NSString* iconPath = [[NSBundle mainBundle]
+                              pathForResource:[NSString stringWithUTF8String:icnsNameWithoutExtension]
+                              ofType:@"icns"];
+        if (!iconPath) return;
+
+        NSImage* icon = [[NSImage alloc] initWithContentsOfFile:iconPath];
+        if (!icon) return;
+
+        [NSApp setApplicationIconImage:icon];
+    }
+}
+
 static dispatch_semaphore_t& frameBoundarySemaphore() {
     static dispatch_semaphore_t sem;
     return sem;
@@ -241,6 +260,8 @@ bool MetalImpl::open_files(const std::vector<file::Path> &paths) {
         glfwSetErrorCallback(glfw_error_callback);
         if (!glfwInit())
             throw U_EXCEPTION("[METAL] Cannot init GLFW.");
+        
+        SetDockIcon("AlterIcons");
     }
 
     void MetalImpl::post_init() {
@@ -255,6 +276,7 @@ bool MetalImpl::open_files(const std::vector<file::Path> &paths) {
         window = glfwCreateWindow(width, height, title, NULL, NULL);
         if (window == NULL)
             throw U_EXCEPTION("[METAL] Cannot create GLFW window.");
+        
         
         _data->device = MTLCreateSystemDefaultDevice();
         //_data->commandQueue = [_data->device newCommandQueue];

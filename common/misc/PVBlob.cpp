@@ -989,6 +989,8 @@ std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input,
                 static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
                 static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
                 
+                const auto info = background.info<output, method, PixelOutput_t<input, output>>();
+                
                 for (auto &line : hor_lines()) {
                     if constexpr(input.channels == 0) {
                         recount += ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
@@ -1000,7 +1002,7 @@ std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input,
 #ifndef NDEBUG
                         for (auto x=line.x0; x<=line.x1; ++x, local_ptr += input.channels) {
                             auto value = diffable_pixel_value<input, output>(local_ptr);
-                            if(background.is_different<output, method>(x, line.y, value, threshold)) {
+                            if(background.is_different<output, method>(x, line.y, value, threshold, info)) {
                                 local_recount++;
                             }
                         }
@@ -1358,13 +1360,14 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
                 image_ptr += N;
                 
             } else {
+                const auto info = background.info<output, method, PixelOutput_t<input, output>>();
                 for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += out_channels) {
                     /// *out_channels* == 4, *output_channels* == 3
                     /// need to account for that here ^
                     assert(ptr < _pixels->data() + _pixels->size());
                     auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
                     if (threshold == 0
-                        || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold))
+                        || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold, info))
                     {
                         //if(background.is_value_different<output>(x, line.y, background.diff<output, method>(x, line.y, value), threshold)) {
                         write_pixel_value<output>(image_ptr, pixel_value);
@@ -1680,12 +1683,13 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
                     std::fill(image_ptr, image_ptr + N, 255);
                     
                 } else {
+                    const auto info = background.info<output, method, PixelOutput_t<input, output>>();
                     for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, ++image_ptr) {
                         assert(ptr < _pixels->data() + _pixels->size());
                         
                         auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(ptr);
                         if (threshold == 0
-                            || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold))
+                            || background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold, info))
                         {
                             //if(background.is_value_different<output>(x, line.y, background.diff<output, method>(x, line.y, value), threshold)) {
                             write_pixel_value<output>(image_ptr, pixel_value);
@@ -1732,12 +1736,13 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
                     std::fill(image_ptr, image_ptr + N, 255);
                     
                 } else {
+                    const auto info = background.info<output, method, PixelOutput_t<input, output>>();
                     for (auto x=line.x0; x<=line.x1; ++x, ptr += input.channels, image_ptr += output.channels) {
                         assert(ptr < _pixels->data() + _pixels->size());
                         
                         int32_t value = diffable_pixel_value<input, output>(ptr);
                         //value = background.diff<output, method>(x, line.y, value);
-                        if(background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, value, threshold))
+                        if(background.is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, value, threshold, info))
                             //if(background.is_value_different<output>(x, line.y, value, threshold))
                             *image_ptr = 255;
                     }

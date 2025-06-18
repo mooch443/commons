@@ -145,6 +145,14 @@ namespace cmn {
     }
 
 template<InputInfo input, OutputInfo output>
+using PixelOutput_t = decltype(diffable_pixel_value<input, output>(std::declval<const uchar*>()));
+
+template<typename Impl, typename... Args>
+concept has_static_apply = requires(Args&&... args) {
+    { Impl::apply(std::forward<Args>(args)...) };
+};
+
+template<InputInfo input, OutputInfo output>
 constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
     auto pixel_value = diffable_pixel_value<input, output>(input_data);
 
@@ -224,7 +232,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
 
     template<OutputInfo output, DifferenceMethod method, typename Pixel>
     struct DifferenceImpl {
-        static int convert_to_grayscale(int r3g3b2) {
+        static constexpr int convert_to_grayscale(int r3g3b2) {
             if constexpr(output.is_r3g3b2()) {
                 return bgr2gray(r3g3b2_to_vec<3>((uint8_t)r3g3b2));
             } else
@@ -233,7 +241,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::absolute && is_rgb_array<Pixel>::value)
-        inline Pixel operator()(Pixel source, Pixel value) const {
+        static constexpr Pixel apply(Pixel source, Pixel value) {
             return Pixel{
                 (uchar)saturate(abs(int32_t(source[0]) - int32_t(value[0])), 0, 255),
                 (uchar)saturate(abs(int32_t(source[1]) - int32_t(value[1])), 0, 255),
@@ -243,7 +251,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::sign && is_rgb_array<Pixel>::value)
-        inline Pixel operator()(Pixel source, Pixel value) const {
+        static constexpr Pixel apply(Pixel source, Pixel value) {
             return Pixel{
                 (uchar)max(0, int32_t(source[0]) - int32_t(value[0])),
                 (uchar)max(0, int32_t(source[1]) - int32_t(value[1])),
@@ -253,13 +261,13 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::none && is_rgb_array<Pixel>::value)
-        inline Pixel operator()(Pixel value) const {
+        static constexpr Pixel apply(Pixel value) {
             return value;
         }
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::absolute && not is_rgb_array<Pixel>::value)
-        inline int operator()(int source, int value) const {
+        static constexpr int apply(int source, int value) {
             if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
                 source = convert_to_grayscale(source);
@@ -269,7 +277,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::sign && not is_rgb_array<Pixel>::value)
-        inline int operator()(int source, int value) const {
+        static constexpr int apply(int source, int value) {
             if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
                 source = convert_to_grayscale(source);
@@ -279,7 +287,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         
         template<DifferenceMethod M = method>
             requires (M == DifferenceMethod_t::none && not is_rgb_array<Pixel>::value)
-        inline int operator()(int value) const {
+        static constexpr int apply(int value) {
             if constexpr(output.is_r3g3b2()) {
                 value = convert_to_grayscale(value);
             }
@@ -311,54 +319,96 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         Background(Image::Ptr&& image, meta_encoding_t::Class encoding);
         ~Background();
         
+        struct BackgroundInfo {
+            const uchar* data;
+            ptr_safe_t width;
+            ptr_safe_t channels;
+        };
+        
         template<OutputInfo output, DifferenceMethod method, typename Pixel>
-        auto diff(coord_t x, coord_t y, Pixel value) const {
+        static auto diff(coord_t x, coord_t y, BackgroundInfo info, Pixel value) {
             using impl = DifferenceImpl<output, method, Pixel>;
             
             if constexpr(is_rgb_array<Pixel>::value) {
                 static_assert(value.size() == 3, "Need three channels.");
-                auto index = (ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_image->cols)) * _image->channels();
-                if constexpr(std::is_invocable_v<impl, RGBArray, RGBArray>) {
-                    if(_image->channels() == 1) {
-                        auto grey = _image->data()[index];
+                
+                if constexpr(has_static_apply<impl, RGBArray, RGBArray>) {
+                    assert(info.data != nullptr);
+                    const ptr_safe_t index = (ptr_safe_t(x) + ptr_safe_t(y) * info.width) * info.channels;
+                    
+                    if(info.channels == 1) {
+                        auto grey = info.data[index];
                         if constexpr(output.is_r3g3b2())
-                            return impl{}(r3g3b2_to_vec(grey), value);
+                            return impl::apply(r3g3b2_to_vec(grey), value);
                         else
-                            return impl{}(RGBArray{grey,grey,grey}, value);
+                            return impl::apply(RGBArray{grey, grey, grey}, value);
                     } else {
-                        assert(_image->channels() == 3);
-                        return impl{}(RGBArray{
-                            _image->data()[index],
-                            _image->data()[index+1],
-                            _image->data()[index+2]
+                        assert(info.channels == 3);
+                        return impl::apply(RGBArray{
+                            info.data[index],
+                            info.data[index+1],
+                            info.data[index+2]
                         }, value);
                     }
                     
                 } else {
-                    if(_image->channels() == 1) {
+                    /*if(info.channels == 1) {
                         if constexpr(output.is_r3g3b2())
-                            return impl{}(value);
+                            return impl::apply(value);
                         else
-                            return impl{}(value);
-                    } else {
-                        assert(_image->channels() == 3);
-                        return impl{}(value);
-                    }
+                            return impl::apply(value);
+                    } else {*/
+                        //assert(info.channels == 3);
+                        return impl::apply(value);
+                    //}
                 }
                 
             } else {
-                if constexpr(std::is_invocable_v<impl, int, int>) {
-                    return impl{}(_grey_image->data()[ptr_safe_t(x) + ptr_safe_t(y) * ptr_safe_t(_grey_image->cols)], value);
+                if constexpr(has_static_apply<impl, int, int>) { //std::is_invocable_v<decltype(&impl::apply), int, int>) {
+                    assert(info.data != nullptr);
+                    return impl::apply(info.data[ptr_safe_t(x) + ptr_safe_t(y) * info.width], value);
                 } else {
-                    
-                    return impl{}(value);
+                    return impl::apply(value);
                 }
             }
         }
         
         template<OutputInfo output, DifferenceMethod method, typename Pixel>
-        bool is_different(coord_t x, coord_t y, Pixel value, int threshold) const {
-            return is_value_different<output, Pixel>(x, y, diff<output, method, Pixel>(x, y, value), threshold);
+        inline BackgroundInfo info() const {
+            using impl = DifferenceImpl<output, method, Pixel>;
+            
+            if constexpr(is_rgb_array<Pixel>::value) {
+                if constexpr(has_static_apply<impl, RGBArray, RGBArray>) {
+                    const Image* image = _image.get();
+                    return BackgroundInfo{
+                        .data = image->data(),
+                        .width = ptr_safe_t(image->cols),
+                        .channels = image->channels()
+                    };
+                }
+                
+            } else if constexpr(has_static_apply<impl, int, int>) {
+                const Image* image = _grey_image.get();
+                return BackgroundInfo{
+                    .data = image->data(),
+                    .width = ptr_safe_t(image->cols),
+                    .channels = image->channels()
+                };
+            }
+            
+            return BackgroundInfo{
+                .data = nullptr
+            };
+        }
+        
+        template<OutputInfo output, DifferenceMethod method, typename Pixel>
+        inline auto diff(coord_t x, coord_t y, Pixel value) const {
+            return diff<output, method, Pixel>(x, y, info<output, method, Pixel>(), value);
+        }
+        
+        template<OutputInfo output, DifferenceMethod method, typename Pixel>
+        bool is_different(coord_t x, coord_t y, Pixel value, int threshold, BackgroundInfo i) const {
+            return is_value_different<output, Pixel>(x, y, diff<output, method, Pixel>(x, y, i, value), threshold);
         }
         
         template<OutputInfo output, typename Pixel>

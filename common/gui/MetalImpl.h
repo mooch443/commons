@@ -49,6 +49,8 @@ namespace cmn::gui {
         
         virtual ~MetalImpl();
         GLFWwindow* window_handle() override;
+        
+        static void SetDockIcon(const char* icnsNameWithoutExtension);
     public:
         bool open_files(const std::vector<file::Path>&);
         void check_thread_id(int line, const char* file) const;

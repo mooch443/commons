@@ -205,6 +205,8 @@ namespace cmn::pixel {
             result.insert(result.end(), lines.begin(), lines.end());
             
         } else {
+            assert(bg != nullptr);
+            const auto info = bg->info<output, method, PixelOutput_t<input, output>>();
             for(const auto &line : lines) {
                 coord_t x0;
                 uchar* start{nullptr};
@@ -215,7 +217,7 @@ namespace cmn::pixel {
                     auto pixel_value = diffable_pixel_value<input, output>(px);
                     auto grey_value = to_grey_value<input, output>(pixel_value);
                     //auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
-                    if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold)) {
+                    if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold, info)) {
                         if(start) {
                             pixels.insert(pixels.end(), start, px);
                             result.emplace_back(line.y, x0, x - 1);
