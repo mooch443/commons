@@ -184,7 +184,7 @@ public:
         std::thread::id _thread_id{std::this_thread::get_id()};
         
         //! saves the callback handles so we can unregister them later
-        CallbackCollection _callback_collection;
+        sprite::CallbackFuture _callback_collection;
         
 #ifndef NDEBUG
         //! this is locked during update cycles
