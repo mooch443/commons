@@ -24,7 +24,7 @@ namespace cmn::gui {
 
     IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 1;
-    CallbackCollection callback;
+    sprite::CallbackFuture callback;
 
     std::string Drawable::toStr() const {
         if(type() == Type::PASSTHROUGH) {
@@ -105,7 +105,7 @@ namespace cmn::gui {
     Float2_t interface_scale() {
         if(!callback) {
             GlobalSettings::map().register_shutdown_callback([](auto){
-                callback.reset();
+                callback.collection.reset();
             });
             auto update = [](std::string_view name) {
                 hidden::Global::interface_scale = GlobalSettings::has(std::string(name))

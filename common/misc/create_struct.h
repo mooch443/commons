@@ -722,7 +722,7 @@ private: \
         } \
     } \
     inline static std::once_flag flag; \
-    inline static cmn::CallbackCollection _callback_id; \
+    inline static cmn::sprite::CallbackFuture _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
     template<Variables M> static void update(std::string_view key, const cmn::sprite::PropertyType& value) { \

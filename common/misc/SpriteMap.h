@@ -145,7 +145,7 @@ namespace sprite {
         bool valid() const;
         PropertyType& get() const {
             if(auto ptr = _type.lock();
-               ptr != nullptr) 
+               ptr != nullptr)
             {
                 return *ptr;
             }
@@ -219,6 +219,38 @@ concept Iterable = requires(T obj) {
     { std::end(obj) } -> std::input_iterator;
 };
 
+/** Result of registering callbacks.
+ *  - `collection` holds IDs that are already active.
+ *  - `ready` becomes set once *all* requested callbacks are attached
+ *    (or immediately, if they were attached synchronously). */
+struct CallbackFuture {
+    cmn::CallbackCollection      collection;
+    std::optional<std::future<cmn::CallbackCollection>> ready;
+    
+    CallbackFuture() = default;
+    CallbackFuture(CallbackFuture&&) = default;
+    CallbackFuture& operator=(CallbackFuture&&) = default;
+
+    bool is_ready() const {
+        if(not ready.has_value())
+            return true;
+        return ready->wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    }
+    void finish() {
+        if(ready.has_value()) {
+            auto coll = ready->get();
+            for(auto &[name, id] : coll._ids) {
+                assert(not collection._ids.contains(name));
+                collection._ids[std::string(name)] = id;
+            }
+            ready.reset();
+        }
+    }
+    operator bool() const {
+        return not is_ready() || (bool)collection;
+    }
+};
+
     class Map {
     public:
         enum class Signal {
@@ -234,6 +266,17 @@ concept Iterable = requires(T obj) {
         std::atomic<std::size_t> _id_counter{0u};
         std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
+        // queued‑callback support
+        struct PendingCallback {
+            std::function<void(std::string_view)>        fn;
+            RegisterInit                            init_type;
+            std::shared_ptr<std::promise<cmn::CallbackCollection>>     prom;
+            std::shared_ptr<std::atomic<int>>       remaining;
+            cmn::CallbackCollection addition;
+        };
+        std::shared_mutex pending_mutex;
+        std::unordered_map<std::string, std::vector<PendingCallback>, MultiStringHash, MultiStringEqual> _pending_callbacks;
+        
         mutable LOGGED_MUTEX_VAR(_mutex, "sprite::Lock");
         GETTER_I(bool, print_by_default, false);
         
@@ -243,7 +286,7 @@ concept Iterable = requires(T obj) {
         void do_print(const std::string& name, bool value) {
             auto guard = LOGGED_LOCK(mutex());
             if (auto it = _props.find(name);
-                it != _props.end()) 
+                it != _props.end())
             {
                 it->second->set_do_print(value);
             }
@@ -261,7 +304,7 @@ concept Iterable = requires(T obj) {
 
         /**
          * @brief Registers a shutdown callback function.
-         * 
+         *
          * @param callback The callback function to register.
          * @return The ID of the registered callback.
          */
@@ -273,7 +316,7 @@ concept Iterable = requires(T obj) {
 
         /**
          * @brief Unregisters a shutdown callback with the given ID.
-         * 
+         *
          * @param id The ID of the shutdown callback to unregister.
          */
         void unregister_shutdown_callback(std::size_t id) {
@@ -343,7 +386,7 @@ concept Iterable = requires(T obj) {
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
-        CallbackCollection register_callbacks(const std::initializer_list<Str>& names, Callback callback) {
+        CallbackFuture register_callbacks(const std::initializer_list<Str>& names, Callback callback) {
             if constexpr(std::same_as<Str, const char*>) {
                 std::vector<std::string_view> converted_names;
                 for(const char* str : names) {
@@ -357,7 +400,7 @@ concept Iterable = requires(T obj) {
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str, size_t N>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
             && (std::convertible_to<Str, std::string> || std::constructible_from<std::string, Str>)
-        CallbackCollection register_callbacks(const std::array<Str, N>& names, Callback callback) {
+        CallbackFuture register_callbacks(const std::array<Str, N>& names, Callback callback) {
             if constexpr(std::same_as<Str, const char*>) {
                 std::vector<std::string_view> converted_names;
                 for(const char* str : names) {
@@ -371,24 +414,52 @@ concept Iterable = requires(T obj) {
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
-        CallbackCollection register_callbacks(const std::vector<Str>& names, Callback callback) {
+        CallbackFuture register_callbacks(const std::vector<Str>& names, Callback callback) {
             return register_callbacks_impl<init_type>(names, callback);
         }
         
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, std::ranges::range Container, typename Callback>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
-        CallbackCollection register_callbacks_impl(const Container& names, Callback callback) {
-            CallbackCollection collection;
+        CallbackFuture register_callbacks_impl(const Container& names, Callback callback) {
+            CallbackFuture future;
+            
+            auto remaining = std::make_shared<std::atomic<int>>(0);
+            auto prom      = std::make_shared<std::promise<cmn::CallbackCollection>>();
+            
             for(const auto& name : names) {
                 if(has(name)) {
-                    collection._ids[std::string(name)] = operator[](name).get().registerCallback(callback);
+                    future.collection._ids[std::string(name)] = operator[](name).get().registerCallback(callback);
+                    
+                } else {
+                    std::unique_lock g{pending_mutex};
+                    _pending_callbacks[std::string(name)].emplace_back(
+                        callback, init_type, prom, remaining, cmn::CallbackCollection{}
+                    );
+                    ++(*remaining);
+                    FormatWarning("Cannot find property ", name, " to attach a callback to.");
                 }
             }
             
+            if(*remaining == 0)   // no pending callbacks
+                prom->set_value({});
+            else
+                future.ready = prom->get_future();
+            
             if constexpr(init_type == RegisterInit::DO_TRIGGER) {
-                trigger_callbacks(collection);
+                trigger_callbacks(future.collection);
             }
-            return collection;
+            
+            return future;
+        }
+        
+        void unregister_callbacks(CallbackFuture&& future) {
+            if(not future.is_ready()) {
+                FormatWarning("Future is not ready when destroyed.");
+                //future.wait();
+            } else {
+                future.finish();
+            }
+            unregister_callbacks(std::move(future.collection));
         }
         
         void unregister_callbacks(CallbackCollection&& collection) {
@@ -505,6 +576,34 @@ concept Iterable = requires(T obj) {
                 _props[ptr->name()] = std::move(ptr);
             }
             
+            /// collect the callbacks that need to be called
+            std::vector<std::size_t> indexes;
+            
+            std::unique_lock g{pending_mutex};
+            if(auto it = _pending_callbacks.find(name);
+               it != _pending_callbacks.end())
+            {
+                const auto str = std::string(name);
+                for(auto &future : it->second) {
+                    auto cb = property_->registerCallback(future.fn);
+                    future.addition._ids[str] = cb;
+                    
+                    --(*future.remaining);
+                    if(*future.remaining == 0)  { // no pending callbacks
+                        future.prom->set_value(std::move(future.addition));
+                    }
+                    
+                    if (future.init_type == RegisterInit::DO_TRIGGER) {
+                        indexes.push_back(cb);
+                    }
+                }
+                
+                _pending_callbacks.erase(it);
+            }
+            
+            for(auto cb : indexes)
+                property_->triggerCallback(cb);
+            
             return *property_;
         }
         
@@ -540,7 +639,7 @@ concept Iterable = requires(T obj) {
     template<typename T>
     Property<T>& Reference::toProperty() const {
         if(auto ptr = _type.lock();
-           not ptr) 
+           not ptr)
         {
             throw U_EXCEPTION("Property ",name()," is invalid.");
         } else
@@ -576,7 +675,7 @@ template<typename T>
     requires (not std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
     if (auto ptr = _type.lock();
-        ptr /*&& ptr->valid()*/) 
+        ptr /*&& ptr->valid()*/)
     {
         ptr->operator=(value);
     }
@@ -589,7 +688,7 @@ template<typename T>
     requires (std::convertible_to<T, const char*>)
 void Reference::operator=(const T& value) {
     if (auto ptr = _type.lock();
-        ptr && ptr->valid()) 
+        ptr && ptr->valid())
     {
         ptr->operator=(std::string(value));
     }
@@ -624,7 +723,7 @@ void Reference::operator=(const T& value) {
     template<typename T>
     bool ConstReference::is_type() const {
         if(auto ptr = _type.lock();
-           not ptr) 
+           not ptr)
         {
             return false;
         } else {

@@ -55,7 +55,7 @@ private:
     std::string _docs;
     std::string _ref;
     //sprite::Reference _ref;
-    CallbackCollection _callback_id;
+    sprite::CallbackFuture _callback_id;
     CallbackManagerImpl<void> _delete_callbacks;
     
     mutable std::mutex _ref_mutex;
