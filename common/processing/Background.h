@@ -272,7 +272,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
                 value = convert_to_grayscale(value);
                 source = convert_to_grayscale(source);
             }
-            return abs(source - value);
+            return std::abs(source - value);
         }
         
         template<DifferenceMethod M = method>
@@ -407,12 +407,12 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
         }
         
         template<OutputInfo output, DifferenceMethod method, typename Pixel>
-        bool is_different(coord_t x, coord_t y, Pixel value, int threshold, BackgroundInfo i) const {
+        constexpr inline bool is_different(coord_t x, coord_t y, Pixel value, int threshold, BackgroundInfo i) const {
             return is_value_different<output, Pixel>(x, y, diff<output, method, Pixel>(x, y, i, value), threshold);
         }
         
         template<OutputInfo output, typename Pixel>
-        bool is_value_different([[maybe_unused]] coord_t x, [[maybe_unused]] coord_t y, Pixel value, int threshold) const {
+        constexpr inline bool is_value_different([[maybe_unused]] coord_t x, [[maybe_unused]] coord_t y, Pixel value, int threshold) const {
             assert(x < _image->cols && y < _image->rows);
             if constexpr(is_rgb_array<Pixel>::value) {
                 return bgr2gray(value) >= /*(_grid ? _grid->relative_threshold(x, y) : 1) * */threshold;

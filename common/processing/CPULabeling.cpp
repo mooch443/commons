@@ -48,11 +48,18 @@ void merge_lines(Source::RowRef &previous_vector,
     // walk along both lines, trying to match pairs
     auto current = current_vector.begin();
     auto previous = previous_vector.begin();
+    auto current_end = current_vector.end();
+    auto previous_end = previous_vector.end();
+    size_t hint = std::distance(current_vector.begin(), current_vector.end());
+    // Use the current_vector size as a hint; could be smarter if you have better info
+    size_t reserve_hint = std::max<size_t>(64, hint);
     
-    while (current != current_vector.end()) {
-        if(previous == previous_vector.end()
-           || current->Lit->line.y() > (previous->Lit->line).y() + 1
-           || current->Lit->line.x1()+1 < (previous->Lit->line).x0())
+    while (current != current_end) {
+        auto curr_lit = current->Lit;
+        auto prev_lit = (previous != previous_end) ? previous->Lit : nullptr;
+        if(prev_lit == nullptr
+           || curr_lit->line.y() > (prev_lit->line).y() + 1
+           || curr_lit->line.x1()+1 < (prev_lit->line).x0())
         {
             // case 0: current line ends before previous line starts
             // case 1: lines are more than 1 apart in y direction,
@@ -60,49 +67,51 @@ void merge_lines(Source::RowRef &previous_vector,
             //
             // -> create new blobs for all elements
             // add new blob, next element in current line
-            assert(previous == previous_vector.end()
-                   || (current->Lit)->line.y() > (previous->Lit)->line.y() + 1
-                   || !(current->Lit->line).overlap_x(previous->Lit->line));
+            assert(prev_lit == nullptr
+                   || (curr_lit)->line.y() > (prev_lit)->line.y() + 1
+                   || !(curr_lit->line).overlap_x(prev_lit->line));
             
-            if(!(current->Lit)->node
-               || !(current->Lit->node)->parent)
+            if(!(curr_lit)->node
+               || !(curr_lit)->node->parent)
             {
                 auto p = blobs.cache().broto();
                 if(p)
-                    p->push_back(current->Lit->line, *current->Pit);
-                else
-                    p = std::make_unique<Brototype>(current->Lit->line, *current->Pit);
+                    p->push_back(curr_lit->line, *current->Pit);
+                else {
+                    p = std::make_unique<Brototype>(reserve_hint);
+                    p->push_back(curr_lit->line, *current->Pit);
+                }
                 
-                blobs.insert((current->Lit->node), std::move(p));
+                blobs.insert((curr_lit->node), std::move(p));
                 
             }
             
             ++current;
             
-        } else if((current->Lit->line).x0() > (previous->Lit->line).x1()+1) {
+        } else if((curr_lit->line).x0() > (prev_lit->line).x1()+1) {
             // case 3: previous line ends before current
             // next element in previous line
-            assert(!(current->Lit->line).overlap_x(previous->Lit->line));
+            assert(!(curr_lit->line).overlap_x(prev_lit->line));
             ++previous;
             
         } else {
             // case 4: lines intersect
             // merge elements, next in line that ends first
-            assert((current->Lit->line).overlap_x(previous->Lit->line));
-            assert(previous->Lit->node);
+            assert((curr_lit->line).overlap_x(prev_lit->line));
+            assert(prev_lit->node);
             
-            auto pblob = (previous->Lit->node);
+            auto pblob = (prev_lit->node);
             
-            if(!current->Lit->node) {
+            if(!curr_lit->node) {
                 // current line isnt part of a blob yet
                 // nit is null!
-                pblob->obj->push_back((current->Lit->line), *current->Pit);
-                current->Lit->node = (previous->Lit->node);
+                pblob->obj->push_back((curr_lit->line), *current->Pit);
+                curr_lit->node = (prev_lit->node);
                 
-            } else if(current->Lit->node != previous->Lit->node) {
+            } else if(curr_lit->node != prev_lit->node) {
                 // current line is part of a blob
                 // (merge blobs)
-                assert(current->Lit->node != previous->Lit->node);
+                assert(curr_lit->node != prev_lit->node);
                 
                 auto p = previous;
                 auto c = current;
@@ -122,15 +131,19 @@ void merge_lines(Source::RowRef &previous_vector,
                     pblob->obj->merge_with(cblob->obj);
                 
                 // replace blob pointers in current_ and previous_vector
-                for(auto cit = current_vector.begin(); cit != current_vector.end(); ++cit) {
-                    if((cit->Lit->node) == cblob) {
-                        cit->Lit->node = p->Lit->node;
+                for(auto cit = current_vector.begin(); cit != current_end; ++cit) {
+                    auto cit_lit = cit->Lit;
+                    auto p_lit = p->Lit;
+                    if(cit_lit->node == cblob) {
+                        cit_lit->node = p_lit->node;
                     }
                 }
                 
-                for(auto cit = previous; cit != previous_vector.end(); ++cit) {
-                    if((cit->Lit->node) == cblob) {
-                        cit->Lit->node = p->Lit->node;
+                for(auto cit = previous; cit != previous_end; ++cit) {
+                    auto cit_lit = cit->Lit;
+                    auto p_lit = p->Lit;
+                    if(cit_lit->node == cblob) {
+                        cit_lit->node = p_lit->node;
                     }
                 }
                 
@@ -153,7 +166,7 @@ void merge_lines(Source::RowRef &previous_vector,
              * in the following steps it would increase current
              * and then terminate.
              */
-            if((current->Lit->line).x1() <= (previous->Lit->line).x1())
+            if((curr_lit->line).x1() <= (prev_lit->line).x1())
                 ++current;
             else
                 ++previous;
@@ -221,7 +234,7 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         if(!it->obj || it->obj->empty())
             continue;
         
-        result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(), 
+        result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(),
                             std::make_unique<std::vector<uchar>>(),
                             initial_flags);
         
@@ -244,16 +257,19 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         auto current = lines->data();
         auto pixel = pixels->data();
         for(auto & [l, px] : *it->obj) {
-            assert((l)->y() >= y);
+            auto lx0 = l->x0();
+            auto lx1 = l->x1();
+            auto ly = l->y();
+            assert(ly >= y);
             //if(ptr_safe_t(l->x1()) - ptr_safe_t(l->x0()) >= 63)
                 //Print("Line is of suspicious length: ", *l);
                 
             if(current > lines->data()
-               && (current - 1)->x1 + 1 == l->x0()
-               && (current - 1)->y == l->y())
+               && (current - 1)->x1 + 1 == lx0
+               && (current - 1)->y == ly)
             {
                 //Print("Could merge lines ", *l, " and ", *(current-1));
-                (current-1)->x1 = l->x1();
+                (current-1)->x1 = lx1;
                 --LLines;
             } else {
                 *current++ = *l; // assign **l to *current; inc current
@@ -262,14 +278,14 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
             if(pixels) {
                 assert(*px);
                 auto start = *px;
-                auto end = start + ((ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1))) * channels;
+                auto end = start + ((ptr_safe_t(lx1) - ptr_safe_t(lx0) + ptr_safe_t(1))) * channels;
                 
                 //! HOTSPOT
                 pixel = std::copy(start, end, pixel);
             }
             
 #ifndef NDEBUG
-            y = (l)->y();
+            y = ly;
 #endif
         }
         

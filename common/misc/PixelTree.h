@@ -215,7 +215,15 @@ namespace cmn::pixel {
                     //assert(px < px_end);
                     
                     auto pixel_value = diffable_pixel_value<input, output>(px);
-                    auto grey_value = to_grey_value<input, output>(pixel_value);
+                    uchar grey_value;
+                    if constexpr(output.channels == 3) {
+                        grey_value = bgr2gray(pixel_value);
+                    } else if constexpr(output.is_r3g3b2()) {
+                        grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
+                    } else {
+                        grey_value = pixel_value;
+                    }
+                    //auto grey_value = to_grey_value<input, output>(pixel_value);
                     //auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
                     if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold, info)) {
                         if(start) {

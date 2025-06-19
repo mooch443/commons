@@ -8,12 +8,14 @@ std::unordered_set<Brototype*> Brototype::brototypes() {
     return _brototypes;
 }
 
-Brototype::Brototype() {
+Brototype::Brototype(size_t reserve_hint) {
    // Print("Allocating.");
 #if defined(DEBUG_MEM)
     std::lock_guard guard(mutex());
     brototypes().insert(this);
 #endif
+    _lines.reserve(reserve_hint);
+    _pixel_starts.reserve(reserve_hint);
 }
 
 Brototype::Brototype(const Line_t& line, const uchar* px)
@@ -59,12 +61,21 @@ void Brototype::merge_with(const std::unique_ptr<Brototype>& b) {
         return;
     }
     
+    if (BL.back() < AL.front()) {
+        // Prepend whole B to A (and BL to AL)
+        A.insert(A.begin(), B.begin(), B.end());
+        AL.insert(AL.begin(), BL.begin(), BL.end());
+        return;
+    }
+    
     auto it0=A .begin();
     auto Lt0=AL.begin();
     auto it1=B .begin();
     auto Lt1=BL.begin();
     
-    for (; it1!=B.end() && it0!=A.end();) {
+    auto Bend = B.end();
+    auto Aend = A.end();
+    for (; it1!=Bend && it0!=Aend;) {
         if((*Lt1) < (*Lt0)) {
             const auto start = it1;
             const auto Lstart = Lt1;
@@ -72,10 +83,11 @@ void Brototype::merge_with(const std::unique_ptr<Brototype>& b) {
                 ++Lt1;
                 ++it1;
             }
-            while (Lt1 != BL.end() && it1 != B.end()
+            while (Lt1 != BL.end() && it1 != Bend
                    && (*Lt1) < (*Lt0));
             it0 = A .insert(it0, start , it1) + (it1 - start);
             Lt0 = AL.insert(Lt0, Lstart, Lt1) + (Lt1 - Lstart);
+            Aend = A.end();
             
         } else {
             ++it0;
@@ -84,8 +96,10 @@ void Brototype::merge_with(const std::unique_ptr<Brototype>& b) {
         }
     }
     
-    if(it1!=B.end()) {
-        A.insert(A.end(), it1, B.end());
+    assert(B.end() == Bend);
+    
+    if(it1!=Bend) {
+        A.insert(A.end(), it1, Bend);
         AL.insert(AL.end(), Lt1, BL.end());
     }
 }

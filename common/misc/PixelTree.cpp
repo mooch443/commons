@@ -172,13 +172,12 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         //return blob;
         //blob->threshold(threshold, *bg);
         //Timer timer;
-        /*if(use_closing || blob->pixels()->size() > 1000 * 1000) {
-            static gpuMat back;
-            cv::Mat local;
-            
-            auto && [pos, image] = blob->image(NULL, Bounds(0, 0, bg->image().cols, bg->image().rows));
+        /*if(use_closing || blob->pixels()->size() > 100 * 10) {
+            static cv::Mat local;
+            auto [pos, image] = blob->gray_image(NULL, Bounds(0, 0, bg->image().cols, bg->image().rows));
             
             {
+                static gpuMat back;
                 static gpuMat element;
                 static std::mutex element_mutex;
                 

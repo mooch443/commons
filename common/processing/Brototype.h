@@ -27,7 +27,7 @@ private:
 public:
     static std::unordered_set<Brototype*> brototypes();
     
-    Brototype();
+    Brototype(size_t reserve_hint);
     Brototype(const Line_t& line, const uchar* px);
     ~Brototype();
     
