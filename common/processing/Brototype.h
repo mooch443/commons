@@ -23,9 +23,16 @@ class Brototype {
 private:
     GETTER_NCONST(std::vector<Pixel>, pixel_starts);
     GETTER_NCONST(std::vector<Line_t>, lines);
+    std::vector<Brototype*> _children;
+    Brototype* _parent{nullptr};
     
 public:
     static std::unordered_set<Brototype*> brototypes();
+    constexpr Brototype* has_parent() const {
+        return _parent;
+    }
+    void set_parent(Brototype*);
+    void finalize();
     
     Brototype(size_t reserve_hint);
     Brototype(const Line_t& line, const uchar* px);
@@ -47,7 +54,7 @@ public:
         _emplace_back(_pixel_starts, px);
     }
     
-    void merge_with(const std::unique_ptr<Brototype>& b);
+    void merge_with(const Brototype& b);
     
     struct Combined {
         decltype(Brototype::_lines)::iterator Lit;

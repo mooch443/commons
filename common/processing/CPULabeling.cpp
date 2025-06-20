@@ -127,9 +127,18 @@ void merge_lines(Source::RowRef &previous_vector,
                 
                 assert(cblob != pblob);
                 
-                if(!cblob->obj->empty())
-                    pblob->obj->merge_with(cblob->obj);
-                
+                bool moved = false;
+                if(!cblob->obj->empty()) {
+                    /*if(cblob->obj->lines().size() > 64
+                       || cblob->obj->has_parent()
+                       || pblob->obj->has_parent())
+                    {*/
+                        cblob->obj->set_parent(pblob->obj.get());
+                    /*} else {
+                        pblob->obj->merge_with(*cblob->obj);
+                        moved = true;
+                    }*/
+                }
                 // replace blob pointers in current_ and previous_vector
                 for(auto cit = current_vector.begin(); cit != current_end; ++cit) {
                     auto cit_lit = cit->Lit;
@@ -147,9 +156,12 @@ void merge_lines(Source::RowRef &previous_vector,
                     }
                 }
                 
-                if(cblob->obj)
-                    Brototype::move_to_cache(&blobs, cblob->obj);
-                Node_t::move_to_cache(cblob);
+                if(moved) {
+                    
+                    if(cblob->obj)
+                        Brototype::move_to_cache(&blobs, cblob->obj);
+                    Node_t::move_to_cache(cblob);
+                }
             }
             
             /*
@@ -221,6 +233,18 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         
         previous_row = current_row;
         current_row.inc_row();
+    }
+    
+    /// finalize
+    for(auto it = blobs->begin(); it != blobs->end(); ++it) {
+        if(not it->obj)
+            continue;
+        it->obj->finalize();
+        
+        if(it->obj->lines().empty()) {
+            Brototype::move_to_cache(blobs, it->obj);
+            assert(not it->obj);
+        }
     }
     
     /**

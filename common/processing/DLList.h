@@ -45,6 +45,8 @@ public:
     Node::Ptr _end = nullptr;
     std::vector<Node::Ref> _owned;
     
+    std::unordered_map<Brototype*, std::vector<std::unique_ptr<Brototype>>> merged_objects;
+    
     struct Cache {
         //std::mutex _mutex;
         std::vector<typename Node::Ref> _nodes;
