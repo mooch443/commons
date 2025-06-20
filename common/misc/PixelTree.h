@@ -203,44 +203,100 @@ namespace cmn::pixel {
                 pixels.insert(pixels.end(), line.length() * output.channels, 255);
             }
             result.insert(result.end(), lines.begin(), lines.end());
-            
         } else {
             assert(bg != nullptr);
             const auto info = bg->info<output, method, PixelOutput_t<input, output>>();
-            for(const auto &line : lines) {
-                coord_t x0;
-                uchar* start{nullptr};
-                
-                for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
-                    //assert(px < px_end);
-                    
-                    auto pixel_value = diffable_pixel_value<input, output>(px);
-                    uchar grey_value;
-                    if constexpr(output.channels == 3) {
-                        grey_value = bgr2gray(pixel_value);
-                    } else if constexpr(output.is_r3g3b2()) {
-                        grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
-                    } else {
-                        grey_value = pixel_value;
-                    }
-                    //auto grey_value = to_grey_value<input, output>(pixel_value);
-                    //auto [pixel_value, grey_value] = dual_diffable_pixel_value<input, output>(px);
-                    if(not bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(x, line.y, grey_value, threshold, info)) {
-                        if(start) {
-                            pixels.insert(pixels.end(), start, px);
-                            result.emplace_back(line.y, x0, x - 1);
-                            start = nullptr;
+            // Fast path for common case:
+            // input.channels == 1 && output.channels == 1 && method == DifferenceMethod_t::absolute
+            // and neither input nor output is r3g3b2
+            if constexpr (
+                input.channels == 1 &&
+                output.channels == 1 &&
+                method == DifferenceMethod_t::absolute &&
+                !input.is_r3g3b2() &&
+                !output.is_r3g3b2()
+            ) {
+                const uchar* bg_ptr = info.data;
+                ptr_safe_t bg_stride = info.width;
+                for(const auto &line : lines) {
+                    coord_t x0;
+                    uchar* start{nullptr};
+                    for (auto x = line.x0; x <= line.x1; ++x, px += 1) {
+                        // Compute background pixel address directly
+                        auto bg_pixel = bg_ptr[x + line.y * bg_stride];
+                        uchar fg_pixel = *px;
+                        int diff = std::abs(int(bg_pixel) - int(fg_pixel));
+                        bool is_diff = diff >= threshold;
+                        if (!is_diff) {
+                            if (start) {
+                                pixels.insert(pixels.end(), start, px);
+                                result.emplace_back(line.y, x0, x - 1);
+                                start = nullptr;
+                            }
+                        } else if (!start) {
+                            start = px;
+                            x0 = x;
                         }
-                        
-                    } else if(!start) {
-                        start = px;
-                        x0 = x;
+                    }
+                    if (start) {
+                        pixels.insert(pixels.end(), start, px);
+                        result.emplace_back(line.y, x0, line.x1);
                     }
                 }
-                
-                if(start) {
-                    pixels.insert(pixels.end(), start, px);
-                    result.emplace_back(line.y, x0, line.x1);
+            } else {
+                for(const auto &line : lines) {
+                    coord_t x0;
+                    uchar* start{nullptr};
+                    for (auto x=line.x0; x<=line.x1; ++x, px += input.channels) {
+                        // --- fast‑path pixel handling ---------------------------------
+                        uchar grey_value;
+
+                        // 1.  Avoid diffable_pixel_value when we already have a single
+                        //     greyscale byte.  This is the case for the overwhelmingly
+                        //     common “1 input channel, not R3G3B2” scenario.
+                        if constexpr (input.channels == 1 && !input.is_r3g3b2()) {
+                            grey_value = *px;
+
+                        } else {
+                            // Fall back to the generic (compile‑time optimised) helper.
+                            auto pixel_value = diffable_pixel_value<input, output>(px);
+
+                            if constexpr (output.channels == 3) {
+                                grey_value = bgr2gray(pixel_value);
+                            } else if constexpr (output.is_r3g3b2()) {
+                                grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
+                            } else {
+                                grey_value = pixel_value;
+                            }
+                        }
+
+                        // 2.  Determine whether this pixel is “different”.
+                        bool is_diff;
+                        if constexpr (method == DifferenceMethod_t::none) {
+                            // No background subtraction ⇒ simple threshold compare.
+                            is_diff = grey_value >= threshold;
+                        } else {
+                            is_diff = bg->is_different<DIFFERENCE_OUTPUT_FORMAT, method>(
+                                x, line.y, grey_value, threshold, info);
+                        }
+
+                        // 3.  Update run‑length logic (start/stop regions).
+                        if (!is_diff) {
+                            if (start) {
+                                pixels.insert(pixels.end(), start, px);
+                                result.emplace_back(line.y, x0, x - 1);
+                                start = nullptr;
+                            }
+                        } else if (!start) {
+                            start = px;
+                            x0 = x;
+                        }
+                    }
+                    
+                    if(start) {
+                        pixels.insert(pixels.end(), start, px);
+                        result.emplace_back(line.y, x0, line.x1);
+                    }
                 }
             }
         }

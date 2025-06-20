@@ -39,68 +39,80 @@ Brototype::~Brototype() {
 std::mutex& Brototype::mutex() { static std::mutex m; return m; }
 
 void Brototype::merge_with(const std::unique_ptr<Brototype>& b) {
-    auto&        A = pixel_starts();
-    auto&       AL = lines();
-    
-    const auto&  B = b->pixel_starts();
-    const auto& BL = b->lines();
-    
-    if(A.empty()) {
+    auto&  A  = pixel_starts();
+    auto&  AL = lines();
+    const auto&  B  = b->pixel_starts();
+    const auto&  BL = b->lines();
+
+    if (A.empty()) {
         A .insert(A .end(), B .begin(), B .end());
         AL.insert(AL.end(), BL.begin(), BL.end());
         return;
     }
-    
-    A .reserve(A .size()+B .size());
-    AL.reserve(AL.size()+BL.size());
-    
-    // special cases
-    if(AL.back() < BL.front()) {
+
+    A .reserve(A .size() + B .size());
+    AL.reserve(AL.size() + BL.size());
+
+    if (AL.back() < BL.front()) {
         A .insert(A .end(), B .begin(), B .end());
         AL.insert(AL.end(), BL.begin(), BL.end());
         return;
     }
-    
     if (BL.back() < AL.front()) {
-        // Prepend whole B to A (and BL to AL)
-        A.insert(A.begin(), B.begin(), B.end());
+        A .insert(A .begin(), B .begin(), B .end());
         AL.insert(AL.begin(), BL.begin(), BL.end());
         return;
     }
-    
-    auto it0=A .begin();
-    auto Lt0=AL.begin();
-    auto it1=B .begin();
-    auto Lt1=BL.begin();
-    
-    auto Bend = B.end();
-    auto Aend = A.end();
+
+    auto  it0 = A .begin();
+    auto  Lt0 = AL.begin();
+    auto  it1 = B .begin();
+    auto  Lt1 = BL.begin();
+    const auto Bend = B .end();
+    const auto BLend = BL.end();     // cached
+          auto Aend = A .end();      // updated only after an insert
+    auto ALend = AL.end();
+
+    Line_t currA = *Lt0;             // cached dereference
+    Line_t currB = *Lt1;
+    bool condition = currB < currA;
+
     for (; it1!=Bend && it0!=Aend;) {
-        if((*Lt1) < (*Lt0)) {
-            const auto start = it1;
+        if (condition) {
+            const auto start  = it1;
             const auto Lstart = Lt1;
-            do {
+            std::size_t runLen = 0;
+
+            do {                     // advance B run that precedes currA
                 ++Lt1;
                 ++it1;
-            }
-            while (Lt1 != BL.end() && it1 != Bend
-                   && (*Lt1) < (*Lt0));
-            it0 = A .insert(it0, start , it1) + (it1 - start);
-            Lt0 = AL.insert(Lt0, Lstart, Lt1) + (Lt1 - Lstart);
-            Aend = A.end();
-            
-        } else {
+                ++runLen;
+                
+                if (Lt1 == BLend || it1 == Bend)
+                    break;
+                currB = *Lt1;
+                condition = currB < currA;
+            } while (condition);
+
+            it0  = A .insert(it0 , start , it1) + runLen;
+            Lt0  = AL.insert(Lt0, Lstart, Lt1) + runLen;
+            Aend = A .end();         // **only here** does A change
+            ALend = AL.end();
+        }
+        else {
             ++it0;
-            //++Nt0;
             ++Lt0;
+            if (Lt0 != ALend)  {   // refresh cached value when we move
+                currA = *Lt0;
+                condition = currB < currA;
+            }
         }
     }
     
     assert(B.end() == Bend);
-    
     if(it1!=Bend) {
-        A.insert(A.end(), it1, Bend);
-        AL.insert(AL.end(), Lt1, BL.end());
+        A .insert(A .end(), it1, Bend);
+        AL.insert(AL.end(), Lt1, BLend);
     }
 }
 
