@@ -26,6 +26,51 @@
 #include <misc/checked_casts.h>
 #include <misc/EnumClass.h>
 #include <misc/custom_exceptions.h>
+#include <new>
+#include <utility>
+
+namespace cmn {
+template <typename T>
+class NoInitializeAllocator : public std::allocator< T > {
+public:
+    template <typename U>
+    struct rebind {
+        typedef NoInitializeAllocator<U> other;
+    };
+    
+    //provide the required no-throw constructors / destructors:
+    NoInitializeAllocator() throw() : std::allocator<T>() { };
+    NoInitializeAllocator(const NoInitializeAllocator<T>& rhs) throw() : std::allocator<T>(rhs) { };
+    ~NoInitializeAllocator() throw() { };
+    
+    //import the required typedefs:
+    typedef T& reference;
+    typedef const T& const_reference;
+    typedef T* pointer;
+    typedef const T* const_pointer;
+    
+    
+    using std::allocator<T>::allocator;
+
+    // Allow normal constructions (copy, move, etc.)
+    template <typename U, typename... Args>
+    void construct(U* p, Args&&... args) {
+        ::new (static_cast<void*>(p)) U(std::forward<Args>(args)...);
+    }
+
+    // Suppress default initialization for T
+    void construct(T*) noexcept {
+        // no-op: leave uninitialized
+    }
+};
+template <class T, class U>
+bool operator==(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return true; }
+template <class T, class U>
+bool operator!=(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return false; }
+
+using PixelArray_t = std::vector<uchar, NoInitializeAllocator<uchar>>;
+}
+
 #include <misc/detail.h>
 #include <misc/vec2.h>
 
@@ -54,7 +99,7 @@ namespace cmn {
 namespace blob {
 using lines_t = std::vector<HorizontalLine>;
 using line_ptr_t = std::unique_ptr<lines_t>;
-using pixel_ptr_t = std::unique_ptr<std::vector<uchar>>;
+using pixel_ptr_t = std::unique_ptr<PixelArray_t>;
 
 using ObjectClass_t = std::map<uint16_t, std::string>;
 using MaybeObjectClass_t = std::optional<ObjectClass_t>;

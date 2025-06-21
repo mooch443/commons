@@ -207,7 +207,7 @@ constexpr uchar to_grey_value(Pixel pixel_value) noexcept {
 
 template<OutputInfo output, typename Pixel>
     requires (std::same_as<Pixel, RGBArray> || std::is_integral_v<Pixel>)
-constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
+constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
     //static_assert(is_in(input.channels, 3, 1), "Need input to have either 3 or 1 channels.");
     static_assert(is_in(output.channels, 3, 1), "Need output to have either 3 or 1 channels.");
     
@@ -524,7 +524,7 @@ constexpr void push_pixel_value(std::vector<uchar>& image_ptr, Pixel value) {
          cv::Mat* output_mask,
          cv::Mat* output_greyscale = NULL,
          cv::Mat* output_differences = NULL,
-         const std::vector<uchar>* pixels = NULL,
+         const PixelArray_t* pixels = NULL,
          const int threshold = 0,
          const Background* average = NULL,
          int padding = 0);

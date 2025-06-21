@@ -27,12 +27,10 @@ struct HLine {
     coord_t x0() const noexcept {
         return coord_t((x0x1y & mask_x0) >> offset_x0);
     }
-    coord_t x1() const
-#ifdef NDEBUG
-    noexcept
-#endif
-    {
-        return x0() + (coord_t((x0x1y & mask_x1) >> offset_x1) & bit_size_x1);
+    constexpr coord_t x1() const noexcept {
+        // Width is stored in mask_x1 bits; add to x0 from mask_x0 bits
+        return coord_t(((x0x1y & mask_x0) >> offset_x0)
+                     + ((x0x1y & mask_x1) >> offset_x1));
     }
     coord_t y() const noexcept {
         return coord_t((x0x1y & mask_y) >> offset_y);
@@ -82,17 +80,18 @@ struct HLine {
         assert(y == this->y());
     }
     
-    bool operator<(const HLine& other) const {
-        //! Compares two HorizontalLines and sorts them by y and x0 coordinates
-        //  (top-bottom, left-right)
-        return y() < other.y() || (y() == other.y() && x0() < other.x0());
-    }
+constexpr bool operator<(const HLine& other) const noexcept {
+    //! Compares two HorizontalLines and sorts them by y and x0 coordinates
+    //  (top-bottom, left-right) by combining fields into a single integer comparison
+    constexpr Storage cmp_mask = mask_y | mask_x0;
+    return (x0x1y & cmp_mask) < (other.x0x1y & cmp_mask);
+}
     
-    bool overlap_x(const HLine& other) const {
+    constexpr bool overlap_x(const HLine& other) const noexcept {
         return other.x1() >= x0()-1 && other.x0() <= x1()+1;
     }
     
-    operator HorizontalLine() const {
+    constexpr operator HorizontalLine() const noexcept {
         return HorizontalLine(y(), x0(), x1());
     }
     

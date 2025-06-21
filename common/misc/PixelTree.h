@@ -157,10 +157,10 @@ namespace cmn::pixel {
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1, -1));
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, int threshold, const cmn::Background* bg, const Rangel& size_range = Rangel(-1,-1));
 
-    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background, const Rangel& size_range = Rangel(-1,-1));
-    //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
+    std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background, const Rangel& size_range = Rangel(-1,-1));
+    //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
 
-#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, std::vector<uchar> &pixels)
+#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, std::vector<uchar, NoInitializeAllocator<uchar>> &pixels)
 
     /*template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_with_grid _____FN_TYPE {
@@ -218,6 +218,8 @@ namespace cmn::pixel {
             ) {
                 const uchar* bg_ptr = info.data;
                 ptr_safe_t bg_stride = info.width;
+                result.reserve(lines.size());
+                
                 for(const auto &line : lines) {
                     coord_t x0;
                     uchar* start{nullptr};
@@ -229,8 +231,16 @@ namespace cmn::pixel {
                         bool is_diff = diff >= threshold;
                         if (!is_diff) {
                             if (start) {
-                                pixels.insert(pixels.end(), start, px);
-                                result.emplace_back(line.y, x0, x - 1);
+                                const size_t S = pixels.size();
+                                const size_t N = (px - start);
+                                //if(pixels.capacity() < S + N)
+                                //    FormatWarning("capacity = ", pixels.capacity(), " copy ", S + N);
+                                pixels.resize(S + N);
+                                std::memcpy(pixels.data() + S, start, N);
+                                
+                                //pixels.insert(pixels.end(), start, px);
+                                result.push_back(HorizontalLine(line.y, x0, x-1));
+                                //result.emplace_back(line.y, x0, x - 1);
                                 start = nullptr;
                             }
                         } else if (!start) {
@@ -240,7 +250,8 @@ namespace cmn::pixel {
                     }
                     if (start) {
                         pixels.insert(pixels.end(), start, px);
-                        result.emplace_back(line.y, x0, line.x1);
+                        result.push_back(HorizontalLine(line.y, x0, line.x1));
+                        //result.emplace_back(line.y, x0, line.x1);
                     }
                 }
             } else {

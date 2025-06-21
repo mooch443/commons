@@ -259,7 +259,7 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
             continue;
         
         result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(),
-                            std::make_unique<std::vector<uchar>>(),
+                            std::make_unique<PixelArray_t>(),
                             initial_flags);
         
         auto &lines = result.back().lines;
@@ -362,7 +362,7 @@ blobs_t run(const cv::Mat &image, ListCache_t& cache, bool enable_threads) {
 }
 
 // called by user
-blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, ListCache_t& cache, uint8_t channels)
+blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, ListCache_t& cache, uint8_t channels)
 {
     auto px = pixels.data();
     //list.clear();
@@ -400,7 +400,7 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& 
     return run_fast(&list, channels);
 }
 
-blobs_t run(const std::vector<HorizontalLine>& lines, const std::vector<uchar>& pixels, uint8_t channels)
+blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, uint8_t channels)
 {
     if(lines.empty())
         return {};

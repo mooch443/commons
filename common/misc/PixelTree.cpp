@@ -31,7 +31,7 @@ bool Tree::Comparator::operator()(const Ptr& left, const Ptr& right) const
 struct Row {
     std::vector<int> cache;
 #if TREE_WITH_PIXELS
-    std::vector<uchar> pixels;
+    PixelArray_t pixels;
 #endif
     std::vector<int> border;
     
@@ -87,7 +87,7 @@ struct Row {
 
 
 
-inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background) {
+inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background) {
     //Print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
     if(blob->is_binary()) {
         std::vector<blob::Pair> blobs;
@@ -103,7 +103,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         const uchar* px = blob->pixels()->data();
         const uchar* dpx = difference_cache.data();
         
-        std::vector<uchar> pixels;
+        PixelArray_t pixels;
         pixels.reserve(blob->pixels()->size());
         
         for(const auto &line : blob->hor_lines()) {
@@ -227,7 +227,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         //timer.reset();
         auto px = blob->pixels()->data();
         std::vector<HorizontalLine> lines;
-        std::vector<uchar> pixels;
+        std::vector<uchar, NoInitializeAllocator<uchar>> pixels(NoInitializeAllocator<uchar>{});
         lines.reserve(blob->hor_lines().size());
         pixels.reserve(blob->pixels()->size());
         
@@ -296,7 +296,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         extra_flags |= pv::Blob::copy_flags(*blob);
         return pv::Blob::Make(
                 std::make_unique<std::vector<HorizontalLine>>(),
-                std::make_unique<std::vector<uchar>>(),
+                std::make_unique<PixelArray_t>(),
                 extra_flags,
                 blob::Prediction{blob->prediction()});
         //auto ptr = pv::Blob::Make(lines, pixels);
@@ -322,7 +322,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         return threshold_blob(cache, blob, threshold, bg, size_range);
     }*/
 
-std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Background& background, const Rangel& size_range) {
+std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background, const Rangel& size_range) {
     std::vector<pv::BlobPtr> result;
     if(blob->is_binary()) {
         result.emplace_back(pv::Blob::Make(*blob));
@@ -336,7 +336,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
     return result;
 }
 
-    /*std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const std::vector<uchar>& difference_cache, int threshold, const Rangel& size_range) {
+    /*std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Rangel& size_range) {
         CPULabeling::ListCache_t cache;
         return threshold_blob(cache, blob, difference_cache, threshold, size_range);
     }*/
@@ -592,7 +592,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
         } catch(const std::invalid_argument& e) {
             Print("Error");
             Print(blob->blob_id(),": ", e.what(), " ", blob->pixels() ? blob->pixels()->size() : 0);
-            Print(blob->pixels() ? *blob->pixels() : std::vector<uchar>{}, "\n", blob->hor_lines(), "\n\n");
+            Print(blob->pixels() ? *blob->pixels() : PixelArray_t{}, "\n", blob->hor_lines(), "\n\n");
         }
         
         return interp;

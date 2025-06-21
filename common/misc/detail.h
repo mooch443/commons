@@ -120,7 +120,7 @@ namespace cmn {
             return ss.str();
         }
         
-        static void repair_lines_array(std::vector<HorizontalLine>&, std::vector<uchar>&);
+        static void repair_lines_array(std::vector<HorizontalLine>&, PixelArray_t&);
         static void repair_lines_array(std::vector<HorizontalLine>&);
         
         std::string toStr() const;
@@ -133,43 +133,6 @@ namespace cmn {
     //! Returns an offset for y if it was needed to keep the values within 0<value<USHRT_MAX
     void dilate(std::vector<HorizontalLine>& array, int times=1, int max_cols = 0, int max_rows = 0);
 #endif
-    
-    template <typename T>
-    class NoInitializeAllocator : public std::allocator< T > {
-    public:
-        template <typename U>
-        struct rebind {
-            typedef NoInitializeAllocator<U> other;
-        };
-        
-        //provide the required no-throw constructors / destructors:
-        NoInitializeAllocator() throw() : std::allocator<T>() { };
-        NoInitializeAllocator(const NoInitializeAllocator<T>& rhs) throw() : std::allocator<T>(rhs) { };
-        ~NoInitializeAllocator() throw() { };
-        
-        //import the required typedefs:
-        typedef T& reference;
-        typedef const T& const_reference;
-        typedef T* pointer;
-        typedef const T* const_pointer;
-        
-        //redefine the construct function (hiding the base-class version):
-        /*void construct( pointer p, const_reference cr) {
-         Print("Construct called!");
-         //else, do nothing.
-         };*/
-        
-        template <class _Up, class... _Args>
-        void
-        construct(_Up*, _Args&&... )
-        {
-            // do nothing!
-        }
-    };
-    template <class T, class U>
-    bool operator==(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return true; }
-    template <class T, class U>
-    bool operator!=(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return false; }
     
     /**
      * Converts a lines array to a mask or greyscale.

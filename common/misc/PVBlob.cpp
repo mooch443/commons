@@ -767,7 +767,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
             
             if(incorrect) {
                 if(_pixels) {
-                    std::vector<uchar> pixels(_pixels->begin(), _pixels->end());
+                    PixelArray_t pixels(_pixels->begin(), _pixels->end());
                     std::vector<HorizontalLine> lines(_hor_lines->begin(), _hor_lines->end());
                     HorizontalLine::repair_lines_array(lines, pixels);
                     _hor_lines = std::make_unique<line_ptr_t::element_type>(lines);
@@ -821,7 +821,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
         _recount_threshold = threshold;
     }
 
-    std::tuple<OutputInfo, std::unique_ptr<std::vector<uchar>>> Blob::calculate_pixels(const cv::Mat& average) const
+    std::tuple<OutputInfo, std::unique_ptr<PixelArray_t>> Blob::calculate_pixels(const cv::Mat& average) const
     {
         InputInfo input{
             .channels = static_cast<uint8_t>(average.channels()),
@@ -836,21 +836,21 @@ pv::BlobPtr CompressedBlob::unpack() const {
         return std::make_tuple(output, calculate_pixels(input, output, average));
     }
 
-std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(InputInfo input, OutputInfo output, const cv::Mat& average) const
+std::unique_ptr<PixelArray_t> Blob::calculate_pixels(InputInfo input, OutputInfo output, const cv::Mat& average) const
 {
     if(empty())
         return nullptr;
     return calculate_pixels(input, output, *_hor_lines, average, num_pixels());
 }
 
-std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input, cmn::OutputInfo output, const std::vector<HorizontalLine>& lines, const cv::Mat& average, std::optional<uint64_t> num_pixels)
+std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::OutputInfo output, const std::vector<HorizontalLine>& lines, const cv::Mat& average, std::optional<uint64_t> num_pixels)
 {
     assert(input.channels == average.channels());
     
     if(output.encoding == meta_encoding_t::binary)
         return nullptr;
     
-    auto res = std::make_unique<std::vector<uchar>>();
+    auto res = std::make_unique<PixelArray_t>();
     if(not num_pixels) {
         uint64_t N = 0;
         for(auto& line : lines) {
@@ -889,13 +889,13 @@ std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input,
     return res;
 }
 
-    std::tuple<OutputInfo, std::unique_ptr<std::vector<uchar>>> Blob::calculate_pixels(const cmn::Background& background) const
+    std::tuple<OutputInfo, std::unique_ptr<PixelArray_t>> Blob::calculate_pixels(const cmn::Background& background) const
     {
         InputInfo input = input_info();
         OutputInfo output;
         output = input;
         
-        auto res = std::make_unique<std::vector<uchar>>();
+        auto res = std::make_unique<PixelArray_t>();
         res->resize(num_pixels() * output.channels);
         auto ptr = res->data();
         
@@ -1054,7 +1054,7 @@ std::unique_ptr<std::vector<uchar>> Blob::calculate_pixels(cmn::InputInfo input,
         
         auto ptr = blob.pixels()->data();
         HorizontalLine tmp;
-        auto tmp_pixels = std::make_unique<std::vector<uchar>>();
+        auto tmp_pixels = std::make_unique<PixelArray_t>();
         tmp_pixels->reserve(blob.pixels()->size());
         const auto input = blob.input_info();
         //OutputInfo output;
@@ -1635,7 +1635,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
     }
     
     decltype(Blob::_pixels) Blob::calculate_pixels(const Image::Ptr& image, const decltype(_hor_lines) &lines, const Vec2& offset) {
-        auto pixels = std::make_unique<std::vector<uchar>>();
+        auto pixels = std::make_unique<PixelArray_t>();
         for(auto &line : *lines) {
             auto start = image->ptr(uint(int64_t(line.y) + int64_t(offset.y)), uint(int64_t(line.x0) + int64_t(offset.x)));
             //auto start = image->data() + (ptr_safe_t(line.y) + ptr_safe_t(offset.y)) * image->cols + (ptr_safe_t(line.x0) + ptr_safe_t(offset.x));

@@ -37,10 +37,10 @@ namespace cmn {
         }
     }
     
-    void HorizontalLine::repair_lines_array(std::vector<HorizontalLine> &ls, std::vector<uchar>& pixels)
+    void HorizontalLine::repair_lines_array(std::vector<HorizontalLine> &ls, PixelArray_t& pixels)
     {
         std::set<HorizontalLine> lines(ls.begin(), ls.end());
-        std::vector<uchar> corrected;
+        PixelArray_t corrected;
         corrected.reserve(pixels.size());
         if(lines.empty())
             return;

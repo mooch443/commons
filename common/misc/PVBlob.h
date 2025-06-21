@@ -114,11 +114,11 @@ public:
         std::sort(_hor_lines->begin(), _hor_lines->end(), std::less<cmn::HorizontalLine>());
     }
     
-    std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cmn::Background& background) const;
-    std::tuple<cmn::OutputInfo, std::unique_ptr<std::vector<uchar>>> calculate_pixels(const cv::Mat& background) const;
+    std::tuple<cmn::OutputInfo, std::unique_ptr<cmn::PixelArray_t>> calculate_pixels(const cmn::Background& background) const;
+    std::tuple<cmn::OutputInfo, std::unique_ptr<cmn::PixelArray_t>> calculate_pixels(const cv::Mat& background) const;
     
-    std::unique_ptr<std::vector<uchar>> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const cv::Mat& background) const;
-    static std::unique_ptr<std::vector<uchar>> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const std::vector<cmn::HorizontalLine>&, const cv::Mat& background, std::optional<uint64_t> num_pixels);
+    std::unique_ptr<cmn::PixelArray_t> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const cv::Mat& background) const;
+    static std::unique_ptr<cmn::PixelArray_t> calculate_pixels(cmn::InputInfo, cmn::OutputInfo, const std::vector<cmn::HorizontalLine>&, const cv::Mat& background, std::optional<uint64_t> num_pixels);
     
     bool properties_ready() const { return _properties.ready; }
     

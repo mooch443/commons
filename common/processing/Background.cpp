@@ -115,7 +115,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                                              cv::Mat* output_mask,
                                              cv::Mat* output_greyscale,
                                              cv::Mat* output_differences,
-                                             const std::vector<uchar>* pixels,
+                                             const PixelArray_t* pixels,
                                              const int base_threshold,
                                              const Background* background,
                                              int padding)
@@ -281,7 +281,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     return {r, recount};
 }
 
-/*std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input, const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const std::vector<uchar>* input_pixels, const int threshold, const Background* average, int padding)
+/*std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input, const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const PixelArray_t* input_pixels, const int threshold, const Background* average, int padding)
 {
 #ifndef NDEBUG
     if(not is_in(input.channels, 1, 3)) {

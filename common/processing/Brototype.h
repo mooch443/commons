@@ -21,8 +21,11 @@ inline auto& _emplace_back(auto& array, auto&& obj) {
 //! A pair of a blob and a HorizontalLine
 class Brototype {
 private:
-    GETTER_NCONST(std::vector<Pixel>, pixel_starts);
-    GETTER_NCONST(std::vector<Line_t>, lines);
+    using PVector = std::vector<Pixel, NoInitializeAllocator<Pixel>>;
+    using LVector = std::vector<Line_t, NoInitializeAllocator<Line_t>>;
+    
+    GETTER_NCONST(PVector, pixel_starts);
+    GETTER_NCONST(LVector, lines);
     std::vector<Brototype*> _children;
     Brototype* _parent{nullptr};
     
@@ -55,6 +58,8 @@ public:
     }
     
     void merge_with(const Brototype& b);
+    void _merge_with(const Brototype& b);
+    void __merge_with(const Brototype& b);
     
     struct Combined {
         decltype(Brototype::_lines)::iterator Lit;
