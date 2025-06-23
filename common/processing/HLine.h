@@ -97,18 +97,23 @@ constexpr bool operator<(const HLine& other) const noexcept {
     
     HLine() = default;
     HLine(const HorizontalLine& line)
+#ifdef NDEBUG
+        noexcept
+#endif
     : x0x1y(       ((Storage(line.x0) << offset_x0) & mask_x0)
                 | (((Storage(line.x1) - Storage(line.x0)) << offset_x1) & mask_x1)
                 |  ((Storage(line.y) << offset_y) & mask_y)
             )
     {
+#ifndef NDEBUG
         if(Storage(line.x1) - Storage(line.x0) > bit_size_x1)
             throw std::invalid_argument("x1 is too big");
         if(Storage(line.x0) > bit_size_x0)
             throw std::invalid_argument("x0 is too big.");
         if(Storage(line.y) > bit_size_y)
             throw std::invalid_argument("y is too big.");
-        
+#endif
+
         assert(x0() == line.x0);
         assert(x1() == line.x1);
         assert(y() == line.y);
@@ -120,12 +125,14 @@ constexpr bool operator<(const HLine& other) const noexcept {
             |  ((Storage(y) << offset_y) & mask_y)
             )
     {
+#ifndef NDEBUG
         if(Storage(x1) - Storage(x0) > bit_size_x1)
-            throw std::invalid_argument("x1 is too big");
+            throw std::invalid_argument("x1 is too big: "+ std::to_string(x0) + "-"+std::to_string(x1));
         if(Storage(x0) > bit_size_x0)
             throw std::invalid_argument("x0 is too big.");
         if(Storage(y) > bit_size_y)
             throw std::invalid_argument("y is too big.");
+#endif
         
         assert(this->x0() == x0);
         assert(this->x1() == x1);

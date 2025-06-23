@@ -100,38 +100,70 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         std::vector<HorizontalLine> lines;
         lines.reserve(blob->hor_lines().size());
         
-        const uchar* px = blob->pixels()->data();
+        const uchar* pxs = blob->pixels()->data();
         const uchar* dpx = difference_cache.data();
+		const uchar* const diff_cache_start = difference_cache.data();
         
         PixelArray_t pixels;
         pixels.reserve(blob->pixels()->size());
         
         for(const auto &line : blob->hor_lines()) {
-            coord_t x0;
             const uchar* start{nullptr};
+			const size_t L = ptr_safe_t(line.x1) - ptr_safe_t(line.x0) + 1;
+
+            const uchar* dpx_start = dpx;
+			const uchar* dpx_end = dpx + L;
             
-            for (auto x=line.x0; x<=line.x1; ++x, px += channels, ++dpx) {
-                assert(px < blob->pixels()->data() + blob->pixels()->size());
+            //for (auto x=line.x0; x<=line.x1; ++x, px += channels, ++dpx) {
+			for (; dpx < dpx_end; ++dpx) {
                 
-                if(not background.is_value_different<OutputInfo{
+                /*if (not background.is_value_different<OutputInfo{
                     .channels = 1u,
                     .encoding = meta_encoding_t::gray
-                }>(x, line.y, *dpx, threshold)) {
+                }>(x, line.y, *dpx, threshold)) */
+                if(*dpx >= threshold) {
                     if(start) {
-                        pixels.insert(pixels.end(), start, px);
-                        lines.emplace_back(line.y, x0, x - 1);
+                        const ptr_safe_t L = dpx - start;
+                        assert(L > 0);
+
+                        const ptr_safe_t x0 = line.x0 + (start - dpx_start);
+                        const ptr_safe_t x1 = x0 + L - 1;
+
+                        const ptr_safe_t px_offset = start - diff_cache_start;
+						const uchar* px = pxs + px_offset * channels;
+
+                        const size_t N = pixels.size();
+						pixels.resize(N + L * channels);
+
+						std::memcpy(pixels.data() + N, px, L * channels * sizeof(uchar));
+
+						lines.push_back(HorizontalLine( line.y, x0, x1 ));
+                        //Print("Adding line ", line);
+                        //pixels.insert(pixels.end(), start, px);
+                        //lines.emplace_back(line.y, x0, x - 1);
                         start = nullptr;
                     }
                     
                 } else if(!start) {
-                    start = px;
-                    x0 = x;
+                    start = dpx;
                 }
             }
             
             if(start) {
-                pixels.insert(pixels.end(), start, px);
-                lines.emplace_back(line.y, x0, line.x1);
+                const ptr_safe_t line_offset = start - diff_cache_start;
+                const ptr_safe_t L = dpx - start;
+                if (L == 0)
+                    throw std::invalid_argument("L is zero, but start is not null.");
+
+                const ptr_safe_t x0 = line.x0 + (start - dpx_start);
+                const ptr_safe_t x1 = x0 + L - 1;
+                const uchar* px = pxs + line_offset * channels;
+
+                const size_t N = pixels.size();
+                pixels.resize(N + L * channels);
+                std::memcpy(pixels.data() + N, px, L * channels * sizeof(uchar));
+
+                lines.push_back(HorizontalLine(line.y, x0, line.x1));
             }
         }
         
