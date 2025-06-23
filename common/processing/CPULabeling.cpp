@@ -362,7 +362,10 @@ blobs_t run(const cv::Mat &image, ListCache_t& cache, bool enable_threads) {
 }
 
 // called by user
-blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, ListCache_t& cache, uint8_t channels)
+blobs_t run(const std::vector<HorizontalLine>& lines,
+            std::span<uchar> pixels,
+            ListCache_t& cache,
+            uint8_t channels)
 {
     auto px = pixels.data();
     //list.clear();
@@ -400,7 +403,9 @@ blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels
     return run_fast(&list, channels);
 }
 
-blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, uint8_t channels)
+blobs_t run(const std::vector<HorizontalLine>& lines,
+            std::span<uchar> pixels,
+            uint8_t channels)
 {
     if(lines.empty())
         return {};

@@ -22,7 +22,7 @@ namespace cmn::CPULabeling {
      * @param channels channels of the pixel array
      * @return an array of the blobs found in image
      */
-    blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, uint8_t channels);
+    blobs_t run(const std::vector<HorizontalLine>& lines, std::span<uchar> pixels, uint8_t channels);
 
     /**
      * Given a set of horizontal lines, this function will extract all connected components and return them as a list of Blobs.
@@ -31,5 +31,5 @@ namespace cmn::CPULabeling {
      * @param channels channels of the pixel array
      * @return an array of the blobs found in image
      */
-    blobs_t run(const std::vector<HorizontalLine>& lines, const PixelArray_t& pixels, ListCache_t&, uint8_t channels);
+    blobs_t run(const std::vector<HorizontalLine>& lines, std::span<uchar> pixels, ListCache_t&, uint8_t channels);
 }

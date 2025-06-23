@@ -104,8 +104,10 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         const uchar* dpx = difference_cache.data();
 		const uchar* const diff_cache_start = difference_cache.data();
         
-        PixelArray_t pixels;
-        pixels.reserve(blob->pixels()->size());
+        uchar* pixels = (uchar*)std::malloc(blob->pixels()->size() * sizeof(uchar));
+        //PixelArray_t pixels;
+        size_t counted_pixels = 0;
+        //pixels.resize(blob->pixels()->size());
         
         for(const auto &line : blob->hor_lines()) {
             const uchar* start{nullptr};
@@ -132,11 +134,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                         const ptr_safe_t px_offset = start - diff_cache_start;
 						const uchar* px = pxs + px_offset * channels;
 
-                        const size_t N = pixels.size();
-						pixels.resize(N + L * channels);
-
-						std::memcpy(pixels.data() + N, px, L * channels * sizeof(uchar));
-
+						std::memcpy(pixels + counted_pixels, px, L * channels * sizeof(uchar));
+                        counted_pixels += L * channels;
+                        
 						lines.push_back(HorizontalLine( line.y, x0, x1 ));
                         //Print("Adding line ", line);
                         //pixels.insert(pixels.end(), start, px);
@@ -160,15 +160,16 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                 const uchar* px = pxs + px_offset * channels;
                 assert(x1 == line.x1);
 
-                const size_t N = pixels.size();
-                pixels.resize(N + L * channels);
-                std::memcpy(pixels.data() + N, px, L * channels * sizeof(uchar));
+                //const size_t N = pixels.size();
+                //pixels.resize(N + L * channels);
+                std::memcpy(pixels + counted_pixels, px, L * channels * sizeof(uchar));
+                counted_pixels += L * channels;
 
                 lines.push_back(HorizontalLine(line.y, x0, line.x1));
             }
         }
         
-        auto blobs = CPULabeling::run(lines, pixels, cache, channels);
+        auto blobs = CPULabeling::run(lines, std::span<uchar>(pixels, pixels + counted_pixels), cache, channels);
         for(auto &pair : blobs) {
             pair.extra_flags |= pv::Blob::copy_flags(*blob);
             pair.pred = blob->prediction();
