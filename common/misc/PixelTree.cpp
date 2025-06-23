@@ -121,7 +121,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                     .channels = 1u,
                     .encoding = meta_encoding_t::gray
                 }>(x, line.y, *dpx, threshold)) */
-                if(*dpx >= threshold) {
+                if(*dpx < threshold) {
                     if(start) {
                         const ptr_safe_t L = dpx - start;
                         assert(L > 0);
@@ -150,14 +150,15 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             }
             
             if(start) {
-                const ptr_safe_t line_offset = start - diff_cache_start;
                 const ptr_safe_t L = dpx - start;
-                if (L == 0)
-                    throw std::invalid_argument("L is zero, but start is not null.");
-
+                assert(L > 0);
+                
                 const ptr_safe_t x0 = line.x0 + (start - dpx_start);
                 const ptr_safe_t x1 = x0 + L - 1;
-                const uchar* px = pxs + line_offset * channels;
+
+                const ptr_safe_t px_offset = start - diff_cache_start;
+                const uchar* px = pxs + px_offset * channels;
+                assert(x1 == line.x1);
 
                 const size_t N = pixels.size();
                 pixels.resize(N + L * channels);
