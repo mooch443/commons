@@ -222,8 +222,8 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
         
     } else if constexpr(std::same_as<Pixel, RGBArray>) {
         if constexpr(output.channels == 3) {
-            //image_ptr.insert(image_ptr.end(), {value[0], value[1], value[2]});
-            image_ptr.push_back(value[0], value[1], value[2]);
+            image_ptr.insert(image_ptr.end(), {value[0], value[1], value[2]});
+            //image_ptr.push_back(value[0], value[1], value[2]);
         } else {
             static_assert(output.channels == 1, "Expecting one output channel.");
             image_ptr.push_back(bgr2gray(value));
