@@ -152,7 +152,7 @@ public:
         
         resize(_size + N);
         
-        if(index + 1 < last_index)
+        if(index < last_index)
             std::memmove(_ptr + index + N, _ptr + index, (last_index - index) * sizeof(T));
         
         std::copy(start, end, _ptr + index);
