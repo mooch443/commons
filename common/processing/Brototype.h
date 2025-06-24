@@ -7,7 +7,7 @@ namespace cmn::CPULabeling {
 
 class DLList;
 
-inline auto& _emplace_back(auto& array, auto&& obj) {
+inline void _emplace_back(auto& array, auto&& obj) {
     const auto N = array.size();
     //Print("capacity = ", N, " vs ", array.capacity());
     if(array.capacity() <= N) {
@@ -15,14 +15,14 @@ inline auto& _emplace_back(auto& array, auto&& obj) {
         //Print("Had to reserve ", N, " -> ", array.capacity());
     }
         
-    return array.emplace_back(std::move(obj));
+    array.push_back(std::move(obj));
 }
 
 //! A pair of a blob and a HorizontalLine
 class Brototype {
 private:
-    using PVector = std::vector<Pixel, NoInitializeAllocator<Pixel>>;
-    using LVector = std::vector<Line_t, NoInitializeAllocator<Line_t>>;
+    using PVector = IllegalArray<Pixel>;
+    using LVector = IllegalArray<Line_t>;
     
     GETTER_NCONST(PVector, pixel_starts);
     GETTER_NCONST(LVector, lines);

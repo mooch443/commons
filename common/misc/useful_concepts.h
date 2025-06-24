@@ -3,7 +3,7 @@
 namespace cmn {
 
 template<typename T>
-requires (std::is_trivial_v<T>)
+//requires (std::is_trivial_v<T>)
 class IllegalArray;
 
 template<class T> struct is_initializer_list : public std::false_type {};

@@ -138,8 +138,8 @@ void Brototype::set_parent(Brototype * bro) {
 
 void Brototype::merge_with(const Brototype& b) {
     // Merge using scratch buffers and swap to avoid repeated shifting
-    static thread_local std::vector<const uchar*, NoInitializeAllocator<Pixel>> scratchA;
-    static thread_local std::vector<Line_t, NoInitializeAllocator<Line_t>>       scratchL;
+    static thread_local IllegalArray<Pixel> scratchA;
+    static thread_local IllegalArray<Line_t> scratchL;
     
     auto&  Ap = pixel_starts();
     auto&  Al = lines();

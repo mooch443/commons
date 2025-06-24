@@ -166,7 +166,7 @@ void Blob::calculate_moments() {
 
     // Parallel processing of the second loop
     distribute_indexes([&](auto, auto start, auto end, int64_t thread_index) {
-        Moments& local_moments = thread_moments.at(thread_index);
+        Moments& local_moments = thread_moments[thread_index];
 
         for(auto it = start; it != end; ++it) {
             auto& h = *it;
@@ -191,7 +191,7 @@ void Blob::calculate_moments() {
                 local_moments.mu[2][2] += float(vx2) * float(vy2);
             }
         }
-    }, pool, _hor_lines->begin(), _hor_lines->end(), num_threads);
+    }, pool, _hor_lines->data(), _hor_lines->data() + _hor_lines->size(), num_threads);
 
     // Merge thread-local moments into the main _moments structure
     for (const auto& local_moments : thread_moments) {
@@ -209,7 +209,7 @@ void Blob::calculate_moments() {
         }
     }
 
-    _properties.angle = 0.5 * cmn::atan2(2 * _moments.mu_[1][1], _moments.mu_[2][0] - _moments.mu_[0][2]);
+    _properties.angle = 0.5 * cmn::fast_atan2(2 * _moments.mu_[1][1], _moments.mu_[2][0] - _moments.mu_[0][2]);
     _moments.ready = true;
 }
 

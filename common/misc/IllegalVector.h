@@ -4,7 +4,7 @@
 namespace cmn {
 
 template<typename T>
-requires (std::is_trivial_v<T>)
+//requires (std::is_trivial_v<T>)
 class IllegalArray {
     T* _ptr{nullptr};
     std::size_t _capacity{0u};
@@ -99,6 +99,10 @@ public:
         assert(index < _size);
         return _ptr[index];
     }
+    T operator[](std::size_t index) const noexcept {
+        assert(index < _size);
+        return _ptr[index];
+    }
     
     template<typename... K>
     void push_back(K&& ... obj) noexcept {
@@ -107,6 +111,15 @@ public:
         resize(i + N);
         
         ((_ptr[i++] = std::forward<K>(obj)), ...);
+    }
+    
+    void assign(const T* start, const T* end) {
+        assert(end >= start);
+        std::size_t N = end - start;
+        if(N == 0)
+            return;
+        resize(N);
+        std::copy_n(start, N, _ptr);
     }
     
     void insert(T* it, T obj, std::size_t N) noexcept {
@@ -133,14 +146,14 @@ public:
         //}
     }
     
-    void insert(T* it, const T* start, const T* end) noexcept {
+    T* insert(T* it, const T* start, const T* end) noexcept {
         if(not _ptr) {
             // we are empty!
             assert(it == nullptr);
             
             this->~IllegalArray();
             new (this) IllegalArray(start, end);
-            return;
+            return _ptr;
         }
         
         assert(it >= _ptr && it <= _ptr + _size);
@@ -156,11 +169,26 @@ public:
             std::memmove(_ptr + index + N, _ptr + index, (last_index - index) * sizeof(T));
         
         std::copy(start, end, _ptr + index);
+        return _ptr + index;
     }
     
-    T* data() const noexcept {
+    const T* data() const noexcept {
         assert(_ptr != nullptr);
         return _ptr;
+    }
+    T* data() noexcept {
+        assert(_ptr != nullptr);
+        return _ptr;
+    }
+    
+    T back() const {
+        assert(_size > 0 && _ptr);
+        return *(_ptr + (_size - 1u));
+    }
+    
+    T front() const {
+        assert(_size > 0 && _ptr);
+        return *_ptr;
     }
     
     std::size_t size() const noexcept {

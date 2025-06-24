@@ -30,6 +30,33 @@ namespace cmn {
     inline float sqrt(const float& s) {
         return ::sqrtf(s);
     }
+
+// 3rd-order Remez fit, |err| < 2.55e-5 on [-1,1]
+inline float fast_atan(float z)
+{
+    const float n1 = 0.97239411f;
+    const float n2 = -0.19194795f;
+    return (n1 + n2 * z * z) * z;
+}
+
+inline float fast_atan2(float y, float x)
+{
+    if (x == 0.0f)                  return copysignf(M_PI_2, y);
+    float abs_y = fabsf(y), r, angle;
+
+    if (abs_y < fabsf(x)) {         // |y/x| < 1 : use primary form
+        r = abs_y / fabsf(x);
+        angle = fast_atan(r);
+    } else {
+        r = fabsf(x) / abs_y;
+        angle = M_PI_2 - fast_atan(r);
+    }
+
+    // restore quadrant
+    if (x < 0.0f)        angle = M_PI - angle;
+    if (y < 0.0f)        angle = -angle;
+    return angle;
+}
     
 #if !defined(__EMSCRIPTEN__) || true
     template<typename T0>
