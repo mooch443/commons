@@ -160,7 +160,7 @@ namespace cmn::pixel {
     std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t&, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background, const Rangel& size_range = Rangel(-1,-1));
     //std::vector<pv::BlobPtr> threshold_blob(pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Rangel& size_range = Rangel(-1,-1));
 
-#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, std::vector<uchar, NoInitializeAllocator<uchar>> &pixels)
+#define _____FN_TYPE (const Background* bg, const std::vector<HorizontalLine>& lines, uchar*& px, int threshold, std::vector<HorizontalLine> &result, PixelArray_t &pixels)
 
     /*template<InputInfo input, OutputInfo output, DifferenceMethod method>
     inline void line_with_grid _____FN_TYPE {

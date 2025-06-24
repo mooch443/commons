@@ -28,6 +28,7 @@
 #include <misc/custom_exceptions.h>
 #include <new>
 #include <utility>
+#include <misc/IllegalVector.h>
 
 namespace cmn {
 template <typename T>

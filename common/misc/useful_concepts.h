@@ -2,6 +2,10 @@
 
 namespace cmn {
 
+template<typename T>
+requires (std::is_trivial_v<T>)
+class IllegalArray;
+
 template<class T> struct is_initializer_list : public std::false_type {};
 template<class T>
 struct is_initializer_list<std::initializer_list<T>> : public std::true_type {};
@@ -19,6 +23,9 @@ struct is_container<std::array<T, Size>> : public std::true_type {};
 
 template<class T, size_t Size>
 struct is_container<std::span<T, Size>> : public std::true_type {};
+
+template<class T>
+struct is_container<IllegalArray<T>> : public std::true_type {};
 
 template<class T> struct is_set : public std::false_type {};
 template<class T, class Alloc>
