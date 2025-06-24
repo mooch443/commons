@@ -69,7 +69,7 @@ bool operator==(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&
 template <class T, class U>
 bool operator!=(const NoInitializeAllocator<T>&, const NoInitializeAllocator<U>&) { return false; }
 
-using PixelArray_t = std::vector<uchar, NoInitializeAllocator<uchar>>;
+using PixelArray_t = IllegalArray<uchar>;
 }
 
 #include <misc/detail.h>
