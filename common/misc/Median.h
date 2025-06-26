@@ -13,44 +13,32 @@ public:
         if(minHeap.empty() && maxHeap.empty())
             return T(INFINITY);
         else if(minHeap.empty() && !maxHeap.empty())
-            return maxHeap.front();
-        else
-            return minHeap.front();
+            return maxHeap.top();
+        else if(maxHeap.empty() && !minHeap.empty())
+            return minHeap.top();
         
         if (heapSizeOdd()) {
-            return maxHeap.front();
+            return maxHeap.top();
         } else {
-            return (minHeap.front() + maxHeap.front()) / 2.f;
+            return (minHeap.top() + maxHeap.top()) / 2.f;
         }
     }
     
     void addNumber(T number) {
         _added++;
         
-        if (heapSizeOdd()) {
-            if (number < maxHeap.front()) {
-                maxHeap.push_back(number);
-                std::push_heap(maxHeap.begin(), maxHeap.end());
-                
-                number = maxHeap.front();
-                
-                std::pop_heap(maxHeap.begin(), maxHeap.end());
-                maxHeap.pop_back();
-            }
-            minHeap.push_back(number);
-            std::push_heap(minHeap.begin(), minHeap.end(), std::greater<T>());
+        if (maxHeap.empty() || number <= maxHeap.top()) {
+            maxHeap.push(number);
         } else {
-            if (getMinHeapSize() > 0 && number > minHeap.front()) {
-                minHeap.push_back(number);
-                std::push_heap(minHeap.begin(), minHeap.end(), std::greater<T>());
-                
-                number = minHeap.front();
-                
-                std::pop_heap(minHeap.begin(), minHeap.end(), std::greater<T>());
-                minHeap.pop_back();
-            }
-            maxHeap.push_back(number);
-            std::push_heap(maxHeap.begin(), maxHeap.end());
+            minHeap.push(number);
+        }
+
+        if (maxHeap.size() > minHeap.size() + 1) {
+            minHeap.push(maxHeap.top());
+            maxHeap.pop();
+        } else if (minHeap.size() > maxHeap.size()) {
+            maxHeap.push(minHeap.top());
+            minHeap.pop();
         }
     }
     
@@ -79,8 +67,8 @@ private:
         return getHeapSize() % 2;
     }
     
-    std::vector<T> minHeap; //NOTE: requires std::greater<T>()
-    std::vector<T> maxHeap; //NOTE: default max-heap
+    std::priority_queue<T, std::vector<T>, std::greater<T>> minHeap; // min-heap
+    std::priority_queue<T> maxHeap; // max-heap
     
 protected:
     GETTER(size_t, added);
