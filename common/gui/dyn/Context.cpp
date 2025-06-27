@@ -1,5 +1,8 @@
 #include "Context.h"
 #include <gui/dyn/State.h>
+#include <gui/dyn/Action.h>
+#include <gui/DynamicGUI.h>
+#include <gui/dyn/ParseText.h>
 
 namespace cmn::gui::dyn {
 
@@ -228,6 +231,593 @@ Context::Context(std::initializer_list<std::variant<std::pair<std::string, std::
             variables[pair.first] = std::move(pair.second);
         }
     }
+}
+
+bool Context::has(std::string_view name) const noexcept {
+    if(variables.contains(name))
+        return true;
+    return system_variables().contains(name);
+}
+
+std::optional<decltype(Context::variables)::const_iterator> Context::find(std::string_view name) const noexcept
+{
+    auto it = variables.find(name);
+    if(it != variables.end())
+        return it;
+    
+    it = system_variables().find(name);
+    if(it != system_variables().end())
+        return it;
+    return std::nullopt;
+}
+
+template<typename T, typename K = T>
+K map_vectors(const VarProps& props, auto&& apply) {
+    REQUIRE_EXACTLY(2, props);
+    
+    T A{}, B{};
+    
+    try {
+        std::string a(utils::trim(props.parameters.front()));
+        std::string b(utils::trim(props.parameters.back()));
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<double>(a));
+            B = T(Meta::fromStr<double>(b));
+            
+        } else if constexpr(are_the_same<bool, T>) {
+            A = convert_to_bool(a);
+            B = convert_to_bool(b);
+            
+        } else if constexpr(std::is_integral_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<int64_t>(a));
+            B = T(Meta::fromStr<int64_t>(b));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<double>(a));
+            
+            if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
+                B = Meta::fromStr<T>(b);
+            else
+                B = T(Meta::fromStr<double>(b));
+        }
+
+    } catch(const std::exception& ex) {
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
+        return K{};
+    }
+    
+    return apply(A, B);
+}
+
+template<typename T>
+concept numeric = std::is_arithmetic_v<T> && not are_the_same<T, bool>;
+
+template<typename T, typename Apply>
+    requires requires (T A, Apply apply) {
+        { apply(A) } -> std::convertible_to<T>;
+    }
+T map_vector(const VarProps& props, Apply&& apply) {
+    REQUIRE_EXACTLY(1, props);
+    
+    T A{};
+    
+    try {
+        std::string a(utils::trim(props.parameters.front()));
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<double>(a));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<double>(a));
+        }
+
+    } catch(const std::exception& ex) {
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
+    }
+    
+    return apply(A);
+}
+
+template<typename T, typename Apply>
+    requires requires (T A, T B, Apply apply) {
+        { apply(A, B) } -> std::convertible_to<T>;
+    }
+T map_vector(const VarProps& props, Apply&& apply) {
+    REQUIRE_EXACTLY(2, props);
+    
+    T A{}, B{};
+    
+    try {
+        std::string a(props.parameters.front());
+        std::string b(props.parameters.back());
+        
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            A = T(Meta::fromStr<double>(a));
+            B = T(Meta::fromStr<double>(b));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
+                A = Meta::fromStr<T>(a);
+            else
+                A = T(Meta::fromStr<double>(a));
+            
+            if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
+                B = Meta::fromStr<T>(b);
+            else
+                B = T(Meta::fromStr<double>(b));
+        }
+
+    } catch(const std::exception& ex) {
+        throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
+    }
+    
+    return apply(A, B);
+}
+
+
+void Context::init() const {
+    if(not _system_variables.has_value())
+        _system_variables = {
+            VarFunc("repeat", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                return utils::repeat(props.last(), Meta::fromStr<uint8_t>(props.first()));
+            }),
+            VarFunc("mouse", [this](const VarProps&) -> Vec2 {
+                return _last_mouse;
+            }),
+            VarFunc("time", [](const VarProps&) -> double {
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
+                return static_cast<double>(ms.count()) / 1000.0;
+            }),
+            VarFunc("min", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return min(A, B);});
+            }),
+            VarFunc("max", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return max(A, B);});
+            }),
+            
+            VarFunc("saturate", [](const VarProps& props) {
+                REQUIRE_EXACTLY(3, props);
+                auto v = Meta::fromStr<double>(props.parameters.at(0));
+                auto mi = Meta::fromStr<double>(props.parameters.at(1));
+                auto ma = Meta::fromStr<double>(props.parameters.at(2));
+                return saturate(v, mi, ma);
+            }),
+            VarFunc("bool", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(1, props);
+                return convert_to_bool(props.parameters.front());
+            }),
+            VarFunc("abs", [](const VarProps& props) {
+                REQUIRE_EXACTLY(1, props);
+                auto v = Meta::fromStr<double>(props.parameters.front());
+                if(std::isnan(v))
+                    return v;
+                return fabs(v);
+            }),
+            VarFunc("int", [](const VarProps& props) -> int64_t {
+                REQUIRE_EXACTLY(1, props);
+                
+                auto v = Meta::fromStr<double>(props.parameters.front());
+                if(std::isnan(v))
+                    return static_cast<int64_t>(std::numeric_limits<int64_t>::quiet_NaN());
+                else
+                    return static_cast<int64_t>(v);
+            }),
+            VarFunc("dec", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                float decimals = Meta::fromStr<uint8_t>(props.parameters.front());
+                
+                auto str = props.parameters.back();
+                auto it = std::find(str.begin(), str.end(), '.');
+                if(it != str.end()) {
+                    size_t offset = 0;
+                    while(++it != str.end() && offset++ < decimals) {}
+                    str.erase(it, str.end());
+                }
+                
+                return str;
+            }),
+            VarFunc("not", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(1, props);
+                
+                std::string p(props.parameters.front());
+                try {
+                    return not convert_to_bool(p);
+                    //return not Meta::fromStr<bool>(p);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p, ": ", ex.what());
+                }
+            }),
+            VarFunc("equal", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::string p0(props.parameters.front());
+                std::string p1(props.parameters.back());
+                try {
+                    return p0 == p1;
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
+                }
+            }),
+            VarFunc("nequal", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::string p0(props.parameters.front());
+                std::string p1(props.parameters.back());
+                try {
+                    return not (p0 == p1);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
+                }
+            }),
+            VarFunc("sqr", [](const VarProps& props) -> double {
+                REQUIRE_EXACTLY(1, props);
+                auto A = Meta::fromStr<double>(props.first());
+                return SQR(A);
+            }),
+            VarFunc("&&", [](const VarProps& props) -> bool {
+                for (auto &c : props.parameters) {
+                    if(not convert_to_bool(c))
+                        return false;
+                }
+                return true;
+            }),
+            VarFunc("||", [](const VarProps& props) -> bool {
+                for (auto &c : props.parameters) {
+                    if(convert_to_bool(c))
+                        return true;
+                }
+                return false;
+            }),
+            VarFunc(">", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A > B;});
+            }),
+            VarFunc(">=", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A >= B;});
+            }),
+            VarFunc("<", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A < B;});
+            }),
+            VarFunc("<=", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A <= B;});
+            }),
+            VarFunc("+", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A+B;});
+            }),
+            VarFunc("-", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A-B;});
+            }),
+            VarFunc("*", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A * B;});
+            }),
+            VarFunc("/", [](const VarProps& props) {
+                return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
+            }),
+            VarFunc("lower", [](const VarProps& props) -> std::string {
+                return utils::lowercase(props.first());
+            }),
+            VarFunc("upper", [](const VarProps& props) -> std::string {
+                return utils::uppercase(props.first());
+            }),
+            VarFunc("cmap", [](const VarProps& props) -> Color {
+                REQUIRE_EXACTLY(2, props);
+                using namespace cmn::cmap;
+                
+                auto cmap = CMaps::Class::fromStr(utils::lowercase(props.first()));
+                return cmap::ColorMap::value(cmap, Meta::fromStr<double>(props.last()));
+            }),
+            VarFunc("meanVector", [](const VarProps& props) -> Vec2 {
+                REQUIRE_EXACTLY(1, props);
+                auto vector = Meta::fromStr<std::vector<Vec2>>(props.first());
+                Vec2 mean;
+                for(auto &v : vector)
+                    mean += v;
+                mean /= vector.size();
+                return mean;
+            }),
+            VarFunc("distance", [](const VarProps& props) -> Float2_t {
+                REQUIRE_EXACTLY(2, props);
+                auto A = Meta::fromStr<Vec2>(props.first());
+                auto B = Meta::fromStr<Vec2>(props.last());
+                return euclidean_distance(A, B);
+            }),
+            VarFunc("join", [](const VarProps& props) -> std::string {
+                REQUIRE_AT_LEAST(1, props);
+                
+                auto& array = props.parameters.back();
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(array)));
+                
+                if(props.parameters.size() == 2) {
+                    
+                }
+                
+                std::stringstream ss;
+                for(auto &p : parts) {
+                    ss << p;
+                }
+                return ss.str();
+            }),
+            VarFunc("concat", [](const VarProps& props) -> std::vector<std::string> {
+                REQUIRE_AT_LEAST(2, props);
+                
+                std::vector<std::string> combination;
+                for(auto &p : props.parameters) {
+                    auto parts = Meta::fromStr<std::vector<std::string>>(p);
+                    combination.insert(combination.end(),
+                                        std::make_move_iterator(parts.begin()),
+                                        std::make_move_iterator(parts.end()));
+                }
+                
+                return combination;
+            }),
+            VarFunc("for", [this](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::stringstream ss;
+                ss << "[";
+                
+                auto trunc = props.parameters.at(0);
+                auto fn = props.parameters.at(1);
+                
+                State state;
+                auto handler = std::make_shared<CurrentObjectHandler>();
+                state._current_object_handler = handler;
+                
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parsed = parse_text(trunc, *this, state);
+                    auto parts = util::parse_array_parts(util::truncate(parsed));
+                    
+                    size_t index{0};
+                    for(auto &p : parts) {
+                        handler->set_variable_value("i", p);
+                        if(index > 0)
+                            ss << ",";
+                        ss << parse_text(fn, *this, state);
+                        
+                        ++index;
+                    }
+                    handler->remove_variable("i");
+                    
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    auto text = Meta::fromStr<std::string>(trunc);
+                    size_t index{0};
+                    for(auto p : text) {
+                        handler->set_variable_value("i", std::string_view(&p, 1));
+                        if(index > 0)
+                            ss << ",";
+                        ss << parse_text(fn, *this, state);
+                        
+                        ++index;
+                    }
+                    handler->remove_variable("i");
+                }
+                
+                ss << "]";
+                //Print("=> ", no_quotes(ss.str()));
+                return ss.str();
+            }),
+            VarFunc("addVector", [](const VarProps& props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
+            }),
+            VarFunc("subVector", [](const VarProps& props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A - B; });
+            }),
+            VarFunc("distance", [](const VarProps& props) -> Float2_t {
+                return map_vectors<Vec2, Float2_t>(props, [](auto& A, auto& B) { return euclidean_distance(A, B); });
+            }),
+            VarFunc("mulVector", [](const VarProps& props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.mul(B); });
+            }),
+            VarFunc("divVector", [](const VarProps& props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.div(B); });
+            }),
+            VarFunc("mulSize", [](const VarProps& props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.mul(B); });
+            }),
+            VarFunc("divSize", [](const VarProps& props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A.div(B); });
+            }),
+            VarFunc("minVector", [](const VarProps& props) -> Vec2 {
+                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return cmn::min(A, B); });
+            }),
+            VarFunc("addSize", [](const VarProps& props) -> Size2 {
+                return map_vectors<Size2>(props, [](auto& A, auto& B){ return A + B; });
+            }),
+            VarFunc("round", [](const VarProps& props) {
+                if(props.parameters.size() > 1) {
+                    auto p = props;
+                    auto decimalPlaces = Meta::fromStr<uint8_t>(props.parameters.back());
+                    double scale = std::pow(10.0, decimalPlaces);
+                    assert(p.parameters.size() > 1);
+                    p.parameters.pop_back();
+                    return map_vector<double>(p, [scale](auto& A){ return std::round(A * scale) / scale; });
+                }
+                return map_vector<double>(props, [](auto& A){ return std::round(A); });
+            }),
+            VarFunc("mod", [](const VarProps& props) -> int {
+                return map_vector<double>(props, [](auto& A, auto& B){ return int64_t(A) % int64_t(B); });
+            }),
+            VarFunc("empty", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(1, props);
+                auto trunc = utils::trim(props.parameters.front());
+                if(is_in(trunc.front(), '[', '{')) {
+                    return util::parse_array_parts(util::truncate(trunc)).empty();
+                }
+                
+                throw InvalidArgumentException("Argument in ", props, " not indexable.");
+            }),
+            VarFunc("at", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                
+                auto index = Meta::fromStr<size_t>(props.parameters.front());
+                auto trunc = props.parameters.at(1);
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                    return parts.at(index);
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
+                }
+                
+                throw InvalidArgumentException("Needs to be an indexable type.");
+            }),
+            VarFunc("array_length", [](const VarProps& props) -> size_t {
+                REQUIRE_EXACTLY(1, props);
+                
+                auto trunc = props.parameters.at(0);
+                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                    return parts.size();
+                } else if(is_in(trunc.front(), '\'', '"')) {
+                    return Meta::fromStr<std::string>(trunc).length();
+                }
+                
+                throw InvalidArgumentException("Needs to be an indexable type.");
+            }),
+            VarFunc("substr", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t from = 0;
+                uint32_t to = 0;
+                from = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                if(props.parameters.size() == 3) {
+                    to = Meta::fromStr<uint32_t>(props.parameters.at(1));
+                    if(to > from) {
+                        to -= from;
+                    } else
+                        to = 0;
+                }
+                
+                auto trunc = props.parameters.back();
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                if(trunc.length() <= from)
+                    return "";
+                return trunc.substr(from, to);
+            }),
+            VarFunc("pad_string", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                auto trunc = props.parameters.back();
+
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                
+                if(L == 0)
+                    return trunc;
+                
+                if(trunc.length() < L) {
+                    if(props.parameters.size() == 3) {
+                        auto c = props.parameters.at(1);
+                        return trunc + utils::repeat(c, L - trunc.length());
+                    }
+                    return trunc + utils::repeat(" ", L - trunc.length());
+                } else
+                    return trunc;
+            }),
+            VarFunc("padl_string", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 2) {
+                    throw InvalidArgumentException("Invalid number of variables for at: ", props);
+                }
+                
+                uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
+                auto trunc = props.parameters.back();
+
+                if(is_in(trunc.front(), '\'', '"')) {
+                    trunc = Meta::fromStr<std::string>(trunc);
+                }
+                
+                if(L == 0)
+                    return trunc;
+                
+                if(trunc.length() < L) {
+                    if(props.parameters.size() == 3) {
+                        auto c = props.parameters.at(1);
+                        return utils::repeat(c, L - trunc.length()) + trunc;
+                    }
+                    return utils::repeat(" ", L - trunc.length()) + trunc;
+                } else
+                    return trunc;
+            }),
+            VarFunc("global", [](const VarProps&) -> sprite::Map& {
+                return GlobalSettings::map();
+            }),
+            VarFunc("clrAlpha", [](const VarProps& props) -> Color {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::string _color(props.parameters.front());
+                std::string _alpha(props.parameters.back());
+                
+                try {
+                    auto color = Meta::fromStr<Color>(_color);
+                    auto alpha = Meta::fromStr<float>(_alpha);
+                    
+                    return color.alpha(alpha);
+                    
+                } catch(const std::exception& ex) {
+                    throw InvalidArgumentException("Cannot parse color ", _color, " and alpha ", _alpha, ": ", ex.what());
+                }
+            }),
+            
+            VarFunc("shorten", [](const VarProps& props) -> std::string {
+                if(props.parameters.size() < 1 || props.parameters.size() > 3) {
+                    throw InvalidArgumentException("Need one to three arguments for ", props,".");
+                }
+                
+                std::string str = props.first();
+                size_t N = 50;
+                std::string placeholder = "…";
+                if(props.parameters.size() > 1)
+                    N = Meta::fromStr<size_t>(props.parameters.at(1));
+                if(props.parameters.size() > 2)
+                    placeholder = props.last();
+                
+                return utils::ShortenText(str, N, 0.5, placeholder);
+            }),
+            VarFunc("filename", [](const VarProps& props) -> file::Path {
+                REQUIRE_EXACTLY(1, props);
+                return file::Path(Meta::fromStr<file::Path>(props.first()).filename());
+            }),
+            VarFunc("folder", [](const VarProps& props) -> file::Path {
+                REQUIRE_EXACTLY(1, props);
+                return file::Path(Meta::fromStr<file::Path>(props.first()).remove_filename());
+            }),
+            VarFunc("basename", [](const VarProps& props) -> file::Path {
+                REQUIRE_EXACTLY(1, props);
+                return file::Path(Meta::fromStr<file::Path>(props.first()).filename()).remove_extension();
+            })
+        };
+    
+}
+
+const std::shared_ptr<VarBase_t>& Context::variable(std::string_view name) const {
+    auto it = variables.find(name);
+    if(it != variables.end())
+        return it->second;
+    
+    init();
+    
+    auto sit = system_variables().find(name);
+    if(sit != system_variables().end())
+        return sit->second;
+    
+    throw InvalidArgumentException("Cannot find key ", name, " in variables.");
 }
 
 }

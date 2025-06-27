@@ -66,7 +66,8 @@ public:
                 // given a key, and return it as a string:
                 auto access = [&map](const auto& key) -> std::string {
                     if(key.subs.empty())
-                        throw InvalidArgumentException("sprite::Map needs sub variable to be accessed like this: ", key.name,".variable");
+                        return map.toStr();
+                        //throw InvalidArgumentException("sprite::Map needs sub variable to be accessed like this: ", key.name,".variable");
                     auto ref = map[key.subs.front()];
                     if(not ref.get().valid())
                         throw InvalidArgumentException("Cannot find given parameter ", key,". ", Meta::name<decltype(key)>());

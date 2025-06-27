@@ -82,8 +82,9 @@ struct Context {
         return *_system_variables;
     }
 
-    [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(const std::string_view&) const;
-    [[nodiscard]] bool has(const std::string_view&) const noexcept;
+    [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(std::string_view) const;
+    [[nodiscard]] bool has(std::string_view) const noexcept;
+    [[nodiscard]] std::optional<decltype(variables)::const_iterator> find(std::string_view) const noexcept;
     
     Context() noexcept = default;
     Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list);
