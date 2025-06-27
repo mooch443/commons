@@ -77,6 +77,11 @@ struct is_pair : public std::false_type {};
 template< class T1 , class T2 >
 struct is_pair< std::pair< T1 , T2 > > : public std::true_type {};
 
+template< class... Ts >
+struct is_variant : public std::false_type {};
+template< class... Ts >
+struct is_variant< std::variant< Ts... > > : public std::true_type {};
+
 template<template<class...>class Template, class T>
 struct is_instantiation : std::false_type {};
 template<template<class...>class Template, class... Ts>

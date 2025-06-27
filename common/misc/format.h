@@ -709,6 +709,14 @@ public:
     }
     
     template<typename T, typename K = cmn::remove_cvref_t<T>>
+        requires is_variant<K>::value
+    static std::string parse_value(const T& var) {
+        return std::visit([](auto& var){
+            return parse_value(var);
+        }, var);
+    }
+    
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires is_set<K>::value || is_container<K>::value
     static std::string parse_value(const T&m) {
         std::string str = console_color<bracket_color, colors>("[");
