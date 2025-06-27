@@ -597,7 +597,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                 //auto previous = state._variable_values;
                 tmp.variables["i"] = v;
                 try {
-                    auto &ref = v->value<sprite::Map&>({});
+                    //auto &ref = v->value<sprite::Map&>({});
                     auto item = convert_to_item(obj.item, tmp, state);
                     ptrs.emplace_back(std::move(item));
                     ++index;

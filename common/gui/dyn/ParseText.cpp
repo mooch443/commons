@@ -100,7 +100,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                         throw InvalidSyntaxException("Empty braces at position ", i);
                     }
                     
-                    CTimer timer(current_word);
+                    [[maybe_unused]] CTimer timer(current_word);
                     std::string resolved_word;
                     if(auto value = state.cached_variable_value(current_word);
                        value.has_value())

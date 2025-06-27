@@ -25,7 +25,7 @@ struct CTimer {
     static inline std::unordered_map<std::string, Timing> timings;
     Timer timer;
 #endif
-    CTimer(std::string_view) { }
+    [[maybe_unused]] std::string_view _unused;
 #if CTIMER_ENABLED
     ~CTimer() {
         auto elapsed = timer.elapsed();

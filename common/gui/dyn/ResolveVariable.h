@@ -19,14 +19,14 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
     
     try {
         if(context.has(props.name)) {
-            CTimer ctimer("normal");
+            [[maybe_unused]] CTimer ctimer("normal");
             if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
                 return apply(*context.variable(props.name), props.parse(context, state));
             else
                 static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
             
         } else if(props.name == "if") {
-            CTimer ctimer("if");
+            [[maybe_unused]] CTimer ctimer("if");
             VarProps p{
                 .name = std::string(props.name),
                 .optional = props.optional,
@@ -49,7 +49,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             }
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
-            CTimer ctimer("custom var");
+            [[maybe_unused]] CTimer ctimer("custom var");
             return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
             
         } else if(auto lock = state._current_object_handler.lock();
