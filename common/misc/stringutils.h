@@ -35,12 +35,12 @@ struct is_const_lvalue_ref<const T&> : std::true_type {};
 
     template<typename Str>
     bool beginsWith(const Str& str, char c) {
-        return !str.empty() && str.front() == c;
+        return !str.empty() && str[0] == c;
     }
 
     template<typename Str>
     bool endsWith(const Str& str, char c) {
-        return !str.empty() && str.back() == c;
+        return !str.empty() && *str.rbegin() == c;
     }
 
     template<typename Str, typename Needle>

@@ -261,10 +261,10 @@ struct CallbackFuture {
         typedef std::shared_ptr<PropertyType> Store;
         
     protected:
-        std::unordered_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
+        robin_hood::unordered_flat_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
 
         std::atomic<std::size_t> _id_counter{0u};
-        std::unordered_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
+        robin_hood::unordered_flat_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
         
         // queued‑callback support
         struct PendingCallback {
