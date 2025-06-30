@@ -67,11 +67,16 @@ struct CurrentObjectHandler {
 };
 
 struct Context {
-    std::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
-    std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;
+    //using ActionPair = robin_hood::pair<std::string, std::function<void(Action)>>;
+    //using VariablePair = robin_hood::pair<std::string, std::function<void(Action)>>;
+    robin_hood::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
+    robin_hood::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual> variables;
+    
+    using ActionPair = decltype(actions)::value_type;
+    using VariablePair = decltype(variables)::value_type;
     DefaultSettings defaults;
     
-    mutable std::optional<std::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
+    mutable std::optional<robin_hood::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
 
     std::unordered_map<std::string, std::shared_ptr<CustomElement>> custom_elements;
     Vec2 _last_mouse;
@@ -87,7 +92,7 @@ struct Context {
     [[nodiscard]] std::optional<decltype(variables)::const_iterator> find(std::string_view) const noexcept;
     
     Context() noexcept = default;
-    Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list);
+    Context(std::initializer_list<std::variant<ActionPair, VariablePair>> init_list);
     
 private:
     void init() const;

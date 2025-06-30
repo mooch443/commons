@@ -219,17 +219,21 @@ std::shared_ptr<Drawable> CurrentObjectHandler::get() const {
     return _current_object.lock();
 }
 
-Context::Context(std::initializer_list<std::variant<std::pair<std::string, std::function<void(Action)>>, std::pair<std::string, std::shared_ptr<VarBase_t>>>> init_list)
+Context::Context(std::initializer_list<std::variant<ActionPair, VariablePair>> init_list)
 {
-    for (auto&& item : init_list) {
-        if (std::holds_alternative<std::pair<std::string, std::function<void(Action)>>>(item)) {
-            auto&& pair = std::get<std::pair<std::string, std::function<void(Action)>>>(item);
-            actions[pair.first] = std::move(pair.second);
-        }
-        else if (std::holds_alternative<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item)) {
-            auto&& pair = std::get<std::pair<std::string, std::shared_ptr<VarBase_t>>>(item);
-            variables[pair.first] = std::move(pair.second);
-        }
+    for (auto& item : init_list) {
+        std::visit([this](auto& pair) mutable {
+            using T = std::decay_t<decltype(pair)>;
+            if constexpr(std::same_as<T, ActionPair>) {
+                actions[pair.first] = std::move(pair.second);
+            } else if constexpr(std::same_as<T, VariablePair>) {
+                variables[pair.first] = std::move(pair.second);
+                //variables.insert(pair);
+            } else {
+                static_assert(std::same_as<T, void>, "Unknown type");
+            }
+        }, item);
+        
     }
 }
 
@@ -554,8 +558,8 @@ void Context::init() const {
                 for(auto &p : props.parameters) {
                     auto parts = Meta::fromStr<std::vector<std::string>>(p);
                     combination.insert(combination.end(),
-                                        std::make_move_iterator(parts.begin()),
-                                        std::make_move_iterator(parts.end()));
+                                       std::make_move_iterator(parts.begin()),
+                                       std::make_move_iterator(parts.end()));
                 }
                 
                 return combination;
@@ -714,7 +718,7 @@ void Context::init() const {
                 
                 uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
                 auto trunc = props.parameters.back();
-
+                
                 if(is_in(trunc.front(), '\'', '"')) {
                     trunc = Meta::fromStr<std::string>(trunc);
                 }
@@ -738,7 +742,7 @@ void Context::init() const {
                 
                 uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
                 auto trunc = props.parameters.back();
-
+                
                 if(is_in(trunc.front(), '\'', '"')) {
                     trunc = Meta::fromStr<std::string>(trunc);
                 }

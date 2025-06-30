@@ -47,13 +47,17 @@ ENUM_CLASS(LayoutType,
            unknown);
 
 template<typename Fn>
-std::pair<std::string, std::function<void(Action)>> ActionFunc(const std::string& name, Fn&& func) {
-    return std::make_pair(name, std::function<void(Action)>(std::forward<Fn>(func)));
+//std::pair<std::string, std::function<void(Action)>>
+Context::ActionPair
+ActionFunc(const std::string& name, Fn&& func) {
+    return {name, std::function<void(Action)>(std::forward<Fn>(func))};
 }
 
+//std::pair<std::string, std::shared_ptr<VarBase_t>>
 template<typename Fn, typename T = typename cmn::detail::return_type<Fn>::type>
-std::pair<std::string, std::shared_ptr<VarBase_t>> VarFunc(const std::string& name, Fn&& func) {
-    return std::make_pair(name, std::shared_ptr<VarBase_t>(new Variable(std::forward<Fn>(func))));
+Context::VariablePair
+VarFunc(const std::string& name, Fn&& func) {
+    return {name, std::shared_ptr<VarBase_t>(new Variable(std::forward<Fn>(func)))};
 }
 
 class LayoutContext;

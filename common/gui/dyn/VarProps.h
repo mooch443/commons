@@ -26,6 +26,8 @@ struct VarProps {
     std::string toStr() const;
     static std::string class_name() { return "VarProps"; }
     //operator std::string() const { return last(); }
+    
+    bool operator==(const VarProps&) const = default;
 };
 
 struct PreVarProps {
