@@ -26,6 +26,9 @@ template<template <typename ...> class T, typename Rt, typename... Args>
     requires is_instantiation<std::function, T<Rt(Args...)>>::value
 std::string get_name(const T<Rt(Args...)>&);
 
+void fast_fromstr(std::string& output, std::string_view sv);
+
+
 }
 
 
