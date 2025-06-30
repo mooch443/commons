@@ -12,40 +12,6 @@ namespace cmn::pattern {
 
 using namespace cmn::gui::dyn;
 
-struct Unprepared {
-    std::string_view original;
-    std::string_view name;
-    std::vector<std::variant<std::string_view, UnpreparedPatterns>> parameters;
-    std::vector<std::string_view> subs;
-    bool optional{false};
-    bool html{false};
-};
-
-struct Prepared {
-    std::string_view original;
-    std::vector<PreparedPatterns> parameters;
-    gui::dyn::VarProps resolved;
-    
-    std::optional<std::string> _cached_value;
-    bool has_children{false};
-    
-    //Prepared(const Unprepared& unprepared);
-    std::string toStr() const;
-    static std::string class_name() { return "Prepared"; }
-    
-    void resolve(UnresolvedStringPattern&, std::string&, const gui::dyn::Context& context, gui::dyn::State& state);
-    const std::optional<std::string>& cached() const {
-        return _cached_value;
-    }
-    void reset() {
-        _cached_value.reset();
-    }
-    
-    bool operator==(const Prepared&) const = default;
-    
-    static Prepared* get(const Unprepared& unprepared);
-};
-
 UnresolvedStringPattern::UnresolvedStringPattern(UnresolvedStringPattern&& other)
     : objects(std::move(other.objects)),
       typical_length(std::move(other.typical_length)),
@@ -66,6 +32,59 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(UnresolvedStringPatt
     return *this;
 }
 
+UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStringPattern& other)
+{
+    if (this == &other) return *this;
+
+    // Delete old patterns
+    for (auto pattern : all_patterns) {
+        delete pattern;
+    }
+    all_patterns.clear();
+
+    // Copy simple members
+    objects = other.objects;
+    typical_length = other.typical_length;
+
+    // Deep copy all_patterns and build a pointer mapping
+    all_patterns.reserve(other.all_patterns.size());
+    std::unordered_map<const Prepared*, Prepared*> prepared_map;
+    for (const auto* pattern : other.all_patterns) {
+        if (pattern) {
+            Prepared* new_p = new Prepared(*pattern);
+            all_patterns.push_back(new_p);
+            prepared_map[pattern] = new_p;
+        } else {
+            all_patterns.push_back(nullptr);
+        }
+    }
+
+    // Recursively fix all POINTER references in objects
+    std::function<void(PreparedPattern&)> fix_ptrs;
+    fix_ptrs = [&](PreparedPattern& pat) {
+        if (pat.type == PreparedPattern::POINTER && pat.value.ptr) {
+            auto it = prepared_map.find(pat.value.ptr);
+            assert(it != prepared_map.end());
+            if (it != prepared_map.end()) {
+                pat.value.ptr = it->second;
+            }
+        } else if (pat.type == PreparedPattern::PREPARED && pat.value.prepared) {
+            // Fix children inside PREPARED
+            auto it = prepared_map.find(pat.value.ptr);
+            assert(it != prepared_map.end());
+            pat.value.prepared = it->second;
+            
+            for (auto& paramvec : pat.value.prepared->parameters) {
+                for (auto& child : paramvec) fix_ptrs(child);
+            }
+        }
+        // SV has no pointers
+    };
+
+    for (auto& obj : objects) fix_ptrs(obj);
+
+    return *this;
+}
 
 Unprepared create_parse_result(std::string_view trimmedStr) {
     if (not trimmedStr.empty() and trimmedStr.front() == '{' and trimmedStr.back() == '}')

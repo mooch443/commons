@@ -1,5 +1,6 @@
 #pragma once
 #include <commons.pc.h>
+#include <gui/dyn/VarProps.h>
 
 namespace cmn::gui::dyn {
 struct Context;
@@ -26,6 +27,7 @@ struct UnresolvedStringPattern {
     UnresolvedStringPattern() = default;
     UnresolvedStringPattern(UnresolvedStringPattern&& other);
     UnresolvedStringPattern& operator=(UnresolvedStringPattern&& other);
+    UnresolvedStringPattern& operator=(const UnresolvedStringPattern& other);
     
     ~UnresolvedStringPattern();
     
@@ -55,5 +57,38 @@ struct PreparedPattern {
     std::string toStr() const;
 };
 
+struct Unprepared {
+    std::string_view original;
+    std::string_view name;
+    std::vector<std::variant<std::string_view, UnpreparedPatterns>> parameters;
+    std::vector<std::string_view> subs;
+    bool optional{false};
+    bool html{false};
+};
+
+struct Prepared {
+    std::string_view original;
+    std::vector<PreparedPatterns> parameters;
+    gui::dyn::VarProps resolved;
+    
+    std::optional<std::string> _cached_value;
+    bool has_children{false};
+    
+    //Prepared(const Unprepared& unprepared);
+    std::string toStr() const;
+    static std::string class_name() { return "Prepared"; }
+    
+    void resolve(UnresolvedStringPattern&, std::string&, const gui::dyn::Context& context, gui::dyn::State& state);
+    const std::optional<std::string>& cached() const {
+        return _cached_value;
+    }
+    void reset() {
+        _cached_value.reset();
+    }
+    
+    bool operator==(const Prepared&) const = default;
+    
+    static Prepared* get(const Unprepared& unprepared);
+};
 
 }
