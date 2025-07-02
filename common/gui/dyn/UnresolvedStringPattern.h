@@ -40,7 +40,7 @@ struct PreparedPattern {
         std::string_view sv;
         Prepared* prepared;
         Prepared* ptr;
-    } value;
+    } value{};
     
     enum Type {
         SV,
@@ -55,6 +55,17 @@ struct PreparedPattern {
     bool operator<(const PreparedPattern& other) const noexcept;
     
     std::string toStr() const;
+    
+    /// alternative constructors to maintain aggregate type
+    static PreparedPattern make_sv(std::string_view s) {
+        return PreparedPattern{s, SV};
+    }
+    static PreparedPattern make_prepared(Prepared* pRep) {
+        PreparedPattern p;
+        p.value.prepared = pRep;
+        p.type           = PREPARED;
+        return p;
+    }
 };
 
 struct Unprepared {

@@ -296,15 +296,9 @@ Prepared* Prepared::get(const Unprepared& unprepared) {
             std::visit([&r](auto& obj) {
                 using T = std::decay_t<decltype(obj)>;
                 if constexpr(std::same_as<T, std::string_view>) {
-                    r.push_back(PreparedPattern{
-                        .value.sv = obj,
-                        .type = PreparedPattern::SV
-                    });
+                    r.push_back(PreparedPattern::make_sv(obj));
                 } else if constexpr(std::same_as<T, Unprepared>) {
-                    r.push_back(PreparedPattern{
-                        .value.prepared = Prepared::get(obj),
-                        .type = PreparedPattern::PREPARED
-                    });
+                    r.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
                     
                 } else {
                     static_assert(std::same_as<T, void>, "unknown type.");
@@ -663,16 +657,9 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view str) {
         std::visit([&result](auto& obj) {
             using T = std::decay_t<decltype(obj)>;
             if constexpr(std::same_as<T, std::string_view>) {
-                result.objects.push_back(PreparedPattern{
-                    .value.sv = obj,
-                    .type = PreparedPattern::SV
-                });
-                
+                result.objects.push_back(PreparedPattern::make_sv(obj));
             } else if constexpr(std::same_as<T, Unprepared>) {
-                result.objects.push_back(PreparedPattern{
-                    .value.prepared = Prepared::get(obj),
-                    .type = PreparedPattern::PREPARED
-                });
+                result.objects.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
                 
             } else {
                 static_assert(std::same_as<T, void>, "unknown type.");
