@@ -66,6 +66,12 @@ struct PreparedPattern {
         p.type           = PREPARED;
         return p;
     }
+    static PreparedPattern make_pointer(Prepared* pRep) {
+        PreparedPattern p;
+        p.value.ptr = pRep;
+        p.type      = POINTER;
+        return p;
+    }
 };
 
 struct Unprepared {
