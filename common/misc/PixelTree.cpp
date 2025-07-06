@@ -175,6 +175,8 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
             pair.pred = blob->prediction();
             //assert(pv::Blob::is_flag(pair.extra_flags, pv::Blob::Flags::is_r3g3b2) == blob->is_r3g3b2());
         }
+        std::free(pixels);
+        
         return blobs;
     }
 }
