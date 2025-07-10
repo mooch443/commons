@@ -87,7 +87,7 @@ struct Row {
 
 
 
-inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background) {
+blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold) {
     //Print("* testing threshold ", threshold, " for pixel ", difference_cache.front());
     if(blob->is_binary()) {
         std::vector<blob::Pair> blobs;
@@ -154,7 +154,9 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
                 assert(L > 0);
                 
                 const ptr_safe_t x0 = line.x0 + (start - dpx_start);
+#ifndef NDEBUG
                 const ptr_safe_t x1 = x0 + L - 1;
+#endif
 
                 const ptr_safe_t px_offset = start - diff_cache_start;
                 const uchar* px = pxs + px_offset * channels;
@@ -182,7 +184,7 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
 }
 
 
-    inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache,
+    blobs_t _threshold_blob(CPULabeling::ListCache_t& cache,
                                    pv::BlobWeakPtr blob,
                                    int threshold,
                                    const Background* bg,
@@ -358,12 +360,12 @@ inline blobs_t _threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr 
         return threshold_blob(cache, blob, threshold, bg, size_range);
     }*/
 
-std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Background& background, const Rangel& size_range) {
+std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::BlobWeakPtr blob, const PixelArray_t& difference_cache, int threshold, const Rangel& size_range) {
     std::vector<pv::BlobPtr> result;
     if(blob->is_binary()) {
         result.emplace_back(pv::Blob::Make(*blob));
     } else {
-        auto blobs = _threshold_blob(cache, blob, difference_cache, threshold, background);
+        auto blobs = _threshold_blob(cache, blob, difference_cache, threshold);
         for(auto && [lines, pixels, flags, pred] : blobs) {
             if((size_range.end < 0 && pixels->size() > 1) || ((long_t)pixels->size() > size_range.start && (long_t)pixels->size() < size_range.end))
                 result.emplace_back(pv::Blob::Make(std::move(lines), std::move(pixels), flags, std::move(pred)));

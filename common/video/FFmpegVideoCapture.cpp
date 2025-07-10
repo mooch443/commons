@@ -58,12 +58,12 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
     }
 
     // Calculate duration in seconds
-    AVStream *videoStream = formatContext->streams[videoStreamIndex];
-    double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
+    //AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    //double durationInSeconds = videoStream->duration * av_q2d(videoStream->time_base);
 
     //std::cout << "Duration: " << durationInSeconds << " seconds" << std::endl;
     //std::cout << "L: " << codecContext->framerate.num / codecContext->framerate.den << " frames" << std::endl;
-    auto fr = static_cast<double>(double(formatContext->streams[ videoStreamIndex ]->avg_frame_rate.num) / formatContext->streams[ videoStreamIndex ]->avg_frame_rate.den);
+    //auto fr = static_cast<double>(double(formatContext->streams[ videoStreamIndex ]->avg_frame_rate.num) / formatContext->streams[ videoStreamIndex ]->avg_frame_rate.den);
     //std::cout << " => " << durationInSeconds * fr << " frames" << std::endl;
     
     //std::cout << "nb_frames: " << videoStream->nb_frames << std::endl;
@@ -385,8 +385,8 @@ int64_t FfmpegVideoCapture::length() const {
     
     int64_t N = formatContext->streams[videoStreamIndex]->nb_frames;
     int64_t decoder_delay = codecContext->has_b_frames;
-    int64_t _decoder_delay = codecContext->delay;
 #ifndef NDEBUG
+    int64_t _decoder_delay = codecContext->delay;
     Print("* Stream reports decoder_delay of ", decoder_delay, " vs ", _decoder_delay, " frames. Subtracting from L=",N);
 #endif
     N -= decoder_delay;

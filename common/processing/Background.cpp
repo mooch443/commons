@@ -53,7 +53,7 @@ namespace cmn {
                 : ImageMode::R3G3B2);
     }
 
-Background::Background(Size2 dimensions, meta_encoding_t::Class encoding)
+Background::Background(Size2 dimensions, meta_encoding_t::Class)
     : _bounds(Vec2(), dimensions)
 {
     

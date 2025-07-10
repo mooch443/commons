@@ -988,8 +988,9 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
             {
                 static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
                 static_assert(is_in(output.channels, 1,3), "Only 1 or 3 channels output is supported.");
-                
+#ifndef NDEBUG
                 const auto info = background.info<output, method, PixelOutput_t<input, output>>();
+#endif
                 
                 for (auto &line : hor_lines()) {
                     if constexpr(input.channels == 0) {
