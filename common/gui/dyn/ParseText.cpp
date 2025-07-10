@@ -189,9 +189,9 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
 std::string parse_text(const std::string_view& pattern, const Context& context, State& state) {
     return _parse_text(pattern, context, state);
 }
-std::string parse_text(const Pattern& pattern, const Context& context, State& state) {
+/*std::string parse_text(const Pattern& pattern, const Context& context, State& state) {
     return _parse_text(pattern, context, state);
-}
+}*/
 
 PreVarProps extractControls(const std::string_view& variable) {
     auto props = create_parse_result<PreVarProps>(variable);

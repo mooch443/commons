@@ -20,11 +20,13 @@ using UnpreparedPattern = std::variant<std::string_view, Unprepared>;
 using UnpreparedPatterns = std::vector<UnpreparedPattern>;
 
 struct UnresolvedStringPattern {
+    std::unique_ptr<std::string> original;
     PreparedPatterns objects;
     std::optional<size_t> typical_length;
     std::vector<Prepared*> all_patterns;
     
     UnresolvedStringPattern() = default;
+    UnresolvedStringPattern(const UnresolvedStringPattern& other);
     UnresolvedStringPattern(UnresolvedStringPattern&& other);
     UnresolvedStringPattern& operator=(UnresolvedStringPattern&& other);
     UnresolvedStringPattern& operator=(const UnresolvedStringPattern& other);
@@ -33,6 +35,8 @@ struct UnresolvedStringPattern {
     
     static UnresolvedStringPattern prepare(std::string_view);
     std::string realize(const gui::dyn::Context& context, gui::dyn::State& state);
+    
+    std::string toStr() const;
 };
 
 struct PreparedPattern {

@@ -13,17 +13,24 @@ namespace cmn::pattern {
 using namespace cmn::gui::dyn;
 
 UnresolvedStringPattern::UnresolvedStringPattern(UnresolvedStringPattern&& other)
-    : objects(std::move(other.objects)),
+    : original(std::move(other.original)),
+      objects(std::move(other.objects)),
       typical_length(std::move(other.typical_length)),
       all_patterns(std::move(other.all_patterns))
 {
     other.all_patterns.clear();
 }
 
+UnresolvedStringPattern::UnresolvedStringPattern(const UnresolvedStringPattern& other)
+{
+    *this = other;
+}
+
 UnresolvedStringPattern& UnresolvedStringPattern::operator=(UnresolvedStringPattern&& other) {
     for(auto pattern: all_patterns) {
         delete pattern;
     }
+    original = std::move(other.original);
     objects = std::move(other.objects);
     typical_length = std::move(other.typical_length);
     all_patterns = std::move(other.all_patterns);
@@ -41,10 +48,19 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
         delete pattern;
     }
     all_patterns.clear();
+    
+    // this will contain the text for all the string_views
+    if(other.original)
+        original = std::make_unique<std::string>(*other.original);
+    else
+        original = nullptr;
 
     // Copy simple members
     objects = other.objects;
     typical_length = other.typical_length;
+
+    const char* old_base = other.original ? other.original->data() : nullptr;
+    const char* new_base = original      ? original->data()      : nullptr;
 
     // Deep copy all_patterns and build a pointer mapping
     all_patterns.reserve(other.all_patterns.size());
@@ -59,29 +75,57 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
         }
     }
 
-    // Recursively fix all POINTER references in objects
+    // Recursively fix all POINTER, PREPARED, and SV references in objects
     std::function<void(PreparedPattern&)> fix_ptrs;
-    fix_ptrs = [&](PreparedPattern& pat) {
-        if (pat.type == PreparedPattern::POINTER && pat.value.ptr) {
-            auto it = prepared_map.find(pat.value.ptr);
-            assert(it != prepared_map.end());
-            if (it != prepared_map.end()) {
-                pat.value.ptr = it->second;
-            }
-        } else if (pat.type == PreparedPattern::PREPARED && pat.value.prepared) {
-            // Fix children inside PREPARED
-            auto it = prepared_map.find(pat.value.ptr);
-            assert(it != prepared_map.end());
-            pat.value.prepared = it->second;
-            
-            for (auto& paramvec : pat.value.prepared->parameters) {
-                for (auto& child : paramvec) fix_ptrs(child);
-            }
+    std::function<void(Prepared&)>        fix_prepared;   // non‑const; we mutate pointers
+
+    fix_ptrs = [&](PreparedPattern& pat)
+    {
+        switch (pat.type)
+        {
+            case PreparedPattern::SV:
+                // Remap the string_view so it points into this->original, not other's.
+                if (old_base && new_base && pat.value.sv.data() >= old_base) {
+                    std::ptrdiff_t offset = pat.value.sv.data() - old_base;
+                    pat.value.sv = std::string_view(new_base + offset, pat.value.sv.size());
+                }
+                break;
+
+            case PreparedPattern::POINTER:
+                if (pat.value.ptr) {
+                    auto it = prepared_map.find(pat.value.ptr);
+                    if (it != prepared_map.end()) {             // pointer still old → remap
+                        pat.value.ptr = it->second;
+                    }
+                    fix_prepared(*pat.value.ptr);                // always recurse
+                }
+                break;
+
+            case PreparedPattern::PREPARED:
+                if (pat.value.prepared) {
+                    auto it = prepared_map.find(pat.value.prepared);
+                    if (it != prepared_map.end()) {              // still pointing at “other” ⇒ remap
+                        pat.value.prepared = it->second;
+                    }
+                    fix_prepared(*pat.value.prepared);           // recurse
+                }
+                break;
+
+            default:
+                /* SV handled above; nothing to do for other enum values */
+                break;
         }
-        // SV has no pointers
     };
 
-    for (auto& obj : objects) fix_ptrs(obj);
+    fix_prepared = [&](Prepared& prep)
+    {
+        for (auto& paramVec : prep.parameters)
+            for (auto& child : paramVec)
+                fix_ptrs(child);
+    };
+
+    for (auto& obj : objects)
+        fix_ptrs(obj);
 
     return *this;
 }
@@ -610,7 +654,29 @@ std::string UnresolvedStringPattern::realize(const gui::dyn::Context& context, g
     return str;
 }
 
-UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view str) {
+std::string UnresolvedStringPattern::toStr() const {
+    // Produce a readable string representation of the pattern by
+    // concatenating the textual form of each stored PreparedPattern.
+    // We separate individual parts with a single space to match the
+    // formatting style used elsewhere in the debug helpers.
+    std::string result;
+    result.reserve(objects.size() * 16);   // rough pre‑allocation
+
+    bool first = true;
+    for (const auto& obj : objects) {
+        if (!first)
+            result += ' ';
+        result += obj.toStr();
+        first = false;
+    }
+    return result;
+}
+
+UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) {
+    auto result = UnresolvedStringPattern{};
+    result.original = std::make_unique<std::string>(_str);
+    std::string_view str{*result.original};
+    
     auto unprepared = parse_words(str);
     std::queue<Unprepared*> patterns;
     for(auto& r : unprepared) {
@@ -652,7 +718,6 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view str) {
         }
     }
     
-    auto result = UnresolvedStringPattern{};
     for(auto &obj : unprepared) {
         std::visit([&result](auto& obj) {
             using T = std::decay_t<decltype(obj)>;

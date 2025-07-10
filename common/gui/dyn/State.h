@@ -5,6 +5,7 @@
 #include <misc/Timer.h>
 #include <gui/dyn/VarProps.h>
 #include <gui/LabeledField.h>
+#include <gui/dyn/UnresolvedStringPattern.h>
 
 namespace cmn::gui {
 class IMGUIBase;
@@ -68,20 +69,21 @@ struct VarCache {
     glz::json_t::object_t _obj;
 };
 
-struct Pattern {
+/*struct Pattern {
     std::string original;
     std::vector<std::string_view> variables;
 
     std::string toStr() const;
     static std::string class_name() { return "Pattern"; }
-};
+};*/
+using Pattern = pattern::UnresolvedStringPattern;
 
 using PatternMapType = std::unordered_map<std::string, Pattern, MultiStringHash, MultiStringEqual>;
 
 struct CustomElement {
     std::string name;
     std::function<Layout::Ptr(LayoutContext&)> create;
-    std::function<bool(Layout::Ptr&, const Context&, State&, const PatternMapType&)> update;
+    std::function<bool(Layout::Ptr&, const Context&, State&, PatternMapType&)> update;
 
     CustomElement() = default;
     CustomElement(std::string_view name, auto&& create, auto&& update) : name(std::move(name)), create(std::move(create)), update(std::move(update)) {}
@@ -221,7 +223,7 @@ struct State {
     std::shared_ptr<HashedObject> get_monostate(size_t hash, const Layout::Ptr&);
     
     void register_pattern(size_t hash, const std::string&, Pattern&&);
-    std::optional<const Pattern*> get_pattern(size_t hash, const std::string&);
+    std::optional<Pattern*> get_pattern(size_t hash, const std::string&);
     
     std::shared_ptr<Drawable> named_entity(std::string_view);
     std::optional<std::string_view> cached_variable_value(std::string_view name) const;

@@ -183,11 +183,13 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     bool changed{false};
     
     LabeledField *field{_text_field.get()};
+    const auto patterns_end = patterns.end();
     //Print("Found pattern ", pattern, " at index ", hash);
     
     if(patterns.contains("var")) {
         try {
-            auto var = parse_text(patterns.at("var"), context, state);
+            auto var = patterns.at("var").realize(context, state);
+            //auto var = parse_text(patterns.at("var"), context, state);
             if(_text_field) {
                 auto str = _text_field->ref().get().valueString();
                 if(not _var_cache.has_value()
@@ -218,282 +220,72 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         ptr = field->representative();
     }
     
-    if(patterns.contains("fill")) {
+    auto check_field = [&]<typename SourceType, typename TargetType>(std::string_view name) {
+        auto it = patterns.find(name);
+        if(it == patterns_end)
+            return;
         try {
-            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("fill"), context, state));
-            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
-            LabeledField::delegate_to_proper_type(FillClr{fill}, ptr);
+            auto text = it->second.realize(context, state);
+            auto fill = Meta::fromStr<SourceType>(text);
+            LabeledField::delegate_to_proper_type(TargetType{fill}, ptr);
             
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());
         }
-    }
-    if(patterns.contains("color")) {
-        try {
-            auto clrText = parse_text(patterns.at("color"), context, state);
-            auto clr = Meta::fromStr<Color>(clrText);
-            LabeledField::delegate_to_proper_type(TextClr{clr}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("line")) {
-        try {
-            auto line = resolve_variable_type<Color>(patterns.at("line"), context, state);
-            LabeledField::delegate_to_proper_type(LineClr{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
+    };
     
+    check_field.operator()<Color, FillClr>("fill");
+    check_field.operator()<Color, TextClr>("color");
+    check_field.operator()<Color, LineClr>("line");
+    check_field.operator()<Color, CellFillClr>("cellfillclr");
+    check_field.operator()<Color, CellLineClr>("celllineclr");
+    check_field.operator()<uint16_t, CellFillInterval>("cellfillinterval");
+    check_field.operator()<Size2, MinCellSize>("mincellsize");
+    check_field.operator()<std::string, Placeholder_t>("placeholder");
+    check_field.operator()<CornerFlags_t, CornerFlags_t>("corners");
+    check_field.operator()<Bounds, Margins>("pad");
+    check_field.operator()<Float2_t, Alpha>("alpha");
+    check_field.operator()<Vec2, Loc>("pos");
+    check_field.operator()<Vec2, Scale>("scale");
+    check_field.operator()<Vec2, Origin>("origin");
     
-    if(patterns.contains("cellfillclr")) {
-        try {
-            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("cellfillclr"), context, state));
-            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
-            LabeledField::delegate_to_proper_type(CellFillClr{fill}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("celllineclr")) {
-        try {
-            auto fill = Meta::fromStr<Color>(parse_text(patterns.at("celllineclr"), context, state));
-            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
-            LabeledField::delegate_to_proper_type(CellLineClr{fill}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("cellfillinterval")) {
-        try {
-            auto fill = Meta::fromStr<uint16_t>(parse_text(patterns.at("cellfillinterval"), context, state));
-            // auto fill = resolve_variable_type<Color>(patterns.at("fill"), context, state);
-            LabeledField::delegate_to_proper_type(CellFillInterval{fill}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("mincellsize")) {
-        try {
-            auto fill = Meta::fromStr<Size2>(parse_text(patterns.at("mincellsize"), context, state));
-            LabeledField::delegate_to_proper_type(MinCellSize{fill}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("placeholder")) {
-        try {
-            auto placeholder = parse_text(patterns.at("placeholder"), context, state);
-            LabeledField::delegate_to_proper_type(Placeholder_t{placeholder}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(auto it = patterns.find("corners");
-       it != patterns.end())
+    if(auto it = patterns.find("size");
+       it != patterns_end)
     {
         try {
-            auto corners = Meta::fromStr<CornerFlags_t>(parse_text(it->second, context, state));
-            LabeledField::delegate_to_proper_type(corners, ptr);
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, "(corners):", e.what());
-        }
-    }
-    
-    if(patterns.contains("pad")) {
-        try {
-            auto line = resolve_variable_type<Bounds>(patterns.at("pad"), context, state);
-            LabeledField::delegate_to_proper_type(Margins{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("alpha")) {
-        try {
-            auto text = parse_text(patterns.at("alpha"), context, state);
-            //auto line = resolve_variable_type<float>(patterns.at("alpha"), context, state);
-            auto alpha = Meta::fromStr<Float2_t>(text);
-            LabeledField::delegate_to_proper_type(Alpha{alpha}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("pos")) {
-        try {
-            auto str = parse_text(patterns.at("pos"), context, state);
-            ptr->set_pos(Meta::fromStr<Vec2>(str));
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("scale")) {
-        try {
-            ptr->set_scale(Meta::fromStr<Vec2>(parse_text(patterns.at("scale"), context, state)));
-            //o->set_scale(resolve_variable_type<Vec2>(patterns.at("scale"), context));
-            //Print("Setting pos of ", *o, " to ", pos, " (", o->parent(), " hash=",hash,") with ", o->name());
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("origin")) {
-        try {
-            ptr->set_origin(Meta::fromStr<Vec2>(parse_text(patterns.at("origin"), context, state)));
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("size")) {
-        try {
-            auto& size = patterns.at("size");
-            if(size.original == "auto")
+            //auto& size = patterns.at("size");
+            /*if(size.original == "auto")
             {
                 if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
                 else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
+            } else {*/
+            auto text = it->second.realize(context, state);
+            if(text == "auto") {
+                if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
+                else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
             } else {
-                ptr->set_size(Meta::fromStr<Size2>(parse_text(size, context, state)));
-                //o->set_size(resolve_variable_type<Size2>(size, context));
+                ptr->set_size(Meta::fromStr<Size2>(text));
             }
+                //o->set_size(resolve_variable_type<Size2>(size, context));
+            //}
             
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());
         }
     }
     
-    if(patterns.contains("max_size")) {
-        try {
-            auto line = Meta::fromStr<Size2>(parse_text(patterns.at("max_size"), context, state));
-            LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("preview_max_size")) {
-        try {
-            auto line = Meta::fromStr<Size2>(parse_text(patterns.at("preview_max_size"), context, state));
-            LabeledField::delegate_to_proper_type(SizeLimit{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if (patterns.contains("item_line")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("item_line"), context, state));
-            LabeledField::delegate_to_proper_type(ItemBorderColor_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if (patterns.contains("item_color")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("item_color"), context, state));
-            LabeledField::delegate_to_proper_type(ItemColor_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if (patterns.contains("label_line")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("label_line"), context, state));
-            LabeledField::delegate_to_proper_type(LabelBorderColor_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if (patterns.contains("label_fill")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("label_fill"), context, state));
-            LabeledField::delegate_to_proper_type(LabelColor_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if(patterns.contains("list_size")) {
-        try {
-            auto line = Meta::fromStr<Size2>(parse_text(patterns.at("list_size"), context, state));
-            LabeledField::delegate_to_proper_type(ListDims_t{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    if (patterns.contains("list_line")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("list_line"), context, state));
-            LabeledField::delegate_to_proper_type(ListLineClr_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-
-    if (patterns.contains("list_fill")) {
-        try {
-            auto line = Meta::fromStr<Color>(parse_text(patterns.at("list_fill"), context, state));
-            LabeledField::delegate_to_proper_type(ListFillClr_t{ line }, ptr);
-
-        }
-        catch (const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("text")) {
-        try {
-            auto text = Str{parse_text(patterns.at("text"), context, state)};
-            LabeledField::delegate_to_proper_type(text, ptr);
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context ", patterns.at("text"),": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("radius")) {
-        try {
-            auto text = Radius{Meta::fromStr<float>(parse_text(patterns.at("radius"), context, state))};
-            LabeledField::delegate_to_proper_type(text, ptr);
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context ", patterns.at("radius"),": ", e.what());
-        }
-    }
-    
-    if(patterns.contains("points")) {
-        try {
-            auto line = Meta::fromStr<std::vector<Vec2>>(parse_text(patterns.at("points"), context, state));
-            LabeledField::delegate_to_proper_type(Line::Points_t{line}, ptr);
-            
-        } catch(const std::exception& e) {
-            FormatError("Error parsing context; ", patterns, ": ", e.what());
-        }
-    }
+    check_field.operator()<Size2, SizeLimit>("max_size");
+    check_field.operator()<Size2, SizeLimit>("preview_max_size");
+    check_field.operator()<Color, ItemBorderColor_t>("item_line");
+    check_field.operator()<Color, ItemColor_t>("item_color");
+    check_field.operator()<Color, LabelBorderColor_t>("label_line");
+    check_field.operator()<Color, LabelColor_t>("label_fill");
+    check_field.operator()<Size2, ListDims_t>("list_size");
+    check_field.operator()<Color, ListLineClr_t>("list_line");
+    check_field.operator()<Color, ListFillClr_t>("list_fill");
+    check_field.operator()<std::string, Str>("text");
+    check_field.operator()<float, Radius>("radius");
+    check_field.operator()<std::vector<Vec2>, Line::Points_t>("points");
 
     /*if(ptr.is<ExternalImage>()) {
         if(patterns.contains("path")) {
@@ -874,7 +666,7 @@ void State::register_pattern(size_t hash, const std::string& name, Pattern &&pat
     _collectors->objects.at(hash)->patterns[name] = std::move(pattern);
 }
 
-std::optional<const Pattern*> State::get_pattern(size_t hash, const std::string& name) {
+std::optional<Pattern*> State::get_pattern(size_t hash, const std::string& name) {
     auto it = _collectors->objects.find(hash);
     if(it == _collectors->objects.end())
         return std::nullopt;

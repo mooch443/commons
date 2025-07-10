@@ -20,9 +20,9 @@
 namespace cmn::gui {
 namespace dyn {
 
-std::string Pattern::toStr() const {
+/*std::string Pattern::toStr() const {
     return "Pattern<" + std::string(original) + ">";
-}
+}*/
 
 namespace Modules {
 std::unordered_map<std::string, Module> mods;

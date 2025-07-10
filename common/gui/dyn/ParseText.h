@@ -2,9 +2,14 @@
 
 #include <commons.pc.h>
 #include <misc/derived_ptr.h>
+#include <gui/dyn/UnresolvedStringPattern.h>
 
 namespace cmn::gui {
 class Drawable;
+}
+
+namespace cmn::pattern {
+struct UnresolvedStringPattern;
 }
 
 namespace cmn::gui::dyn {
@@ -12,12 +17,13 @@ namespace cmn::gui::dyn {
 struct Context;
 struct State;
 struct PreVarProps;
-struct Pattern;
+//struct Pattern;
+using Pattern = pattern::UnresolvedStringPattern;
 struct Action;
 
 std::string parse_text(const std::string_view& pattern, const Context&, State&);
 
-std::string parse_text(const Pattern& pattern, const Context&, State&);
+//std::string parse_text(const Pattern& pattern, const Context&, State&);
 
 bool apply_modifier_to_object(std::string_view name, const derived_ptr<Drawable>& object, const Action& value);
 
@@ -119,22 +125,24 @@ bool convert_to_bool(Str&& p) noexcept {
 }
 
 template<typename ValueType, typename PatternMapType>
-inline std::optional<ValueType> parse_value(std::string_view name, const PatternMapType& patterns, const Context& context, State& state)
+inline std::optional<ValueType> parse_value(std::string_view name, PatternMapType& patterns, const Context& context, State& state)
 {
-    auto it = patterns.find(name);
+    typename PatternMapType::iterator it = patterns.find(name);
     if(it == patterns.end())
         return std::nullopt;
     
-    const Pattern &pattern = it->second;
+    Pattern &pattern = it->second;
     if constexpr(std::same_as<ValueType, std::string>) {
-        return parse_text(pattern, context, state);
+        return pattern.realize(context, state);
+        //return parse_text(pattern, context, state);
     } else {
-        return Meta::fromStr<ValueType>(parse_text(pattern, context, state));
+        return Meta::fromStr<ValueType>(pattern.realize(context, state));
+        //return Meta::fromStr<ValueType>(parse_text(pattern, context, state));
     }
 };
 
 template<typename ValueType, typename PatternMapType, typename CleanVT = remove_cvref_t<ValueType>>
-inline CleanVT parse_value_with_default(ValueType&& default_value, std::string_view name, const PatternMapType& patterns, const Context& context, State& state)
+inline CleanVT parse_value_with_default(ValueType&& default_value, std::string_view name, PatternMapType& patterns, const Context& context, State& state)
 {
     auto value = parse_value<CleanVT>(name, patterns, context, state);
     if(not value.has_value())

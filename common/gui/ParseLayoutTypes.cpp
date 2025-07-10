@@ -80,7 +80,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
             size = get(_defaults.size, "size");
         } else {
             //Print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.register_pattern(hash, "size", Pattern{"auto", {}});
+            state.register_pattern(hash, "size", pattern::UnresolvedStringPattern::prepare("auto")); //Pattern{"auto", {}});
         }
         
     } else {
@@ -131,7 +131,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(auto pattern = state.get_pattern(hash, "corners");
        pattern.has_value())
     {
-        auto str = parse_text(pattern.value()->original, context, state);
+        //auto str = parse_text(pattern.value()->original, context, state);
+        auto str = pattern.value()->realize(context, state);
         LabeledField::delegate_to_proper_type(Meta::fromStr<CornerFlags_t>(str), ptr);
     } else {
         LabeledField::delegate_to_proper_type(corners, ptr);
@@ -147,7 +148,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(auto pattern = state.get_pattern(hash, "name");
        pattern.has_value())
     {
-        name = parse_text(pattern.value()->original, context, state);
+        name = pattern.value()->realize(context, state);
     }
     
     if(not name.empty()) {
@@ -350,7 +351,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
     if(obj.count("path") && obj.at("path").is_string()) {
         std::string raw = obj.at("path").get<std::string>();
         if(utils::contains(raw, "{")) {
-            state.register_pattern(hash, "path", Pattern{raw, {}});
+            state.register_pattern(hash, "path", pattern::UnresolvedStringPattern::prepare(raw)); //Pattern{raw, {}});
             
         } else {
             auto path = file::Path(raw);
@@ -547,7 +548,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         auto input = obj.at("var").get<std::string>();
         var = parse_text(input, context, state);
         if(var != input) {
-            state.register_pattern(hash, "var", Pattern{input, {}});
+            state.register_pattern(hash, "var", pattern::UnresolvedStringPattern::prepare(input)); //Pattern{input, {}});
         }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");
