@@ -8,6 +8,7 @@ template<typename Base>
 class BFrame_t {
 public:
     using number_t = typename Base::value_type;
+    using value_t = Base;
     
     // Compile-time check to ensure that number_t is integral
     static_assert(std::is_integral_v<number_t>, "number_t must be integral");

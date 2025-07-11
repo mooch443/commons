@@ -65,7 +65,7 @@ namespace cmn::gui {
         GETTER(std::vector<Drawable*>, current_children);
         GETTER(std::vector<Drawable*>, new_children);
         robin_hood::unordered_set<Drawable*> _currently_removed;
-        robin_hood::unordered_flat_set<Drawable*> _current_wrapped;
+        robin_hood::unordered_set<Drawable*> _current_wrapped;
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false);
         

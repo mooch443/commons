@@ -258,6 +258,17 @@ public:
     const_iterator cbegin() const { return _ptr; }
     const_iterator cend()   const { return _ptr + _size; }
     
+    using reverse_iterator       = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+    reverse_iterator       rbegin()        noexcept { return reverse_iterator(end()); }
+    reverse_iterator       rend()          noexcept { return reverse_iterator(begin()); }
+    const_reverse_iterator rbegin()  const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend()    const noexcept { return const_reverse_iterator(begin()); }
+
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator crend()   const noexcept { return const_reverse_iterator(begin()); }
+    
     ~IllegalArray() {
         if(_ptr)
             free(_ptr);

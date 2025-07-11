@@ -302,10 +302,13 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
             if(pixels) {
                 assert(*px);
                 auto start = *px;
-                auto end = start + ((ptr_safe_t(lx1) - ptr_safe_t(lx0) + ptr_safe_t(1))) * channels;
+                //auto end = start + ((ptr_safe_t(lx1) - ptr_safe_t(lx0) + ptr_safe_t(1))) * channels;
                 
                 //! HOTSPOT
-                pixel = std::copy(start, end, pixel);
+                const size_t N = ((ptr_safe_t(lx1) - ptr_safe_t(lx0) + ptr_safe_t(1))) * channels;
+                std::memcpy(pixel, start, N);
+                pixel += N;
+                //pixel = std::copy(start, end, pixel);
             }
             
 #ifndef NDEBUG

@@ -486,6 +486,7 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
         {
             ///[[maybe_unused]] CTimer ctimer("normal");
             if constexpr(std::invocable<ApplyF, std::string&, VarBase_t&, const VarProps&>) {
+                //Print("* applying ", props);
                 apply(output, *it.value()->second, props);
                 return;
             } else
@@ -496,7 +497,7 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             //[[maybe_unused]] CTimer ctimer("if");
             bool condition = props.parameters.front() == "true";
             //bool condition = resolve_variable_type<bool>(p.parameters.at(0), context, state);
-            //Print("Condition ", props.parameters.at(0)," => ", condition);
+            //Print("* condition ", props.parameters.front()," => ", condition);
             if(condition)
                 utils::fast_fromstr(output, props.parameters[1]);
                 //output += Meta::fromStr<std::string>(props.parameters[1]);
@@ -506,6 +507,8 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             return;
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
+            //Print("* defaults contain ", props);
+            //Print("* => ", it->second->value<std::string>(context, state));
             //[[maybe_unused]] CTimer ctimer("custom var");
             utils::fast_fromstr(output, it->second->value<std::string>(context, state));
             return;
@@ -513,11 +516,13 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
         } else if(auto lock = state._current_object_handler.lock();
                   lock != nullptr)
         {
+            //Print("* ", props, " testing current handler");
             if(auto ptr = lock->retrieve_named(props.name);
                ptr != nullptr)
             {
                 auto v = get_modifier_from_object(ptr.get(), props);
                 if(v.has_value()) {
+                    //Print("* ", props, " modifiers ", v.value());
                     utils::fast_fromstr(output, v.value());
                     //output += Meta::fromStr<std::string>(v.value());
                     return;
@@ -526,11 +531,18 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             
         }
         
-    } catch(...) {
-        // catch exceptions
+    } catch(const std::exception& ex) {
+        if constexpr(std::invocable<ErrorF, std::string&, bool, const std::string&>) {
+            error(output, props.optional, std::string(ex.what()));
+            return;
+        }
     }
     
-    if constexpr(std::invocable<ErrorF, std::string&, bool>)
+    if constexpr(std::invocable<ErrorF, std::string&, bool, const std::string&>) {
+        error(output, props.optional, "Cannot find property "+props.toStr()+" in context.");
+        return;
+    }
+    else if constexpr(std::invocable<ErrorF, std::string&, bool>)
         error(output, props.optional);
     else
         error(output);
@@ -560,11 +572,13 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         resolve_parameter(condition, pattern, parameters[0], context, state);
         
         if(gui::dyn::convert_to_bool(condition)) {
+            parms[0] = "true";
             parms[1].clear();
             resolve_parameter(parms[1], pattern, parameters[1], context, state);
             if(parms.size() == 3)
                 parms[2] = "null";
         } else if(parms.size() == 3) {
+            parms[0] = "false";
             parms[2].clear();
             resolve_parameter(parms[2], pattern, parameters[2], context, state);
             parms[1] = "null";
@@ -626,9 +640,9 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             output += modifiers.optional ? "" : "null";
         }
         
-    }, [&props](std::string&, bool optional) {
+    }, [&props](std::string&, bool optional, const std::string& ex = "") {
         if(not optional)
-            throw InvalidArgumentException("Failed to evaluate ", props, ".");
+            throw InvalidArgumentException("Failed to evaluate ", props, ": ", no_quotes(not ex.empty() ? ex : std::string("<null>")));
     });
     
     if(has_children)

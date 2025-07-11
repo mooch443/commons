@@ -24,7 +24,7 @@ namespace cmn {
 #endif
 
 #define Vector2D_COMMON_FUNCTIONS \
-    static constexpr auto zeros() { return self_type{Scalar(0), Scalar(0)}; } \
+    static consteval self_type zeros() { return self_type{Scalar(0), Scalar(0)}; } \
     template<typename V> \
     Vector2D(const cv::Point_<V>& v) noexcept : Vector2D(v.x, v.y) {} \
     template<typename V> \

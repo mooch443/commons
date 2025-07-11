@@ -307,6 +307,108 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 tmp._settings_was_selected = graph->selected_object() ? (graph->selected_object()->is_child_of(tmp._last_settings_box.get()) || graph->selected_object() == tmp._last_settings_box.get()) : false;
             }
             
+            context.system_variables().emplace(VarFunc("hovered", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->hovered();
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->hovered();
+                        }
+                    }
+                }
+                return false;
+            }));
+            
+            context.system_variables().emplace(VarFunc("pos", [object_handler = tmp._current_object_handler](const VarProps& props) -> Size2 {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->global_bounds().pos();
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->global_bounds().pos();
+                        }
+                    }
+                }
+                return false;
+            }));
+            
+            context.system_variables().emplace(VarFunc("dimensions", [object_handler = tmp._current_object_handler](const VarProps& props) -> Size2 {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->size();
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->size();
+                        }
+                    }
+                }
+                return false;
+            }));
+            
+            context.system_variables().emplace(VarFunc("selected", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->selected();
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->selected();
+                        }
+                    }
+                }
+                return false;
+            }));
+            
+            Print(" * initialized system variables with ", extract_keys(context.system_variables()));
+            
             std::vector<Layout::Ptr> objs;
             objects.clear();
             state = {};
@@ -448,106 +550,6 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         _debug_timer.reset();
     }
 #endif
-    
-    context.system_variables().emplace(VarFunc("hovered", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
-        if(props.parameters.empty()) {
-            auto lock = object_handler.lock();
-            if(lock) {
-                if(auto ptr = lock->get();
-                   ptr != nullptr)
-                {
-                    return ptr->hovered();
-                }
-            }
-            
-        } else if(props.parameters.size() == 1) {
-            if(auto lock = object_handler.lock();
-               lock != nullptr)
-            {
-                if(auto ptr = lock->retrieve_named(props.first());
-                   ptr != nullptr)
-                {
-                    return ptr->hovered();
-                }
-            }
-        }
-        return false;
-    }));
-    
-    context.system_variables().emplace(VarFunc("pos", [object_handler = state._current_object_handler](const VarProps& props) -> Size2 {
-        if(props.parameters.empty()) {
-            auto lock = object_handler.lock();
-            if(lock) {
-                if(auto ptr = lock->get();
-                   ptr != nullptr)
-                {
-                    return ptr->global_bounds().pos();
-                }
-            }
-            
-        } else if(props.parameters.size() == 1) {
-            if(auto lock = object_handler.lock();
-               lock != nullptr)
-            {
-                if(auto ptr = lock->retrieve_named(props.first());
-                   ptr != nullptr)
-                {
-                    return ptr->global_bounds().pos();
-                }
-            }
-        }
-        return false;
-    }));
-    
-    context.system_variables().emplace(VarFunc("dimensions", [object_handler = state._current_object_handler](const VarProps& props) -> Size2 {
-        if(props.parameters.empty()) {
-            auto lock = object_handler.lock();
-            if(lock) {
-                if(auto ptr = lock->get();
-                   ptr != nullptr)
-                {
-                    return ptr->size();
-                }
-            }
-            
-        } else if(props.parameters.size() == 1) {
-            if(auto lock = object_handler.lock();
-               lock != nullptr)
-            {
-                if(auto ptr = lock->retrieve_named(props.first());
-                   ptr != nullptr)
-                {
-                    return ptr->size();
-                }
-            }
-        }
-        return false;
-    }));
-    
-    context.system_variables().emplace(VarFunc("selected", [object_handler = state._current_object_handler](const VarProps& props) -> bool {
-        if(props.parameters.empty()) {
-            auto lock = object_handler.lock();
-            if(lock) {
-                if(auto ptr = lock->get();
-                   ptr != nullptr)
-                {
-                    return ptr->selected();
-                }
-            }
-            
-        } else if(props.parameters.size() == 1) {
-            if(auto lock = object_handler.lock();
-               lock != nullptr)
-            {
-                if(auto ptr = lock->retrieve_named(props.first());
-                   ptr != nullptr)
-                {
-                    return ptr->selected();
-                }
-            }
-        }
-        return false;
-    }));
     
     static Timing timing("dyn::update", 10);
     if(TakeTiming take(timing);
