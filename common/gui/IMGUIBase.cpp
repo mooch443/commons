@@ -1084,8 +1084,8 @@ void IMGUIBase::process_main_queue() {
         while (status != LoopStatus::END)
         {
             status = update_loop();
-            if(status != gui::LoopStatus::UPDATED)
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            //if(status != gui::LoopStatus::UPDATED)
+            //    std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 #endif
     }
