@@ -7,6 +7,7 @@
 #include <gui/dyn/State.h>
 #include <gui/dyn/ResolveVariable.h>
 #include <gui/dyn/Action.h>
+#include <misc/default_settings.h>
 
 namespace cmn::pattern {
 
@@ -597,38 +598,42 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
     size_t index = str.length();
     resolve_variable(str, props, context, state, [](std::string& output, cmn::gui::dyn::VarBase_t& variable, const gui::dyn::VarProps& modifiers)
     {
-        try {
+        auto apply_html = [&modifiers, &output](auto&& str) {
             if(modifiers.html)
-                output += "<red>html not supported</red>";
-            
+                output += settings::htmlify(str);
+            else
+                output += str;
+        };
+        
+        try {
             if(modifiers.subs.empty())
-                output += variable.value_string(modifiers);
+                apply_html(variable.value_string(modifiers));
             else if(variable.is<Size2>()) {
                 if(modifiers.subs.front() == "w")
-                    output += Meta::toStr(variable.value<Size2>(modifiers).width);
+                    apply_html( Meta::toStr(variable.value<Size2>(modifiers).width));
                 else if(modifiers.subs.front() == "h")
-                    output += Meta::toStr(variable.value<Size2>(modifiers).height);
+                    apply_html( Meta::toStr(variable.value<Size2>(modifiers).height));
                 else
                     throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
                 
             } else if(variable.is<Vec2>()) {
                 if(modifiers.subs.front() == "x")
-                    output += Meta::toStr(variable.value<Vec2>(modifiers).x);
+                    apply_html(Meta::toStr(variable.value<Vec2>(modifiers).x));
                 else if(modifiers.subs.front() == "y")
-                    output += Meta::toStr(variable.value<Vec2>(modifiers).y);
+                    apply_html(Meta::toStr(variable.value<Vec2>(modifiers).y));
                 else
                     throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
                 
             } else if(variable.is<Range<Frame_t>>()) {
                 if(modifiers.subs.front() == "start")
-                    output += Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start);
+                    apply_html( Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start));
                 else if(modifiers.subs.front() == "end")
-                    output += Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
+                    apply_html( Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end));
                 else
                     throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
                 
             } else
-                output += variable.value_string(modifiers);
+                apply_html(variable.value_string(modifiers));
             
             //if(modifiers.html)
             //    return settings::htmlify(ret);
