@@ -738,7 +738,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     });
     
     // Initialize StaticText
-    _dropdown->set_preview(new gui::StaticText(StaticText::FadeOut_t{1.f}));
+    _dropdown->set_preview(Layout::Ptr(new gui::StaticText(StaticText::FadeOut_t{1.f})));
     
     _layout = new gui::PathArrayView(std::vector<Layout::Ptr>{_dropdown, _dropdown->preview()}, attr::Margins{0, 0, 0, 0});
     auto view = static_cast<PathArrayView*>(_layout.get());

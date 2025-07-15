@@ -30,8 +30,12 @@ public:
     
     IllegalArray& operator=(const IllegalArray& other) noexcept {
         if(this != &other) {
-            resize(other._size);
-            std::memcpy(_ptr, other.data(), other._size * sizeof(T));
+            if(other.empty()) {
+                clear();
+            } else {
+                resize(other._size);
+                std::memcpy(_ptr, other.data(), other._size * sizeof(T));
+            }
         }
         return *this;
     }

@@ -77,6 +77,11 @@ public:
 	derived_ptr(derived_ptr&&) noexcept = default;
 	derived_ptr(const derived_ptr&) noexcept = default;
 
+    derived_ptr& operator= (Base* ptr) noexcept {
+        this->~derived_ptr();
+        new (this) derived_ptr(ptr);
+        return *this;
+    }
 	derived_ptr& operator= (derived_ptr&&) noexcept = default;
 	derived_ptr& operator= (const derived_ptr&) noexcept = default;
     
@@ -109,7 +114,7 @@ public:
 
     template<typename T>
         requires std::is_base_of_v<Base, T> || std::is_same_v<Base, T>
-    derived_ptr(T* share) noexcept {
+    explicit derived_ptr(T* share) noexcept {
         if (share) {
             _ptr = std::shared_ptr<Base>(share, [share](Base* p) {
 				DebugPointers::unregister_ptr<T>(p);
