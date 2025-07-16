@@ -213,6 +213,7 @@ public:
 
 #ifndef CMN_WITH_IMGUI_INSTALLED
     #if __has_include ( <imgui.h> )
+        #define IMGUI_DEFINE_MATH_OPERATORS
         #include <imconfig.h>
         #include <imgui.h>
         #define CMN_WITH_IMGUI_INSTALLED true

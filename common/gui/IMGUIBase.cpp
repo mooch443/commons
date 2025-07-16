@@ -322,7 +322,7 @@ class PolyCache : public CacheObject {
         Codes::Unknown, // num_lock (282)
         Codes::Unknown, // print screen (283)
         Codes::Pause, // 284
-        Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, 
+        Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
         // 290
         Codes::F1, Codes::F2, Codes::F3, Codes::F4, Codes::F5, Codes::F6, Codes::F7, Codes::F8, Codes::F9, Codes::F10, Codes::F11, Codes::F12, Codes::F13, Codes::F14, Codes::F15, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, // 314
         
@@ -499,13 +499,13 @@ void IMGUIBase::set_window_bounds(Bounds bounds) {
         
         pos += Vec2(mx, my);
     }
-	glfwSetWindowPos(_platform->window_handle(), pos.x, pos.y);
+    glfwSetWindowPos(_platform->window_handle(), pos.x, pos.y);
     
     if(size.width <= 160)
         size.width = 160;
     if(size.height <= 160)
         size.height = 160;
-	this->set_window_size(size);
+    this->set_window_size(size);
     this->update_size_scale(_platform->window_handle());
 }
 
@@ -1115,8 +1115,8 @@ void IMGUIBase::process_main_queue() {
     }
 
     void IMGUIBase::set_last_framebuffer(Size2 size) {
-        if (size.width > 0 && size.height > 0 
-            && (size.width * _dpi_scale != _last_framebuffer_size.width 
+        if (size.width > 0 && size.height > 0
+            && (size.width * _dpi_scale != _last_framebuffer_size.width
                 || size.height * _dpi_scale != _last_framebuffer_size.height))
         {
 #ifdef COMMONS_SHOW_RESOLUTION_CHANGES
@@ -1285,8 +1285,6 @@ ImVec2 ImRotationCenter(int rotation_start_index, ImDrawList* list)
 
     return ImVec2((l.x+u.x)/2, (l.y+u.y)/2); // or use _ClipRectStack?
 }
-
-ImVec2 operator-(const ImVec2& l, const ImVec2& r) { return{ l.x - r.x, l.y - r.y }; }
 
 void ImRotateEnd(int rotation_start_index, ImDrawList* list, Float2_t rad, ImVec2 center)
 {
