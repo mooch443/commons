@@ -363,6 +363,25 @@ class PolyCache : public CacheObject {
 
     std::unordered_map<GLFWwindow*, IMGUIBase*> base_pointers;
 
+struct TimingInfo {
+    Type::Class type;
+    double time{0};
+    uint64_t samples{0};
+    
+    void add(double seconds) {
+        samples++;
+        time += seconds;
+        
+        if(samples % 1000 == 0) {
+            time = time / double(samples);
+            samples = 1;
+            Print(type,": ", time * 1000.0 * 1000.0, "us");
+        }
+    }
+};
+
+std::unordered_map<Type::Class, TimingInfo> timings;
+
 #if defined(__EMSCRIPTEN__)
 /*void IMGUIBase::downloadSuccess(emscripten_fetch_t* fetch) {
     printf("Finished downloading %llu bytes from URL %s.\n", fetch->numBytes, fetch->url);
@@ -1200,6 +1219,51 @@ void InsertIntersection(std::vector<ImVec2>& scanHits, const ImVec2& intersect) 
     }), intersect);
 }
 
+// Draw an array of independent 2‑point segments using raw buffer writes.
+static inline void DrawLinePairsFast(ImDrawList* draw,
+                                     const ImVec2* segs,
+                                     size_t pairCount,
+                                     ImU32 color,
+                                     int strokeWidth = 1)
+{
+    if (pairCount == 0) return;
+
+    const int idx_count = static_cast<int>(pairCount * 6);   // 2 tris / segment
+    const int vtx_count = static_cast<int>(pairCount * 4);   // 4 verts / segment
+    const ImVec2 uv     = draw->_Data->TexUvWhitePixel;
+    const float halfT   = strokeWidth * 0.5f;
+
+    draw->PrimReserve(idx_count, vtx_count);
+
+    for (size_t i = 0; i < pairCount; ++i) {
+        const ImVec2 a = segs[i * 2 + 0];
+        const ImVec2 b = segs[i * 2 + 1];
+
+        // Quad vertices
+        draw->_VtxWritePtr[0].pos = ImVec2(a.x, a.y - halfT);
+        draw->_VtxWritePtr[1].pos = ImVec2(b.x, b.y - halfT);
+        draw->_VtxWritePtr[2].pos = ImVec2(b.x, b.y + halfT);
+        draw->_VtxWritePtr[3].pos = ImVec2(a.x, a.y + halfT);
+
+        for (int k = 0; k < 4; ++k) {
+            draw->_VtxWritePtr[k].uv  = uv;
+            draw->_VtxWritePtr[k].col = color;
+        }
+
+        // Indices: two CCW tris 0‑1‑2 and 0‑2‑3
+        draw->_IdxWritePtr[0] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx    );
+        draw->_IdxWritePtr[1] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx + 1);
+        draw->_IdxWritePtr[2] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx + 2);
+        draw->_IdxWritePtr[3] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx    );
+        draw->_IdxWritePtr[4] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx + 2);
+        draw->_IdxWritePtr[5] = static_cast<ImDrawIdx>(draw->_VtxCurrentIdx + 3);
+
+        draw->_VtxWritePtr  += 4;
+        draw->_IdxWritePtr  += 6;
+        draw->_VtxCurrentIdx += 4;
+    }
+}
+
 void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::vector<ImVec2>& output, ImU32 color, const int gap = 1, const int strokeWidth = 1) {
     using namespace std;
 
@@ -1223,8 +1287,8 @@ void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::v
     // Initialise our starting conditions
     int y = int(min.y);
     const size_t polysize = poly.size();
-    vector<ImVec2> scanHits;
-    scanHits.reserve(polysize / 2);
+    std::vector<float> xs;
+    xs.reserve(polysize);
     output.reserve(polysize * gap);
 
     // Use a small epsilon for floating point comparisons
@@ -1232,38 +1296,59 @@ void PolyFillScanFlood(ImDrawList *draw, const std::vector<ImVec2>& poly, std::v
 
     // Scan-line algorithm: iterate over each scanline with a step of 'gap' pixels
     while (y < max.y) {
-        scanHits.clear();
+        xs.clear();
 
-        // For each segment in the polygon, check if the horizontal line at y intersects it
-        for (size_t i = 0; i < polysize - 1; i++) {
-            const ImVec2 pa = poly[i];
+        // Collect X intersections for the current scan‑line
+        ImVec2 next = poly[0];
+        for (size_t i = 0; i < polysize - 1; ++i) {
+            const ImVec2 pa = next;
             const ImVec2 pb = poly[i + 1];
 
-            // Skip duplicate or nearly identical points
-            if (fabs(pa.x - pb.x) < eps && fabs(pa.y - pb.y) < eps)
+            const float y1 = pa.y, y2 = pb.y;
+            const float x2 = pb.x;
+            
+            next = pb;
+
+            // Fast reject: segment is completely above or below this scan-line.
+            if (!((y1 <= y && y < y2) || (y2 <= y && y < y1)))
                 continue;
 
-            // Use a robust intersection test with half-open interval to avoid double counting
-            if ((pa.y <= y && y < pb.y) || (pb.y <= y && y < pa.y)) {
-                ImVec2 intersect;
-                intersect.y = float(y);
-                if (fabs(pb.x - pa.x) < eps) {
-                    intersect.x = pa.x;
-                } else {
-                    // Calculate intersection x using linear interpolation
-                    intersect.x = ((y - pa.y) * (pb.x - pa.x) / (pb.y - pa.y)) + pa.x;
-                }
-                // Insert the intersection point in sorted order by x
-                InsertIntersection(scanHits, intersect);
-            }
+            const float dx = x2 - pa.x;
+            const float dy = y2 - y1;
+            const float fabsdx = fabsf(dx);
+
+            // Skip degenerate or near-zero-length segments.
+            if (fabsdx < eps && fabsf(dy) < eps)
+                continue;
+
+            const bool xdiff_small = fabsdx < eps;
+
+            float x = xdiff_small
+                    ? pa.x
+                    : ( (y - y1) * (dx / dy) + pa.x );
+
+            xs.push_back(x);
         }
 
-        // Generate the line segments from intersections in pairs
-        size_t l = scanHits.size();
-        for (size_t i = 0; i + 1 < l; i += 2) {
-            output.push_back(scanHits[i]);
-            output.push_back(scanHits[i + 1]);
-            draw->AddLine(scanHits[i], scanHits[i + 1], color, strokeWidth);
+        const size_t l = xs.size();
+        if (l < 2) {                // nothing to draw on this scan‑line
+            y += gap;
+            continue;
+        }
+
+        std::sort(xs.begin(), xs.end());
+
+        // ---------- batch‑insert all horizontal spans on this scan‑line ----------
+        const size_t pairCount = l / 2;
+        if (pairCount) {
+            const size_t start = output.size();      // remember where new pairs start
+            for (size_t i = 0; i + 1 < l; i += 2) {
+                ImVec2 a(xs[i]  , static_cast<float>(y));
+                ImVec2 b(xs[i+1], static_cast<float>(y));
+                output.push_back(a);
+                output.push_back(b);
+            }
+            DrawLinePairsFast(draw, &output[start], pairCount, color, strokeWidth);
         }
 
         y += gap;
@@ -1546,6 +1631,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
     }
     
+    Timer timer;
     switch (type) {
         case Type::CIRCLE: {
             auto ptr = static_cast<Circle*>(o);
@@ -1628,9 +1714,11 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                     } else {
                         auto& output = ((PolyCache*)cache)->points();
                         auto fill = (uint32_t)((ImColor)ptr->fill_clr());
-                        for(size_t i=0; i<output.size(); i+=2) {
-                            list->AddLine(output[i], output[i+1], fill, 1);
-                        }
+                        DrawLinePairsFast(list,
+                                          output.data(),
+                                          output.size() / 2,
+                                          fill,
+                                          1);
                     }
                     
                 } else if(cache) {
@@ -1787,6 +1875,13 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         default:
             break;
     }
+    
+    /*if(type != Type::NONE) {
+        auto s = timer.elapsed();
+        if(not timings.contains(type))
+            timings[type] = TimingInfo{.type=type};
+        timings[type].add(s);
+    }*/
     
 #ifdef TREX_ENABLE_EXPERIMENTAL_BLUR
     if constexpr(std::same_as<default_impl_t, MetalImpl>) {

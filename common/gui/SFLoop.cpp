@@ -33,7 +33,7 @@ namespace cmn::gui {
                 } else if(status != gui::LoopStatus::UPDATED) {
                     if(_idle_callback)
                         _idle_callback(*this);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+                    //std::this_thread::sleep_for(std::chrono::milliseconds(15));
                     
                 } else {
                     _time_since_last_update.reset();
