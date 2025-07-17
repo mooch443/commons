@@ -56,9 +56,38 @@ struct IfBody {
     //~IfBody();
 };
 
+// -----------------------------------------------------------------------------
+// A thin wrapper that lets Glaze treat an UnresolvedStringPattern like a plain
+// JSON string.  Any incoming JSON string (std::string or std::string_view)
+// is transparently converted with pattern::UnresolvedStringPattern::prepare().
+// -----------------------------------------------------------------------------
+struct PatternValue {
+    pattern::UnresolvedStringPattern pat{};
+
+    PatternValue() = default;
+
+    /* implicit */ PatternValue(std::string_view s)
+        : pat(pattern::UnresolvedStringPattern::prepare(s)) {}
+
+    /* implicit */ PatternValue(const std::string& s)
+        : pat(pattern::UnresolvedStringPattern::prepare(s)) {}
+
+    // Allow seamless use where a pattern is expected
+    operator const pattern::UnresolvedStringPattern&() const noexcept { return pat; }
+    const pattern::UnresolvedStringPattern& get() const noexcept { return pat; }
+};
+
 struct ListContents {
+    struct ItemTemplate {
+        std::optional<PatternValue> text;
+        std::optional<PatternValue> detail;
+        std::optional<PatternValue> tooltip;
+        std::optional<PatternValue> disabled;
+        std::optional<PatternValue> action;
+    };
+    
     std::string variable;
-    glz::json_t::object_t item;
+    ItemTemplate item;
     std::unique_ptr<State> _state;
     std::vector<std::shared_ptr<VarBase_t>> cache;
     std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
@@ -91,7 +120,12 @@ struct CustomElement {
 };
 
 struct ManualListContents {
-    std::vector<DetailTooltipItem> items;
+    struct Item {
+        pattern::UnresolvedStringPattern detail, tooltip, name;
+        std::variant<bool, pattern::UnresolvedStringPattern> disabled_template;
+    };
+    std::vector<Item> items;
+    std::vector<DetailTooltipItem> rendered;
 };
 
 // Index class manages unique identifiers for objects.
@@ -235,3 +269,52 @@ private:
 };
 
 }
+
+template<>
+struct glz::meta<cmn::gui::dyn::ListContents::ItemTemplate> {
+  using T = cmn::gui::dyn::ListContents::ItemTemplate;
+  static constexpr auto value = glz::object(
+    "text"   , &T::text,
+    "detail" , &T::detail,
+    "tooltip", &T::tooltip,
+    "disabled", &T::disabled,
+    "action", &T::action
+  );
+};
+
+//---------------------------------------------------------------
+// PatternValue  ⇄  JSON string
+//---------------------------------------------------------------
+namespace glz {
+
+// 1.  Tell Glaze this type has fully-custom read & write logic
+template <> struct meta<cmn::gui::dyn::PatternValue>
+{
+    static constexpr bool custom_read  = true;   // use our `from`
+    static constexpr bool custom_write = true;   // use our `to`
+};
+
+/*-----------  Deserialise  (read)  ----------------------------*/
+template <> struct from<JSON, cmn::gui::dyn::PatternValue>
+{
+    template <auto Opts>
+    static void op(cmn::gui::dyn::PatternValue& value, auto&&... args)
+    {
+        std::string tmp;
+        parse<JSON>::op<Opts>(tmp, std::forward<decltype(args)>(args)...);
+        value = cmn::gui::dyn::PatternValue{tmp};        // converts to UnresolvedStringPattern
+    }
+};
+
+/*-----------  Serialise  (write)  -----------------------------*/
+template <> struct to<JSON, cmn::gui::dyn::PatternValue>
+{
+    template <auto Opts>
+    static void op(const cmn::gui::dyn::PatternValue& value, auto&&... args) noexcept
+    {
+        const std::string& tmp = *value.get().original;          // emit the original pattern text
+        serialize<JSON>::op<Opts>(tmp, std::forward<decltype(args)>(args)...);
+    }
+};
+
+} // namespace glz

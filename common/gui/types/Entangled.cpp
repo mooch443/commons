@@ -51,7 +51,7 @@ namespace cmn::gui {
         : SectionInterface(Type::ENTANGLED, NULL)
     {}
 
-    Entangled::Entangled(const Bounds& bounds) 
+    Entangled::Entangled(const Bounds& bounds)
         : SectionInterface(Type::ENTANGLED, NULL)
     {
         set_bounds(bounds);
@@ -234,7 +234,7 @@ void Entangled::on_visibility_change(bool visible) {
                     _current_wrapped.erase(it);
                     
                     if(auto it = _currently_removed.find(tmp);
-                       it != _currently_removed.end()) 
+                       it != _currently_removed.end())
                     {
                         _currently_removed.erase(it);
                     }
@@ -406,39 +406,39 @@ void SectionInterface::before_draw() {
 #endif
     
     if(_has_children_rect_changed) {
-        std::vector<SectionInterface*> reset;
-        std::queue<SectionInterface*> q;
-        q.push(this);
-        reset.push_back(this);
-        
-        while(not q.empty()) {
-            auto ptr = q.front();
-            q.pop();
-            
+        // ---------------------------------------------------------------------
+        // Low‑latency replacement: single‑pass flat loop, no per‑frame heap alloc
+        // ---------------------------------------------------------------------
+        static thread_local std::vector<SectionInterface*> stack;
+        static thread_local std::vector<SectionInterface*> visited;
+        stack.clear();
+        visited.clear();
+        stack.emplace_back(this);
+
+        while(!stack.empty()) {
+            SectionInterface* ptr = stack.back();
+            stack.pop_back();
+
 #ifdef COMMONS_COUNT_ITERATIONS
             ++iterations;
 #endif
+            visited.emplace_back(ptr);
+
             ptr->_has_children_rect_changed = true;
-            reset.push_back(ptr);
             ptr->set_bounds_changed();
-            //ptr->children_rect_changed();
-            
-            //if(ptr->_background)
-            //    ptr->_background->set_bounds_changed();
-            
-            apply_to_objects(ptr->children(), [&q](auto c){
+
+            apply_to_objects(ptr->children(), [](auto c){
                 if(c->type() == Type::ENTANGLED || c->type() == Type::SECTION) {
-                    q.push(static_cast<SectionInterface*>(c));
-                } else
+                    stack.emplace_back(static_cast<SectionInterface*>(c));
+                } else {
                     c->set_bounds_changed();
+                }
             });
         }
-        
-        /// we need to reset the has *children_rect_changed*
-        /// after the loop because otherwise it'll *set_bounds_dirty*
-        /// from some child, which resets the parent (that we just processed)
-        for(auto r : reset) {
-            r->_has_children_rect_changed = false;
+
+        // Reset the flag in one tight walk over the same buffer.
+        for(auto* ptr : visited) {
+            ptr->_has_children_rect_changed = false;
         }
         
 #ifdef COMMONS_COUNT_ITERATIONS

@@ -179,6 +179,25 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
     return false;
 }
 
+#if false
+struct TimingInfo {
+    std::string name;
+    double time{0};
+    uint64_t samples{0};
+    
+    void add(double seconds) {
+        samples++;
+        time += seconds;
+        
+        if(int64_t(time / double(samples)) % 3 == 0) {
+            time = time / double(samples);
+            samples = 1;
+            Print(name,": ", time * 1000.0 * 1000.0, "us");
+        }
+    }
+};
+#endif
+
 bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
     bool changed{false};
     
@@ -221,13 +240,27 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     }
     
     auto check_field = [&]<typename SourceType, typename TargetType>(std::string_view name) {
+        
         auto it = patterns.find(name);
         if(it == patterns_end)
             return;
         try {
+#if false
+            static std::unordered_map<std::string, TimingInfo, MultiStringHash, MultiStringEqual> timings;
+            Timer timer;
+#endif
             auto text = it->second.realize(context, state);
             auto fill = Meta::fromStr<SourceType>(text);
             LabeledField::delegate_to_proper_type(TargetType{fill}, ptr);
+#if false
+            auto seconds = timer.elapsed();
+            auto it = timings.find(name);
+            if(it == timings.end()) {
+                timings[(std::string)name].name = (std::string)name;
+                it = timings.find(name);
+            }
+            it->second.add(seconds);
+#endif
             
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());
@@ -325,26 +358,25 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
     ListContents &obj = std::get<ListContents>(object);
     
     size_t index=0;
-    auto convert_to_item = [&gc = context, &index, &obj](const glz::json_t& item_template, Context& context, State& state) -> DetailTooltipItem
+    auto convert_to_item = [&gc = context, &index, &obj](ListContents::ItemTemplate& item_template, Context& context, State& state) -> DetailTooltipItem
     {
         DetailTooltipItem item;
-        if(item_template.contains("text") && item_template["text"].is_string()) {
-            item.set_name(parse_text(item_template["text"].get<std::string>(), context, state));
+        if(item_template.text) {
+            item.set_name(item_template.text.value().pat.realize(context, state));
         }
-        if(item_template.contains("detail") && item_template["detail"].is_string()) {
-            item.set_detail(parse_text(item_template["detail"].get<std::string>(), context, state));
+        if(item_template.detail) {
+            item.set_detail(item_template.detail.value().pat.realize(context, state));
         }
-        if(item_template.contains("tooltip") && item_template["tooltip"].is_string()) {
-            item.set_tooltip(parse_text(item_template["tooltip"].get<std::string>(), context, state));
+        if(item_template.tooltip) {
+            item.set_tooltip(item_template.tooltip.value().pat.realize(context, state));
         }
-        
-        if(item_template.contains("disabled") && item_template["disabled"].is_string()) {
-            item.set_disabled(parse_text(item_template["disabled"].get<std::string>(), context, state) == "true");
+        if(item_template.disabled) {
+            item.set_disabled(item_template.disabled.value().pat.realize(context, state) == "true");
         } else
             item.set_disabled(false);
         
-        if(item_template.contains("action") && item_template["action"].is_string()) {
-            auto action = PreAction::fromStr(parse_text(item_template["action"].get<std::string>(), context, state));
+        if(item_template.action) {
+            auto action = PreAction::fromStr(item_template.action.value().pat.realize(context, state));
             
             if(not obj.on_select_actions.contains(index)
                || std::get<0>(obj.on_select_actions.at(index)) != action.name)
@@ -367,6 +399,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                 );
             }
         }
+        
         return item;
     };
     
@@ -443,15 +476,19 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
 
 bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state) {
     ManualListContents &body = std::get<ManualListContents>(object);
-    auto items = body.items;
-    for (auto& i : items) {
-        i.set_detail(parse_text(i.detail(), context, state));
-        i.set_tooltip(parse_text(i.tooltip(), context, state));
-        i.set_name(parse_text(i.name(), context, state));
-        if(std::holds_alternative<std::string>(i.disabled_template()))
-            i.set_disabled(Meta::fromStr<bool>(parse_text(std::get<std::string>(i.disabled_template()), context, state)));
+    std::vector<DetailTooltipItem> output{body.rendered};
+    
+    for (size_t i = 0, N = body.items.size(); i < N; ++i) {
+        auto& item = body.items[i];
+        auto& o = output[i];
+        
+        o.set_detail(item.detail.realize(context, state));
+        o.set_tooltip(item.tooltip.realize(context, state));
+        o.set_name(item.name.realize(context, state));
+        if(not std::holds_alternative<bool>(item.disabled_template))
+            o.set_disabled(Meta::fromStr<bool>(std::get<pattern::UnresolvedStringPattern>(item.disabled_template).realize(context, state)));
     }
-    o.to<ScrollableList<DetailTooltipItem>>()->set_items(items);
+    o.to<ScrollableList<DetailTooltipItem>>()->set_items(std::move(output));
     return false;
 }
 

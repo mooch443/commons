@@ -836,9 +836,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             copy->_current_object_handler = state._current_object_handler;
             
             ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
+            auto exp = glz::read_json<ListContents::ItemTemplate>(child.get_object());
+            
             auto body = state.register_variant(hash, ptr, ListContents{
                 .variable = obj.at("var").get<std::string>(),
-                .item = child.get_object(),
+                .item = std::move(exp.value()),
                 ._state = std::move(copy)
             });
             
@@ -863,54 +865,74 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         
         ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
         std::vector<PreAction> actions;
-        std::vector<DetailTooltipItem> items;
+        
+        ManualListContents contents;
         
         for(auto &item : child) {
             if(item.is_object()) {
                 try {
-                    auto text = item.contains("text") && item["text"].is_string() ? item["text"].get<std::string>() : "";
-                    auto detail = item.contains("detail") && item["detail"].is_string() ? item["detail"].get<std::string>() : "";
-                    auto tooltip = item.contains("tooltip") && item["tooltip"].is_string() ? item["tooltip"].get<std::string>() : "";
-                    auto action = item.contains("action") && item["action"].is_string() ? item["action"].get<std::string>() : "";
-                    std::variant<bool, std::string> disabled;
+                    auto text    = item.contains("text")
+                                   && item["text"].is_string()
+                                        ? item["text"].get<std::string>()
+                                        : "";
+                    auto detail  = item.contains("detail")
+                                   && item["detail"].is_string()
+                                        ? item["detail"].get<std::string>()
+                                        : "";
+                    auto tooltip = item.contains("tooltip")
+                                   && item["tooltip"].is_string()
+                                        ? item["tooltip"].get<std::string>()
+                                        : "";
+                    auto action  = item.contains("action")
+                                   && item["action"].is_string()
+                                        ? item["action"].get<std::string>()
+                                        : "";
+                    std::variant<bool, pattern::UnresolvedStringPattern> disabled;
+                    std::variant<bool, std::string> disabled_raw;
                     
                     if(item.contains("disabled")
                        && item["disabled"].is_boolean())
                     {
                         disabled = item["disabled"].get<bool>();
+                        disabled_raw = item["disabled"].get<bool>();
                         
                     } else if(item.contains("disabled")
                               && item["disabled"].is_string())
                     {
-                        disabled = item["disabled"].get<std::string>();
+                        disabled_raw = item["disabled"].get<std::string>();
+                        disabled = pattern::UnresolvedStringPattern::prepare( item["disabled"].get<std::string>());
                     }
                     
                     actions.push_back(PreAction::fromStr(action));
                     //Print("list item: ", text, " ", action);
-                    items.push_back(DetailTooltipItem{
-                        text,
-                        detail,
-                        tooltip,
-                        disabled
-                    });
+                    contents.items.emplace_back(
+                        pattern::UnresolvedStringPattern::prepare(detail),
+                        pattern::UnresolvedStringPattern::prepare(tooltip),
+                        pattern::UnresolvedStringPattern::prepare(text),
+                        std::move(disabled)
+                    );
+                    contents.rendered.emplace_back(text,
+                                                   detail,
+                                                   tooltip,
+                                                   disabled_raw);
                     
                 } catch(const std::exception& ex) {
                     actions.push_back(PreAction());
-                    items.push_back(DetailTooltipItem{
-                        "Error",
-                        ex.what(),
-                        "",
-                        true
-                    });
+                    contents.items.emplace_back(
+                       pattern::UnresolvedStringPattern::prepare(ex.what()),
+                       pattern::UnresolvedStringPattern::prepare(""),
+                       pattern::UnresolvedStringPattern::prepare("Error"),
+                       true
+                    );
+                    contents.rendered.emplace_back("Error",
+                                                   ex.what(),
+                                                   "",
+                                                   true);
                 }
             }
         }
         
-        state.register_variant(hash, ptr, ManualListContents{
-            .items = items
-        });
-        
-        ptr.to<ScrollableList<DetailTooltipItem>>()->set_items(items);
+        ptr.to<ScrollableList<DetailTooltipItem>>()->set_items(contents.rendered);
         ptr.to<ScrollableList<DetailTooltipItem>>()->on_select([actions, context=context](size_t index, const auto &)
         {
             if(index >= actions.size()) {
@@ -927,6 +949,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 it->second(action.parse(context, state));
             }
         });
+        
+        state.register_variant(hash, ptr, std::move(contents));
     }
     
     if(ptr) {
