@@ -173,7 +173,7 @@ struct Pose {
             return Vec2(x, y);
         }
         
-        static Point fromStr(const std::string& str) {
+        static Point fromStr(cmn::StringLike auto&& str) {
             return Point(cmn::Meta::fromStr<Vec2>(str));
         }
         static std::string class_name() {
@@ -211,7 +211,7 @@ struct Pose {
             constexpr bool operator!=(const Connection& other) const noexcept = default;
 
             static std::string class_name() noexcept { return "Connection"; }
-            static Connection fromStr(const std::string&);
+            static Connection fromStr(std::string_view);
             glz::json_t to_json() const;
         };
         
@@ -242,7 +242,21 @@ struct Pose {
         bool operator==(const Skeleton& other) const noexcept = default;
         bool operator!=(const Skeleton& other) const noexcept = default;
 
-        static Skeleton fromStr(const std::string&);
+        static Skeleton fromStr(cmn::StringLike auto && str) {
+            std::vector<blob::Pose::Skeleton::Connection> array;
+            
+            try {
+                array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(std::forward<decltype(str)>(str));
+                
+            } catch(...) {
+                auto outer = util::parse_array_parts(util::truncate(std::string_view(str)));
+                if(outer.size() < 2)
+                    throw InvalidArgumentException("Invalid skeleton string: ", str);
+                array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
+            }
+            
+            return Skeleton(std::move(array));
+        }
         std::set<uint8_t> keypoint_indexes() const;
         bool empty() const;
         std::string toStr() const;
@@ -261,7 +275,24 @@ struct Pose {
         std::string toStr() const;
         glz::json_t to_json() const;
         static std::string class_name() noexcept { return "Skeletons"; }
-        static Skeletons fromStr(const std::string&);
+        static Skeletons fromStr(cmn::StringLike auto&& str) {
+            try {
+                return Skeletons{
+                    ._skeletons = Meta::fromStr<std::map<std::string, Skeleton>>(str)
+                };
+                
+            } catch(...) {
+                /// support old format too
+                try {
+                    return Skeletons{
+                        ._skeletons = {{"", Meta::fromStr<Skeleton>(str) }}
+                    };
+                    
+                } catch(...) { }
+                
+                throw;
+            }
+        }
         
         std::strong_ordering operator<=>(const Skeletons& other) const {
             // first compare the name, then the connections (manually)

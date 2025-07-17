@@ -761,7 +761,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
 
             MapSource(_has_str_method auto&& s) : name(s.str()) { }
 
-            MapSource(utils::StringLike auto&& n) : name(n) { }
+            MapSource(cmn::StringLike auto&& n) : name(n) { }
 
             static constexpr std::string_view CMD{"/CMD"}, defaults{"/DEFAULTS"};
         };
@@ -801,6 +801,9 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         else if constexpr (std::is_same_v<VT, std::string>) {
             std::string str = v;
             return glz::json_t(v.c_str());
+        }
+        else if constexpr (std::is_same_v<VT, std::string_view>) {
+            return glz::json_t(v);
         }
         else if constexpr (std::is_convertible_v<VT, std::string>) {
             std::string str = v;
@@ -903,7 +906,7 @@ public:
     
     // Templated + operator to handle StringLike types
     template<typename Container>
-        requires utils::StringLike<typename Container::value_type>
+        requires cmn::StringLike<typename Container::value_type>
     ExtendableVector operator+(const Container& other) const {
         ExtendableVector result(*this);
         for (const auto& element : other) {
@@ -921,7 +924,7 @@ public:
     
     // Templated += operator to handle StringLike types
     template<typename Container>
-        requires utils::StringLike<typename Container::value_type>
+        requires cmn::StringLike<typename Container::value_type>
     ExtendableVector& operator+=(const Container& other) {
         for (const auto& element : other) {
             if constexpr (std::is_array_v<std::remove_cvref_t<typename Container::value_type>>) {

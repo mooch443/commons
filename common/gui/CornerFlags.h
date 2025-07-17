@@ -78,7 +78,88 @@ struct CornerFlags {
     static std::string class_name() { return "CornerFlags"; }
     
     
-    static CornerFlags fromStr(const std::string&);
+    static CornerFlags fromStr(cmn::StringLike auto&& s)
+    {
+        std::string_view sv = utils::trim(std::string_view(s));
+
+        // Bare radius (no brackets) → all corners
+        if (!sv.empty() && sv.front() != '[') {
+            float r = Meta::fromStr<float>(sv);
+            return CornerFlags(All, r);
+        }
+
+        // Remove leading ‘[’ and trailing ‘]’
+        if (!sv.empty() && sv.front() == '[')  sv.remove_prefix(1);
+        if (!sv.empty() && sv.back()  == ']')  sv.remove_suffix(1);
+        sv = utils::trim(sv);
+
+        if (sv.empty())
+            return CornerFlags();
+
+        // Split by commas
+        float radius = CornerFlags::DefaultRadius;
+        auto parts = util::parse_array_parts(sv);
+        
+        // search radius
+        for(auto &part : parts) {
+            if(not utils::beginsWith(part, '"')
+               && not utils::beginsWith(part, '\''))
+            {
+                radius = Meta::fromStr<float>(part);
+                break;
+            }
+        }
+        
+        uint8_t m = None;
+        auto addCorner = [&](uint8_t c){ m |= c; };
+
+        for (auto& raw : parts) {
+            // Trim whitespace and strip optional single or double quotes
+            auto tok = utils::trim(raw);
+            if (!tok.empty()
+                && (tok.front() == '\"'
+                    || tok.front() == '\''))
+            {
+                //tok.erase(tok.begin());
+                tok = tok.substr(1);
+            }
+            if (!tok.empty() && (tok.back() == '\"' || tok.back() == '\'')) {
+                //tok.pop_back();
+                tok = tok.substr(0, tok.length() - 1);
+            }
+            // Convert to lower‑case for uniform comparison
+            /*std::transform(tok.begin(), tok.end(), tok.begin(),
+                           [](unsigned char c){ return std::tolower(c); });*/
+
+            if (cmn::utils::lowercase_equal_to(tok, "all"))
+                { m = All; break; }
+            else if (cmn::utils::lowercase_equal_to(tok, "none"))
+                { m = None; }
+            else if (cmn::utils::lowercase_equal_to(tok, "left"))
+                { addCorner(TopLeft  | BottomLeft); }
+            else if (cmn::utils::lowercase_equal_to(tok , "right"))
+                { addCorner(TopRight | BottomRight); }
+            else if (cmn::utils::lowercase_equal_to(tok, "top"))
+                { addCorner(TopLeft  | TopRight); }
+            else if (cmn::utils::lowercase_equal_to(tok, "bottom"))
+                { addCorner(BottomLeft | BottomRight); }
+            else if (cmn::utils::lowercase_equal_to(tok, "tl") || cmn::utils::lowercase_equal_to(tok, "topleft"))
+                { addCorner(TopLeft); }
+            else if (cmn::utils::lowercase_equal_to(tok, "tr") || cmn::utils::lowercase_equal_to(tok, "topright"))
+                { addCorner(TopRight); }
+            else if (cmn::utils::lowercase_equal_to(tok, "br") || cmn::utils::lowercase_equal_to(tok,"bottomright"))
+                { addCorner(BottomRight); }
+            else if (cmn::utils::lowercase_equal_to(tok, "bl") || cmn::utils::lowercase_equal_to(tok, "bottomleft"))
+                { addCorner(BottomLeft); }
+            // Unknown tokens are ignored.
+        }
+
+        if (m == None && parts.empty())
+            m = All;   // [2.5] case handled here
+
+        return CornerFlags(m, radius);
+    }
+
     
     // ──────────────────────────────────────────────────────────────────────────────
     // CornerFlags string-serialisation helpers

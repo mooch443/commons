@@ -262,8 +262,8 @@ K map_vectors(const VarProps& props, auto&& apply) {
     T A{}, B{};
     
     try {
-        std::string a(utils::trim(props.parameters.front()));
-        std::string b(utils::trim(props.parameters.back()));
+        std::string_view a = utils::trim(std::string_view(props.parameters.front()));
+        std::string_view b = utils::trim(std::string_view(props.parameters.back()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
             A = T(Meta::fromStr<double>(a));
@@ -310,7 +310,7 @@ T map_vector(const VarProps& props, Apply&& apply) {
     T A{};
     
     try {
-        std::string a(utils::trim(props.parameters.front()));
+        std::string_view a = utils::trim(std::string_view(props.parameters.front()));
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
             A = T(Meta::fromStr<double>(a));
@@ -339,8 +339,8 @@ T map_vector(const VarProps& props, Apply&& apply) {
     T A{}, B{};
     
     try {
-        std::string a(props.parameters.front());
-        std::string b(props.parameters.back());
+        std::string_view a(props.parameters.front());
+        std::string_view b(props.parameters.back());
         
         if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
             A = T(Meta::fromStr<double>(a));
@@ -431,7 +431,7 @@ void Context::init() const {
             VarFunc("not", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(1, props);
                 
-                std::string p(props.parameters.front());
+                std::string_view p(props.parameters.front());
                 try {
                     return not convert_to_bool(p);
                     //return not Meta::fromStr<bool>(p);
@@ -443,8 +443,8 @@ void Context::init() const {
             VarFunc("equal", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(2, props);
                 
-                std::string p0(props.parameters.front());
-                std::string p1(props.parameters.back());
+                std::string_view p0(props.parameters.front());
+                std::string_view p1(props.parameters.back());
                 try {
                     return p0 == p1;
                     
@@ -455,8 +455,8 @@ void Context::init() const {
             VarFunc("nequal", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(2, props);
                 
-                std::string p0(props.parameters.front());
-                std::string p1(props.parameters.back());
+                std::string_view p0(props.parameters.front());
+                std::string_view p1(props.parameters.back());
                 try {
                     return not (p0 == p1);
                     
@@ -765,17 +765,14 @@ void Context::init() const {
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);
                 
-                std::string _color(props.parameters.front());
-                std::string _alpha(props.parameters.back());
-                
                 try {
-                    auto color = Meta::fromStr<Color>(_color);
-                    auto alpha = Meta::fromStr<float>(_alpha);
+                    auto color = Meta::fromStr<Color>(props.parameters.front());
+                    auto alpha = Meta::fromStr<float>(props.parameters.back());
                     
                     return color.alpha(alpha);
                     
                 } catch(const std::exception& ex) {
-                    throw InvalidArgumentException("Cannot parse color ", _color, " and alpha ", _alpha, ": ", ex.what());
+                    throw InvalidArgumentException("Cannot parse color ", props.parameters.front(), " and alpha ", props.parameters.back(), ": ", ex.what());
                 }
             }),
             
@@ -784,15 +781,14 @@ void Context::init() const {
                     throw InvalidArgumentException("Need one to three arguments for ", props,".");
                 }
                 
-                std::string str = props.first();
                 size_t N = 50;
-                std::string placeholder = "…";
+                std::string_view placeholder = "…";
                 if(props.parameters.size() > 1)
                     N = Meta::fromStr<size_t>(props.parameters.at(1));
                 if(props.parameters.size() > 2)
                     placeholder = props.last();
                 
-                return utils::ShortenText(str, N, 0.5, placeholder);
+                return utils::ShortenText(props.first(), N, 0.5, placeholder);
             }),
             VarFunc("filename", [](const VarProps& props) -> file::Path {
                 REQUIRE_EXACTLY(1, props);

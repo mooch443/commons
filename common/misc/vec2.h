@@ -221,13 +221,13 @@ namespace cmn {
         return { A(), B() }; \
     } \
     \
-    static Vector2D fromStr(const std::string& str) \
+    static Vector2D fromStr(cmn::StringLike auto&& str) \
     { \
         auto vec = Meta::fromStr<std::vector<Scalar>>(str); \
         if(vec.empty()) \
             return Vector2D(); \
         if(vec.size() != 2) \
-            throw std::invalid_argument("Can only initialize Vector2D with two or no elements. ('"+str+"')"); \
+            throw std::invalid_argument("Can only initialize Vector2D with two or no elements. ('"+(std::string)str+"')"); \
         return Vector2D(vec[0], vec[1]); \
     }
 
@@ -552,13 +552,13 @@ public:
     glz::json_t to_json() const {
         return glz::json_t{ x, y, width, height };
     }
-    static Bounds fromStr(const std::string& str)
+    static Bounds fromStr(cmn::StringLike auto&& str)
     {
         auto vec = Meta::fromStr<std::vector<Float2_t>>(str);
         if(vec.empty())
             return Bounds();
         if(vec.size() != 4)
-            throw std::invalid_argument("Can only initialize Bounds with exactly four or no elements. ('"+str+"')");
+            throw std::invalid_argument("Can only initialize Bounds with exactly four or no elements. ('"+(std::string)str+"')");
         return Bounds(vec[0], vec[1], vec[2], vec[3]);
     }
     static std::string class_name() {

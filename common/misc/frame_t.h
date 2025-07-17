@@ -143,7 +143,7 @@ public:
     [[nodiscard]] static std::string class_name() {
         return "frame";
     }
-    [[nodiscard]] static BFrame_t fromStr(const std::string& str) {
+    [[nodiscard]] static BFrame_t fromStr(cmn::StringLike auto&& str) {
         return (str == "null" || str == "-1")
                     ? BFrame_t()
                     : BFrame_t(cmn::Meta::fromStr<number_t>(str));

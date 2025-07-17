@@ -21,11 +21,7 @@ glz::json_t bid::to_json() const {
     return _id;
 }
 
-bid bid::fromStr(const std::string& str) {
-    if(str == "null")
-        return pv::bid();
-    return bid(Meta::fromStr<uint32_t>(str));
-}
+
 
 bid bid::from_blob(const pv::Blob &blob) {
     if(!blob.lines() || blob.lines()->empty())

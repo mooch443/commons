@@ -368,7 +368,7 @@ namespace cmn {
                 auto key = k.first;
                 auto it = fn.find(key);
                 if(it != fn.end() && it->second > AccessLevelType::PUBLIC)
-                    key = key + " <i>(" + it->second.name() + ")</i>";
+                    key = key + " <i>(" + it->second.str() + ")</i>";
                 
                 ss << "<row"<<(it != fn.end() && it->second > AccessLevelType::PUBLIC ? " class='readonly'" : "")<<"><key name='"<<k.first<<"'>" << key << "</key><value>" << value << "</value><doc>" << doc << "</doc></row>";
             }

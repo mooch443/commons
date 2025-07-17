@@ -853,7 +853,7 @@ public:
     
     /// we do not have Meta:: available here yet, so we have to go with our manual
     /// implementation for fromStr
-    static TrivialOptional fromStr(const std::string& str) {
+    static TrivialOptional fromStr(cmn::StringLike auto&& str) {
         if (str == "null")
             return {};
         if constexpr (std::is_integral_v<Numeric>) {
@@ -950,7 +950,7 @@ struct timestamp_t {
     }
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
     static std::string class_name() { return "timestamp"; }
-    static timestamp_t fromStr(const std::string& str) { return timestamp_t(std::atoll(str.c_str())); }
+    static timestamp_t fromStr(cmn::StringLike auto&& str) { return timestamp_t(std::atoll(str.c_str())); }
     glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
     
     static timestamp_t now() {

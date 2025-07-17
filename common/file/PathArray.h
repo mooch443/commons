@@ -202,7 +202,7 @@ public:
         return *this;
     }
     
-    template<utils::StringLike T>
+    template<cmn::StringLike T>
     _PathArray(T&& input)
         : _source(input)
     {
@@ -334,7 +334,7 @@ public:
         return other.source() != source();
     }
     
-    static _PathArray fromStr(const std::string& str) {
+    static _PathArray fromStr(cmn::StringLike auto&& str) {
         return { str };
     }
     std::string blocking_toStr() const {
@@ -537,7 +537,7 @@ namespace detail {
     }
 }
 
-template<utils::StringLike Str>
+template<cmn::StringLike Str>
 [[nodiscard]] constexpr inline std::string sanitize_filename(Str&& in)
 {
     std::string_view src{ std::forward<Str>(in) };

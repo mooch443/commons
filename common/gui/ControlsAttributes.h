@@ -61,7 +61,7 @@ struct AttributeAlias : T {
     
     template<typename K = T>
         requires cmn::_has_fromstr_method<K>
-    static AttributeAlias fromStr(const std::string& str) {
+    static AttributeAlias fromStr(cmn::StringLike auto&& str) {
         return AttributeAlias{K::fromStr(str)};
     }
 };
@@ -125,7 +125,7 @@ public:
     
     constexpr operator T() const { return value; }
     
-    static self_type fromStr(const std::string& str) { return self_type{ Meta::fromStr<T>(str) }; }
+    static self_type fromStr(cmn::StringLike auto&& str) { return self_type{ Meta::fromStr<T>(str) }; }
     std::string toStr() const { return Meta::toStr<T>(value); }
     static std::string class_name() { return type_name<self_type>(); }
 };

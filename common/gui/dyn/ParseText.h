@@ -106,7 +106,7 @@ R create_parse_result(std::string_view trimmedStr) {
 
 PreVarProps extractControls(const std::string_view& variable);
 
-template<utils::StringLike Str>
+template<cmn::StringLike Str>
 bool convert_to_bool(Str&& p) noexcept {
     if (   p == "false"
         || p == "[]"

@@ -200,10 +200,6 @@ std::optional<Path> Path::canonical() const {
         return *this;
     }
 
-    Path Path::fromStr(const std::string& str) {
-        return Path(Meta::fromStr<std::string>(str));
-    }
-    
     bool Path::is_absolute() const noexcept {
 #if WIN32
         return _str[0] == OS_SEP || (_str.length() >= 3 && _str[1] == ':');

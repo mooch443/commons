@@ -43,7 +43,7 @@ struct decimals_t {
     }
 };
 
-template<utils::StringLike Str>
+template<cmn::StringLike Str>
 struct no_quotes_t {
     Str str;
     std::string toStr() const {
@@ -51,7 +51,7 @@ struct no_quotes_t {
     }
 };
 
-template<utils::StringLike T>
+template<cmn::StringLike T>
 inline auto no_quotes(T&& str) noexcept {
     return no_quotes_t<T>{ str };
 }
@@ -334,7 +334,7 @@ public:
         return pretty_text(value);
     }
 
-    template<utils::StringLike Str>
+    template<cmn::StringLike Str>
     static std::string pretty_text(Str&& s) {
         std::stringstream ss;
         std::string tmp;
@@ -947,7 +947,7 @@ void NoNLPrint(const Args & ... args) {
         log_to_callback(format<FormatterType::NONE>(args...));
 }
 
-template<FormatColor prefix_color = FormatColor::YELLOW, utils::StringLike Prefix, typename... Args>
+template<FormatColor prefix_color = FormatColor::YELLOW, cmn::StringLike Prefix, typename... Args>
 void prefixed_print(Prefix&& prefix, const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
     

@@ -2,6 +2,12 @@
 
 namespace cmn {
 
+template<typename Str>
+concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
+                      std::is_same_v<std::remove_cvref_t<Str>, const char*> ||
+                      std::is_same_v<std::remove_cvref_t<Str>, std::string_view> ||
+                      std::is_array_v<std::remove_cvref_t<Str>>;
+
 template<typename T>
 //requires (std::is_trivial_v<T>)
 class IllegalArray;
@@ -125,10 +131,13 @@ concept has_to_json_method = requires(const T* t) {
     { t->to_json() } -> std::convertible_to<glz::json_t>;
 };
 template<typename T>
-concept _has_fromstr_method = requires() {
+concept _has_fromstr_method = (requires() {
     { T::fromStr(std::string()) }
         -> _clean_same<T>;
-};
+} || requires() {
+    { T::fromStr(std::string_view()) }
+        -> _clean_same<T>;
+});
 
 template<typename T, typename K = typename std::remove_cv<T>::type>
 concept _has_class_name = requires() {

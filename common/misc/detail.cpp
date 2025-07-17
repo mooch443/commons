@@ -608,7 +608,7 @@ namespace cmn {
                     
                 }
                 
-                added.insert(key);
+                added.insert((std::string)key);
             }
             
             /*Print("Added: ", added);

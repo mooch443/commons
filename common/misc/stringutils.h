@@ -16,12 +16,6 @@
 
 namespace cmn::utils {
 
-template<typename Str>
-concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
-                      std::is_same_v<std::remove_cvref_t<Str>, const char*> ||
-                      std::is_same_v<std::remove_cvref_t<Str>, std::string_view> ||
-                      std::is_array_v<std::remove_cvref_t<Str>>;
-
 // Concept to identify valid needle types
 template<typename T>
 concept NeedleLike = std::is_same_v<std::remove_cvref_t<T>, char> ||
@@ -290,7 +284,7 @@ constexpr inline bool lowercase_equal_to(const std::string_view& str_view, const
     return true;
 }
 
-constexpr inline bool lowercase_equal_to(const std::string_view& str_view, const std::string_view& other) {
+constexpr inline bool lowercase_equal_to(std::string_view str_view, std::string_view other) {
     // First check lengths; if they're different, the strings can't be equal
     size_t len_view = str_view.length();
     size_t len_cstr = other.length();
@@ -404,9 +398,34 @@ std::vector<std::string_view> split(Str s, char c, bool skip_empty = false, bool
 std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty = false, bool trim = false);
 std::vector<std::basic_string_view<typename std::wstring::value_type>> split(std::wstring& s, char c, bool skip_empty = false, bool trim = false);
 
-inline std::string ShortenText(const std::string& text, size_t maxLength, double positionPercent = 0.5, const std::string& shortenSymbol = "…") {
+// Variadic overload – “just give me the pieces”
+template<class... Views>
+[[nodiscard]] std::string concat_views(Views&&... views)
+{
+    static_assert((std::is_convertible_v<Views, std::string_view> && ...),
+                  "All arguments must be convertible to std::string_view");
+
+    // 1. Total size in one compile-time fold
+    const std::size_t total =
+        (static_cast<std::size_t>(std::string_view{views}.size()) + ...);
+
+    // 2. Allocate the exact size up front (no growth, no re-hash)
+    std::string result(total, '\0');          // C++17: guaranteed contiguous
+    char* write = result.data();
+
+    // 3. Copy each view in one pass, no extra temporaries
+    auto copy_one = [&](std::string_view v) {
+        std::memcpy(write, v.data(), v.size());
+        write += v.size();
+    };
+    (copy_one(std::string_view{std::forward<Views>(views)}), ...);
+
+    return result;                            // NRVO / move-elision
+}
+
+inline std::string ShortenText(std::string_view text, size_t maxLength, double positionPercent = 0.5, std::string_view shortenSymbol = "…") {
     if (text.length() <= maxLength) {
-        return text;
+        return (std::string)text;
     }
 
     size_t shortenPosition = static_cast<size_t>(positionPercent * maxLength);
@@ -415,8 +434,9 @@ inline std::string ShortenText(const std::string& text, size_t maxLength, double
         shortenPosition = maxLength - 1;
     }
 
-    return text.substr(0, shortenPosition) + shortenSymbol + text.substr(text.length() - (maxLength - shortenPosition - 1));
+    return concat_views(text.substr(0, shortenPosition), shortenSymbol, text.substr(text.length() - (maxLength - shortenPosition - 1)));
 }
+
 
 }
 
@@ -496,7 +516,7 @@ std::vector<int> text_search(const std::string &search_text, const std::vector<s
 
 namespace cmn::utils {
 
-template<cmn::utils::StringLike Str>
+template<cmn::StringLike Str>
 std::string strip_html(const Str& input);
 
 extern template std::string strip_html<std::string>(const std::string& input);

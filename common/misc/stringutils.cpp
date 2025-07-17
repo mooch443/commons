@@ -421,7 +421,7 @@ std::vector<int> text_search(const std::string &search_text,
 namespace cmn::utils {
 
 // Production-ready function to strip HTML tags from a string.
-template<cmn::utils::StringLike Str>
+template<cmn::StringLike Str>
 std::string strip_html(const Str& input) {
     std::string_view sv(input);
     std::string output;

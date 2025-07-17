@@ -85,7 +85,11 @@ struct bid {
     std::string toStr() const;
     glz::json_t to_json() const;
     static std::string class_name() { return "blob"; }
-    static bid fromStr(const std::string& str);
+    static bid fromStr(cmn::StringLike auto&& str) {
+        if(str == "null")
+            return pv::bid();
+        return bid(cmn::Meta::fromStr<uint32_t>(str));
+    }
     
     static uint32_t xy2d(uint16_t x, uint16_t y) {
         uint32_t hilbert = 0;

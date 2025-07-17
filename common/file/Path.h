@@ -210,7 +210,9 @@ public:
     std::string toStr() const { return Meta::toStr<std::string>(str()); }
     glz::json_t to_json() const;
     static std::string class_name() { return "path"; }
-    static file::Path fromStr(const std::string& str);
+    static file::Path fromStr(cmn::StringLike auto&& str) {
+        return Path(Meta::fromStr<std::string>(str));
+    }
 };
 
 Path operator/( const Path& lhs, const Path& rhs );
@@ -253,7 +255,7 @@ inline std::string make_path( Container&& parts) {
     return make_path<file::Path::os_sep()>(std::forward<Container>(parts));
 }
 template<char separator = file::Path::os_sep(), typename... Args>
-inline std::string make_path(utils::StringLike auto&& first, Args... args) {
+inline std::string make_path(cmn::StringLike auto&& first, Args... args) {
     std::array<const char*, sizeof...(Args) + 1> parts{first, args...};
     return make_path<separator>(parts);
 }

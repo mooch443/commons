@@ -3,20 +3,6 @@
 
 namespace cmn::gui {
 
-Color Color::fromStr(const std::string& str) {
-    for(auto& c : AllColors) {
-        if(c == str)
-            return c.color;
-    }
-    
-    auto vec = Meta::fromStr<std::vector<uchar>>(str);
-    if (vec.empty())
-        return Color();
-    if (vec.size() != 4 && vec.size() != 3)
-        throw CustomException(type_v<std::invalid_argument>, "Can only initialize Color with three or four elements. (", str, ")");
-    return Color(vec[0], vec[1], vec[2], vec.size() == 4 ? vec[3] : 255);
-}
-
 }
 
 namespace cmn::cmap {

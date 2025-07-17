@@ -49,6 +49,9 @@ APPLY(CHOOSE_MAP_START, COUNT(__VA_ARGS__)) \
 #define STRINGIZE(...) IDENTITY(MAP(STRINGIZE_SINGLE, __VA_ARGS__))
 #define STRINGIZE_SINGLE(e) #e,
 
+#define STRINGVIEWIZE(...) IDENTITY(MAP(STRINGVIEWIZE_SINGLE, __VA_ARGS__))
+#define STRINGVIEWIZE_SINGLE(e) std::string_view( #e ),
+
 #define PP_NARG(...)    PP_NARG_(__VA_ARGS__,PP_RSEQ_N())
 #define PP_NARG_(...)  IDENTITY( PP_ARG_N(__VA_ARGS__) )
 
@@ -133,7 +136,8 @@ public:
         : _value(value)
     {}
     
-    constexpr const char * name() const noexcept { return _names::str()[(size_t)_value]; }
+    constexpr std::string_view name() const noexcept { return _names::str()[(size_t)_value]; }
+    constexpr std::string str() const noexcept { return (std::string)_names::str()[(size_t)_value]; }
     explicit constexpr operator const char*() const noexcept { return name(); }
     //operator std::string() const { return std::string(name()); }
     //constexpr uint32_t toInt() const { return (uint32_t)_value; }
@@ -147,20 +151,19 @@ public:
     constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
     constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
     static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN };
-    std::string toStr() const noexcept { return name(); }
-    static self_type fromStr(const std::string& str)
+    std::string toStr() const noexcept { return (std::string)name(); }
+    static self_type fromStr(cmn::StringLike auto&& str)
     {
-        return self_type::get(cmn::Meta::fromStr<std::string>(str));
+        return self_type::get(std::forward<decltype(str)>(str));
     }
     glz::json_t to_json() const {
         return name();
     }
     static std::string class_name() noexcept { return std::string(_names::class_name());}
     
-    template<typename T = std::string>
-    static const self_type& get(T name) {
+    static const self_type& get(cmn::StringLike auto&& name) {
         if constexpr (EnumMeta::HasCustomParser<self_type>::value) {
-            return EnumMeta::HasCustomParser<self_type>::fromStr(name);
+            return EnumMeta::HasCustomParser<self_type>::fromStr(std::forward<decltype(name)>(name));
         } else
             return _names::get(name);
     }
@@ -191,8 +194,8 @@ namespace NAME { \
         constexpr const char *name = #NAME; \
         constexpr static const size_t num_elements = PP_NARG( __VA_ARGS__ ) ; \
         std::array<const char*, num_elements> docs_exist() noexcept; \
-        static inline constexpr std::array<const char*, num_elements> _names = {    \
-          {IDENTITY( STRINGIZE(__VA_ARGS__) )}            \
+        static inline constexpr std::array<std::string_view, num_elements> _names = {    \
+          {IDENTITY( STRINGVIEWIZE(__VA_ARGS__) )}            \
         };                                \
          \
         struct names {						       \
@@ -203,7 +206,7 @@ namespace NAME { \
             { \
                 return docs_exist(); \
             } \
-            constexpr static const std::array<const char *, num_elements>& str() noexcept {	\
+            constexpr static const std::array<std::string_view, num_elements>& str() noexcept {	\
                 return _names;						\
             }								\
             constexpr static std::string_view class_name() noexcept { return std::string_view( #NAME ); } \
@@ -215,19 +218,21 @@ namespace NAME { \
     \
     constexpr const Class _APPLYXn(NAME, __VA_ARGS__); \
     constexpr std::array<Class, data::num_elements> values = {{ __VA_ARGS__ }}; \
-    constexpr std::array<const char*, data::num_elements> names = data::names::str(); \
+    constexpr std::array<std::string_view, data::num_elements> names = data::names::str(); \
     template<typename T = std::string > \
     static inline bool has(T name) noexcept { \
         for(size_t i=0; i<data::num_elements; i++) \
-            if(cmn::utils::lowercase(name) == cmn::utils::lowercase(data::names::str()[i])) return true; \
+            if(cmn::utils::lowercase_equal_to(name, data::names::str()[i])) \
+                return true; \
         return false; \
     } \
     template<typename T = std::string> \
-    static inline const Class& get(T name) { \
+    static constexpr const Class& get(T name) { \
         UNUSED(names) \
         for(auto &v : values) \
-            if(cmn::utils::lowercase(v.name()) == cmn::utils::lowercase(name)) return v; \
-        throw std::invalid_argument(std::string("Cannot find value ")+name+" in enum '" + NAME :: data :: name + "' with options "+cmn::Meta::toStr(values)+"." ); \
+            if(cmn::utils::lowercase_equal_to(v.name(), name)) \
+                return v; \
+        throw std::invalid_argument(std::string("Cannot find value ") + std::string(name) + " in enum '" + NAME :: data :: name + "' with options "+cmn::Meta::toStr(values)+"." ); \
     } \
     \
 template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\

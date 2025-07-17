@@ -215,7 +215,7 @@ struct Range {
     }
     static std::string class_name() { return "range<" + Meta::template name<T>() + ">"; }
 
-    static Range<T> fromStr(const std::string& str)
+    static Range<T> fromStr(cmn::StringLike auto&& str)
     {
         auto parts = util::parse_array_parts(util::truncate(str));
         if(parts.empty())
