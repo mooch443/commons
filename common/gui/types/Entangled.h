@@ -15,6 +15,17 @@ namespace cmn::gui {
         //float left, top,
         Float2_t right, bottom;
     };
+
+    namespace detail
+    {
+        // “Can I call obj.set(arg)?”  – Works for any base-class overloads as well.
+        template<class Obj, class Arg>
+        concept HasSet =
+            requires(Obj& o, Arg&& a)
+            {
+                o.set(std::forward<Arg>(a));
+            };
+    }
     
     //! A collection of drawables that have connected properties.
     //  If one property is updated for Entangled, it will also be updated for
@@ -92,10 +103,33 @@ namespace cmn::gui {
         Entangled(Entangled&&) noexcept;
         Entangled& operator=(Entangled&&) noexcept;
         
-        Entangled();
-        Entangled(const Bounds&);
-        Entangled(const std::vector<Drawable*>& objects);
-        Entangled(std::function<void(Entangled&)>&&);
+        template<typename... Args>
+            requires (detail::HasSet<Entangled, Args> && ...)
+        Entangled(Args... args)
+            : SectionInterface(Type::ENTANGLED, nullptr)
+        {
+            create(std::forward<Args>(args)...);
+        }
+        
+        template<typename... Args>
+            requires (detail::HasSet<Entangled, Args> && ...)
+        void create(Args... args) {
+            init();
+            (set(std::forward<Args>(args)), ...);
+        }
+        
+        using SectionInterface::set;
+        
+        void set(std::function<void(Entangled&)>&&);
+        
+    private:
+        void init();
+        
+    public:
+        //Entangled();
+        //Entangled(const Bounds&);
+        //Entangled(const std::vector<Drawable*>& objects);
+        //Entangled(std::function<void(Entangled&)>&&);
         void update(const std::function<void(Entangled&)> create);
         
         virtual std::string name() const { return SectionInterface::name(); }

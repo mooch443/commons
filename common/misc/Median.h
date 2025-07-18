@@ -6,27 +6,15 @@
 template<class T>
 class Median {
 public:
-    Median() : _added(0) {
-    }
-    
     T getValue() const {
-        if(minHeap.empty() && maxHeap.empty())
-            return T(INFINITY);
-        else if(minHeap.empty() && !maxHeap.empty())
-            return maxHeap.top();
-        else if(maxHeap.empty() && !minHeap.empty())
-            return minHeap.top();
-        
-        if (heapSizeOdd()) {
-            return maxHeap.top();
-        } else {
-            return (minHeap.top() + maxHeap.top()) / 2.f;
-        }
+        if (minHeap.empty() && maxHeap.empty())
+            throw std::runtime_error("Median of an empty stack is undefined.");
+        if (heapSizeOdd())
+            return maxHeap.top();          // the middle element
+        return maxHeap.top();              // lower median for even size
     }
     
     void addNumber(T number) {
-        _added++;
-        
         if (maxHeap.empty() || number <= maxHeap.top()) {
             maxHeap.push(number);
         } else {
@@ -54,6 +42,10 @@ public:
         return "median<"+cmn::Meta::toStr(getValue())+">";
     }
     
+    bool empty() const noexcept {
+        return getHeapSize() == 0;
+    }
+    
 private:
     std::size_t getMaxHeapSize() const {
         return maxHeap.size();
@@ -69,9 +61,6 @@ private:
     
     std::priority_queue<T, std::vector<T>, std::greater<T>> minHeap; // min-heap
     std::priority_queue<T> maxHeap; // max-heap
-    
-protected:
-    GETTER(size_t, added);
 };
 
 #endif /* MEDIAN_HPP_ */

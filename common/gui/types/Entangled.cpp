@@ -6,6 +6,10 @@
 #include <gui/Passthrough.h>
 
 namespace cmn::gui {
+    void Entangled::init() {
+        update([](auto&){});
+    }
+
     Entangled::Entangled(Entangled&& other) noexcept
         : SectionInterface(std::move(other)), // Assuming SectionInterface has a move constructor
           _current_children(std::move(other._current_children)),
@@ -47,7 +51,7 @@ namespace cmn::gui {
         return *this;
     }
 
-    Entangled::Entangled()
+    /*Entangled::Entangled()
         : SectionInterface(Type::ENTANGLED, NULL)
     {}
 
@@ -70,6 +74,10 @@ namespace cmn::gui {
     {
         for(size_t i=0; i<_current_children.size(); i++)
             init_child(_current_children[i], i, true);
+    }*/
+
+    void Entangled::set(std::function<void(Entangled&)>&& fn) {
+        update(std::move(fn));
     }
     
     void Entangled::update(const std::function<void(Entangled& base)> create) {
