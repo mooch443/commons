@@ -263,6 +263,10 @@ UnpreparedPatterns parse_words(std::string_view pattern) {
                 case '\\':
                     if(not comment_out) {
                         comment_out = true;
+                        if(last_start && *last_start < i)
+                            result.push_back(pattern.substr(*last_start, i - *last_start));
+                        last_start = i + 1;
+                        
                     } else {
                         comment_out = false;
                     }
@@ -293,6 +297,9 @@ UnpreparedPatterns parse_words(std::string_view pattern) {
                 
             } else if(ch == '\\') {
                 comment_out = true;
+                if(last_start && *last_start < i)
+                    result.push_back(pattern.substr(*last_start, i - *last_start));
+                last_start = i + 1;
                 
             } else if(ch == '}') {
                 if(nesting_start_positions.empty()) {
