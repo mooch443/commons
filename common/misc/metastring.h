@@ -1251,7 +1251,7 @@ Q fromStr(cmn::StringLike auto&& str)
     }
     
     if(ec.ec != std::errc{}) {
-        throw std::invalid_argument("Cannot convert "+(std::string)sv+" to "+ Meta::name<Q>()+": "+util::to_readable_errc(ec.ec));
+        throw std::invalid_argument("Cannot convert \""+(std::string)sv+"\" to "+ Meta::name<Q>()+": "+util::to_readable_errc(ec.ec));
     }
     return result;
 }

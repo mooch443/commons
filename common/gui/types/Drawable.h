@@ -184,6 +184,11 @@ namespace cmn::gui {
         //  update_bounds().
         bool _bounds_changed;
         
+    public:
+        void _illegal_set_parent(SectionInterface* p) {
+            _parent = p; /// no checks, nothing
+        }
+        
     protected:
         //! [Cached] The real position of the object,
         //  taking into account the origin.

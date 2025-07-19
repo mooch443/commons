@@ -41,12 +41,14 @@ struct UnresolvedStringPattern {
 
 struct PreparedPattern {
     union {
+        void*empty;
         std::string_view sv;
         Prepared* prepared;
         Prepared* ptr;
-    } value{};
+    } value{nullptr};
     
     enum Type {
+        NONE,
         SV,
         PREPARED,
         POINTER
@@ -62,7 +64,10 @@ struct PreparedPattern {
     
     /// alternative constructors to maintain aggregate type
     static PreparedPattern make_sv(std::string_view s) {
-        return PreparedPattern{s, SV};
+        PreparedPattern p;
+        p.value.sv = s;
+        p.type = SV;
+        return p;
     }
     static PreparedPattern make_prepared(Prepared* pRep) {
         PreparedPattern p;

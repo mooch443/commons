@@ -61,6 +61,7 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
     typical_length = other.typical_length;
 
     const char* old_base = other.original ? other.original->data() : nullptr;
+    const char* old_base_end = other.original ? other.original->data() + other.original->size() : nullptr;
     const char* new_base = original      ? original->data()      : nullptr;
 
     // Deep copy all_patterns and build a pointer mapping
@@ -80,13 +81,15 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
     std::function<void(PreparedPattern&)> fix_ptrs;
     std::function<void(Prepared&)>        fix_prepared;   // non‑const; we mutate pointers
 
-    fix_ptrs = [&](PreparedPattern& pat)
-    {
-        switch (pat.type)
-        {
+    fix_ptrs = [&](PreparedPattern& pat) {
+        switch (pat.type) {
             case PreparedPattern::SV:
                 // Remap the string_view so it points into this->original, not other's.
-                if (old_base && new_base && pat.value.sv.data() >= old_base) {
+                if (old_base
+                    && new_base
+                    && pat.value.sv.data() >= old_base
+                    && pat.value.sv.data() < old_base_end)
+                {
                     std::ptrdiff_t offset = pat.value.sv.data() - old_base;
                     pat.value.sv = std::string_view(new_base + offset, pat.value.sv.size());
                 }
@@ -95,17 +98,21 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
             case PreparedPattern::POINTER:
                 if (pat.value.ptr) {
                     auto it = prepared_map.find(pat.value.ptr);
-                    if (it != prepared_map.end()) {             // pointer still old → remap
+                    assert(it != prepared_map.end());
+                    if (it != prepared_map.end())
+                    {             // pointer still old → remap
                         pat.value.ptr = it->second;
                     }
-                    fix_prepared(*pat.value.ptr);                // always recurse
+                    //fix_prepared(*pat.value.ptr);                // always recurse
                 }
                 break;
 
             case PreparedPattern::PREPARED:
                 if (pat.value.prepared) {
                     auto it = prepared_map.find(pat.value.prepared);
-                    if (it != prepared_map.end()) {              // still pointing at “other” ⇒ remap
+                    assert(it != prepared_map.end());
+                    if (it != prepared_map.end())
+                    {              // still pointing at “other” ⇒ remap
                         pat.value.prepared = it->second;
                     }
                     fix_prepared(*pat.value.prepared);           // recurse
@@ -120,6 +127,15 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
 
     fix_prepared = [&](Prepared& prep)
     {
+        if (old_base
+            && new_base
+            && prep.original.data() >= old_base
+            && prep.original.data() < old_base_end)
+        {
+            std::ptrdiff_t offset = prep.original.data() - old_base;
+            prep.original = std::string_view(new_base + offset, prep.original.size());
+        }
+        
         for (auto& paramVec : prep.parameters)
             for (auto& child : paramVec)
                 fix_ptrs(child);
