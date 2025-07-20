@@ -107,6 +107,8 @@ void ManagedThread::loop(const ThreadGroup &group, const ManagedThreadWrapper& t
             guard.unlock();
             try {
                 lambda(group.id);
+            } catch(const std::exception& ex) {
+                FormatExcept("TM Exception in thread group ", group.name,": ", ex.what());
             } catch(...) {
                 FormatExcept("TM Exception in thread group ", group.name);
             }

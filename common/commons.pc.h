@@ -258,7 +258,7 @@ static_assert(false, "OpenCV version insufficient.");
 #endif
 
 
-#define UNUSED(X) {(void)X;}
+#define UNUSED(X) (std::ignore = X)
 #include <misc/expected.h>
 #include <misc/useful_concepts.h>
 #include <misc/UnorderedVectorSet.h>
@@ -1022,25 +1022,52 @@ private:
 public:
     read_once() : data(std::nullopt) {}
 
-    void set(T value) {
+    bool set(T& value) {
         std::scoped_lock lock(mtx);
         if(data) {
-#ifndef NDEBUG
-            printf("Cannot replace existing value\n.");
-#endif
+            return false;
         } else {
             data = std::move(value);
+            return true;
         }
     }
 
-    T read() {
+    std::optional<T> read() {
         std::scoped_lock lock(mtx);
-        if (data) {
-            T value = std::move(*data);
-            data.reset();
-            return value;
+        auto temp = std::move(data);
+        data.reset();
+        return temp;
+    }
+    
+    void spin_until_empty(auto&& fn) {
+        std::unique_lock g{mtx, std::defer_lock};
+        while(true) {
+            g.lock();
+            if(data) {
+                g.unlock();
+            } else
+                break;
         }
-        return T{};
+        
+        /// have acquired lock and is empty
+        assert(not data);
+        data = fn();
+    }
+    
+    static void potentially_advance_queue(read_once& top, read_once& bottom) {
+        std::scoped_lock g{top.mtx, bottom.mtx};
+        if(not top.data) {
+            if(bottom.data) {
+                top.data = std::move(bottom.data);
+                bottom.data.reset();
+            }
+        }
+    }
+    
+    template<typename... Objects>
+    static void run_on(auto&& fn, Objects& ...objects) {
+        std::scoped_lock g{objects.mtx...};
+        ((objects.data ? std::invoke(fn, objects.data) : void()), ...);
     }
 };
 

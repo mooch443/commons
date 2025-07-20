@@ -668,7 +668,7 @@ std::vector<pv::BlobPtr> threshold_blob(CPULabeling::ListCache_t& cache, pv::Blo
     
     template<typename T>
     inline void add_edge(Tree::sides_t& _sides, T& non_full_nodes, const Edge& edge, const Tree::node_set_t& raw_nodes) {
-        UNUSED(raw_nodes)
+        UNUSED(raw_nodes);
         /*auto it = edges.find(edge);
         if(it != edges.end()) {
             auto other = *it;

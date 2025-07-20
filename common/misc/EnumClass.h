@@ -228,7 +228,7 @@ namespace NAME { \
     } \
     template<typename T = std::string> \
     static constexpr const Class& get(T name) { \
-        UNUSED(names) \
+        UNUSED(names); \
         for(auto &v : values) \
             if(cmn::utils::lowercase_equal_to(v.name(), name)) \
                 return v; \
