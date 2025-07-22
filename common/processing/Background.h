@@ -398,7 +398,9 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
             }
             
             return BackgroundInfo{
-                .data = nullptr
+                .data = nullptr,
+                .width = 0,
+                .channels = 0
             };
         }
         
