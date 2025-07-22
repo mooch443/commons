@@ -27,107 +27,107 @@ struct is_const_lvalue_ref : std::false_type {};
 template<typename T>
 struct is_const_lvalue_ref<const T&> : std::true_type {};
 
-    template<typename Str>
-    bool beginsWith(const Str& str, char c) {
-        return !str.empty() && str[0] == c;
-    }
+template<typename Str>
+bool beginsWith(const Str& str, char c) {
+    return !str.empty() && str[0] == c;
+}
 
-    template<typename Str>
-    bool endsWith(const Str& str, char c) {
-        return !str.empty() && *str.rbegin() == c;
-    }
+template<typename Str>
+bool endsWith(const Str& str, char c) {
+    return !str.empty() && *str.rbegin() == c;
+}
 
-    template<typename Str, typename Needle>
-    bool beginsWith(const Str& str, const Needle& needle) {
+template<typename Str, typename Needle>
+bool beginsWith(const Str& str, const Needle& needle) {
+    std::string_view sv_str(str);
+    std::string_view sv_needle(needle);
+    return sv_str.substr(0, sv_needle.size()) == sv_needle;
+}
+
+template<typename Str, typename Needle>
+bool endsWith(const Str& str, const Needle& needle) {
+    std::string_view sv_str(str);
+    std::string_view sv_needle(needle);
+    return sv_str.size() >= sv_needle.size() &&
+           sv_str.substr(sv_str.size() - sv_needle.size()) == sv_needle;
+}
+
+/**
+ * Finds a given needle inside the \p str given as first parameter.
+ * Case-sensitive.
+ * @param str haystack
+ * @param needle the needle
+ * @return true if it is found
+ */
+template<StringLike Str, NeedleLike Needle>
+[[nodiscard]] constexpr bool contains(const Str& str, const Needle& needle) noexcept {
+    if constexpr(std::is_same_v<std::remove_cvref_t<Str>, const char*>)
+    {
         std::string_view sv_str(str);
-        std::string_view sv_needle(needle);
-        return sv_str.substr(0, sv_needle.size()) == sv_needle;
-    }
-
-    template<typename Str, typename Needle>
-    bool endsWith(const Str& str, const Needle& needle) {
-        std::string_view sv_str(str);
-        std::string_view sv_needle(needle);
-        return sv_str.size() >= sv_needle.size() &&
-               sv_str.substr(sv_str.size() - sv_needle.size()) == sv_needle;
-    }
-
-    /**
-     * Finds a given needle inside the \p str given as first parameter.
-     * Case-sensitive.
-     * @param str haystack
-     * @param needle the needle
-     * @return true if it is found
-     */
-    template<StringLike Str, NeedleLike Needle>
-    [[nodiscard]] constexpr bool contains(const Str& str, const Needle& needle) noexcept {
-        if constexpr(std::is_same_v<std::remove_cvref_t<Str>, const char*>)
-        {
-            std::string_view sv_str(str);
-            if(sv_str.empty())
+        if(sv_str.empty())
+            return false;
+        
+        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+            return sv_str.find(needle) != std::string::npos;
+        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+            if constexpr(sizeof(Needle) <= 1u)
                 return false;
             
-            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-                return sv_str.find(needle) != std::string::npos;
-            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-                if constexpr(sizeof(Needle) <= 1u)
-                    return false;
-                
-                std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
-                return sv_str.find(sv_needle) != std::string::npos;
-            } else {
-                std::string_view sv_needle(needle);
-                if(sv_needle.empty())
-                    return false;
-                
-                return sv_str.find(sv_needle) != std::string::npos;
-            }
-            
-        } else if constexpr(std::is_array_v<std::remove_cvref_t<Str>>) {
-            std::string_view sv_str(reinterpret_cast<const char*>(str), sizeof(Str) - 1);  // -1 to exclude null-terminator
-            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-                return sv_str.find(needle) != std::string::npos;
-            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-                if constexpr(sizeof(Needle) <= 1u)
-                    return false;
-                
-                std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
-                return sv_str.find(sv_needle) != std::string::npos;
-            } else {
-                std::string_view sv_needle(needle);
-                if(sv_needle.empty())
-                    return false;
-                return sv_str.find(sv_needle) != std::string::npos;
-            }
-            
+            std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
+            return sv_str.find(sv_needle) != std::string::npos;
         } else {
-            if(str.empty())
+            std::string_view sv_needle(needle);
+            if(sv_needle.empty())
                 return false;
             
-            if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-                // no check required
-            } else if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, const char*>) {
-                // check is not efficient
-            } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-                if(sizeof(Needle) <= 1u)
-                    return false;
-            } else {
-                if (needle.empty())
-                    return false;
-            }
-            return str.find(needle) != std::string::npos;
+            return sv_str.find(sv_needle) != std::string::npos;
         }
+        
+    } else if constexpr(std::is_array_v<std::remove_cvref_t<Str>>) {
+        std::string_view sv_str(reinterpret_cast<const char*>(str), sizeof(Str) - 1);  // -1 to exclude null-terminator
+        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+            return sv_str.find(needle) != std::string::npos;
+        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+            if constexpr(sizeof(Needle) <= 1u)
+                return false;
+            
+            std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
+            return sv_str.find(sv_needle) != std::string::npos;
+        } else {
+            std::string_view sv_needle(needle);
+            if(sv_needle.empty())
+                return false;
+            return sv_str.find(sv_needle) != std::string::npos;
+        }
+        
+    } else {
+        if(str.empty())
+            return false;
+        
+        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+            // no check required
+        } else if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, const char*>) {
+            // check is not efficient
+        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
+            if(sizeof(Needle) <= 1u)
+                return false;
+        } else {
+            if (needle.empty())
+                return false;
+        }
+        return str.find(needle) != std::string::npos;
     }
-    
-    //! find and replace string in another string
-    /**
-     * @param str the haystack
-     * @param oldStr the needle
-     * @param newStr replacement of needle
-     * @return str with all occurences of needle replaced by newStr
-     */
-    std::wstring find_replace(const std::wstring& str, const std::wstring& oldStr, const std::wstring& newStr);
-    std::string find_replace(std::string_view str, std::string_view oldStr, std::string_view newStr);
+}
+
+//! find and replace string in another string
+/**
+ * @param str the haystack
+ * @param oldStr the needle
+ * @param newStr replacement of needle
+ * @return str with all occurences of needle replaced by newStr
+ */
+std::wstring find_replace(const std::wstring& str, const std::wstring& oldStr, const std::wstring& newStr);
+std::string find_replace(std::string_view str, std::string_view oldStr, std::string_view newStr);
 
 inline std::string find_replace(
     const std::string_view& subject,
@@ -358,8 +358,16 @@ auto uppercase(const Char* original) {
     return str;
 }
 
-    // repeats a string N times
-    std::string repeat(const std::string& s, size_t N);
+// repeats a string N times
+std::string repeat(const std::string& s, size_t N);
+
+inline bool is_number_string(std::string_view sv) {
+    for(auto a : sv) {
+        if(a > '9' || a < '0')
+            return false;
+    }
+    return true;
+}
 
 /**
  * Splits a string into substrings using a delimiter character.
