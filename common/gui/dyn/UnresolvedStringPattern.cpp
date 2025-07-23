@@ -714,6 +714,16 @@ std::string UnresolvedStringPattern::toStr() const {
     return result;
 }
 
+UnresolvedStringPattern UnresolvedStringPattern::prepare_static(std::string_view _str) {
+    auto result = UnresolvedStringPattern{};
+    result.original = std::make_unique<std::string>(_str);
+    std::string_view str{*result.original};
+    
+    result.objects.push_back(PreparedPattern::make_sv(str));
+    
+    return result;
+}
+
 UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) {
     auto result = UnresolvedStringPattern{};
     result.original = std::make_unique<std::string>(_str);

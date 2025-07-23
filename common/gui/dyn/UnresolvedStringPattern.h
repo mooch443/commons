@@ -34,6 +34,7 @@ struct UnresolvedStringPattern {
     ~UnresolvedStringPattern();
     
     static UnresolvedStringPattern prepare(std::string_view);
+    static UnresolvedStringPattern prepare_static(std::string_view);
     std::string realize(const gui::dyn::Context& context, gui::dyn::State& state);
     
     std::string toStr() const;
