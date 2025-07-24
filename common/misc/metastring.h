@@ -1278,7 +1278,19 @@ Q fromStr(cmn::StringLike auto&& str)
     double val = std::strtod(begin, &endPtr);
 
     if (endPtr != begin + static_cast<ptrdiff_t>(sv.size()) || errno == ERANGE) {
-        throw std::runtime_error("Cannot convert value: " + std::string(sv) + " to " + Meta::name<Q>());
+        std::ostringstream oss;
+        oss << "Cannot convert value: '" << sv << "' to " << Meta::name<Q>() << ". ";
+        oss << "errno=" << errno << " (" << strerror(errno) << ") ";
+        oss << "parsed up to offset " << (endPtr - begin) << "/" << sv.size() << ". ";
+        if (endPtr != begin + static_cast<ptrdiff_t>(sv.size())) {
+            oss << "Stopped parsing at: '";
+            if (endPtr < begin + static_cast<ptrdiff_t>(sv.size()))
+                oss << std::string_view(endPtr, (begin + static_cast<ptrdiff_t>(sv.size())) - endPtr);
+            else
+                oss << "(out of bounds)";
+            oss << "'. ";
+        }
+        throw std::runtime_error(oss.str());
     }
         
     return static_cast<Q>(val);
