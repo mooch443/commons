@@ -1290,7 +1290,10 @@ Q fromStr(cmn::StringLike auto&& str)
                 oss << "(out of bounds)";
             oss << "'. ";
         }
-        throw std::runtime_error(oss.str());
+        
+        auto str = oss.str();
+        printf("[error] %s\n", str.c_str());
+        throw std::runtime_error(str);
     }
         
     return static_cast<Q>(val);
