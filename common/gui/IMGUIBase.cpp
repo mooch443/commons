@@ -1799,7 +1799,9 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 break;
             
             auto image_size = static_cast<ExternalImage*>(o)->source()->bounds().size();
-            if(image_size.empty() || image_size.width == 0 || image_size.height == 0)
+            if(image_size.empty() || image_size.width == 0 || image_size.height == 0
+               || image_size.width >= 20000
+               || image_size.height >= 20000)
                 break;
             
             auto tex_cache = (TextureCache*)cache;

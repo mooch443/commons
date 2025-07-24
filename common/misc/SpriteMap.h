@@ -83,6 +83,9 @@ namespace sprite {
         const Map& container() const { return *_container; }
         
         std::string toStr() const;
+        std::shared_ptr<const PropertyType> ptr() const {
+            return _type.lock();
+        }
     };
     
     class Reference {
@@ -171,6 +174,9 @@ namespace sprite {
         void operator=(const T& value);
         
         std::string toStr() const;
+        std::shared_ptr<PropertyType> ptr() const {
+            return _type.lock();
+        }
     };
 
 }

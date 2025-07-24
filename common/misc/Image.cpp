@@ -99,6 +99,12 @@ namespace cmn {
     }
     void Image::create(uint rows, uint cols, uint dims, long_t index, timestamp_t stamp) {
         size_t N = size_t(cols) * size_t(rows) * size_t(dims);
+        
+#ifndef NDEBUG
+        if(cols >= 20000) {
+            FormatWarning("This image might be a bit too large: ", *this);
+        }
+#endif
 
         if (_data) {
             //! if the contained array is either way too big,
