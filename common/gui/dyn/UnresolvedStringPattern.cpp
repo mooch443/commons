@@ -545,7 +545,10 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             //output += Meta::fromStr<std::string>(props.parameters[2]);
             return;
         } else if(props.name == "for") {
+#ifndef NDEBUG
             Print("For loop: ", props);
+#endif
+            throw InvalidArgumentException("Not expecting a for loop here: ", props);
             return;
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
@@ -633,8 +636,6 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         parms.resize(1u);
         parms[0].clear();
         resolve_parameter(parms[0], pattern, parameters[0], context, state);
-        
-        Print("For loop", resolved);
         
         if(not utils::beginsWith(parms[0], '[')
             || not utils::endsWith(parms[0], ']'))
