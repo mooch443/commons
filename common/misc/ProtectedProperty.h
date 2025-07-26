@@ -15,23 +15,25 @@ namespace cmn {
 //   (No direct reference access is exposed.)
 // ============================================================================
 
-template<typename T,
-bool UseAtomic =
+template<typename T>
+concept UseAtomic =
 std::is_trivially_copyable_v<T> &&
-std::atomic<T>::is_always_lock_free>
-class ProtectedProperty;
+std::atomic<T>::is_always_lock_free;
+
+template<typename T, bool UseAtomic>
+class _ProtectedProperty;
 
 // ------------------------------
 // Variant 1: Atomic (trivial)
 // ------------------------------
 template<typename T>
-class ProtectedProperty<T, /*UseAtomic=*/true>
+class _ProtectedProperty<T, true>
 {
     std::atomic<T> _value;
     
 public:
-    constexpr ProtectedProperty() noexcept = default;
-    constexpr explicit ProtectedProperty(T initial) noexcept
+    constexpr _ProtectedProperty() noexcept = default;
+    constexpr _ProtectedProperty(T initial) noexcept
     : _value(initial) {}
     
     [[nodiscard]] T get() const noexcept {
@@ -46,14 +48,14 @@ public:
 // Variant 2: Mutex-protected (non-trivial)
 // --------------------------------------
 template<typename T>
-class ProtectedProperty<T, /*UseAtomic=*/false>
+class _ProtectedProperty<T, false>
 {
     T _value;
     mutable std::shared_mutex _mtx;
     
 public:
-    ProtectedProperty() = default;
-    explicit ProtectedProperty(const T& initial) : _value(initial) {}
+    _ProtectedProperty() = default;
+    _ProtectedProperty(const T& initial) : _value(initial) {}
     
     [[nodiscard]] T get() const {
         std::shared_lock lock(_mtx);
@@ -64,5 +66,9 @@ public:
         _value = v;
     }
 };
+
+template<typename T>
+class ProtectedProperty : public _ProtectedProperty<T, UseAtomic<T>>
+{};
 
 }
