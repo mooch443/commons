@@ -386,7 +386,14 @@ Prepared* Prepared::get(const Unprepared& unprepared) {
 }
 
 std::string Prepared::toStr() const {
-    std::string result = "fn<" + (std::string)resolved.name + ">{";
+    std::string result = (std::string)resolved.name;
+    if(not resolved.subs.empty()) {
+        for(size_t j = 0; j < resolved.subs.size(); ++j) {
+            result.append(".");
+            result.append(resolved.subs[j]);
+        }
+    }
+    result.append("{");
     for(size_t j = 0; j < parameters.size(); ++j) {
         auto &parm = parameters[j];
         if(j > 0)
@@ -481,16 +488,16 @@ bool PreparedPattern::operator<(const PreparedPattern& other) const noexcept {
 }
 
 std::string PreparedPattern::toStr() const {
-    std::string str = "PreparedPattern<";
+    std::string str = "<";
     switch (type) {
         case SV:
-            str += "sv<"+(std::string)value.sv+">";
+            str.append(value.sv);
             break;
         case PREPARED:
-            str += "prepared<"+value.prepared->toStr()+">";
+            str.append(value.prepared->toStr());
             break;
         case POINTER:
-            str += "ptr<"+hex(value.ptr).toStr()+">";
+            str.append(hex(value.ptr).toStr());
             break;
             
         default:
@@ -505,7 +512,15 @@ template<typename ApplyF, typename ErrorF>
 inline auto resolve_variable(std::string& output, const VarProps& props, const Context& context, State& state, ApplyF&& apply, ErrorF&& error)
 {
     try {
-        if(auto it = context.find(props.name);
+        auto cached = props.subs.empty()
+                        ? state.cached_variable_value(props.name)
+                        : state.cached_variable_value(utils::concat_views(props.name, props.subs));
+        if(cached)
+        {
+            output.append(cached.value());
+            return;
+            
+        } else if(auto it = context.find(props.name);
            it.has_value())
         {
             ///[[maybe_unused]] CTimer ctimer("normal");
@@ -524,10 +539,13 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             //Print("* condition ", props.parameters.front()," => ", condition);
             if(condition)
                 utils::fast_fromstr(output, props.parameters[1]);
-                //output += Meta::fromStr<std::string>(props.parameters[1]);
+            //output += Meta::fromStr<std::string>(props.parameters[1]);
             else if(props.parameters.size() == 3)
                 utils::fast_fromstr(output, props.parameters[2]);
-                //output += Meta::fromStr<std::string>(props.parameters[2]);
+            //output += Meta::fromStr<std::string>(props.parameters[2]);
+            return;
+        } else if(props.name == "for") {
+            Print("For loop: ", props);
             return;
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
@@ -607,6 +625,52 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             resolve_parameter(parms[2], pattern, parameters[2], context, state);
             parms[1] = "null";
         }
+        
+    } else if(resolved.name == "for") {
+        if(parameters.size() != 2u)
+            throw InvalidArgumentException("An if statement (", parameters, ") only accepts 2 parameters.");
+        
+        parms.resize(1u);
+        parms[0].clear();
+        resolve_parameter(parms[0], pattern, parameters[0], context, state);
+        
+        Print("For loop", resolved);
+        
+        if(not utils::beginsWith(parms[0], '[')
+            || not utils::endsWith(parms[0], ']'))
+        {
+            throw InvalidArgumentException("An if statement (", parameters, ") requires an array-like second parameter, received ", parms[0]);
+        }
+        
+        size_t index = str.length();
+        auto items = util::truncate(parms[0]);
+        
+        str.append("[");
+        
+        State state;
+        auto handler = std::make_shared<CurrentObjectHandler>();
+        state._current_object_handler = handler;
+        
+        size_t idx = 0;
+        for(auto item : util::parse_array_parts(items)) {
+            if(idx > 0)
+                str.append(",");
+            
+            handler->set_variable_value("i", item);
+            handler->set_variable_value("idx", item);
+            resolve_parameter(str, pattern, parameters[1], context, state);
+            
+            ++idx;
+        }
+        handler->remove_variable("i");
+        handler->remove_variable("idx");
+        
+        str.append("]");
+        
+        if(has_children)
+            _cached_value = std::string_view(str).substr(index);
+        
+        return;
         
     } else {
         const size_t N = parameters.size();

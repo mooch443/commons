@@ -75,6 +75,7 @@ R create_parse_result(std::string_view trimmedStr) {
         char c = trimmedStr[pos];
 
         if (c == ':' and not inQuote and braceLevel == 0) {
+            assert(pos >= token_start);
             action.parameters.emplace_back(trimmedStr.substr(token_start, pos - token_start));
             token_start = pos + 1;
         } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {

@@ -406,29 +406,58 @@ std::vector<std::string_view> split(Str s, char c, bool skip_empty = false, bool
 std::vector<std::wstring> split(std::wstring const& s, char c, bool skip_empty = false, bool trim = false);
 std::vector<std::basic_string_view<typename std::wstring::value_type>> split(std::wstring& s, char c, bool skip_empty = false, bool trim = false);
 
-// Variadic overload – “just give me the pieces”
-template<class... Views>
-[[nodiscard]] std::string concat_views(Views&&... views)
-{
-    static_assert((std::is_convertible_v<Views, std::string_view> && ...),
-                  "All arguments must be convertible to std::string_view");
+// Helper trait to detect string_view-like types
+namespace detail {
+    template<typename T>
+    constexpr bool is_string_view_like_v = std::is_convertible_v<T, std::string_view>;
+    
+    template<typename T, typename = void>
+    struct is_iterable_of_string_view : std::false_type {};
+    
+    template<typename T>
+    struct is_iterable_of_string_view<T, std::void_t<decltype(std::begin(std::declval<T>())), decltype(std::end(std::declval<T>())), typename T::value_type>> : std::bool_constant<is_string_view_like_v<typename T::value_type>> {};
+}
 
-    // 1. Total size in one compile-time fold
-    const std::size_t total =
-        (static_cast<std::size_t>(std::string_view{views}.size()) + ...);
-
-    // 2. Allocate the exact size up front (no growth, no re-hash)
-    std::string result(total, '\0');          // C++17: guaranteed contiguous
-    char* write = result.data();
-
-    // 3. Copy each view in one pass, no extra temporaries
-    auto copy_one = [&](std::string_view v) {
-        std::memcpy(write, v.data(), v.size());
-        write += v.size();
+// Variadic overload – supports string_view-like values and containers of them
+template<class... Args>
+[[nodiscard]] std::string concat_views(Args&&... args) {
+    using namespace detail;
+    
+    // Accumulate total size
+    std::size_t total = 0;
+    auto count_size = [&](auto&& arg) {
+        using ArgT = std::remove_cvref_t<decltype(arg)>;
+        if constexpr (is_string_view_like_v<ArgT>) {
+            total += std::string_view{std::forward<decltype(arg)>(arg)}.size();
+        } else if constexpr (is_iterable_of_string_view<ArgT>::value) {
+            for (const auto& v : arg) {
+                total += std::string_view{v}.size();
+            }
+        } else {
+            static_assert(is_string_view_like_v<ArgT> || is_iterable_of_string_view<ArgT>::value, "Arguments must be string_view-like or iterable of string_view-like");
+        }
     };
-    (copy_one(std::string_view{std::forward<Views>(views)}), ...);
-
-    return result;                            // NRVO / move-elision
+    (count_size(std::forward<Args>(args)), ...);
+    
+    std::string result(total, '\0');
+    char* write = result.data();
+    auto copy_one = [&](const auto& v) {
+        std::string_view sv{v};
+        std::memcpy(write, sv.data(), sv.size());
+        write += sv.size();
+    };
+    auto do_copy = [&](auto&& arg) {
+        using ArgT = std::remove_cvref_t<decltype(arg)>;
+        if constexpr (is_string_view_like_v<ArgT>) {
+            copy_one(arg);
+        } else if constexpr (is_iterable_of_string_view<ArgT>::value) {
+            for (const auto& v : arg) {
+                copy_one(v);
+            }
+        }
+    };
+    (do_copy(std::forward<Args>(args)), ...);
+    return result;
 }
 
 inline std::string ShortenText(std::string_view text, size_t maxLength, double positionPercent = 0.5, std::string_view shortenSymbol = "…") {
@@ -534,3 +563,4 @@ extern template std::string strip_html<const char*>(const char* const& input);
 }
 
 #endif
+

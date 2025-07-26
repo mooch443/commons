@@ -651,11 +651,19 @@ namespace utf8loc {
 
 // A constexpr list of POSIX locale names to try, in priority order:
 consteval auto candidate_locales() noexcept {
-    return std::array<const char*,3>{
-        "C.UTF-8",  // POSIX-neutral UTF-8
-        "",         // pick up the user’s LANG/LC_* env
-        "en_US.UTF-8"
+#ifdef _WIN32
+    return std::array{
+        ".UTF-8",
+        "en_US.UTF-8",
+        "C"
     };
+#else
+    return std::array{
+        "C.UTF-8",
+        "en_US.UTF-8",
+        "C"
+    };
+#endif
 }
 
 // Try to construct & apply `std::locale(name)`. If `name==""` we leave LC_ALL alone.
@@ -671,24 +679,36 @@ inline bool try_apply_std_locale(const char* name) noexcept {
 }
 
 // On POSIX: also set LC_ALL so C APIs match.
+// On Windows, use setlocale calls only, no setenv.
 inline void apply_c_locale(const char* name) noexcept {
-#ifndef UTF8_LOCALE_WINDOWS
-    if (name[0]) {
+#ifdef UTF8_LOCALE_WINDOWS
+    // On Windows, setlocale is used; environment variables are not typically used for locale
+    if (name && name[0]) {
+        ::setlocale(LC_ALL, name);
+        ::setlocale(LC_NUMERIC, name);
+        // Optionally, set other categories as well if needed, e.g. LC_CTYPE, LC_TIME, etc.
+    }
+#else
+    if (name && name[0]) {
+        ::setenv("LC_NUMERIC", name, /*overwrite*/1);
+        ::setlocale(LC_NUMERIC, name);
         ::setenv("LC_ALL", name, /*overwrite*/1);
+        ::setlocale(LC_ALL, name);
     }
 #endif
-    // else: leave user’s LC_* alone
 }
 
 // Public entry point: call at the very top of main().
 void enable_utf8() noexcept {
 #ifdef UTF8_LOCALE_WINDOWS
-    // Let CRT pick up the system’s ANSI code page (UTF-8 if they've opted in)
-    std::setlocale(LC_ALL, "");
-    // If you want to be extra-sure for Windows terminals, you can also:
-    //     UINT cp = GetConsoleOutputCP();
-    //     if (cp != CP_UTF8) SetConsoleOutputCP(CP_UTF8);
-#else
+    // Set both input and output console code pages to UTF-8
+    if (!SetConsoleOutputCP(CP_UTF8)) {
+        FormatWarning("SetConsoleOutputCP(CP_UTF8) failed with error code ", GetLastError());
+    }
+    if (!SetConsoleCP(CP_UTF8)) {
+        FormatWarning("SetConsoleCP(CP_UTF8) failed with error code ", GetLastError());
+    }
+#endif
     bool applied = false;
     auto locales = candidate_locales();
     for (auto name : locales) {
@@ -699,15 +719,15 @@ void enable_utf8() noexcept {
         }
     }
     if (!applied) {
-        // absolute fallback to ASCII-only “C”
-        std::locale::global(std::locale("C"));
-        ::setenv("LC_ALL","C",1);
+        FormatWarning("Have not found a locale that could be applied, tried ", locales);
     }
-#endif
 
     // Re-imbue the iostreams so they use the new global locale:
     std::cout.imbue(std::locale());
     std::cerr.imbue(std::locale());
+    std::wcin.imbue(std::locale());
+    std::wcout.imbue(std::locale());
+    std::wcerr.imbue(std::locale());
 }
 
 } // namespace utf8loc

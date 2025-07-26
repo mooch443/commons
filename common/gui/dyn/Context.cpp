@@ -611,7 +611,15 @@ void Context::init() const {
                 return ss.str();
             }),
             VarFunc("addVector", [](const VarProps& props) -> Vec2 {
-                return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
+                if(props.parameters.size() == 2) {
+                    return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A + B; });
+                } else {
+                    Vec2 result;
+                    for(auto &p : props.parameters) {
+                        result += Meta::fromStr<Vec2>(p);
+                    }
+                    return result;
+                }
             }),
             VarFunc("subVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A - B; });
