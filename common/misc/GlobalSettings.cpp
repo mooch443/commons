@@ -25,7 +25,8 @@ std::mutex& GlobalSettings::defaults_mutex() {
  */
 
 GlobalSettings::GlobalSettings() {
-    _map.set_print_by_default(false);
+    _config.values.set_print_by_default(false);
+    _config.defaults.set_print_by_default(false);
 }
 
 /**
@@ -40,6 +41,12 @@ bool GlobalSettings::is_runtime_quiet(const sprite::Map* ptr) {
     return ptr->has("quiet") && ptr->at("quiet").value<bool>();
 }
 
+Configuration& GlobalSettings::config() {
+    if(!instance())
+        throw U_EXCEPTION("No GlobalSettings instance.");
+    return instance()->_config;
+}
+
 /**
  * Returns a reference to the settings map.
  * @return sprite::Map&
@@ -47,7 +54,7 @@ bool GlobalSettings::is_runtime_quiet(const sprite::Map* ptr) {
 sprite::Map& GlobalSettings::map() {
     if(!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_map;
+    return instance()->_config.values;
 }
 
 std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view name) {
@@ -114,37 +121,36 @@ const sprite::Map& GlobalSettings::defaults() {
     std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_defaults;
+    return instance()->_config.defaults;
 }
 
-std::optional<sprite::Map> GlobalSettings::defaults(std::string_view name) {
+std::shared_ptr<const sprite::PropertyType> GlobalSettings::get_default(std::string_view name) {
     std::unique_lock guard(defaults_mutex());
-    if (!instance())
+    if (not instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    if(instance()->_defaults.has(name)) {
-        sprite::Map tmp;
-        instance()->_defaults.at(name).get().copy_to(tmp);
-        return tmp;
+    auto value = instance()->_config.get_default(name);
+    if(value) {
+        return value->ptr();
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 sprite::Map& GlobalSettings::set_defaults() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_defaults;
+    return instance()->_config.defaults;
 }
 
-GlobalSettings::docs_map_t& GlobalSettings::docs() {
+docs_map_t& GlobalSettings::docs() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_doc;
+    return instance()->_config.docs;
 }
 
-GlobalSettings::user_access_map_t& GlobalSettings::access_levels() {
+user_access_map_t& GlobalSettings::access_levels() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_access_levels;
+    return instance()->_config.access;
 }
 
 /**
@@ -165,9 +171,9 @@ const std::string& GlobalSettings::doc(const std::string& name) {
  * @param name
  * @return true if the property exists
  */
-bool GlobalSettings::has(const std::string& name) {
+bool GlobalSettings::has(std::string_view name) {
     std::lock_guard<std::mutex> lock(mutex());
-    return map().has(name);
+    return instance()->_config.has(name);
 }
 
 bool GlobalSettings::has_doc(const std::string& name) {

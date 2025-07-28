@@ -28,6 +28,9 @@ namespace cmn {
             const std::string _name; ///< Name of the property.
             const std::string _type_name; ///< Name of the type of the property
             
+            mutable std::shared_mutex _cache_mutex;
+            mutable std::optional<std::string> _cache;
+            
             // Mutex to ensure thread safety for concurrent access.
             // NOTE: Currently, the mutex is defined but not used in any member functions.
             // Ensure you lock this mutex in member functions that modify the object's state if they can be called concurrently.
@@ -243,6 +246,16 @@ namespace cmn {
             bool is_type() const {
                 return _type_name == cmn::type_name<T>();
             }
+            
+            void reset_cache() {
+                if(std::shared_lock g{_cache_mutex};
+                   _cache)
+                {
+                    g.unlock();
+                    std::unique_lock _g{_cache_mutex};
+                    _cache.reset();
+                }
+            }
         };
         
         class Reference;
@@ -416,6 +429,7 @@ namespace cmn {
                         next.blocking_toStr();
                     }
                     _value.store(std::move(next));
+                    reset_cache();
                     return true;
                 }
                 
@@ -434,6 +448,9 @@ namespace cmn {
                         if(_value)
                             _value->blocking_toStr();
                     }
+                    
+                    guard.unlock();
+                    reset_cache();
                     return true;
                 }
                 
@@ -448,6 +465,7 @@ namespace cmn {
                 }
                 _value.store(BaseStoreType(std::move(next)));
             
+                reset_cache();
                 return true;
             }
             
@@ -460,6 +478,8 @@ namespace cmn {
                     if(_value)
                         _value->blocking_toStr();
                 }
+                guard.unlock();
+                reset_cache();
                 return true;
             }
             
@@ -504,7 +524,15 @@ namespace cmn {
             }
             //ValueType& value() { return _value.value(); }
             std::string valueString() const override {
-                return Meta::toStr<ValueType>(value());
+                if(std::shared_lock guard{_cache_mutex};
+                   _cache.has_value())
+                {
+                    return _cache.value();
+                }
+                
+                std::unique_lock guard{_cache_mutex};
+                _cache = Meta::toStr<ValueType>(value());
+                return _cache.value();
             }
             
             std::string toStr() const {

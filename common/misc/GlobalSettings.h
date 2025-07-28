@@ -38,15 +38,69 @@ namespace cmn {
         NEW_YEAR
     )
     
-    typedef AccessLevelType::Class AccessLevel;
+    using AccessLevel = AccessLevelType::Class;
+    using docs_map_t = std::unordered_map<std::string, std::string>;
+    using user_access_map_t = std::unordered_map<std::string, AccessLevel, MultiStringHash, MultiStringEqual>;
+
+    struct Configuration {
+        cmn::sprite::Map values, examples, defaults;
+        docs_map_t docs;
+        user_access_map_t access;
+        
+        void set_access(std::string_view name, cmn::AccessLevel w)
+        {
+            assert(values.has(name));
+            access[(std::string)name] = w;
+        }
+        std::optional<AccessLevel> access_level(std::string_view name) const noexcept
+        {
+            if(auto it = access.find(name);
+               it != access.end())
+            {
+                return it->second;
+            }
+            return std::nullopt;
+        }
+        AccessLevel _access_level(std::string_view name) const noexcept
+        {
+            if(auto it = access.find(name);
+               it != access.end())
+            {
+                return it->second;
+            }
+            return AccessLevelType::PUBLIC;
+        }
+        
+        
+        std::optional<sprite::ConstReference> get_default(std::string_view name) const
+        {
+            auto value = defaults.at(name);
+            if(value.valid()) {
+                return value;
+            }
+            return std::nullopt;
+        }
+        
+        bool has(std::string_view name) const noexcept {
+            return values.has(name);
+        }
+        bool has_example(std::string_view name) const {
+            return examples.has(name);
+        }
+        
+        auto at(cmn::StringLike auto&& name) const {
+            return values.at(name);
+        }
+        auto def(cmn::StringLike auto&& name) const {
+            return defaults.at(name);
+        }
+    };
     
     /**
      * @class GlobalSettings
      */
     class GlobalSettings {
     public:
-        typedef std::unordered_map<std::string, std::string> docs_map_t;
-        typedef std::unordered_map<std::string, AccessLevel, MultiStringHash, MultiStringEqual> user_access_map_t;
         
         /**
          * Configuration options for loading settings.
@@ -61,23 +115,13 @@ namespace cmn {
             const sprite::Map* additional = nullptr;
         };
         
-    private:
+    protected:
+        Configuration _config;
         
         /**
          * A map that contains all the settings.
          */
-        sprite::Map _map, _defaults, _current_defaults, _current_defaults_with_config;
-        
-        /**
-         * A map that contains all available documentation for settings.
-         */
-        docs_map_t _doc;
-        
-        /**
-         * A map specifiying the access level needed to be able to change
-         * a parameter. Access levels are defined in
-         */
-        user_access_map_t _access_levels;
+        sprite::Map _current_defaults, _current_defaults_with_config;
         
         //friend struct detail::g_GSettingsSingletonStruct;
         static std::mutex& mutex();
@@ -159,10 +203,11 @@ namespace cmn {
         /**
          * Returns a reference to the settings map.
          */
+        static Configuration& config();
         static sprite::Map& map();
         static std::shared_ptr<const sprite::PropertyType> at(std::string_view);
         static const sprite::Map& defaults();
-        static std::optional<sprite::Map> defaults(std::string_view name);
+        static std::shared_ptr<const sprite::PropertyType> get_default(std::string_view name);
         static std::optional<sprite::Map> current_defaults(std::string_view);
         static void current_defaults(std::string_view, const sprite::Map&);
         static sprite::Map get_current_defaults();
@@ -175,7 +220,7 @@ namespace cmn {
         static bool is_runtime_quiet(const sprite::Map* = nullptr);
         
         //! Returns true if the given key exists.
-        static bool has(const std::string& name);
+        static bool has(std::string_view name);
         
         //! Returns true if documentation for the given key exists.
         static bool has_doc(const std::string& name);
@@ -258,15 +303,6 @@ namespace cmn {
         
         extern g_GSettingsSingletonStruct g_GSettingsSingleton;
     }*/
-
-    /**
-     * Combines all required maps into a joint object.
-     */
-    struct SettingsMaps {
-        sprite::Map map;
-        GlobalSettings::docs_map_t docs;
-        GlobalSettings::user_access_map_t access_levels;
-    };
 }
 
 #endif //_GLOBALSETTINGS_H

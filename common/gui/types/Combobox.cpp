@@ -11,10 +11,10 @@ tl::expected<std::string, const char*> default_value_of(std::string_view name) {
     {
         return value->at(name).get().valueString();
         
-    } else if(auto value = GlobalSettings::defaults(name);
+    } else if(auto value = GlobalSettings::get_default(name);
               value)
     {
-        return value->at(name).get().valueString();
+        return value->valueString();
     }
     
     return tl::unexpected("No default value available.");

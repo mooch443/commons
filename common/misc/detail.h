@@ -746,7 +746,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     }
 
     //! Defined in GlobalSettings.h
-    struct SettingsMaps;
+    struct Configuration;
     struct Deprecations;
     namespace sprite {
         class Map;

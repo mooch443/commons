@@ -2,19 +2,19 @@
 
 namespace cmn {
     namespace settings {
-        void print_help(const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t*) {
+        void print_help(const Configuration& config) {
             DebugHeader("DEFAULT PARAMETERS");
             size_t max_length = 0, max_value = 0;
-            for(auto &k : docs)
+            for(auto &k : config.docs)
                 max_length = max(max_length, k.first.length());
             
-            for (auto &k : docs) {
-                auto value = config[k.first].get().valueString();
+            for (auto &k : config.docs) {
+                auto value = config.values.at(k.first).get().valueString();
                 max_value = max(max_value, value.length());
             }
             
-            for (auto &k : docs) {
-                auto value = config[k.first].get().valueString();
+            for (auto &k : config.docs) {
+                auto value = config.values.at(k.first).get().valueString();
                 std::string b = "";
                 if(k.first.length() < max_length)
                     b = utils::repeat(" ",  max_length-k.first.length());
@@ -24,8 +24,8 @@ namespace cmn {
                     c = utils::repeat(" ", max_value-value.length());
                 
                 std::string doc = "";
-                if(docs.find(k.first) != docs.end()) {
-                    doc = docs.at(k.first);
+                if(config.docs.find(k.first) != config.docs.end()) {
+                    doc = config.docs.at(k.first);
                     /*if(doc.length() > 50) {
                      auto sub = doc.substr(0, 50);
                      Print(k,b," ",value,c," ",sub);
@@ -159,13 +159,11 @@ namespace cmn {
      * Outputs a given set of Parameter map and documentation into the reStructuredText format (https://docutils.sourceforge.io/docs/ref/rst/directives.html). The output is a single page containing documentation for all parameters in the map, including parameter type, access type and default parameters plus a description.
      */
     std::string help_restructured_text(const std::string& title,
-                                       const sprite::Map& config,
-                                       const GlobalSettings::docs_map_t& docs,
-                                       const GlobalSettings::user_access_map_t& fn,
+                                       const Configuration& config,
                                        std::string postfix,
                                        std::string filter,
                                        std::string extra_text,
-                                       AccessLevel level)
+                                       AccessLevel min_level)
     {
         std::stringstream ss;
         
@@ -184,7 +182,7 @@ namespace cmn {
             std::string param_name;
             std::string options = "";
             std::stringstream text;
-            auto keys = config.keys();
+            auto keys = config.values.keys();
             
             for (size_t i=0; i<description.size(); ++i) {
                 if (description.at(i) == '`') {
@@ -276,7 +274,7 @@ namespace cmn {
         if(!extra_text.empty())
             ss << extra_text;
         
-        auto keys = extract_keys(docs);
+        auto keys = extract_keys(config.docs);
         std::string regex_string = create_regex_from_array(filter);
         std::regex regex_pattern(regex_string);
         
@@ -287,28 +285,28 @@ namespace cmn {
                 continue;
             }
             
-            auto value = config[key].get().valueString();
+            auto value = config.values.at(key).get().valueString();
             std::string doc = "";
-            if(docs.find(key) != docs.end()) {
-                doc = docs.at(key);
+            if(config.docs.find(key) != config.docs.end()) {
+                doc = config.docs.at(key);
             }
             
+            auto level = config.access_level(key);
             std::string access_level = "PUBLIC";
-            auto it = fn.find(key);
-            if(it != fn.end()) {
-                if(it->second > AccessLevelType::PUBLIC)
-                    access_level = it->second.name();
-                if(it->second > level)
+            if(level) {
+                if(*level > AccessLevelType::PUBLIC)
+                    access_level = level->name();
+                if(*level > min_level)
                     continue;
             }
             
-            print_parameter(key, (std::string)config[key].type_name(), value, doc);
+            print_parameter(key, (std::string)config.values.at(key).type_name(), value, doc);
         }
         
         return ss.str();
     }
         
-        std::string help_html(const sprite::Map& config, const GlobalSettings::docs_map_t& docs, const GlobalSettings::user_access_map_t& fn) {
+        std::string help_html(const Configuration& config) {
             std::stringstream ss;
             ss << "<html><head>";
             ss << "<style>";
@@ -357,20 +355,20 @@ namespace cmn {
             ss <<"</head><body>";
             ss << "<map><div class='body'><row class='header'><key>Name</key><value>Default value</value><doc>Description</doc></row>";
             
-            for (auto &k : docs) {
-                auto value = htmlify(config[k.first].get().valueString());
+            for (auto &k : config.docs) {
+                auto value = htmlify(config.values.at(k.first).get().valueString());
 
                 std::string doc = "";
-                if(docs.find(k.first) != docs.end()) {
-                    doc = htmlify(docs.at(k.first), true);
+                if(config.docs.find(k.first) != config.docs.end()) {
+                    doc = htmlify(config.docs.at(k.first), true);
                 }
                 
                 auto key = k.first;
-                auto it = fn.find(key);
-                if(it != fn.end() && it->second > AccessLevelType::PUBLIC)
-                    key = key + " <i>(" + it->second.str() + ")</i>";
+                auto level = config.access_level(key);
+                if(level && *level > AccessLevelType::PUBLIC)
+                    key = key + " <i>(" + level->str() + ")</i>";
                 
-                ss << "<row"<<(it != fn.end() && it->second > AccessLevelType::PUBLIC ? " class='readonly'" : "")<<"><key name='"<<k.first<<"'>" << key << "</key><value>" << value << "</value><doc>" << doc << "</doc></row>";
+                ss << "<row"<<(level && *level > AccessLevelType::PUBLIC ? " class='readonly'" : "")<<"><key name='"<<k.first<<"'>" << key << "</key><value>" << value << "</value><doc>" << doc << "</doc></row>";
             }
             
             ss << "</div></map></body></html>";

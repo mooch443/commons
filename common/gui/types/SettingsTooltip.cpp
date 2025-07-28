@@ -4,15 +4,9 @@
 namespace cmn::gui {
 
 SettingsTooltip::SettingsTooltip(
-     std::weak_ptr<Drawable> ptr,
-     const sprite::Map* map,
-     const GlobalSettings::docs_map_t* docs)
-  : Tooltip(ptr, 500), map(map), docs(docs)
+     std::weak_ptr<Drawable> ptr)
+  : Tooltip(ptr, 500)
 {
-    if(!map)
-        this->map = &GlobalSettings::defaults();
-    if(!docs)
-        this->docs = &GlobalSettings::docs();
 }
 
 void SettingsTooltip::set_parameter(const std::string &name) {
@@ -29,7 +23,7 @@ void SettingsTooltip::update() {
         auto access = GlobalSettings::access_level(_param);
         if(access > AccessLevelType::PUBLIC) {
             str += "access: <i>"+std::string(access.name());
-            if(!GlobalSettings::defaults().has(_param))
+            if(!GlobalSettings::get_default(_param))
                 str += ", non-default";
             str += "</i>\n";
             
@@ -38,9 +32,15 @@ void SettingsTooltip::update() {
         
         auto ref = GlobalSettings::get(_param);
         str += "type: " +settings::htmlify(ref.valid() ? (std::string)ref.type_name() : "<invalid>") + "\n";
-        if(GlobalSettings::defaults().has(_param)) {
-            auto ref = GlobalSettings::defaults().operator[](_param);
-            str += "default: " +settings::htmlify(ref.get().valueString()) + "\n";
+        if(auto ref = GlobalSettings::get_default(_param);
+           ref)
+        {
+            str += "default: " +settings::htmlify(ref->valueString()) + "\n";
+        }
+        if(auto ref = GlobalSettings::config().examples.at(_param);
+           ref.valid())
+        {
+            str += "example: " +settings::htmlify(ref->valueString()) + "\n";
         }
         if(GlobalSettings::has_doc(_param))
             str += "\n" + settings::htmlify(GlobalSettings::doc(_param));

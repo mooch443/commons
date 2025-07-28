@@ -26,7 +26,7 @@ public:
 namespace cmn::gui::dyn {
 
 namespace settings_scene {
-GlobalSettings::docs_map_t& temp_docs = GlobalSettings::docs();
+docs_map_t& temp_docs = GlobalSettings::docs();
 sprite::Map& temp_settings = GlobalSettings::map();
 constexpr double video_chooser_column_width = 300;
 }
