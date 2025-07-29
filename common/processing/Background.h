@@ -309,7 +309,7 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
         Bounds _bounds;
         //int (*_diff)(int, int);
         std::string _name;
-        CallbackCollection _callback;
+        cmn::CallbackFuture _callback;
         
     public:
         /// create a dummy background with no image

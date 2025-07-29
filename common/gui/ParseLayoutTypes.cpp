@@ -567,7 +567,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         {
             hashed->_text_field = LabeledField::Make(gui, var, state, *this, invert);
             if(not hashed->_text_field) {
-                FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",settings_map()[var].get().type_name(),".");
+                auto v = GlobalSettings::read_value<NoType>(var);
+                FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",v.valid() ? v.get().type_name() : "(null)",".");
                 return nullptr;
             }
         }
@@ -1049,7 +1050,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
             ptr = Layout::Make<Fallthrough>();
             //ptr->clear_delete_handlers();
             auto weak = std::weak_ptr(state.register_variant(hash, ptr, IfBody{
-                .variable = obj.at("var").get<std::string>(),
+                .variable = pattern::UnresolvedStringPattern::prepare(obj.at("var").get<std::string>()),
                 .__if = child,
                 .__else = obj.contains("else") ? obj.at("else") : nullptr,
                 ._assigned_hash = hash,

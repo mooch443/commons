@@ -684,8 +684,10 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             
             if(i%10000 == 0)
                 Print("Finding file ", i," (",_files_in_seq.size()," found)...");
-            if(SETTING(terminate))
+            if(BOOL_SETTING(terminate))
+            {
                 break;
+            }
             
         } while (true);
         
@@ -708,7 +710,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             if(type() != File::Type::IMAGE && i % 50 == 0)
                 Print(i, "/", seq_end);
             
-            if(SETTING(terminate))
+            if(BOOL_SETTING(terminate))
                 break;
         }
         
@@ -909,10 +911,11 @@ bool VideoSource::has_timestamps() const {
 
 short VideoSource::framerate() const {
     if(_framerate == -1) {
-        if(GlobalSettings::has("frame_rate")) {
-            auto frame_rate = SETTING(frame_rate).value<uint32_t>();
-            if(frame_rate > 0)
-                return frame_rate;
+        if(auto frame_rate = GlobalSettings::read_value<uint32_t>("frame_rate");
+           frame_rate)
+        {
+            if(*frame_rate > 0)
+                return *frame_rate;
             FormatWarning("frame_rate not set properly for an image sequence. Assuming a default value of 25.");
             return 25;
         }
@@ -941,17 +944,21 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     std::vector<gpuMat> vec;
     
     averaging_method_t::Class method(averaging_method_t::mean);
-    if(GlobalSettings::has("averaging_method"))
-        method = SETTING(averaging_method).value<averaging_method_t::Class>();
+    if(auto v = GlobalSettings::read_value<averaging_method_t::Class>("averaging_method");
+       v)
+    {
+        method = *v;
+    }
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
     Print("Use averaging method: '", method.name(),"'");
     
     auto [start, end] = [this]() -> std::tuple<Frame_t, Frame_t>{
-        if(GlobalSettings::has("video_conversion_range")) {
-            auto video_conversion_range = SETTING(video_conversion_range).value<Range<long_t>>();
+        if(auto video_conversion_range = GlobalSettings::read_value<Range<long_t>>("video_conversion_range");
+           video_conversion_range)
+        {
             return {
-                video_conversion_range.start > -1 ? min(Frame_t(video_conversion_range.start), length()) : 0_f,
-                video_conversion_range.end > -1 ? min(Frame_t(video_conversion_range.end), length()) : length()
+                video_conversion_range->start > -1 ? min(Frame_t(video_conversion_range->start), length()) : 0_f,
+                video_conversion_range->end > -1 ? min(Frame_t(video_conversion_range->end), length()) : length()
             };
         }
         return {0_f, length()};
@@ -987,7 +994,10 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     AveragingAccumulator acc;
     const Frame_t::number_t N_indexes{narrow_cast<Frame_t::number_t>(end_index - start_index + 1)};
     
-    Frame_t::number_t samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (L.get() * 0.01f);
+    Frame_t::number_t samples = [L](){
+        auto v = GlobalSettings::read_value<uint32_t>("average_samples");
+        return v ? (float)SETTING(average_samples).value<uint32_t>() : (L.get() * 0.01f);
+    }();
     uint64_t step = max(1u, N_indexes < samples
                                 ? 1u
                                 : (uint64_t)ceil(N_indexes / samples));

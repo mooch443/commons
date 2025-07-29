@@ -179,7 +179,7 @@ namespace cmn::gui {
         _window.requestFocus();
         _window.setVerticalSyncEnabled(true);
         
-        if(SETTING(gui_transparent_background))
+        if(BOOL_SETTING(gui_transparent_background))
             _has_texture = true;
         
         GlobalSettings::map().register_callback(this, [this](auto&, auto& key, auto& value){
@@ -395,7 +395,7 @@ namespace cmn::gui {
     Bounds SFBase::text_bounds(const std::string& t, Drawable* obj, const Font& font) {
         if(!setting_nowindow_updated) {
             setting_nowindow_updated = true;
-            setting_nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
+            setting_nowindow = BOOL_SETTING(nowindow);
         }
         
         if(setting_nowindow)

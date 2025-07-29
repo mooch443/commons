@@ -184,7 +184,7 @@ public:
         std::thread::id _thread_id{std::this_thread::get_id()};
         
         //! saves the callback handles so we can unregister them later
-        sprite::CallbackFuture _callback_collection;
+        cmn::CallbackFuture _callback_collection;
         
 #ifndef NDEBUG
         //! this is locked during update cycles
@@ -271,7 +271,7 @@ public:
         
         ThreadObject() = default;
         ~ThreadObject() {
-            GlobalSettings::map().unregister_callbacks(std::move(_callback_collection));
+            GlobalSettings::unregister_callbacks(std::move(_callback_collection));
         }
         
         ThreadObject(ThreadObject&&) = delete;
@@ -380,10 +380,9 @@ private:
     inline static thread_local std::shared_ptr<ThreadObject> object{[](){
         auto ptr = std::make_shared<ThreadObject>();
         
-        ptr->_callback_collection = GlobalSettings::map().
-          register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
-            ptr->setting_names,
-        [wptr = std::weak_ptr(ptr)](auto name) {
+        ptr->_callback_collection = GlobalSettings::register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
+         ptr->setting_names,
+         [wptr = std::weak_ptr(ptr)](auto name) {
             std::shared_ptr<ThreadObject> lock = wptr.lock();
             if(not lock)
                 return;
@@ -396,7 +395,7 @@ private:
                 std::lock_guard guard{lock->_update_settings_mutex};
                 lock->_updated_settings.insert(name);
             }
-        });
+         });
         
         ptr->template update_settings<true>();
         return ptr;

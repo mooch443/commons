@@ -364,11 +364,11 @@ namespace cmn {
                 }
                 
                 auto key = k.first;
-                auto level = config.access_level(key);
-                if(level && *level > AccessLevelType::PUBLIC)
-                    key = key + " <i>(" + level->str() + ")</i>";
+                auto level = config._access_level(key);
+                if(level > AccessLevelType::PUBLIC)
+                    key = key + " <i>(" + level.str() + ")</i>";
                 
-                ss << "<row"<<(level && *level > AccessLevelType::PUBLIC ? " class='readonly'" : "")<<"><key name='"<<k.first<<"'>" << key << "</key><value>" << value << "</value><doc>" << doc << "</doc></row>";
+                ss << "<row"<<(level > AccessLevelType::PUBLIC ? " class='readonly'" : "")<<"><key name='"<<k.first<<"'>" << key << "</key><value>" << value << "</value><doc>" << doc << "</doc></row>";
             }
             
             ss << "</div></map></body></html>";

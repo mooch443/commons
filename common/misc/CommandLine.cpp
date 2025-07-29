@@ -77,7 +77,7 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
          * Process command-line options.
          */
         const char *argptr = NULL;
-        auto keys = GlobalSettings::map().keys();
+        auto keys = GlobalSettings::keys();
             
         auto check_option = [&keys, &deprecated, this](const char* argptr, const char* val)
         {
@@ -128,15 +128,21 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             load_settings();
     }
     
-    void CommandLine::load_settings(const sprite::Map* additional, sprite::Map* map, const std::vector<std::string>& exclude) {
-        if(not map)
-            map = &GlobalSettings::map();
-        if(map != &GlobalSettings::map()
-           && not additional)
-        {
-            additional = &GlobalSettings::map();
-        }
-
+    void CommandLine::load_settings(const std::vector<std::string>& exclude) {
+        GlobalSettings::write([&](Configuration& config){
+            _load_settings_impl(nullptr, &config.values, exclude);
+        });
+    }
+            
+    void CommandLine::load_settings(sprite::Map& target, const std::vector<std::string>& exclude)
+    {
+        GlobalSettings::write([&](Configuration& config){
+            _load_settings_impl(&config.values, &target, exclude);
+        });
+    }
+            
+    void CommandLine::_load_settings_impl(const sprite::Map* additional, sprite::Map* map, const std::vector<std::string>& exclude)
+    {
         // Helper to check if a string is properly quoted with matching single or double quotes
         static constexpr auto is_quoted = [](const std::string& v) -> bool {
             return !v.empty() &&
@@ -144,7 +150,7 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                     (v.front() == '"' && v.back() == '"'));
             };
         
-        auto keys = GlobalSettings::map().keys();
+        auto keys = additional ? additional->keys() : (map ? map->keys() : std::vector<std::string>{});
         for(auto it = _options.begin(); it != _options.end();) {
             auto &option = *it;
             if(contains(keys, utils::lowercase(option.name))) {

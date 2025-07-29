@@ -65,7 +65,7 @@ namespace cmn::gui {
     
     std::tuple<bool, bool> Textfield::system_alt() const {
         bool system = false, alt = false;
-        const bool nowindow = GlobalSettings::has("nowindow") && SETTING(nowindow);
+        const bool nowindow = GlobalSettings::read_value_with_default<bool>("nowindow", false);
         
         // TODO: Must also accept this from Httpd!
         if(!nowindow) {

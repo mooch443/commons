@@ -12,6 +12,7 @@
 #include <gui/types/Combobox.h>
 #include <gui/GUITaskQueue.h>
 #include <gui/Passthrough.h>
+#include <gui/Dispatcher.h>
 
 namespace cmn::gui {
 namespace dyn {
@@ -24,7 +25,7 @@ concept takes_attribute = requires(T t, A a) {
     { t.set(a) } -> std::same_as<void>;
 };
 
-sprite::Map& settings_map();
+//sprite::Map& settings_map();
 
 template<typename Derived, typename AttrType, typename = void>
 struct has_set : std::false_type {};
@@ -55,7 +56,7 @@ private:
     std::string _docs;
     std::string _ref;
     //sprite::Reference _ref;
-    sprite::CallbackFuture _callback_id;
+    cmn::CallbackFuture _callback_id;
     CallbackManagerImpl<void> _delete_callbacks;
     
     mutable std::mutex _ref_mutex;
@@ -71,10 +72,7 @@ protected:
     //gui::derived_ptr<gui::HorizontalLayout> _joint;
     
 public:
-    sprite::Reference ref() const {
-        std::unique_lock guard(_ref_mutex);
-        return settings_map()[_ref];
-    }
+    sprite::Reference ref() const;
     
     auto register_delete_callback(auto&& fn) {
         return _delete_callbacks.registerCallback(std::forward<decltype(fn)>(fn));
@@ -95,7 +93,7 @@ public:
     void trigger_ref_update();
     virtual void update_ref_in_main_thread() {}
     void replace_ref(ParmName name);
-    void replace_docs(const std::string&);
+    void replace_docs(std::string_view name);
     virtual Layout::Ptr representative() const { return _text; }
     virtual void set_description(std::string);
     
@@ -275,6 +273,11 @@ public:
                 break;
         }
 
+        if (auto* d = object.to<Drawable>()) {
+            if (attr::Dispatcher::instance().apply(*d, attribute))
+                return true;
+        }
+        
         return false;
     }
 };

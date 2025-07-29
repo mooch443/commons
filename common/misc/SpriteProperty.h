@@ -27,6 +27,7 @@ namespace cmn {
         protected:
             const std::string _name; ///< Name of the property.
             const std::string _type_name; ///< Name of the type of the property
+            const std::type_index _type_index;
             
             mutable std::shared_mutex _cache_mutex;
             mutable std::optional<std::string> _cache;
@@ -57,15 +58,15 @@ namespace cmn {
             
         public:
             // Constructors
-            PropertyType(const std::string& type_name) : PropertyType(type_name, "<invalid>") {}
+            PropertyType(const std::string& type_name, std::type_index index) : PropertyType(type_name, "<invalid>", index) {}
 
             /**
              * Primary constructor for the PropertyType.
              * @param map Pointer to associated map object.
              * @param name Name of the property.
              */
-            PropertyType(const std::string& type_name, const std::string_view& name)
-                : _name(name), _type_name(type_name)
+            PropertyType(const std::string& type_name, const std::string_view& name, std::type_index index)
+                : _name(name), _type_name(type_name), _type_index(index)
             {
                 // Set default behaviors for lambda functions.
                 _set_value_from_string = [this](const std::string&){
@@ -172,7 +173,7 @@ namespace cmn {
             Property<T>& toProperty() {
                 Property<T> *tmp = dynamic_cast<Property<T>*>(this);
                 if(not tmp) {
-                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", cmn::type_name<T>(), " in ", *this);
+                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", Meta::name<T>(), " in ", *this);
                 }
                 return *tmp;
             }
@@ -244,7 +245,7 @@ namespace cmn {
             
             template<typename T>
             bool is_type() const {
-                return _type_name == cmn::type_name<T>();
+                return _type_index == std::type_index(typeid(T));
             }
             
             void reset_cache() {
@@ -295,7 +296,7 @@ namespace cmn {
             }
             
             Property(const std::string_view& name, const ValueType& v = ValueType())
-                : PropertyType(Meta::name<ValueType>(), name), _value(v)
+                : PropertyType(Meta::name<ValueType>(), name, std::type_index(typeid(ValueType))), _value(v)
             {
                 init();
             }

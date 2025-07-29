@@ -24,7 +24,7 @@ namespace cmn::gui {
         
         std::atomic<size_t> frame_index;
         std::thread::id _update_thread;
-        CallbackCollection _callback;
+        CallbackFuture _callback;
         
         std::function<void()> _after_frame;
         std::function<void(Image::Ptr&&)> _frame_buffer_receiver;

@@ -26,13 +26,19 @@ public:
 namespace cmn::gui::dyn {
 
 namespace settings_scene {
-docs_map_t& temp_docs = GlobalSettings::docs();
-sprite::Map& temp_settings = GlobalSettings::map();
+//docs_map_t& temp_docs = GlobalSettings::docs();
+//sprite::Map& temp_settings = GlobalSettings::map();
 constexpr double video_chooser_column_width = 300;
 }
 
-sprite::Map& settings_map() {
+/*sprite::Map& settings_map() {
     return settings_scene::temp_settings;
+}*/
+
+
+
+sprite::Reference LabeledField::ref() const {
+    return GlobalSettings::write_value<NoType>(_ref);
 }
 
 LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
@@ -44,9 +50,9 @@ LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
     _text->set_color(White);
     
     if(not _ref.empty()
-       && settings_map().at(_ref).valid())
+       && GlobalSettings::has_value(_ref))
     {
-        _callback_id = settings_map().register_callbacks({name}, [this](auto){
+        _callback_id = GlobalSettings::register_callbacks({name}, [this](auto){
             trigger_ref_update();
         });
     }
@@ -71,13 +77,17 @@ void LabeledField::replace_ref(ParmName name) {
     trigger_ref_update();
 }
 
-void LabeledField::replace_docs(const std::string &docs) {
-    _docs = docs;
+void LabeledField::replace_docs(std::string_view name) {
+    auto docs = GlobalSettings::read_doc(name);
+    if(docs) {
+        _docs = (std::string)*docs;
+    } else
+        FormatWarning("Cannot read documentation for ", name,".");
 }
 
 LabeledField::~LabeledField() {
     if(_callback_id)
-        settings_map().unregister_callbacks(std::move(_callback_id));
+        GlobalSettings::unregister_callbacks(std::move(_callback_id));
     _delete_callbacks.callAll();
 }
 
@@ -145,9 +155,9 @@ std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::strin
         return ptr;
     }
     
-    if(not settings_map().has(parm))
+    auto ref = GlobalSettings::write_value<NoType>(parm);
+    if(not ref.valid())
         throw U_EXCEPTION("GlobalSettings has no parameter named ", parm,".");
-    auto ref = settings_map()[parm];
     
     std::unique_ptr<LabeledField> ptr;
     /*if(ref.is_type<bool>()) {
@@ -186,7 +196,7 @@ LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, c
 _checkbox(new gui::Checkbox(attr::Str(desc))),
 _invert(invert)
 {
-    replace_docs(settings_scene::temp_docs[name]);
+    replace_docs(name);
     _checkbox->set_checked(_invert
                                ? not ref().value<bool>()
                                : ref().value<bool>());
@@ -226,7 +236,7 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
     _text_field->set_placeholder(name);
     _text_field->set_font(Font(0.7f));
     
-    replace_docs(settings_scene::temp_docs[name]);
+    replace_docs(name);
     update_ref_in_main_thread();
     
     _text_field->on_text_changed([this](){
@@ -313,7 +323,7 @@ _list(new gui::List(
   })),
     _invert(invert)
 {
-    replace_docs(settings_scene::temp_docs[name]);
+    replace_docs(name);
     
     //_list->textfield()->set_font(Font(0.7f));
     //_list->set(Font(0.7f));
@@ -387,7 +397,7 @@ LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, c
 : LabeledField(gui, name),
 _dropdown(new gui::Dropdown(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
-    replace_docs(settings_scene::temp_docs[name]);
+    replace_docs(name);
     
     _dropdown->textfield()->set_font(Font(0.7f));
     assert(ref().get().is_enum());

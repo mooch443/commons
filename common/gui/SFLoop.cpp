@@ -12,8 +12,7 @@ namespace cmn::gui {
     {
         SETTING(terminate) = false;
         bool _do_terminate = false;
-        
-        GlobalSettings::map().register_callbacks({"terminate"}, [&_do_terminate](auto) {
+        cmn::CallbackFuture callback = GlobalSettings::register_callbacks({"terminate"}, [&_do_terminate](auto) {
             _do_terminate = SETTING(terminate).value<bool>();
         });
         
@@ -57,6 +56,8 @@ namespace cmn::gui {
                 }
             }
         }
+        
+        GlobalSettings::unregister_callbacks(std::move(callback));
     }
     
     void SFLoop::add_to_queue(std::function<void ()> fn) {

@@ -75,7 +75,13 @@ file::Path DataLocation::parse(const std::string &purpose, file::Path path, cons
         fn = it->second;
     }
     
-    return fn(settings ? *settings : GlobalSettings::map(), path);
+    if(settings) {
+        return fn(*settings, path);
+    }
+    
+    return GlobalSettings::read([&fn, path](const Configuration& config){
+        return fn(config.values, path);
+    });
 }
 
 bool DataLocation::is_registered(std::string purpose) {

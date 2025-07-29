@@ -226,7 +226,10 @@ void extractu8(const cv::Mat& mat, cv::Mat& output, uint channel) {
        return;
     }
     
-    static const bool video_reading_use_threads = GlobalSettings::has("video_reading_use_threads") ? SETTING(video_reading_use_threads).value<bool>() : true;
+    static const bool video_reading_use_threads = [](){
+        return GlobalSettings::read_value_with_default("video_reading_use_threads", true);
+    }();
+    
     assert(output.type() == CV_8UC1);
     assert(mat.type() == CV_8UC3);
     const auto channels = mat.channels();

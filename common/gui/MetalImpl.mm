@@ -203,10 +203,10 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
     {
         gui::metal::current_instance = this;
         frameBoundarySemaphore() = dispatch_semaphore_create(1);
-        _gui_macos_blur = GlobalSettings::has("gui_macos_blur") ? SETTING(gui_macos_blur).value<bool>() : false;
+        _gui_macos_blur = BOOL_SETTING(gui_macos_blur);
         
-        GlobalSettings::map().register_callbacks({"gui_macos_blur"}, [this](std::string_view name) {
-            _gui_macos_blur = GlobalSettings::map().at(name).value<bool>();
+        GlobalSettings::register_callbacks({"gui_macos_blur"}, [this](std::string_view name) {
+            _gui_macos_blur = GlobalSettings::read_value_with_default(name, false);
         });
         //dispatch_semaphore_signal(_frameBoundarySemaphore);
     }
@@ -214,7 +214,7 @@ void MetalImpl::check_thread_id(int line, const char* file) const {
     MetalImpl::~MetalImpl() {
         GLIMPL_CHECK_THREAD_ID();
         
-        GlobalSettings::map().unregister_callbacks(std::move(_callback));
+        GlobalSettings::unregister_callbacks(std::move(_callback));
         
         auto guard = LOGGED_LOCK(shutdown_mutex());
         if(dispatch_semaphore_wait(frameBoundarySemaphore(), dispatch_time(DISPATCH_TIME_NOW, 500000000lu)) != 0)

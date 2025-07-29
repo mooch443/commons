@@ -72,6 +72,7 @@
 #include <regex>
 #include <any>
 #include <stack>
+#include <typeindex>
 #if __APPLE__
 #include <Availability.h>
 #endif
@@ -1119,6 +1120,38 @@ struct CallbackCollection {
     std::unordered_map<std::string, std::size_t, MultiStringHash, MultiStringEqual> _ids;
     operator bool() const { return not _ids.empty(); }
     void reset() { _ids.clear(); }
+};
+
+/** Result of registering callbacks.
+ *  - `collection` holds IDs that are already active.
+ *  - `ready` becomes set once *all* requested callbacks are attached
+ *    (or immediately, if they were attached synchronously). */
+struct CallbackFuture {
+    cmn::CallbackCollection      collection;
+    std::optional<std::future<cmn::CallbackCollection>> ready;
+    
+    CallbackFuture() = default;
+    CallbackFuture(CallbackFuture&&) = default;
+    CallbackFuture& operator=(CallbackFuture&&) = default;
+
+    bool is_ready() const {
+        if(not ready.has_value())
+            return true;
+        return ready->wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    }
+    void finish() {
+        if(ready.has_value()) {
+            auto coll = ready->get();
+            for(auto &[name, id] : coll._ids) {
+                assert(not collection._ids.contains(name));
+                collection._ids[std::string(name)] = id;
+            }
+            ready.reset();
+        }
+    }
+    operator bool() const {
+        return not is_ready() || (bool)collection;
+    }
 };
 
 /// @brief Template for compile-time type name extraction.

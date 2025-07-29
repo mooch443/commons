@@ -20,8 +20,10 @@ blob::Pair::Pair(line_ptr_t&& lines, pixel_ptr_t&& pixels, uint8_t extra_flags, 
 std::string blob::Prediction::toStr() const {
     if(valid()) {
         MaybeObjectClass_t detect_classes;
-        if(GlobalSettings::has("detect_classes")) {
-            detect_classes = SETTING(detect_classes).value<MaybeObjectClass_t>();
+        if(auto v = GlobalSettings::read_value<MaybeObjectClass_t>("detect_classes");
+           v)
+        {
+            detect_classes = *v;
         }
         
         if(detect_classes.has_value())
@@ -294,7 +296,9 @@ namespace cmn::tf {
         bool destroy_windows = false;
         bool waitKey = false;
         
-        static const bool nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
+        static const bool nowindow = []() -> bool {
+            return BOOL_SETTING(nowindow);
+        }();
 
 		while(!images.empty()) {
 			auto p = std::move(images.front());

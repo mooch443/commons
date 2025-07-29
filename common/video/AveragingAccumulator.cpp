@@ -14,9 +14,7 @@ ENUM_CLASS_DOCS(averaging_method_t,
 )
 
 AveragingAccumulator::AveragingAccumulator() {
-    _mode = GlobalSettings::has("averaging_method")
-        ?  SETTING(averaging_method).template value<averaging_method_t::Class>()
-        : averaging_method_t::mean;
+    _mode = GlobalSettings::read_value_with_default("averaging_method", averaging_method_t::mean);
 }
 AveragingAccumulator::AveragingAccumulator(averaging_method_t::Class mode)
     : _mode(mode)

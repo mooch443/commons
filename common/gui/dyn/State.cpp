@@ -78,7 +78,8 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
         return true;
     }
     try {
-        auto res = resolve_variable_type<bool>(obj.variable, context, state);
+        //auto res = resolve_variable_type<bool>(obj.variable, context, state);
+        const bool res = convert_to_bool(obj.variable.realize(context, state));
         auto last_condition = (uint64_t)o->custom_data("last_condition");
         auto pass = o.to<Fallthrough>();
         

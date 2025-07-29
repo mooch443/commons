@@ -487,7 +487,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     void StaticText::update_text() {
         if(!nowindow_updated) {
             nowindow_updated = true;
-            nowindow = GlobalSettings::map().has("nowindow") ? SETTING(nowindow).value<bool>() : false;
+            nowindow = BOOL_SETTING(nowindow);
         }
         
         const auto default_clr = _settings.text_color;

@@ -91,7 +91,7 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
     }
     
     if(found) {
-        ref = std::make_unique<sprite::Reference>(dyn::settings_map()[name]);
+        ref = std::make_unique<sprite::Reference>(GlobalSettings::write_value<NoType>(name));
     }
     
     const Drawable* hover_object = found.get();
@@ -767,8 +767,19 @@ void Context::init() const {
                 } else
                     return trunc;
             }),
-            VarFunc("global", [](const VarProps&) -> sprite::Map& {
-                return GlobalSettings::map();
+            VarFunc("global", [](const VarProps& props) -> std::string {
+                if(props.subs.empty())
+                    return "null";
+                auto v = GlobalSettings::read_value<NoType>(props.subs.front());
+                if(v.valid()) {
+                    if(v->is_type<std::string>()) {
+                        return v->value<std::string>();
+                    } else if(v->is_type<file::Path>()) {
+                        return v->value<file::Path>().str();
+                    }
+                    return v->valueString();
+                }
+                return "null";
             }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);

@@ -10,13 +10,13 @@ void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);
 }
 
-std::mutex& GlobalSettings::mutex() {
-    static std::mutex _mutex;
+std::shared_mutex& GlobalSettings::mutex() {
+    static std::shared_mutex _mutex;
     return _mutex;
 }
 
-std::mutex& GlobalSettings::defaults_mutex() {
-    static std::mutex _mutex;
+std::shared_mutex& GlobalSettings::defaults_mutex() {
+    static std::shared_mutex _mutex;
     return _mutex;
 }
 
@@ -36,30 +36,18 @@ GlobalSettings::~GlobalSettings() {
 }
 
 bool GlobalSettings::is_runtime_quiet(const sprite::Map* ptr) {
-    if(not ptr)
-        ptr = &GlobalSettings::map();
-    return ptr->has("quiet") && ptr->at("quiet").value<bool>();
-}
-
-Configuration& GlobalSettings::config() {
-    if(!instance())
-        throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_config;
-}
-
-/**
- * Returns a reference to the settings map.
- * @return sprite::Map&
- */
-sprite::Map& GlobalSettings::map() {
-    if(!instance())
-        throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_config.values;
+    if(ptr)
+        return ptr->has("quiet") && ptr->at("quiet").value<bool>();
+    else {
+        auto v = read_value<bool>("quiet");
+        if(v)
+            return *v;
+        return false;
+    }
 }
 
 std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view name) {
-    auto &m = GlobalSettings::map();
-    return *m.at(name);
+    return *read_value<NoType>(name);
 }
 
 std::optional<sprite::Map> GlobalSettings::current_defaults(std::string_view name) {
@@ -87,12 +75,12 @@ void GlobalSettings::current_defaults(std::string_view name, const sprite::Map& 
     source.at(name).get().copy_to(instance()->_current_defaults);
 }
 
-sprite::Map GlobalSettings::get_current_defaults() {
+/*sprite::Map GlobalSettings::get_current_defaults() {
     std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_current_defaults;
-}
+}*/
 
 void GlobalSettings::set_current_defaults(const sprite::Map& map) {
     std::unique_lock guard(defaults_mutex());
@@ -102,12 +90,12 @@ void GlobalSettings::set_current_defaults(const sprite::Map& map) {
     instance()->_current_defaults = map;
 }
 
-sprite::Map& GlobalSettings::current_defaults_with_config() {
+/*sprite::Map& GlobalSettings::current_defaults_with_config() {
     std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_current_defaults_with_config;
-}
+}*/
 
 void GlobalSettings::set_current_defaults_with_config(const sprite::Map& map) {
     std::unique_lock guard(defaults_mutex());
@@ -117,7 +105,7 @@ void GlobalSettings::set_current_defaults_with_config(const sprite::Map& map) {
     instance()->_current_defaults_with_config = map;
 }
 
-const sprite::Map& GlobalSettings::defaults() {
+/*const sprite::Map& GlobalSettings::defaults() {
     std::unique_lock guard(defaults_mutex());
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
@@ -135,10 +123,10 @@ std::shared_ptr<const sprite::PropertyType> GlobalSettings::get_default(std::str
     return nullptr;
 }
 
-sprite::Map& GlobalSettings::set_defaults() {
+void GlobalSettings::set_defaults(const sprite::Map& map) {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
-    return instance()->_config.defaults;
+    instance()->_config.defaults;
 }
 
 docs_map_t& GlobalSettings::docs() {
@@ -151,47 +139,29 @@ user_access_map_t& GlobalSettings::access_levels() {
     if (!instance())
         throw U_EXCEPTION("No GlobalSettings instance.");
     return instance()->_config.access;
-}
+}*/
 
 /**
  * @param name
  * @return sprite::Reference
  */
-sprite::Reference GlobalSettings::_get(const char* name) {
-    std::lock_guard<std::mutex> lock(mutex());
-    return map()[name];
+sprite::Reference GlobalSettings::_get(std::string_view name) {
+    return write_value<NoType>(name);
 }
 
-const std::string& GlobalSettings::doc(const std::string& name) {
-    std::lock_guard<std::mutex> lock(mutex());
-    return docs()[name];
-}
-
-/**
- * @param name
- * @return true if the property exists
- */
-bool GlobalSettings::has(std::string_view name) {
-    std::lock_guard<std::mutex> lock(mutex());
-    return instance()->_config.has(name);
-}
-
-bool GlobalSettings::has_doc(const std::string& name) {
-    std::lock_guard<std::mutex> lock(mutex());
-    return docs().find(name) != docs().end();
-}
-
-AccessLevel GlobalSettings::access_level(const std::string_view &name) {
-    std::lock_guard<std::mutex> lock(mutex());
-    auto it = access_levels().find(name);
-    if(it == access_levels().end())
-        return AccessLevelType::PUBLIC;
-    return it->second;
+AccessLevel GlobalSettings::access_level(std::string_view name) {
+    return read([name](const Configuration& config) -> AccessLevel {
+        auto it = config.access.find(name);
+        if(it == config.access.end())
+            return AccessLevelType::PUBLIC;
+        return it->second;
+    });
 }
 
 void GlobalSettings::set_access_level(const std::string& name, AccessLevel w) {
-    std::lock_guard<std::mutex> lock(mutex());
-    access_levels()[name] = w;
+    write([&name, w](Configuration& config) {
+        config.set_access(name, w);
+    });
 }
 
 bool GlobalSettings::has_access(const std::string &name, AccessLevel level) {
@@ -206,15 +176,23 @@ std::map<std::string, std::string> GlobalSettings::load_from_file(
     const std::string& filename,
     LoadOptions options
 ) {
-    const auto& fileContent = utils::read_file(filename);
-    if(not options.target)
-        options.target = &GlobalSettings::map();
+    std::string fileContent = file::Path(filename).read_file();
     options.source = sprite::MapSource{filename};
     
-    return load_from_string(
-        fileContent,
-        options
-    );
+    if(options.target) {
+        return load_from_string(
+            fileContent,
+            options
+        );
+    }
+    
+    return write([options = std::move(options), fileContent](Configuration& config) mutable {
+        options.target = &config.values;
+        return load_from_string(
+            fileContent,
+            options
+        );
+    });
 }
 
 /**
@@ -286,7 +264,7 @@ std::map<std::string, std::string> GlobalSettings::load_from_string(
                     }
                 }
             } catch(const std::exception& e) {
-                if(GlobalSettings::is_runtime_quiet())
+                if(GlobalSettings::is_runtime_quiet(&map))
                 {
                     if(str.length() > 150) {
                         str = utils::ShortenText(str, 150);

@@ -9,7 +9,7 @@ namespace cmn {
     static auto check_callbacks = []() {
         static std::once_flag _check_callbacks;
         std::call_once(_check_callbacks, []() {
-            auto _callback = GlobalSettings::map().register_callbacks({
+            auto _callback = GlobalSettings::register_callbacks({
                 "track_threshold_is_absolute",
                 "track_background_subtraction",
                 "meta_encoding"
@@ -85,7 +85,7 @@ Background::Background(Size2 dimensions, meta_encoding_t::Class)
     
     Background::~Background() {
         if(_callback)
-            GlobalSettings::map().unregister_callbacks(std::move(_callback));
+            GlobalSettings::unregister_callbacks(std::move(_callback));
     }
 
     void Background::update_callback() {

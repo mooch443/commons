@@ -722,7 +722,7 @@ private: \
         } \
     } \
     inline static std::once_flag flag; \
-    inline static cmn::sprite::CallbackFuture _callback_id; \
+    inline static cmn::CallbackFuture _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
     template<Variables M> static void update(std::string_view key, const cmn::sprite::PropertyType& value) { \
@@ -740,19 +740,23 @@ public: \
     static void set_callback(Variables v, callback_fn_t f) { callbacks()[v].emplace_back(f); } \
     static void clear_callbacks() { callbacks().clear(); } \
     static std::vector<std::string> names() { return std::vector<std::string>{ STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; } \
-    static void variable_changed (cmn::sprite::Map::Signal, cmn::sprite::Map &, const std::string_view &key, const cmn::sprite::PropertyType& value) { \
+    static void variable_changed (cmn::sprite::Map::Signal, const std::string_view &key, const cmn::sprite::PropertyType& value) { \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
         std::call_once(flag, [](){ \
-            _callback_id = cmn::GlobalSettings::map().register_callbacks(NAM :: names(), [](std::string_view name){ \
-                    variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
+            _callback_id = cmn::GlobalSettings::register_callbacks(NAM :: names(), [](std::string_view name){ \
+                    auto& value = cmn::GlobalSettings::read_value<cmn::NoType>(name).get(); \
+                    variable_changed(cmn::sprite::Map::Signal::NONE, name, value); \
             }); \
             for(auto &name : NAM :: names()) { \
-                if(cmn::GlobalSettings::map().has(name)) \
-                    variable_changed(cmn::sprite::Map::Signal::NONE, cmn::GlobalSettings::map(), name, cmn::GlobalSettings::map().at(name).get()); \
-                else \
+                if(auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
+                    value.valid()) \
+                { \
+                    variable_changed(cmn::sprite::Map::Signal::NONE, name, value.get()); \
+                } else { \
                     cmn::FormatWarning("Cannot find parameter ", name, " in global settings."); \
+                } \
             } \
         }); \
     } \

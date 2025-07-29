@@ -166,7 +166,7 @@ Httpd::Response HttpClient::page(const std::string &url) {
         
         {
             //auto lock = GUI_LOCK(_gui.lock());
-            if(SETTING(nowindow)) {
+            if(BOOL_SETTING(nowindow)) {
                 //GUI::trigger_redraw();
                 _gui.before_paint(&_base);
             }

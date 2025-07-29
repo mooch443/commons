@@ -261,9 +261,9 @@ RawProcessing::RawProcessing(const gpuMat &average, const gpuMat *float_average,
 void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& input, cv::Mat& output, TagCache* tag_cache) {
     assert(input.type() == CV_8UC1 || input.type() == CV_8UC3);
 
-    static bool enable_diff = SETTING(enable_difference);
-    static bool enable_abs_diff = SETTING(detect_threshold_is_absolute);
-    static bool blur_difference = SETTING(blur_difference);
+    static bool enable_diff = SETTING(enable_difference).value<bool>();
+    static bool enable_abs_diff = SETTING(detect_threshold_is_absolute).value<bool>();
+    static bool blur_difference = SETTING(blur_difference).value<bool>();
     static std::once_flag registered_callback;
     static float adaptive_threshold_scale = 0;
     static int detect_threshold = 25, threshold_maximum = 255;
@@ -277,7 +277,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
     
     std::call_once(registered_callback, [](){
         static const auto callback = [](std::string_view key) {
-            auto& value = GlobalSettings::map().at(key).get();
+            auto value = GlobalSettings::read_value<NoType>(key);
             if (key == "enable_difference")
                 enable_diff = value.template value<bool>();
             else if (key == "detect_threshold_is_absolute")
@@ -306,7 +306,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
                 tags_threshold = value.template value<int>();
         };
         
-        GlobalSettings::map().register_callbacks({
+        GlobalSettings::register_callbacks({
             "enable_difference",
             "detect_threshold_is_absolute",
             "adaptive_threshold_scale",

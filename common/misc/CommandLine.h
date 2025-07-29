@@ -39,8 +39,12 @@ namespace cmn {
         void cd_home();
         
         //! Loads settings passed as command-line options into GlobalSettings map
-        void load_settings(const sprite::Map* additional = nullptr, sprite::Map* = nullptr, const std::vector<std::string>& exclude = {});
+        void load_settings(const std::vector<std::string>& exclude = {});
+        void load_settings(sprite::Map& target, const std::vector<std::string>& exclude = {});
+    private:
+        void _load_settings_impl(const sprite::Map* additional, sprite::Map*, const std::vector<std::string>& exclude);
         
+    public:
         //! Iterate custom command-line options that havent been processed already
         decltype(_options)::const_iterator begin() const { return _options.begin(); }
         decltype(_options)::const_iterator end() const { return _options.end(); }

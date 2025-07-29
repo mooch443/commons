@@ -21,29 +21,34 @@ void SettingsTooltip::update() {
     if(content_changed()) {
         auto str = "<h3>"+_param+"</h3>\n";
         auto access = GlobalSettings::access_level(_param);
-        if(access > AccessLevelType::PUBLIC) {
+        if(bool has_default = GlobalSettings::has_default(_param);
+           access > AccessLevelType::PUBLIC)
+        {
             str += "access: <i>"+std::string(access.name());
-            if(!GlobalSettings::get_default(_param))
+            if(not has_default)
                 str += ", non-default";
             str += "</i>\n";
             
-        } else if(!GlobalSettings::defaults().has(_param))
+        } else if(not has_default)
             str += "<i>non-default</i>\n";
         
         auto ref = GlobalSettings::get(_param);
         str += "type: " +settings::htmlify(ref.valid() ? (std::string)ref.type_name() : "<invalid>") + "\n";
-        if(auto ref = GlobalSettings::get_default(_param);
-           ref)
+        if(auto ref = GlobalSettings::read_default<NoType>(_param);
+           ref.valid())
         {
             str += "default: " +settings::htmlify(ref->valueString()) + "\n";
         }
-        if(auto ref = GlobalSettings::config().examples.at(_param);
+        if(auto ref = GlobalSettings::read_example<NoType>(_param);
            ref.valid())
         {
             str += "example: " +settings::htmlify(ref->valueString()) + "\n";
         }
-        if(GlobalSettings::has_doc(_param))
-            str += "\n" + settings::htmlify(GlobalSettings::doc(_param));
+        if(auto doc = GlobalSettings::read_doc(_param);
+           doc)
+        {
+            str += "\n" + settings::htmlify((std::string)*doc);
+        }
         set_text(str);
     }
     

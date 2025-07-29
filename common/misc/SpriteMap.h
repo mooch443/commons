@@ -42,11 +42,13 @@ namespace sprite {
         const Property<T>& toProperty() const;
         
         template<typename T>
+            requires (not std::same_as<T, bool>)
         operator Property<T>&() const {
             return toProperty<T>();
         }
         
         template<typename T>
+            requires (not std::same_as<T, bool>)
         operator const T() const;
         
         template<typename T>
@@ -125,11 +127,13 @@ namespace sprite {
         Property<T>& toProperty() const;
         
         template<typename T>
+            requires (not std::same_as<T, bool>)
         operator Property<T>&() const {
             return toProperty<T>();
         }
         
         template<typename T>
+            requires (not std::same_as<T, bool>)
         operator const T();
         
         template<typename T>
@@ -225,38 +229,6 @@ concept Iterable = requires(T obj) {
     { std::end(obj) } -> std::input_iterator;
 };
 
-/** Result of registering callbacks.
- *  - `collection` holds IDs that are already active.
- *  - `ready` becomes set once *all* requested callbacks are attached
- *    (or immediately, if they were attached synchronously). */
-struct CallbackFuture {
-    cmn::CallbackCollection      collection;
-    std::optional<std::future<cmn::CallbackCollection>> ready;
-    
-    CallbackFuture() = default;
-    CallbackFuture(CallbackFuture&&) = default;
-    CallbackFuture& operator=(CallbackFuture&&) = default;
-
-    bool is_ready() const {
-        if(not ready.has_value())
-            return true;
-        return ready->wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-    }
-    void finish() {
-        if(ready.has_value()) {
-            auto coll = ready->get();
-            for(auto &[name, id] : coll._ids) {
-                assert(not collection._ids.contains(name));
-                collection._ids[std::string(name)] = id;
-            }
-            ready.reset();
-        }
-    }
-    operator bool() const {
-        return not is_ready() || (bool)collection;
-    }
-};
-
     class Map {
     public:
         enum class Signal {
@@ -289,7 +261,7 @@ struct CallbackFuture {
     public:
         auto& mutex() const { return _mutex; }
         
-        void do_print(const std::string& name, bool value) {
+        void do_print(std::string_view name, bool value) {
             auto guard = LOGGED_LOCK(mutex());
             if (auto it = _props.find(name);
                 it != _props.end())
@@ -392,7 +364,7 @@ struct CallbackFuture {
         template<RegisterInit init_type = RegisterInit::DO_TRIGGER, typename Callback, typename Str>
             requires std::same_as<std::invoke_result_t<Callback, const char*>, void>
                     && std::convertible_to<Str, std::string>
-        CallbackFuture register_callbacks(const std::initializer_list<Str>& names, Callback callback) {
+        CallbackFuture register_callbacks(std::initializer_list<Str> names, Callback callback) {
             if constexpr(std::same_as<Str, const char*>) {
                 std::vector<std::string_view> converted_names;
                 for(const char* str : names) {
@@ -653,6 +625,7 @@ struct CallbackFuture {
     }
     
     template<typename T>
+        requires (not std::same_as<T, bool>)
     Reference::operator const T() {
         auto ptr = _type.lock();
         Property<T> *tmp = dynamic_cast<Property<T>*>(ptr.get());
@@ -712,6 +685,7 @@ void Reference::operator=(const T& value) {
     }
     
     template<typename T>
+        requires (not std::same_as<T, bool>)
     ConstReference::operator const T() const {
         auto ptr = _type.lock();
         const Property<T> *tmp = dynamic_cast<const Property<T>*>(ptr.get());

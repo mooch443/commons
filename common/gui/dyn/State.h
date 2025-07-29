@@ -45,7 +45,7 @@ struct LoopBody {
 };
 
 struct IfBody {
-    std::string variable;
+    pattern::UnresolvedStringPattern variable;
     glz::json_t __if, __else;
     Layout::Ptr _if;
     Layout::Ptr _else;

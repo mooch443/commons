@@ -285,14 +285,6 @@ struct RealFilesystem : FilesystemInterface {
 
 }
 
-namespace cmn::utils {
-
-inline std::string read_file(const file::Path& filename) {
-    return filename.read_file();
-}
-
-}
-
 std::ostream& operator<<(std::ostream& os, const cmn::file::Path& p);
 
 namespace glz {

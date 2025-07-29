@@ -87,7 +87,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
     
     Print("Generating average for frame ", frameIndex," (method='",accumulator.mode().name(),"')...");
     
-    float samples = GlobalSettings::has("average_samples") ? (float)SETTING(average_samples).value<uint32_t>() : (length().get() * 0.1f);
+    float samples = GlobalSettings::read_value_with_default<uint32_t>("average_samples", length().get() / 10u);
     const Frame_t step = Frame_t(narrow_cast<uint>(max(1, length().get() / samples)));
     
     Image f;
@@ -109,7 +109,7 @@ void GenericVideo::generate_average(cv::Mat &av, uint64_t frameIndex, std::funct
             counted = 0_f;
         }
         
-        if(GlobalSettings::has("terminate") && SETTING(terminate))
+        if(GlobalSettings::read_value_with_default<bool>("terminate", false))
             break;
     }
     

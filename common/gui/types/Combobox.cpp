@@ -5,24 +5,13 @@
 namespace cmn::gui {
 using namespace dyn;
 
-tl::expected<std::string, const char*> default_value_of(std::string_view name) {
-    if(auto value = GlobalSettings::current_defaults(name);
-       value)
-    {
-        return value->at(name).get().valueString();
-        
-    } else if(auto value = GlobalSettings::get_default(name);
-              value)
-    {
-        return value->valueString();
-    }
-    
-    return tl::unexpected("No default value available.");
+auto default_value_of(std::string_view name) {
+    return GlobalSettings::read_default_from_all(name);
 }
 
 void Combobox::init() {
     _dropdown = new Dropdown(Box(0, 0, 800, 28));
-    auto keys = settings_map().keys();
+    auto keys = GlobalSettings::keys();
     _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
     _dropdown->set(Textfield::OnClearText_t([this]{
         set_content_changed(true);
@@ -31,7 +20,7 @@ void Combobox::init() {
     }));
     _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
         auto name = item.name();
-        if(settings_map().has(name)) {
+        if(GlobalSettings::has_value(name)) {
             set(ParmName{name});
             if(_settings.on_select)
                 _settings.on_select(ParmName{name});
@@ -60,13 +49,11 @@ void Combobox::init() {
         if(stage())
             stage()->do_hover(nullptr);
         
-        if(auto defaults = GlobalSettings::get_current_defaults();
-           defaults.has(name)) {
-            defaults.at(name).get().copy_to(settings_map());
-        } else if(auto defaults = GlobalSettings::defaults();
-                  defaults.has(name))
-        {
-            defaults.at(name).get().copy_to(settings_map());
+        auto v = GlobalSettings::read_default_from_all(name);
+        if(v.valid()) {
+            GlobalSettings::write([&](Configuration& config){
+                v.get().copy_to(config.values);
+            });
         } else {
             FormatWarning("Do not have a default value for ", name);
             return;
@@ -92,13 +79,15 @@ void Combobox::update_defaults() {
     _does_not_equal_default = false;
     
     if(auto name = parameter();
-       _value && not name.empty() && settings_map().has(name))
+       _value && not name.empty())
     {
-        auto value = settings_map().at(name).get().valueString();
-        if(auto def = default_value_of(name);
-           def && value != def.value())
-        {
-            _does_not_equal_default = true;
+        auto v = GlobalSettings::read_value<NoType>(name);
+        if(v.valid()) {
+            if(auto def = default_value_of(name);
+               def.valid() && v.get() != def.get())
+            {
+                _does_not_equal_default = true;
+            }
         }
     }
     

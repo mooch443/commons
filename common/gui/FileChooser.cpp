@@ -54,7 +54,8 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
             //_button->set_pos(text->pos() + Vec2(0, text->height() + 10));
             //_graph->wrap_object(*_button);
         }
-        if (SETTING(terminate))
+        
+        if (BOOL_SETTING(terminate))
             _running = false;
 
         return _running;
