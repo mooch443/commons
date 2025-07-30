@@ -1,6 +1,5 @@
 #include "DynamicGUI.h"
 #include <gui/types/Button.h>
-#include <gui/types/StaticText.h>
 #include <misc/SpriteMap.h>
 #include <file/DataLocation.h>
 #include <gui/types/Textfield.h>

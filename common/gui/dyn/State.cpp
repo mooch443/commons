@@ -6,6 +6,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/Passthrough.h>
+#include <misc/default_settings.h>
 
 namespace cmn::gui::dyn {
 
@@ -496,6 +497,8 @@ bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure
 bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state)
 {
     bool dirty = false;
+    bool error = false;
+    
     auto &obj = std::get<LoopBody>(object);
     if (not obj._state) {
         obj._state = std::make_unique<State>();
@@ -505,7 +508,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     
     PreVarProps ps = extractControls(obj.variable);
     auto props = ps.parse(context, state);
-    
+
     if(context.has(props.name)) {
         if(context.variable(props.name)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = context.variable(props.name)->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
@@ -634,6 +637,84 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             }
             //o.to<Layout>()->set_children(ptrs);
         }
+        else if(context.variable(props.name)->is<std::string>()) {
+            auto str = context.variable(props.name)->value<std::string>(props);
+            if(utils::beginsWith(str, '[')
+               && utils::endsWith(str, ']'))
+            {
+                std::vector<std::string_view> vector;
+                
+                try {
+                    vector = util::parse_array_parts(util::truncate(std::string_view(str)));
+                } catch(const std::exception& ex) {
+                    error = true;
+                }
+                
+                std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
+                if(ptrs.size() != min(5000u, vector.size()))
+                    dirty = true;
+                ptrs.resize(vector.size());
+                
+                Context tmp = context;
+                size_t i = 0;
+                for(auto &v : vector) {
+                    tmp.variables["index"] = std::unique_ptr<VarBase_t>{
+                        new Variable([i](const VarProps&) -> size_t {
+                            return i;
+                        })
+                    };
+                    tmp.variables["i"] = std::unique_ptr<VarBase_t>{
+                        new Variable([v = std::string(v)](const VarProps&) -> std::string {
+                            return v;
+                        })
+                    };
+                    
+                    // try to reuse existing objects first:
+                    Layout::Ptr &ptr = ptrs.at(i);
+                    if(not ptr) {
+                        ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
+                        dirty = true;
+                    }
+                    if(ptr) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                            dirty = true;
+                        } else if(ptr && ptr->is_dirty()) {
+                            dirty = true;
+                        }
+                    }
+                    
+                    ++i;
+                    if (i >= 5000) {
+                        break;
+                    }
+                }
+                
+                ptrs.resize(i);
+                o.to<Layout>()->set_children(std::move(ptrs));
+                
+                if(dirty) {
+                    //Print(o.to<Layout>(), " is dirty.");
+                    o.to<Layout>()->set_layout_dirty();
+                    o.to<Layout>()->update();
+                }
+                
+            } else {
+                error = true;
+            }
+        }
+        else {
+            error = true;
+        }
+    }
+    else error = true;
+    
+    if(error) {
+        auto ptrs = std::vector<Layout::Ptr>();
+        auto text = settings::htmlify("Invalid loop for "+ context.variable(props.name)->value_string(props)+ " in "+glz::write_json(obj.child).value_or("null"));
+        ptrs.push_back(Layout::Make<StaticText>(attr::Str{text}));
+        o.to<Layout>()->set_children(std::move(ptrs));
+        o.to<Layout>()->set_layout_dirty();
+        o.to<Layout>()->update();
     }
     
     return dirty;
