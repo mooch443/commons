@@ -557,7 +557,7 @@ namespace cmn {
          */
         template<typename T>
         static sprite::Reference get_create(std::string_view name, const T& default_value) {
-            write([&](Configuration& config) -> sprite::Reference {
+            return write([&](Configuration& config) -> sprite::Reference {
                 if(config.values.has(name)) {
                     return config.values.at(name);
                 }

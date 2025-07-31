@@ -33,8 +33,8 @@ class _ProtectedProperty<T, true>
     
 public:
     constexpr _ProtectedProperty() noexcept = default;
-    constexpr _ProtectedProperty(T initial) noexcept
-    : _value(initial) {}
+    constexpr _ProtectedProperty(T initial) noexcept : _value(initial) {}
+    
     _ProtectedProperty(const _ProtectedProperty&) = delete;
     _ProtectedProperty& operator=(const _ProtectedProperty&) = delete;
     _ProtectedProperty(_ProtectedProperty&&) = default;
@@ -60,6 +60,7 @@ class _ProtectedProperty<T, false>
 public:
     _ProtectedProperty() = default;
     _ProtectedProperty(const T& initial) : _value(initial) {}
+    _ProtectedProperty(T&& initial) : _value(std::move(initial)) {}
     
     [[nodiscard]] T get() const {
         std::shared_lock lock(_mtx);
@@ -69,10 +70,13 @@ public:
         std::unique_lock lock(_mtx);
         _value = v;
     }
+    void set(T&& v) {
+        std::unique_lock lock(_mtx);
+        _value = std::move(v);
+    }
 };
 
 template<typename T>
-class ProtectedProperty : public _ProtectedProperty<T, UseAtomic<T>>
-{};
+using ProtectedProperty = _ProtectedProperty<T, UseAtomic<T>>;
 
 }
