@@ -92,7 +92,7 @@ private:
 #define UPDATE_UPDATER(NAME) +[](Store& self) { \
     self.NAME = FAST_SETTING(NAME); \
 }
-    //self.NAME = SETTING(NAME).value<track::Settings::NAME##_t>(); \
+    //self.NAME = READ_SETTING(NAME, track::Settings::NAME##_t); \
 //}
 
 #undef STRINGIZE_SINGLE

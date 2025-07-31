@@ -16,13 +16,13 @@ namespace cmn {
 
             }, [](std::string_view name) {
                 if (name == "track_threshold_is_absolute") {
-                    cmn::track_threshold_is_absolute = SETTING(track_threshold_is_absolute).value<bool>();
+                    cmn::track_threshold_is_absolute = BOOL_SETTING(track_threshold_is_absolute);
                 }
                 else if (name == "track_background_subtraction") {
-                    cmn::track_background_subtraction = SETTING(track_background_subtraction).value<bool>();
+                    cmn::track_background_subtraction = BOOL_SETTING(track_background_subtraction);
                 }
                 else if (name == "meta_encoding") {
-                    cmn::meta_encoding = SETTING(meta_encoding).value<meta_encoding_t::Class>().value();
+                    cmn::meta_encoding = READ_SETTING(meta_encoding, meta_encoding_t::Class).value();
 
                     //Print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
                 }

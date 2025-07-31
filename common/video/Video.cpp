@@ -93,7 +93,7 @@ Video::Video()
         _please_stop(false),
         _thread(NULL)
 {
-    auto color_channel = SETTING(color_channel).value<std::optional<uint8_t>>();
+    auto color_channel = READ_SETTING(color_channel, std::optional<uint8_t>);
     if(color_channel.has_value()) {
         _color_channel = color_channel.value();
     }

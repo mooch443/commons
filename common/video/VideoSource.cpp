@@ -949,7 +949,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     {
         method = *v;
     }
-    //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(SETTING(averaging_method).value<std::string>()) != "max";
+    //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(READ_SETTING(averaging_method, std::string)) != "max";
     Print("Use averaging method: '", method.name(),"'");
     
     auto [start, end] = [this]() -> std::tuple<Frame_t, Frame_t>{
@@ -996,7 +996,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     Frame_t::number_t samples = [L](){
         auto v = GlobalSettings::read_value<uint32_t>("average_samples");
-        return v ? (float)SETTING(average_samples).value<uint32_t>() : (L.get() * 0.01f);
+        return v ? (float)READ_SETTING(average_samples, uint32_t) : (L.get() * 0.01f);
     }();
     uint64_t step = max(1u, N_indexes < samples
                                 ? 1u

@@ -26,7 +26,7 @@ public:
     template<typename T>
     const std::string to_string(const T& data, typename std::enable_if<std::is_floating_point<T>::value, bool>::type* = 0, decltype((operator<<(std::ofstream(), data).bad()))* =0)
     {
-        auto output_csv_decimals = SETTING(output_csv_decimals).value<uint8_t>();
+        auto output_csv_decimals = READ_SETTING(output_csv_decimals, uint8_t);
         std::stringstream ss;
         ss << std::fixed << std::setprecision(output_csv_decimals);
         ss << data;

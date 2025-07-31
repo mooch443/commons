@@ -212,9 +212,9 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
     _list->set(ItemFont_t(0.6f, gui::Align::Left));
     
     _base.platform()->set_icons({
-        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon16.png"),
-        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon32.png"),
-        file::DataLocation::parse("app", "gfx/"+SETTING(app_name).value<std::string>()+"Icon64.png")
+        file::DataLocation::parse("app", "gfx/"+READ_SETTING(app_name, std::string)+"Icon16.png"),
+        file::DataLocation::parse("app", "gfx/"+READ_SETTING(app_name, std::string)+"Icon32.png"),
+        file::DataLocation::parse("app", "gfx/"+READ_SETTING(app_name, std::string)+"Icon64.png")
     });
     update_size();
 }

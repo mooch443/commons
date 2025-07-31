@@ -10,9 +10,11 @@
 #undef min
 #endif
 
-#define SETTING(NAME) (GlobalSettings::get(#NAME))
-#define BOOL_SETTING(NAME) (GlobalSettings::read_value_with_default(#NAME, false))
-#define READ_SETTING(TYPE, NAME) (GlobalSettings::read_value< TYPE >( #NAME ))
+#define SETTING(NAME) (cmn::GlobalSettings::get(#NAME))
+#define BOOL_SETTING(NAME) (cmn::GlobalSettings::read_value_with_default(#NAME, false))
+#define OPTIONAL_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ))
+#define READ_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ).value())
+#define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::GlobalSettings::read_value_with_default( #NAME , __VA_ARGS__ ))
 
 namespace cmn {
     /*namespace detail {

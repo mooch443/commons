@@ -13,7 +13,7 @@ namespace cmn::gui {
         SETTING(terminate) = false;
         bool _do_terminate = false;
         cmn::CallbackFuture callback = GlobalSettings::register_callbacks({"terminate"}, [&_do_terminate](auto) {
-            _do_terminate = SETTING(terminate).value<bool>();
+            _do_terminate = BOOL_SETTING(terminate);
         });
         
         gui::LoopStatus status = gui::LoopStatus::UPDATED;

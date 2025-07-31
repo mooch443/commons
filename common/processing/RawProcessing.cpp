@@ -46,13 +46,15 @@ void process_tags(int32_t index,
 {
     using namespace gui;
     
-    static const double cm_per_pixel = SETTING(cm_per_pixel).value<Float2_t>() <= 0 ? 234_F / 3007_F : SETTING(cm_per_pixel).value<Float2_t>();
-    static const Range<double> tag_size_range = SETTING(tags_size_range).value<Range<double>>();
-    static const auto tags_num_sides = SETTING(tags_num_sides).value<Range<int>>();
-    static const auto tags_approximation = SETTING(tags_approximation).value<float>();
-    static const auto tags_maximum_image_size = SETTING(tags_maximum_image_size).value<Size2>();
+    static const double cm_per_pixel = READ_SETTING_WITH_DEFAULT(cm_per_pixel, 1_F) <= 0
+                ? 234_F / 3007_F
+                : READ_SETTING_WITH_DEFAULT(cm_per_pixel, 1_F);
+    static const Range<double> tag_size_range = READ_SETTING(tags_size_range, Range<double>);
+    static const auto tags_num_sides = READ_SETTING(tags_num_sides, Range<int>);
+    static const auto tags_approximation = READ_SETTING(tags_approximation, float);
+    static const auto tags_maximum_image_size = READ_SETTING(tags_maximum_image_size, Size2);
     
-    static const bool show_debug_info = SETTING(tags_debug).value<bool>();
+    static const bool show_debug_info = BOOL_SETTING(tags_debug);
     
     cv::Mat l;
     cv::Mat rotated;
@@ -261,9 +263,9 @@ RawProcessing::RawProcessing(const gpuMat &average, const gpuMat *float_average,
 void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& input, cv::Mat& output, TagCache* tag_cache) {
     assert(input.type() == CV_8UC1 || input.type() == CV_8UC3);
 
-    static bool enable_diff = SETTING(enable_difference).value<bool>();
-    static bool enable_abs_diff = SETTING(detect_threshold_is_absolute).value<bool>();
-    static bool blur_difference = SETTING(blur_difference).value<bool>();
+    static bool enable_diff = BOOL_SETTING(enable_difference);
+    static bool enable_abs_diff = BOOL_SETTING(detect_threshold_is_absolute);
+    static bool blur_difference = BOOL_SETTING(blur_difference);
     static std::once_flag registered_callback;
     static float adaptive_threshold_scale = 0;
     static int detect_threshold = 25, threshold_maximum = 255;
@@ -610,7 +612,7 @@ void RawProcessing::generate_binary(const cv::Mat& /*cpu_input*/, const gpuMat& 
         INPUT = &_floatb0;
         OUTPUT = &_buffer1;
         
-        static const bool show_debug_info = SETTING(tags_debug).value<bool>();
+        static const bool show_debug_info = BOOL_SETTING(tags_debug);
         cv::Mat local, result;
         
         /*if(show_debug_info) {
