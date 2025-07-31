@@ -35,6 +35,10 @@ public:
     constexpr _ProtectedProperty() noexcept = default;
     constexpr _ProtectedProperty(T initial) noexcept
     : _value(initial) {}
+    _ProtectedProperty(const _ProtectedProperty&) = delete;
+    _ProtectedProperty& operator=(const _ProtectedProperty&) = delete;
+    _ProtectedProperty(_ProtectedProperty&&) = default;
+    _ProtectedProperty& operator=(_ProtectedProperty&&) = default;
     
     [[nodiscard]] T get() const noexcept {
         return _value.load(std::memory_order_relaxed);

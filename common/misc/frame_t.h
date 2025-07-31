@@ -186,6 +186,8 @@ struct hash<cmn::Frame_t>
 {
     size_t operator()(const cmn::Frame_t& k) const
     {
+        if(not k.valid())
+            return std::hash<cmn::Frame_t::number_t>{}(std::numeric_limits<cmn::Frame_t::number_t>::max());
         return std::hash<cmn::Frame_t::number_t>{}(k.get());
     }
 };
