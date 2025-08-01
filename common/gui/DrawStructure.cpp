@@ -456,10 +456,18 @@ void DrawStructure::close_dialogs() {
     }
 
     void DrawStructure::unregister_end_object(gui::Drawable& d) {
-        std::unique_lock guard(_end_object_mutex);
-        auto it = _end_objects.find(&d);
-        if(it != _end_objects.end())
-            _end_objects.erase(it);
+        {
+            std::unique_lock guard(_end_object_mutex);
+            auto it = _end_objects.find(&d);
+            if(it != _end_objects.end())
+                _end_objects.erase(it);
+        }
+        
+        for(auto it = _root.children().begin(); it != _root.children().end(); ++it)
+            if(*it == &d) {
+                _root.remove_child(&d);
+                break;
+            }
     }
     
     void DrawStructure::wrap_object(gui::Drawable& d) {

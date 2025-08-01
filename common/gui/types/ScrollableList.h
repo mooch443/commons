@@ -196,6 +196,9 @@ namespace cmn::gui {
         }
         
         ~ScrollableList() {
+            if (stage())
+                stage()->unregister_end_object(tooltip);
+            
             //for(auto r : _rects)
             //    delete r;
             for(auto t : _texts)
@@ -207,9 +210,6 @@ namespace cmn::gui {
                         delete d;
                 }
             }
-            
-            if (stage())
-                stage()->unregister_end_object(tooltip);
         }
         
         void set_stays_toggled(bool v) {
@@ -677,6 +677,21 @@ namespace cmn::gui {
         
         void set_size(const Size2& size) override {
             set(LabelDims_t{size});
+        }
+        
+        void set_stage(DrawStructure* stage) override {
+            if(stage != _stage) {
+                if(_stage)
+                    _stage->unregister_end_object(tooltip);
+            }
+            Entangled::set_stage(stage);
+        }
+        
+        void set_parent(SectionInterface* parent) override {
+            if(_parent == parent)
+                return;
+            
+            Entangled::set_parent(parent);
         }
         
     private:
