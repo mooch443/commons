@@ -260,7 +260,7 @@ static_assert(false, "OpenCV version insufficient.");
 
 
 #define UNUSED(X) (std::ignore = X)
-#include <misc/expected.h>
+#include <expected>
 #include <misc/useful_concepts.h>
 #include <misc/UnorderedVectorSet.h>
 

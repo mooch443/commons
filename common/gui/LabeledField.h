@@ -342,7 +342,7 @@ struct LabeledPath : public LabeledField {
     };
     
     std::mutex _file_mutex;
-    std::future<tl::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
+    std::future<std::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
     std::optional<std::function<std::optional<file::Path>()>> _should_reload;
     
     gui::derived_ptr<CustomDropdown> _dropdown;
