@@ -21,6 +21,7 @@ namespace cmn::gui {
         Color _accent_color;
         float _max_w{0};
         float _width_limit{0};
+        LabelAutoSize_t _auto_limit_size{true};
         
         GETTER(std::vector<std::shared_ptr<Item>>, items);
         std::vector<std::shared_ptr<Rect>> _rects;
@@ -53,6 +54,10 @@ namespace cmn::gui {
         void set(Placeholder_t);
         void set(CornerFlags_t) override;
         void set(LabelCornerFlags);
+        void set(const LabelDims_t& dims) {
+            set_size(Size2(dims));
+        }
+        void set(LabelAutoSize_t);
         
         void set_display_selection(bool v);
         void set_toggle(bool toggle);

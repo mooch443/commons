@@ -12,6 +12,7 @@ namespace cmn::gui {
     ATTRIBUTE_ALIAS(ItemPadding_t, Vec2)
     ATTRIBUTE_ALIAS(ListDims_t, Size2)
     ATTRIBUTE_ALIAS(LabelDims_t, Size2)
+    NUMBER_ALIAS(LabelAutoSize_t, bool)
     ATTRIBUTE_ALIAS(LabelFont_t, Font)
     ATTRIBUTE_ALIAS(DetailColor_t, Color)
     ATTRIBUTE_ALIAS(ListFillClr_t, Color)

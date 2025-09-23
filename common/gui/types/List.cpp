@@ -99,6 +99,15 @@ void List::set(CornerFlags_t flags) {
     set_content_changed(true);
 }
 
+void List::set(LabelAutoSize_t auto_limit) {
+    if(_auto_limit_size == auto_limit) {
+        return;
+    }
+    
+    _auto_limit_size = auto_limit;
+    set_content_changed(true);
+}
+
 void List::set(LabelCornerFlags flags) {
     if(flags == _label_corners)
         return;
@@ -156,10 +165,17 @@ void List::set(LabelCornerFlags flags) {
         
         //max_w = min(width(), max_w);
         _max_w = max_w;
-        Entangled::set_size(Size2(_width_limit > 0
-                                  ? min(_width_limit, _max_w + 20)
-                                  : (_max_w + 20),
-                                  height()));
+        if((bool)_auto_limit_size) {
+            Entangled::set_size(Size2(_width_limit > 0
+                                      ? min(_width_limit, _max_w + 20)
+                                      : (_max_w + 20),
+                                      height()));
+        } else {
+            Entangled::set_size(Size2(_width_limit > 0
+                                          ? _width_limit
+                                          : (_max_w + 20),
+                                          height()));
+        }
         set_content_changed(true);
     }
     

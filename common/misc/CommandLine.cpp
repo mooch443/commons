@@ -109,6 +109,12 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                 _options.push_back({key, sval});
             }
         };
+            
+            Print("----");
+            for(int i = 1; i < argc; ++i) {
+                Print("argv[",i,"] = ", std::string(argv[i]));
+            }
+            Print("----");
         
         for (int i=1; i<argc; i++) {
             if (argv[i][0] == '-' && (/*argv[i][1] == 0 || */argv[i][1] > '9' || argv[i][1] < '0')) {

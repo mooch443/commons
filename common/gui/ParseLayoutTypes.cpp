@@ -615,6 +615,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         if(pos != Vec2(0)) ref->set(attr::Loc{pos});
         if(size != Vec2(0)) ref->set(attr::Size{size});
         
+        LabelAutoSize_t auto_limit_size{ get(LabelAutoSize_t{true}, "auto_limit_size") };
+        ref->set(auto_limit_size);
+        
         ref->set(placeholder);
         
         if(origin != Vec2(0)) ref->set(attr::Origin{origin});
@@ -637,6 +640,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 
                 CornerFlags corners{ dyn::get(state, p, CornerFlags{}, "corners", hash, "label_") };
                 ref->set(LabelCornerFlags{corners});
+                
+                LabelDims_t label_dims{ dyn::get(state, p, Size2(), "size", hash, "label_")};
+                if(not label_dims.empty())
+                    ref->set(label_dims);
             }
         }
         
