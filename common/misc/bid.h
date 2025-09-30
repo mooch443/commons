@@ -19,13 +19,18 @@ enum class FilterReason {
     SecondThreshold,
     Category,
     Label,
-    LabelConfidenceThreshold,
+    TrackConfidenceThreshold,
     SplitFailed,
     OnlySegmentations,
     BdxIgnored,
     
     Unknown
 };
+
+/// @brief  Converts a FilterReason enum value to its corresponding string representation.
+/// @param reason The FilterReason enum value to convert.
+/// @return A string representation of the FilterReason.
+const char* filter_reason_to_str(FilterReason reason);
 
 /**
  * A weak pointer to a Blob object.
