@@ -414,7 +414,9 @@ concept Iterable = requires(T obj) {
                         callback, init_type, prom, remaining, cmn::CallbackCollection{}
                     );
                     ++(*remaining);
+#ifndef NDEBUG
                     FormatWarning("Cannot find property ", name, " to attach a callback to.");
+#endif
                 }
             }
             
