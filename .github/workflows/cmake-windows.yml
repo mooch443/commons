@@ -45,7 +45,7 @@ jobs:
         use-only-tar-bz2: true
     - name: Build
       shell: powershell
-      working-directory: ${{runner.workspace}}
+      working-directory: ${{github.workspace}}
       run: |
         echo "::group::Info"
         conda info

@@ -45,7 +45,7 @@ jobs:
         use-only-tar-bz2: true
     - name: Build
       shell: bash -l {0}
-      working-directory: ${{runner.workspace}}
+      working-directory: ${{github.workspace}}
       env:
         CC:   gcc-10
         CXX:  g++-10
