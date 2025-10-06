@@ -701,13 +701,18 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr->on_click([action, context = context](auto){
-            if(auto it = context.actions.find(action.name);
-               it != context.actions.end())
-            {
-                State state;
-                it->second(action.parse(context, state));
-            } else
-                Print("Unknown Action: ", action);
+            try {
+                if(auto it = context.actions.find(action.name);
+                   it != context.actions.end())
+                {
+                    State state;
+                    it->second(action.parse(context, state));
+                } else
+                    Print("Unknown Action: ", action);
+                
+            } catch(const std::exception& ex) {
+                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+            }
         });
     }
     
@@ -725,13 +730,17 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr.to<Checkbox>()->on_change([action, context=context](){
-            if(auto it = context.actions.find(action.name);
-               it != context.actions.end()) 
-            {
-                State state;
-                it->second(action.parse(context, state));
-            } else
-                Print("Unknown Action: ", action);
+            try {
+                if(auto it = context.actions.find(action.name);
+                   it != context.actions.end())
+                {
+                    State state;
+                    it->second(action.parse(context, state));
+                } else
+                    Print("Unknown Action: ", action);
+            } catch(const std::exception& ex) {
+                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+            }
         });
     }
     
@@ -747,13 +756,17 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         ptr.to<Textfield>()->on_enter([action, context=context](){
-            if(auto it = context.actions.find(action.name);
-               it != context.actions.end()) 
-            {
-                State state;
-                it->second(action.parse(context, state));
-            } else
-                Print("Unknown Action: ", action);
+            try {
+                if(auto it = context.actions.find(action.name);
+                   it != context.actions.end()) 
+                {
+                    State state;
+                    it->second(action.parse(context, state));
+                } else
+                    Print("Unknown Action: ", action);
+            } catch(const std::exception& ex) {
+                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+            }
         });
     }
     
