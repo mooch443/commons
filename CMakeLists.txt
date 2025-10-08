@@ -816,7 +816,7 @@ if(WITH_FFMPEG)
         -DFFMPEG_DIR:PATH=${FFMPEG_DIR}
         -DFFMPEG_LIB_DIR:PATH=${FFMPEG_DIR}
         -DFFMPEG_INCLUDE_DIRS=${AVDEVICE_INCLUDE_DIR}
-        -DOPENCV_FFMPEG_USE_FIND_PACKAGE=OFF
+        -DOPENCV_FFMPEG_USE_FIND_PACKAGE=ON
         -DOPENCV_FFMPEG_ENABLE_LIBAVDEVICE=ON
     )
 
@@ -1293,7 +1293,8 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_OPENEXR=OFF 
             -DWITH_PVAPI=OFF 
             -DWITH_GIGEAPI=OFF 
-            -DWITH_QT=ON 
+            -DWITH_QT=OFF 
+            -DWITH_GTK=OFF
             -DWITH_TIFF=OFF 
             -DWITH_V4L=OFF 
             -DBUILD_PROTOBUF:BOOL=OFF
@@ -1304,6 +1305,8 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_MATLAB=OFF 
             -DWITH_GPHOTO2=OFF 
             -DWITH_LAPACK=OFF 
+            -DWITH_DC1394=OFF
+            -DWITH_XINE=OFF
             -DBUILD_opencv_apps=OFF 
             -DBUILD_ANDROID_EXAMPLES=OFF 
             -DBUILD_DOCS=OFF 
@@ -1358,6 +1361,7 @@ if(${COMMONS_BUILD_OPENCV})
             -DBUILD_opencv_xobjdetect=OFF 
             -DBUILD_opencv_xphoto=OFF
             -DWITH_FFMPEG:BOOL=TRUE
+            -DOPENCV_FFMPEG_USE_FIND_PACKAGE=ON
             -DBUILD_DOCS=OFF
             -DBUILD_EXAMPLES=OFF
             -DBUILD_FAT_JAVA_LIB=OFF
@@ -1381,6 +1385,9 @@ if(${COMMONS_BUILD_OPENCV})
             -DCMAKE_BUILD_TYPE=Release
             -DWITH_PTHREADS_PF=OFF
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+            -DOPENCV_ENABLE_NONFREE=OFF
+            -DWITH_FFTW=OFF
+            -DPKG_CONFIG_USE_STATIC_LIBS=OFF
     )
             #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 
@@ -1407,15 +1414,21 @@ else()
             -DWITH_EIGEN:BOOL=FALSE
             -DWITH_CUDA:BOOL=FALSE
             -DWITH_V4L=OFF 
+            -DWITH_1394=OFF
+            -DWITH_DC1394=OFF
             -DWITH_FFMPEG:BOOL=TRUE
+            -DOPENCV_FFMPEG_USE_FIND_PACKAGE=ON
             -DWITH_MSMF:BOOL=FALSE
             -DWITH_IPP:BOOL=FALSE
             -DWITH_OBSENSOR=OFF
             -DWITH_GTK:BOOL=FALSE
+            -DWITH_QT:BOOL=OFF
             -DWITH_CAIRO:BOOL=FALSE
             -DWITH_PNG:BOOL=TRUE
             -DWITH_GSTREAMER:BOOL=OFF
             -DWITH_CAROTENE:BOOL=FALSE
+            -DWITH_GPHOTO2=OFF
+            -DWITH_XINE=OFF
             -DBUILD_PERF_TESTS:BOOL=FALSE
             -DBUILD_opencv_apps:BOOL=FALSE
             -DBUILD_opencv_java:BOOL=FALSE
@@ -1441,7 +1454,7 @@ else()
             -DWITH_JASPER:BOOL=OFF
             -DBUILD_opencv_world:BOOL=OFF
             -DBUILD_opencv_gapi=ON
-            -DBUILD_WITH_STATIC_CRT:BOOL=ON
+            -DBUILD_WITH_STATIC_CRT:BOOL=OFF
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
@@ -1450,6 +1463,9 @@ else()
             -DENABLE_PRECOMPILED_HEADERS=${OPENCV_USE_PCH}
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+            -DOPENCV_ENABLE_NONFREE=OFF
+            -DWITH_FFTW=OFF
+            -DPKG_CONFIG_USE_STATIC_LIBS=OFF
     )
             #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 endif()
