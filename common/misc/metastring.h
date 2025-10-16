@@ -1364,8 +1364,20 @@ Q fromStr(cmn::StringLike auto&& str)
             ret.push_back(v);
         }
     }
-            
-    return ret;
+    
+    if constexpr(is_array_derived<Q>::value) {
+        static constexpr std::size_t N = std::tuple_size_v<Q>;
+        using value_t = Q::value_type;
+        
+        if(N != ret.size())
+            throw std::invalid_argument("Unexpected number of arguments.");
+        return [&]<std::size_t... I>(std::index_sequence<I...>){
+            return std::array{ ret[static_cast<value_t>(I)]... };
+        }(std::make_index_sequence<N>{});
+
+    } else {
+        return ret;
+    }
 }
     
 template<class Q>
