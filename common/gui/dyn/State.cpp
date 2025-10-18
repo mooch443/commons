@@ -10,6 +10,7 @@
 
 namespace cmn::gui::dyn {
 
+static constexpr uint64_t max_displayed_objects = 10000u;
 
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
@@ -548,7 +549,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     //(*obj._state)._variable_values = std::move(previous);
 
                     ++i;
-                    if (i >= 5000) {
+                    if (i >= max_displayed_objects) {
                         break;
                     }
                 }
@@ -560,7 +561,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             } else {
                 //State &state = *obj._state;
                 Context tmp = context;
-                for(size_t i=0; i<obj.cache.size() && i < 5000; ++i) {
+                for(size_t i=0; i<obj.cache.size() && i < max_displayed_objects; ++i) {
                     //auto previous = (*obj._state)._variable_values;
                     tmp.variables["i"] = obj.cache[i];
                     auto& p = o.to<Layout>()->objects().at(i);
@@ -588,7 +589,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             Context tmp = context;
             std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
-            if(ptrs.size() != min(5000u, vector.size()))
+            if(ptrs.size() != min(max_displayed_objects, vector.size()))
                 dirty = true;
             ptrs.resize(vector.size());
             
@@ -623,7 +624,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 //obj._state->_variable_values = std::move(previous);
 
                 ++i;
-                if (i >= 5000) {
+                if (i >= max_displayed_objects) {
                     break;
                 }
             }
@@ -652,7 +653,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 }
                 
                 std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
-                if(ptrs.size() != min(5000u, vector.size()))
+                if(ptrs.size() != min(max_displayed_objects, vector.size()))
                     dirty = true;
                 ptrs.resize(vector.size());
                 
@@ -685,7 +686,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     }
                     
                     ++i;
-                    if (i >= 5000) {
+                    if (i >= max_displayed_objects) {
                         break;
                     }
                 }
