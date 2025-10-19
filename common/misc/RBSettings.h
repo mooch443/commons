@@ -216,6 +216,7 @@ public:
                      individual_names,
                      midline_stiff_percentage,
                      match_min_probability,
+                     match_topk,
                      posture_direction_smoothing,
                      tags_path,
                      grid_points,
