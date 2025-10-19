@@ -376,9 +376,7 @@ void Dialog::set_closed() {
             if(!dialog_window_size().empty())
                 size = dialog_window_size();
             
-            auto rect = new Rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red}, Origin{0.5});
-            rect->set_clickable(true);
-            rect = add_object(rect);
+            rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red}, Origin{0.5}, Clickable{true}, CornerFlags_t{false, false, true, true});
             wrap_object(*_dialogs.front());
         }
         
