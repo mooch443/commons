@@ -101,6 +101,10 @@ public:
     auto get(auto de, auto name, std::string name_prefix="") {
         return gui::dyn::get(state, obj, de, name, hash, name_prefix);
     }
+
+    bool has(auto name) {
+        return obj.find(name) != obj.end();
+    }
     
     // Initialize from a JSON object
     LayoutContext(GUITaskQueue_t*, const glz::json_t::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
