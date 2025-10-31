@@ -270,15 +270,7 @@ namespace cmn::pixel {
 
                         } else {
                             // Fall back to the generic (compile‑time optimised) helper.
-                            auto pixel_value = diffable_pixel_value<input, output>(px);
-
-                            if constexpr (output.channels == 3) {
-                                grey_value = bgr2gray(pixel_value);
-                            } else if constexpr (output.is_r3g3b2()) {
-                                grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
-                            } else {
-                                grey_value = pixel_value;
-                            }
+                            grey_value = grey_diffable_pixel_value<input, output>(px);
                         }
 
                         // 2.  Determine whether this pixel is “different”.

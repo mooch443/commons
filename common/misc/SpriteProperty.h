@@ -51,6 +51,8 @@ namespace cmn {
 
             GETTER(std::function<bool()>, optional_has_value);
             
+            GETTER(std::function<std::unique_ptr<PropertyType>()>, dereference_optional);
+            
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false);
             
@@ -80,6 +82,9 @@ namespace cmn {
                 };
                 _optional_has_value = []() -> bool {
                     throw U_EXCEPTION("PropertyType::optional_has_value() not initialized");
+                };
+                _dereference_optional = []() -> std::unique_ptr<PropertyType> {
+                    throw U_EXCEPTION("PropertyType::_dereference_optional not initialized.");
                 };
             }
             
@@ -337,11 +342,17 @@ namespace cmn {
                 _optional_has_value = [this]() -> bool {
                     return value().has_value();
                 };
+                _dereference_optional = [this]() -> std::unique_ptr<PropertyType> {
+                    return std::make_unique<Property<typename ValueType::value_type>>(name(), value().value());
+                };
             }
             
             template<typename T = ValueType>
             void init_optional(typename std::enable_if_t<not is_instantiation<std::optional, T>::value, T> * = nullptr) {
                 _optional_has_value = []() -> bool { throw U_EXCEPTION("This type is not an Optional, so optional_has_value() cannot be called."); };
+                _dereference_optional = []() -> std::unique_ptr<PropertyType> {
+                    throw U_EXCEPTION("This type is not an Optional, so _dereference_optional() cannot be called.");
+                };
             }
             
             template<typename K>

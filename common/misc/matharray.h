@@ -98,6 +98,24 @@ public:
         }
         return *this;
     }
+
+    // Meta integration helpers
+    std::string toStr() const {
+        return Meta::toStr((const std::array<T, N>&)*this);
+    }
+
+    static std::string class_name() {
+        return cmn::Meta::name<std::array<T, N>>();
+    }
+
+    template<typename Str>
+    static MathArray fromStr(Str&& str) {
+        return Meta::fromStr<std::array<T, N>>(std::forward<Str>(str));
+    }
+    
+    glz::json_t to_json() const {
+        return cvt2json((const std::array<T, N>&)*this);
+    }
     
     // Print the array
     friend std::ostream& operator<<(std::ostream& os, const MathArray& arr) {

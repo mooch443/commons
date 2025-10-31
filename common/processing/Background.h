@@ -152,22 +152,6 @@ concept has_static_apply = requires(Args&&... args) {
     { Impl::apply(std::forward<Args>(args)...) };
 };
 
-template<InputInfo input, OutputInfo output>
-constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
-    auto pixel_value = diffable_pixel_value<input, output>(input_data);
-
-    uchar grey_value;
-    if constexpr(output.channels == 3) {
-        grey_value = bgr2gray(pixel_value);
-    } else if constexpr(output.is_r3g3b2()) {
-        grey_value = bgr2gray(r3g3b2_to_vec(pixel_value));
-    } else {
-        grey_value = pixel_value;
-    }
-    
-    return std::make_tuple(pixel_value, grey_value);
-}
-
 template<InputInfo input, OutputInfo output, typename Pixel>
 constexpr uchar to_grey_value(Pixel pixel_value) noexcept {
     if constexpr(output.channels == 3) {
@@ -178,6 +162,19 @@ constexpr uchar to_grey_value(Pixel pixel_value) noexcept {
         return pixel_value;
     }
 }
+
+template<InputInfo input, OutputInfo output>
+constexpr uchar grey_diffable_pixel_value(const uchar* input_data) noexcept {
+    auto pixel_value = diffable_pixel_value<input, output>(input_data);
+    return to_grey_value<input, output>(pixel_value);
+}
+
+template<InputInfo input, OutputInfo output>
+constexpr auto dual_diffable_pixel_value(const uchar* input_data) noexcept {
+    auto pixel_value = diffable_pixel_value<input, output>(input_data);
+    return std::make_tuple(pixel_value, to_grey_value<input, output>(pixel_value));
+}
+
     template<OutputInfo output, typename Pixel>
         requires (std::same_as<Pixel, RGBArray> || std::is_integral_v<Pixel>)
     constexpr void write_pixel_value(uchar* image_ptr, Pixel value) {
@@ -367,7 +364,8 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
             } else {
                 if constexpr(has_static_apply<impl, int, int>) { //std::is_invocable_v<decltype(&impl::apply), int, int>) {
                     assert(info.data != nullptr);
-                    return impl::apply(info.data[ptr_safe_t(x) + ptr_safe_t(y) * info.width], value);
+                    const ptr_safe_t index = (ptr_safe_t(x) + ptr_safe_t(y) * info.width) * info.channels;
+                    return impl::apply(info.data[index], value);
                 } else {
                     return impl::apply(value);
                 }
@@ -432,8 +430,8 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
         coord_t count_above_threshold(coord_t x0, coord_t x1, coord_t y, std::span<uchar> values, int threshold) const
         {
             /// we can assume 1 here since we use the *grey_image*
-            constexpr ptr_safe_t bg_channels = 1;//_image->channels();
-            constexpr OutputInfo output {
+            static constexpr ptr_safe_t bg_channels = 1;//_image->channels();
+            static constexpr OutputInfo output {
                 .channels = 1u,
                 .encoding = meta_encoding_t::gray
             };

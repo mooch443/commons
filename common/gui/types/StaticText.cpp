@@ -204,7 +204,7 @@ void StaticText::set_default_font(Font font) {
                    && t->pos().y + t->size().height * (1 - t->origin().y) > _settings.max_size.y)
                 {
 #ifndef NDEBUG
-                    Print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y, ": ", t->txt());
+                   // Print("Out of bounds: ", t->pos().y, " + ", t->size().height , " > ", _settings.max_size.y, ": ", t->txt());
 #endif
                     //hiding_something = true;
                     break;

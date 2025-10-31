@@ -1058,8 +1058,6 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
         auto tmp_pixels = std::make_unique<PixelArray_t>();
         tmp_pixels->reserve(blob.pixels()->size());
         const auto input = blob.input_info();
-        //OutputInfo output;
-        //output = input;
         
         call_image_mode_function<output>(input, KnownOutputType{}, [&]<InputInfo input, OutputInfo, DifferenceMethod>()
         {
@@ -1488,7 +1486,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
         
-        auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
+        auto work = [&, threshold]<InputInfo input, OutputInfo output, DifferenceMethod method>(){
             static_assert(is_in(input.channels, 0, 1, 3), "Must be 0, 1 or 3 channels.");
             static_assert(is_in(output.channels, 1, 3), "Must be 1 or 3 channels.");
             
