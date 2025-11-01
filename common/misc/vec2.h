@@ -740,3 +740,8 @@ inline std::optional<VecType> LineSegmentsIntersect(const VecType& p1, const Vec
 
 Float2_t polygon_area(const std::vector<Vec2>& pts);
 }
+
+template <>
+struct glz::meta<cmn::Vec2> {
+    static constexpr auto value = array(&cmn::Vec2::x, &cmn::Vec2::y);
+};

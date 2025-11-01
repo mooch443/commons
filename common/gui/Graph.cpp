@@ -136,6 +136,9 @@ void Graph::update() {
         
         for(size_t i=0; i<_labels.size(); i++) {
             auto text = _labels.at(i);
+            if(text->txt().empty())
+                continue;
+            
             text->set_pos(function_label_pt);
             //text->set_origin(Vec2(1, 0));
             
