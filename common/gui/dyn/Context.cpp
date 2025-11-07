@@ -255,6 +255,37 @@ std::optional<decltype(Context::variables)::const_iterator> Context::find(std::s
     return std::nullopt;
 }
 
+template<typename T>
+T convert_number(std::string_view a) {
+    if constexpr(are_the_same<bool, T>) {
+        return convert_to_bool(a);
+    }
+    
+    T A{};
+    
+    /// this is to support "null" == 0 explicitly (and some variations)
+    bool truth_value = convert_to_bool(a);
+    
+    if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+        if(truth_value)
+            A = T(Meta::fromStr<double>(a));
+        
+    } else if constexpr(std::is_integral_v<std::remove_cvref_t<T>>) {
+        if(truth_value)
+            A = T(Meta::fromStr<int64_t>(a));
+        
+    } else {
+        if (utils::beginsWith(a, '[') && utils::endsWith(a, ']')) {
+            A = Meta::fromStr<T>(a);
+            
+        } else if(truth_value) {
+            A = T(Meta::fromStr<double>(a));
+        }
+    }
+    
+    return A;
+}
+
 template<typename T, typename K = T>
 K map_vectors(const VarProps& props, auto&& apply) {
     REQUIRE_EXACTLY(2, props);
@@ -265,29 +296,8 @@ K map_vectors(const VarProps& props, auto&& apply) {
         std::string_view a = utils::trim(std::string_view(props.parameters.front()));
         std::string_view b = utils::trim(std::string_view(props.parameters.back()));
         
-        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
-            A = T(Meta::fromStr<double>(a));
-            B = T(Meta::fromStr<double>(b));
-            
-        } else if constexpr(are_the_same<bool, T>) {
-            A = convert_to_bool(a);
-            B = convert_to_bool(b);
-            
-        } else if constexpr(std::is_integral_v<std::remove_cvref_t<T>>) {
-            A = T(Meta::fromStr<int64_t>(a));
-            B = T(Meta::fromStr<int64_t>(b));
-            
-        } else {
-            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']'))
-                A = Meta::fromStr<T>(a);
-            else
-                A = T(Meta::fromStr<double>(a));
-            
-            if (utils::beginsWith(b, '[') && utils::endsWith(b, ']'))
-                B = Meta::fromStr<T>(b);
-            else
-                B = T(Meta::fromStr<double>(b));
-        }
+        A = convert_number<T>(a);
+        B = convert_number<T>(b);
 
     } catch(const std::exception& ex) {
         throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
