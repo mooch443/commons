@@ -255,7 +255,7 @@ std::optional<decltype(Context::variables)::const_iterator> Context::find(std::s
     return std::nullopt;
 }
 
-template<typename T>
+template<typename T, bool allow_null_ambiguity = false>
 T convert_number(std::string_view a) {
     if constexpr(are_the_same<bool, T>) {
         return convert_to_bool(a);
@@ -264,21 +264,36 @@ T convert_number(std::string_view a) {
     T A{};
     
     /// this is to support "null" == 0 explicitly (and some variations)
-    bool truth_value = convert_to_bool(a);
-    
-    if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
-        if(truth_value)
-            A = T(Meta::fromStr<double>(a));
+    if constexpr(allow_null_ambiguity) {
+        bool truth_value = convert_to_bool(a);
         
+        if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+            if(truth_value)
+                A = T(Meta::fromStr<double>(a));
+            
+        } else if constexpr(std::is_integral_v<std::remove_cvref_t<T>>) {
+            if(truth_value)
+                A = T(Meta::fromStr<int64_t>(a));
+            
+        } else {
+            if (utils::beginsWith(a, '[') && utils::endsWith(a, ']')) {
+                A = Meta::fromStr<T>(a);
+                
+            } else if(truth_value) {
+                A = T(Meta::fromStr<double>(a));
+            }
+        }
+        
+    } else if constexpr(std::is_floating_point_v<std::remove_cvref_t<T>>) {
+        A = T(Meta::fromStr<double>(a));
+            
     } else if constexpr(std::is_integral_v<std::remove_cvref_t<T>>) {
-        if(truth_value)
-            A = T(Meta::fromStr<int64_t>(a));
+        A = T(Meta::fromStr<int64_t>(a));
         
     } else {
         if (utils::beginsWith(a, '[') && utils::endsWith(a, ']')) {
             A = Meta::fromStr<T>(a);
-            
-        } else if(truth_value) {
+        } else {
             A = T(Meta::fromStr<double>(a));
         }
     }
@@ -286,7 +301,7 @@ T convert_number(std::string_view a) {
     return A;
 }
 
-template<typename T, typename K = T>
+template<typename T, bool allow_null_ambiguity = false, typename K = T>
 K map_vectors(const VarProps& props, auto&& apply) {
     REQUIRE_EXACTLY(2, props);
     
@@ -296,8 +311,8 @@ K map_vectors(const VarProps& props, auto&& apply) {
         std::string_view a = utils::trim(std::string_view(props.parameters.front()));
         std::string_view b = utils::trim(std::string_view(props.parameters.back()));
         
-        A = convert_number<T>(a);
-        B = convert_number<T>(b);
+        A = convert_number<T, allow_null_ambiguity>(a);
+        B = convert_number<T, allow_null_ambiguity>(b);
 
     } catch(const std::exception& ex) {
         throw InvalidSyntaxException("Cannot parse ", props,": ", ex.what());
@@ -494,16 +509,16 @@ void Context::init() const {
                 return false;
             }),
             VarFunc(">", [](const VarProps& props) {
-                return map_vectors<double>(props, [](auto&A, auto&B){return A > B;});
+                return map_vectors<double, true>(props, [](auto&A, auto&B){return A > B;});
             }),
             VarFunc(">=", [](const VarProps& props) {
-                return map_vectors<double>(props, [](auto&A, auto&B){return A >= B;});
+                return map_vectors<double, true>(props, [](auto&A, auto&B){return A >= B;});
             }),
             VarFunc("<", [](const VarProps& props) {
-                return map_vectors<double>(props, [](auto&A, auto&B){return A < B;});
+                return map_vectors<double, true>(props, [](auto&A, auto&B){return A < B;});
             }),
             VarFunc("<=", [](const VarProps& props) {
-                return map_vectors<double>(props, [](auto&A, auto&B){return A <= B;});
+                return map_vectors<double, true>(props, [](auto&A, auto&B){return A <= B;});
             }),
             VarFunc("+", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return A+B;});
@@ -635,7 +650,7 @@ void Context::init() const {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A - B; });
             }),
             VarFunc("distance", [](const VarProps& props) -> Float2_t {
-                return map_vectors<Vec2, Float2_t>(props, [](auto& A, auto& B) { return euclidean_distance(A, B); });
+                return map_vectors<Vec2, false, Float2_t>(props, [](auto& A, auto& B) { return euclidean_distance(A, B); });
             }),
             VarFunc("mulVector", [](const VarProps& props) -> Vec2 {
                 return map_vectors<Vec2>(props, [](auto& A, auto& B){ return A.mul(B); });
