@@ -1363,14 +1363,14 @@ if(${COMMONS_BUILD_OPENCV})
             -DWITH_FFMPEG:BOOL=TRUE
             -DOPENCV_FFMPEG_USE_FIND_PACKAGE=ON
             -DBUILD_DOCS=OFF
-            -DBUILD_EXAMPLES=OFF
+            -DBUILD_EXAMPLES:BOOL=FALSE
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_IPP_IW=OFF
             -DWITH_OBSENSOR=OFF
             -DBUILD_PACKAGE=OFF
             -DBUILD_PERF_TESTS=OFF
             -DBUILD_SHARED_LIBS=OFF
-            -DBUILD_TESTS=OFF
+            -DBUILD_TESTS:BOOL=OFF
             -DBUILD_OPENJPEG:BOOL=OFF
             -DWITH_OPENJPEG:BOOL=OFF
             -DBUILD_WITH_DEBUG_INFO=OFF
@@ -1506,6 +1506,7 @@ endif()
             PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
+            GIT_CONFIG core.longpaths=true
             UPDATE_COMMAND ""
             PATCH_COMMAND "${OPENCV_PATCH}"
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
@@ -1518,6 +1519,7 @@ endif()
             PREFIX ${CMAKE_BINARY_DIR}/opencv
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
+            GIT_CONFIG core.longpaths=true
             PATCH_COMMAND "${OPENCV_PATCH}"
             UPDATE_COMMAND ""
             CMAKE_ARGS
