@@ -1454,7 +1454,7 @@ else()
             -DWITH_JASPER:BOOL=OFF
             -DBUILD_opencv_world:BOOL=OFF
             -DBUILD_opencv_gapi=ON
-            -DBUILD_WITH_STATIC_CRT:BOOL=OFF
+            -DBUILD_WITH_STATIC_CRT:BOOL=ON
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
