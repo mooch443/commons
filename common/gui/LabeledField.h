@@ -50,16 +50,20 @@ public:
     const Drawable* tooltip_object() const override;
 };
 
+struct Dereference_t {
+    bool value = false;
+};
+
 class LabeledField {
+protected:
+    mutable std::shared_ptr<std::mutex> _ref_mutex = std::make_shared<std::mutex>();
 private:
-    GUITaskQueue_t *_gui{nullptr};
+    GETTER_PTR(GUITaskQueue_t*, gui){nullptr};
     std::string _docs;
     std::string _ref;
     //sprite::Reference _ref;
     cmn::CallbackFuture _callback_id;
     CallbackManagerImpl<void> _delete_callbacks;
-    
-    mutable std::mutex _ref_mutex;
     
 protected:
     auto enqueue(auto fn) {
@@ -115,8 +119,8 @@ public:
         return applied;
     }
     
-    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, State&, const LayoutContext&, bool invert = false);
-    static std::unique_ptr<LabeledField> Make(GUITaskQueue_t*, std::string parm, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(Dereference_t, GUITaskQueue_t*, std::string parm, State&, const LayoutContext&, bool invert = false);
+    static std::unique_ptr<LabeledField> Make(Dereference_t, GUITaskQueue_t*, std::string parm, bool invert = false);
     
     template<typename T>
     static bool delegate_to_proper_type(const T& attribute, const Layout::Ptr& object)
@@ -324,6 +328,29 @@ struct LabeledList : public LabeledField {
     }
     void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override { return _list; }
+};
+struct LabeledOptional : public LabeledField {
+    std::unique_ptr<LabeledField> _value;
+    gui::derived_ptr<Button> _create_button;
+    gui::derived_ptr<Entangled> _null_value;
+    
+    LabeledOptional(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj);
+    void add_to(std::vector<Layout::Ptr>& v) override {
+        if(_value) {
+            _value->add_to(v);
+        } else {
+            assert(_null_value != nullptr);
+            v.push_back(_null_value);
+        }
+    }
+    void update_ref_in_main_thread() override;
+    Layout::Ptr representative() const override {
+        if(_value)
+            return _value->representative();
+        else
+            return _null_value;
+    }
+    void set_description(std::string) override;
 };
 
 struct LabeledPath : public LabeledField {

@@ -186,7 +186,7 @@ struct HashedObject {
     
     std::optional<std::function<void(DrawStructure&)>> display_fn;
     std::optional<std::string> chosen_image;
-    std::shared_ptr<LabeledField> _text_field;
+    std::shared_ptr<LabeledField> _value_box;
     std::optional<VarCache> _var_cache;
     PatternMapType patterns;
     Layout::Ptr current;
@@ -256,7 +256,7 @@ struct State {
     std::shared_ptr<HashedObject> register_monostate(size_t hash, const Layout::Ptr&);
     std::shared_ptr<HashedObject> get_monostate(size_t hash, const Layout::Ptr&);
     
-    void register_pattern(size_t hash, const std::string&, Pattern&&);
+    const Pattern& register_pattern(size_t hash, const std::string&, Pattern&&);
     std::optional<Pattern*> get_pattern(size_t hash, const std::string&);
     
     std::shared_ptr<Drawable> named_entity(std::string_view);

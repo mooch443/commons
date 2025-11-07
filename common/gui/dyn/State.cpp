@@ -204,7 +204,7 @@ struct TimingInfo {
 bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state) {
     bool changed{false};
     
-    LabeledField *field{_text_field.get()};
+    LabeledField *field{_value_box.get()};
     const auto patterns_end = patterns.end();
     //Print("Found pattern ", pattern, " at index ", hash);
     
@@ -212,8 +212,8 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         try {
             auto var = patterns.at("var").realize(context, state);
             //auto var = parse_text(patterns.at("var"), context, state);
-            if(_text_field) {
-                auto str = _text_field->ref().get().valueString();
+            if(_value_box) {
+                auto str = _value_box->ref().get().valueString();
                 if(not _var_cache.has_value()
                    || _var_cache->_var != var)
                 {
@@ -223,7 +223,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
                         //! replace old object (also updates the cache)
                         o = parse_object(gui, _var_cache->_obj, context, state, context.defaults, hash);
                         
-                        field = _text_field.get();
+                        field = _value_box.get();
                         changed = true;
                     } else {
                         throw std::runtime_error("VarCache was not initialized.");
@@ -778,13 +778,15 @@ std::shared_ptr<HashedObject> State::get_monostate(size_t hash, const Layout::Pt
     return register_variant(hash, ptr);
 }
 
-void State::register_pattern(size_t hash, const std::string& name, Pattern &&pattern) {
+const Pattern& State::register_pattern(size_t hash, const std::string& name, Pattern &&pattern) {
     auto it = _collectors->objects.find(hash);
     if(it == _collectors->objects.end()) {
         _collectors->objects[hash] = std::make_shared<HashedObject>();
     }
     
-    _collectors->objects.at(hash)->patterns[name] = std::move(pattern);
+    auto& obj = _collectors->objects.at(hash)->patterns[name];
+    obj = std::move(pattern);
+    return obj;
 }
 
 std::optional<Pattern*> State::get_pattern(size_t hash, const std::string& name) {

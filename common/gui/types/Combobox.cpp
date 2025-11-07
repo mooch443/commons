@@ -150,7 +150,7 @@ void Combobox::set(ParmName name) {
             stage()->do_hover(nullptr);
         }
         
-        _value = LabeledField::Make(_gui, name);
+        _value = LabeledField::Make({}, _gui, name);
         if(not dynamic_cast<const LabeledCheckbox*>(_value.get())) {
             _value->set_description("");
         }

@@ -66,14 +66,25 @@ LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
 void LabeledField::trigger_ref_update() {
     if(not _gui)
         throw InvalidArgumentException("Cannot update ref if the gui queue is nullptr.");
-    _gui->enqueue([this](auto, auto&){
+    _gui->enqueue([this, ptr = std::weak_ptr(_ref_mutex)](auto, auto&)
+    {
+        auto m = ptr.lock();
+        if(not m)
+            return;
+        
+        std::unique_lock g{*m};
         update_ref_in_main_thread();
     });
 }
 
 void LabeledField::replace_ref(ParmName name) {
-    std::unique_lock guard(_ref_mutex);
-    _ref = name;//settings_map()[name];
+    {
+        std::unique_lock guard(*_ref_mutex);
+        if(name == _ref)
+            return;
+        Print("Changing ref ", _ref, " to ", name);
+        _ref = name;//settings_map()[name];
+    }
     trigger_ref_update();
 }
 
@@ -86,6 +97,11 @@ void LabeledField::replace_docs(std::string_view name) {
 }
 
 LabeledField::~LabeledField() {
+    {
+        auto m = std::move(_ref_mutex);
+        std::unique_lock g{*m};
+    }
+    
     if(_callback_id)
         GlobalSettings::unregister_callbacks(std::move(_callback_id));
     _delete_callbacks.callAll();
@@ -140,14 +156,78 @@ void LabeledField::set_description(std::string desc) {
     _text->set_txt(desc);
 }
 
-std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::string parm, bool invert) {
+std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t* gui, std::string parm, bool invert) {
     State state;
     LayoutContext c(gui, {}, state, {}, {});
     assert(not parm.empty());
-    return Make(gui, parm, state, c, invert);
+    return Make(d, gui, parm, state, c, invert);
 }
 
-std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::string parm, State& state, const LayoutContext& context, bool invert) {
+struct TypeInfo_ref {
+    const sprite::Reference& _prop;
+    
+    TypeInfo_ref(const TypeInfo_ref&) = delete;
+    TypeInfo_ref(TypeInfo_ref&&) = delete;
+    
+    TypeInfo_ref(const sprite::Reference& prop)
+        : _prop(prop)
+    { }
+    
+    TypeInfo_ref& operator=(const TypeInfo_ref&) = delete;
+    TypeInfo_ref& operator=(TypeInfo_ref&&) = delete;
+    
+    template<typename T>
+    bool is_type() const {
+        return _prop.is_type<T>();
+    }
+    
+    template<typename T>
+    T value() const {
+        return _prop.value<T>();
+    }
+    
+    bool is_optional() const { return _prop.get().is_optional(); }
+    bool is_enum() const { return _prop.get().is_enum(); }
+    bool optional_has_value() const { return _prop.get().optional_has_value()(); }
+    std::vector<std::string> enum_values() const {
+        return _prop.get().enum_values()();
+    }
+    
+    std::string valueString() const {
+        return _prop.get().valueString();
+    }
+};
+
+struct TypeInfo_optional {
+    std::unique_ptr<sprite::PropertyType> _deref;
+    
+    TypeInfo_optional(const sprite::Reference& prop)
+        : _deref(prop.get().dereference_optional()())
+    { }
+    
+    template<typename T>
+    bool is_type() const {
+        return _deref->is_type<T>();
+    }
+    
+    template<typename T>
+    T value() const {
+        return _deref->value<T>();
+    }
+    
+    bool is_optional() const { return _deref->is_optional(); }
+    bool is_enum() const { return _deref->is_enum(); }
+    bool optional_has_value() const { return _deref->optional_has_value()(); }
+    std::vector<std::string> enum_values() const {
+        return _deref->enum_values()();
+    }
+    
+    std::string valueString() const {
+        return _deref->valueString();
+    }
+};
+
+std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t* gui, std::string parm, State& state, const LayoutContext& context, bool invert) {
     if(parm.empty()) {
         //! this will instantiate the combobox for choosing settings
         //! so we cant specify a reference - this is for _all_ parameters.
@@ -159,36 +239,92 @@ std::unique_ptr<LabeledField> LabeledField::Make(GUITaskQueue_t* gui, std::strin
     if(not ref.valid())
         throw U_EXCEPTION("GlobalSettings has no parameter named ", parm,".");
     
-    std::unique_ptr<LabeledField> ptr;
     /*if(ref.is_type<bool>()) {
         ptr = std::make_unique<LabeledCheckbox>(parm, parm, obj,invert);
         
-    } else*/ if(ref.is_type<std::string>()) {
-        ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
-        ptr->representative().to<Textfield>()->set_text(ref.value<std::string>());
-    } else if(ref.is_type<int>() || ref.is_type<float>() || ref.is_type<double>()
-              || ref.is_type<uint8_t>() || ref.is_type<uint16_t>()
-              || ref.is_type<uint64_t>()
-              || ref.is_type<timestamp_t>())
+    } else*/
+    
+    auto create_element = [&parm, gui, &context, invert](const auto& type_info)
+        -> std::unique_ptr<LabeledField>
     {
-        ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
-        ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
+        std::unique_ptr<LabeledField> ptr;
         
-    } else if(ref.is_type<file::Path>()) {
-        ptr = std::make_unique<LabeledPath>(gui, parm, parm, ref.value<file::Path>());
+        if(type_info.is_optional()) {
+            ptr = std::make_unique<LabeledOptional>(gui, parm, context.obj);
+            
+        } else if(type_info.template is_type<std::string>()) {
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr->representative().to<Textfield>()->set_text(type_info.template value<std::string>());
+            
+        } else if(type_info.template is_type<int>()
+                  || type_info.template is_type<float>()
+                  || type_info.template is_type<double>()
+                  || type_info.template is_type<uint8_t>()
+                  || type_info.template is_type<uint16_t>()
+                  || type_info.template is_type<uint64_t>()
+                  || type_info.template is_type<timestamp_t>())
+        {
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr->representative().to<Textfield>()->set_text(type_info.valueString());
+            
+        } else if(type_info.template is_type<file::Path>()) {
+            ptr = std::make_unique<LabeledPath>(gui, parm, parm, type_info.template value<file::Path>());
+            
+        } else if(type_info.template is_type<file::PathArray>()) {
+            ptr = std::make_unique<LabeledPathArray>(gui, parm, &context);
+            
+        } else if(type_info.template is_type<bool>() || type_info.is_enum()) {
+            ptr = std::make_unique<LabeledList>(gui, parm, context.obj, invert);
+            
+        } else {
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr->representative().to<Textfield>()->set_text(type_info.valueString());
+            //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
+        }
         
-    } else if(ref.is_type<file::PathArray>()) {
-        ptr = std::make_unique<LabeledPathArray>(gui, parm, &context);
-        
-    } else if(ref.is_type<bool>() || ref.get().is_enum()) {
-        ptr = std::make_unique<LabeledList>(gui, parm, context.obj, invert);
+        return ptr;
+    };
+    
+    
+    if(ref.get().is_optional()) {
+        if(d.value) {
+            /// dereference, so we need to do some extra steps here...
+            return create_element(TypeInfo_optional{(const sprite::Reference&)ref});
+        }
+    }
+    
+    return create_element(TypeInfo_ref{(const sprite::Reference&)ref});
+}
+
+LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
+    : LabeledField(gui, name),
+      _create_button(new Button(Str{"+"})),
+      _null_value(new Entangled())
+{
+    replace_docs(name);
+    update_ref_in_main_thread();
+}
+
+void LabeledOptional::set_description(std::string desc) {
+    if(_value)
+        _value->set_description(desc);
+    LabeledField::set_description(desc);
+}
+
+void LabeledOptional::update_ref_in_main_thread() {
+    //_checkbox->set_checked(_invert ? not ref().value<bool>() : ref().value<bool>());
+    //Print("Checkbox for ", ref().get().name(), " is ", _checkbox->checked());
+    if(ref().get().optional_has_value()()) {
+        if(not _value)
+            _value = LabeledField::Make({true}, gui(), (std::string)ref().name());
         
     } else {
-        ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
-        ptr->representative().to<Textfield>()->set_text(ref.get().valueString());
-        //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
+        _null_value->update([this](Entangled& base) {
+            auto text = base.add<Text>(Str{ref().name()}, Font{0.3}, TextClr{Green.saturation(0.5)});
+            _create_button->set(Loc{text->width() + 10, 5});
+            base.advance_wrap(*_create_button);
+        });
     }
-    return ptr;
 }
 
 LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert)
@@ -290,29 +426,43 @@ LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz
 : LabeledField(gui, name),
 _list(new gui::List(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
-  std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this](List* list, const gui::Item& item){
+  std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this, ptr = std::weak_ptr(_ref_mutex)](List* list, const gui::Item& item){
       auto index = item.ID();
       if(index < 0)
           return;
       
       try {
-          auto r = ref();
-          if(r.is_type<bool>()) {
-              if(_invert) {
-                  r = index == 0 ? true : false;
-              } else
-                  r = index == 1 ? true : false;
-              
-          } else {
-              assert(not _invert); // incompatible with enums
-              assert(r.get().is_enum());
-              auto name = r.get().enum_values()().at((size_t)index);
-              auto current = r.get().valueString();
-              if(name != current)
-                  r.get().set_value_from_string(name);
+          auto lock = ptr.lock();
+          if(not lock) {
+              throw InvalidArgumentException("This has been deallocated already!");
           }
           
-      } catch(...) {}
+          auto r = ref();
+          auto set_value = [&r, index, this](const auto& type_info) {
+              if(type_info.template is_type<bool>()) {
+                  if(_invert) {
+                      r = index == 0 ? true : false;
+                  } else
+                      r = index == 1 ? true : false;
+                  
+              } else {
+                  assert(not _invert); // incompatible with enums
+                  assert(type_info.is_enum());
+                  auto name = type_info.enum_values().at((size_t)index);
+                  r.get().set_value_from_string(name);
+              }
+          };
+          
+          if(r.get().is_optional()) {
+              /// dereference, so we need to do some extra steps here...
+              set_value(TypeInfo_optional{(const sprite::Reference&)r});
+          } else {
+              set_value(TypeInfo_ref{(const sprite::Reference&)r});
+          }
+          
+      } catch(const std::exception& ex) {
+          FormatWarning("Trouble setting value from LabeledList: ", ex.what());
+      }
       
       list->set_folded(true);
       if(list->stage()) {
@@ -327,30 +477,8 @@ _list(new gui::List(
     
     //_list->textfield()->set_font(Font(0.7f));
     //_list->set(Font(0.7f));
-    {
-        std::vector<std::shared_ptr<gui::Item>> items;
-        long index{0};
-        auto r = ref();
-        if(r.is_type<bool>()) {
-            items = {
-                std::make_shared<TextItem>("false", 0),
-                std::make_shared<TextItem>("true", 1)
-            };
-            index = not _invert ?
-            (r.value<bool>() ? 1 : 0)
-            :   (r.value<bool>() ? 0 : 1);
-            
-        } else {
-            assert(r.get().is_enum());
-            
-            for(auto &name : r.get().enum_values()()) {
-                items.push_back(std::make_shared<TextItem>(name));
-            }
-            index = narrow_cast<long>(r.get().enum_index()());
-        }
-        _list->set_items(std::move(items));
-        _list->select_item(index);
-    }
+    update_ref_in_main_thread();
+    
     /*_list->on_select([this](auto index, auto) {
         if(index < 0)
             return;
@@ -382,14 +510,68 @@ _list(new gui::List(
 }
 
 void LabeledList::update_ref_in_main_thread() {
-    auto r = ref();
-    if(r.is_type<bool>()) {
+    {
+        std::vector<std::shared_ptr<gui::Item>> items;
+        long index{0};
+        auto r = ref();
+        if(not r.valid()) {
+            _list->set_items({});
+            return;
+        }
+        
+        std::optional<bool> bool_value;
+        
+        auto apply_enum = [&](const std::vector<std::string>& enum_items, long enum_index) {
+            size_t i = 0;
+            for(auto &name : enum_items) {
+                items.push_back(std::make_shared<TextItem>(name, i++));
+            }
+            index = narrow_cast<long>(enum_index);
+            
+            Print("items = ", enum_items);
+        };
+        
+        if(r.get().is_optional()) {
+            if(r.get().optional_has_value()) {
+                auto obj = r.get().dereference_optional()();
+                if(obj->is_type<bool>()) {
+                    bool_value = obj->value<bool>();
+                    
+                } else {
+                    assert(obj->is_enum());
+                    apply_enum(obj->enum_values()(), obj->enum_index()());
+                }
+            } else {
+                throw InvalidArgumentException("The optional for which we are creating an interface element, does not have a value (", r, ").");
+            }
+            
+        } else if(r.is_type<bool>()) {
+            bool_value = r.value<bool>();
+            
+        } else {
+            assert(r.get().is_enum());
+            apply_enum(r.get().enum_values()(), r.get().enum_index()());
+        }
+        
+        if(bool_value) {
+            apply_enum({"false", "true"},
+                       not _invert
+                        ? (*bool_value ? 1 : 0)
+                        : (*bool_value ? 0 : 1)
+            );
+        }
+        
+        _list->set_items(std::move(items));
+        _list->select_item(index);
+    }
+    
+    /*if(r.is_type<bool>()) {
         _list->select_item(not _invert ?
                                 (r.value<bool>() ? 1 : 0)
                                :(r.value<bool>() ? 0 : 1));
     } else {
         _list->select_item(narrow_cast<long>(r.get().enum_index()()));
-    }
+    }*/
     
 }
 

@@ -565,8 +565,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         //if(not hashed->_text_field)
         {
-            hashed->_text_field = LabeledField::Make(gui, var, state, *this, invert);
-            if(not hashed->_text_field) {
+            hashed->_value_box = LabeledField::Make({}, gui, var, state, *this, invert);
+            if(not hashed->_value_box) {
                 auto v = GlobalSettings::read_value<NoType>(var);
                 FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",v.valid() ? v.get().type_name() : "(null)",".");
                 return nullptr;
@@ -578,7 +578,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             ._obj = obj
         };
         
-        auto& ref = hashed->_text_field;
+        auto& ref = hashed->_value_box;
         
         if(var.empty()) {
             // combobox?
