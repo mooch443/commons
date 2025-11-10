@@ -25,6 +25,7 @@ template <class T, class Tag>
 struct AttributeAlias : T {
     using base_type = T;
     using T::T;
+    static constexpr std::string_view alias_name{ Tag::alias_name };
     
     explicit constexpr AttributeAlias(const T& copy) : T(copy) {}
     explicit constexpr AttributeAlias(T&& copy) : T(std::move(copy)) {}
@@ -67,7 +68,7 @@ struct AttributeAlias : T {
 };
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \
-    struct ALIAS_NAME##Tag {};                                  \
+    struct ALIAS_NAME##Tag { static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
     using ALIAS_NAME = AttributeAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 // Using the ALIAS macro to define type aliases
@@ -97,7 +98,7 @@ ATTRIBUTE_ALIAS(Placeholder_t, std::string)
 
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \
-    struct ALIAS_NAME##Tag {};                                \
+    struct ALIAS_NAME##Tag { static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
     using ALIAS_NAME = NumberAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 template <typename T, class Tag>
@@ -105,6 +106,7 @@ struct NumberAlias {
     T value;
 public:
     using self_type = NumberAlias<T, Tag>;
+    static constexpr std::string_view alias_name{ Tag::alias_name };
 
 public:
     constexpr self_type& operator++() { ++value; return *this; }

@@ -50,6 +50,7 @@ namespace cmn {
             GETTER(std::function<uint32_t()>, enum_index);///< Getter for the index of an enum value.
 
             GETTER(std::function<bool()>, optional_has_value);
+            GETTER(std::function<void()>, default_initialize_optional);
             
             GETTER(std::function<std::unique_ptr<PropertyType>()>, dereference_optional);
             
@@ -82,6 +83,9 @@ namespace cmn {
                 };
                 _optional_has_value = []() -> bool {
                     throw U_EXCEPTION("PropertyType::optional_has_value() not initialized");
+                };
+                _default_initialize_optional = []() {
+                    throw U_EXCEPTION("PropertyType::default_initialize_optional() not initialized");
                 };
                 _dereference_optional = []() -> std::unique_ptr<PropertyType> {
                     throw U_EXCEPTION("PropertyType::_dereference_optional not initialized.");
@@ -342,6 +346,9 @@ namespace cmn {
                 _optional_has_value = [this]() -> bool {
                     return value().has_value();
                 };
+                _default_initialize_optional = [this]() {
+                    value(typename ValueType::value_type{});
+                };
                 _dereference_optional = [this]() -> std::unique_ptr<PropertyType> {
                     return std::make_unique<Property<typename ValueType::value_type>>(name(), value().value());
                 };
@@ -350,6 +357,9 @@ namespace cmn {
             template<typename T = ValueType>
             void init_optional(typename std::enable_if_t<not is_instantiation<std::optional, T>::value, T> * = nullptr) {
                 _optional_has_value = []() -> bool { throw U_EXCEPTION("This type is not an Optional, so optional_has_value() cannot be called."); };
+                _default_initialize_optional = []() {
+                    throw U_EXCEPTION("This type is not an Optional, so default_initialize_optional() cannot be called.");
+                };
                 _dereference_optional = []() -> std::unique_ptr<PropertyType> {
                     throw U_EXCEPTION("This type is not an Optional, so _dereference_optional() cannot be called.");
                 };

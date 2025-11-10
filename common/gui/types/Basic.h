@@ -77,6 +77,9 @@ namespace cmn::gui {
     };
     
     struct Font {
+        /// for compatibility with the whole alias_name thing in LabeledFields
+        static constexpr const char* alias_name = "Font";
+        
         Float2_t size;
         uint32_t style;
         Align align;
