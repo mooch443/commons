@@ -298,11 +298,55 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
 
 LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
     : LabeledField(gui, name),
-      _create_button(new Button(Str{"+"})),
+      _create_button(new Button(Str{"+"}, Size{30,30})),
       _null_value(new Entangled())
 {
+    _create_button->on_click([this](Event){
+        ref().get().default_initialize_optional()();
+        trigger_ref_update();
+    });
     replace_docs(name);
     update_ref_in_main_thread();
+}
+
+bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_view name) const {
+    if(ptr.get() == _create_button.get())
+    {
+        if(is_in(name, LineClr::alias_name, FillClr::alias_name, TextClr::alias_name, Font::alias_name, Size::alias_name)) {
+            return true;
+        } else
+            return false;
+    }
+    return true;
+}
+
+void LabeledOptional::after_set_property(const Layout::Ptr& ptr, std::string_view name) const {
+    if(ptr.get() == _create_button.get())
+    {
+        if(name == Font::alias_name) {
+            auto font = _create_button->font();
+            font.align = Align::Center;
+            _create_button->set(font);
+            
+        } else if(name == Size::alias_name) {
+            auto size = _create_button->size();
+            size.width = min(30, size.width * 0.5);
+            size.height = min(30, size.height - 10);
+            _create_button->set(Size{size});
+            
+        } else if(name == LineClr::alias_name) {
+            Color clr = (Color)_create_button->bg_line_color();
+            clr.a = 255;
+            _create_button->set_line_clr(clr);
+        }
+    }
+}
+
+std::vector<Layout::Ptr> LabeledOptional::apply_set() const {
+    return {
+        representative(),
+        _create_button
+    };
 }
 
 void LabeledOptional::set_description(std::string desc) {
@@ -315,13 +359,17 @@ void LabeledOptional::update_ref_in_main_thread() {
     //_checkbox->set_checked(_invert ? not ref().value<bool>() : ref().value<bool>());
     //Print("Checkbox for ", ref().get().name(), " is ", _checkbox->checked());
     if(ref().get().optional_has_value()()) {
-        if(not _value)
+        if(not _value) {
             _value = LabeledField::Make({true}, gui(), (std::string)ref().name());
+            if(_value)
+                _value->set_description(_text->txt());
+        }
         
     } else {
+        _value = nullptr;
         _null_value->update([this](Entangled& base) {
-            auto text = base.add<Text>(Str{ref().name()}, Font{0.3}, TextClr{Green.saturation(0.5)});
-            _create_button->set(Loc{text->width() + 10, 5});
+            auto text = base.add<Text>(Str{"Add value for "+ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.3}, TextClr{Green.saturation(0.5)}, Origin{0, 0.5});
+            _create_button->set(Loc{text->pos().x + text->width() + 5, 5});
             base.advance_wrap(*_create_button);
         });
     }

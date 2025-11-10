@@ -111,11 +111,21 @@ public:
         return { representative() };
     }
     
+    virtual bool is_property_allowed(const Layout::Ptr&, std::string_view) const {
+        return true;
+    }
+    
+    virtual void after_set_property(const Layout::Ptr&, std::string_view) const { }
+    
     template<typename T>
     bool set(T attribute) {
         bool applied = false;
-        for(auto &ptr : apply_set())
+        for(auto &ptr : apply_set()) {
+            if(not ptr || not is_property_allowed(ptr, T::alias_name))
+                continue;
             applied = delegate_to_proper_type(attribute, ptr) || applied;
+            after_set_property(ptr, T::alias_name);
+        }
         return applied;
     }
     
@@ -351,6 +361,9 @@ struct LabeledOptional : public LabeledField {
             return _null_value;
     }
     void set_description(std::string) override;
+    std::vector<Layout::Ptr> apply_set() const override;
+    bool is_property_allowed(const Layout::Ptr&, std::string_view) const override;
+    void after_set_property(const Layout::Ptr&, std::string_view) const override;
 };
 
 struct LabeledPath : public LabeledField {
