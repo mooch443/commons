@@ -369,7 +369,7 @@ void LabeledOptional::update_ref_in_main_thread() {
         _value = nullptr;
         _null_value->update([this](Entangled& base) {
             auto text = base.add<Text>(Str{"Add value for "+ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.3}, TextClr{Green.saturation(0.5)}, Origin{0, 0.5});
-            _create_button->set(Loc{text->pos().x + text->width() + 5, 5});
+            _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });
     }
