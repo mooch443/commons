@@ -94,25 +94,34 @@ namespace sprite {
     private:
         std::weak_ptr<PropertyType> _type;
         Map* _container;
-#ifndef NDEBUG
-        GETTER(std::string, name);
-#else
+        std::unique_ptr<std::string> _name_storage;
         GETTER(std::string_view, name);
-#endif
     public:
-        template <typename T,
-            std::enable_if_t<
-                std::is_same_v<T, const char*> ||
-                std::is_lvalue_reference_v<T&&>, int> = 0>
+        template <typename T>
+            requires std::is_array_v<std::remove_reference_t<T>>
         Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
-            : _type(type), _container(&container), _name(name) { }
-        template <typename T,
-            std::enable_if_t<
-                std::is_same_v<T, const char*> ||
-                std::is_lvalue_reference_v<T&&>, int> = 0>
-        Reference(Map& container, T&& name)
-            : _container(&container), _name(name)
+            : _type(type), _container(&container), _name(name, std::size(name) - 1)
         { }
+        
+        template <typename T>
+            requires (std::is_same_v<T, const char*>
+                     || std::is_same_v<std::remove_reference_t<T>, std::string_view>)
+                     && (not std::is_array_v<std::remove_reference_t<T>>)
+        Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
+            : _type(type), _container(&container), _name(name)
+        { }
+        
+        template <typename T>
+            requires std::is_lvalue_reference_v<T>
+                     && (not std::is_same_v<std::remove_reference_t<T>, std::string_view>)
+                     && (not std::is_array_v<std::remove_reference_t<T>>)
+        Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
+            : _type(type), _container(&container), _name_storage(std::make_unique<std::string>(name)), _name(*_name_storage)
+        { }
+        
+        template <typename T>
+            requires (not std::same_as<T, std::weak_ptr<PropertyType>>)
+        Reference(Map& container, T&& name) : Reference(container, std::weak_ptr<PropertyType>{}, std::forward<T>(name)) { }
 
         // Delete the constructor for r-value std::string
         Reference(Map&, std::weak_ptr<PropertyType>, std::string&&) = delete;
@@ -156,11 +165,7 @@ namespace sprite {
             {
                 return *ptr;
             }
-#ifndef NDEBUG
-            throw std::runtime_error("Property "+_name+" does not exist.");
-#else
-            throw std::runtime_error("Property does not exist.");
-#endif
+            throw std::runtime_error("Property "+std::string(_name)+" does not exist.");
         }
         std::string_view type_name() const;
         
@@ -415,7 +420,7 @@ concept Iterable = requires(T obj) {
                     );
                     ++(*remaining);
 #ifndef NDEBUG
-                    FormatWarning("Cannot find property ", name, " to attach a callback to.");
+                    FormatWarning("Cannot find property ", name, " to attach a callback to. Waiting for it to appear.");
 #endif
                 }
             }
@@ -471,21 +476,36 @@ concept Iterable = requires(T obj) {
         template<typename T>
             requires std::is_same_v<T, const char*>
                     || std::is_lvalue_reference_v<T&&>
+                    || std::is_same_v<std::remove_reference_t<T>, std::string_view>
                     || std::is_array_v<std::remove_reference_t<T>>
         Reference operator[](T&& name) {
             auto guard = LOGGED_LOCK(mutex());
             decltype(_props)::const_iterator it;
 
-            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
-                it = _props.find(std::string_view(name));
-            } else if constexpr(std::is_array_v<std::remove_reference_t<T>>) {
-                it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
+            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>
+                         || std::is_array_v<std::remove_reference_t<T>>
+                         || std::same_as<std::remove_reference_t<T>, std::string_view>)
+            {
+                if constexpr(std::same_as<std::remove_reference_t<T>, std::string_view>)
+                    it = _props.find(name);
+                else if constexpr(std::is_array_v<std::remove_reference_t<T>>)
+                    it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
+                else
+                    it = _props.find(std::string_view(name));
+                
+                /// we can keep this here as a string reference, because we
+                /// are using const char[35] which do not get deallocated
+                if(it != _props.end())
+                    return Reference(*this, it->second, name);
+                
             } else {
                 it = _props.find(name);
+                
+                /// we have to make a copy of name here...
+                /// we cant be sure this exists later still
+                if(it != _props.end())
+                    return Reference(*this, it->second, it->first);
             }
-
-            if(it != _props.end())
-                return Reference(*this, it->second, it->first);
 
             return Reference(*this, name);
         }
@@ -564,6 +584,10 @@ concept Iterable = requires(T obj) {
                it != _pending_callbacks.end())
             {
                 const auto str = std::string(name);
+#ifndef NDEBUG
+                Print("Attaching callbacks for ", name, " now that it has been inserted.");
+#endif
+                
                 for(auto &future : it->second) {
                     auto cb = property_->registerCallback(future.fn);
                     future.addition._ids[str] = cb;
@@ -754,23 +778,24 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void Property<T>::copy_to(Map& other) const {
-        if(other.is_type<T>(std::string_view{_name})) {
+        auto name = std::string_view{_name};
+        if(other.is_type<T>(name)) {
             if constexpr(trivial)
-                other[_name] = _value.load().value();
+                other[name] = _value.load().value();
             else {
                 std::unique_lock guard(_property_mutex);
-                other[_name] = _value.value();
+                other[name] = _value.value();
             }
             return;
             
-        } else if(other.has(_name))
-            other.erase(_name);
+        } else if(other.has(name))
+            other.erase(name);
 
         if constexpr(trivial) {
-            other.insert(_name, _value.load().value());
+            other.insert(name, _value.load().value());
         } else {
             std::unique_lock guard(_property_mutex);
-            other.insert(_name, _value.value());
+            other.insert(name, _value.value());
         }
     }
 }

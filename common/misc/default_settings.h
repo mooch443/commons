@@ -15,7 +15,7 @@ namespace cmn {
             Adding(Configuration& config) : config(config) {}
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 std::string overall_doc = doc;
                 auto fdocs = T::Data::template docs<T>();
@@ -50,11 +50,11 @@ namespace cmn {
                 if(access > AccessLevelType::PUBLIC)
                     config.set_access(name, access);
                 
-                return config.values[name].toProperty<T>();
+                return config.values[name].template toProperty<T>();
             }
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && !T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && !T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
             {
                 config.docs[name] = doc;
                 
@@ -75,11 +75,11 @@ namespace cmn {
                 if(access > AccessLevelType::PUBLIC)
                     config.set_access(name, access);
                 
-                return config.values[name].toProperty<T>();
+                return config.values[name].template toProperty<T>();
             }
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(std::string name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<!is_enum<T>::value, T>::type * = nullptr)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<!is_enum<T>::value, T>::type * = nullptr)
             {
                 config.docs[name] = doc;
                 
@@ -100,7 +100,7 @@ namespace cmn {
                 if(access > AccessLevelType::PUBLIC)
                     config.set_access(name, access);
                 
-                return config.values[name].toProperty<T>();
+                return config.values[name].template toProperty<T>();
             }
         };
         
