@@ -224,6 +224,10 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
                         o = parse_object(gui, _var_cache->_obj, context, state, context.defaults, hash);
                         
                         field = _value_box.get();
+                        
+                        auto ptr = field->representative();
+                        _var_cache->_cached_ptr = std::weak_ptr(ptr.get_smart());
+                        
                         changed = true;
                     } else {
                         throw std::runtime_error("VarCache was not initialized.");
@@ -240,6 +244,36 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     auto ptr = o;
     if(field) {
         ptr = field->representative();
+        
+        if(_var_cache.has_value())
+        {
+            auto lock = _var_cache->_cached_ptr.lock();
+            if(not lock || lock.get() != ptr.get()) {
+                changed = true;
+                
+                try {
+                    if(not field->ref().name().empty()) {
+#ifndef NDEBUG
+                        FormatWarning("* renew item ", o.get());
+#endif
+                        /// workaround currently necessary maybe
+                        /// regenerating the entire subtree so we
+                        /// update immediately
+                        o = parse_object(gui, _var_cache->_obj, context, state, context.defaults, hash);
+                        
+                        field = _value_box.get();
+                        ptr = field->representative();
+                    }
+                    
+                    _var_cache->_cached_ptr = std::weak_ptr(ptr.get_smart());
+                } catch(std::exception& e) {
+                    FormatError("Error parsing context; ", patterns, ": ", e.what());
+                }
+            }
+            
+        } else {
+            throw std::runtime_error("VarCache was not initialized.");
+        }
     }
     
     auto check_field = [&]<typename SourceType, typename TargetType>(std::string_view name) {
@@ -254,7 +288,10 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
 #endif
             auto text = it->second.realize(context, state);
             auto fill = Meta::fromStr<SourceType>(text);
-            LabeledField::delegate_to_proper_type(TargetType{fill}, ptr);
+            if(field)
+                field->set(TargetType{fill});
+            else
+                LabeledField::delegate_to_proper_type(TargetType{fill}, ptr);
 #if false
             auto seconds = timer.elapsed();
             auto it = timings.find(name);
@@ -300,7 +337,11 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
                 if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
                 else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
             } else {
-                ptr->set_size(Meta::fromStr<Size2>(text));
+                //LabeledField::delegate_to_proper_type(Size{Meta::fromStr<Size2>(text)}, ptr);
+                if(field)
+                    field->set(Size{Meta::fromStr<Size2>(text)});
+                else
+                    ptr->set(Size{Meta::fromStr<Size2>(text)});
             }
                 //o->set_size(resolve_variable_type<Size2>(size, context));
             //}

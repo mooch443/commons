@@ -41,6 +41,25 @@ sprite::Reference LabeledField::ref() const {
     return GlobalSettings::write_value<NoType>(_ref);
 }
 
+TooltipData LabeledField::tooltip() const {
+    if(ref().valid())
+        return TooltipData((std::string)ref().name());
+    
+    return TooltipData{
+        TooltipData::Both{
+            ref().valid()
+                ? (std::string)ref().name()
+                : (std::string)"<null>",
+            (std::string)""
+        }
+    };
+}
+
+std::shared_ptr<Drawable> LabeledField::tooltip_object() const
+{
+    return representative().get_smart();
+}
+
 LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
     : _gui(gui), _ref(name), _text(new gui::Text(Str{name}))
 {
@@ -88,12 +107,17 @@ void LabeledField::replace_ref(ParmName name) {
     trigger_ref_update();
 }
 
-void LabeledField::replace_docs(std::string_view name) {
-    auto docs = GlobalSettings::read_doc(name);
-    if(docs) {
-        _docs = (std::string)*docs;
-    } else
-        FormatWarning("Cannot read documentation for ", name,".");
+void LabeledField::replace_docs(TooltipData name) {
+    if(name.is_name()) {
+        auto docs = GlobalSettings::read_doc(name.title());
+        if(docs) {
+            _docs = name;//(std::string)*docs;
+        } else
+            FormatWarning("Cannot read documentation for ", name,".");
+    } else {
+        _docs = name;
+    }
+    
 }
 
 LabeledField::~LabeledField() {
@@ -127,6 +151,46 @@ LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, S
         }});
         state._last_settings_box = _combo;
     }
+}
+
+TooltipData LabeledCombobox::tooltip() const {
+    if(auto hname = highlighted_parameter();
+       hname.has_value())
+    {
+        //Print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
+        return TooltipData{hname.value()};
+        
+    } else if(_combo) {
+        auto data = _combo->tooltip_data();
+        if(data) {
+            return *data;
+        } else {
+            if(not ref().valid()) {
+                return TooltipData{
+                    TooltipData::Both{
+                        (std::string)"",
+                        (std::string)"Select a parameter here to check or change its value."
+                    }
+                };
+            }
+        }
+    }
+    
+    return LabeledField::tooltip();
+}
+
+std::shared_ptr<Drawable> LabeledCombobox::tooltip_object() const
+{
+    if(auto hname = highlighted_parameter();
+       hname.has_value())
+    {
+        //Print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
+        return representative().get_smart();
+    } else if(_combo) {
+        return _combo.get_smart();
+    }
+    
+    return LabeledField::tooltip_object();
 }
 
 std::optional<std::string> LabeledCombobox::selected_parameter() const {
@@ -188,7 +252,7 @@ struct TypeInfo_ref {
     
     bool is_optional() const { return _prop.get().is_optional(); }
     bool is_enum() const { return _prop.get().is_enum(); }
-    bool optional_has_value() const { return _prop.get().optional_has_value()(); }
+    bool optional_has_value() const { return _prop.get().optional_has_value(); }
     std::vector<std::string> enum_values() const {
         return _prop.get().enum_values()();
     }
@@ -202,7 +266,9 @@ struct TypeInfo_optional {
     std::unique_ptr<sprite::PropertyType> _deref;
     
     TypeInfo_optional(const sprite::Reference& prop)
-        : _deref(prop.get().dereference_optional()())
+        : _deref(prop.get().optional_has_value()
+                 ? prop.get().dereference_optional()
+                 : prop.get().get_optional_default_value())
     { }
     
     template<typename T>
@@ -217,7 +283,7 @@ struct TypeInfo_optional {
     
     bool is_optional() const { return _deref->is_optional(); }
     bool is_enum() const { return _deref->is_enum(); }
-    bool optional_has_value() const { return _deref->optional_has_value()(); }
+    bool optional_has_value() const { return _deref->optional_has_value(); }
     std::vector<std::string> enum_values() const {
         return _deref->enum_values()();
     }
@@ -301,18 +367,51 @@ LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, c
       _create_button(new Button(Str{"+"}, Size{30,30})),
       _null_value(new Entangled())
 {
-    _create_button->on_click([this](Event){
-        ref().get().default_initialize_optional()();
+    _value = LabeledField::Make({true}, gui, (std::string)ref().name());
+    _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28});
+    
+    _reset_button->on_click([this](auto){
+        if(not ref().get().optional_has_value())
+            return;
+        
+        auto name = ref().name();
+        if(name.empty())
+            return;
+        
+        ref().get().reset_optional();
         trigger_ref_update();
     });
-    replace_docs(name);
+    
+    _create_button->on_click([this](Event){
+        ref().get().default_initialize_optional();
+        trigger_ref_update();
+    });
+    replace_docs(TooltipData{name});
     update_ref_in_main_thread();
+}
+
+TooltipData LabeledOptional::tooltip() const {
+    if(_reset_button->hovered())
+        return TooltipData{
+            TooltipData::Both {
+                .name = "",
+                .docs = "Set to <c>null</c>"
+            }
+        };
+    return _value->tooltip();
+}
+
+std::shared_ptr<Drawable> LabeledOptional::tooltip_object() const
+{
+    if(_reset_button->hovered())
+        return _reset_button.get_smart();
+    return _value->representative().get_smart();
 }
 
 bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_view name) const {
     if(ptr.get() == _create_button.get())
     {
-        if(is_in(name, LineClr::alias_name, FillClr::alias_name, TextClr::alias_name, Font::alias_name, Size::alias_name)) {
+        if(is_in(name, ALIAS<LineClr>, ALIAS<FillClr>, ALIAS<TextClr>, ALIAS<Font>, ALIAS<Size>)) {
             return true;
         } else
             return false;
@@ -320,31 +419,70 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
     return true;
 }
 
-void LabeledOptional::after_set_property(const Layout::Ptr& ptr, std::string_view name) const {
-    if(ptr.get() == _create_button.get())
+void LabeledOptional::after_set_property(const Layout::Ptr& ptr, std::string_view name, std::function<std::string()> value_string) const {
+    //if(ptr.get() == _create_button.get())
     {
-        if(name == Font::alias_name) {
-            auto font = _create_button->font();
+        if(name == ALIAS<Font>) {
+            auto font = Meta::fromStr<Font>(value_string());
+            
+            {
+                Font center{font};
+                center.align = Align::Center;
+                _reset_button->set(center);
+            }
+            
             font.align = Align::Center;
             _create_button->set(font);
             
-        } else if(name == Size::alias_name) {
-            auto size = _create_button->size();
-            size.width = min(30, size.width * 0.5);
-            size.height = min(30, size.height - 10);
+        } else if(name == ALIAS<Size>) {
+            auto size = Meta::fromStr<Size2>(value_string());
+            size.width = max(5_F, size.width - 25);
+            
+            _value->representative()->set(Size{size});
+            
+            _reset_button->set(Size{_reset_button->width(), _value->representative()->height()});
+            size.width = saturate((size.width * 0.5), 5_F, 30_F);
+            size.height = saturate(size.height - 10, 5_F, 30_F);
             _create_button->set(Size{size});
             
-        } else if(name == LineClr::alias_name) {
-            Color clr = (Color)_create_button->bg_line_color();
+        } else if(name == ALIAS<LineClr>) {
+            Color clr = Meta::fromStr<Color>(value_string());
+            _reset_button->set(LineClr{clr});
             clr.a = 255;
-            _create_button->set_line_clr(clr);
+            _create_button->set(LineClr{clr});
+            
+        } else if(name == ALIAS<FillClr>) {
+            _reset_button->set(FillClr{Orange.alpha(50)});
+            
+        } else if(name == ALIAS<TextClr>) {
+            auto clr = Meta::fromStr<Color>(value_string());
+            _reset_button->set(TextClr{clr});
+            
+        } else if(name == ALIAS<CornerFlags_t>) {
+            auto flags = Meta::fromStr<CornerFlags>(value_string());
+            auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
+            auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left());
+            
+            _value->set(LabelCornerFlags{left_box});
+            
+            bool _does_not_equal_default = true;
+
+            if(_reset_button && _does_not_equal_default) {
+                if(not _value->set(LabelCornerFlags(false, false, false, false))) {
+                    _value->set(CornerFlags_t(false, false, false, false));
+                }
+                _reset_button->set(CornerFlags_t{right_box});
+            } else if(not _value->set(LabelCornerFlags{right_box})) {
+                _value->set(CornerFlags_t{right_box});
+            }
         }
     }
 }
 
 std::vector<Layout::Ptr> LabeledOptional::apply_set() const {
     return {
-        representative(),
+        _value->representative(),
+        _null_value,
         _create_button
     };
 }
@@ -358,17 +496,21 @@ void LabeledOptional::set_description(std::string desc) {
 void LabeledOptional::update_ref_in_main_thread() {
     //_checkbox->set_checked(_invert ? not ref().value<bool>() : ref().value<bool>());
     //Print("Checkbox for ", ref().get().name(), " is ", _checkbox->checked());
-    if(ref().get().optional_has_value()()) {
-        if(not _value) {
-            _value = LabeledField::Make({true}, gui(), (std::string)ref().name());
-            if(_value)
-                _value->set_description(_text->txt());
-        }
+    
+    /*if(not _value) {
+        _value = LabeledField::Make({true}, gui(), (std::string)ref().name());
+    }*/
+    
+    //_reset_button->set(Size{_reset_button->width(), _value->representative()->height()});
+    
+    if(ref().get().optional_has_value()) {
+        if(_value)
+            _value->set_description(_text->txt());
         
     } else {
-        _value = nullptr;
+        //_value = nullptr;
         _null_value->update([this](Entangled& base) {
-            auto text = base.add<Text>(Str{"Add value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.3}, TextClr{Green.saturation(0.5)}, Origin{0, 0.5});
+            auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
             _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });
@@ -380,7 +522,7 @@ LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, c
 _checkbox(new gui::Checkbox(attr::Str(desc))),
 _invert(invert)
 {
-    replace_docs(name);
+    replace_docs(TooltipData{name});
     _checkbox->set_checked(_invert
                                ? not ref().value<bool>()
                                : ref().value<bool>());
@@ -420,7 +562,7 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
     _text_field->set_placeholder(name);
     _text_field->set_font(Font(0.7f));
     
-    replace_docs(name);
+    replace_docs(TooltipData{name});
     update_ref_in_main_thread();
     
     _text_field->on_text_changed([this](){
@@ -521,7 +663,7 @@ _list(new gui::List(
   })),
     _invert(invert)
 {
-    replace_docs(name);
+    replace_docs(TooltipData{name});
     
     //_list->textfield()->set_font(Font(0.7f));
     //_list->set(Font(0.7f));
@@ -581,7 +723,7 @@ void LabeledList::update_ref_in_main_thread() {
         
         if(r.get().is_optional()) {
             if(r.get().optional_has_value()) {
-                auto obj = r.get().dereference_optional()();
+                auto obj = r.get().dereference_optional();
                 if(obj->is_type<bool>()) {
                     bool_value = obj->value<bool>();
                     
@@ -627,7 +769,7 @@ LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, c
 : LabeledField(gui, name),
 _dropdown(new gui::Dropdown(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
-    replace_docs(name);
+    replace_docs(TooltipData{name});
     
     _dropdown->textfield()->set_font(Font(0.7f));
     assert(ref().get().is_enum());

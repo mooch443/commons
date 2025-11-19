@@ -612,8 +612,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         Postfix postfix { get(std::string(), "postfix") };
         ref->set(postfix);
         if(scale != Vec2(1)) ref->set(attr::Scale{scale});
-        if(pos != Vec2(0)) ref->set(attr::Loc{pos});
-        if(size != Vec2(0)) ref->set(attr::Size{size});
+        if(pos != Vec2(0))
+            ref->set(attr::Loc{pos});
+        if(size != Vec2(0))
+            ref->set(attr::Size{size});
         
         LabelAutoSize_t auto_limit_size{ get(LabelAutoSize_t{true}, "auto_limit_size") };
         ref->set(auto_limit_size);

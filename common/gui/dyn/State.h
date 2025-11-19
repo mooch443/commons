@@ -96,6 +96,7 @@ struct ListContents {
 struct VarCache {
     std::string _var, _value;
     glz::json_t::object_t _obj;
+    std::weak_ptr<Drawable> _cached_ptr;
 };
 
 /*struct Pattern {

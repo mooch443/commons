@@ -11,6 +11,6 @@ namespace cmn::gui {
     }
 
     std::string Font::toStr() const {
-        return "Font<"+Meta::toStr(size)+" "+Meta::toStr(style)+" "+Meta::toStr((int)align)+">";
+        return "["+Meta::toStr(size)+","+Meta::toStr(style)+","+Meta::toStr((int)align)+"]";
     }
 }

@@ -33,7 +33,7 @@ void CurrentObjectHandler::unregister_tooltipable(std::weak_ptr<LabeledField> fi
 
 void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
     std::shared_ptr<Drawable> found = nullptr;
-    std::string name{"<null>"};
+    TooltipData name{TooltipData::Both{.name = "<null>", .docs = ""}};
     std::unique_ptr<sprite::Reference> ref;
     
     for(auto it = _textfields.begin(); it != _textfields.end(); ) {
@@ -49,7 +49,7 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
         
         ptr->text()->set_clickable(true);
         
-        const Drawable* hover_object = ptr->representative().get();
+        const Drawable* hover_object = dynamic_cast<const LabeledCombobox*>(ptr.get()) ? ptr->representative().get() : ptr->tooltip_object().get();
         if(hover_object
            && hover_object->type() == Type::ENTANGLED
            && static_cast<const Entangled*>(hover_object)->tooltip_object())
@@ -61,37 +61,14 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
            && hover_object->is_staged()
            && hover_object->hovered())
         {
-            //found = ptr->representative();
-            if(dynamic_cast<const LabeledCombobox*>(ptr.get())) {
-                auto p = dynamic_cast<const LabeledCombobox*>(ptr.get());
-                auto hname = p->highlighted_parameter();
-                if(hname.has_value()) {
-                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with ", hname.value(), " highlighted.");
-                    name = hname.value();
-                    found = ptr->representative().get_smart();
-                    break;
-                } else {
-                    //Print("This is a labeled combobox: ", graph.hovered_object(), " with nothing highlighted.");
-                    hname = p->selected_parameter();
-                    if(hname.has_value()) {
-                        name = hname.value();
-                        found = ptr->representative().get_smart();
-                        break;
-                    }
-                }
-            } else {
-                found = ptr->representative().get_smart();
-                auto r = ptr->ref();
-                name = r.valid() ? r.name() : "<null>";
-                break;
-            }
-            //if(ptr->representative().is<Combobox>())
-            //ptr->representative().to<Combobox>()-
+            found = ptr->tooltip_object();
+            name = ptr->tooltip();
+            break;
         }
     }
     
     if(found) {
-        ref = std::make_unique<sprite::Reference>(GlobalSettings::write_value<NoType>(name));
+        ref = std::make_unique<sprite::Reference>(GlobalSettings::write_value<NoType>(name.title()));
     }
     
     const Drawable* hover_object = found.get();
@@ -115,7 +92,7 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
             // dont draw
             //state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
         } //else {
-        if(name.empty())
+        if(name.title().empty())
             Print("Error!");
         
         set_tooltip(name, found);
@@ -139,11 +116,11 @@ void CurrentObjectHandler::add_tooltip(DrawStructure &graph) {
     }
 }
 
-void CurrentObjectHandler::set_tooltip(const std::string_view &parameter, std::weak_ptr<Drawable> other) {
+void CurrentObjectHandler::set_tooltip(TooltipData parameter, std::weak_ptr<Drawable> other) {
     if(not _tooltip_object)
         _tooltip_object = std::make_shared<SettingsTooltip>();
     _tooltip_object->set_other(other);
-    _tooltip_object->set_parameter((std::string)parameter);
+    _tooltip_object->set_parameter(parameter);
 }
 
 void CurrentObjectHandler::set_tooltip(std::nullptr_t) {

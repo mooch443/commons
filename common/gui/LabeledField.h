@@ -13,6 +13,7 @@
 #include <gui/GUITaskQueue.h>
 #include <gui/Passthrough.h>
 #include <gui/Dispatcher.h>
+#include <misc/TooltipData.h>
 
 namespace cmn::gui {
 namespace dyn {
@@ -59,7 +60,7 @@ protected:
     mutable std::shared_ptr<std::mutex> _ref_mutex = std::make_shared<std::mutex>();
 private:
     GETTER_PTR(GUITaskQueue_t*, gui){nullptr};
-    std::string _docs;
+    TooltipData _docs;
     std::string _ref;
     //sprite::Reference _ref;
     cmn::CallbackFuture _callback_id;
@@ -77,6 +78,8 @@ protected:
     
 public:
     sprite::Reference ref() const;
+    virtual TooltipData tooltip() const;
+    virtual std::shared_ptr<Drawable> tooltip_object() const;
     
     auto register_delete_callback(auto&& fn) {
         return _delete_callbacks.registerCallback(std::forward<decltype(fn)>(fn));
@@ -97,7 +100,7 @@ public:
     void trigger_ref_update();
     virtual void update_ref_in_main_thread() {}
     void replace_ref(ParmName name);
-    void replace_docs(std::string_view name);
+    void replace_docs(TooltipData name);
     virtual Layout::Ptr representative() const { return _text; }
     virtual void set_description(std::string);
     
@@ -115,16 +118,19 @@ public:
         return true;
     }
     
-    virtual void after_set_property(const Layout::Ptr&, std::string_view) const { }
+    virtual void after_set_property(const Layout::Ptr&, std::string_view, std::function<std::string()>) const { }
     
     template<typename T>
     bool set(T attribute) {
         bool applied = false;
         for(auto &ptr : apply_set()) {
-            if(not ptr || not is_property_allowed(ptr, T::alias_name))
+            if(not ptr || not is_property_allowed(ptr, ALIAS<T>))
                 continue;
             applied = delegate_to_proper_type(attribute, ptr) || applied;
-            after_set_property(ptr, T::alias_name);
+            after_set_property(ptr, ALIAS<T>, [&]() -> std::string
+            {
+                return Meta::toStr<typename T::base_type>(attribute);
+            });
         }
         return applied;
     }
@@ -306,6 +312,9 @@ struct LabeledCombobox : public LabeledField {
     Layout::Ptr representative() const override { return _combo; }
     std::optional<std::string> highlighted_parameter() const;
     std::optional<std::string> selected_parameter() const;
+    
+    TooltipData tooltip() const override;
+    std::shared_ptr<Drawable> tooltip_object() const override;
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
@@ -342,12 +351,14 @@ struct LabeledList : public LabeledField {
 struct LabeledOptional : public LabeledField {
     std::unique_ptr<LabeledField> _value;
     gui::derived_ptr<Button> _create_button;
+    gui::derived_ptr<Button> _reset_button;
     gui::derived_ptr<Entangled> _null_value;
     
     LabeledOptional(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
-        if(_value) {
+        if(ref().get().optional_has_value()) {
             _value->add_to(v);
+            v.push_back(_reset_button);
         } else {
             assert(_null_value != nullptr);
             v.push_back(_null_value);
@@ -355,7 +366,7 @@ struct LabeledOptional : public LabeledField {
     }
     void update_ref_in_main_thread() override;
     Layout::Ptr representative() const override {
-        if(_value)
+        if(ref().get().optional_has_value())
             return _value->representative();
         else
             return _null_value;
@@ -363,7 +374,10 @@ struct LabeledOptional : public LabeledField {
     void set_description(std::string) override;
     std::vector<Layout::Ptr> apply_set() const override;
     bool is_property_allowed(const Layout::Ptr&, std::string_view) const override;
-    void after_set_property(const Layout::Ptr&, std::string_view) const override;
+    void after_set_property(const Layout::Ptr&, std::string_view, std::function<std::string()>) const override;
+    
+    TooltipData tooltip() const override;
+    std::shared_ptr<Drawable> tooltip_object() const override;
 };
 
 struct LabeledPath : public LabeledField {

@@ -78,6 +78,7 @@ namespace cmn::gui {
     
     struct Font {
         /// for compatibility with the whole alias_name thing in LabeledFields
+        using base_type = Font;
         static constexpr const char* alias_name = "Font";
         
         Float2_t size;
@@ -106,6 +107,17 @@ namespace cmn::gui {
         }
         
         std::string toStr() const;
+        static Font fromStr(cmn::StringLike auto&& str) {
+            auto parts = util::parse_array_parts(util::truncate(str));
+            if(parts.size() != 3)
+                throw InvalidArgumentException("Unknown number of parts for font: ", parts);
+            
+            return Font{
+                Meta::fromStr<Float2_t>(parts[0]),
+                (Style)Meta::fromStr<uint32_t>(parts[1]),
+                (Align)Meta::fromStr<int>(parts[2])
+            };
+        }
         static std::string class_name() { return "Font"; }
     };
 }

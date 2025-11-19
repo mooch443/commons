@@ -4,6 +4,7 @@
 #include <misc/colors.h>
 #include <gui/GuiTypes.h>
 #include <gui/types/SettingsTooltip.h>
+#include <misc/TooltipData.h>
 
 namespace cmn::gui::dyn {
 
@@ -58,7 +59,7 @@ struct CurrentObjectHandler {
     std::shared_ptr<Drawable> get() const;
     
     void add_tooltip(DrawStructure&);
-    void set_tooltip(const std::string_view& parameter, std::weak_ptr<Drawable> other);
+    void set_tooltip(TooltipData, std::weak_ptr<Drawable> other);
     void set_tooltip(std::nullptr_t);
     
     void register_tooltipable(std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>);

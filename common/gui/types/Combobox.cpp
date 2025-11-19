@@ -16,6 +16,9 @@ void Combobox::init() {
     _dropdown->set(Textfield::OnClearText_t([this]{
         set_content_changed(true);
         _value = nullptr;
+        set(ParmName{});
+        if(_settings.on_select)
+            _settings.on_select(ParmName{});
         update_value();
     }));
     _dropdown->on_select([this](auto, const Dropdown::TextItem & item){
@@ -150,8 +153,14 @@ void Combobox::set(ParmName name) {
             stage()->do_hover(nullptr);
         }
         
-        _value = LabeledField::Make({}, _gui, name);
-        if(not dynamic_cast<const LabeledCheckbox*>(_value.get())) {
+        if(not name.empty()) {
+            _value = LabeledField::Make({}, _gui, name);
+        } else {
+            _value = nullptr;
+        }
+        if(_value
+           && not dynamic_cast<const LabeledCheckbox*>(_value.get()))
+        {
             _value->set_description("");
         }
         
@@ -377,8 +386,13 @@ void Combobox::update_value() {
 
 const Drawable* Combobox::tooltip_object() const
 {
+    if(_reset_button
+       && _reset_button->hovered())
+    {
+        return _reset_button.get();
+    }
     if(_value) {
-        const Drawable* rep = _value->representative().get();
+        const Drawable* rep = _value->tooltip_object().get(); //_value->representative().get();
         if(rep
            && rep->type() == Type::ENTANGLED
            && static_cast<const Entangled*>(rep)->tooltip_object())
@@ -392,6 +406,45 @@ const Drawable* Combobox::tooltip_object() const
         }
     }
     return _dropdown ? _dropdown->tooltip_object(): nullptr;
+}
+
+std::optional<TooltipData> Combobox::tooltip_data() const {
+    if(_reset_button
+       && _reset_button->hovered())
+    {
+        if(_value) {
+            auto data = _value->tooltip();
+            if(data.is_name()) {
+                auto value = GlobalSettings::read_default_from_all(data.title());
+                if(value.valid()) {
+                    return TooltipData{
+                        TooltipData::Both {
+                            .name = std::string(),
+                            .docs = std::string("Reset to default (<c>"+value.get().valueString()+"</c>)")
+                        }
+                    };
+                }
+            }
+        }
+        return TooltipData{
+            TooltipData::Both {
+                .name = std::string(),
+                .docs = std::string("Reset to default value")
+            }
+        };
+    }
+    if(_value) {
+        const Drawable* rep = _value->tooltip_object().get();
+        if(rep && rep->hovered())
+            return _value->tooltip();
+    }
+    
+    auto ptr = tooltip_object();
+    if(ptr) {
+        if(ptr->type() == Type::ENTANGLED)
+            return static_cast<const Entangled*>(ptr)->tooltip_data();
+    }
+    return std::nullopt;
 }
 
 }

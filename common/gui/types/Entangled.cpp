@@ -87,6 +87,16 @@ namespace cmn::gui {
 const Drawable* Entangled::tooltip_object() const {
     return nullptr;
 }
+
+std::optional<TooltipData> Entangled::tooltip_data() const {
+    if(auto ptr = tooltip_object();
+       ptr && ptr != this)
+    {
+        return ptr->type() == Type::ENTANGLED ? static_cast<const Entangled*>(ptr)->tooltip_data() : std::nullopt;
+    }
+    
+    return std::nullopt;
+}
     
     Entangled::~Entangled() {
         auto children = this->children();

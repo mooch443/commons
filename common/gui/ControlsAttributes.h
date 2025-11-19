@@ -7,6 +7,9 @@
 namespace cmn::gui {
 namespace attr {
 
+template<typename T>
+static inline constexpr std::string_view ALIAS = T :: alias_name;
+
 template <typename T>
 inline constexpr bool pack_contains() {
     return false;
@@ -68,7 +71,7 @@ struct AttributeAlias : T {
 };
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \
-    struct ALIAS_NAME##Tag { static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
+    struct ALIAS_NAME##Tag { using base_type = BASE_TYPE; static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
     using ALIAS_NAME = AttributeAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 // Using the ALIAS macro to define type aliases
@@ -98,11 +101,13 @@ ATTRIBUTE_ALIAS(Placeholder_t, std::string)
 
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \
-    struct ALIAS_NAME##Tag { static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
+struct ALIAS_NAME##Tag { using base_type = BASE_TYPE; static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
     using ALIAS_NAME = NumberAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 template <typename T, class Tag>
 struct NumberAlias {
+public:
+    using base_type = T;
     T value;
 public:
     using self_type = NumberAlias<T, Tag>;

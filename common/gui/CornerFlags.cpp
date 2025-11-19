@@ -12,7 +12,7 @@ std::string CornerFlags::toStr() const
 
     // Compose token list
     std::vector<std::string> toks;
-    auto add = [&](const char* t){ toks.emplace_back(t); };
+    auto add = [&](const char* t){ toks.emplace_back(std::string("'")+t+"'"); };
 
     if (mask == (TopLeft | BottomLeft))             add("left");
     else if (mask == (TopRight | BottomRight))      add("right");

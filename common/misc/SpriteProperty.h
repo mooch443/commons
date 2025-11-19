@@ -49,11 +49,21 @@ namespace cmn {
             GETTER(std::function<std::vector<std::string>()>, enum_values);///< Getter for the enum values.
             GETTER(std::function<uint32_t()>, enum_index);///< Getter for the index of an enum value.
 
-            GETTER(std::function<bool()>, optional_has_value);
-            GETTER(std::function<void()>, default_initialize_optional);
+            std::function<bool()> _optional_has_value;
+            std::function<void()> _default_initialize_optional;
+            std::function<void()> _reset_optional;
             
-            GETTER(std::function<std::unique_ptr<PropertyType>()>, dereference_optional);
+            std::function<std::unique_ptr<PropertyType>()> _dereference_optional;
+            std::function<std::unique_ptr<PropertyType>()> _get_optional_default_value;
             
+        public:
+            bool optional_has_value() const { return _optional_has_value(); }
+            void default_initialize_optional() const { _default_initialize_optional(); }
+            void reset_optional() const { _reset_optional(); }
+            auto dereference_optional() const { return _dereference_optional(); }
+            auto get_optional_default_value() const { return _get_optional_default_value(); }
+            
+        protected:
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
             GETTER_SETTER_I(bool, do_print, false);
             
@@ -87,8 +97,14 @@ namespace cmn {
                 _default_initialize_optional = []() {
                     throw U_EXCEPTION("PropertyType::default_initialize_optional() not initialized");
                 };
+                _reset_optional = []() {
+                    throw U_EXCEPTION("PropertyType::_reset_optional() not initialized.");
+                };
                 _dereference_optional = []() -> std::unique_ptr<PropertyType> {
                     throw U_EXCEPTION("PropertyType::_dereference_optional not initialized.");
+                };
+                _get_optional_default_value = []() -> std::unique_ptr<PropertyType> {
+                    throw U_EXCEPTION("PropertyType::_get_optional_default_value not initialized.");
                 };
             }
             
@@ -349,8 +365,14 @@ namespace cmn {
                 _default_initialize_optional = [this]() {
                     value(typename ValueType::value_type{});
                 };
+                _reset_optional = [this]() {
+                    value(ValueType{});
+                };
                 _dereference_optional = [this]() -> std::unique_ptr<PropertyType> {
                     return std::make_unique<Property<typename ValueType::value_type>>(name(), value().value());
+                };
+                _get_optional_default_value = [this]() -> std::unique_ptr<PropertyType> {
+                    return std::make_unique<Property<typename ValueType::value_type>>(name(), typename ValueType::value_type{});
                 };
             }
             
@@ -360,8 +382,14 @@ namespace cmn {
                 _default_initialize_optional = []() {
                     throw U_EXCEPTION("This type is not an Optional, so default_initialize_optional() cannot be called.");
                 };
+                _reset_optional = []() {
+                    throw U_EXCEPTION("This type is not an optional value, so _reset_optional cannot be used.");
+                };
                 _dereference_optional = []() -> std::unique_ptr<PropertyType> {
                     throw U_EXCEPTION("This type is not an Optional, so _dereference_optional() cannot be called.");
+                };
+                _get_optional_default_value = []() -> std::unique_ptr<PropertyType> {
+                    throw U_EXCEPTION("This type is not an Optional, so _get_optional_default_value() cannot be called.");
                 };
             }
             

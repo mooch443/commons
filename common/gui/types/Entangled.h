@@ -5,6 +5,7 @@
 //#include <gui/GuiTypes.h>
 //#include <set>
 #include <misc/ranges.h>
+#include <misc/TooltipData.h>
 
 #ifdef NDEBUG
 //#define COMMONS_COUNT_ITERATIONS true
@@ -197,6 +198,7 @@ namespace cmn::gui {
         std::vector<Drawable*>& children() override;
         virtual void on_visibility_change(bool) override;
         virtual const Drawable* tooltip_object() const;
+        virtual std::optional<TooltipData> tooltip_data() const;
         
     public:
         template<typename T, class... Args, Type::data::values type = T::Class>
