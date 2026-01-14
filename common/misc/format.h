@@ -598,7 +598,7 @@ public:
     }
 
     template<typename T, typename K = cmn::remove_cvref_t<T>>
-        requires _is_dumb_pointer<T> && std::same_as<T, const char*>
+        requires _is_dumb_pointer<T> && std::same_as<T, const char*> && (not std::is_array_v<std::remove_reference_t<T>>)
     static std::string parse_value(T s) {
         return pretty_text(s);
     }

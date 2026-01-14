@@ -125,9 +125,22 @@ set(CMAKE_DEBUG_POSTFIX -d)
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-undefined,error")
+    if(APPLE)
+        string(REPLACE "-Wl,-undefined,error" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+        string(REPLACE "-Wl,-undefined,error" "" CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS}")
+    else()
+        if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-Wl,--no-undefined")
+            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-undefined")
+        endif()
+        if(NOT CMAKE_MODULE_LINKER_FLAGS MATCHES "-Wl,--no-undefined")
+            set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,--no-undefined")
+        endif()
+    endif()
+    string(STRIP "${CMAKE_EXE_LINKER_FLAGS}" CMAKE_EXE_LINKER_FLAGS)
+    string(STRIP "${CMAKE_MODULE_LINKER_FLAGS}" CMAKE_MODULE_LINKER_FLAGS)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" CACHE STRING "Linker flags for executables" FORCE)
     set(CMAKE_MODULE_LINKER_FLAGS
-      "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-undefined,error"
+      "${CMAKE_MODULE_LINKER_FLAGS}"
       CACHE STRING "Fail on undefined symbols" FORCE)
 endif()
 
@@ -1213,6 +1226,21 @@ if(WIN32)
     set(OpenCV_STATIC ON)
 endif()
 
+if(UNIX)
+    # find libavif
+    find_library(AVIF_LIBRARY avif)
+    find_path(AVIF_INCLUDE_DIR avif/avif.h)
+    if(AVIF_LIBRARY AND AVIF_INCLUDE_DIR)
+        message(STATUS "Found libavif: ${AVIF_LIBRARY} ${AVIF_INCLUDE_DIR}")
+        set(OPENCV_EXTRA_FLAGS ${OPENCV_EXTRA_FLAGS}
+            -DAVIF_INCLUDE_DIR=${AVIF_INCLUDE_DIR}
+            -DAVIF_LIBRARY=${AVIF_LIBRARY}
+        )
+    else()
+        message(STATUS "libavif not found.")
+    endif()
+endif()
+
 if(NOT ${COMMONS_BUILD_OPENCV})
     message(STATUS "Trying to find OpenCV...")
     find_package( OpenCV )
@@ -1387,7 +1415,9 @@ if(${COMMONS_BUILD_OPENCV})
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
             -DOPENCV_ENABLE_NONFREE=OFF
             -DWITH_FFTW=OFF
-            -DPKG_CONFIG_USE_STATIC_LIBS=OFF
+            -DPKG_CONFIG_USE_STATIC_LIBS=ON
+            -DWITH_AVIF=OFF
+            -DWITH_HEIF=OFF
     )
             #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 
@@ -1465,7 +1495,9 @@ else()
             -DCMAKE_CONFIGURATION_TYPES:STRING=Release
             -DOPENCV_ENABLE_NONFREE=OFF
             -DWITH_FFTW=OFF
-            -DPKG_CONFIG_USE_STATIC_LIBS=OFF
+            -DPKG_CONFIG_USE_STATIC_LIBS=ON
+            -DWITH_AVIF=OFF
+            -DWITH_HEIF=OFF
     )
             #-DCMAKE_CONFIGURATION_TYPES:STRING=Debug;Release
 endif()
@@ -1565,6 +1597,7 @@ endif()
 			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff z) #raw1394 usb-1.0 udev glib-2.0)
 	#		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_stitching opencv_photo)
 		endif()
+        message(STATUS "OpencvLIBS = ${OpenCV_LIBS}")
     endif()
 
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
