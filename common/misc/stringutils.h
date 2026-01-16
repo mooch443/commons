@@ -515,11 +515,6 @@ inline std::string ShortenText(std::string_view text, size_t maxLength, double p
 
 // Define a struct to store the preprocessed data.
 struct PreprocessedData {
-    // termFrequency stores the frequency of each term across the entire corpus.
-    // For example, if the word "apple" appears 5 times in the entire corpus,
-    // termFrequency["apple"] would be 5.
-    std::unordered_map<std::string, int> termFrequency;
-    
     // docFrequency stores the number of documents each term appears in.
     // For instance, if the term "apple" appears in 3 different documents,
     // docFrequency["apple"] would be 3.
@@ -536,7 +531,7 @@ struct PreprocessedData {
     
     // empty is a utility function that checks whether the PreprocessedData
     // object has any data. It returns true if termFrequency is empty.
-    bool empty() const { return termFrequency.empty(); }
+    bool empty() const { return docFrequency.empty(); }
     
     // Function to get a string representation of the structure
     std::string toStr() const;
@@ -547,9 +542,43 @@ struct PreprocessedData {
     }
 };
 
+// Define a struct to store the preprocessed data.
+struct PreprocessedDataWithDocs {
+    // docFrequency stores the number of documents each term appears in.
+    // For instance, if the term "apple" appears in 3 different documents,
+    // docFrequency["apple"] would be 3.
+    std::unordered_map<std::string, int> docFrequency;
+    std::unordered_map<std::string, double> termImportance; // smoothed IDF
+    
+    std::vector<std::vector<std::string>> tokenizedNames; // To store tokenized documents
+    std::vector<std::vector<std::string>> tokenizedDocs; // To store tokenized documents
+    
+    // termVectors contains a vector of term-frequency-inverse-document-frequency
+    // (TF-IDF) vectors for each document in the corpus.
+    // Each unordered_map represents the TF-IDF vector for a document,
+    // with the keys being the terms and the values being the TF-IDF scores.
+    std::vector<std::unordered_map<std::string, double>> nameVectors;
+    std::vector<std::unordered_map<std::string, double>> docVectors;
+    
+    // empty is a utility function that checks whether the PreprocessedData
+    // object has any data. It returns true if termFrequency is empty.
+    bool empty() const { return docFrequency.empty(); }
+    
+    // Function to get a string representation of the structure
+    std::string toStr() const;
+
+    // Static function to return the class name as a string
+    static std::string class_name() {
+        return "PreprocessedDataWithDocs";
+    }
+};
+
 PreprocessedData preprocess_corpus(const std::vector<std::string>& corpus);
-std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus);
+PreprocessedDataWithDocs preprocess_corpus(const std::vector<std::string>& corpus, const std::vector<std::string>& docs);
+
+[[deprecated]] std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus);
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData&);
+std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const std::vector<std::string>& docs, const PreprocessedDataWithDocs&);
 
 namespace cmn::utils {
 

@@ -19,7 +19,8 @@ namespace cmn::gui {
 
     class Dropdown : public Entangled {
         std::vector<std::string> _corpus;
-        PreprocessedData _preprocessed;
+        std::vector<std::string> _doc_corpus;
+        std::optional<std::variant<PreprocessedDataWithDocs, PreprocessedData>> _preprocessed;
         
     public:
         enum Type {
@@ -80,20 +81,24 @@ namespace cmn::gui {
                 return name();
             }
             virtual std::string name() const = 0;
-            virtual std::string search_name() const { return name(); }
-            virtual std::string display_name() const { return name(); }
+            virtual std::optional<std::string> search_name() const { return std::nullopt; }
+            virtual std::optional<std::string> display_name() const { return std::nullopt; }
+            virtual std::optional<std::string> docs() const { return std::nullopt; }
         };
         
         class TextItem : public Item {
-            std::string _name, _search;
-            GETTER_SETTER(std::string, display);
+            std::string _name;
+            std::optional<std::string> _search;
+            std::optional<std::string> _docs;
+            
+            GETTER_SETTER(std::optional<std::string>, display);
             GETTER_PTR_I(void*, custom, nullptr);
             GETTER_SETTER_I(int, index, Item::INVALID_ID);
             GETTER_SETTER_I(Color, color, Transparent);
             
         public:
-            TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
-                : Item(ID), _name(name), _search(search), _custom(custom)
+            TextItem(const std::string& name = "", long ID = Item::INVALID_ID, std::optional<std::string> search = std::nullopt, void *custom = NULL, std::optional<std::string> docs = std::nullopt)
+            : Item(ID), _name(name), _search(std::move(search)), _docs(std::move(docs)), _custom(custom)
             {
                 _index = narrow_cast<int>(this->ID());
             }
@@ -102,13 +107,16 @@ namespace cmn::gui {
                 return _name;
             }
             
-            std::string search_name() const override {
-                return _search.empty() ? name() : _search;
+            void set_search(std::optional<std::string> search_text) {
+                _search = std::move(search_text);
+            }
+            void set_docs(std::optional<std::string> docs) {
+                _docs = std::move(docs);
             }
             
-            std::string display_name() const override {
-                return _display.empty() ? name() : _display;
-            }
+            std::optional<std::string> search_name() const override { return _search; }
+            std::optional<std::string> display_name() const override { return _display; }
+            std::optional<std::string> docs() const override { return _docs; }
             
             bool operator==(const TextItem& other) const {
                 return /*other.ID() == ID() &&*/ other._custom == _custom && other.name() == name();

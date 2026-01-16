@@ -12,7 +12,17 @@ auto default_value_of(std::string_view name) {
 void Combobox::init() {
     _dropdown = new Dropdown(Box(0, 0, 800, 28));
     auto keys = GlobalSettings::keys();
-    _dropdown->set_items(std::vector<Dropdown::TextItem>(keys.begin(), keys.end()));
+    
+    std::vector<Dropdown::TextItem> items(keys.begin(), keys.end());
+    for(auto &item :items) {
+        //TextItem(const std::string& name = "", long ID = Item::INVALID_ID, const std::string& search = "", void *custom = NULL)
+        auto docs = GlobalSettings::read_doc(item.name());
+        if(docs) {
+            item.set_docs(std::string{docs.value()});
+        }
+    }
+    _dropdown->set_items(std::move(items));
+    
     _dropdown->set(Textfield::OnClearText_t([this]{
         set_content_changed(true);
         _value = nullptr;

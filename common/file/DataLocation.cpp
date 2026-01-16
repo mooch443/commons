@@ -40,7 +40,8 @@ void DataLocation::register_path(std::string purpose, std::function<file::Path (
     }
     
 #ifndef NDEBUG
-    Print("Registering purpose ", purpose);
+    if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+        Print("Registering purpose ", purpose);
 #endif
     ptr->location_funcs.insert({purpose, fn});
 }
@@ -56,7 +57,7 @@ void DataLocation::replace_path(std::string purpose, std::function<file::Path (c
         ptr->location_funcs.erase(it);
     
 #ifndef NDEBUG
-    Print("Replacing purpose ", purpose);
+    //Print("Replacing purpose ", purpose);
 #endif
     ptr->location_funcs.insert({purpose, fn});
 }

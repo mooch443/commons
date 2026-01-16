@@ -92,8 +92,8 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
             // dont draw
             //state._settings_tooltip.to<SettingsTooltip>()->set_other(nullptr);
         } //else {
-        if(name.title().empty())
-            Print("Error!");
+        //if(name.title().empty())
+        //    Print("Error!");
         
         set_tooltip(name, found);
         add_tooltip(graph);
@@ -683,6 +683,32 @@ void Context::init() const {
                 }
                 
                 throw InvalidArgumentException("Needs to be an indexable type.");
+            }),
+            VarFunc("flatten", [](const VarProps& props) -> std::vector<std::string> {
+                REQUIRE_EXACTLY(1, props);
+                
+                std::vector<std::string> result;
+                std::deque<std::string> q;
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(props.parameters.front())));
+                for(auto &&part : parts) {
+                    if(part.empty())
+                        continue;
+                    q.push_back(std::move(part));
+                }
+                
+                while(not q.empty()) {
+                    auto item = std::move(q.front());
+                    q.pop_front();
+                    
+                    if(item[0] == '[') {
+                        auto p = util::parse_array_parts(util::truncate(item));
+                        q.insert(q.begin(), p.begin(), p.end());
+                    } else {
+                        result.emplace_back(std::move(item));
+                    }
+                }
+                
+                return result;
             }),
             VarFunc("array_length", [](const VarProps& props) -> size_t {
                 REQUIRE_EXACTLY(1, props);

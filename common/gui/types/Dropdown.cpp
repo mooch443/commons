@@ -6,7 +6,7 @@ auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
     std::vector<Dropdown::TextItem> result;
     result.reserve(items.size());
     for (auto& item : items) {
-        Dropdown::TextItem p(item.display_name());
+        Dropdown::TextItem p(item.display_name() ? item.display_name().value() : item.name());
         p.set_color(item.color());
         result.emplace_back(std::move(p));
     }
@@ -16,8 +16,8 @@ auto convert_to_search_name(const std::vector<Dropdown::TextItem>& items) {
 std::string Dropdown::TextItem::toStr() const {
     if(ID() == INVALID_ID)
         return "Item<null>";
-    if(search_name() != name() || display_name() != name())
-        return "Item<name='"+name()+"' search='"+search_name()+"' display='"+display_name()+"'>";
+    if(search_name() || display_name())
+        return "Item<name="+Meta::toStr(name())+" search="+Meta::toStr(search_name())+" display="+Meta::toStr(display_name())+">";
     return "Item<'"+name()+"'>";
 }
 std::string Dropdown::TextItem::class_name() {
@@ -337,7 +337,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         for(auto& o : options) {
             //if(o.ID() == Item::INVALID_ID)
             //{
-                _items.emplace_back(o.name(), i, o.search_name(), o.custom());
+                _items.emplace_back(o.name(), i, o.search_name(), o.custom(), o.docs());
                 _items.back().set_color(o.color());
             //} else {
             //    _items.emplace_back(o);
@@ -347,7 +347,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
         //_items = options;
         _list.set_items(convert_to_search_name(_items));
         _selected_item = RawIndex{};
-        _preprocessed = {};
+        _preprocessed.reset();
         _corpus.clear();
         //if(_on_text_changed)
         //    _on_text_changed();
@@ -473,17 +473,52 @@ void Dropdown::apply_item_filtering() {
     {
         if(_corpus.empty()) {
             _corpus.reserve(items().size());
+            
+            _doc_corpus.reserve(items().size());
+            _doc_corpus.clear();
+            
+            const bool has_docs = [this](){
+                for(auto &item : _items) {
+                    if(item.docs()) {
+                        return true;
+                    }
+                }
+                return false;
+            }();
+            
             for (const auto &item : _items) {
-                _corpus.push_back(item.search_name());
+                _corpus.push_back(item.search_name()
+                        ? item.search_name().value()
+                        : item.name());
+                
+                if(not has_docs)
+                    continue;
+                
+                if(item.docs())
+                    _doc_corpus.push_back(item.docs().value());
+                else
+                    _doc_corpus.push_back("");
             }
         }
         
-        if(_preprocessed.empty())
-            _preprocessed = preprocess_corpus(_corpus);
+        if(not _preprocessed) {
+            if(_doc_corpus.empty()) {
+                _preprocessed = preprocess_corpus(_corpus);
+            } else {
+                _preprocessed = preprocess_corpus(_corpus, _doc_corpus);
+            }
+        }
         
         // Filter items using the search text
         // Get the search result indexes
-        auto search_result_indexes = text_search(_textfield->text(), _corpus, _preprocessed);
+        std::vector<int> search_result_indexes;
+        assert(_preprocessed.has_value());
+        
+        if(std::holds_alternative<PreprocessedData>(_preprocessed.value())) {
+            search_result_indexes = text_search(_textfield->text(), _corpus, std::get<PreprocessedData>(_preprocessed.value()));
+        } else {
+            search_result_indexes = text_search(_textfield->text(), _corpus, _doc_corpus, std::get<PreprocessedDataWithDocs>(_preprocessed.value()));
+        }
 
         // Create a filtered vector of TextItems
         std::vector<TextItem> filtered;

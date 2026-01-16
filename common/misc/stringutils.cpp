@@ -233,7 +233,6 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
 std::string PreprocessedData::toStr() const {
     std::string str = class_name();
     str += "<";
-    str += "termFrequency=" + cmn::Meta::toStr(termFrequency) + " ";
     str += "docFrequency=" + cmn::Meta::toStr(docFrequency) + " ";
     str += "termVectors=" + cmn::Meta::toStr(termVectors) + " ";
     str += "termImportance=" + cmn::Meta::toStr(termImportance);
@@ -246,9 +245,10 @@ std::vector<std::string> split_words(const std::string& str) {
     std::string word;
     for (char ch : str) {
         ch = std::tolower(ch);
-        if (std::isalnum(ch) || (ch != ' ' && ch != '/' && ch != '\\' && ch != '_' && ch != '.' && ch != ',' && ch != ';' && ch != ':' && ch != '-')) {
+        if (std::isalnum(ch) || not cmn::is_in(ch, '*', '\t', '<', '>', '#', ' ', '/', '\\', '_', '.', ',', ';', ':', '-', '"', '`', '\'', '(', ')', '[', ']')) {
             word.push_back(ch);
-        } else if (!word.empty()) {
+            
+        } else if (not word.empty()) {
             words.push_back(word);
             word.clear();
         }
@@ -257,6 +257,13 @@ std::vector<std::string> split_words(const std::string& str) {
         words.push_back(word);
     }
     return words;
+}
+
+// Require a meaningful prefix length to avoid "t" matching everything.
+static inline bool strong_prefix(const std::string& q, const std::string& t) {
+    constexpr size_t kMin = 4;
+    if (q.size() < kMin) return false;
+    return t.size() >= q.size() && t.rfind(q, 0) == 0;
 }
 
 std::vector<std::string> _split_words(std::string input) {
@@ -277,26 +284,26 @@ std::vector<std::string> _split_words(std::string input) {
 PreprocessedData preprocess_corpus(const std::vector<std::string> &corpus) {
     PreprocessedData data;
     auto totalDocs = corpus.size();
+    data.tokenizedCorpus.reserve(totalDocs);
 
+    // Split words (tokenize) and calculate in how many
+    // documents each word appears
     for (const auto &phrase : corpus) {
-        std::unordered_map<std::string, int> localTermFreq;
+        std::set<std::string_view> seen;
         auto words = split_words(phrase);
         
-        // Cache the tokenized document
-        data.tokenizedCorpus.push_back(words);
-        
-        for (const auto &word : words) {
-            ++localTermFreq[word];
-        }
+        for (const auto &word : words)
+            seen.insert(word);
 
-        for (const auto &entry : localTermFreq) {
-            ++data.termFrequency[entry.first];
-            ++data.docFrequency[entry.first];
-        }
+        for (auto entry : seen)
+            ++data.docFrequency[(std::string)entry];
+        
+        // Cache the tokenized document
+        data.tokenizedCorpus.push_back(std::move(words));
     }
 
     // Calculate termImportance
-    for (const auto &termFreqEntry : data.termFrequency) {
+    for (const auto &termFreqEntry : data.docFrequency) {
         const std::string &term = termFreqEntry.first;
         double idf = std::log(static_cast<double>(totalDocs) / data.docFrequency[term]);
         data.termImportance[term] = idf;
@@ -309,7 +316,95 @@ PreprocessedData preprocess_corpus(const std::vector<std::string> &corpus) {
         for (const auto &word : words) {
             termVector[word] = data.termImportance[word]; // Use IDF as weight
         }
-        data.termVectors.push_back(termVector);
+        data.termVectors.push_back(std::move(termVector));
+    }
+
+    return data;
+}
+
+// Helper: build an IDF-weighted vector from tokens, using shared termImportance.
+// Optional: apply a field-specific boost (e.g., namesBoost>1, docsBoost<1).
+static std::unordered_map<std::string, double>
+build_idf_vector(const std::vector<std::string>& tokens,
+                 const std::unordered_map<std::string, double>& termImportance,
+                 double fieldBoost = 1.0)
+{
+    std::unordered_map<std::string, int> tf;
+    tf.reserve(tokens.size());
+
+    for (const auto& t : tokens) ++tf[t];
+
+    std::unordered_map<std::string, double> vec;
+    vec.reserve(tf.size());
+
+    for (const auto& [term, count] : tf) {
+        // Better for docs: log-TF (still cheap, more informative):
+        double w_idf = termImportance.at(term);
+        double w_tf  = 1.0 + std::log(double(count));   // count>=1
+        vec[term] = fieldBoost * (w_idf * w_tf);
+    }
+    return vec;
+}
+
+// Preprocess the corpus by creating a map of words to their corresponding document indices
+// and a vector of repertoire vectors for each document
+// Preprocess the corpus
+PreprocessedDataWithDocs preprocess_corpus(const std::vector<std::string> &names, const std::vector<std::string> &docs)
+{
+    if(names.size() != docs.size()) {
+        throw cmn::InvalidArgumentException("Corpus (", names.size(), ") and docs (", docs.size(),") have to have the same number of elements in the same order.");
+    }
+    
+    PreprocessedDataWithDocs data;
+    auto totalDocs = names.size();
+    
+    data.tokenizedNames.reserve(totalDocs);
+    data.tokenizedDocs.reserve(totalDocs);
+
+    // Split words (tokenize) and calculate in how many
+    // documents each word appears
+    for (size_t i = 0; i < totalDocs; ++i) {
+        auto name_words = split_words(names[i]);
+        auto doc_words  = split_words(docs[i]);
+        
+        // collect all words from everywhere (uniquely)
+        std::set<std::string_view> seen;
+        
+        for (const auto &word : name_words)
+            seen.insert(word);
+        for (const auto &word : doc_words)
+            seen.insert(word);
+
+        // increase "how many documents does term appear in" counter per term
+        for (auto entry : seen)
+            ++data.docFrequency[(std::string)entry];
+        
+        // Cache the tokenized document
+        data.tokenizedNames.push_back(std::move(name_words));
+        data.tokenizedDocs.push_back(std::move(doc_words));
+    }
+
+    // Calculate termImportance
+    for (const auto &termFreqEntry : data.docFrequency) {
+        const std::string &term = termFreqEntry.first;
+        const double df = termFreqEntry.second;
+        
+        // avoid mathematical edge cases
+        double idf = std::log((double(totalDocs) + 1.0) / (double(df) + 1.0)) + 1.0;
+        //double idf = std::log(static_cast<double>(totalDocs) / df);
+        data.termImportance[term] = idf;
+    }
+
+    // Create term vectors for each document in the corpus
+    data.nameVectors.reserve(data.tokenizedNames.size());
+    data.docVectors.reserve(data.tokenizedDocs.size());
+    
+    constexpr double nameBoost = 2.5; // stronger signal
+    constexpr double docBoost  = 1.0; // lower signal (you can also set <1)
+    
+    for (size_t i = 0; i < totalDocs; ++i) {
+        data.nameVectors.push_back(build_idf_vector(data.tokenizedNames[i], data.termImportance, nameBoost));
+        data.docVectors.push_back(build_idf_vector(data.tokenizedDocs[i], data.termImportance, docBoost));
     }
 
     return data;
@@ -412,6 +507,91 @@ std::vector<int> text_search(const std::string &search_text,
 
     std::vector<int> sortedIndices;
     for (const auto &[relevance, str, index] : relevanceScores) {
+        sortedIndices.push_back(index);
+    }
+
+    return sortedIndices;
+}
+
+std::vector<int> text_search(const std::string &search_text,
+                             const std::vector<std::string> &names,
+                             const std::vector<std::string>& docs,
+                             const PreprocessedDataWithDocs& data)
+{
+    (void)docs;
+    const size_t N = data.nameVectors.size();
+
+    std::vector<std::tuple<double, std::string, int>> scores;
+    scores.reserve(N);
+
+    // Important: use the SAME normalization as preprocessing.
+    auto search_terms = split_words(search_text);
+    if (search_terms.empty()) {
+        std::vector<int> idx(N);
+        for (size_t i = 0; i < N; ++i) idx[i] = (int)i;
+        return idx;
+    }
+
+    // Build query vector from normalized terms.
+    std::unordered_map<std::string, double> searchVector;
+    searchVector.reserve(search_terms.size());
+    for (const auto &term : search_terms) {
+        auto it = data.termImportance.find(term);
+        searchVector[term] = (it != data.termImportance.end()) ? it->second : 1.0;
+    }
+
+    for (size_t i = 0; i < N; ++i) {
+        const double name_relevance = cosine_similarity(searchVector, data.nameVectors[i]);
+        const double doc_relevance  = cosine_similarity(searchVector, data.docVectors[i]);
+
+        // Typo penalty: compare query terms to *name* tokens only (already normalized in preprocessing).
+        const auto& name_terms = data.tokenizedNames[i];
+        const auto& doc_terms = data.tokenizedDocs[i];
+
+        double avgDistance = 0.0;
+        for (const auto &q : search_terms) {
+            double best = std::numeric_limits<double>::infinity();
+
+            for (const auto &t : name_terms) {
+                // Prefix match => perfect (fixes thresh -> threshold)
+                if (strong_prefix(q, t) || strong_prefix(t, q)) { best = 0.0; break; }
+
+                const int lev = levenshtein_distance(q, t);
+                const double denom = double(std::max(q.size(), t.size()));
+                const double d = denom > 0.0 ? double(lev) / denom : 1.0;
+                if (d < best) best = d;
+                if (best == 0.0) break;
+            }
+
+            if (!std::isfinite(best)) best = 1.0;
+            avgDistance += best;
+        }
+        avgDistance /= double(search_terms.size());
+
+        // Combine: name-first with a doc "rescue".
+        // Docs mainly help when name match is weak.
+        double score = name_relevance + 0.25 * (1.0 - name_relevance) * doc_relevance;
+
+        // Crucial: if docs match (e.g. SAHI appears only in docs), don't let the
+        // name-typo penalty swamp the score. Ramp penalty down aggressively with doc_relevance.
+        // - doc_relevance >= ~0.34 => penalty ~0 (doc-only queries surface)
+        // - doc_relevance == 0     => full penalty
+        const double docGate = std::min(1.0, doc_relevance * 3.0);
+        const double penaltyWeight = 0.8 * (1.0 - docGate);
+        score -= penaltyWeight * avgDistance;
+
+        scores.emplace_back(score, names[i], (int)i);
+    }
+
+    std::sort(scores.begin(), scores.end(),
+              [&](const auto& a, const auto& b){
+                  return std::get<0>(a) > std::get<0>(b);
+              });
+
+    std::vector<int> sortedIndices;
+    sortedIndices.reserve(scores.size());
+    for (const auto &[relevance, str, index] : scores) {
+        (void)relevance; (void)str;
         sortedIndices.push_back(index);
     }
 
