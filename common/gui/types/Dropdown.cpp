@@ -37,7 +37,7 @@ std::string Dropdown::TextItem::class_name() {
     }
     
 void Dropdown::init() {
-    _list.create(Box(0, _bounds.height, _bounds.width, 230), items(), ItemFont_t(0.6f, Align::Left), [this](size_t s) {
+    _list.create(Box(0, _bounds.height, _bounds.width, 230), items(), CornerFlags_t{true, true, true, false}, ItemFont_t(0.6f, Align::Left), [this](size_t s) {
         FilteredIndex filtered_index(s); // explicit casting to FilteredIndex
         if(_filtered_items.contains(filtered_index)) {
             _selected_item = RawIndex(_filtered_items.at(filtered_index).value); // Use RawIndex for type safety
@@ -217,18 +217,40 @@ void Dropdown::set(Textfield::OnClearText_t c) {
 }
 
 void Dropdown::set(CornerFlags_t flags) {
+    _list_corner_flags = flags;
+    if(_opened) {
+        if(_inverted) {
+            flags.set(CornerFlags::Corner::BottomLeft, false);
+            flags.set(CornerFlags::Corner::BottomRight, false);
+        } else {
+            flags.set(CornerFlags::Corner::TopLeft, false);
+            flags.set(CornerFlags::Corner::TopRight, false);
+        }
+    }
     _list.set(flags);
 }
 
 void Dropdown::set(LabelCornerFlags flags) {
-    CornerFlags_t _flags{(CornerFlags)flags};
+    _label_corner_flags = (CornerFlags_t)(CornerFlags)flags;
+    
+    CornerFlags_t push{_label_corner_flags};
+    if(_opened) {
+        if(_inverted) {
+            push.set(CornerFlags::Corner::TopLeft, false);
+            push.set(CornerFlags::Corner::TopRight, false);
+        } else {
+            push.set(CornerFlags::Corner::BottomLeft, false);
+            push.set(CornerFlags::Corner::BottomRight, false);
+        }
+    }
+    _list.set((LabelCornerFlags)(CornerFlags)push);
     
     _list.set(flags);
     if(_button)
-        _button->set(_flags);
+        _button->set(push);
     if(_textfield)
-        _textfield->set(_flags);
-    Entangled::set(_flags);
+        _textfield->set(push);
+    Entangled::set(push);
 }
 
     Dropdown::~Dropdown() {
@@ -259,6 +281,9 @@ void Dropdown::set(LabelCornerFlags flags) {
             if(hovered())
                 if(stage()) stage()->do_hover(nullptr);
         }
+        
+        set((LabelCornerFlags)(CornerFlags)_label_corner_flags);
+        set(_list_corner_flags);
         set_content_changed(true);
     }
     
@@ -426,7 +451,9 @@ std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
             _list.set_pos(-Vec2(0, _list.height()));
         else
             _list.set_pos(Vec2(0, height()));
-        
+
+        set((LabelCornerFlags)(CornerFlags)_label_corner_flags);
+        set(_list_corner_flags);
         set_content_changed(true);
     }
 

@@ -21,6 +21,7 @@ namespace cmn::gui {
         std::vector<std::string> _corpus;
         std::vector<std::string> _doc_corpus;
         std::optional<std::variant<PreprocessedDataWithDocs, PreprocessedData>> _preprocessed;
+        CornerFlags_t _list_corner_flags, _label_corner_flags;
         
     public:
         enum Type {
