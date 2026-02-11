@@ -47,6 +47,7 @@ namespace cmn::gui {
         void set(attr::Str content);
         void set(ItemFont_t font);
         void set(LabelFont_t font);
+        void set(LabelFillClr_t);
         void set(LabelColor_t);
         void set(LabelBorderColor_t);
         void set_size(const Size2&) override;

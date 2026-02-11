@@ -8,10 +8,14 @@ file(GLOB HASH_HDR ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map/*.hpp)
 message(STATUS "hash_map: ${HASH_HDR} ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map")
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
-    set(SRCS ${SRCS} gui/MetalImpl.mm)
+    set(SRCS ${SRCS} gui/MetalImpl.mm file/ask_for_permission.mm)
     # after add_executable() or target_sources() for your target…
     set_source_files_properties(
         gui/MetalImpl.mm
+        PROPERTIES SKIP_PRECOMPILE_HEADERS ON
+    )
+    set_source_files_properties(
+        file/ask_for_permission.mm
         PROPERTIES SKIP_PRECOMPILE_HEADERS ON
     )
 else()

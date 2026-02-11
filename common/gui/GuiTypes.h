@@ -665,7 +665,7 @@ protected:
         std::ostream &operator <<(std::ostream &os) override;
         void update_with(const gpuMat&);
         void update_with(const Image&);
-        void update_with(Image::Ptr&&);
+        Image::Ptr update_with(Image::Ptr&&);
         Ptr exchange_with(Ptr&&);
         
         void updated_source();

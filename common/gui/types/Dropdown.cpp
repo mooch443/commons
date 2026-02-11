@@ -253,6 +253,23 @@ void Dropdown::set(LabelCornerFlags flags) {
     Entangled::set(push);
 }
 
+void Dropdown::set(LabelFillClr_t dims) {
+    _list.set(dims);
+}
+void Dropdown::set(LabelColor_t color) {
+    if(_textfield)
+        _textfield->set(TextClr{(Color)color});
+}
+void Dropdown::set(LabelBorderColor_t dims) {
+    _list.set(dims);
+    if(_textfield)
+        _textfield->set(LineClr{(Color)dims});
+}
+
+void Dropdown::set(Placeholder_t placeholder) {
+    _list.set(placeholder);
+}
+
     Dropdown::~Dropdown() {
         _button = nullptr;
         _textfield = nullptr;

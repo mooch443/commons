@@ -1,6 +1,7 @@
 #include "List.h"
 #include <misc/Timer.h>
 #include <gui/DrawBase.h>
+#include <gui/ControlsAttributes.h>
 
 namespace cmn::gui {
 
@@ -582,10 +583,12 @@ void List::set_title(const std::string& title) {
     _title.set_txt(title);
 }
 
-void List::set(LabelColor_t clr) {
+void List::set(LabelFillClr_t clr) {
     set_accent_color(clr);
 }
-
+void List::set(LabelColor_t clr) {
+    _title.set(attr::TextClr{(Color)clr});
+}
 void List::set(LabelBorderColor_t clr) {
     set(LineClr{(Color)clr});
 }

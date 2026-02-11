@@ -7,6 +7,7 @@
 #include <video/AveragingAccumulator.h>
 #include <misc/ranges.h>
 #include <processing/Background.h>
+#include <file/ask_for_permission.h>
 
 namespace cmn {
 
@@ -166,6 +167,7 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
             continue;
         }
         
+        file::request_access(file::Path(basename).remove_filename().str());
         auto f = VideoSource::File::open(video_info.size(), basename, extension);
         if(!f)
             throw U_EXCEPTION("Cannot open file ",path.str(),".");
@@ -616,7 +618,13 @@ VideoSource::VideoSource(const file::PathArray& source)
         auto file = new File(index++, c.path, c.N_frames, c.resolution, c.frame_rate, c.type, c.is_greyscale);
         if(c.is_greyscale)
             _is_greyscale = true;
-            
+        
+        if(_files_in_seq.empty()) {
+            if(not file::request_access(c.path.str())) {
+                throw U_EXCEPTION("Cannot load video sequence ", c.path.str(), " (it is not allowed).");
+            }
+        }
+        
         _files_in_seq.emplace_back(file);
         _length += c.N_frames;
     }

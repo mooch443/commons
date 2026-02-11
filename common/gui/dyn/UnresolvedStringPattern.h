@@ -94,11 +94,23 @@ struct Unprepared {
 };
 
 struct Prepared {
+    /// Snapshot of variable versions used to validate `_cached_value`.
+    struct CachedVariableVersions {
+        /// Version of global handler variables.
+        uint64_t global{0};
+        /// Version of scoped loop variables.
+        uint64_t scoped{0};
+        bool operator==(const CachedVariableVersions&) const = default;
+    };
+
     std::string_view original;
     std::vector<PreparedPatterns> parameters;
     gui::dyn::VarProps resolved;
     
+    /// Cached resolved output for this prepared node.
     std::optional<std::string> _cached_value;
+    /// Variable-version snapshot captured when `_cached_value` was computed.
+    std::optional<CachedVariableVersions> _cached_variable_versions;
     bool has_children{false};
     
     //Prepared(const Unprepared& unprepared);
@@ -111,6 +123,7 @@ struct Prepared {
     }
     void reset() {
         _cached_value.reset();
+        _cached_variable_versions.reset();
     }
     
     bool operator==(const Prepared&) const = default;

@@ -1,5 +1,6 @@
 #include "httpd.h"
 #include <commons.pc.h>
+#include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
 
 #if WITH_MHD
@@ -337,10 +338,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
                 if(!prop.get().valid())
                     U_EXCEPTION("Setting '%S' not found.", &name);
                 
-                str = prop.get().valueString();
-                if (prop.is_type<std::string>()) {
-                    str = prop.value<std::string>();
-                }
+                str = sprite::display_property(prop.get());
             }
             
             if(*upload_data_size != 0) {
@@ -406,4 +404,3 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
     return -1337;
 }
 #endif
-

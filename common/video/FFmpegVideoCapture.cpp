@@ -1,5 +1,6 @@
 #include "FFmpegVideoCapture.h"
 #include <misc/Timer.h>
+#include <file/ask_for_permission.h>
 
 //#undef NDEBUG
 //#define DEBUG_FFMPEG_PACKETS
@@ -9,6 +10,16 @@ namespace cmn {
 
 IMPLEMENT(FfmpegVideoCapture::tested_video_lengths);
 IMPLEMENT(FfmpegVideoCapture::tested_video_lengths_mutex);
+
+std::string error_to_string(int ret) {
+    char errbuf[128] = {0};
+
+    /* av_strerror() writes the error string into errbuf */
+    if (av_strerror(ret, errbuf, sizeof(errbuf)) == 0)
+        return std::string(errbuf);
+    else
+        return "unknown error (code " + Meta::toStr(ret) + ")";
+}
 
 FfmpegVideoCapture::FfmpegVideoCapture(const std::string& filePath) {
     avformat_network_init();
@@ -32,15 +43,29 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 
     //_capture = std::make_unique<cv::VideoCapture>(filePath);
 
+    if(auto r = file::request_access(filePath);
+       not r)
+    {
+        FormatError(r.error().c_str());
+        return false;
+    }
+    
     // Open video file
-    if (avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr) != 0) {
-        FormatError("[FFMPEG] Failed to open video file: ", filePath);
+    if (auto error = avformat_open_input(&formatContext, filePath.c_str(), nullptr, nullptr);
+        error != 0)
+    {
+        FormatError("[FFMPEG] Failed to open video file: ", filePath, " (", error_to_string(error)," code:",error,")");
+        if(error == EINTR) {
+            /// most likely we are experiencing a macOS error regarding access rights
+        }
         return false;
     }
 
     // Retrieve stream information
-    if (avformat_find_stream_info(formatContext, nullptr) < 0) {
-        FormatError("[FFMPEG] Failed to find stream information");
+    if (auto error = avformat_find_stream_info(formatContext, nullptr);
+        error < 0)
+    {
+        FormatError("[FFMPEG] Failed to find stream information (", error_to_string(error),").");
         return false;
     }
     

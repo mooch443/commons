@@ -196,7 +196,6 @@ public:
                      frame_rate,
                      track_enforce_frame_rate,
                      track_max_reassign_time,
-                     speed_extrapolation,
                      calculate_posture,
                      track_max_speed,
                      track_size_filter,

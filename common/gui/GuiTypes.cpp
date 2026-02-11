@@ -557,12 +557,14 @@ void ExternalImage::update_with(const Image& mat) {
     updated_source();
 }
 
-void ExternalImage::update_with(Image::Ptr&& mat) {
-    if(mat->dims > 0 && mat->dims != 4 && mat->dims != 1 && mat->dims != 2)
+Image::Ptr ExternalImage::update_with(Image::Ptr&& mat) {
+    if(mat && mat->dims > 0 && mat->dims != 4 && mat->dims != 1 && mat->dims != 2)
         throw U_EXCEPTION("Only support greyscale, RG, or RGBA images.");
     
+    auto tmp = std::move(_source);
     _source = std::move(mat);
     updated_source();
+    return tmp;
 }
 
 void ExternalImage::updated_source() {

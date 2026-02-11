@@ -27,27 +27,50 @@ struct is_const_lvalue_ref : std::false_type {};
 template<typename T>
 struct is_const_lvalue_ref<const T&> : std::true_type {};
 
-template<typename Str>
+template<StringLike Str>
+[[nodiscard]] constexpr std::string_view string_like_view(const Str& str) noexcept {
+    using StrDecayed = std::remove_cvref_t<Str>;
+
+    if constexpr(std::is_same_v<StrDecayed, const char*>) {
+        return str == nullptr ? std::string_view{} : std::string_view{str};
+    } else if constexpr(std::is_array_v<StrDecayed>) {
+        static_assert(std::is_same_v<std::remove_cv_t<std::remove_extent_t<StrDecayed>>, char>,
+                      "StringLike arrays must be char arrays.");
+        constexpr auto extent = std::extent_v<StrDecayed>;
+        if constexpr(extent == 0u) {
+            return std::string_view{};
+        } else {
+            const size_t len = str[extent - 1u] == '\0' ? extent - 1u : extent;
+            return std::string_view(str, len);
+        }
+    } else {
+        return std::string_view{str};
+    }
+}
+
+template<StringLike Str>
 bool beginsWith(const Str& str, char c) {
-    return !str.empty() && str[0] == c;
+    const std::string_view sv_str = string_like_view(str);
+    return !sv_str.empty() && sv_str[0] == c;
 }
 
-template<typename Str>
+template<StringLike Str>
 bool endsWith(const Str& str, char c) {
-    return !str.empty() && *str.rbegin() == c;
+    const std::string_view sv_str = string_like_view(str);
+    return !sv_str.empty() && sv_str.back() == c;
 }
 
-template<typename Str, typename Needle>
+template<StringLike Str, StringLike Needle>
 bool beginsWith(const Str& str, const Needle& needle) {
-    std::string_view sv_str(str);
-    std::string_view sv_needle(needle);
+    std::string_view sv_str = string_like_view(str);
+    std::string_view sv_needle = string_like_view(needle);
     return sv_str.substr(0, sv_needle.size()) == sv_needle;
 }
 
-template<typename Str, typename Needle>
+template<StringLike Str, StringLike Needle>
 bool endsWith(const Str& str, const Needle& needle) {
-    std::string_view sv_str(str);
-    std::string_view sv_needle(needle);
+    std::string_view sv_str = string_like_view(str);
+    std::string_view sv_needle = string_like_view(needle);
     return sv_str.size() >= sv_needle.size() &&
            sv_str.substr(sv_str.size() - sv_needle.size()) == sv_needle;
 }
@@ -61,61 +84,17 @@ bool endsWith(const Str& str, const Needle& needle) {
  */
 template<StringLike Str, NeedleLike Needle>
 [[nodiscard]] constexpr bool contains(const Str& str, const Needle& needle) noexcept {
-    if constexpr(std::is_same_v<std::remove_cvref_t<Str>, const char*>)
-    {
-        std::string_view sv_str(str);
-        if(sv_str.empty())
-            return false;
-        
-        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-            return sv_str.find(needle) != std::string::npos;
-        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-            if constexpr(sizeof(Needle) <= 1u)
-                return false;
-            
-            std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
-            return sv_str.find(sv_needle) != std::string::npos;
-        } else {
-            std::string_view sv_needle(needle);
-            if(sv_needle.empty())
-                return false;
-            
-            return sv_str.find(sv_needle) != std::string::npos;
-        }
-        
-    } else if constexpr(std::is_array_v<std::remove_cvref_t<Str>>) {
-        std::string_view sv_str(reinterpret_cast<const char*>(str), sizeof(Str) - 1);  // -1 to exclude null-terminator
-        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-            return sv_str.find(needle) != std::string::npos;
-        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-            if constexpr(sizeof(Needle) <= 1u)
-                return false;
-            
-            std::string_view sv_needle(reinterpret_cast<const char*>(needle), sizeof(Needle) - 1);
-            return sv_str.find(sv_needle) != std::string::npos;
-        } else {
-            std::string_view sv_needle(needle);
-            if(sv_needle.empty())
-                return false;
-            return sv_str.find(sv_needle) != std::string::npos;
-        }
-        
+    const std::string_view sv_str = string_like_view(str);
+    if(sv_str.empty())
+        return false;
+
+    if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
+        return sv_str.find(needle) != std::string::npos;
     } else {
-        if(str.empty())
+        const std::string_view sv_needle = string_like_view(needle);
+        if(sv_needle.empty())
             return false;
-        
-        if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, char>) {
-            // no check required
-        } else if constexpr(std::is_same_v<std::remove_cvref_t<Needle>, const char*>) {
-            // check is not efficient
-        } else if constexpr(std::is_array_v<std::remove_cvref_t<Needle>>) {
-            if(sizeof(Needle) <= 1u)
-                return false;
-        } else {
-            if (needle.empty())
-                return false;
-        }
-        return str.find(needle) != std::string::npos;
+        return sv_str.find(sv_needle) != std::string::npos;
     }
 }
 
@@ -592,4 +571,3 @@ extern template std::string strip_html<const char*>(const char* const& input);
 }
 
 #endif
-

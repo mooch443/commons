@@ -422,13 +422,28 @@ UnresolvedStringPattern::~UnresolvedStringPattern() {
 
 void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, const gui::dyn::Context& context, gui::dyn::State& state)
 {
+    auto is_cache_valid = [&state](const Prepared& prepared) -> bool {
+        if(not prepared.cached().has_value()) {
+            return false;
+        }
+        
+        auto handler = state._current_object_handler.lock();
+        if(not handler) {
+            return true;
+        }
+        
+        return prepared._cached_variable_versions.has_value()
+            && prepared._cached_variable_versions->global == handler->variable_values_version()
+            && prepared._cached_variable_versions->scoped == handler->scoped_variable_values_version();
+    };
+    
     switch(type) {
         case SV:
             c.append(value.sv.data(), value.sv.size());
             break;
         case PREPARED:
             if(auto& o = value.prepared;
-               o->cached().has_value())
+               is_cache_valid(*o))
             {
                 auto& sv = o->cached().value();
                 c.append(sv.data(), sv.size());
@@ -438,7 +453,7 @@ void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, 
             break;
         case POINTER:
             if(auto& o = *value.ptr;
-               o.cached().has_value())
+               is_cache_valid(o))
             {
                 auto& sv = o.cached().value();
                 c.append(sv.data(), sv.size());
@@ -584,7 +599,7 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
     }
     
     if constexpr(std::invocable<ErrorF, std::string&, bool, const std::string&>) {
-        error(output, props.optional, "Cannot find property "+props.toStr()+" in context.");
+        error(output, props.optional, "Cannot find property "+props.toStr()+" in context: "+Meta::toStr(extract_keys(context.variables)));
         return;
     }
     else if constexpr(std::invocable<ErrorF, std::string&, bool>)
@@ -630,12 +645,23 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         }
         
     } else if(resolved.name == "for") {
-        if(parameters.size() != 2u)
-            throw InvalidArgumentException("An if statement (", parameters, ") only accepts 2 parameters.");
+        if(not is_in(parameters.size(), 2u, 3u))
+            throw InvalidArgumentException("An if statement (", parameters, ") only accepts 2 or 3 parameters.");
+        
+        size_t items_index = 0u;
+        size_t fn_index = 1u;
+        std::string variable_name = "i";
+        
+        if(parameters.size() == 3u) {
+            items_index = 1u;
+            fn_index = 2u;
+            variable_name.clear();
+            resolve_parameter(variable_name, pattern, parameters[0u], context, state);
+        }
         
         parms.resize(1u);
         parms[0].clear();
-        resolve_parameter(parms[0], pattern, parameters[0], context, state);
+        resolve_parameter(parms[0], pattern, parameters[items_index], context, state);
         
         if(not utils::beginsWith(parms[0], '[')
             || not utils::endsWith(parms[0], ']'))
@@ -648,28 +674,46 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         
         str.append("[");
         
-        State state;
-        auto handler = std::make_shared<CurrentObjectHandler>();
-        state._current_object_handler = handler;
+        State _state;
+        _state._collectors = state._collectors;
+        _state._current_object_handler = state._current_object_handler;
+        //auto handler = std::make_shared<CurrentObjectHandler>();
+        //state._current_object_handler = handler;
+        auto handler = _state._current_object_handler.lock();
+        if(not handler) {
+            handler = std::make_shared<CurrentObjectHandler>();
+            _state._current_object_handler = std::weak_ptr(handler);
+        }
         
         size_t idx = 0;
         for(auto item : util::parse_array_parts(items)) {
             if(idx > 0)
                 str.append(",");
             
-            handler->set_variable_value("i", item);
-            handler->set_variable_value("idx", item);
-            resolve_parameter(str, pattern, parameters[1], context, state);
+            auto scope = handler->scope();
+            auto idx_str = Meta::toStr(idx);
+            scope.set(variable_name, item);
+            scope.set("index", idx_str);
+            resolve_parameter(str, pattern, parameters[fn_index], context, _state);
             
             ++idx;
         }
-        handler->remove_variable("i");
-        handler->remove_variable("idx");
         
         str.append("]");
         
-        if(has_children)
+        if(has_children) {
             _cached_value = std::string_view(str).substr(index);
+            if(auto handler = state._current_object_handler.lock();
+               handler)
+            {
+                _cached_variable_versions = CachedVariableVersions{
+                    .global = handler->variable_values_version(),
+                    .scoped = handler->scoped_variable_values_version()
+                };
+            } else {
+                _cached_variable_versions.reset();
+            }
+        }
         
         return;
         
@@ -738,8 +782,19 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             throw InvalidArgumentException("Failed to evaluate ", props, ": ", no_quotes(not ex.empty() ? ex : std::string("<null>")));
     });
     
-    if(has_children)
+    if(has_children) {
         _cached_value = std::string_view(str).substr(index);
+        if(auto handler = state._current_object_handler.lock();
+           handler)
+        {
+            _cached_variable_versions = CachedVariableVersions{
+                .global = handler->variable_values_version(),
+                .scoped = handler->scoped_variable_values_version()
+            };
+        } else {
+            _cached_variable_versions.reset();
+        }
+    }
 }
 
 std::string UnresolvedStringPattern::realize(const gui::dyn::Context& context, gui::dyn::State& state) {

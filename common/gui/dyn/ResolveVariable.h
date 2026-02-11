@@ -18,14 +18,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
     auto props = extractControls(word);
     
     try {
-        if(context.has(props.name)) {
-            [[maybe_unused]] CTimer ctimer("normal");
-            if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
-                return apply(*context.variable(props.name), props.parse(context, state));
-            else
-                static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
-            
-        } else if(props.name == "if") {
+        if(props.name == "if") {
             [[maybe_unused]] CTimer ctimer("if");
             VarProps p{
                 .name = std::string(props.name),
@@ -47,6 +40,89 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                 else if(p.parameters.size() == 3)
                     return Meta::fromStr<Result>(parse_text(p.parameters.at(2), context, state));
             }
+            
+        } else if(props.name == "for") {
+            [[maybe_unused]] CTimer ctimer("for");
+            VarProps p{
+                .name = std::string(props.name),
+                .optional = props.optional,
+                .html = props.html,
+            };
+            
+            p.parameters.reserve(props.parameters.size());
+            for(auto& pr : props.parameters) {
+                p.parameters.emplace_back((std::string)pr);
+            }
+            
+            if(p.parameters.size() < 2) {
+                throw InvalidArgumentException("A for loop needs at least two parameters, received ", p.parameters.size(), ".");
+            }
+            
+            std::string variable = "i";
+            std::string list_expr = p.parameters.at(0);
+            std::string fn_expr = p.parameters.at(1);
+            if(p.parameters.size() >= 3) {
+                variable = parse_text(p.parameters.at(0), context, state);
+                if(variable.empty()) {
+                    variable = "i";
+                }
+                list_expr = p.parameters.at(1);
+                fn_expr = p.parameters.at(2);
+            }
+            
+            auto handler = state._current_object_handler.lock();
+            if(not handler) {
+                handler = std::make_shared<CurrentObjectHandler>();
+                state._current_object_handler = std::weak_ptr(handler);
+            }
+            
+            std::stringstream ss;
+            ss << "[";
+            
+            auto trunc = parse_text(list_expr, context, state);
+            size_t index = 0;
+            std::string idx_str;
+            if(not trunc.empty() && is_in(utils::trim(trunc).front(), '[', '{')) {
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                for(auto& item : parts) {
+                    auto scope = handler->scope();
+                    idx_str = Meta::toStr(index);
+                    scope.set(variable, item);
+                    scope.set("idx", idx_str);
+                    if(index > 0) {
+                        ss << ",";
+                    }
+                    ss << parse_text(fn_expr, context, state);
+                    ++index;
+                }
+                
+            } else if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
+                auto text = Meta::fromStr<std::string>(trunc);
+                for(char c : text) {
+                    auto scope = handler->scope();
+                    idx_str = Meta::toStr(index);
+                    scope.set(variable, std::string_view(&c, 1));
+                    scope.set("idx", idx_str);
+                    if(index > 0) {
+                        ss << ",";
+                    }
+                    ss << parse_text(fn_expr, context, state);
+                    ++index;
+                }
+                
+            } else {
+                throw InvalidArgumentException("For loop list must evaluate to an array or string, received ", no_quotes(trunc), ".");
+            }
+            
+            ss << "]";
+            return Meta::fromStr<Result>(ss.str());
+            
+        } else if(context.has(props.name)) {
+            [[maybe_unused]] CTimer ctimer("normal");
+            if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
+                return apply(*context.variable(props.name), props.parse(context, state));
+            else
+                static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
             [[maybe_unused]] CTimer ctimer("custom var");

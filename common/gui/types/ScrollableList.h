@@ -61,7 +61,8 @@ namespace cmn::gui {
         DetailColor_t _detail_color{Gray};
         GETTER(ListFillClr_t, list_fill_clr){100,100,100,200};
         GETTER(ListLineClr_t, list_line_clr){200,200,200,200};
-        LabelColor_t _label_fill_clr{100,100,100,200};
+        LabelFillClr_t _label_fill_clr{100,100,100,200};
+        LabelColor_t _label_color{100,100,100,200};
         LabelBorderColor_t _label_line_clr{200,200,200,200};
         LabelCornerFlags _label_corner_flags{};
         
@@ -178,7 +179,7 @@ namespace cmn::gui {
             set(TextClr{_text_color});
             set(ListFillClr_t{100,100,100,200});
             set(ListLineClr_t{200,200,200,200});
-            set(LabelColor_t{100,100,100,200});
+            set(LabelFillClr_t{100,100,100,200});
             set(LabelBorderColor_t{200,200,200,200});
             update_line_height();
             
@@ -251,11 +252,14 @@ namespace cmn::gui {
             _list_fill_clr = clr;
             set_content_changed(true);
         }
-        void set(LabelColor_t clr) {
+        void set(LabelFillClr_t clr) {
             if (_label_fill_clr == clr)
                 return;
             _label_fill_clr = clr;
             set_content_changed(true);
+        }
+        void set(LabelColor_t clr) {
+            set(TextClr{(Color)clr});
         }
         void set(LabelBorderColor_t clr) {
             if (_label_line_clr == clr)

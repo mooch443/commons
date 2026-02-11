@@ -179,8 +179,10 @@ namespace cmn::gui {
         void set(LabelDims_t dims) { _list.set(dims); }
         void set(ListFillClr_t dims) { _list.set(dims); }
         void set(ListLineClr_t dims) { _list.set(dims); }
-        void set(LabelColor_t dims) { _list.set(dims); }
-        void set(LabelBorderColor_t dims) { _list.set(dims); }
+        void set(LabelFillClr_t dims);
+        void set(LabelColor_t dims);
+        void set(LabelBorderColor_t dims);
+        void set(Placeholder_t placeholder);
         void set(ClearText_t c) { if(_textfield) _textfield->set(c); }
         void set(Textfield::OnClearText_t);
         void set(ClosesAfterSelect closes) { _closes_after_select = closes; set_content_changed(true); }

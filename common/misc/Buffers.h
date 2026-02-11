@@ -182,7 +182,7 @@ public:
     ImageSource(const char* origin) : _origin(origin) {}
 };
 
-template<typename T, typename Construct>
+template<typename T, typename Construct, size_t _max_size = 0>
 class ImageBuffers {
     std::mutex& mutex() {
         return m;
@@ -250,6 +250,11 @@ public:
     void move_back(T&& image) {
         std::unique_lock guard(mutex());
         if(image) {
+            if constexpr(_max_size > 0u) {
+                if(_buffers.size() >= _max_size) {
+                    return; // Drop extra pooled entries to enforce a hard cap.
+                }
+            }
 #ifdef DEBUG_BUFFER_IMAGES
             //if (_created.contains(image.get()))
             //    _created.erase(image.get());

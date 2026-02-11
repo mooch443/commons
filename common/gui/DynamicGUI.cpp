@@ -516,7 +516,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     
     
     //! clear variable state
-    current_object_handler->_variable_values.clear();
+    current_object_handler->clear_variable_values();
     
 #ifndef NDEBUG
     if(_debug_timer.elapsed() > 10) {

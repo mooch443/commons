@@ -3,6 +3,7 @@
 #include <misc/useful_concepts.h>
 #include <file/Path.h>
 #include <misc/SpriteMap.h>
+#include <misc/DisplayValue.h>
 
 namespace cmn::gui::dyn {
 
@@ -42,16 +43,10 @@ public:
         }
         
         // Lambda to convert the captured function's return value to a string
+        // if we encounter a string type, we can already return without converting
+        // or adding any quotes
         value_string = [this]<typename... Args>(Args&&... args) -> std::string {
-            if constexpr(_clean_same<std::string, return_type>) {
-                // if we encounter a string type, we can already return without converting
-                // or adding any quotes
-                return function( std::forward<Args>(args)... );
-                
-            } else if constexpr(_clean_same<file::Path, return_type>) {
-                return function( std::forward<Args>(args)... ).str();
-                
-            } else if constexpr(_clean_same<sprite::Map&, return_type>) {
+            if constexpr(_clean_same<sprite::Map&, return_type>) {
                 // for sprite::Maps we have to do some more work.
                 // here we get an entire sprite::Map reference, instead of a single
                 // constref from a map, so we get the map first and then
@@ -72,18 +67,7 @@ public:
                     if(not ref.get().valid())
                         throw InvalidArgumentException("Cannot find given parameter ", key,". ", Meta::name<decltype(key)>());
                     
-                    // for string-types we can directly return the contents
-                    // of the string and there is no need to convert:
-                    if (ref.template is_type<std::string>()) {
-                        return ref.template value<std::string>();
-                    } else if (ref.template is_type<file::Path>()) {
-                        return ref.template value<file::Path>().str();
-                    }
-                    
-                    // otherwise we are out of luck and need to use
-                    // more complex logic, encapsulated inside sprite::Map's
-                    // valueString lambda:
-                    return ref.get().valueString();
+                    return sprite::display_property(ref.get());
                 };
                 
                 // "args" would be the key here, so realistically we only
@@ -92,34 +76,10 @@ public:
                 static_assert(sizeof...(args) == 1, "Expected exactly one argument for sprite::Map access.");
                 return ( access(args), ... );
                 
-            }
-            else if constexpr(_clean_same<sprite::ConstReference, return_type> 
-                              || _clean_same<sprite::Reference, return_type>)
-            {
-                // here we simply get a constreference from a sprite::Map, meaning
-                // we can directly retrieve its value
-                auto r = function(std::forward<Args>(args)...);
-                if(not r.get().valid())
-                    return "null";
-                
-                // we know the type (return_type) here at compile-time,
-                // so we can use constexpr logic here (unlike above).
-                // for string-types we can directly return the contents
-                // of the string and there is no need to convert
-                if constexpr(_clean_same<std::string, return_type>) {
-                    return r.template value<std::string>();
-                } else if constexpr(_clean_same<file::Path, return_type>) {
-                    return r.template value<file::Path>().str();
-                }
-                
-                // otherwise we need to use sprite::Maps valueString
-                // to convert the value to a string recursively:
-                return r.get().valueString();
-                
             } else {
                 // no special handling for the given type -- use the default
                 // Meta::toStr method that can return the string for any value
-                return Meta::toStr( function(std::forward<Args>(args)...) );
+                return sprite::display_object<return_type>( function(std::forward<Args>(args)...) );
             }
         };
     }

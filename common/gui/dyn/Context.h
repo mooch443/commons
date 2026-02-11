@@ -40,9 +40,42 @@ struct DefaultSettings {
 };
 
 struct CurrentObjectHandler {
+    /// Cached parse result with the variable versions it depends on.
+    struct CachedVariableValue {
+        /// Monotonic version for global `_variable_values`.
+        uint64_t global_version{0};
+        /// Monotonic version for loop-local scope overlays.
+        uint64_t scoped_version{0};
+        std::string value;
+    };
+    
+    /// RAII helper that pushes a loop-local variable scope on creation and pops on destruction.
+    class ScopedVariables {
+    public:
+        explicit ScopedVariables(CurrentObjectHandler& handler);
+        ScopedVariables(const ScopedVariables&) = delete;
+        ScopedVariables& operator=(const ScopedVariables&) = delete;
+        ScopedVariables(ScopedVariables&& other) noexcept;
+        ScopedVariables& operator=(ScopedVariables&& other) noexcept;
+        ~ScopedVariables();
+        
+        /// Set or override a variable in the current local scope.
+        void set(std::string_view name, std::string_view value);
+        
+    private:
+        CurrentObjectHandler* _handler;
+        bool _active{true};
+        
+        void restore();
+    };
+    
     std::weak_ptr<Drawable> _current_object;
     std::unordered_map<std::string, std::weak_ptr<Drawable>, MultiStringHash, MultiStringEqual> _named_entities;
     std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
+    std::vector<std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual>> _scoped_variable_values;
+    std::unordered_map<std::string, CachedVariableValue, MultiStringHash, MultiStringEqual> _cached_variable_values;
+    uint64_t _variable_values_version{1};
+    uint64_t _scoped_variable_values_version{1};
     
     std::shared_ptr<SettingsTooltip> _tooltip_object;
     std::vector<std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>> _textfields;
@@ -51,9 +84,26 @@ struct CurrentObjectHandler {
     void select(const std::shared_ptr<Drawable>&);
     void register_named(const std::string& name, const std::shared_ptr<Drawable>& ptr);
     
+    /// Set a global (non-scoped) variable.
     void set_variable_value(std::string_view name, std::string_view value);
+    /// Resolve a variable by checking scoped overlays first, then global values.
     std::optional<std::string_view> get_variable_value(std::string_view name) const;
+    /// Remove a global (non-scoped) variable.
     void remove_variable(std::string_view name);
+    /// Clear global values, scoped overlays, and parse caches.
+    void clear_variable_values();
+    
+    /// Return a cached parse result if both global and scoped versions still match.
+    std::optional<std::string_view> get_cached_variable_value(std::string_view name) const;
+    /// Store a parse result keyed to the current global and scoped versions.
+    void set_cached_variable_value(std::string_view name, std::string_view value);
+    /// Monotonic version for global variable mutations.
+    [[nodiscard]] uint64_t variable_values_version() const noexcept { return _variable_values_version; }
+    /// Monotonic version for scoped variable mutations (set/push-pop with values).
+    [[nodiscard]] uint64_t scoped_variable_values_version() const noexcept { return _scoped_variable_values_version; }
+    
+    /// Create a scoped overlay for temporary loop variables.
+    [[nodiscard]] ScopedVariables scope();
     
     std::shared_ptr<Drawable> retrieve_named(std::string_view name);
     std::shared_ptr<Drawable> get() const;
@@ -65,6 +115,13 @@ struct CurrentObjectHandler {
     void register_tooltipable(std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>);
     void unregister_tooltipable(std::weak_ptr<LabeledField>);
     void update_tooltips(DrawStructure&);
+    
+private:
+    void invalidate_cached_variable_values();
+    void invalidate_scoped_cached_variable_values();
+    void push_variable_scope();
+    void pop_variable_scope();
+    void set_scoped_variable_value(std::string_view name, std::string_view value);
 };
 
 struct Context {

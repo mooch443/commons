@@ -1,4 +1,5 @@
 #include "LabeledField.h"
+#include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>
 #include <gui/types/ErrorElement.h>
@@ -597,16 +598,8 @@ void LabeledTextField::update_ref_in_main_thread() {
         // dont update because of self-changes
         return;
     }
-    std::string str;
     auto r = ref();
-    if(r.is_type<std::string>()) {
-        str = r.value<std::string>();
-    } else {
-        str = r.get().valueString();
-    }
-    /*if(str.length() >= 2 && str.front() == '"' && str.back() == '"') {
-        str = str.substr(1,str.length()-2);
-    }*/
+    std::string str = sprite::display_property(r);
     if(str != _text_field.to<Textfield>()->text()) {
         _text_field->set_text(str);
     }
@@ -896,7 +889,7 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
     });
     
     _dropdown->set_update_callback([this]() { asyncUpdateItems(); });
-    _dropdown->list().set(Placeholder_t("Loading..."));
+    _dropdown->set(Placeholder_t("Loading..."));
     
     _path = path;
     _dropdown->textfield()->set_text(_path.str());

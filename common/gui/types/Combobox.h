@@ -75,6 +75,7 @@ public:
     void set(LabelDims_t dims);
     void set(ListLineClr_t clr);
     void set(ListFillClr_t clr);
+    void set(LabelFillClr_t clr);
     void set(LabelColor_t clr);
     void set(LabelBorderColor_t clr);
     void set(Placeholder_t);

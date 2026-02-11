@@ -121,29 +121,72 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
 
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
     //Print("Calculating hash for index ", hash, " ", (uint64_t)ptr.get());
+    auto check_field = [&]<typename SourceType>(std::string_view field, auto&& apply) -> bool {
+        if(auto pattern = state.get_pattern(hash, std::string(field));
+           pattern.has_value())
+        {
+            try {
+                auto text = pattern.value()->realize(context, state);
+                auto trimmed = utils::trim(std::string_view(text));
+                if constexpr(std::same_as<SourceType, Vec2> || std::same_as<SourceType, Size2>) {
+                    // Keep the last valid value instead of snapping to zero on transient unresolved patterns.
+                    if(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null")) {
+                        return true;
+                    }
+                }
+                apply(Meta::fromStr<SourceType>(text));
+            } catch(const std::exception& e) {
+                FormatError("Error parsing initial ", field, " pattern; ", e.what());
+            }
+            return true;
+        }
+        return false;
+    };
+    auto apply_field = [&](std::string_view field, const auto& default_value, auto&& apply) {
+        using SourceType = std::decay_t<decltype(default_value)>;
+        if(not check_field.template operator()<SourceType>(field, apply))
+            apply(default_value);
+    };
+    auto apply_field_if = [&](std::string_view field, const auto& default_value, const auto& skip_value, auto&& apply) {
+        using SourceType = std::decay_t<decltype(default_value)>;
+        if(not check_field.template operator()<SourceType>(field, apply)
+           && default_value != skip_value)
+        {
+            apply(default_value);
+        }
+    };
     if(type != LayoutType::settings) {
-        if(line != Transparent)
-            LabeledField::delegate_to_proper_type(attr::LineClr{line}, ptr);
-        if(fill != Transparent)
-            LabeledField::delegate_to_proper_type(attr::FillClr{fill}, ptr);
+        apply_field_if("line", line, Transparent, [&](const auto& value) {
+            LabeledField::delegate_to_proper_type(attr::LineClr{value}, ptr);
+        });
+        apply_field_if("fill", fill, Transparent, [&](const auto& value) {
+            LabeledField::delegate_to_proper_type(attr::FillClr{value}, ptr);
+        });
     }
-    
-    if(auto pattern = state.get_pattern(hash, "corners");
-       pattern.has_value())
-    {
-        //auto str = parse_text(pattern.value()->original, context, state);
-        auto str = pattern.value()->realize(context, state);
-        LabeledField::delegate_to_proper_type(Meta::fromStr<CornerFlags_t>(str), ptr);
-    } else {
-        LabeledField::delegate_to_proper_type(corners, ptr);
-    }
-    LabeledField::delegate_to_proper_type(attr::Margins{pad}, ptr);
+
+    apply_field("corners", corners, [&](const auto& value) {
+        LabeledField::delegate_to_proper_type(value, ptr);
+    });
+
+    apply_field("pad", pad, [&](const auto& value) {
+        LabeledField::delegate_to_proper_type(attr::Margins{value}, ptr);
+    });
+
     LabeledField::delegate_to_proper_type(font, ptr);
-    LabeledField::delegate_to_proper_type(textClr, ptr);
-    ptr->set(zindex);
-    
-    if(clickable)
-        ptr->set_clickable(clickable);
+
+    apply_field("color", (Color)textClr, [&](const auto& value) {
+        LabeledField::delegate_to_proper_type(attr::TextClr{value}, ptr);
+    });
+
+    if(not check_field.operator()<int>("z-index", [&](const auto& value) {
+        ptr->set(ZIndex{value});
+    })) {
+        ptr->set(zindex);
+    }
+
+    apply_field_if("clickable", clickable, false, [&](const auto& value) {
+        ptr->set_clickable(value);
+    });
     
     if(auto pattern = state.get_pattern(hash, "name");
        pattern.has_value())
@@ -179,10 +222,40 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         }
     }
     
-    if(scale != Vec2(1)) ptr->set_scale(scale);
-    if(pos != Vec2(0)) ptr->set_pos(pos);
-    if(size != Vec2(0)) ptr->set_size(size);
-    if(origin != Vec2(0)) ptr->set_origin(origin);
+    apply_field_if("scale", scale, Vec2(1), [&](const auto& value) {
+        ptr->set_scale(value);
+    });
+
+    apply_field_if("pos", pos, Vec2(0), [&](const auto& value) {
+        ptr->set_pos(value);
+    });
+
+    if(auto pattern = state.get_pattern(hash, "size");
+       pattern.has_value())
+    {
+        try {
+            auto str = pattern.value()->realize(context, state);
+            auto trimmed = utils::trim(std::string_view(str));
+            if(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null")) {
+                // Keep previous/default size when expression is temporarily unresolved.
+            } else if(str == "auto") {
+                if(ptr.is<Layout>())
+                    ptr.to<Layout>()->auto_size();
+                else
+                    FormatExcept("pattern for initial size should only be auto for layouts, not: ", *ptr);
+            } else {
+                ptr->set_size(Meta::fromStr<Size2>(str));
+            }
+        } catch(const std::exception& e) {
+            FormatError("Error parsing initial size pattern; ", e.what());
+        }
+    } else if(size != Vec2(0)) {
+        ptr->set_size(size);
+    }
+
+    apply_field_if("origin", origin, Vec2(0), [&](const auto& value) {
+        ptr->set_origin(value);
+    });
     
     if(obj.count("hover") || obj.count("unhover")) {
         auto hover_action = obj.count("hover") ? PreAction::fromStr(obj.at("hover").get<std::string>()) : PreAction{};
@@ -613,7 +686,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ref->set(postfix);
         if(scale != Vec2(1)) ref->set(attr::Scale{scale});
         if(pos != Vec2(0))
-            ref->set(attr::Loc{pos});
+            ptr->set(attr::Loc{pos});
         if(size != Vec2(0))
             ref->set(attr::Size{size});
         
@@ -634,8 +707,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 auto &p = o.get_object();
                 LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 ref->set(line_clr);
-                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
+                LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 ref->set(fill_clr);
+                LabelColor_t color{ dyn::get(state, p, Color(50,50,50,200), "color", hash, "label_")};
+                ref->set(color);
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
                 ref->set(label_font);
@@ -650,8 +725,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         }
         
         if (obj.contains("list")) {
-            ref->set(LabelColor_t{fill});
-            ref->set(LabelBorderColor_t{line});
+            //ref->set(LabelFillClr_t{fill});
+            //ref->set(LabelBorderColor_t{line});
             
             auto &o = obj.at("list");
             if (o.is_object()) {
@@ -993,8 +1068,10 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 
                 LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 list->set(line_clr);
-                LabelColor_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
+                LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 list->set(fill_clr);
+                LabelColor_t color{ dyn::get(state, p, Color(50,50,50,200), "color", hash, "label_")};
+                list->set(color);
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
                 list->set(label_font);

@@ -3,6 +3,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/dyn/ParseText.h>
+#include <misc/DisplayValue.h>
 
 namespace cmn::gui::dyn {
 
@@ -127,9 +128,136 @@ void CurrentObjectHandler::set_tooltip(std::nullptr_t) {
     _tooltip_object = nullptr;
 }
 
+CurrentObjectHandler::ScopedVariables::ScopedVariables(CurrentObjectHandler& handler)
+    : _handler(&handler)
+{
+    _handler->push_variable_scope();
+}
+
+CurrentObjectHandler::ScopedVariables::ScopedVariables(ScopedVariables&& other) noexcept
+    : _handler(other._handler),
+      _active(other._active)
+{
+    other._handler = nullptr;
+    other._active = false;
+}
+
+CurrentObjectHandler::ScopedVariables& CurrentObjectHandler::ScopedVariables::operator=(ScopedVariables&& other) noexcept
+{
+    if(this == &other) {
+        return *this;
+    }
+    
+    restore();
+    
+    _handler = other._handler;
+    _active = other._active;
+    
+    other._handler = nullptr;
+    other._active = false;
+    return *this;
+}
+
+CurrentObjectHandler::ScopedVariables::~ScopedVariables() {
+    restore();
+}
+
+void CurrentObjectHandler::ScopedVariables::restore() {
+    if(not _active || not _handler) {
+        return;
+    }
+    
+    _handler->pop_variable_scope();
+    
+    _active = false;
+}
+
+void CurrentObjectHandler::ScopedVariables::set(std::string_view name, std::string_view value) {
+    if(not _handler) {
+        return;
+    }
+    
+    _handler->set_scoped_variable_value(name, value);
+}
+
+void CurrentObjectHandler::invalidate_cached_variable_values() {
+    if(_variable_values_version == std::numeric_limits<uint64_t>::max()) {
+        _cached_variable_values.clear();
+        _variable_values_version = 1;
+        return;
+    }
+    
+    ++_variable_values_version;
+}
+
+void CurrentObjectHandler::invalidate_scoped_cached_variable_values() {
+    if(_scoped_variable_values_version == std::numeric_limits<uint64_t>::max()) {
+        _cached_variable_values.clear();
+        _scoped_variable_values_version = 1;
+        return;
+    }
+    
+    ++_scoped_variable_values_version;
+}
+
+void CurrentObjectHandler::push_variable_scope() {
+    _scoped_variable_values.emplace_back();
+}
+
+void CurrentObjectHandler::pop_variable_scope() {
+    if(_scoped_variable_values.empty()) {
+        return;
+    }
+    
+    auto had_values = not _scoped_variable_values.back().empty();
+    _scoped_variable_values.pop_back();
+    
+    if(had_values) {
+        invalidate_scoped_cached_variable_values();
+    }
+}
+
+void CurrentObjectHandler::set_scoped_variable_value(std::string_view name, std::string_view value) {
+    if(_scoped_variable_values.empty()) {
+        set_variable_value(name, value);
+        return;
+    }
+    
+    auto& scope = _scoped_variable_values.back();
+    std::string key(name);
+    std::string str_value(value);
+    
+    auto it = scope.find(key);
+    if(it != scope.end() && it->second == str_value) {
+        return;
+    }
+    
+    if(it == scope.end()) {
+        scope.emplace(std::move(key), std::move(str_value));
+    } else {
+        it->second = std::move(str_value);
+    }
+    
+    invalidate_scoped_cached_variable_values();
+}
+
 void CurrentObjectHandler::set_variable_value(std::string_view name, std::string_view value)
 {
-    _variable_values[std::string(name)] = std::string(value);
+    std::string key(name);
+    std::string str_value(value);
+    
+    auto it = _variable_values.find(key);
+    if(it != _variable_values.end() && it->second == str_value) {
+        return;
+    }
+    
+    if(it == _variable_values.end()) {
+        _variable_values.emplace(std::move(key), std::move(str_value));
+    } else {
+        it->second = std::move(str_value);
+    }
+    
+    invalidate_cached_variable_values();
 }
 
 void CurrentObjectHandler::remove_variable(std::string_view name)
@@ -137,11 +265,49 @@ void CurrentObjectHandler::remove_variable(std::string_view name)
     auto it = _variable_values.find(name);
     if(it != _variable_values.end()) {
         _variable_values.erase(it);
+        invalidate_cached_variable_values();
+    }
+}
+
+void CurrentObjectHandler::clear_variable_values() {
+    if(_variable_values.empty() && _cached_variable_values.empty() && _scoped_variable_values.empty()) {
+        return;
+    }
+    
+    bool had_global = not _variable_values.empty();
+    bool had_scoped = false;
+    for(const auto& scope : _scoped_variable_values) {
+        if(not scope.empty()) {
+            had_scoped = true;
+            break;
+        }
+    }
+    
+    _variable_values.clear();
+    _scoped_variable_values.clear();
+    _cached_variable_values.clear();
+    
+    if(had_global) {
+        invalidate_cached_variable_values();
+    }
+    if(had_scoped) {
+        invalidate_scoped_cached_variable_values();
     }
 }
 
 std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::string_view name) const
 {
+    for(auto it = _scoped_variable_values.rbegin();
+        it != _scoped_variable_values.rend();
+        ++it)
+    {
+        if(auto scoped_it = it->find(name);
+           scoped_it != it->end())
+        {
+            return std::string_view(scoped_it->second);
+        }
+    }
+    
     if(auto it = _variable_values.find(name);
        it != _variable_values.end())
     {
@@ -149,6 +315,31 @@ std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::st
     }
     
     return std::nullopt;
+}
+
+std::optional<std::string_view> CurrentObjectHandler::get_cached_variable_value(std::string_view name) const
+{
+    if(auto it = _cached_variable_values.find(name);
+       it != _cached_variable_values.end()
+       && it->second.global_version == _variable_values_version
+       && it->second.scoped_version == _scoped_variable_values_version)
+    {
+        return std::string_view(it->second.value);
+    }
+    
+    return std::nullopt;
+}
+
+void CurrentObjectHandler::set_cached_variable_value(std::string_view name, std::string_view value)
+{
+    auto& cached = _cached_variable_values[std::string(name)];
+    cached.global_version = _variable_values_version;
+    cached.scoped_version = _scoped_variable_values_version;
+    cached.value = std::string(value);
+}
+
+CurrentObjectHandler::ScopedVariables CurrentObjectHandler::scope() {
+    return ScopedVariables(*this);
 }
 
 std::shared_ptr<Drawable> CurrentObjectHandler::retrieve_named(std::string_view name)
@@ -566,46 +757,94 @@ void Context::init() const {
                 
                 return combination;
             }),
+            VarFunc("merge", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(1, props);
+                
+                auto parts = util::parse_array_parts(util::truncate(props.parameters.front()));
+                std::string combination = "[";
+                for(size_t i = 0; i < parts.size(); ++i) {
+                    if(i > 0)
+                        combination += ",";
+                    combination += util::truncate(parts[i]);
+                }
+                combination += "]";
+                return combination;
+            }),
+            VarFunc("range", [](const VarProps& props) -> std::vector<int>
+            {
+                REQUIRE_AT_LEAST(2, props);
+
+                std::vector<int> result;
+                int start = Meta::fromStr<int>(props.parameters.at(0));
+                int end = Meta::fromStr<int>(props.parameters.at(1));
+                int step = 1;
+                if(props.parameters.size() > 2) {
+                    step = max(1, Meta::fromStr<int>(props.parameters.at(2)));
+                }
+
+                for(int i = start; i < end; i+=step) {
+                    result.push_back(i);
+                }
+
+                return result;
+            }),
             VarFunc("for", [this](const VarProps& props) -> std::string {
-                REQUIRE_EXACTLY(2, props);
+                REQUIRE_AT_LEAST(2, props);
                 
                 std::stringstream ss;
                 ss << "[";
                 
                 auto trunc = props.parameters.at(0);
                 auto fn = props.parameters.at(1);
+                std::string variable = "i";
+
+                if(props.parameters.size() >= 3) {
+                    variable = props.parameters.at(0);
+                    trunc = props.parameters.at(1);
+                    fn = props.parameters.at(2);
+
+                }
                 
                 State state;
-                auto handler = std::make_shared<CurrentObjectHandler>();
-                state._current_object_handler = handler;
+                auto handler = state._current_object_handler.lock();
+                if(not handler) {
+                    handler = std::make_shared<CurrentObjectHandler>();
+                    state._current_object_handler = std::weak_ptr(handler);
+                }
                 
                 if(is_in(utils::trim(trunc).front(), '[', '{')) {
                     auto parsed = parse_text(trunc, *this, state);
                     auto parts = util::parse_array_parts(util::truncate(parsed));
                     
                     size_t index{0};
+                    std::string idx;
                     for(auto &p : parts) {
-                        handler->set_variable_value("i", p);
+                        auto scope = handler->scope();
+                        idx = Meta::toStr(index);
+                        scope.set(variable, p);
+                        scope.set("index", idx);
                         if(index > 0)
                             ss << ",";
                         ss << parse_text(fn, *this, state);
                         
                         ++index;
                     }
-                    handler->remove_variable("i");
                     
                 } else if(is_in(trunc.front(), '\'', '"')) {
                     auto text = Meta::fromStr<std::string>(trunc);
                     size_t index{0};
+                    std::string idx;
                     for(auto p : text) {
-                        handler->set_variable_value("i", std::string_view(&p, 1));
+                        auto scope = handler->scope();
+                        idx = Meta::toStr(index);
+                        scope.set(variable, std::string_view(&p, 1));
+                        scope.set("index", idx);
                         if(index > 0)
                             ss << ",";
                         ss << parse_text(fn, *this, state);
                         
                         ++index;
                     }
-                    handler->remove_variable("i");
                 }
                 
                 ss << "]";
@@ -799,15 +1038,7 @@ void Context::init() const {
                 if(props.subs.empty())
                     return "null";
                 auto v = GlobalSettings::read_value<NoType>(props.subs.front());
-                if(v.valid()) {
-                    if(v->is_type<std::string>()) {
-                        return v->value<std::string>();
-                    } else if(v->is_type<file::Path>()) {
-                        return v->value<file::Path>().str();
-                    }
-                    return v->valueString();
-                }
-                return "null";
+                return sprite::display_property(v);
             }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);

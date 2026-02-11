@@ -17,6 +17,7 @@ namespace cmn::gui {
     ATTRIBUTE_ALIAS(DetailColor_t, Color)
     ATTRIBUTE_ALIAS(ListFillClr_t, Color)
     ATTRIBUTE_ALIAS(ListLineClr_t, Color)
+    ATTRIBUTE_ALIAS(LabelFillClr_t, Color)
     ATTRIBUTE_ALIAS(LabelColor_t, Color)
     ATTRIBUTE_ALIAS(LabelCornerFlags, CornerFlags)
     ATTRIBUTE_ALIAS(LabelBorderColor_t, Color)

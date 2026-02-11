@@ -356,7 +356,8 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<Color, ItemBorderColor_t>("item_line");
     check_field.operator()<Color, ItemColor_t>("item_color");
     check_field.operator()<Color, LabelBorderColor_t>("label_line");
-    check_field.operator()<Color, LabelColor_t>("label_fill");
+    check_field.operator()<Color, LabelFillClr_t>("label_fill");
+    check_field.operator()<Color, LabelColor_t>("label_color");
     check_field.operator()<Size2, LabelDims_t>("label_size");
     check_field.operator()<Size2, ListDims_t>("list_size");
     check_field.operator()<Color, ListLineClr_t>("list_line");
@@ -852,37 +853,28 @@ std::shared_ptr<Drawable> State::named_entity(std::string_view name) {
     return lock->retrieve_named(name);
 }
 
-constexpr inline bool contains_bad_variable(std::string_view name) {
-    return is_in(name, "i", "index", "hovered", "selected")
-            || utils::beginsWith(name, "i.")
-            || utils::contains(name, "{hovered}")
-            || utils::contains(name, "{selected}")
-            || utils::contains(name, "{i.")
-            || utils::contains(name, "{i}")
-            || utils::contains(name, "{index}");
-}
-
 std::optional<std::string_view> State::cached_variable_value(std::string_view name) const
 {
-    //if(contains_bad_variable(name))
-    //    return std::nullopt;
-    
     auto lock = _current_object_handler.lock();
     if(not lock)
         return std::nullopt;
     
+    if(auto cached = lock->get_cached_variable_value(name);
+       cached.has_value())
+    {
+        return cached;
+    }
+    
+    // Loop-local/scoped variables (e.g. i, idx) are resolved from live values.
     return lock->get_variable_value(name);
 }
 
 void State::set_cached_variable_value(std::string_view name, std::string_view value) {
-    if(contains_bad_variable(name))
-        return;
-    
     auto lock = _current_object_handler.lock();
     if(not lock)
         return;
     
-    lock->set_variable_value(name, value);
+    lock->set_cached_variable_value(name, value);
 }
 
 /*State::State(const State& other)
