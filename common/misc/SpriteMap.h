@@ -750,6 +750,8 @@ void Reference::operator=(const T& value) {
                     // Assign the value wrapped in an optional
                     *optional_ptr = std::optional<T>(value);
                     return;
+                } else {
+                    throw InvalidArgumentException("Cannot cast optional property ", name(), " with type ", type_name(), " to ", Meta::name<T>(), " or std::optional<", Meta::name<T>(), ">.");
                 }
             }
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
