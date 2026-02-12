@@ -741,6 +741,9 @@ void Reference::operator=(const T& value) {
     void PropertyType::operator=(const T& value) {
         // First check if this is an optional type being assigned from the inner type
         // This handles the case where Property<std::optional<T>> is assigned a value of type T
+        // Note: This dynamic_cast is performed in both debug and release builds to handle
+        // the optional type mismatch that can occur when loading settings from files.
+        // The performance impact is minimal since property assignments are not in hot paths.
         auto optional_ptr = dynamic_cast<Property<std::optional<T>>*>(this);
         if(optional_ptr) {
             // Assign the value wrapped in an optional
