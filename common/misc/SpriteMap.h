@@ -739,8 +739,12 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void PropertyType::operator=(const T& value) {
+        Property<T> *ptr = nullptr;
 #ifndef NDEBUG
-        auto ptr = dynamic_cast<Property<T>*>(this);
+        ptr = dynamic_cast<Property<T>*>(this);
+#else
+        ptr = static_cast<Property<T>*>(this);
+#endif
         if(not ptr) {
             // Check if this is an optional type and we're trying to assign to the inner type
             // Try to cast to Property<std::optional<T>>
@@ -750,12 +754,12 @@ void Reference::operator=(const T& value) {
                 *optional_ptr = std::optional<T>(value);
                 return;
             }
+#ifndef NDEBUG
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
-        }
-#else
-        auto ptr = static_cast<Property<T>*>(this);
 #endif
-        if(ptr->valid()) {
+        }
+        
+        if(ptr && ptr->valid()) {
             *ptr = value;
             
         } else {
