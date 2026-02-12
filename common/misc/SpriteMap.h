@@ -742,6 +742,16 @@ void Reference::operator=(const T& value) {
 #ifndef NDEBUG
         auto ptr = dynamic_cast<Property<T>*>(this);
         if(not ptr) {
+            // Check if this is an optional type and we're trying to assign to the inner type
+            if(is_optional()) {
+                // Try to cast to Property<std::optional<T>>
+                auto optional_ptr = dynamic_cast<Property<std::optional<T>>*>(this);
+                if(optional_ptr) {
+                    // Assign the value wrapped in an optional
+                    *optional_ptr = std::optional<T>(value);
+                    return;
+                }
+            }
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
         }
 #else
