@@ -27,7 +27,7 @@ namespace cmn {
         protected:
             const std::string _name; ///< Name of the property.
             const std::string _type_name; ///< Name of the type of the property
-            const std::type_index _type_index;
+            const std::type_info* const _type_info;
             
             mutable std::shared_mutex _cache_mutex;
             mutable std::optional<std::string> _cache;
@@ -71,15 +71,15 @@ namespace cmn {
             
         public:
             // Constructors
-            PropertyType(const std::string& type_name, std::type_index index) : PropertyType(type_name, "<invalid>", index) {}
+            PropertyType(const std::string& type_name, const std::type_info* index) : PropertyType(type_name, "<invalid>", index) {}
 
             /**
              * Primary constructor for the PropertyType.
              * @param map Pointer to associated map object.
              * @param name Name of the property.
              */
-            PropertyType(const std::string& type_name, const std::string_view& name, std::type_index index)
-                : _name(name), _type_name(type_name), _type_index(index)
+            PropertyType(const std::string& type_name, const std::string_view& name, const std::type_info* index)
+                : _name(name), _type_name(type_name), _type_info(index)
             {
                 // Set default behaviors for lambda functions.
                 _set_value_from_string = [this](const std::string&){
@@ -270,7 +270,8 @@ namespace cmn {
             
             template<typename T>
             bool is_type() const {
-                return _type_index == std::type_index(typeid(T));
+                static const std::type_info* const _T_type = &typeid(T);
+                return _type_info == _T_type;
             }
             
             void reset_cache() {
@@ -321,7 +322,8 @@ namespace cmn {
             }
             
             Property(const std::string_view& name, const ValueType& v = ValueType())
-                : PropertyType(Meta::name<ValueType>(), name, std::type_index(typeid(ValueType))), _value(v)
+                : PropertyType(Meta::name<ValueType>(), name, &typeid(ValueType)),
+                  _value(v)
             {
                 init();
             }
