@@ -915,6 +915,12 @@ template<class Q> std::string name(const typename std::enable_if< std::is_same<c
 template<typename Q>
     requires (_is_dumb_pointer<Q> && not std::same_as<Q, const char*>)
 std::string name();
+
+template<typename Q>
+    requires (is_instantiation<std::optional, Q>::value)
+std::string name() {
+    return "optional<"+Meta::name<typename Q::value_type>()+">";
+}
         
 /**
  * chrono:: time objects
@@ -1071,6 +1077,14 @@ template<class Q>
     requires (is_instantiation<std::tuple, Q>::value)
 std::string toStr(const Q& obj) {
     return tuple_str(obj);
+}
+
+template<class Q>
+    requires (is_instantiation<std::optional, Q>::value)
+std::string toStr(const Q& obj) {
+    if(not obj.has_value())
+        return "null";
+    return Meta::toStr(obj.value());
 }
         
 template<class Q>

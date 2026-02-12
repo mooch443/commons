@@ -739,14 +739,24 @@ void Reference::operator=(const T& value) {
 
     template<typename T>
     void PropertyType::operator=(const T& value) {
+        // First check if this is an optional type being assigned from the inner type
+        // This handles the case where Property<std::optional<T>> is assigned a value of type T
+        // Use type_index comparison instead of dynamic_cast for better performance
+        if(is_type<std::optional<T>>()) {
+            // Type is confirmed to be Property<std::optional<T>>, use static_cast
+            auto optional_ptr = static_cast<Property<std::optional<T>>*>(this);
+            // Assign the value wrapped in an optional
+            *optional_ptr = std::optional<T>(value);
+            return;
+        }
+        
+        // Not an optional type, proceed with normal assignment
 #ifndef NDEBUG
         auto ptr = dynamic_cast<Property<T>*>(this);
         if(not ptr) {
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
         }
-#else
-        auto ptr = static_cast<Property<T>*>(this);
-#endif
+        
         if(ptr->valid()) {
             *ptr = value;
             
@@ -757,6 +767,13 @@ void Reference::operator=(const T& value) {
             FormatError(ss.str().c_str());
             throw PropertyException(ss.str());
         }
+#else
+        /// do not pretend as if we had any choice here. we cant tell
+        /// if it worked or not...
+        auto ptr = static_cast<Property<T>*>(this);
+        *ptr = value;
+#endif
+        
     }
 
     template<typename T>
