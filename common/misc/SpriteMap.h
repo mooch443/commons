@@ -756,9 +756,7 @@ void Reference::operator=(const T& value) {
         if(not ptr) {
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
         }
-#else
-        auto ptr = static_cast<Property<T>*>(this);
-#endif
+        
         if(ptr->valid()) {
             *ptr = value;
             
@@ -769,6 +767,13 @@ void Reference::operator=(const T& value) {
             FormatError(ss.str().c_str());
             throw PropertyException(ss.str());
         }
+#else
+        /// do not pretend as if we had any choice here. we cant tell
+        /// if it worked or not...
+        auto ptr = static_cast<Property<T>*>(this);
+        *ptr = value;
+#endif
+        
     }
 
     template<typename T>
