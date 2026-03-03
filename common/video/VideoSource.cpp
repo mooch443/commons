@@ -130,7 +130,7 @@ struct CVideo {
 std::mutex mutex;
 std::unordered_map<std::string, std::vector<CVideo>> storage;
 
-std::vector<CVideo> _create_cache(const file::PathArray& source) {
+std::expected<std::vector<CVideo>, std::string> _create_cache(const file::PathArray& source) {
     std::string prefix, suffix, extension;
     std::string str = source.source();
     size_t pos = str.find_last_of('.');
@@ -138,7 +138,10 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
         extension = str.substr(pos + 1);
         prefix = str.substr(0, pos);
     } else {
-        throw std::runtime_error("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
+#ifndef NDEBUG
+        FormatWarning("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
+#endif
+        return std::unexpected("Video extension not found in "+source.toStr()+". Please make sure this file is in a compatible format and you are not trying to 'convert' a .pv file when you should be trying to track it instead (-task track instead of -task convert).");
     }
     
     if(prefix.empty()) {
@@ -205,13 +208,14 @@ std::vector<CVideo> _create_cache(const file::PathArray& source) {
     return video_info;
 }
 
-std::vector<CVideo> load_cache(const file::PathArray& source) {
+std::expected<std::vector<CVideo>, std::string> load_cache(const file::PathArray& source) {
     std::unique_lock guard(mutex);
     auto it = storage.find(source.source());
     if(it == storage.end()) {
         try {
             auto info = _create_cache(source);
-            storage[source.source()] = info;
+            if(info.has_value())
+                storage[source.source()] = info.value();
             return info;
             
         } catch(const std::exception& ex) {
@@ -608,13 +612,13 @@ VideoSource::VideoSource(const file::PathArray& source)
     auto cache = video_cache::load_cache(source);
     _base = file::find_basename(source);
     
-    if(cache.empty()) {
+    if(not cache || cache->empty()) {
         throw U_EXCEPTION("Cannot load video sequence ",source," (it is empty).");
     }
     
     size_t index = 0;
     _is_greyscale = false;
-    for(auto &c : cache) {
+    for(auto &c : *cache) {
         auto file = new File(index++, c.path, c.N_frames, c.resolution, c.frame_rate, c.type, c.is_greyscale);
         if(c.is_greyscale)
             _is_greyscale = true;

@@ -110,6 +110,12 @@ function(copy_resources EXEC_NAME FILES)
                             "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
                         COMMENT "Copying ${comp_abs} to $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
                     )
+                    add_custom_command(TARGET ${EXEC_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E create_symlink
+                            "${comp_abs}"
+                            "$<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                        COMMENT "Creating symlink for ${comp_abs} in $<TARGET_FILE_DIR:${EXEC_NAME}>/../Resources/${comp_s}"
+                    )
                 endif()
             endif()
         else()

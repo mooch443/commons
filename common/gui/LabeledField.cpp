@@ -580,7 +580,7 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
                 ref().get().set_value_from_string(_text_field->text());
                 
             } catch(...) {
-                FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().get().type_name());
+                FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().valid() ? std::string(ref().get().type_name()) : "<unknown ref:"+(std::string)ref().name()+">");
             }
     });
     _text_field->on_enter([this](){
@@ -591,6 +591,12 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
             FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().get().type_name());
         }
     });
+}
+
+LabeledTextField::~LabeledTextField() {
+    if(_text_field) {
+        _text_field->clear_event_handlers();
+    }
 }
 
 void LabeledTextField::update_ref_in_main_thread() {

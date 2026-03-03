@@ -77,7 +77,7 @@ public:
     void set(ListFillClr_t clr);
     void set(LabelFillClr_t clr);
     void set(LabelColor_t clr);
-    void set(LabelBorderColor_t clr);
+    void set(LabelLineColor_t clr);
     void set(Placeholder_t);
     void set(ClearText_t);
     void set(CornerFlags_t) override;

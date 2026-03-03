@@ -319,6 +319,7 @@ struct LabeledCombobox : public LabeledField {
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
     LabeledTextField(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj);
+    ~LabeledTextField();
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_text_field);
