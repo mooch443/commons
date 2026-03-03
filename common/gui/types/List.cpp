@@ -589,7 +589,7 @@ void List::set(LabelFillClr_t clr) {
 void List::set(LabelColor_t clr) {
     _title.set(attr::TextClr{(Color)clr});
 }
-void List::set(LabelBorderColor_t clr) {
+void List::set(LabelLineColor_t clr) {
     set(LineClr{(Color)clr});
 }
 

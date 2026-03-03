@@ -155,7 +155,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             apply(default_value);
         }
     };
-    if(type != LayoutType::settings) {
+    if(type != LayoutType::settings)
+    {
         apply_field_if("line", line, Transparent, [&](const auto& value) {
             LabeledField::delegate_to_proper_type(attr::LineClr{value}, ptr);
         });
@@ -705,7 +706,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             auto &o = obj.at("label");
             if (o.is_object()) {
                 auto &p = o.get_object();
-                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
+                LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 ref->set(line_clr);
                 LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 ref->set(fill_clr);
@@ -726,7 +727,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         if (obj.contains("list")) {
             //ref->set(LabelFillClr_t{fill});
-            //ref->set(LabelBorderColor_t{line});
+            //ref->set(LabelLineColor_t{line});
             
             auto &o = obj.at("list");
             if (o.is_object()) {
@@ -1066,7 +1067,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             if (o.is_object()) {
                 auto &p = o.get_object();
                 
-                LabelBorderColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
+                LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
                 list->set(line_clr);
                 LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 list->set(fill_clr);

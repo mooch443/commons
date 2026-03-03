@@ -49,7 +49,7 @@ namespace cmn::gui {
         void set(LabelFont_t font);
         void set(LabelFillClr_t);
         void set(LabelColor_t);
-        void set(LabelBorderColor_t);
+        void set(LabelLineColor_t);
         void set_size(const Size2&) override;
         void set_bounds(const Bounds&) override;
         void set(Placeholder_t);

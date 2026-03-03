@@ -181,7 +181,7 @@ namespace cmn::gui {
         void set(ListLineClr_t dims) { _list.set(dims); }
         void set(LabelFillClr_t dims);
         void set(LabelColor_t dims);
-        void set(LabelBorderColor_t dims);
+        void set(LabelLineColor_t dims);
         void set(Placeholder_t placeholder);
         void set(ClearText_t c) { if(_textfield) _textfield->set(c); }
         void set(Textfield::OnClearText_t);

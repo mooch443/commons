@@ -380,7 +380,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<Size2, SizeLimit>("preview_max_size");
     check_field.operator()<Color, ItemBorderColor_t>("item_line");
     check_field.operator()<Color, ItemColor_t>("item_color");
-    check_field.operator()<Color, LabelBorderColor_t>("label_line");
+    check_field.operator()<Color, LabelLineColor_t>("label_line");
     check_field.operator()<Color, LabelFillClr_t>("label_fill");
     check_field.operator()<Color, LabelColor_t>("label_color");
     check_field.operator()<Size2, LabelDims_t>("label_size");

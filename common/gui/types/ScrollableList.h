@@ -63,7 +63,7 @@ namespace cmn::gui {
         GETTER(ListLineClr_t, list_line_clr){200,200,200,200};
         LabelFillClr_t _label_fill_clr{100,100,100,200};
         LabelColor_t _label_color{100,100,100,200};
-        LabelBorderColor_t _label_line_clr{200,200,200,200};
+        LabelLineColor_t _label_line_clr{200,200,200,200};
         LabelCornerFlags _label_corner_flags{};
         
         template <typename Q = T>
@@ -180,7 +180,7 @@ namespace cmn::gui {
             set(ListFillClr_t{100,100,100,200});
             set(ListLineClr_t{200,200,200,200});
             set(LabelFillClr_t{100,100,100,200});
-            set(LabelBorderColor_t{200,200,200,200});
+            set(LabelLineColor_t{200,200,200,200});
             update_line_height();
             
             set_clickable(true);
@@ -261,7 +261,7 @@ namespace cmn::gui {
         void set(LabelColor_t clr) {
             set(TextClr{(Color)clr});
         }
-        void set(LabelBorderColor_t clr) {
+        void set(LabelLineColor_t clr) {
             if (_label_line_clr == clr)
                 return;
             _label_line_clr = clr;

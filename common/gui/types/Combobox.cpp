@@ -270,7 +270,7 @@ void Combobox::set(ListFillClr_t clr) {
     if(_value)
         _value->set(clr);
 }
-void Combobox::set(LabelBorderColor_t clr) {
+void Combobox::set(LabelLineColor_t clr) {
     if(_dropdown)
         _dropdown->set(clr);
     if(_value)
@@ -395,7 +395,7 @@ void Combobox::update_value() {
         _value->set(ListFillClr_t{_dropdown->list().list_fill_clr()});
     }
     _value->set(LabelFillClr_t{(Color)_settings.fill_clr});
-    _value->set(LabelBorderColor_t{(Color)_settings.line_clr});
+    _value->set(LabelLineColor_t{(Color)_settings.line_clr});
     _value->set(_settings.postfix);
     _value->set(_settings.prefix);
 }
