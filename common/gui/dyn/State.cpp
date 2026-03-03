@@ -287,6 +287,12 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             Timer timer;
 #endif
             auto text = it->second.realize(context, state);
+            auto trimmed = utils::trim(std::string_view(text));
+            if constexpr(std::same_as<SourceType, Vec2> || std::same_as<SourceType, Size2>) {
+                // Ignore transient unresolved values instead of coercing to zero.
+                if(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null"))
+                    return;
+            }
             auto fill = Meta::fromStr<SourceType>(text);
             if(field)
                 field->set(TargetType{fill});
@@ -318,7 +324,23 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<CornerFlags_t, CornerFlags_t>("corners");
     check_field.operator()<Bounds, Margins>("pad");
     check_field.operator()<Float2_t, Alpha>("alpha");
-    check_field.operator()<Vec2, Loc>("pos");
+    if(auto it = patterns.find("pos");
+       it != patterns_end)
+    {
+        try {
+            auto text = it->second.realize(context, state);
+            auto trimmed = utils::trim(std::string_view(text));
+            if(!(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null"))) {
+                auto value = Meta::fromStr<Vec2>(text);
+                if(field)
+                    o->set(Loc{value});
+                else
+                    LabeledField::delegate_to_proper_type(Loc{value}, ptr);
+            }
+        } catch(const std::exception& e) {
+            FormatError("Error parsing context; ", patterns, ": ", e.what());
+        }
+    }
     check_field.operator()<Vec2, Scale>("scale");
     check_field.operator()<Vec2, Origin>("origin");
     
@@ -333,15 +355,18 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
                 else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
             } else {*/
             auto text = it->second.realize(context, state);
-            if(text == "auto") {
-                if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
-                else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
-            } else {
-                //LabeledField::delegate_to_proper_type(Size{Meta::fromStr<Size2>(text)}, ptr);
-                if(field)
-                    field->set(Size{Meta::fromStr<Size2>(text)});
-                else
-                    ptr->set(Size{Meta::fromStr<Size2>(text)});
+            auto trimmed = utils::trim(std::string_view(text));
+            if(!(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null"))) {
+                if(text == "auto") {
+                    if(ptr.is<Layout>()) ptr.to<Layout>()->auto_size();
+                    else FormatExcept("pattern for size should only be auto for layouts, not: ", *ptr);
+                } else {
+                    //LabeledField::delegate_to_proper_type(Size{Meta::fromStr<Size2>(text)}, ptr);
+                    if(field)
+                        field->set(Size{Meta::fromStr<Size2>(text)});
+                    else
+                        ptr->set(Size{Meta::fromStr<Size2>(text)});
+                }
             }
                 //o->set_size(resolve_variable_type<Size2>(size, context));
             //}
