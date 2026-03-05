@@ -600,6 +600,11 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
         set(GLAD_PROFILE "core")
         set(GLAD_API "gl=3.2")
     endif()
+    set(gladex_PATCH_COMMAND
+        ${CMAKE_COMMAND}
+            -DGLADEX_SOURCE_DIR=<SOURCE_DIR>
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/gladex_patch.cmake"
+    )
     ExternalProject_Add(gladex PREFIX gladex
         GIT_REPOSITORY https://github.com/mooch443/glad.git
         GIT_TAG v0.1.36
@@ -610,6 +615,7 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
             -DGLAD_API=${GLAD_API}
             -DGLAD_INSTALL=ON
             -DGLAD_REPRODUCIBLE=ON
+        PATCH_COMMAND ${gladex_PATCH_COMMAND}
         UPDATE_COMMAND ""
     )
 
