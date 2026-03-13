@@ -128,6 +128,118 @@ void CurrentObjectHandler::set_tooltip(std::nullptr_t) {
     _tooltip_object = nullptr;
 }
 
+CurrentObjectHandler::VariableValue::VariableValue(const VariableValue& other) {
+    if(other.is_string()) {
+        set(other.string());
+    } else if(other.is_dynamic()) {
+        set(other.dynamic());
+    }
+}
+
+CurrentObjectHandler::VariableValue::VariableValue(VariableValue&& other) noexcept {
+    if(other.is_string()) {
+        set(other.string());
+    } else if(other.is_dynamic()) {
+        set(std::move(other.storage.dynamic_value));
+    }
+    other.reset();
+}
+
+CurrentObjectHandler::VariableValue& CurrentObjectHandler::VariableValue::operator=(const VariableValue& other) {
+    if(this == &other) {
+        return *this;
+    }
+
+    if(other.is_string()) {
+        set(other.string());
+    } else if(other.is_dynamic()) {
+        set(other.dynamic());
+    } else {
+        reset();
+    }
+    return *this;
+}
+
+CurrentObjectHandler::VariableValue& CurrentObjectHandler::VariableValue::operator=(VariableValue&& other) noexcept {
+    if(this == &other) {
+        return *this;
+    }
+
+    if(other.is_string()) {
+        set(other.string());
+    } else if(other.is_dynamic()) {
+        set(std::move(other.storage.dynamic_value));
+    } else {
+        reset();
+    }
+    other.reset();
+    return *this;
+}
+
+CurrentObjectHandler::VariableValue::~VariableValue() {
+    reset();
+}
+
+void CurrentObjectHandler::VariableValue::reset() noexcept {
+    switch(kind) {
+        case Kind::string:
+            std::destroy_at(std::addressof(storage.string_value));
+            break;
+        case Kind::dynamic:
+            std::destroy_at(std::addressof(storage.dynamic_value));
+            break;
+        case Kind::none:
+            break;
+    }
+
+    kind = Kind::none;
+}
+
+void CurrentObjectHandler::VariableValue::set(std::string_view value) {
+    if(is_string() && storage.string_value == value) {
+        return;
+    }
+
+    reset();
+    std::construct_at(std::addressof(storage.string_value), value);
+    kind = Kind::string;
+}
+
+void CurrentObjectHandler::VariableValue::set(std::shared_ptr<VarBase_t> value) {
+    if(is_dynamic() && storage.dynamic_value == value) {
+        return;
+    }
+
+    reset();
+    std::construct_at(std::addressof(storage.dynamic_value), std::move(value));
+    kind = Kind::dynamic;
+}
+
+std::string_view CurrentObjectHandler::VariableValue::string() const {
+    return is_string() ? std::string_view(storage.string_value) : std::string_view{};
+}
+
+std::shared_ptr<VarBase_t> CurrentObjectHandler::VariableValue::dynamic() const {
+    return is_dynamic() ? storage.dynamic_value : nullptr;
+}
+
+bool CurrentObjectHandler::VariableValue::operator==(const VariableValue& other) const {
+    if(kind != other.kind) {
+        return false;
+    }
+
+    switch(kind) {
+        case Kind::none:
+            return true;
+        case Kind::string:
+            return storage.string_value == other.storage.string_value;
+        case Kind::dynamic:
+            return storage.dynamic_value == other.storage.dynamic_value;
+    }
+
+    return false;
+}
+
 CurrentObjectHandler::ScopedVariables::ScopedVariables(CurrentObjectHandler& handler)
     : _handler(&handler)
 {
@@ -170,14 +282,6 @@ void CurrentObjectHandler::ScopedVariables::restore() {
     _handler->pop_variable_scope();
     
     _active = false;
-}
-
-void CurrentObjectHandler::ScopedVariables::set(std::string_view name, std::string_view value) {
-    if(not _handler) {
-        return;
-    }
-    
-    _handler->set_scoped_variable_value(name, value);
 }
 
 void CurrentObjectHandler::invalidate_cached_variable_values() {
@@ -224,38 +328,57 @@ void CurrentObjectHandler::set_scoped_variable_value(std::string_view name, std:
     }
     
     auto& scope = _scoped_variable_values.back();
-    std::string key(name);
-    std::string str_value(value);
-    
-    auto it = scope.find(key);
-    if(it != scope.end() && it->second == str_value) {
+    VariableValue new_value(value);
+    auto it = scope.find(name);
+    if(it != scope.end() && it->second == new_value) {
         return;
     }
     
-    if(it == scope.end()) {
-        scope.emplace(std::move(key), std::move(str_value));
-    } else {
-        it->second = std::move(str_value);
+    scope[std::string(name)] = std::move(new_value);
+    
+    invalidate_scoped_cached_variable_values();
+}
+
+void CurrentObjectHandler::set_scoped_variable_value(std::string_view name, std::shared_ptr<VarBase_t> value) {
+    if(_scoped_variable_values.empty()) {
+        set_variable_value(name, std::move(value));
+        return;
     }
+    
+    auto& scope = _scoped_variable_values.back();
+    VariableValue new_value(value);
+    auto it = scope.find(name);
+    if(it != scope.end() && it->second == new_value) {
+        return;
+    }
+    
+    scope[std::string(name)] = VariableValue(std::move(value));
     
     invalidate_scoped_cached_variable_values();
 }
 
 void CurrentObjectHandler::set_variable_value(std::string_view name, std::string_view value)
 {
-    std::string key(name);
-    std::string str_value(value);
-    
-    auto it = _variable_values.find(key);
-    if(it != _variable_values.end() && it->second == str_value) {
+    VariableValue new_value(value);
+    auto it = _variable_values.find(name);
+    if(it != _variable_values.end() && it->second == new_value) {
         return;
     }
     
-    if(it == _variable_values.end()) {
-        _variable_values.emplace(std::move(key), std::move(str_value));
-    } else {
-        it->second = std::move(str_value);
+    _variable_values[std::string(name)] = std::move(new_value);
+    
+    invalidate_cached_variable_values();
+}
+
+void CurrentObjectHandler::set_variable_value(std::string_view name, std::shared_ptr<VarBase_t> value)
+{
+    VariableValue new_value(value);
+    auto it = _variable_values.find(name);
+    if(it != _variable_values.end() && it->second == new_value) {
+        return;
     }
+    
+    _variable_values[std::string(name)] = VariableValue(std::move(value));
     
     invalidate_cached_variable_values();
 }
@@ -270,7 +393,10 @@ void CurrentObjectHandler::remove_variable(std::string_view name)
 }
 
 void CurrentObjectHandler::clear_variable_values() {
-    if(_variable_values.empty() && _cached_variable_values.empty() && _scoped_variable_values.empty()) {
+    if(_variable_values.empty()
+       && _cached_variable_values.empty()
+       && _scoped_variable_values.empty())
+    {
         return;
     }
     
@@ -304,17 +430,47 @@ std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::st
         if(auto scoped_it = it->find(name);
            scoped_it != it->end())
         {
-            return std::string_view(scoped_it->second);
+            return scoped_it->second.is_string()
+                ? std::optional<std::string_view>(scoped_it->second.string())
+                : std::nullopt;
         }
     }
     
     if(auto it = _variable_values.find(name);
        it != _variable_values.end())
     {
-        return std::string_view(it->second);
+        return it->second.is_string()
+            ? std::optional<std::string_view>(it->second.string())
+            : std::nullopt;
     }
     
     return std::nullopt;
+}
+
+std::shared_ptr<VarBase_t> CurrentObjectHandler::get_dynamic_variable(std::string_view name) const
+{
+    for(auto it = _scoped_variable_values.rbegin();
+        it != _scoped_variable_values.rend();
+        ++it)
+    {
+        if(auto scoped_it = it->find(name);
+           scoped_it != it->end())
+        {
+            return scoped_it->second.is_dynamic()
+                ? scoped_it->second.dynamic()
+                : nullptr;
+        }
+    }
+    
+    if(auto it = _variable_values.find(name);
+       it != _variable_values.end())
+    {
+        return it->second.is_dynamic()
+            ? it->second.dynamic()
+            : nullptr;
+    }
+    
+    return nullptr;
 }
 
 std::optional<std::string_view> CurrentObjectHandler::get_cached_variable_value(std::string_view name) const
@@ -405,7 +561,24 @@ Context::Context(std::initializer_list<std::variant<ActionPair, VariablePair>> i
     }
 }
 
-bool Context::has(std::string_view name) const noexcept {
+/*bool Context::has(std::string_view name) const noexcept {
+    if(variables.contains(name))
+        return true;
+    return system_variables().contains(name);
+}*/
+
+bool Context::has(std::string_view name, const State& state) const noexcept {
+    if(auto handler = state._current_object_handler.lock();
+       handler)
+    {
+        if(handler->get_dynamic_variable(name) != nullptr) {
+            return true;
+        }
+        if(handler->get_variable_value(name).has_value()) {
+            return false;
+        }
+    }
+    
     if(variables.contains(name))
         return true;
     return system_variables().contains(name);
@@ -1084,7 +1257,20 @@ void Context::init() const {
     
 }
 
-const std::shared_ptr<VarBase_t>& Context::variable(std::string_view name) const {
+std::shared_ptr<VarBase_t> Context::variable(std::string_view name, const State& state) const {
+    if(auto handler = state._current_object_handler.lock();
+       handler)
+    {
+        if(auto variable = handler->get_dynamic_variable(name);
+           variable != nullptr)
+        {
+            return variable;
+        }
+        if(handler->get_variable_value(name).has_value()) {
+            throw InvalidArgumentException("Cannot find key ", name, " in variables.");
+        }
+    }
+    
     auto it = variables.find(name);
     if(it != variables.end())
         return it->second;

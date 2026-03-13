@@ -12,6 +12,15 @@ namespace cmn::gui::dyn {
 
 static constexpr uint64_t max_displayed_objects = 10000u;
 
+static std::shared_ptr<CurrentObjectHandler> ensure_current_object_handler(State& state) {
+    auto handler = state._current_object_handler.lock();
+    if(not handler) {
+        handler = std::make_shared<CurrentObjectHandler>();
+        state._current_object_handler = std::weak_ptr(handler);
+    }
+    return handler;
+}
+
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
     //! something that needs to be executed before everything runs
@@ -429,7 +438,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
     ListContents &obj = std::get<ListContents>(object);
     
     size_t index=0;
-    auto convert_to_item = [&gc = context, &index, &obj](ListContents::ItemTemplate& item_template, Context& context, State& state) -> DetailTooltipItem
+    auto convert_to_item = [&context, &index, &obj](ListContents::ItemTemplate& item_template, State& state) -> DetailTooltipItem
     {
         DetailTooltipItem item;
         if(item_template.text) {
@@ -453,13 +462,13 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                || std::get<0>(obj.on_select_actions.at(index)) != action.name)
             {
                 obj.on_select_actions[index] = std::make_tuple(
-                    index, [&gc = gc, index = index, action = action, context](){
+                    index, [index = index, action = action, context](){
                         Print("Clicked item at ", index, " with action ", action);
                         State state;
                         Action _action = action.parse(context, state);
                         if(_action.parameters.empty())
                             _action.parameters = { Meta::toStr(index) };
-                        if(auto it = gc.actions.find(action.name); it != gc.actions.end()) {
+                        if(auto it = context.actions.find(action.name); it != context.actions.end()) {
                             try {
                                 it->second(_action);
                             } catch(const std::exception& ex) {
@@ -474,10 +483,10 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         return item;
     };
     
-    if(context.has(obj.variable)) {
-        if(context.variable(obj.variable)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-            
-            auto& vector = context.variable(obj.variable)->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
+    if(context.has(obj.variable, state)) {
+        auto loop_variable = context.variable(obj.variable, state);
+        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+            auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
             
             IndexScopeHandler handler{state._current_index};
             //if(vector != obj.cache) {
@@ -486,29 +495,26 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             obj._state = std::make_unique<State>();
             obj._state->_current_object_handler = state._current_object_handler;
             
-            Context tmp = context;
+            auto scoped_handler = ensure_current_object_handler(state);
             
-            
+            size_t index = 0;
             for(auto &v : vector) {
-                //auto previous = state._variable_values;
-                tmp.variables["i"] = v;
+                auto scope = scoped_handler->scope();
+                scope.set("i", v);
+                scope.set("index", Meta::toStr(index));
                 try {
-                    //auto &ref = v->value<sprite::Map&>({});
-                    auto item = convert_to_item(obj.item, tmp, state);
+                    auto item = convert_to_item(obj.item, state);
                     ptrs.emplace_back(std::move(item));
                     ++index;
                 } catch(const std::exception& ex) {
                     FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("null"), " and type ", v->class_name());
                 }
-                //state._variable_values = std::move(previous);
             }
             
             o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
         }
         else {
-            auto variable = context.variable(obj.variable);
-            Print("Variable ", obj.variable, " has unknown type ", variable->class_name(),".");
-            
+            Print("Variable ", obj.variable, " has unknown type ", loop_variable->class_name(),".");
         }
     }
     else if(auto text = parse_text(obj.variable, context, state);
@@ -523,21 +529,20 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         obj._state = std::make_unique<State>();
         obj._state->_current_object_handler = state._current_object_handler;
         
-        Context tmp = context;
+        auto scoped_handler = ensure_current_object_handler(state);
         for(auto &v : vector) {
-            //auto previous = state._variable_values;
-            tmp.variables["i"] = VarFunc("i", [v](const VarProps&) -> std::string{
+            auto scope = scoped_handler->scope();
+            scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string{
                 return v;
-            }).second;
+            }).second);
             
             try {
-                auto item = convert_to_item( obj.item, tmp, state);
+                auto item = convert_to_item( obj.item, state);
                 ptrs.emplace_back(std::move(item));
                 ++index;
             } catch(const std::exception& ex) {
                 FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("null"), " and type string.");
             }
-            //state._variable_values = std::move(previous);
         }
         
         o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
@@ -578,9 +583,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     PreVarProps ps = extractControls(obj.variable);
     auto props = ps.parse(context, state);
 
-    if(context.has(props.name)) {
-        if(context.variable(props.name)->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
-            auto& vector = context.variable(props.name)->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
+    if(context.has(props.name, state)) {
+        auto loop_variable = context.variable(props.name, state);
+        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+            auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
             
             //IndexScopeHandler handler{state._current_index};
             if(vector != obj.cache) {
@@ -588,32 +594,31 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 ptrs.resize(vector.size());
                 
                 //State &state = *obj._state;
-                Context tmp = context;
+                auto scoped_handler = ensure_current_object_handler(*obj._state);
                 //obj._state->_current_index = {};
                 //obj._state->_collectors->objects.clear();
                 
                 size_t i = 0;
                 for(auto &v : vector) {
-                    //auto previous = (*obj._state)._variable_values;
-                    tmp.variables["i"] = v;
+                    auto scope = scoped_handler->scope();
+                    scope.set("i", v);
+                    scope.set("index", Meta::toStr(i));
                     
                     // try to reuse existing objects first:
                     Layout::Ptr ptr = ptrs.at(i);
                     if(not ptr) {
                         //Print("Making new ", hash, " child.");
-                        ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
+                        ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
                     } //else
                         //obj._state->_current_index.inc();
 
                     if(ptr) {
-                        if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
                             dirty = true;
                         }
                     }
 
                     ptrs.at(i) = std::move(ptr);
-
-                    //(*obj._state)._variable_values = std::move(previous);
 
                     ++i;
                     if (i >= max_displayed_objects) {
@@ -627,34 +632,80 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 
             } else {
                 //State &state = *obj._state;
-                Context tmp = context;
+                auto scoped_handler = ensure_current_object_handler(*obj._state);
                 for(size_t i=0; i<obj.cache.size() && i < max_displayed_objects; ++i) {
-                    //auto previous = (*obj._state)._variable_values;
-                    tmp.variables["i"] = obj.cache[i];
+                    auto scope = scoped_handler->scope();
+                    scope.set("i", obj.cache[i]);
+                    scope.set("index", Meta::toStr(i));
                     auto& p = o.to<Layout>()->objects().at(i);
                     if(p) {
-                        if(DynamicGUI::update_objects(gui, g, p, tmp, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, p, context, *obj._state)) {
                             //Print("Changed content");
                             dirty = true;
                         }
                     }
-                    //p->parent()->stage()->Print(nullptr);
-                    //obj._state->_variable_values = std::move(previous);
                 }
             }
         }
-        else if(context.variable(props.name)->is_vector()
-                || (context.variable(props.name)->is<sprite::Map&>()
+        else if(loop_variable->is<std::vector<glz::json_t>>()) {
+            auto vector = loop_variable->value<std::vector<glz::json_t>>(props);
+            
+            std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
+            ptrs.resize(vector.size());
+            
+            //State &state = *obj._state;
+            auto scoped_handler = ensure_current_object_handler(*obj._state);
+            //obj._state->_current_index = {};
+            //obj._state->_collectors->objects.clear();
+            
+            size_t i = 0;
+            for(auto &v : vector) {
+                auto scope = scoped_handler->scope();
+                scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::json_t {
+                    return v;
+                }).second);
+                scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
+                    return i;
+                }).second);
+                
+                // try to reuse existing objects first:
+                Layout::Ptr ptr = ptrs.at(i);
+                if(not ptr) {
+                    //Print("Making new ", hash, " child.");
+                    ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
+                } //else
+                    //obj._state->_current_index.inc();
+
+                if(ptr) {
+                    if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
+                        dirty = true;
+                    }
+                }
+
+                ptrs.at(i) = std::move(ptr);
+
+                ++i;
+                if (i >= max_displayed_objects) {
+                    break;
+                }
+            }
+            
+            ptrs.resize(i);
+            o.to<Layout>()->set_children(std::move(ptrs));
+            //obj.cache = vector;
+        }
+        else if(loop_variable->is_vector()
+                || (loop_variable->is<sprite::Map&>()
                     && not props.subs.empty()
-                    && context.variable(props.name)->value<sprite::Map&>(props).has(props.subs.front())
-                    && context.variable(props.name)->value<sprite::Map&>(props).at(props.subs.front()).get().is_array()))
+                    && loop_variable->value<sprite::Map&>(props).has(props.subs.front())
+                    && loop_variable->value<sprite::Map&>(props).at(props.subs.front()).get().is_array()))
         {
-            auto str = context.variable(props.name)->value_string(props);
+            auto str = loop_variable->value_string(props);
             auto vector = util::parse_array_parts(util::truncate(str));
             
             //obj._state->_collectors->objects.clear();
             
-            Context tmp = context;
+            auto scoped_handler = ensure_current_object_handler(*obj._state);
             std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
             if(ptrs.size() != min(max_displayed_objects, vector.size()))
                 dirty = true;
@@ -662,33 +713,27 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             size_t i = 0;
             for(auto &v : vector) {
-                //auto previous = (*obj._state)._variable_values;
-                
-                tmp.variables["index"] = std::unique_ptr<VarBase_t>{
-                    new Variable([i](const VarProps&) -> size_t {
-                        return i;
-                    })
-                };
-                tmp.variables["i"] = std::unique_ptr<VarBase_t>{
-                    new Variable([v](const VarProps&) -> std::string {
-                        return v;
-                    })
-                };
+                auto scope = scoped_handler->scope();
+                scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
+                    return i;
+                }).second);
+                scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string {
+                    return v;
+                }).second);
                 
                 // try to reuse existing objects first:
                 Layout::Ptr &ptr = ptrs.at(i);
                 if(not ptr) {
-                    ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
+                    ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
                     dirty = true;
                 }
                 if(ptr) {
-                    if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                    if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
                         dirty = true;
                     } else if(ptr && ptr->is_dirty()) {
                         dirty = true;
                     }
                 }
-                //obj._state->_variable_values = std::move(previous);
 
                 ++i;
                 if (i >= max_displayed_objects) {
@@ -706,8 +751,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             }
             //o.to<Layout>()->set_children(ptrs);
         }
-        else if(context.variable(props.name)->is<std::string>()) {
-            auto str = context.variable(props.name)->value<std::string>(props);
+        else if(loop_variable->is<std::string>()) {
+            auto str = loop_variable->value<std::string>(props);
             if(utils::beginsWith(str, '[')
                && utils::endsWith(str, ']'))
             {
@@ -723,29 +768,26 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 if(ptrs.size() != min(max_displayed_objects, vector.size()))
                     dirty = true;
                 ptrs.resize(vector.size());
-                
-                Context tmp = context;
+
+                auto scoped_handler = ensure_current_object_handler(*obj._state);
                 size_t i = 0;
                 for(auto &v : vector) {
-                    tmp.variables["index"] = std::unique_ptr<VarBase_t>{
-                        new Variable([i](const VarProps&) -> size_t {
-                            return i;
-                        })
-                    };
-                    tmp.variables["i"] = std::unique_ptr<VarBase_t>{
-                        new Variable([v = std::string(v)](const VarProps&) -> std::string {
-                            return v;
-                        })
-                    };
+                    auto scope = scoped_handler->scope();
+                    scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
+                        return i;
+                    }).second);
+                    scope.set("i", VarFunc("i", [v = std::string(v)](const VarProps&) -> std::string {
+                        return v;
+                    }).second);
                     
                     // try to reuse existing objects first:
                     Layout::Ptr &ptr = ptrs.at(i);
                     if(not ptr) {
-                        ptr = parse_object(gui, obj.child, tmp, *obj._state, context.defaults);
+                        ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
                         dirty = true;
                     }
                     if(ptr) {
-                        if(DynamicGUI::update_objects(gui, g, ptr, tmp, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
                             dirty = true;
                         } else if(ptr && ptr->is_dirty()) {
                             dirty = true;
@@ -779,7 +821,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     
     if(error) {
         auto ptrs = std::vector<Layout::Ptr>();
-        auto text = settings::htmlify("Invalid loop for "+ context.variable(props.name)->value_string(props)+ " in "+glz::write_json(obj.child).value_or("null"));
+        auto loop_text = context.has(props.name, state)
+            ? context.variable(props.name, state)->value_string(props)
+            : std::string(props.name);
+        auto text = settings::htmlify("Invalid loop for "+ loop_text + " in "+glz::write_json(obj.child).value_or("null"));
         ptrs.push_back(Layout::Make<StaticText>(attr::Str{text}));
         o.to<Layout>()->set_children(std::move(ptrs));
         o.to<Layout>()->set_layout_dirty();

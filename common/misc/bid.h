@@ -202,6 +202,18 @@ static_assert(static_cast<uint32_t>(int32_t(-1)) == bid::invalid, "Must be equal
 
 }
 
+template <>
+struct glz::meta<pv::bid> {
+    using mimic = std::optional<uint32_t>;
+    static constexpr auto read = [](pv::bid& output, const std::optional<uint32_t>& v) {
+        output = v.has_value() ? pv::bid{v.value()} : pv::bid{};
+    };
+    static constexpr auto write = [](const pv::bid& input) -> std::optional<uint32_t> {
+        return input.valid() ? std::optional<uint32_t>((uint32_t)input) : std::nullopt;
+    };
+    static constexpr auto value = glz::custom<read, write>;
+};
+
 namespace std
 {
     template <>

@@ -113,6 +113,17 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                                 std::string ret;
                                 if(modifiers.subs.empty())
                                     ret = variable.value_string(modifiers);
+                                else if(variable.is<glz::json_t>()) {
+                                    auto value = variable.value<glz::json_t>(modifiers);
+                                    if(auto key = modifiers.subs.front();
+                                       value.contains(key))
+                                    {
+                                        if(value[key].is_string())
+                                            return value[key].get<std::string>();
+                                        return glz::write_json(value[key]).value_or("null");
+                                    } else
+                                        throw InvalidArgumentException("No key named ", modifiers, " in object.");
+                                }
                                 else if(variable.is<Size2>()) {
                                     if(modifiers.subs.front() == "w")
                                         ret = Meta::toStr(variable.value<Size2>(modifiers).width);

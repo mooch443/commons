@@ -535,16 +535,11 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             output.append(cached.value());
             return;
             
-        } else if(auto it = context.find(props.name);
-           it.has_value())
+        } else if(context.has(props.name, state))
         {
-            ///[[maybe_unused]] CTimer ctimer("normal");
-            if constexpr(std::invocable<ApplyF, std::string&, VarBase_t&, const VarProps&>) {
-                //Print("* applying ", props);
-                apply(output, *it.value()->second, props);
-                return;
-            } else
-                static_assert(std::invocable<ApplyF, std::string&, VarBase_t&, const VarProps&>);
+            auto variable = context.variable(props.name, state);
+            apply(output, *variable, props);
+            return;
             
         } else if(props.name == "if") {
             REQUIRE_AT_LEAST(2, props);
@@ -740,6 +735,18 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         try {
             if(modifiers.subs.empty())
                 apply_html(variable.value_string(modifiers));
+            else if(variable.is<glz::json_t>()) {
+                auto value = variable.value<glz::json_t>(modifiers);
+                if(auto key = modifiers.subs.front();
+                   value.contains(key))
+                {
+                    if(value[key].is_string())
+                        apply_html(value[key].get<std::string>());
+                    else
+                        apply_html(glz::write_json(value[key]).value_or("null"));
+                } else
+                    throw InvalidArgumentException("No key named ", modifiers, " in object.");
+            }
             else if(variable.is<Size2>()) {
                 if(modifiers.subs.front() == "w")
                     apply_html( Meta::toStr(variable.value<Size2>(modifiers).width));

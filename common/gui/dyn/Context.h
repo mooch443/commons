@@ -40,6 +40,43 @@ struct DefaultSettings {
 };
 
 struct CurrentObjectHandler {
+    struct VariableValue {
+        enum class Kind : uint8_t {
+            none,
+            string,
+            dynamic
+        };
+
+        Kind kind{Kind::none};
+        union Storage {
+            Storage() {}
+            ~Storage() {}
+
+            std::string string_value;
+            std::shared_ptr<VarBase_t> dynamic_value;
+        } storage;
+
+        VariableValue() = default;
+        VariableValue(std::string_view value) { set(value); }
+        VariableValue(std::shared_ptr<VarBase_t> value) { set(std::move(value)); }
+        VariableValue(const VariableValue& other);
+        VariableValue(VariableValue&& other) noexcept;
+        VariableValue& operator=(const VariableValue& other);
+        VariableValue& operator=(VariableValue&& other) noexcept;
+        ~VariableValue();
+
+        void reset() noexcept;
+        void set(std::string_view value);
+        void set(std::shared_ptr<VarBase_t> value);
+
+        [[nodiscard]] bool is_string() const noexcept { return kind == Kind::string; }
+        [[nodiscard]] bool is_dynamic() const noexcept { return kind == Kind::dynamic; }
+        [[nodiscard]] std::string_view string() const;
+        [[nodiscard]] std::shared_ptr<VarBase_t> dynamic() const;
+
+        bool operator==(const VariableValue& other) const;
+    };
+
     /// Cached parse result with the variable versions it depends on.
     struct CachedVariableValue {
         /// Monotonic version for global `_variable_values`.
@@ -58,9 +95,16 @@ struct CurrentObjectHandler {
         ScopedVariables(ScopedVariables&& other) noexcept;
         ScopedVariables& operator=(ScopedVariables&& other) noexcept;
         ~ScopedVariables();
-        
+
         /// Set or override a variable in the current local scope.
-        void set(std::string_view name, std::string_view value);
+        template<typename T>
+        void set(std::string_view name, T&& value) {
+            if(not _handler) {
+                return;
+            }
+            
+            _handler->set_scoped_variable_value(name, std::forward<T>(value));
+        }
         
     private:
         CurrentObjectHandler* _handler;
@@ -71,8 +115,8 @@ struct CurrentObjectHandler {
     
     std::weak_ptr<Drawable> _current_object;
     std::unordered_map<std::string, std::weak_ptr<Drawable>, MultiStringHash, MultiStringEqual> _named_entities;
-    std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> _variable_values;
-    std::vector<std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual>> _scoped_variable_values;
+    std::unordered_map<std::string, VariableValue, MultiStringHash, MultiStringEqual> _variable_values;
+    std::vector<std::unordered_map<std::string, VariableValue, MultiStringHash, MultiStringEqual>> _scoped_variable_values;
     std::unordered_map<std::string, CachedVariableValue, MultiStringHash, MultiStringEqual> _cached_variable_values;
     uint64_t _variable_values_version{1};
     uint64_t _scoped_variable_values_version{1};
@@ -88,6 +132,8 @@ struct CurrentObjectHandler {
     void set_variable_value(std::string_view name, std::string_view value);
     /// Resolve a variable by checking scoped overlays first, then global values.
     std::optional<std::string_view> get_variable_value(std::string_view name) const;
+    /// Resolve a typed variable by checking scoped overlays first, then global values.
+    std::shared_ptr<VarBase_t> get_dynamic_variable(std::string_view name) const;
     /// Remove a global (non-scoped) variable.
     void remove_variable(std::string_view name);
     /// Clear global values, scoped overlays, and parse caches.
@@ -122,6 +168,8 @@ private:
     void push_variable_scope();
     void pop_variable_scope();
     void set_scoped_variable_value(std::string_view name, std::string_view value);
+    void set_scoped_variable_value(std::string_view name, std::shared_ptr<VarBase_t> value);
+    void set_variable_value(std::string_view name, std::shared_ptr<VarBase_t> value);
 };
 
 struct Context {
@@ -145,10 +193,10 @@ struct Context {
         return *_system_variables;
     }
 
-    [[nodiscard]] const std::shared_ptr<VarBase_t>& variable(std::string_view) const;
-    [[nodiscard]] bool has(std::string_view) const noexcept;
+    [[nodiscard]] std::shared_ptr<VarBase_t> variable(std::string_view, const State&) const;
+    [[nodiscard]] bool has(std::string_view, const State&) const noexcept;
     [[nodiscard]] std::optional<decltype(variables)::const_iterator> find(std::string_view) const noexcept;
-    
+
     Context() noexcept = default;
     Context(std::initializer_list<std::variant<ActionPair, VariablePair>> init_list);
     

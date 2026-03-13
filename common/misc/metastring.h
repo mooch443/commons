@@ -1086,6 +1086,12 @@ std::string toStr(const Q& obj) {
         return "null";
     return Meta::toStr(obj.value());
 }
+
+template<class Q>
+    requires (std::same_as<glz::json_t, Q>)
+std::string toStr(const Q& obj) {
+    return glz::write_json(obj).value_or("null");
+}
         
 template<class Q>
     requires _is_number<Q>

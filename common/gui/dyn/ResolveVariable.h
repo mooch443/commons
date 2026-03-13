@@ -117,10 +117,12 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             ss << "]";
             return Meta::fromStr<Result>(ss.str());
             
-        } else if(context.has(props.name)) {
+        } else if(context.has(props.name, state)) {
             [[maybe_unused]] CTimer ctimer("normal");
+            
+            auto variable = context.variable(props.name, state);
             if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
-                return apply(*context.variable(props.name), props.parse(context, state));
+                return apply(*variable, props.parse(context, state));
             else
                 static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
             
