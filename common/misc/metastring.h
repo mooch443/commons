@@ -890,6 +890,9 @@ namespace _Meta {
 //template<class Q> std::string name(const typename std::enable_if< std::is_integral<typename std::remove_cv<Q>::type>::value && !std::is_same<bool, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return sizeof(Q) == sizeof(long) ? "long" : "int"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<void, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "void"; }
 template<class Q> std::string name(const typename std::enable_if< std::is_same<int, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int"; }
+
+template<class Q> std::string name(const typename std::enable_if< std::is_same<glz::json_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "json"; }
+
 template<class Q> std::string name(const typename std::enable_if< std::is_same<short, typename std::remove_cv<Q>::type>::value && !std::is_same<int16_t, short>::value, Q >::type* =nullptr) { return "short"; }
 template<class Q> std::string name(const typename std::enable_if< !std::is_same<int32_t, int>::value && std::is_same<int32_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int32"; }
 template<class Q> std::string name(const typename std::enable_if< !std::is_same<uint32_t, unsigned int>::value && std::is_same<uint32_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uint32"; }
@@ -1280,6 +1283,14 @@ template<class Q>
     requires _has_fromstr_method<Q>
 Q fromStr(cmn::StringLike auto&& str) {
     return Q::fromStr(std::forward<decltype(str)>(str));
+}
+
+template<class Q>
+    requires _clean_same<Q, glz::json_t>
+inline Q fromStr(cmn::StringLike auto&& str) {
+    glz::json_t json{};
+    glz::read_json(json, std::forward<decltype(str)>(str));
+    return json;
 }
         
 template<class Q>

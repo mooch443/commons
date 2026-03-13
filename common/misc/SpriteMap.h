@@ -636,7 +636,7 @@ concept Iterable = requires(T obj) {
         }
         
         std::string toStr() const {
-            return "Map<size:" + Meta::toStr(size()) + ">";
+            return "Map<size:" + Meta::toStr(size()) + " keys:"+Meta::toStr(keys())+">";
         }
     };
     

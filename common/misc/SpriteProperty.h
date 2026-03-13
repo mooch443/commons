@@ -293,7 +293,8 @@ namespace cmn {
         }
         
         template<typename T, typename Arg = T>
-            requires (not is_instantiation<std::function, T>::value)
+            requires (not is_instantiation<std::function, T>::value
+                      && not _clean_same<glz::json_t, T>)
         struct has_equals
         {
             constexpr static const bool value = !std::is_same<decltype(*(T*)(0) == *(Arg*)(0)), detail::No>::value;
@@ -396,7 +397,8 @@ namespace cmn {
             }
             
             template<typename K>
-                requires (not is_instantiation<std::function, K>::value)
+                requires (not is_instantiation<std::function, K>::value
+                          && not _clean_same<glz::json_t, K>)
             bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
                 if constexpr(trivial) {
                     auto v = _value.load();
@@ -408,12 +410,28 @@ namespace cmn {
             }
             
             template<typename K>
-                requires (not is_instantiation<std::function, K>::value)
+                requires (not is_instantiation<std::function, K>::value
+                          && not _clean_same<glz::json_t, K>)
             bool equals(const K& other, const typename std::enable_if< std::is_same<cv::Mat, K>::value, K >::type* = NULL) const {
                 std::shared_lock guard(_property_mutex);
                 if(not _value.has_value())
                     return false;
                 return cv::countNonZero(_value.value() != other) == 0;
+            }
+            
+            template<typename K>
+                requires (_clean_same<glz::json_t, K>)
+            bool equals(const K& other) const {
+                if constexpr(trivial) {
+                    static_assert(not trivial, "a json-t object cannot be trivial");
+                } else {
+                    std::shared_lock guard(_property_mutex);
+                    if (!_value.has_value()) return false;
+
+                    auto sa = glz::write_json(other).value_or(std::string{});
+                    auto sb = glz::write_json(_value.value()).value_or(std::string{});
+                    return sa == sb;
+                }
             }
             
             template<typename K>

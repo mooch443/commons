@@ -329,6 +329,15 @@ public:
     }
     
     template<typename T, typename K = cmn::remove_cvref_t<T>>
+        requires are_the_same<glz::json_t, K>
+    static std::string parse_value(const T& opt) {
+        auto result = glz::write_json(opt);
+        if (not result)
+            return console_color<keyword_color, colors>("null");
+        return pretty_text(result.value());
+    }
+    
+    template<typename T, typename K = cmn::remove_cvref_t<T>>
         requires are_the_same<K, std::string_view>
     static std::string parse_value(const T& value) {
         return pretty_text(value);

@@ -775,7 +775,9 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
 
     template<typename VT>
     auto cvt2json(const VT & v) -> glz::json_t {
-        if constexpr (is_numeric<VT>) {
+        if constexpr(_clean_same<VT, glz::json_t>) {
+            return v;
+        } else if constexpr (is_numeric<VT>) {
             return glz::json_t(v);
         } else if constexpr (_clean_same<VT, bool>) {
             return glz::json_t((bool)v);

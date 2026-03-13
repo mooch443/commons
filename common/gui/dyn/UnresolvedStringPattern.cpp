@@ -610,6 +610,136 @@ void resolve_parameter(std::string& c, UnresolvedStringPattern& pattern, Prepare
     }
 }
 
+
+void apply_html(std::string& output, const VarProps& modifiers, StringLike auto&& str) {
+    if(modifiers.html)
+        output += settings::htmlify(std::forward<decltype(str)>(str));
+    else
+        output += str;
+};
+
+void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::queue<std::string_view>&& subs);
+
+void access_sub_field(std::string& output, const VarProps& modifiers, const sprite::Map& map, std::queue<std::string_view>&& subs)
+{
+    auto name = subs.front();
+    subs.pop();
+    
+    if(not map.has(name))
+        throw InvalidArgumentException("Map ", map, " does not contain field ", name);
+    
+    sprite::ConstReference field = map.at(name);
+    if(field.is_type<glz::json_t>()) {
+        // need another key
+        if(not subs.empty()) {
+            access_sub_field(output, modifiers, field->value<glz::json_t>(), std::move(subs));
+            return;
+        }
+        
+    } else if(field.is_type<sprite::Map>()) {
+        throw InvalidArgumentException("Not currently implemented to access a sprite::Map within a sprite::Map.");
+    }
+    
+    apply_html(output, modifiers, Meta::fromStr<std::string>(field->valueString()));
+}
+
+void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::queue<std::string_view>&& subs)
+{
+    auto name = subs.front();
+    subs.pop();
+    
+    if(not json.contains(name))
+        throw InvalidArgumentException("Object ", json, " does not contain field ", name);
+    
+    auto field = json[std::forward<decltype(name)>(name)];
+    if(field.is_object()) {
+        // need another key
+        if(not subs.empty()) {
+            access_sub_field(output, modifiers, field, std::move(subs));
+            return;
+        }
+    }
+    
+    if(field.is_string()) {
+        apply_html(output, modifiers, field.get<std::string>());
+        return;
+    }
+    
+    apply_html(output, modifiers, Meta::toStr(field));
+}
+
+void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable, const VarProps& modifiers) {
+    
+    try {
+        if(modifiers.subs.empty())
+            apply_html(output, modifiers, variable.value_string(modifiers));
+        else if(variable.is<glz::json_t>()) {
+            auto value = variable.value<glz::json_t>(modifiers);
+            std::queue<std::string_view> subs;
+            for(auto &sub : modifiers.subs)
+                subs.emplace(sub);
+            
+            access_sub_field(output, modifiers, value, std::move(subs));
+        }
+        else if(bool is_reference = variable.is<sprite::Map&>();
+                is_reference || variable.is<sprite::Map>())
+        {
+            sprite::Map copy;
+            sprite::Map& value = is_reference ? variable.value<sprite::Map&>(modifiers) : copy;
+            if(not is_reference)
+                copy = variable.value<sprite::Map>(modifiers);
+            
+            std::queue<std::string_view> subs;
+            for(auto &sub : modifiers.subs)
+                subs.emplace(sub);
+            
+            access_sub_field(output, modifiers, value, std::move(subs));
+        }
+        else if(variable.is<Size2>()) {
+            if(modifiers.subs.front() == "w")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Size2>(modifiers).width));
+            else if(modifiers.subs.front() == "h")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Size2>(modifiers).height));
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
+            
+        } else if(variable.is<Vec2>()) {
+            if(modifiers.subs.front() == "x")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Vec2>(modifiers).x));
+            else if(modifiers.subs.front() == "y")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Vec2>(modifiers).y));
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
+            
+        } else if(variable.is<Range<Frame_t>>()) {
+            if(modifiers.subs.front() == "start")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start));
+            else if(modifiers.subs.front() == "end")
+                apply_html(output, modifiers,
+                           Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end));
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
+            
+        } else
+            apply_html(output, modifiers,
+                       variable.value_string(modifiers));
+        
+        //if(modifiers.html)
+        //    return settings::htmlify(ret);
+        return;
+        
+    } catch(const std::exception& ex) {
+        if(not modifiers.optional)
+            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
+        output += modifiers.optional ? "" : "null";
+    }
+}
+
 void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const gui::dyn::Context& context, gui::dyn::State& state)
 {
     auto& props = resolved;
@@ -725,64 +855,7 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
     size_t index = str.length();
     resolve_variable(str, props, context, state, [](std::string& output, cmn::gui::dyn::VarBase_t& variable, const gui::dyn::VarProps& modifiers)
     {
-        auto apply_html = [&modifiers, &output](auto&& str) {
-            if(modifiers.html)
-                output += settings::htmlify(str);
-            else
-                output += str;
-        };
-        
-        try {
-            if(modifiers.subs.empty())
-                apply_html(variable.value_string(modifiers));
-            else if(variable.is<glz::json_t>()) {
-                auto value = variable.value<glz::json_t>(modifiers);
-                if(auto key = modifiers.subs.front();
-                   value.contains(key))
-                {
-                    if(value[key].is_string())
-                        apply_html(value[key].get<std::string>());
-                    else
-                        apply_html(glz::write_json(value[key]).value_or("null"));
-                } else
-                    throw InvalidArgumentException("No key named ", modifiers, " in object.");
-            }
-            else if(variable.is<Size2>()) {
-                if(modifiers.subs.front() == "w")
-                    apply_html( Meta::toStr(variable.value<Size2>(modifiers).width));
-                else if(modifiers.subs.front() == "h")
-                    apply_html( Meta::toStr(variable.value<Size2>(modifiers).height));
-                else
-                    throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
-                
-            } else if(variable.is<Vec2>()) {
-                if(modifiers.subs.front() == "x")
-                    apply_html(Meta::toStr(variable.value<Vec2>(modifiers).x));
-                else if(modifiers.subs.front() == "y")
-                    apply_html(Meta::toStr(variable.value<Vec2>(modifiers).y));
-                else
-                    throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
-                
-            } else if(variable.is<Range<Frame_t>>()) {
-                if(modifiers.subs.front() == "start")
-                    apply_html( Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start));
-                else if(modifiers.subs.front() == "end")
-                    apply_html( Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end));
-                else
-                    throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
-                
-            } else
-                apply_html(variable.value_string(modifiers));
-            
-            //if(modifiers.html)
-            //    return settings::htmlify(ret);
-            return;
-            
-        } catch(const std::exception& ex) {
-            if(not modifiers.optional)
-                FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
-            output += modifiers.optional ? "" : "null";
-        }
+        handle_sub_objects(output, variable, modifiers);
         
     }, [&props](std::string&, bool optional, const std::string& ex = "") {
         if(not optional)

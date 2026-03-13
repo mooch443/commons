@@ -36,6 +36,112 @@ bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const
     return false;
 }
 
+std::string access_sub_field(const glz::json_t& json, StringLike auto && name, std::queue<std::string_view> subs) {
+    if(not json.contains(name))
+        throw InvalidArgumentException("Object ", json, " does not contain field ", name);
+    auto field = json[std::forward<decltype(name)>(name)];
+    if(field.is_object()) {
+        // need another key
+        if(not subs.empty()) {
+            auto key = subs.front();
+            subs.pop();
+            return access_sub_field(field, key, subs);
+        }
+    }
+    
+    if(field.is_string())
+        return field.template get<std::string>();
+    return Meta::toStr(field);
+}
+
+std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifiers, std::optional<std::queue<std::string_view>> subs = std::nullopt) {
+    if(not subs) {
+        subs = std::queue<std::string_view>{};
+        for(auto &sub : modifiers.subs)
+            subs->emplace(sub);
+    }
+    
+    try {
+        std::string ret;
+        if(subs->empty())
+            ret = variable.value_string(modifiers);
+        else if(variable.is<glz::json_t>()) {
+            auto value = variable.value<glz::json_t>(modifiers);
+            if(auto key = subs->front();
+               value.contains(key))
+            {
+                subs->pop();
+                return access_sub_field(value, key, *subs);
+                //return glz::write_json(value[key]).value_or("null");
+            } else
+                throw InvalidArgumentException("No key named ", modifiers, " in object.");
+        }
+        else if(bool is_reference = variable.is<sprite::Map&>();
+                is_reference || variable.is<sprite::Map>())
+        {
+            sprite::Map copy;
+            sprite::Map& value = is_reference ? variable.value<sprite::Map&>(modifiers) : copy;
+            if(not is_reference)
+                copy = variable.value<sprite::Map>(modifiers);
+            
+            if(auto key = subs->front();
+               value.has(key))
+            {
+                subs->pop();
+                
+                auto prop = value.at(key);
+                assert(prop.valid());
+                if(prop->is_type<glz::json_t>()) {
+                    if(not subs->empty()) {
+                        return access_sub_field(prop->value<glz::json_t>(), subs->front(), *subs);
+                    }
+                } else if(prop->is_type<sprite::Map>()) {
+                    FormatWarning("is this even supported?");
+                }
+                
+                return Meta::fromStr<std::string>(value.at(key)->valueString());
+            } else
+                throw InvalidArgumentException("No key named ", modifiers, " in map.");
+        }
+        else if(variable.is<Size2>()) {
+            if(subs->front() == "w")
+                ret = Meta::toStr(variable.value<Size2>(modifiers).width);
+            else if(subs->front() == "h")
+                ret = Meta::toStr(variable.value<Size2>(modifiers).height);
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
+            
+        } else if(variable.is<Vec2>()) {
+            if(subs->front() == "x")
+                ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
+            else if(subs->front() == "y")
+                ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
+            
+        } else if(variable.is<Range<Frame_t>>()) {
+            if(subs->front() == "start")
+                ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start);
+            else if(subs->front() == "end")
+                ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
+            else
+                throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
+            
+        } else
+            ret = variable.value_string(modifiers);
+        //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
+        //auto str = modifiers.toStr();
+        //Print(str.c_str(), " resolves to ", ret);
+        if(modifiers.html)
+            return settings::htmlify(ret);
+        return ret;
+    } catch(const std::exception& ex) {
+        if(not modifiers.optional)
+            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
+        return modifiers.optional ? "" : "null";
+    }
+}
+
 template<typename T>
     requires (std::convertible_to<T, std::string_view> || std::same_as<T, Pattern>)
 std::string _parse_text(const T& _pattern, const Context& context, State& state) {
@@ -109,58 +215,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                         
                     } else {
                         resolved_word = resolve_variable(current_word, context, state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
-                            try {
-                                std::string ret;
-                                if(modifiers.subs.empty())
-                                    ret = variable.value_string(modifiers);
-                                else if(variable.is<glz::json_t>()) {
-                                    auto value = variable.value<glz::json_t>(modifiers);
-                                    if(auto key = modifiers.subs.front();
-                                       value.contains(key))
-                                    {
-                                        if(value[key].is_string())
-                                            return value[key].get<std::string>();
-                                        return glz::write_json(value[key]).value_or("null");
-                                    } else
-                                        throw InvalidArgumentException("No key named ", modifiers, " in object.");
-                                }
-                                else if(variable.is<Size2>()) {
-                                    if(modifiers.subs.front() == "w")
-                                        ret = Meta::toStr(variable.value<Size2>(modifiers).width);
-                                    else if(modifiers.subs.front() == "h")
-                                        ret = Meta::toStr(variable.value<Size2>(modifiers).height);
-                                    else
-                                        throw InvalidArgumentException("Sub ",modifiers," of Size2 is not valid.");
-                                    
-                                } else if(variable.is<Vec2>()) {
-                                    if(modifiers.subs.front() == "x")
-                                        ret = Meta::toStr(variable.value<Vec2>(modifiers).x);
-                                    else if(modifiers.subs.front() == "y")
-                                        ret = Meta::toStr(variable.value<Vec2>(modifiers).y);
-                                    else
-                                        throw InvalidArgumentException("Sub ",modifiers," of Vec2 is not valid.");
-                                    
-                                } else if(variable.is<Range<Frame_t>>()) {
-                                    if(modifiers.subs.front() == "start")
-                                        ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).start);
-                                    else if(modifiers.subs.front() == "end")
-                                        ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
-                                    else
-                                        throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
-                                    
-                                } else
-                                    ret = variable.value_string(modifiers);
-                                //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
-                                //auto str = modifiers.toStr();
-                                //Print(str.c_str(), " resolves to ", ret);
-                                if(modifiers.html)
-                                    return settings::htmlify(ret);
-                                return ret;
-                            } catch(const std::exception& ex) {
-                                if(not modifiers.optional)
-                                    FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
-                                return modifiers.optional ? "" : "null";
-                            }
+                            return _handle_subobjects(variable, modifiers);
                         }, [](bool optional) -> std::string {
                             return optional ? "" : "null";
                         });
