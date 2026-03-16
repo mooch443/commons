@@ -63,9 +63,9 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
     
     try {
         std::string ret;
-        if(subs->empty())
+        if(subs->empty()) {
             ret = variable.value_string(modifiers);
-        else if(variable.is<glz::json_t>()) {
+        } else if(variable.is<glz::json_t>()) {
             auto value = variable.value<glz::json_t>(modifiers);
             if(auto key = subs->front();
                value.contains(key))

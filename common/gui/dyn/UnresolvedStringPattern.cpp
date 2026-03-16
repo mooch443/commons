@@ -625,8 +625,12 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const spri
     auto name = subs.front();
     subs.pop();
     
-    if(not map.has(name))
-        throw InvalidArgumentException("Map ", map, " does not contain field ", name);
+    if(not map.has(name)) {
+        if(not modifiers.optional)
+            apply_html(output, modifiers, "null");
+        return;
+        //throw InvalidArgumentException(map, " does not contain field ", name);
+    }
     
     sprite::ConstReference field = map.at(name);
     if(field.is_type<glz::json_t>()) {
@@ -648,8 +652,9 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
     auto name = subs.front();
     subs.pop();
     
-    if(not json.contains(name))
+    if(not json.contains(name)) {
         throw InvalidArgumentException("Object ", json, " does not contain field ", name);
+    }
     
     auto field = json[std::forward<decltype(name)>(name)];
     if(field.is_object()) {
