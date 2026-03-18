@@ -13,6 +13,7 @@ project(commons LANGUAGES CXX C ASM_NASM)
 
 include(ExternalProject)
 include(FetchContent)
+find_package(Git REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules )
 
@@ -543,7 +544,7 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/commons/CMakeModules" )
 if(WIN32)
-    set(dialogs_PATCH_COMMAND git apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff")
+    set(dialogs_PATCH_COMMAND "${GIT_EXECUTABLE}" apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff")
 else()
     set(dialogs_PATCH_COMMAND patch -N -s -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff" || echo 1)
 endif()
@@ -684,7 +685,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
 
     if(WIN32)
-        set(COMMONS_GLFW_PATCH git apply --reject --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
+        set(COMMONS_GLFW_PATCH "${GIT_EXECUTABLE}" apply --reject --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
     else()
         set(COMMONS_GLFW_PATCH patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1)
     endif()
@@ -755,7 +756,7 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG v1.91.9
     SOURCE_DIR ${imgui_path}
-    PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff" || echo 1
+    PATCH_COMMAND "${GIT_EXECUTABLE}" apply "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff" || echo 1
     UPDATE_DISCONNECTED 1
 )
 
