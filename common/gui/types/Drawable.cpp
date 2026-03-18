@@ -1323,8 +1323,7 @@ void SectionInterface::set(CornerFlags_t flags) {
                     }
                     
                 } else {
-                    auto ptr = dynamic_cast<const HasName*>(c);
-                    if(ptr && ptr->name() == search)
+                    if(c && c->name() == search)
                         return c;
                 }
                 
@@ -1349,7 +1348,7 @@ void SectionInterface::set(CornerFlags_t flags) {
         }
     
         if(section)
-            ss << "('"<<section->HasName::name()<<"' "<<children().size()<<" children " <<pos().toStr() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
+            ss << "('"<<section->name()<<"' "<<children().size()<<" children " <<pos().toStr() <<(clickable()?",clickable":"")<<","<<(section->enabled()?"true":"false")<<")";
         else
             ss << "(" << (type() == Type::ENTANGLED && dynamic_cast<Entangled*>(this)->scroll_enabled() ? "scroll," : "") << children().size() << " children, " << pos().toStr() << " " << size().width << "x" << size().height << " " << scale().x << (clickable()?",clickable":"") << ")";
 		ss << " " << hex(this).toStr();
@@ -1386,9 +1385,8 @@ void SectionInterface::set(CornerFlags_t flags) {
                     auto type = singleton->ptr()->type().name();
                     ss << indent << "\t'" << type << "' (wrapped)";
                     
-                    auto name_ptr = dynamic_cast<HasName*>(c);
-                    if(name_ptr)
-                        ss << "'"<<name_ptr->name()<<"'";
+                    if(not c->name().empty())
+                        ss << "'"<<c->name()<<"'";
                     else if(dynamic_cast<Text*>(singleton->ptr())) {
                         auto text = static_cast<Text*>(singleton->ptr())->txt();
                         if(text.length() > 15)

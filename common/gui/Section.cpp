@@ -122,7 +122,7 @@ namespace cmn::gui {
             }
             
             if(!ptext)
-                ptext = new Text(Str{HasName::name()}, Loc(gbounds.pos() - Vec2(0, 20)), TextClr{White}, Font(0.5));
+                ptext = new Text(Str{name()}, Loc(gbounds.pos() - Vec2(0, 20)), TextClr{White}, Font(0.5));
             else {
                 ptext->set_pos(gbounds.pos() - Vec2(0, 20));
             }
@@ -145,7 +145,7 @@ namespace cmn::gui {
     }
     
     Section* Section::find_section(const std::string& name) const {
-        if(this->HasName::name() == name)
+        if(this->name() == name)
             return const_cast<Section*>(this);
         
         return apply_to_objects(_children, [&name](Drawable* c) -> Section* {

@@ -3,13 +3,6 @@
 #include <gui/types/Drawable.h>
 
 namespace cmn::gui {
-    class HasName {
-        GETTER_SETTER(std::string, name);
-    public:
-        HasName(const std::string& name) : _name(name) {}
-        virtual ~HasName() {}
-    };
-    
     class Section;
     
     class SingletonObject : public Drawable {

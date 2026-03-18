@@ -642,8 +642,8 @@ void DrawStructure::close_dialogs() {
         
         if(_selected_object) {
             std::string type(_selected_object->type().name());
-            if(dynamic_cast<HasName*>(_selected_object))
-                type = dynamic_cast<HasName*>(_selected_object)->name();
+            if(not _selected_object->name().empty())
+                type = _selected_object->name();
             
             Float2_t x = _mouse_position.x, y = _mouse_position.y;
             _selected_object->mup(x, y, left_button);
@@ -814,7 +814,7 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* Section::find(const std::string& search) {
-        if(HasName::name() == search)
+        if(name() == search)
             return this;
         
         return SectionInterface::find(search);

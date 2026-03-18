@@ -9,7 +9,7 @@
 namespace cmn::gui {
     class DrawableCollection;
 
-    class Section : public SectionInterface, public HasName {
+    class Section : public SectionInterface {
     private:
         std::vector<Drawable*> _children;
         ska::bytell_hash_map<Drawable*, SingletonObject*> _wrapped_children;
@@ -41,7 +41,7 @@ namespace cmn::gui {
         Section(DrawStructure* s, Section* parent,
                 const std::string& name,
                 const std::vector<Drawable*> o = std::vector<Drawable*>())
-        : SectionInterface(Type::SECTION, s), HasName(name),
+        : SectionInterface(Type::SECTION, s),
             _children(o),
             _was_enabled(false),
             _enabled(false),
@@ -50,6 +50,7 @@ namespace cmn::gui {
             _clr(wheel.next()),
             prect(nullptr), ptext(nullptr), stext(nullptr)
         {
+            set_name(name);
             if(s && !parent) {
                 _enabled = true;
                 _was_enabled = true;

@@ -133,9 +133,6 @@ namespace cmn::gui {
             o->operator<<(ss);
             ss << "]";
             
-            if(dynamic_cast<HasName*>(d))
-                Print("Sending ", dynamic_cast<HasName*>(d)->name());
-            
             if(cache) {
                 cache->set_text(ss.str());
                 cache->set_changed(false);
