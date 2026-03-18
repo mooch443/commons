@@ -65,45 +65,8 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
         std::string ret;
         if(subs->empty()) {
             ret = variable.value_string(modifiers);
-        } else if(variable.is<glz::json_t>()) {
-            auto value = variable.value<glz::json_t>(modifiers);
-            if(auto key = subs->front();
-               value.contains(key))
-            {
-                subs->pop();
-                return access_sub_field(value, key, *subs);
-                //return glz::write_json(value[key]).value_or("null");
-            } else
-                throw InvalidArgumentException("No key named ", modifiers, " in object.");
-        }
-        else if(bool is_reference = variable.is<sprite::Map&>();
-                is_reference || variable.is<sprite::Map>())
-        {
-            sprite::Map copy;
-            sprite::Map& value = is_reference ? variable.value<sprite::Map&>(modifiers) : copy;
-            if(not is_reference)
-                copy = variable.value<sprite::Map>(modifiers);
             
-            if(auto key = subs->front();
-               value.has(key))
-            {
-                subs->pop();
-                
-                auto prop = value.at(key);
-                assert(prop.valid());
-                if(prop->is_type<glz::json_t>()) {
-                    if(not subs->empty()) {
-                        return access_sub_field(prop->value<glz::json_t>(), subs->front(), *subs);
-                    }
-                } else if(prop->is_type<sprite::Map>()) {
-                    FormatWarning("is this even supported?");
-                }
-                
-                return Meta::fromStr<std::string>(value.at(key)->valueString());
-            } else
-                throw InvalidArgumentException("No key named ", modifiers, " in map.");
-        }
-        else if(variable.is<Size2>()) {
+        } else if(variable.is<Size2>()) {
             if(subs->front() == "w")
                 ret = Meta::toStr(variable.value<Size2>(modifiers).width);
             else if(subs->front() == "h")
@@ -126,6 +89,40 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                 ret = Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end);
             else
                 throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
+                
+        } else if(variable.is<glz::json_t>()) {
+            return variable.access_value<glz::json_t>([&](auto&& value){
+                if(auto key = subs->front();
+                   value.contains(key))
+                {
+                    subs->pop();
+                    return access_sub_field(value, key, *subs);
+                    //return glz::write_json(value[key]).value_or("null");
+                } else
+                    throw InvalidArgumentException("No key named ", modifiers, " in object.");
+            }, modifiers);
+        }
+        else if(variable.is<sprite::Map>()) {
+            return variable.access_value<sprite::Map>([&](auto&& value) {
+                if(auto key = subs->front();
+                   value.has(key))
+                {
+                    subs->pop();
+                    
+                    auto prop = value.at(key);
+                    assert(prop.valid());
+                    if(prop->template is_type<glz::json_t>()) {
+                        if(not subs->empty()) {
+                            return access_sub_field(prop->template value<glz::json_t>(), subs->front(), *subs);
+                        }
+                    } else if(prop->template is_type<sprite::Map>()) {
+                        FormatWarning("is this even supported?");
+                    }
+                    
+                    return Meta::fromStr<std::string>(value.at(key)->valueString());
+                } else
+                    throw InvalidArgumentException("No key named ", modifiers, " in map.");
+            }, modifiers);
             
         } else
             ret = variable.value_string(modifiers);

@@ -167,7 +167,6 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
         if(error != glz::error_code::none)
             return std::unexpected(glz::format_error(error, text));
         
-        State state;
         try {
             if(obj.contains("defaults") && obj.at("defaults").is_object()) {
                 auto& d = obj.at("defaults").get_object();
@@ -518,7 +517,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     //! clear variable state
     current_object_handler->clear_variable_values();
     
-#ifndef NDEBUG
+#if !defined(NDEBUG) && false
     if(_debug_timer.elapsed() > 10) {
         size_t overall_count{0};
         

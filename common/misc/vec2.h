@@ -223,6 +223,23 @@ namespace cmn {
     \
     static Vector2D fromStr(cmn::StringLike auto&& str) \
     { \
+        if(str.empty()) \
+            throw std::invalid_argument("The string is empty, cannot create a vector from it."); \
+        if(str.front() == '{') { \
+            /* we have an object and not an array */ \
+            glz::json_t json; \
+            auto error = glz::read_json(json, str); \
+            if(error != glz::error_code::none) { \
+                std::string descriptive_error = glz::format_error(error, str); \
+                throw std::invalid_argument("Error loading JSON response: "+ descriptive_error); \
+            } \
+            if(not json.contains("x") \
+                || not json.contains("y")) \
+            { \
+                throw std::invalid_argument("Object "+Meta::toStr(json)+" does not contain x and y."); \
+            } \
+            return Vector2D(json["x"].get_number(), json["y"].get_number()); \
+        } \
         auto vec = Meta::fromStr<std::vector<Scalar>>(str); \
         if(vec.empty()) \
             return Vector2D(); \

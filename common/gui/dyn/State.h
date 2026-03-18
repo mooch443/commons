@@ -17,6 +17,23 @@ struct State;
 class LayoutContext;
 struct CurrentObjectHandler;
 
+using Pattern = pattern::UnresolvedStringPattern;
+using PatternMapType = std::unordered_map<std::string, Pattern, MultiStringHash, MultiStringEqual>;
+
+struct HashedObject;
+struct Collectors {
+    std::unordered_map<size_t, std::shared_ptr<HashedObject>> objects;
+    void dealloc(size_t hash);
+};
+
+struct PatternStore {
+    std::shared_ptr<Collectors> _collectors;
+    std::unordered_map<size_t, PatternMapType> by_hash;
+
+    const Pattern& set(size_t hash, const std::string& name, Pattern&& pattern);
+    std::optional<Pattern*> get(size_t hash, const std::string& name);
+};
+
 //#if defined(_MSC_VER) && _MSC_VER <= 1930
     template <class T, class...Ts, template<class...> class Tp>
     constexpr inline bool is_one_of(type_t<Tp<Ts...>>, type_t<T>) {
@@ -40,8 +57,37 @@ struct CurrentObjectHandler;
 struct LoopBody {
     std::string variable;
     glz::json_t::object_t child;
+#ifndef NDEBUG
     std::unique_ptr<State> _state;
+#endif
     std::vector<std::shared_ptr<VarBase_t>> cache;
+};
+
+// Index class manages unique identifiers for objects.
+class Index {
+public:
+    // Global atomic counter used for generating unique IDs.
+    uint64_t _global_id{1u};
+    
+public:
+    // Push a new unique ID to the id_chain, representing a new level.
+    void push_level() {
+    }
+    
+    // Remove the last ID from the id_chain, effectively stepping out of the current level.
+    void pop_level() {
+    }
+    
+    // Increment the global ID counter and update the last ID in id_chain.
+    void inc() {
+        ++_global_id;
+    }
+    
+    // Returns the last ID in id_chain as the hash.
+    // This assumes that the last ID is unique across all instances.
+    std::size_t hash() {
+        return _global_id++;
+    }
 };
 
 struct IfBody {
@@ -52,6 +98,10 @@ struct IfBody {
     
     size_t _assigned_hash{0};
     std::unique_ptr<State> _state;
+    //State _state;
+//#ifndef NDEBUG
+    //std::unique_ptr<State> _state;
+//#endif
     
     //~IfBody();
 };
@@ -88,7 +138,9 @@ struct ListContents {
     
     std::string variable;
     ItemTemplate item;
+#ifndef NDEBUG
     std::unique_ptr<State> _state;
+#endif
     std::vector<std::shared_ptr<VarBase_t>> cache;
     std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
 };
@@ -106,9 +158,6 @@ struct VarCache {
     std::string toStr() const;
     static std::string class_name() { return "Pattern"; }
 };*/
-using Pattern = pattern::UnresolvedStringPattern;
-
-using PatternMapType = std::unordered_map<std::string, Pattern, MultiStringHash, MultiStringEqual>;
 
 struct CustomElement {
     std::string name;
@@ -129,32 +178,6 @@ struct ManualListContents {
     std::vector<DetailTooltipItem> rendered;
 };
 
-// Index class manages unique identifiers for objects.
-class Index {
-public:
-    // Global atomic counter used for generating unique IDs.
-    uint64_t _global_id{1u};
-    
-public:
-    // Push a new unique ID to the id_chain, representing a new level.
-    void push_level() {
-    }
-    
-    // Remove the last ID from the id_chain, effectively stepping out of the current level.
-    void pop_level() {
-    }
-    
-    // Increment the global ID counter and update the last ID in id_chain.
-    void inc() {
-        ++_global_id;
-    }
-    
-    // Returns the last ID in id_chain as the hash.
-    // This assumes that the last ID is unique across all instances.
-    std::size_t hash() {
-        return _global_id++;
-    }
-};
 
 class IndexScopeHandler {
 private:
@@ -232,12 +255,13 @@ struct State {
     
     Index _current_index;
     
-    struct Collectors {
-        std::unordered_map<size_t, std::shared_ptr<HashedObject>> objects;
-        void dealloc(size_t hash);
+    std::shared_ptr<Collectors> _collectors = std::make_shared<Collectors>();
+    PatternStore _patterns{
+        ._collectors = _collectors
     };
     
-    std::shared_ptr<Collectors> _collectors = std::make_shared<Collectors>();
+    PatternStore& pattern() { return _patterns; }
+    const PatternStore& pattern() const { return _patterns; }
     
     State() = default;
     State(State&&) = default;
@@ -257,8 +281,8 @@ struct State {
     std::shared_ptr<HashedObject> register_monostate(size_t hash, const Layout::Ptr&);
     std::shared_ptr<HashedObject> get_monostate(size_t hash, const Layout::Ptr&);
     
-    const Pattern& register_pattern(size_t hash, const std::string&, Pattern&&);
-    std::optional<Pattern*> get_pattern(size_t hash, const std::string&);
+    //const Pattern& register_pattern(size_t hash, const std::string&, Pattern&&);
+    //std::optional<Pattern*> get_pattern(size_t hash, const std::string&);
     
     std::shared_ptr<Drawable> named_entity(std::string_view);
     std::optional<std::string_view> cached_variable_value(std::string_view name) const;

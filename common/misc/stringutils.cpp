@@ -51,6 +51,7 @@ _split_with_reserve(Str const& s, char c, bool skip_empty = false, bool trim = f
     using CharT = typename Str::value_type;
     std::basic_string_view<CharT> sv(s);
     std::vector<std::basic_string_view<CharT>> ret;
+    ret.reserve(1);
     
     auto start = sv.begin();
     auto end = sv.end();

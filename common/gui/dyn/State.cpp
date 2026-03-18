@@ -7,6 +7,7 @@
 #include <gui/DynamicGUI.h>
 #include <gui/Passthrough.h>
 #include <misc/default_settings.h>
+#include <gui/dyn/binders.h>
 
 namespace cmn::gui::dyn {
 
@@ -89,7 +90,6 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
         return true;
     }
     try {
-        //auto res = resolve_variable_type<bool>(obj.variable, context, state);
         const bool res = convert_to_bool(obj.variable.realize(context, state));
         auto last_condition = (uint64_t)o->custom_data("last_condition");
         auto pass = o.to<Fallthrough>();
@@ -102,17 +102,22 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
             }
             
             if(not obj.__else.is_null()) {
+                if(not obj._state)
+                    obj._state = std::make_unique<State>();
+                State& _state = *obj._state;
+                _state._current_object_handler = state._current_object_handler;
+                
                 if(not obj._else) {
                     for(auto &[n, p] : patterns) {
                         //obj._state->_collectors->objects[hash][n] = Pattern{p};
-                        obj._state->register_pattern(1, n, Pattern{p});
+                        _state.pattern().set(1, n, Pattern{p});
                     }
                     
-                    obj._state->_collectors->objects.clear();
-                    obj._state->_current_index = {};
+                    _state._collectors->objects.clear();
+                    _state._current_index = {};
                     //obj._state->_variable_values.clear();
                     
-                    obj._else = parse_object(gui, obj.__else.get_object(), context, *obj._state, context.defaults);
+                    obj._else = parse_object(gui, obj.__else.get_object(), context, _state, context.defaults);
                 } //else
                     //state._current_index.inc();
                 
@@ -128,7 +133,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                     }
                 }
                 
-                if(DynamicGUI::update_objects(gui, g, obj._else, context, *obj._state)) {
+                if(DynamicGUI::update_objects(gui, g, obj._else, context, _state)) {
                     //FormatWarning("Object changed after update");
                 }
                 
@@ -154,16 +159,21 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 pass->set_object(nullptr);
             }
             
+            if(not obj._state)
+                obj._state = std::make_unique<State>();
+            State& _state = *obj._state;
+            _state._current_object_handler = state._current_object_handler;
+            
             if(not obj._if) {
                 for(auto &[n, p] : patterns) {
                     //obj._state->_collectors->objects[hash][n] = Pattern{p};
-                    obj._state->register_pattern(1, n, Pattern{p});
+                    _state.pattern().set(1, n, Pattern{p});
                 }
                 
-                obj._state->_collectors->objects.clear();
-                obj._state->_current_index = {};
+                _state._collectors->objects.clear();
+                _state._current_index = {};
                 
-                obj._if = parse_object(gui, obj.__if.get_object(), context, *obj._state, context.defaults);
+                obj._if = parse_object(gui, obj.__if.get_object(), context, _state, context.defaults);
             } //else
                 //state._current_index.inc();
             
@@ -174,7 +184,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
             }
             
             auto ref = obj._if;
-            if(DynamicGUI::update_objects(gui, g, obj._if, context, *obj._state)) {
+            if(DynamicGUI::update_objects(gui, g, obj._if, context, _state)) {
                 //FormatWarning("Object changed after update.");
             }
             if(ref != obj._if)
@@ -377,8 +387,6 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
                         ptr->set(Size{Meta::fromStr<Size2>(text)});
                 }
             }
-                //o->set_size(resolve_variable_type<Size2>(size, context));
-            //}
             
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());
@@ -461,22 +469,22 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             if(not obj.on_select_actions.contains(index)
                || std::get<0>(obj.on_select_actions.at(index)) != action.name)
             {
-                obj.on_select_actions[index] = std::make_tuple(
-                    index, [index = index, action = action, context](){
-                        Print("Clicked item at ", index, " with action ", action);
-                        State state;
-                        Action _action = action.parse(context, state);
-                        if(_action.parameters.empty())
-                            _action.parameters = { Meta::toStr(index) };
-                        if(auto it = context.actions.find(action.name); it != context.actions.end()) {
-                            try {
-                                it->second(_action);
-                            } catch(const std::exception& ex) {
-                                // pass
-                            }
+                auto fn = bind_with_state(state._current_object_handler, context, [action, index](const Context& context, State& state) {
+                    Print("Clicked item at ", index, " with action ", action);
+                    
+                    Action _action = action.parse(context, state);
+                    if(_action.parameters.empty())
+                        _action.parameters = { Meta::toStr(index) };
+                    if(auto it = context.actions.find(action.name); it != context.actions.end()) {
+                        try {
+                            it->second(_action);
+                        } catch(const std::exception& ex) {
+                            // pass
                         }
                     }
-                );
+                });
+                
+                obj.on_select_actions[index] = std::make_tuple(index, std::move(fn));
             }
         }
         
@@ -492,12 +500,12 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             //if(vector != obj.cache) {
             std::vector<DetailTooltipItem> ptrs;
             //obj.cache = vector;
+#ifndef NDEBUG
             obj._state = std::make_unique<State>();
             obj._state->_current_object_handler = state._current_object_handler;
+#endif
             
             auto scoped_handler = ensure_current_object_handler(state);
-            
-            size_t index = 0;
             for(auto &v : vector) {
                 auto scope = scoped_handler->scope();
                 scope.set("i", v);
@@ -526,8 +534,10 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         
         IndexScopeHandler handler{state._current_index};
         std::vector<DetailTooltipItem> ptrs;
+#ifndef NDEBUG
         obj._state = std::make_unique<State>();
         obj._state->_current_object_handler = state._current_object_handler;
+#endif
         
         auto scoped_handler = ensure_current_object_handler(state);
         for(auto &v : vector) {
@@ -574,10 +584,12 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     bool error = false;
     
     auto &obj = std::get<LoopBody>(object);
+#ifndef NDEBUG
     if (not obj._state) {
         obj._state = std::make_unique<State>();
         obj._state->_current_object_handler = state._current_object_handler;
     }
+#endif
     //obj._state->_variable_values.clear();
     
     PreVarProps ps = extractControls(obj.variable);
@@ -594,7 +606,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 ptrs.resize(vector.size());
                 
                 //State &state = *obj._state;
-                auto scoped_handler = ensure_current_object_handler(*obj._state);
+                auto scoped_handler = ensure_current_object_handler(state);
                 //obj._state->_current_index = {};
                 //obj._state->_collectors->objects.clear();
                 
@@ -608,12 +620,12 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     Layout::Ptr ptr = ptrs.at(i);
                     if(not ptr) {
                         //Print("Making new ", hash, " child.");
-                        ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
+                        ptr = parse_object(gui, obj.child, context, state, context.defaults);
                     } //else
                         //obj._state->_current_index.inc();
 
                     if(ptr) {
-                        if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
                             dirty = true;
                         }
                     }
@@ -632,14 +644,14 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 
             } else {
                 //State &state = *obj._state;
-                auto scoped_handler = ensure_current_object_handler(*obj._state);
+                auto scoped_handler = ensure_current_object_handler(state);
                 for(size_t i=0; i<obj.cache.size() && i < max_displayed_objects; ++i) {
                     auto scope = scoped_handler->scope();
                     scope.set("i", obj.cache[i]);
                     scope.set("index", Meta::toStr(i));
                     auto& p = o.to<Layout>()->objects().at(i);
                     if(p) {
-                        if(DynamicGUI::update_objects(gui, g, p, context, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, p, context, state)) {
                             //Print("Changed content");
                             dirty = true;
                         }
@@ -654,7 +666,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             ptrs.resize(vector.size());
             
             //State &state = *obj._state;
-            auto scoped_handler = ensure_current_object_handler(*obj._state);
+            auto scoped_handler = ensure_current_object_handler(state);
             //obj._state->_current_index = {};
             //obj._state->_collectors->objects.clear();
             
@@ -672,12 +684,12 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 Layout::Ptr ptr = ptrs.at(i);
                 if(not ptr) {
                     //Print("Making new ", hash, " child.");
-                    ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
+                    ptr = parse_object(gui, obj.child, context, state, context.defaults);
                 } //else
                     //obj._state->_current_index.inc();
 
                 if(ptr) {
-                    if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
+                    if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
                         dirty = true;
                     }
                 }
@@ -694,62 +706,77 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             o.to<Layout>()->set_children(std::move(ptrs));
             //obj.cache = vector;
         }
-        else if(loop_variable->is_vector()
-                || (loop_variable->is<sprite::Map&>()
-                    && not props.subs.empty()
-                    && loop_variable->value<sprite::Map&>(props).has(props.subs.front())
-                    && loop_variable->value<sprite::Map&>(props).at(props.subs.front()).get().is_array()))
+        else if(bool is_vector = loop_variable->is_vector();
+                is_vector || loop_variable->is<sprite::Map>())
         {
-            auto str = loop_variable->value_string(props);
-            auto vector = util::parse_array_parts(util::truncate(str));
+            bool valid = true;
+            if(not is_vector) {
+                valid = loop_variable->access_value<sprite::Map>([&props](auto&& value){
+                    if(props.subs.empty()
+                       || not value.has(props.subs.front())
+                       || not value.at(props.subs.front()).get().is_array())
+                    {
+                        return false;
+                        //throw InvalidArgumentException("Cannot access ", props, " in ", value);
+                    }
+                    return true;
+                }, props);
+            }
             
-            //obj._state->_collectors->objects.clear();
-            
-            auto scoped_handler = ensure_current_object_handler(*obj._state);
-            std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
-            if(ptrs.size() != min(max_displayed_objects, vector.size()))
-                dirty = true;
-            ptrs.resize(vector.size());
-            
-            size_t i = 0;
-            for(auto &v : vector) {
-                auto scope = scoped_handler->scope();
-                scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
-                    return i;
-                }).second);
-                scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string {
-                    return v;
-                }).second);
+            if(valid) {
+                auto str = loop_variable->value_string(props);
+                auto vector = util::parse_array_parts(util::truncate(str));
                 
-                // try to reuse existing objects first:
-                Layout::Ptr &ptr = ptrs.at(i);
-                if(not ptr) {
-                    ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
+                //obj._state->_collectors->objects.clear();
+                
+                auto scoped_handler = ensure_current_object_handler(state);
+                std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
+                if(ptrs.size() != min(max_displayed_objects, vector.size()))
                     dirty = true;
-                }
-                if(ptr) {
-                    if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
-                        dirty = true;
-                    } else if(ptr && ptr->is_dirty()) {
+                ptrs.resize(vector.size());
+                
+                size_t i = 0;
+                for(auto &v : vector) {
+                    auto scope = scoped_handler->scope();
+                    scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
+                        return i;
+                    }).second);
+                    scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string {
+                        return v;
+                    }).second);
+                    
+                    // try to reuse existing objects first:
+                    Layout::Ptr &ptr = ptrs.at(i);
+                    if(not ptr) {
+                        ptr = parse_object(gui, obj.child, context, state, context.defaults);
                         dirty = true;
                     }
+                    if(ptr) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
+                            dirty = true;
+                        } else if(ptr && ptr->is_dirty()) {
+                            dirty = true;
+                        }
+                    }
+                    
+                    ++i;
+                    if (i >= max_displayed_objects) {
+                        break;
+                    }
                 }
-
-                ++i;
-                if (i >= max_displayed_objects) {
-                    break;
+                
+                ptrs.resize(i);
+                o.to<Layout>()->set_children(ptrs);
+                
+                if(dirty) {
+                    //Print(o.to<Layout>(), " is dirty.");
+                    o.to<Layout>()->set_layout_dirty();
+                    o.to<Layout>()->update();
                 }
+                //o.to<Layout>()->set_children(ptrs);
+            } else {
+                error = true;
             }
-            
-            ptrs.resize(i);
-            o.to<Layout>()->set_children(ptrs);
-            
-            if(dirty) {
-                //Print(o.to<Layout>(), " is dirty.");
-                o.to<Layout>()->set_layout_dirty();
-                o.to<Layout>()->update();
-            }
-            //o.to<Layout>()->set_children(ptrs);
         }
         else if(loop_variable->is<std::string>()) {
             auto str = loop_variable->value<std::string>(props);
@@ -769,7 +796,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     dirty = true;
                 ptrs.resize(vector.size());
 
-                auto scoped_handler = ensure_current_object_handler(*obj._state);
+                auto scoped_handler = ensure_current_object_handler(state);
                 size_t i = 0;
                 for(auto &v : vector) {
                     auto scope = scoped_handler->scope();
@@ -783,11 +810,11 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     // try to reuse existing objects first:
                     Layout::Ptr &ptr = ptrs.at(i);
                     if(not ptr) {
-                        ptr = parse_object(gui, obj.child, context, *obj._state, context.defaults);
+                        ptr = parse_object(gui, obj.child, context, state, context.defaults);
                         dirty = true;
                     }
                     if(ptr) {
-                        if(DynamicGUI::update_objects(gui, g, ptr, context, *obj._state)) {
+                        if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
                             dirty = true;
                         } else if(ptr && ptr->is_dirty()) {
                             dirty = true;
@@ -890,7 +917,7 @@ std::shared_ptr<HashedObject> State::get_monostate(size_t hash, const Layout::Pt
     return register_variant(hash, ptr);
 }
 
-const Pattern& State::register_pattern(size_t hash, const std::string& name, Pattern &&pattern) {
+const Pattern& PatternStore::set(size_t hash, const std::string& name, Pattern &&pattern) {
     auto it = _collectors->objects.find(hash);
     if(it == _collectors->objects.end()) {
         _collectors->objects[hash] = std::make_shared<HashedObject>();
@@ -901,7 +928,7 @@ const Pattern& State::register_pattern(size_t hash, const std::string& name, Pat
     return obj;
 }
 
-std::optional<Pattern*> State::get_pattern(size_t hash, const std::string& name) {
+std::optional<Pattern*> PatternStore::get(size_t hash, const std::string& name) {
     auto it = _collectors->objects.find(hash);
     if(it == _collectors->objects.end())
         return std::nullopt;
@@ -981,7 +1008,7 @@ void State::set_cached_variable_value(std::string_view name, std::string_view va
     }
 }*/
 
-void State::Collectors::dealloc(size_t hash) {
+void Collectors::dealloc(size_t hash) {
     /*if(ifs.contains(hash)) {
         ifs.erase(hash);
     }

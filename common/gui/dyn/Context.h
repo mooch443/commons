@@ -85,6 +85,14 @@ struct CurrentObjectHandler {
         uint64_t scoped_version{0};
         std::string value;
     };
+
+    struct ScopedVariableSnapshot {
+        using ScopeMap = std::unordered_map<std::string, VariableValue, MultiStringHash, MultiStringEqual>;
+
+        std::vector<ScopeMap> values;
+
+        [[nodiscard]] bool empty() const noexcept { return values.empty(); }
+    };
     
     /// RAII helper that pushes a loop-local variable scope on creation and pops on destruction.
     class ScopedVariables {
@@ -143,9 +151,15 @@ struct CurrentObjectHandler {
     std::optional<std::string_view> get_cached_variable_value(std::string_view name) const;
     /// Store a parse result keyed to the current global and scoped versions.
     void set_cached_variable_value(std::string_view name, std::string_view value);
+    /// Capture the current scoped variable stack for later reuse.
+    [[nodiscard]] ScopedVariableSnapshot capture_scoped_variable_values() const;
+    /// Replace the current scoped variable stack with a previously captured snapshot.
+    void restore_scoped_variable_values(const ScopedVariableSnapshot& snapshot);
+    /// Replace the current scoped variable stack with a previously captured snapshot.
+    void restore_scoped_variable_values(ScopedVariableSnapshot&& snapshot);
     /// Monotonic version for global variable mutations.
     [[nodiscard]] uint64_t variable_values_version() const noexcept { return _variable_values_version; }
-    /// Monotonic version for scoped variable mutations (set/push-pop with values).
+    /// Monotonic version for scoped variable mutations, including snapshot restores.
     [[nodiscard]] uint64_t scoped_variable_values_version() const noexcept { return _scoped_variable_values_version; }
     
     /// Create a scoped overlay for temporary loop variables.

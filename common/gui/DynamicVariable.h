@@ -8,25 +8,39 @@
 namespace cmn::gui::dyn {
 
 /// @brief Base class template for Variable.
+//template<bool, bool, typename... _Args>
 template<typename... _Args>
 class VarBase;
+
+template<typename T>
+concept reference = (std::is_lvalue_reference_v<T> &&
+                     !std::is_const_v<std::remove_reference_t<T>>);
+
+template<typename T>
+concept const_reference = (std::is_lvalue_reference_v<T> &&
+                           std::is_const_v<std::remove_reference_t<T>>);
 
 /**
   Represents a typed variable that holds a function.
   The function encapsulates some computation or data retrieval.
 */
 template<class return_type, typename... arg_types>
+//class Variable : public VarBase<reference<return_type>, const_reference<return_type>, arg_types...> {
 class Variable : public VarBase<arg_types...> {
 private:
+    using Base_t = VarBase<arg_types...>;
+    
     /// Human-readable string representing the type of 'return_type'.
-    static constexpr auto refcode = cmn::type_name<return_type>();
+    static constexpr const std::type_info* const _type_info = &typeid(return_type);
+    static constexpr std::string_view refcode = cmn::type_name<return_type>();
     
 protected:
     /// Function that encapsulates the computation or data retrieval.
     std::function<return_type(arg_types...)> function;
     
 public:
-    using VarBase<arg_types...>::value_string;
+    using Base_t::value_string;
+    using Base_t::value_json;
     
 public:
     /**
@@ -34,9 +48,10 @@ public:
       @param fn A std::function object that matches the return_type and arg_types.
     */
     constexpr Variable(std::function<return_type(arg_types...)> fn) noexcept
-        :   VarBase<arg_types...>(refcode),
+        :   Base_t(refcode, _type_info, reference<return_type>, const_reference<return_type>),
             function(std::move(fn))
     {
+        assert(static_cast<bool>(function) && "Variable constructed with empty function");
         
         if constexpr(is_container<return_type>::value) {
             this->_is_vector = true;
@@ -82,6 +97,14 @@ public:
                 return sprite::display_object<return_type>( function(std::forward<Args>(args)...) );
             }
         };
+        
+        if constexpr(has_to_json_method<std::remove_cvref_t<return_type>>)
+        {
+            value_json = [this]<typename... Args>(Args&&... args) -> glz::json_t
+            {
+                return function(std::forward<Args>(args)...).to_json();
+            };
+        }
     }
     
     /**
@@ -91,6 +114,7 @@ public:
     */
     template<typename... Args>
     constexpr return_type get(Args&&... args) const {
+        assert(function != nullptr);
         return function(std::forward<Args>(args)...);
     }
 };
@@ -98,19 +122,28 @@ public:
 // VarBase serves as the base class for Variable.
 // It contains utility methods and members that don't depend on the 'return_type'.
 // It is designed to be a common interface for all Variable objects regardless of their return type.
-template<typename... _Args>
+template<//bool is_ref, bool is_const_ref,
+         typename... _Args>
 class VarBase {
 protected:
     /// The type of the derived class, as a string_view.
-    const std::string type;
+    const std::string_view type;
+    const std::type_info* const _type_info;
+    const bool is_ref;
+    const bool is_const_ref;
     bool _is_vector{false};
     
 public:
     /// Function that converts the stored value to a string, given arguments of type _Args...
     std::function<std::string(_Args...)> value_string;
+    std::function<glz::json_t(_Args...)> value_json;
     
 public:
-    VarBase(std::string_view type) : type((std::string)type) {}
+    VarBase(std::string_view type, const std::type_info* const type_info, bool is_ref, bool is_const_ref)
+        : type(type), _type_info(type_info), is_ref(is_ref), is_const_ref(is_const_ref)
+    {
+        //Print("Creating variable ", demangle(type_info->name()), " == ", type);
+    }
     /// Virtual destructor to enable polymorphic behavior.
     virtual ~VarBase() {}
     
@@ -120,7 +153,22 @@ public:
     */
     template<typename T>
     constexpr bool is() const noexcept {
-        return type == type_name<T>();
+        static constexpr const std::type_info* const other = &typeid(T);
+        //Print("Creating variable ", demangle(other->name()), " == ", type, " vs ", type_name<T>());
+        if constexpr(std::same_as<glz::json_t, T>) {
+            return _type_info == other
+                    || value_json != nullptr;
+        } else
+            return _type_info == other;
+        //return type == type_name<T>();
+    }
+    
+    template<typename T>
+    constexpr bool is_strict() const noexcept {
+        static constexpr const std::type_info* const other = &typeid(T);
+        //Print("Creating variable ", demangle(other->name()), " == ", type, " vs ", type_name<T>());
+        return _type_info == other;
+        //return type == type_name<T>();
     }
     
     /**
@@ -131,6 +179,32 @@ public:
         return this->_is_vector;
     }
     
+    template<typename BaseT>
+    constexpr auto access_value(auto&& fn, _Args&&... args) const {
+        static_assert(std::same_as<const VarBase<_Args...>*, decltype(this)>);
+        
+        if constexpr(std::same_as<BaseT, glz::json_t>)
+        {
+            /// we are trying to access this value as glz::json
+            if(not is_strict<glz::json_t>()
+               && value_json != nullptr)
+            {
+                /// but we aren't a *json_t* directly, instead
+                /// we have to use the *value_json* method here
+                static_assert(not reference<BaseT> && not const_reference<BaseT>);
+                return fn(value_json(std::forward<_Args>(args)...));
+            }
+        }
+        
+        if(is_const_reference()) {
+            return fn(value<const BaseT&>(std::forward<_Args>(args)...));
+        } else if(is_reference()) {
+            return fn(value<BaseT&>(std::forward<_Args>(args)...));
+        } else {
+            return fn(value<BaseT>(std::forward<_Args>(args)...));
+        }
+    }
+    
     /**
       Safely retrieves the value, given that the caller knows it is of type T.
       @param args Variadic arguments passed to the retrieval function.
@@ -138,12 +212,23 @@ public:
     */
     template<typename T>
     constexpr T value(_Args&&... args) const {
-        using Target_t = const Variable<T, _Args...>*;
+        //static_assert(std::same_as<const VarBase<is_ref, is_const_ref, _Args...>*, decltype(this)>);
         static_assert(std::same_as<const VarBase<_Args...>*, decltype(this)>);
         
+        using Target_t = std::conditional_t<const_reference<T>,
+            const Variable<const T&, _Args...>*,
+            std::conditional_t<reference<T>,
+                const Variable<T&, _Args...>*,
+                const Variable<T, _Args...>*>
+        >;
+        
         assert(dynamic_cast<Target_t>(this) != nullptr);
+        //Print("Fetching ", cmn::type_name<Target_t>());
         return static_cast<Target_t>(this)->get(std::forward<_Args>(args)...);
     }
+    
+    constexpr bool is_reference() const { return is_ref; }
+    constexpr bool is_const_reference() const { return is_const_ref; }
     
     /**
       Returns the type of the derived class.

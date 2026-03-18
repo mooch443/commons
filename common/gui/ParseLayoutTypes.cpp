@@ -2,6 +2,7 @@
 #include <gui/LabeledField.h>
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/Action.h>
+#include <gui/dyn/binders.h>
 
 namespace cmn::gui::dyn {
 
@@ -80,7 +81,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
             size = get(_defaults.size, "size");
         } else {
             //Print("Adding auto at ", hash, " for ", name, ": ", obj.dump(2));
-            state.register_pattern(hash, "size", pattern::UnresolvedStringPattern::prepare("auto")); //Pattern{"auto", {}});
+            state.pattern().set(hash, "size", pattern::UnresolvedStringPattern::prepare("auto")); //Pattern{"auto", {}});
         }
         
     } else {
@@ -122,7 +123,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
 void LayoutContext::finalize(const Layout::Ptr& ptr) {
     //Print("Calculating hash for index ", hash, " ", (uint64_t)ptr.get());
     auto check_field = [&]<typename SourceType>(std::string_view field, auto&& apply) -> bool {
-        if(auto pattern = state.get_pattern(hash, std::string(field));
+        if(auto pattern = state.pattern().get(hash, std::string(field));
            pattern.has_value())
         {
             try {
@@ -189,7 +190,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         ptr->set_clickable(value);
     });
     
-    if(auto pattern = state.get_pattern(hash, "name");
+    if(auto pattern = state.pattern().get(hash, "name");
        pattern.has_value())
     {
         name = pattern.value()->realize(context, state);
@@ -231,7 +232,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         ptr->set_pos(value);
     });
 
-    if(auto pattern = state.get_pattern(hash, "size");
+    if(auto pattern = state.pattern().get(hash, "size");
        pattern.has_value())
     {
         try {
@@ -264,8 +265,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         static constexpr auto hover_name = "_hover_handle";
         auto hover_handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(hover_name);
-        
-        auto handle = ptr->add_event_handler_replace(EventType::HOVER, [hover_action, unhover_action, _ptr = ptr.get(), context = context, &state = state](Event e) {
+        auto handle = bind_event_with_state(ptr, EventType::HOVER, state._current_object_handler, context, [hover_action, unhover_action](Event e, const Context& context, State& state)
+        {
             if(e.hover.hovered
                && not hover_action.name.empty())
             {
@@ -274,7 +275,6 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     if(auto it = context.actions.find(name);
                        it != context.actions.end())
                     {
-                        State state;
                         it->second(hover_action.parse(context, state));
                         
                     } else if(auto ptr = state.named_entity(name);
@@ -297,7 +297,6 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     if(auto it = context.actions.find(name);
                        it != context.actions.end())
                     {
-                        State state;
                         it->second(unhover_action.parse(context, state));
                         
                     } else if(auto ptr = state.named_entity(name);
@@ -313,6 +312,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     FormatExcept("error using action ", unhover_action);
                 }
             }
+            
         }, hover_handle);
         
         ptr->add_custom_data(hover_name, (void*)handle.get());
@@ -324,16 +324,21 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         if(obj.count("drag")) {
             static constexpr auto handle_name = "_drag_handle";
             auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-            
-            auto h = ptr->add_event_handler_replace(EventType::HOVER, [action, _ptr = ptr.get(), context = context](Event event) {
-                if(event.hover.hovered
-                   && _ptr->pressed())
+            auto h = bind_event_with_state(ptr, EventType::HOVER, state._current_object_handler, context, [action, _ptr = std::weak_ptr(ptr.get_smart())](Event event, const Context& context, State& state) {
+                auto ptr = _ptr.lock();
+#ifndef NDEBUG
+                if(not ptr)
+                    FormatWarning("HOVER object does not exist anymore.");
+#endif
+                
+                if(ptr
+                   && ptr->pressed()
+                   && event.hover.hovered)
                 {
                     try {
                         if(auto it = context.actions.find(action.name);
                            it != context.actions.end())
                         {
-                            State state;
                             it->second(action.parse(context, state));
                         } else
                             Print("Unknown Action: ", action);
@@ -349,21 +354,18 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         static constexpr auto handle_name = "_drag_handle";
         auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-        auto h = ptr->add_event_handler_replace(EventType::MBUTTON, [action, context = context, handler = state._current_object_handler](Event event) {
+        auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action](Event event, const Context& context, State& state)
+        {
             if(event.mbutton.pressed) {
                 try {
                     std::string_view name = action.name;
                     std::string pattern;
                     if(utils::contains(name, '{')) {
-                        State state;
-                        state._current_object_handler = handler;
-                        
                         pattern = parse_text(name, context, state);
                         auto a = PreAction::fromStr(pattern);
                         if(auto it = context.actions.find(a.name);
                            it != context.actions.end())
                         {
-                            State state;
                             it->second(a.parse(context, state));
                         } else
                             Print("Unknown Action [",name,"]: ", action);
@@ -374,7 +376,6 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                     if(auto it = context.actions.find(name);
                        it != context.actions.end())
                     {
-                        State state;
                         it->second(action.parse(context, state));
                     } else
                         Print("Unknown Action [",name,"]: ", action);
@@ -425,7 +426,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
     if(obj.count("path") && obj.at("path").is_string()) {
         std::string raw = obj.at("path").get<std::string>();
         if(utils::contains(raw, "{")) {
-            state.register_pattern(hash, "path", pattern::UnresolvedStringPattern::prepare(raw)); //Pattern{raw, {}});
+            state.pattern().set(hash, "path", pattern::UnresolvedStringPattern::prepare(raw)); //Pattern{raw, {}});
             
         } else {
             auto path = file::Path(raw);
@@ -622,7 +623,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         auto input = obj.at("var").get<std::string>();
         var = parse_text(input, context, state);
         if(var != input) {
-            state.register_pattern(hash, "var", pattern::UnresolvedStringPattern::prepare(input)); //Pattern{input, {}});
+            state.pattern().set(hash, "var", pattern::UnresolvedStringPattern::prepare(input)); //Pattern{input, {}});
         }
     } else
         throw U_EXCEPTION("settings field should contain a 'var'.");
@@ -710,7 +711,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 ref->set(line_clr);
                 LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
                 ref->set(fill_clr);
-                LabelColor_t color{ dyn::get(state, p, Color(50,50,50,200), "color", hash, "label_")};
+                LabelColor_t color{ dyn::get(state, p, Color(225,225,225,200), "color", hash, "label_")};
                 ref->set(color);
                 
                 LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
@@ -778,20 +779,22 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
-        ptr->on_click([action, context = context](auto){
-            try {
-                if(auto it = context.actions.find(action.name);
-                   it != context.actions.end())
-                {
-                    State state;
-                    it->second(action.parse(context, state));
-                } else
-                    Print("Unknown Action: ", action);
-                
-            } catch(const std::exception& ex) {
-                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
-            }
-        });
+        
+        ptr->on_click(
+          bind_with_state<Event>(state._current_object_handler, context, [action](Event, const Context& context, State& state) {
+              try {
+                  if(auto it = context.actions.find(action.name);
+                     it != context.actions.end())
+                  {
+                      it->second(action.parse(context, state));
+                  } else
+                      Print("Unknown Action: ", action);
+                  
+              } catch(const std::exception& ex) {
+                  FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+              }
+          })
+        );
     }
     
     return ptr;
@@ -807,19 +810,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
-        ptr.to<Checkbox>()->on_change([action, context=context](){
-            try {
-                if(auto it = context.actions.find(action.name);
-                   it != context.actions.end())
+        auto snapshot = state._current_object_handler.lock()->capture_scoped_variable_values();
+        ptr.to<Checkbox>()->on_change(
+            bind_with_state(state._current_object_handler, context,
+                [action](const Context& context, State& state)
                 {
-                    State state;
-                    it->second(action.parse(context, state));
-                } else
-                    Print("Unknown Action: ", action);
-            } catch(const std::exception& ex) {
-                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
-            }
-        });
+                    try {
+                        if(auto it = context.actions.find(action.name);
+                           it != context.actions.end())
+                        {
+                            it->second(action.parse(context, state));
+                        } else
+                            Print("Unknown Action: ", action);
+                    } catch(const std::exception& ex) {
+                        FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+                    }
+                }
+            )
+        );
     }
     
     return ptr;
@@ -833,19 +841,22 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
-        ptr.to<Textfield>()->on_enter([action, context=context](){
-            try {
-                if(auto it = context.actions.find(action.name);
-                   it != context.actions.end()) 
-                {
-                    State state;
-                    it->second(action.parse(context, state));
-                } else
-                    Print("Unknown Action: ", action);
-            } catch(const std::exception& ex) {
-                FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
-            }
-        });
+        ptr.to<Textfield>()->on_enter(
+            bind_with_state(state._current_object_handler, context,
+              [action](const Context& context, State& state) {
+                  try {
+                      if(auto it = context.actions.find(action.name);
+                         it != context.actions.end())
+                      {
+                          it->second(action.parse(context, state));
+                      } else
+                          Print("Unknown Action: ", action);
+                  } catch(const std::exception& ex) {
+                      FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+                  }
+              }
+            )
+        );
     }
     
     return ptr;
@@ -931,16 +942,20 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         if(child.is_object()) {
             //Print("collection: ", child.dump());
             // all successfull, add collection:
+#ifndef NDEBUG
             auto copy = std::make_unique<State>();
             copy->_current_object_handler = state._current_object_handler;
+#endif
             
             ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
             auto exp = glz::read_json<ListContents::ItemTemplate>(child.get_object());
             
             auto body = state.register_variant(hash, ptr, ListContents{
                 .variable = obj.at("var").get<std::string>(),
-                .item = std::move(exp.value()),
-                ._state = std::move(copy)
+                .item = std::move(exp.value())
+#ifndef NDEBUG
+                ,._state = std::move(copy)
+#endif
             });
             
             ptr.to<ScrollableList<DetailTooltipItem>>()->on_select([&, body = std::weak_ptr(body)](size_t index, const auto &)
@@ -1032,22 +1047,24 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         }
         
         ptr.to<ScrollableList<DetailTooltipItem>>()->set_items(contents.rendered);
-        ptr.to<ScrollableList<DetailTooltipItem>>()->on_select([actions, context=context](size_t index, const auto &)
-        {
-            if(index >= actions.size()) {
-                FormatWarning("Cannot select invalid index: ", index, " from ", actions);
-                return;
-            }
-            
-            auto& action = actions.at(index);
-            if(auto it = context.actions.find(action.name);
-               it != context.actions.end())
-            {
-                State state;
-                //Print("Selecting ", actions.at(index));
-                it->second(action.parse(context, state));
-            }
-        });
+        ptr.to<ScrollableList<DetailTooltipItem>>()->on_select(
+          bind_with_state<size_t, const DetailTooltipItem&>(state._current_object_handler, context,
+              [actions](size_t index, const DetailTooltipItem&, const Context& context, State& state)
+              {
+                  if(index >= actions.size()) {
+                      FormatWarning("Cannot select invalid index: ", index, " from ", actions);
+                      return;
+                  }
+                  
+                  auto& action = actions.at(index);
+                  if(auto it = context.actions.find(action.name);
+                     it != context.actions.end())
+                  {
+                      it->second(action.parse(context, state));
+                  }
+              }
+          )
+        );
         
         state.register_variant(hash, ptr, std::move(contents));
     }
@@ -1153,8 +1170,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
                 .variable = pattern::UnresolvedStringPattern::prepare(obj.at("var").get<std::string>()),
                 .__if = child,
                 .__else = obj.contains("else") ? obj.at("else") : nullptr,
-                ._assigned_hash = hash,
-                ._state = std::move(copy)
+                ._assigned_hash = hash//,
+                //._state = std::move(copy)
             }));
         }
     }

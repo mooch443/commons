@@ -545,7 +545,6 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             REQUIRE_AT_LEAST(2, props);
             //[[maybe_unused]] CTimer ctimer("if");
             bool condition = props.parameters.front() == "true";
-            //bool condition = resolve_variable_type<bool>(p.parameters.at(0), context, state);
             //Print("* condition ", props.parameters.front()," => ", condition);
             if(condition)
                 utils::fast_fromstr(output, props.parameters[1]);
@@ -653,10 +652,13 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
     subs.pop();
     
     if(not json.contains(name)) {
-        throw InvalidArgumentException("Object ", json, " does not contain field ", name);
+        if(not json.is_object())
+            throw InvalidArgumentException("Object ", json, " is not an object and does not contain field ",name,".");
+        else
+            throw InvalidArgumentException("Object ", json, " does not contain field ", name, " contains: ", extract_keys(json.get_object()));
     }
     
-    auto field = json[std::forward<decltype(name)>(name)];
+    const auto &field = json[std::forward<decltype(name)>(name)];
     if(field.is_object()) {
         // need another key
         if(not subs.empty()) {
@@ -676,31 +678,9 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
 void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable, const VarProps& modifiers) {
     
     try {
-        if(modifiers.subs.empty())
+        if(modifiers.subs.empty()) {
             apply_html(output, modifiers, variable.value_string(modifiers));
-        else if(variable.is<glz::json_t>()) {
-            auto value = variable.value<glz::json_t>(modifiers);
-            std::queue<std::string_view> subs;
-            for(auto &sub : modifiers.subs)
-                subs.emplace(sub);
-            
-            access_sub_field(output, modifiers, value, std::move(subs));
-        }
-        else if(bool is_reference = variable.is<sprite::Map&>();
-                is_reference || variable.is<sprite::Map>())
-        {
-            sprite::Map copy;
-            sprite::Map& value = is_reference ? variable.value<sprite::Map&>(modifiers) : copy;
-            if(not is_reference)
-                copy = variable.value<sprite::Map>(modifiers);
-            
-            std::queue<std::string_view> subs;
-            for(auto &sub : modifiers.subs)
-                subs.emplace(sub);
-            
-            access_sub_field(output, modifiers, value, std::move(subs));
-        }
-        else if(variable.is<Size2>()) {
+        } else if(variable.is<Size2>()) {
             if(modifiers.subs.front() == "w")
                 apply_html(output, modifiers,
                            Meta::toStr(variable.value<Size2>(modifiers).width));
@@ -729,6 +709,26 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
                            Meta::toStr(variable.value<Range<Frame_t>>(modifiers).end));
             else
                 throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
+            
+            
+        } else if(variable.is<glz::json_t>()) {
+            variable.access_value<glz::json_t>([&](auto&& value){
+                std::queue<std::string_view> subs;
+                for(auto &sub : modifiers.subs)
+                    subs.emplace(sub);
+                
+                access_sub_field(output, modifiers, value, std::move(subs));
+            }, modifiers);
+        }
+        else if(variable.is<sprite::Map>())
+        {
+            variable.access_value<sprite::Map>([&](auto&& value){
+                std::queue<std::string_view> subs;
+                for(auto &sub : modifiers.subs)
+                    subs.emplace(sub);
+                
+                access_sub_field(output, modifiers, value, std::move(subs));
+            }, modifiers);
             
         } else
             apply_html(output, modifiers,

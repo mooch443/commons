@@ -51,14 +51,14 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
         if(o.is_string()) {
             auto value = o.template get<std::string>();
             if(utils::contains(value, '{')) {
-                state.register_pattern(hash, name_prefix+name, Pattern::prepare(value));
+                state.pattern().set(hash, name_prefix+name, Pattern::prepare(value));
                 return de;
             }
             try {
                 return Meta::fromStr<T>(value);
             } catch(...) {
                 // Keep legacy behavior for special string tokens handled at update-time (e.g. "auto").
-                state.register_pattern(hash, name_prefix+name, Pattern::prepare(value));
+                state.pattern().set(hash, name_prefix+name, Pattern::prepare(value));
                 return de;
             }
         }
@@ -69,7 +69,7 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
     } else {
         auto val = o.template get<std::string>();
         if(utils::contains(val, '{')) {
-            state.register_pattern(hash, name_prefix+name, Pattern::prepare(val)); //Pattern{val, {}});
+            state.pattern().set(hash, name_prefix+name, Pattern::prepare(val)); //Pattern{val, {}});
             return de;
         }
         return val;

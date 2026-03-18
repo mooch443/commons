@@ -62,7 +62,7 @@ namespace cmn::gui {
         GETTER(ListFillClr_t, list_fill_clr){100,100,100,200};
         GETTER(ListLineClr_t, list_line_clr){200,200,200,200};
         LabelFillClr_t _label_fill_clr{100,100,100,200};
-        LabelColor_t _label_color{100,100,100,200};
+        LabelColor_t _label_color{225,225,225,200};
         LabelLineColor_t _label_line_clr{200,200,200,200};
         LabelCornerFlags _label_corner_flags{};
         

@@ -494,6 +494,33 @@ void CurrentObjectHandler::set_cached_variable_value(std::string_view name, std:
     cached.value = std::string(value);
 }
 
+CurrentObjectHandler::ScopedVariableSnapshot CurrentObjectHandler::capture_scoped_variable_values() const
+{
+    ScopedVariableSnapshot snapshot;
+    snapshot.values = _scoped_variable_values;
+    return snapshot;
+}
+
+void CurrentObjectHandler::restore_scoped_variable_values(const ScopedVariableSnapshot& snapshot)
+{
+    if(_scoped_variable_values == snapshot.values) {
+        return;
+    }
+
+    _scoped_variable_values = snapshot.values;
+    invalidate_scoped_cached_variable_values();
+}
+
+void CurrentObjectHandler::restore_scoped_variable_values(ScopedVariableSnapshot&& snapshot)
+{
+    if(_scoped_variable_values == snapshot.values) {
+        return;
+    }
+
+    _scoped_variable_values = std::move(snapshot.values);
+    invalidate_scoped_cached_variable_values();
+}
+
 CurrentObjectHandler::ScopedVariables CurrentObjectHandler::scope() {
     return ScopedVariables(*this);
 }
