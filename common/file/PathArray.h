@@ -244,16 +244,22 @@ public:
 #endif
             std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>((std::string)sv);
             for (const auto& path_str : temp_paths) {
-                add_path(path_str);
+                if(not path_str.empty()
+                   && path_str.front() == '"'
+                   && path_str.back() == '"')
+                {
+                    add_path(Meta::fromStr<std::string>((std::string)sv));
+                } else
+                    add_path(path_str);
             }
-        } else if(sv.front() == '\"' && sv.back() == '\"') {
+        } else if(sv.front() == '"' && sv.back() == '"') {
             /// we are dealing with a single string
             add_path(Meta::fromStr<std::string>((std::string)sv));
         } else {
+            assert(not _paths.empty() || sv.empty() || _matched_patterns);
             add_path((std::string)sv);
         }
         
-        assert(not _paths.empty() || sv.empty() || _matched_patterns);
         if(_paths.size() <= 1 && not matched_patterns()) {
             if(not _paths.empty())
                 _source = _paths.front().str();

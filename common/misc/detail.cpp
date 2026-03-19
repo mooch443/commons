@@ -529,7 +529,14 @@ namespace cmn {
                 
                 if(!key.empty() && (key[0] == '\'' || key[0] == '"') && key[0] == key[key.length()-1])
                     key = key.substr(1, key.length()-2);
-                if(not value.empty() 
+                if(value.size()>=4
+                   && value[0] == '\\'
+                   && is_in(value[1], '"', '\'')
+                   && value.back() == value[1])
+                {
+                    value = util::unescape(value.substr(1, value.length()-2u));
+                }
+                if(not value.empty()
                     && ((value.front() == '\"' && value.back() == '\"') 
                         || (value.front() == '\'' && value.back() == '\'')))
                     value = util::unescape(value.substr(1, value.length()-2u));

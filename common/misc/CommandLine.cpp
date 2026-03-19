@@ -76,59 +76,82 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
         /**
          * Process command-line options.
          */
-        const char *argptr = NULL;
         auto keys = GlobalSettings::keys();
             
-        auto check_option = [&keys, &deprecated, this](const char* argptr, const char* val)
+        auto check_option = [&keys, &deprecated, this](std::string&& key, std::optional<std::string>&& val)
         {
-            if(!argptr)
-                return;
-            
-            std::string sval(val ? val : "");
-            size_t offset = 0;
-            for(size_t i=0; i+1<sval.length(); ++i) {
-                if(sval[i] == '\'' || sval[i] == '"') {
-                    if(sval[sval.length()-1-i] == sval[i]) {
-                        offset = i+1;
+            std::optional<std::string> sval{val};
+            if(sval) {
+                auto &_sval = *sval;
+                size_t offset = 0;
+                for(size_t i=0; i+1<_sval.length(); ++i) {
+                    if(_sval[i] == '\'' || _sval[i] == '"') {
+                        if(_sval[_sval.length()-1-i] == _sval[i]) {
+                            offset = i+1;
+                        } else break;
                     } else break;
-                } else break;
+                }
+                
+                if(offset)
+                    _sval = _sval.substr(offset, _sval.length()-offset*2);
             }
             
-            if(offset)
-                sval = sval.substr(offset, sval.length()-offset*2);
-            
-            std::string key = argptr;
             if(contains(keys, key)) {
-                _settings.push_back({key, sval});
+                _settings.emplace_back(key, sval);
                 
             } else if(deprecated.find(key) != deprecated.end()) {
-                FormatWarning("Found deprecated key ", key," = '", val ? val : "","' in command-line (replaced by ", deprecated.at(key),").");
-                _settings.push_back({deprecated.at(key), sval});
+                FormatWarning("Found deprecated key ", key," = ", sval," in command-line (replaced by ", deprecated.at(key),").");
+                _settings.emplace_back(deprecated.at(key), std::move(sval));
                 
             } else {
-                _options.push_back({key, sval});
+                _options.emplace_back(std::move(key), std::move(sval));
             }
         };
             
-            Print("----");
-            for(int i = 1; i < argc; ++i) {
-                Print("argv[",i,"] = ", std::string(argv[i]));
-            }
-            Print("----");
+        Print("----");
+        for(int i = 1; i < argc; ++i) {
+            Print("argv[",i,"] = ", std::string(argv[i]));
+        }
+        Print("----");
         
-        for (int i=1; i<argc; i++) {
-            if (argv[i][0] == '-' && (/*argv[i][1] == 0 || */argv[i][1] > '9' || argv[i][1] < '0')) {
-                check_option(argptr, nullptr);
-                argptr = *argv[i] ? (argv[i]+1) : argv[i];
+        /// find options by checking for '-' beginnings, then value until the next '-'
+        /// parameter names cannot have whitespace.
+        std::vector<std::tuple<std::string, std::optional<std::string>>> concats;
+        bool in_value = false;
+        std::string parm = "";
+        std::string value = "";
+        for(int i = 1; i < argc; ++i) {
+            if(argv[i][0] == '-') {
+                if(in_value) {
+                    assert(not parm.empty());
+                    if(value.empty())
+                        concats.emplace_back(std::move(parm), std::nullopt);
+                    else
+                        concats.emplace_back(std::move(parm), std::move(value));
+                }
+                value.clear();
+                in_value = true;
+                parm = std::string(&argv[i][1]);
                 
-            } else if(argptr) {
-                check_option(argptr, argv[i]);
-                argptr = NULL;
-            } else
-                argptr = NULL;
+            } else {
+                if(not value.empty())
+                    value += " ";
+                value += argv[i];
+            }
         }
         
-        check_option(argptr, nullptr);
+        if(in_value
+           and not parm.empty())
+        {
+            if(value.empty())
+                concats.emplace_back(std::move(parm), std::nullopt);
+            else
+                concats.emplace_back(std::move(parm), std::move(value));
+        }
+        
+        for(auto &[parm, value] : concats) {
+            check_option(std::move(parm), std::move(value));
+        }
         
         if(!no_autoload_settings)
             load_settings();

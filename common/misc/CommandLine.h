@@ -17,6 +17,10 @@ namespace cmn {
             bool operator==(const std::string& other) const {
                 return name == other;
             }
+            
+            std::string toStr() const {
+                return "{'"+name+"':"+Meta::toStr(value)+"}";
+            }
         };
         
     protected:
