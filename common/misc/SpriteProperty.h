@@ -287,17 +287,13 @@ namespace cmn {
         
         class Reference;
         
-        namespace detail {
-            struct No {};
-            template<typename T, typename Arg> No operator== (const T&, const Arg&);
-        }
-        
         template<typename T, typename Arg = T>
-            requires (not is_instantiation<std::function, T>::value
-                      && not _clean_same<glz::json_t, T>)
-        struct has_equals
-        {
-            constexpr static const bool value = !std::is_same<decltype(*(T*)(0) == *(Arg*)(0)), detail::No>::value;
+        concept has_equals =
+               not is_instantiation<std::function, T>::value 
+            && not _clean_same<glz::json_t, T>
+			&& not is_instantiation<std::optional, T>::value
+            && requires(const T& t, const Arg& a) {
+                { t == a } -> std::convertible_to<bool>;
         };
 
         template<class ValueType>
@@ -397,46 +393,94 @@ namespace cmn {
             }
             
             template<typename K>
-                requires (not is_instantiation<std::function, K>::value
-                          && not _clean_same<glz::json_t, K>)
-            bool equals(const K& other, const typename std::enable_if< !std::is_same<cv::Mat, K>::value && has_equals<K>::value, K >::type* = NULL) const {
-                if constexpr(trivial) {
+                requires (
+                    !is_instantiation<std::function, K>::value &&
+                    !_clean_same<glz::json_t, K> &&
+                    !std::is_same_v<cv::Mat, K>&&
+                    has_equals<K>
+                )
+            bool equals(const K& other) const {
+                if constexpr (trivial) {
                     auto v = _value.load();
                     return v.has_value() && other == v.value();
-                } else {
+                }
+                else {
                     std::shared_lock guard(_property_mutex);
                     return _value.has_value() && other == _value.value();
                 }
             }
-            
+
             template<typename K>
-                requires (not is_instantiation<std::function, K>::value
-                          && not _clean_same<glz::json_t, K>)
-            bool equals(const K& other, const typename std::enable_if< std::is_same<cv::Mat, K>::value, K >::type* = NULL) const {
+                requires (
+                    !is_instantiation<std::function, K>::value &&
+                    !_clean_same<glz::json_t, K>&&
+                    std::is_same_v<cv::Mat, K>
+                )
+            bool equals(const K& other) const {
                 std::shared_lock guard(_property_mutex);
-                if(not _value.has_value())
+                if (!_value.has_value())
                     return false;
                 return cv::countNonZero(_value.value() != other) == 0;
             }
-            
+
+            template<typename K>
+                requires (
+                    is_instantiation<std::optional, K>::value
+                )
+            bool equals(const K& other) const {
+                if (not valid())
+                    return not other.has_value();
+
+				if constexpr (trivial) {
+                    auto v = _value.load();
+
+                    if (v.has_value() != other.has_value())
+                        return false;
+
+                    if (not v.has_value())
+                        return true;
+
+                    if constexpr (not has_equals<typename K::value_type>)
+                        return false;
+                    else
+                        return v.value() == other.value();
+                }
+                else {
+                    std::shared_lock guard(_property_mutex);
+                    if (_value.has_value() != other.has_value())
+                        return false;
+
+                    if (not _value.has_value())
+                        return true;
+
+                    if constexpr (not has_equals<typename K::value_type>)
+                        return false;
+                    else {
+                        return _value.value() == other.value();
+                    }
+                }
+            }
+
             template<typename K>
                 requires (_clean_same<glz::json_t, K>)
             bool equals(const K& other) const {
-                if constexpr(trivial) {
-                    static_assert(not trivial, "a json-t object cannot be trivial");
-                } else {
+                if constexpr (trivial) {
+                    static_assert(!trivial, "a json-t object cannot be trivial");
+                }
+                else {
                     std::shared_lock guard(_property_mutex);
-                    if (!_value.has_value()) return false;
+                    if (!_value.has_value())
+                        return false;
 
                     auto sa = glz::write_json(other).value_or(std::string{});
                     auto sb = glz::write_json(_value.value()).value_or(std::string{});
                     return sa == sb;
                 }
             }
-            
+
             template<typename K>
                 requires (is_instantiation<std::function, K>::value)
-            bool equals(const K&, const typename std::enable_if< is_instantiation<std::function, K>::value, K >::type* = NULL) const {
+            bool equals(const K&) const {
                 return false;
             }
             

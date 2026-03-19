@@ -735,7 +735,10 @@ void Reference::operator=(const T& value) {
         {
             return false;
         } else {
-            return dynamic_cast<const Property<T>*>(ptr.get()) != nullptr;
+            if constexpr (std::same_as<T, sprite::Map>)
+                return false;
+            else
+                return dynamic_cast<const Property<T>*>(ptr.get()) != nullptr;
         }
     }
 
