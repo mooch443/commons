@@ -256,8 +256,8 @@ public:
             /// we are dealing with a single string
             add_path(Meta::fromStr<std::string>((std::string)sv));
         } else {
-            assert(not _paths.empty() || sv.empty() || _matched_patterns);
             add_path((std::string)sv);
+            assert(not _paths.empty() || sv.empty() || _matched_patterns);
         }
         
         if(_paths.size() <= 1 && not matched_patterns()) {
