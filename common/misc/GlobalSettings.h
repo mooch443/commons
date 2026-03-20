@@ -13,7 +13,7 @@
 #define SETTING(NAME) (cmn::GlobalSettings::get(#NAME))
 #define BOOL_SETTING(NAME) (cmn::GlobalSettings::read_value_with_default(#NAME, false))
 #define OPTIONAL_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ))
-#define READ_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ).value())
+#define READ_SETTING(NAME, ...) (cmn::GlobalSettings::read_deref_value< __VA_ARGS__ >( #NAME ))
 #define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::GlobalSettings::read_value_with_default( #NAME , __VA_ARGS__ ))
 
 namespace cmn {
@@ -387,6 +387,21 @@ namespace cmn {
                 else
                     return get_with_type<T>(c.values, name);
             });
+        }
+        template<typename T>
+        static auto read_deref_value(std::string_view name) {
+            auto v = read([name](const Configuration& c) {
+                if constexpr (std::same_as<T, NoType>)
+                    return read_without_type(c.values, name);
+                else
+                    return get_with_type<T>(c.values, name);
+            });
+#ifndef NDEBUG
+            if (not v.has_value()) {
+                throw RuntimeError("Cannot dereference value for setting: ", name, " and type ", cmn::type_name<T>(), " where v is of type ", cmn::type_name<decltype(v)>());
+            }
+#endif
+            return v.value();
         }
         template<typename T>
         static auto write_value(std::string_view name) {
