@@ -112,7 +112,7 @@ namespace cmn::gui {
         std::deque<std::unique_ptr<Dialog>> _dialogs;
         
         std::set<Codes> pressed_keys;
-        std::array<bool, 2> mouse_state;
+        std::array<bool, 2> mouse_state{ false, false };
         
         std::vector<Drawable*> results;
         
