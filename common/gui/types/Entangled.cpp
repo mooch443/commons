@@ -7,6 +7,7 @@
 
 namespace cmn::gui {
     void Entangled::init() {
+        _scroll_show_bar = true;
         update([](auto&){});
     }
 
@@ -21,6 +22,7 @@ namespace cmn::gui {
           callback_ptr(std::exchange(other.callback_ptr, nullptr)),
           _scroll_offset(std::move(other._scroll_offset)),
           _scroll_enabled(std::move(other._scroll_enabled)),
+          _scroll_show_bar(std::move(other._scroll_show_bar)),
           _scroll_limit_x(std::move(other._scroll_limit_x)),
           _scroll_limit_y(std::move(other._scroll_limit_y)),
           _index(std::move(other._index)),
@@ -42,6 +44,7 @@ namespace cmn::gui {
             callback_ptr = std::exchange(other.callback_ptr, nullptr);
             _scroll_offset = std::move(other._scroll_offset);
             _scroll_enabled = std::move(other._scroll_enabled);
+            _scroll_show_bar = std::move(other._scroll_show_bar);
             _scroll_limit_x = std::move(other._scroll_limit_x);
             _scroll_limit_y = std::move(other._scroll_limit_y);
             _index = std::move(other._index);
@@ -80,9 +83,73 @@ namespace cmn::gui {
         update(std::move(fn));
     }
     
-    void Entangled::update(const std::function<void(Entangled& base)> create) {
+    void Entangled::update(const std::function<void(Entangled& base)> create)
+    {
         OpenContextWithArgs(create, *this);
     }
+
+void Entangled::update_scrollbar() {
+    if(scroll_enabled()
+       && scroll_show_bar())
+    {
+        if(scroll_limit_y().end != FLT_MAX && scroll_limit_y().end > 0) {
+            float percentage = scroll_offset().y / scroll_limit_y().end;
+            auto top = add<Rect>(Box(scroll_offset().x + width()-8,
+                          scroll_offset().y,
+                          8,
+                          percentage * height()),
+                      Origin(1,0),
+                      FillClr{Black.alpha(150)},
+                      Clickable{true});
+            top->add_custom_data("scrollbar", (void*)0x1);
+            
+            const char* handle_name = "_scrollbar_drag";
+            auto handle = (Drawable::callback_handle_t::element_type*)top->custom_data(handle_name);
+            top->add_custom_data("scrollbar", (void*)0x1);
+            auto h = top->add_event_handler_replace(EventType::HOVER, [this, rect = top](Event e) {
+                if(not stage() || not stage()->is_mouse_down(0))
+                    return;
+                
+                auto y = rect->pos().y - scroll_offset().y - rect->height() * rect->origin().y + e.hover.y;
+                auto max_y = height();
+                if(max_y > 0) {
+                    auto percentage = y / max_y;
+                    auto scroll_y = percentage * (scroll_limit_y().end - scroll_limit_y().start) + scroll_limit_y().start;
+
+                    Print("Click event on rect ",y, " / ", max_y, " = ", percentage, " => ", scroll_y);
+                    set_scroll_offset(Vec2(0, scroll_y));
+                }
+            }, handle);
+            top->add_custom_data(handle_name, (void*)h.get());
+            
+            auto rect = add<Rect>(Box(scroll_offset().x + width()-8,
+                          scroll_offset().y + height(),
+                          8,
+                          (1-percentage) * height()),
+                      Origin(1,1),
+                      FillClr{Gray.alpha(50)},
+                    Clickable{true});
+            
+            handle = (Drawable::callback_handle_t::element_type*)rect->custom_data(handle_name);
+            rect->add_custom_data("scrollbar", (void*)0x1);
+            h = rect->add_event_handler_replace(EventType::HOVER, [this, rect](Event e) {
+                if(not stage() || not stage()->is_mouse_down(0))
+                    return;
+                
+                auto y = rect->pos().y - scroll_offset().y - rect->height() * rect->origin().y + e.hover.y;
+                auto max_y = height();
+                if(max_y > 0) {
+                    auto percentage = y / max_y;
+                    auto scroll_y = percentage * (scroll_limit_y().end - scroll_limit_y().start) + scroll_limit_y().start;
+
+                    Print("Click event on rect ",y, " / ", max_y, " = ", percentage, " => ", scroll_y);
+                    set_scroll_offset(Vec2(0, scroll_y));
+                }
+            }, handle);
+            rect->add_custom_data(handle_name, (void*)h.get());
+        }
+    }
+}
 
 const Drawable* Entangled::tooltip_object() const {
     return nullptr;
@@ -140,6 +207,13 @@ std::optional<TooltipData> Entangled::tooltip_data() const {
         //    background()->clear_cache();
         
         children_rect_changed();
+    }
+
+    void Entangled::set_scroll_show_bar(bool enable) {
+        if(_scroll_show_bar == enable)
+            return;
+        _scroll_enabled = enable;
+        clear_cache();
     }
     
     void Entangled::set_scroll_limits(const cmn::Rangef &x, const cmn::Rangef &y)

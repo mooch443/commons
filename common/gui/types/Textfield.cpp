@@ -145,7 +145,7 @@ void Textfield::init() {
             this->set_dirty();
     });
     add_event_handler(MBUTTON, [this](Event e) {
-        if(e.mbutton.button != 0)
+        if(e.mbutton.button != 0 || not e.mbutton.started_here)
             return;
         
         if(e.mbutton.pressed) {

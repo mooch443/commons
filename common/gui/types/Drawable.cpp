@@ -465,6 +465,8 @@ namespace cmn::gui {
     
     void Drawable::on_click(const event_handler_yes_t& fn) {
         add_event_handler(MBUTTON, [fn](Event e){
+            if(not e.mbutton.started_here)
+                return;
             if(!e.mbutton.pressed || e.mbutton.button != 0)
                 fn(e);
         });
@@ -570,7 +572,13 @@ namespace cmn::gui {
     void Drawable::mdown(Float2_t x, Float2_t y, bool left_button) {
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
-        event.mbutton = {left_button ? 0 : 1, true, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
+        event.mbutton = {
+            .button = left_button ? 0 : 1,
+            .pressed = true,
+            .started_here = true,
+            .x = (Float2_t)r.x,
+            .y = (Float2_t)r.y
+        }; //rx, ry};
         
         for(auto &e : _event_handlers[MBUTTON]) {
 #ifndef NDEBUG
@@ -594,7 +602,27 @@ namespace cmn::gui {
 #endif
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
-        event.mbutton = {left_button ? 0 : 1, false, (Float2_t)r.x, (Float2_t)r.y}; //rx, ry};
+        event.mbutton = {
+            .button = left_button ? 0 : 1,
+            .pressed = false,
+            .started_here = true,
+            .x = (Float2_t)r.x,
+            .y = (Float2_t)r.y
+        }; //rx, ry};
+        
+        if(parent() && parent()->stage()) {
+            auto stage = parent()->stage();
+            
+            if(auto h = stage->hovered_object();
+               not h || not h->is_child_of(this))
+            {
+                event.mbutton.started_here = false;
+            } else if(auto start = stage->mdown_object();
+                      start != h)
+            {
+                event.mbutton.started_here = false;
+            }
+        }
         
         /**
          * TODO: This has to happen *after* the whole stuff + parent->mup is happening, otherwise we might delete the object in it's own handler.

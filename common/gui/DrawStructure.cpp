@@ -364,7 +364,7 @@ void Dialog::set_closed() {
     DrawStructure::~DrawStructure() {
         //auto guard = GUI_LOCK(_lock);
         //cmn::Print("* Deselecting ", hex(_selected_object));
-        _selected_object = _hovered_object = nullptr;
+        _selected_object = _hovered_object = _mdown_object = nullptr;
         _active_section = nullptr;
         _root.set_stage(NULL);
         clear();
@@ -571,6 +571,11 @@ void DrawStructure::close_dialogs() {
         if(_hovered_object 
            && (_hovered_object == d || _hovered_object->is_child_of(d)))
             _hovered_object = nullptr;
+        
+        if(_mdown_object
+           && (_mdown_object == d ||
+               _mdown_object->is_child_of(d)))
+            _mdown_object = nullptr;
     }
     
     void DrawStructure::finalize_section(const std::string& name) {
@@ -618,10 +623,23 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* DrawStructure::mouse_down(bool left_button) {
+        bool first_set = false;
+        if(left_button
+           && not mouse_state[0])
+        {
+            first_set = true;
+        }
+        
         mouse_state[left_button ? 0 : 1] = true;
         
         Float2_t x = _mouse_position.x, y = _mouse_position.y;
         auto d = find(x, y);
+        
+        if(not first_set
+           && d != _mdown_object)
+        {
+            return nullptr; /// dont send if we moved the mouse while clicking the button
+        }
         
         Event e(HOVER);
         e.hover.x = x;
@@ -629,6 +647,11 @@ void DrawStructure::close_dialogs() {
         
         do_hover(d, e);
         select(d);
+        
+        if(first_set) {
+            cmn::Print("Mouse down on ", d);
+            _mdown_object = d;
+        }
         
         if(d) {
             d->mdown(x, y, left_button); // ? dragging
@@ -649,6 +672,7 @@ void DrawStructure::close_dialogs() {
             _selected_object->mup(x, y, left_button);
         }
         
+        _mdown_object = nullptr;
         return _selected_object;
     }
     

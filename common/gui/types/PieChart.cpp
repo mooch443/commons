@@ -47,7 +47,7 @@ namespace cmn::gui {
         });
         
         add_event_handler(EventType::MBUTTON, [this](Event e) {
-            if(!e.mbutton.pressed && e.mbutton.button == 0) {
+            if(!e.mbutton.pressed && e.mbutton.button == 0 && e.mbutton.started_here) {
                 if(_hovered_slice != -1)
                     _on_slice_clicked(_hovered_slice, _slices.at(_hovered_slice).name);
             }

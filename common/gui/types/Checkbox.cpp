@@ -11,7 +11,7 @@ namespace cmn::gui {
         
         add_event_handler(HOVER, [this](auto) { this->set_dirty(); });
         add_event_handler(MBUTTON, [this](Event e) {
-            if(e.mbutton.pressed || e.mbutton.button != 0)
+            if(e.mbutton.pressed || e.mbutton.button != 0 || not e.mbutton.started_here)
                 return;
             
             _settings.checked = not _settings.checked;

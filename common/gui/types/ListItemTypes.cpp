@@ -16,7 +16,7 @@ void Item::convert(std::shared_ptr<Rect> r) const {
     r->clear_event_handlers();
     r->set_clickable(true);
     r->add_event_handler(MBUTTON, [this](Event e) {
-        if(e.mbutton.pressed || e.mbutton.button != 0)
+        if(e.mbutton.pressed || e.mbutton.button != 0 || not e.mbutton.started_here)
             return;
         
         _list->on_click(this);

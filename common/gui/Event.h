@@ -167,6 +167,7 @@ namespace cmn::gui {
     struct MouseButtonEvent {
         int button;
         bool pressed;
+        bool started_here;
         Float2_t x, y;
     };
     

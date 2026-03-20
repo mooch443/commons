@@ -356,7 +356,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
         auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action](Event event, const Context& context, State& state)
         {
-            if(event.mbutton.pressed) {
+            if(event.mbutton.pressed && event.mbutton.started_here) {
                 try {
                     std::string_view name = action.name;
                     std::string pattern;

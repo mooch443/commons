@@ -122,6 +122,17 @@ namespace cmn::gui {
             add_event_handler(MBUTTON, [this](Event e){
                 this->set_dirty();
                 
+                if(stage()) {
+                    if(auto h = stage()->hovered_object();
+                       h && h->custom_data("scrollbar") != nullptr)
+                    {
+                        return;
+                    }
+                    
+                    if(not e.mbutton.started_here)
+                        return;
+                }
+                
                 if(!e.mbutton.pressed && e.mbutton.button == 0) {
                     if(_foldable && _folded) {
                         set(Folded_t{false});

@@ -96,6 +96,7 @@ namespace cmn::gui {
         GETTER_PTR(Section*, active_section);
         GETTER_PTR(Drawable*, hovered_object);
         GETTER_PTR(Drawable*, selected_object);
+        GETTER_PTR(Drawable*, mdown_object){nullptr};
 
         GETTER(uint16_t, width);
         GETTER(uint16_t, height);

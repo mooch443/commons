@@ -57,7 +57,7 @@ void Dropdown::init() {
         _button = Button::MakePtr(Str{"Please select..."},  attr::Box(_bounds.size()));
         _button->set_toggleable(true);
         _button->add_event_handler(MBUTTON, [this](Event e){
-            if(!e.mbutton.pressed && e.mbutton.button == 0) {
+            if(!e.mbutton.pressed && e.mbutton.button == 0 && e.mbutton.started_here) {
                 _set_open(not _opened);
             }
         });
