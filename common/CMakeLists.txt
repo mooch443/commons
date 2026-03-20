@@ -1,7 +1,10 @@
 set(RESOURCES_ADDED "")
 
-file(GLOB HDRS video/*.h processing/*.h misc/*.h file/*.h gui/*.h gui/types/*.h gui/dyn/*.h *.h)
-file(GLOB SRCS video/*.cpp processing/*.cpp misc/*.cpp file/*.cpp gui/*.cpp gui/types/*.cpp gui/dyn/*.cpp *.cpp)
+include(${CMAKE_CURRENT_SOURCE_DIR}/CommonsSources.cmake)
+
+set(HDRS ${COMMONS_PUBLIC_HEADERS})
+set(SRCS ${COMMONS_CPP_SOURCES})
+set(COMMONS_MODULE_FILES ${COMMONS_MODULE_INTERFACE_UNITS})
 
 file(GLOB HASH_HDR ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map/*.hpp)
 
@@ -31,12 +34,30 @@ if(APPLE)
    message(STATUS "Adding MacProgressBar")
 endif()
 
-if(COMMONS_BUILD_HTTPD)
-	file(GLOB _HDRS http/*.h)
-	file(GLOB _SRCS http/*.cpp)
-	
-	set(HDRS ${HDRS} ${_HDRS})
-	set(SRCS ${SRCS} ${_SRCS})
+if(NOT COMMONS_BUILD_HTTPD)
+    list(REMOVE_ITEM HDRS http/httpd.h)
+    list(REMOVE_ITEM SRCS http/httpd.cpp)
+    list(REMOVE_ITEM COMMONS_MODULE_FILES modules/commons.http.cppm)
+endif()
+
+if(COMMONS_ENABLE_MODULES)
+    if(${CMAKE_VERSION} VERSION_LESS "3.28.0")
+        message(FATAL_ERROR "COMMONS_ENABLE_MODULES requires CMake 3.28 or newer.")
+    endif()
+
+    if(NOT CMAKE_GENERATOR MATCHES "^(Ninja|Ninja Multi-Config|Visual Studio 17 2022)$")
+        message(FATAL_ERROR
+            "COMMONS_ENABLE_MODULES is not supported with the '${CMAKE_GENERATOR}' generator. "
+            "Current CMake C++ module support requires Ninja, Ninja Multi-Config, or Visual Studio 17 2022. "
+            "Use -G Ninja (or disable COMMONS_ENABLE_MODULES)."
+        )
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND NOT COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES)
+        message(FATAL_ERROR "COMMONS_ENABLE_MODULES is experimental on GCC. Reconfigure with -DCOMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES=ON or use the legacy header build.")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        message(WARNING "Building commons modules with GCC in experimental mode.")
+    endif()
 endif()
 
 # to include generated moc headers, since they are generated in binary dir
@@ -45,14 +66,32 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
 target_include_directories(commons PUBLIC 
-    "${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include")
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+    "$<INSTALL_INTERFACE:include/commons>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+
+if(COMMONS_ENABLE_MODULES)
+    target_sources(commons
+        PUBLIC
+            FILE_SET commons_headers TYPE HEADERS
+            BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+            FILES ${HDRS}
+        PUBLIC
+            FILE_SET commons_modules TYPE CXX_MODULES
+            BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+            FILES ${COMMONS_MODULE_FILES}
+    )
+endif()
 
 foreach(FILE ${HASH_HDR})
     source_group("hash_map" FILES "${FILE}")
 endforeach()
 
-foreach(FILE ${SRCS} ${HDRS}) 
+install(FILES ${HASH_HDR} DESTINATION include/commons COMPONENT devel)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include/robin_hood.h" DESTINATION include/commons COMPONENT devel)
+
+foreach(FILE ${SRCS} ${HDRS} ${COMMONS_MODULE_FILES}) 
     # Get the directory of the source file
     get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
 
@@ -64,6 +103,8 @@ foreach(FILE ${SRCS} ${HDRS})
 
     # Group into "Source Files" and "Header Files"
     if ("${FILE}" MATCHES ".*\\.cpp")
+       set(GROUP "${GROUP}")
+    elseif("${FILE}" MATCHES ".*\\.cppm")
        set(GROUP "${GROUP}")
     elseif("${FILE}" MATCHES ".*\\.h")
        set(GROUP "${GROUP}")
@@ -102,7 +143,7 @@ target_link_libraries(commons
 option(COMMONS_DONT_USE_PCH OFF)
 if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
     message("Please consider to switch to CMake 3.16.0")
-elseif(NOT COMMONS_DONT_USE_PCH)
+elseif(NOT COMMONS_DONT_USE_PCH AND NOT COMMONS_ENABLE_MODULES)
     target_precompile_headers(commons
       PUBLIC
         commons.pc.h

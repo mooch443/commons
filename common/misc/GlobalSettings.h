@@ -10,11 +10,11 @@
 #undef min
 #endif
 
-#define SETTING(NAME) (cmn::GlobalSettings::get(#NAME))
-#define BOOL_SETTING(NAME) (cmn::GlobalSettings::read_value_with_default(#NAME, false))
-#define OPTIONAL_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ))
-#define READ_SETTING(NAME, ...) (cmn::GlobalSettings::read_value< __VA_ARGS__ >( #NAME ).value())
-#define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::GlobalSettings::read_value_with_default( #NAME , __VA_ARGS__ ))
+#define SETTING(NAME) (cmn::setting(#NAME))
+#define BOOL_SETTING(NAME) (cmn::bool_setting(#NAME))
+#define OPTIONAL_SETTING(NAME, ...) (cmn::optional_setting< __VA_ARGS__ >( #NAME ))
+#define READ_SETTING(NAME, ...) (cmn::read_setting< __VA_ARGS__ >( #NAME ))
+#define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::read_setting_with_default( #NAME , __VA_ARGS__ ))
 
 namespace cmn {
     /*namespace detail {
@@ -599,6 +599,31 @@ namespace cmn {
         
         extern g_GSettingsSingletonStruct g_GSettingsSingleton;
     }*/
+}
+
+namespace cmn {
+    inline sprite::Reference setting(std::string_view name) {
+        return GlobalSettings::_get(name);
+    }
+
+    inline bool bool_setting(std::string_view name) {
+        return GlobalSettings::read_value_with_default(name, false);
+    }
+
+    template<typename T>
+    inline auto optional_setting(std::string_view name) {
+        return GlobalSettings::read_value<T>(name);
+    }
+
+    template<typename T>
+    inline auto read_setting(std::string_view name) {
+        return GlobalSettings::read_value<T>(name).value();
+    }
+
+    template<typename T>
+    inline auto read_setting_with_default(std::string_view name, T&& default_value) {
+        return GlobalSettings::read_value_with_default(name, std::forward<T>(default_value));
+    }
 }
 
 #endif //_GLOBALSETTINGS_H

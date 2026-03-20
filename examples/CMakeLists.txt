@@ -74,6 +74,14 @@ if(NOT COMMONS_NO_PYTHON)
     )
 endif()
 
+if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
+    add_executable(
+        modules_smoke
+        modules_smoke.cpp
+    )
+    target_link_libraries(modules_smoke PRIVATE commons)
+endif()
+
 function(copy_resources EXEC_NAME FILES)
     foreach(comp ${FILES})
         get_filename_component(comp_abs ${comp} ABSOLUTE)  # Get absolute path

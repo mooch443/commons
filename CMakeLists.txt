@@ -35,6 +35,8 @@ option(COMMONS_CONDA_PACKAGE_INSTALL OFF)
 option(CMN_USE_OPENGL2 OFF)
 option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
+option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
+option(COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES "Allow the commons module build on GCC in experimental mode." OFF)
 option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
@@ -1748,16 +1750,34 @@ endif()
 
 message(STATUS "ZLIB: ${COMMONS_BUILD_ZLIB} ${COMMONS_BUILD_ZIP} ${LIBZIP_LIBRARY}")
 
-INSTALL(TARGETS "commons"
-EXPORT "commonsTargets" 
-ARCHIVE DESTINATION lib COMPONENT libs
-RUNTIME DESTINATION bin COMPONENT libs
-LIBRARY DESTINATION lib COMPONENT libs
-PUBLIC_HEADER DESTINATION include/${PROJECT_NAME} COMPONENT devel
-INCLUDES DESTINATION include
+if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
+    install(TARGETS "commons"
+        EXPORT "commonsTargets"
+        ARCHIVE DESTINATION lib COMPONENT libs
+        RUNTIME DESTINATION bin COMPONENT libs
+        LIBRARY DESTINATION lib COMPONENT libs
+        FILE_SET commons_headers DESTINATION include/commons COMPONENT devel
+        FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
+        INCLUDES DESTINATION include/commons
+    )
+else()
+    INSTALL(TARGETS "commons"
+        EXPORT "commonsTargets"
+        ARCHIVE DESTINATION lib COMPONENT libs
+        RUNTIME DESTINATION bin COMPONENT libs
+        LIBRARY DESTINATION lib COMPONENT libs
+        INCLUDES DESTINATION include
+    )
+endif()
+
+install(
+    EXPORT commonsTargets
+    FILE commonsTargets.cmake
+    NAMESPACE Commons::
+    DESTINATION lib/cmake/commons
 )
 
-target_include_directories(commons PUBLIC ${dialogs_SOURCE_DIR})
+target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
 message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
 
 if(WIN32)

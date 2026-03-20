@@ -258,6 +258,12 @@ public:
 static_assert(false, "OpenCV version insufficient.");
 #endif
 
+#ifdef IN_MODULE_INTERFACE
+#define CMN_MODULE_EXPORT export
+#else
+#define CMN_MODULE_EXPORT
+#endif
+
 
 #define UNUSED(X) (std::ignore = X)
 #include <expected>
@@ -404,8 +410,10 @@ using remove_cvref_t = std::remove_cvref_t<T>;
 #endif
     
 #ifdef USE_GPU_MAT
+    inline constexpr bool use_gpu_mat = true;
     typedef cv::UMat gpuMat;
 #else
+    inline constexpr bool use_gpu_mat = false;
     typedef cv::Mat gpuMat;
 #endif
     
