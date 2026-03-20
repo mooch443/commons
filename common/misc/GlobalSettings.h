@@ -389,6 +389,21 @@ namespace cmn {
             });
         }
         template<typename T>
+        static auto read_deref_value(std::string_view name) {
+            auto v = read([name](const Configuration& c) {
+                if constexpr (std::same_as<T, NoType>)
+                    return read_without_type(c.values, name);
+                else
+                    return get_with_type<T>(c.values, name);
+            });
+#ifndef NDEBUG
+            if (not v.has_value()) {
+                throw RuntimeError("Cannot dereference value for setting: ", name, " and type ", cmn::type_name<T>(), " where v is of type ", cmn::type_name<decltype(v)>());
+            }
+#endif
+            return v.value();
+        }
+        template<typename T>
         static auto write_value(std::string_view name) {
             return write([name](Configuration& c) {
                 if constexpr(std::same_as<T, NoType>)
@@ -617,7 +632,7 @@ namespace cmn {
 
     template<typename T>
     inline auto read_setting(std::string_view name) {
-        return GlobalSettings::read_value<T>(name).value();
+        return GlobalSettings::read_deref_value<T>(name);
     }
 
     template<typename T>
