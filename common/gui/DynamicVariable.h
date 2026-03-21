@@ -12,6 +12,16 @@ namespace cmn::gui::dyn {
 template<typename... _Args>
 class VarBase;
 
+using type_info_t = std::conditional_t<commons_is_shared_library(), std::type_index, const std::type_info* const>;
+template<typename T, typename K = std::remove_cvref_t<T>>
+constexpr auto get_runtime_type() {
+    if constexpr(commons_is_shared_library()) {
+        return std::type_index(typeid(K));
+    } else {
+        return (const std::type_info* const)&typeid(K);
+    }
+}
+
 template<typename T>
 concept reference = (std::is_lvalue_reference_v<T> &&
                      !std::is_const_v<std::remove_reference_t<T>>);
@@ -31,7 +41,7 @@ private:
     using Base_t = VarBase<arg_types...>;
     
     /// Human-readable string representing the type of 'return_type'.
-    static constexpr const std::type_info* const _type_info = &typeid(return_type);
+    static inline const auto _type_info = get_runtime_type<return_type>();
     static constexpr std::string_view refcode = cmn::type_name<return_type>();
     
 protected:
@@ -53,7 +63,7 @@ public:
     {
         assert(static_cast<bool>(function) && "Variable constructed with empty function");
         
-        if constexpr(is_container<return_type>::value) {
+        if constexpr(is_container<std::remove_cvref_t<return_type>>::value) {
             this->_is_vector = true;
         }
         
@@ -128,7 +138,7 @@ class VarBase {
 protected:
     /// The type of the derived class, as a string_view.
     const std::string_view type;
-    const std::type_info* const _type_info;
+    const type_info_t _type_info;
     const bool is_ref;
     const bool is_const_ref;
     bool _is_vector{false};
@@ -139,7 +149,7 @@ public:
     std::function<glz::json_t(_Args...)> value_json;
     
 public:
-    VarBase(std::string_view type, const std::type_info* const type_info, bool is_ref, bool is_const_ref)
+    VarBase(std::string_view type, type_info_t type_info, bool is_ref, bool is_const_ref)
         : type(type), _type_info(type_info), is_ref(is_ref), is_const_ref(is_const_ref)
     {
         //Print("Creating variable ", demangle(type_info->name()), " == ", type);
@@ -153,22 +163,34 @@ public:
     */
     template<typename T>
     constexpr bool is() const noexcept {
-        static constexpr const std::type_info* const other = &typeid(T);
-        //Print("Creating variable ", demangle(other->name()), " == ", type, " vs ", type_name<T>());
+        static const auto other = get_runtime_type<T>();
+        static_assert(not reference<T> && not const_reference<T>, "Always pass a plain type.");
+        
         if constexpr(std::same_as<glz::json_t, T>) {
             return _type_info == other
                     || value_json != nullptr;
         } else
             return _type_info == other;
-        //return type == type_name<T>();
     }
     
     template<typename T>
     constexpr bool is_strict() const noexcept {
-        static constexpr const std::type_info* const other = &typeid(T);
-        //Print("Creating variable ", demangle(other->name()), " == ", type, " vs ", type_name<T>());
+        static const auto other = get_runtime_type<T>();
+        if constexpr(reference<T>) {
+            if(not is_ref)
+                return false;
+
+        } else if(is_ref)
+            return false;
+        
+        if constexpr(const_reference<T>) {
+            if(not is_const_ref)
+                return false;
+                
+        } else if(is_const_ref)
+            return false;
+        
         return _type_info == other;
-        //return type == type_name<T>();
     }
     
     /**
@@ -221,9 +243,9 @@ public:
                 const Variable<T&, _Args...>*,
                 const Variable<T, _Args...>*>
         >;
-        
+
         assert(dynamic_cast<Target_t>(this) != nullptr);
-        //Print("Fetching ", cmn::type_name<Target_t>());
+        //assert((is_strict<T>() || is<T>()) && "Variable accessed with incompatible type.");
         return static_cast<Target_t>(this)->get(std::forward<_Args>(args)...);
     }
     

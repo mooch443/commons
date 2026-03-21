@@ -126,8 +126,11 @@ set(CMAKE_DEBUG_POSTFIX -d)
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+    if(COMMONS_LIBRARY_TYPE STREQUAL "STATIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+        message(STATUS "Using hidden visibility for non-shared library build on Apple Clang.")
+    endif()
     if(APPLE)
         foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
             if(NOT ${flag_var} MATCHES "-Wl,-undefined,error")
@@ -260,7 +263,9 @@ elseif(NOT COMMONS_FOR_JS)
 endif()
 
 if(APPLE)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
+    foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+        set(${flag_var} "${${flag_var}} -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
+    endforeach()
     
     find_library(COCOA_LIBRARY Cocoa)
     find_library(IOKIT_LIBRARY IOKit)
@@ -299,7 +304,9 @@ if(APPLE)
             ${METALKIT_LIBRARY}
             ${METAL_LIBRARY}
         )
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Metal")
+        foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+            set(${flag_var} "${${flag_var}} -framework Metal")
+        endforeach()
     endif()
     
     #message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
@@ -375,7 +382,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${M1OPTIONS} -O3 -flto -ffunction-sections -fdata-sections ${TREX_WARNING_FLAGS}")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g ${C_SANITIZE_OPTIONS} -fno-omit-frame-pointer")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-c++98-compat-pedantic")
-    message(STATUS "hidden visibility in main project ${CMAKE_CXX_FLAGS}")
     message(STATUS "Apple Silicon: ${CMAKE_SYSTEM_PROCESSOR} -> ${M1OPTIONS}")
     
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-nullability-extension")
@@ -484,19 +490,28 @@ set(ORIGINAL_C_FLAGS "${CMAKE_C_FLAGS} ${disable_warnings_flags}")
 message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
 message(STATUS "ORIGINAL_C_FLAGS=${ORIGINAL_C_FLAGS}")
 
+set(COMMONS_SUBPROJECT_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
+set(COMMONS_SUBPROJECT_C_FLAGS "${ORIGINAL_C_FLAGS}")
+if(CONDA_PREFIX)
+    string(REPLACE "-isystem ${CONDA_PREFIX}/include" "" COMMONS_SUBPROJECT_CXX_FLAGS "${COMMONS_SUBPROJECT_CXX_FLAGS}")
+    string(REPLACE "-isystem ${CONDA_PREFIX}/include" "" COMMONS_SUBPROJECT_C_FLAGS "${COMMONS_SUBPROJECT_C_FLAGS}")
+    string(STRIP "${COMMONS_SUBPROJECT_CXX_FLAGS}" COMMONS_SUBPROJECT_CXX_FLAGS)
+    string(STRIP "${COMMONS_SUBPROJECT_C_FLAGS}" COMMONS_SUBPROJECT_C_FLAGS)
+endif()
+
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.10
     -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
     -DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}
     -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
     -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
-    -DCMAKE_C_FLAGS:STRING=${ORIGINAL_C_FLAGS}
+    -DCMAKE_C_FLAGS:STRING=${COMMONS_SUBPROJECT_C_FLAGS}
     -DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}
     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_C_FLAGS_RELWITHDEBINFO}
     -DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}
     #-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-    -DCMAKE_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}
+    -DCMAKE_CXX_FLAGS=${COMMONS_SUBPROJECT_CXX_FLAGS}
     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
@@ -1615,6 +1630,7 @@ endif()
     endif()
 
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4)
     target_include_directories(Commons::OpenCV INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
       "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
@@ -1671,7 +1687,7 @@ endif()
     else()
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
-          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
           INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     endif()
@@ -1681,9 +1697,6 @@ get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTO
 foreach(dir ${dirs})
   message(STATUS "dir='${dir}'")
 endforeach()
-
-
-message(STATUS "hidden visibility in commons project ${CMAKE_CXX_FLAGS}")
 
 add_library(Commons::HTTPD INTERFACE IMPORTED GLOBAL)
 if(COMMONS_BUILD_HTTPD)

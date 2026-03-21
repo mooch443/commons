@@ -6,6 +6,12 @@ set(HDRS ${COMMONS_PUBLIC_HEADERS})
 set(SRCS ${COMMONS_CPP_SOURCES})
 set(COMMONS_MODULE_FILES ${COMMONS_MODULE_INTERFACE_UNITS})
 
+if(TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    set(COMMONS_LIBRARY_TYPE SHARED)
+else()
+    set(COMMONS_LIBRARY_TYPE STATIC)
+endif()
+
 file(GLOB HASH_HDR ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map/*.hpp)
 
 message(STATUS "hash_map: ${HASH_HDR} ${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map")
@@ -63,13 +69,30 @@ endif()
 # to include generated moc headers, since they are generated in binary dir
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_library(commons STATIC ${SRCS} ${HDRS} ${HASH_HDR})
+add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
 target_include_directories(commons PUBLIC 
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<INSTALL_INTERFACE:include/commons>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+
+if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
+    target_compile_definitions(commons PRIVATE TREX_EXPORTS)
+    target_compile_definitions(commons PUBLIC COMMONS_IS_SHARED_LIBRARY=1)
+else()
+    target_compile_definitions(commons PUBLIC COMMONS_IS_SHARED_LIBRARY=0)
+endif()
+
+if(APPLE AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    set_target_properties(commons PROPERTIES
+        CXX_VISIBILITY_PRESET default
+        C_VISIBILITY_PRESET default
+        VISIBILITY_INLINES_HIDDEN OFF
+    )
+    target_compile_options(commons PRIVATE -fvisibility=default)
+    target_link_options(commons PRIVATE "-Wl,-undefined,error")
+endif()
 
 if(COMMONS_ENABLE_MODULES)
     target_sources(commons
@@ -164,14 +187,30 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
             get_filename_component(osx_dir ${CMAKE_OSX_SYSROOT} NAME)
             string(REPLACE ".sdk" "" osx_dir ${osx_dir})
             string(REPLACE "MacOSX" "" osx_dir ${osx_dir})
+            if("${osx_dir}" STREQUAL "")
+                # Some SDK discovery paths can resolve to an empty version suffix.
+                # Fall back to the explicit deployment target if available.
+                set(osx_dir "${CMAKE_OSX_DEPLOYMENT_TARGET}")
+            endif()
             message(STATUS "OSX Target: ${osx_dir}")
             set(COMMONS_MACOS_VERSION ${osx_dir})
-            string(REPLACE "." ";" VERSION_LIST ${osx_dir})
-            list(GET VERSION_LIST 0 COMMONS_MACOS_VERSION_MAJOR)
-            list(GET VERSION_LIST 1 COMMONS_MACOS_VERSION_MINOR)
-            target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MAJOR=${COMMONS_MACOS_VERSION_MAJOR})
-            target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MINOR=${COMMONS_MACOS_VERSION_MINOR})
-            message(STATUS "OSX Major: ${COMMONS_MACOS_VERSION_MAJOR}, Minor: ${COMMONS_MACOS_VERSION_MINOR}")
+            if(NOT "${osx_dir}" STREQUAL "")
+                string(REPLACE "." ";" VERSION_LIST "${osx_dir}")
+                list(LENGTH VERSION_LIST VERSION_LIST_LEN)
+                if(VERSION_LIST_LEN GREATER 0)
+                    list(GET VERSION_LIST 0 COMMONS_MACOS_VERSION_MAJOR)
+                endif()
+                if(VERSION_LIST_LEN GREATER 1)
+                    list(GET VERSION_LIST 1 COMMONS_MACOS_VERSION_MINOR)
+                else()
+                    set(COMMONS_MACOS_VERSION_MINOR 0)
+                endif()
+                target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MAJOR=${COMMONS_MACOS_VERSION_MAJOR})
+                target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MINOR=${COMMONS_MACOS_VERSION_MINOR})
+                message(STATUS "OSX Major: ${COMMONS_MACOS_VERSION_MAJOR}, Minor: ${COMMONS_MACOS_VERSION_MINOR}")
+            else()
+                message(WARNING "Could not determine macOS version from sysroot or deployment target.")
+            endif()
         endif()
     endif()
 endif()

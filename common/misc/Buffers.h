@@ -1,5 +1,6 @@
 #pragma once
 #include <commons.pc.h>
+#include <misc/Image.h>
 //#undef NDEBUG
 //#define DEBUG_BUFFER_IMAGES 1
 

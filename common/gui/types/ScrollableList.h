@@ -6,6 +6,7 @@
 #include <gui/types/Tooltip.h>
 #include <gui/DrawStructure.h>
 #include <gui/ListAttributes.h>
+#include <gui/types/ListItemTypes.h>
 
 namespace cmn::gui {
     /*
@@ -52,7 +53,7 @@ namespace cmn::gui {
 
     template <typename T = std::string>
     requires list_compatible_item<T>
-    class ScrollableList : public Entangled {
+    class TREX_TYPE_EXPORT ScrollableList : public Entangled {
         ItemPadding_t _item_padding;
         ItemFont_t _item_font{ Font(0.75) };
         DetailFont_t _detail_font{ Font(0.55) };
@@ -1019,5 +1020,10 @@ namespace cmn::gui {
             }
         }
     };
-}
 
+    extern template class ScrollableList<std::string>;
+    extern template class ScrollableList<TextItem>;
+    extern template class ScrollableList<DetailItem>;
+    extern template class ScrollableList<DetailTooltipItem>;
+
+}

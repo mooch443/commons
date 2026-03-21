@@ -1,12 +1,23 @@
 #ifndef VIDEO_TYPES_H
 #define VIDEO_TYPES_H
 
-#ifndef WIN32
+#if !defined(_WIN32) && !defined(WIN32)
     #if __cplusplus <= 199711L
       #error This library needs at least a C++11 compliant compiler
     #endif
 
-    #define TREX_EXPORT
+    #if defined(TREX_EXPORTS)
+        #define TREX_EXPORT __attribute__((visibility("default")))
+    #else
+        #define TREX_EXPORT
+    #endif
+
+    #if defined(__APPLE__) && defined(__clang__)
+        #define TREX_TYPE_EXPORT __attribute__((visibility("default"), type_visibility("default")))
+    #else
+        #define TREX_TYPE_EXPORT TREX_EXPORT
+    #endif
+
     #define EXPIMP_TEMPLATE
 
 #else
@@ -17,7 +28,23 @@
         #define TREX_EXPORT __declspec(dllimport)
         #define EXPIMP_TEMPLATE extern
     #endif
+
+    #define TREX_TYPE_EXPORT TREX_EXPORT
 #endif
+
+#ifndef COMMONS_IS_SHARED_LIBRARY
+    #define COMMONS_IS_SHARED_LIBRARY 0
+#endif
+
+namespace cmn {
+consteval bool commons_is_shared_library() {
+#if COMMONS_IS_SHARED_LIBRARY
+    return true;
+#else
+    return false;
+#endif
+}
+}
 
 
 #include <misc/metastring.h>

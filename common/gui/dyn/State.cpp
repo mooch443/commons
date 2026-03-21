@@ -493,7 +493,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
     
     if(context.has(obj.variable, state)) {
         auto loop_variable = context.variable(obj.variable, state);
-        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(loop_variable->is_strict<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
             
             IndexScopeHandler handler{state._current_index};
@@ -597,7 +597,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
 
     if(context.has(props.name, state)) {
         auto loop_variable = context.variable(props.name, state);
-        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(loop_variable->is_strict<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
             
             //IndexScopeHandler handler{state._current_index};
