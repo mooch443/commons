@@ -1,6 +1,4 @@
 #include "Image.h"
-#include <png.h>
-#include <file/Path.h>
 #include <misc/colors.h>
 #include <misc/stacktrace.h>
 
@@ -214,86 +212,6 @@ namespace cmn {
         _custom_data = std::unique_ptr<CustomData>(ptr);
     }
 
-    Image::Ptr from_png(const file::Path& path) {
-        int width, height;
-        png_byte color_type;
-        png_byte bit_depth;
-        png_bytep *row_pointers;
-
-        auto fp = path.fopen("rb");
-
-        struct PNGReadGuard {
-            png_structp png{nullptr};
-            png_infop info{nullptr};
-
-            ~PNGReadGuard() {
-                if (png) {
-                    png_destroy_read_struct(&png, &info, nullptr);
-                }
-            }
-        } guard;
-
-        guard.png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-        if(!guard.png) abort();
-
-        guard.info = png_create_info_struct(guard.png);
-        if(!guard.info) abort();
-
-        if(setjmp(png_jmpbuf(guard.png))) abort();
-
-        png_init_io(guard.png, fp.get());
-        png_read_info(guard.png, guard.info);
-
-        width      = png_get_image_width(guard.png, guard.info);
-        height     = png_get_image_height(guard.png, guard.info);
-        color_type = png_get_color_type(guard.png, guard.info);
-        bit_depth  = png_get_bit_depth(guard.png, guard.info);
-
-        if(bit_depth == 16)
-            png_set_strip_16(guard.png);
-
-        if(color_type == PNG_COLOR_TYPE_PALETTE)
-            png_set_palette_to_rgb(guard.png);
-
-        if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-            png_set_expand_gray_1_2_4_to_8(guard.png);
-
-        if(png_get_valid(guard.png, guard.info, PNG_INFO_tRNS))
-            png_set_tRNS_to_alpha(guard.png);
-
-        if(color_type == PNG_COLOR_TYPE_RGB ||
-           color_type == PNG_COLOR_TYPE_GRAY ||
-           color_type == PNG_COLOR_TYPE_PALETTE)
-            png_set_filler(guard.png, 0xFF, PNG_FILLER_AFTER);
-
-        if(color_type == PNG_COLOR_TYPE_GRAY ||
-           color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
-            png_set_gray_to_rgb(guard.png);
-
-        png_read_update_info(guard.png, guard.info);
-
-        row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
-        for(int y = 0; y < height; y++) {
-            row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(guard.png, guard.info));
-        }
-
-        png_read_image(guard.png, row_pointers);
-
-        static_assert(sizeof(png_byte) == sizeof(uchar), "Must be the same.");
-
-        auto ptr = Image::Make(height, width, 4);
-        for(int y = 0; y < height; y++) {
-            png_bytep row = row_pointers[y];
-            memcpy(ptr->data() + y * width * 4, row, width * 4);
-        }
-
-        for(int y = 0; y < height; y++) {
-            free(row_pointers[y]);
-        }
-        free(row_pointers);
-        return ptr;
-    }
-
     Image::Image(Image&& other) noexcept
         : _data(std::move(other._data)),
           _size(other._size),
@@ -423,62 +341,6 @@ namespace cmn {
     cv::Mat Image::get() const {
         assert(_size == rows * cols * dims * sizeof(uchar));
         return cv::Mat(rows, cols, CV_8UC(dims), data());//, cv::Mat::AUTO_STEP);
-    }
-    
-    struct PNGGuard {
-        png_struct *p;
-        png_info *info;
-        PNGGuard(png_struct *p) : p(p)  {}
-        ~PNGGuard() { if(p) {  png_destroy_write_struct(&p, info ? &info : NULL); } }
-    };
-    
-    static void PNGCallback(png_structp  png_ptr, png_bytep data, png_size_t length) {
-        std::vector<uchar> *p = (std::vector<uchar>*)png_get_io_ptr(png_ptr);
-        p->insert(p->end(), data, data + length);
-    }
-    
-    void to_png(const Image& _input, std::vector<uchar>& output) {
-        if(_input.dims < 4 && _input.dims != 1 && _input.dims != 2)
-            throw U_EXCEPTION("Currently, only RGBA and GRAY is supported.");
-        
-        Image::Ptr tmp;
-        const Image *input = &_input;
-        if (_input.dims == 2) {
-            std::vector<cv::Mat> vector;
-            cv::split(_input.get(), vector);
-            cv::Mat image;
-            cv::merge(std::vector<cv::Mat>{vector[0], vector[0], vector[0], vector[1]}, image);
-            tmp = Image::Make(image);
-            input = tmp.get();
-        }
-        
-        output.clear();
-        output.reserve(sizeof(png_byte) * input->cols * input->rows * input->dims);
-        
-        png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-        if(!p)
-            throw U_EXCEPTION("png_create_write_struct() failed");
-        PNGGuard PNG(p);
-        
-        png_infop info_ptr = png_create_info_struct(p);
-        if(!info_ptr) {
-            throw U_EXCEPTION("png_create_info_struct() failed");
-        }
-        PNG.info = info_ptr;
-        if(0 != setjmp(png_jmpbuf(p)))
-            throw U_EXCEPTION("setjmp(png_jmpbuf(p) failed");
-        png_set_IHDR(p, info_ptr, input->cols, input->rows, 8,
-                     input->dims == 4 ? PNG_COLOR_TYPE_RGBA : PNG_COLOR_TYPE_GRAY,
-                     PNG_INTERLACE_NONE,
-                     PNG_COMPRESSION_TYPE_DEFAULT,
-                     PNG_FILTER_TYPE_DEFAULT);
-        png_set_compression_level(p, 1);
-        std::vector<uchar*> rows(input->rows);
-        for (size_t y = 0; y < input->rows; ++y)
-            rows[y] = input->data() + y * input->cols * input->dims;
-        png_set_rows(p, info_ptr, rows.data());
-        png_set_write_fn(p, &output, PNGCallback, NULL);
-        png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
     }
     
     template<typename T>

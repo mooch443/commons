@@ -76,15 +76,10 @@ message(STATUS "  ICU_LIBRARIES: ${ICU_LIBRARIES}")
 message(STATUS "  ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
 
 set(COMMONS_FILE_CPP_SOURCES ${SRCS})
-list(FILTER COMMONS_FILE_CPP_SOURCES INCLUDE REGEX "^(file/|misc/(CommandLine|GlobalSettings)\\.cpp$)")
-list(REMOVE_ITEM COMMONS_FILE_CPP_SOURCES
-    file/Path.cpp
-    misc/CommandLine.cpp
-    misc/GlobalSettings.cpp
-)
+list(FILTER COMMONS_FILE_CPP_SOURCES INCLUDE REGEX "^file/")
 
 set(COMMONS_PROCESSING_CPP_SOURCES ${SRCS})
-list(FILTER COMMONS_PROCESSING_CPP_SOURCES INCLUDE REGEX "^(processing/|types\\.cpp$|misc/(PVBlob|PixelTree|ProximityGrid|bid)\\.cpp$)")
+list(FILTER COMMONS_PROCESSING_CPP_SOURCES INCLUDE REGEX "^processing/")
 
 set(COMMONS_VIDEO_CPP_SOURCES ${SRCS})
 list(FILTER COMMONS_VIDEO_CPP_SOURCES INCLUDE REGEX "^video/")
@@ -192,13 +187,16 @@ function(commons_link_layer_external_dependencies target layer visibility)
         target_link_libraries(${target} ${visibility}
             glaze::glaze
             Commons::OpenCV
-            Commons::LibPNG
             cnpy
             Commons::ICU
         )
         if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
             target_link_libraries(${target} ${visibility} atomic pthread m)
         endif()
+    endif()
+
+    if(layer STREQUAL "file" OR layer STREQUAL "monolith")
+        target_link_libraries(${target} ${visibility} Commons::LibPNG)
     endif()
 
     if(layer STREQUAL "video" OR layer STREQUAL "monolith")
@@ -235,6 +233,7 @@ if(COMMONS_SPLIT_ACTIVE)
     add_library(commons_file ${COMMONS_LIBRARY_TYPE} ${COMMONS_FILE_CPP_SOURCES} ${HDRS} ${HASH_HDR})
     commons_configure_target(commons_file)
     target_link_libraries(commons_file PUBLIC commons_misc)
+    commons_link_layer_external_dependencies(commons_file file PUBLIC)
     commons_attach_modules(commons_file ${COMMONS_FILE_MODULE_FILES})
 
     add_library(commons_processing ${COMMONS_LIBRARY_TYPE} ${COMMONS_PROCESSING_CPP_SOURCES} ${HDRS} ${HASH_HDR})
@@ -293,6 +292,7 @@ else()
 
     add_library(commons_file INTERFACE)
     target_link_libraries(commons_file INTERFACE commons_misc)
+    commons_link_layer_external_dependencies(commons_file file INTERFACE)
 
     add_library(commons_processing INTERFACE)
     target_link_libraries(commons_processing INTERFACE commons_file)

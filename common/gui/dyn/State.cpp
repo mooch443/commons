@@ -6,6 +6,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/Passthrough.h>
+#include <misc/Path.h>
 #include <misc/default_settings.h>
 #include <gui/dyn/binders.h>
 

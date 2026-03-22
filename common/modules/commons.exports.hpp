@@ -24,11 +24,9 @@
 #include <misc/ObjectManager.h>
 #include <misc/OptionsList.h>
 #include <misc/PBSettingsMacros.h>
-#include <misc/PVBlob.h>
 #include <misc/PackLambda.h>
-#include <misc/PixelTree.h>
+#include <misc/Path.h>
 #include <misc/ProtectedProperty.h>
-#include <misc/ProximityGrid.h>
 #include <misc/RBSettings.h>
 #include <misc/ReverseAdapter.h>
 #include <misc/SampleInterpolator.h>
@@ -76,11 +74,13 @@
 #include <file/DataFormat.h>
 #include <file/DataLocation.h>
 #include <file/Export.h>
-#include <file/Path.h>
+#include <file/ImageIO.h>
 #include <file/PathArray.h>
 #include <file/ask_for_permission.h>
 
 #include <processing/Background.h>
+#include <processing/BlobIdentity.h>
+#include <processing/BlobWeakPtr.h>
 #include <processing/Brototype.h>
 #include <processing/CPULabeling.h>
 #include <processing/DLList.h>
@@ -89,6 +89,9 @@
 #include <processing/LuminanceGrid.h>
 #include <processing/Node.h>
 #include <processing/PadImage.h>
+#include <processing/PVBlob.h>
+#include <processing/PixelTree.h>
+#include <processing/ProximityGrid.h>
 #include <processing/RawProcessing.h>
 #include <processing/Source.h>
 #include <processing/encoding.h>

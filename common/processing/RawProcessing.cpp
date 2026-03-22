@@ -8,7 +8,7 @@
 #include <processing/PadImage.h>
 #include <misc/ThreadPool.h>
 #include <misc/colors.h>
-#include <misc/PVBlob.h>
+#include <processing/PVBlob.h>
 #include <gui/DrawCVBase.h>
 #include <gui/Graph.h>
 

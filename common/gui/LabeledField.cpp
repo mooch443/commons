@@ -1,4 +1,5 @@
 #include "LabeledField.h"
+#include <file/PathArray.h>
 #include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>

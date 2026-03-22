@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <file/PathArray.h>
 #include <gui/types/Drawable.h>
 
 namespace cmn::gui {

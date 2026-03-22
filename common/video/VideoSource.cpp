@@ -1,6 +1,7 @@
 #include "VideoSource.h"
 #include "Video.h"
-#include <file/Path.h>
+#include <file/PathArray.h>
+#include <misc/Path.h>
 #include <misc/GlobalSettings.h>
 #include <misc/ThreadPool.h>
 #include <misc/Image.h>

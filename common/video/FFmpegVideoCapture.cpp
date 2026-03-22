@@ -1,4 +1,5 @@
 #include "FFmpegVideoCapture.h"
+#include <misc/Path.h>
 #include <misc/Timer.h>
 #include <file/ask_for_permission.h>
 

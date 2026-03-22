@@ -1,7 +1,8 @@
 #include <gui/IMGUIBase.h>
+#include <file/PathArray.h>
 #include <misc/CommandLine.h>
-#include <misc/PVBlob.h>
-#include <file/Path.h>
+#include <processing/PVBlob.h>
+#include <misc/Path.h>
 #include <misc/SpriteMap.h>
 
 #include <misc/format.h>

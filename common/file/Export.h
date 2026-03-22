@@ -2,7 +2,7 @@
 #define _EXPORT_H
 
 #include <commons.pc.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <misc/GlobalSettings.h>
 #include <misc/SpriteMap.h>
 #include <misc/frame_t.h>

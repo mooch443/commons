@@ -3,7 +3,7 @@
 
 #include <commons.pc.h>
 #include <sys/stat.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <misc/CropOffsets.h>
 
 namespace cmn {

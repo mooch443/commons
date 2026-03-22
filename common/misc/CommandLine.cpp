@@ -1,5 +1,6 @@
 #include "CommandLine.h"
 #include <misc/GlobalSettings.h>
+#include <misc/Path.h>
 #if __APPLE__
 #  include <mach-o/dyld.h>
 #endif

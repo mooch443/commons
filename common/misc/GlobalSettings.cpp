@@ -3,6 +3,7 @@
  */
 
 #include "GlobalSettings.h"
+#include <misc/Path.h>
 
 namespace cmn {
 

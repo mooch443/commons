@@ -2,7 +2,7 @@
 
 #include <commons.pc.h>
 #include <misc/colors.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <gui/types/Layout.h>
 #include <misc/PackLambda.h>
 #include <misc/SpriteMap.h>
