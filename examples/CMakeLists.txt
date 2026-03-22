@@ -6,7 +6,7 @@ add_executable(
 )
 
 target_include_directories(test_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-target_link_libraries(test_gui commons)
+target_link_libraries(test_gui Commons::Gui)
 
 if(COMMONS_FOR_JS)
     set_target_properties(test_gui PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --preload-file fonts -s ALLOW_MEMORY_GROWTH=1") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
@@ -19,7 +19,7 @@ add_executable(
 )
 
 target_include_directories(simple_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-target_link_libraries(simple_gui commons )
+target_link_libraries(simple_gui Commons::Gui)
 
 if(COMMONS_FOR_JS)
     set_target_properties(simple_gui PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --preload-file fonts -s ALLOW_MEMORY_GROWTH=1") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
@@ -54,7 +54,7 @@ if(NOT COMMONS_NO_PYTHON)
     )
 
     target_include_directories(test_python PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../common)
-    target_link_libraries(test_python commons)
+    target_link_libraries(test_python Commons::All)
     target_link_libraries(test_python pybind11::pybind11 pybind11::embed pybind11::module)
 
     if(COMMONS_FOR_JS)
@@ -79,7 +79,7 @@ if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
         modules_smoke
         modules_smoke.cpp
     )
-    target_link_libraries(modules_smoke PRIVATE commons)
+    target_link_libraries(modules_smoke PRIVATE Commons::All)
 endif()
 
 function(copy_resources EXEC_NAME FILES)

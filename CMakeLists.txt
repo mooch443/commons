@@ -1748,6 +1748,14 @@ else()
     target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=false)
 endif()
 
+find_package(ICU REQUIRED COMPONENTS uc i18n)
+
+add_library(commons_icu INTERFACE)
+target_link_libraries(commons_icu INTERFACE ${ICU_LIBRARIES})
+target_include_directories(commons_icu INTERFACE ${ICU_INCLUDE_DIRS})
+set_target_properties(commons_icu PROPERTIES EXPORT_NAME ICU)
+add_library(Commons::ICU ALIAS commons_icu)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/cnpy)
 
@@ -1771,32 +1779,49 @@ endif()
 
 message(STATUS "ZLIB: ${COMMONS_BUILD_ZLIB} ${COMMONS_BUILD_ZIP} ${LIBZIP_LIBRARY}")
 
-if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
-    install(TARGETS "commons"
-        EXPORT "commonsTargets"
-        ARCHIVE DESTINATION lib COMPONENT libs
-        RUNTIME DESTINATION bin COMPONENT libs
-        LIBRARY DESTINATION lib COMPONENT libs
-        FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
-    )
-elseif(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
-    install(TARGETS
+set(COMMONS_INSTALL_BINARY_TARGETS commons)
+set(COMMONS_INSTALL_EXPORT_ONLY_TARGETS
+    commons_misc
+    commons_file
+    commons_processing
+    commons_video
+    commons_gui
+    commons_all
+    commons_icu
+)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    set(COMMONS_INSTALL_BINARY_TARGETS
         commons_misc
         commons_file
         commons_processing
         commons_video
         commons_gui
+    )
+    list(REMOVE_ITEM COMMONS_INSTALL_EXPORT_ONLY_TARGETS
+        commons_misc
+        commons_file
+        commons_processing
+        commons_video
+        commons_gui
+    )
+    if(COMMONS_ENABLE_MODULES)
+        list(APPEND COMMONS_INSTALL_BINARY_TARGETS commons)
+    else()
+        list(APPEND COMMONS_INSTALL_EXPORT_ONLY_TARGETS commons)
+    endif()
+endif()
+
+if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
+    install(TARGETS ${COMMONS_INSTALL_BINARY_TARGETS}
         EXPORT "commonsTargets"
         ARCHIVE DESTINATION lib COMPONENT libs
         RUNTIME DESTINATION bin COMPONENT libs
         LIBRARY DESTINATION lib COMPONENT libs
         INCLUDES DESTINATION include
-    )
-    install(TARGETS commons
-        EXPORT "commonsTargets"
+        FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
     )
 else()
-    INSTALL(TARGETS "commons"
+    install(TARGETS ${COMMONS_INSTALL_BINARY_TARGETS}
         EXPORT "commonsTargets"
         ARCHIVE DESTINATION lib COMPONENT libs
         RUNTIME DESTINATION bin COMPONENT libs
@@ -1804,6 +1829,10 @@ else()
         INCLUDES DESTINATION include
     )
 endif()
+
+install(TARGETS ${COMMONS_INSTALL_EXPORT_ONLY_TARGETS}
+    EXPORT "commonsTargets"
+)
 
 install(
     EXPORT commonsTargets
@@ -1812,26 +1841,15 @@ install(
     DESTINATION lib/cmake/commons
 )
 
-if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
     target_include_directories(commons_gui PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+    if(COMMONS_ENABLE_MODULES)
+        target_include_directories(commons PRIVATE "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+    endif()
 else()
     target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
 endif()
 message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
-
-set(COMMONS_PUBLIC_INCLUDE_DIRS
-    "${CMAKE_CURRENT_SOURCE_DIR}/common"
-    "${CMAKE_CURRENT_SOURCE_DIR}/common/../flat_hash_map"
-    "${CMAKE_CURRENT_SOURCE_DIR}/common/../robin-hood-hashing/src/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cnpy"
-    "${CMAKE_CURRENT_SOURCE_DIR}/cnpy/extern/libzippp"
-    "${glaze_PATH}/include"
-    ${OpenCV_INCLUDE_DIRS}
-    ${LIBZIP_INCLUDE_DIR}
-    ${ICU_INCLUDE_DIRS}
-    CACHE INTERNAL "Common include directories exported by commons"
-    FORCE
-)
 
 if(WIN32)
     if(COMMONS_BUILD_OPENCV)
@@ -1841,8 +1859,13 @@ if(WIN32)
     endif()
 endif()
 
-if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
-    export(TARGETS commons commons_misc commons_file commons_processing commons_video commons_gui cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
-else()
-    export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
-endif()
+set(COMMONS_BUILD_EXPORT_TARGETS
+    ${COMMONS_INSTALL_BINARY_TARGETS}
+    ${COMMONS_INSTALL_EXPORT_ONLY_TARGETS}
+    cnpy
+    imgui
+    glaze_glaze
+    ${pybind11_LIBRARY}
+)
+list(REMOVE_DUPLICATES COMMONS_BUILD_EXPORT_TARGETS)
+export(TARGETS ${COMMONS_BUILD_EXPORT_TARGETS} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )

@@ -69,9 +69,6 @@ endif()
 # to include generated moc headers, since they are generated in binary dir
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# Find ICU package early so the layer target helpers can use the result.
-find_package(ICU REQUIRED COMPONENTS uc i18n)
-
 # Output ICU variables for debugging
 message(STATUS "Found ICU:")
 message(STATUS "  ICU_VERSION: ${ICU_VERSION}")
@@ -110,23 +107,40 @@ list(REMOVE_ITEM COMMONS_MISC_CPP_SOURCES
     ${COMMONS_GUI_CPP_SOURCES}
 )
 
+set(COMMONS_TYPES_MODULE_FILES
+    modules/commons.types.cppm
+)
+set(COMMONS_MISC_MODULE_FILES
+    modules/commons.misc.cppm
+)
+set(COMMONS_FILE_MODULE_FILES
+    modules/commons.file.cppm
+)
+set(COMMONS_PROCESSING_MODULE_FILES
+    modules/commons.processing.cppm
+)
+set(COMMONS_VIDEO_MODULE_FILES
+    modules/commons.video.cppm
+)
+set(COMMONS_GUI_MODULE_FILES
+    modules/commons.gui.cppm
+    modules/commons.gui.dyn.cppm
+)
+if(COMMONS_BUILD_HTTPD)
+    list(APPEND COMMONS_GUI_MODULE_FILES modules/commons.http.cppm)
+endif()
+set(COMMONS_ALL_MODULE_FILES
+    modules/commons.cppm
+)
+
 function(commons_configure_target target)
     target_include_directories(${target} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>"
-        "$<BUILD_INTERFACE:${glaze_PATH}/include>"
-        "$<TARGET_PROPERTY:cnpy,INTERFACE_INCLUDE_DIRECTORIES>"
-        "$<TARGET_PROPERTY:Commons::OpenCV,INTERFACE_INCLUDE_DIRECTORIES>")
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
 
     if(NOT COMMONS_ENABLE_MODULES)
         target_include_directories(${target} PUBLIC "$<INSTALL_INTERFACE:include/commons>")
-    endif()
-
-    if(COMMONS_ENABLE_MODULES)
-        target_include_directories(${target} PRIVATE ${ICU_INCLUDE_DIRS})
-    else()
-        target_include_directories(${target} PUBLIC ${ICU_INCLUDE_DIRS})
     endif()
 
     if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
@@ -151,78 +165,110 @@ function(commons_configure_target target)
     endif()
 endfunction()
 
-function(commons_link_dependencies target layer)
-    target_link_libraries(${target} PUBLIC
-        cnpy
-        Commons::OpenCV
-        Commons::LibPNG
-        Commons::LibZIP
-        Commons::LibZ
-        ${ICU_LIBRARIES}
-    )
+function(commons_register_public_target target export_name)
+    set_target_properties(${target} PROPERTIES EXPORT_NAME ${export_name})
+    if(NOT TARGET Commons::${export_name})
+        add_library(Commons::${export_name} ALIAS ${target})
+    endif()
+endfunction()
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        target_link_libraries(${target} PUBLIC atomic pthread m)
+function(commons_attach_modules target)
+    if(NOT COMMONS_ENABLE_MODULES)
+        return()
+    endif()
+
+    if(ARGN)
+        target_sources(${target}
+            PUBLIC
+                FILE_SET commons_modules TYPE CXX_MODULES
+                BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
+                FILES ${ARGN}
+        )
+    endif()
+endfunction()
+
+function(commons_link_layer_external_dependencies target layer visibility)
+    if(layer STREQUAL "misc" OR layer STREQUAL "monolith")
+        target_link_libraries(${target} ${visibility}
+            glaze::glaze
+            Commons::OpenCV
+            Commons::LibPNG
+            cnpy
+            Commons::ICU
+        )
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            target_link_libraries(${target} ${visibility} atomic pthread m)
+        endif()
     endif()
 
     if(layer STREQUAL "video" OR layer STREQUAL "monolith")
-        target_link_libraries(${target} PUBLIC Commons::FFMPEG)
+        target_link_libraries(${target} ${visibility} Commons::FFMPEG)
     endif()
 
     if(layer STREQUAL "gui" OR layer STREQUAL "monolith")
-        target_link_libraries(${target} PUBLIC
+        target_link_libraries(${target} ${visibility}
             Commons::IMGUI
             Commons::GLFW
             Commons::OpenGL
         )
         if(COMMONS_BUILD_HTTPD)
-            target_link_libraries(${target} PUBLIC Commons::HTTPD)
+            target_link_libraries(${target} ${visibility} Commons::HTTPD)
         endif()
     endif()
 endfunction()
 
-if(COMMONS_ENABLE_MODULES)
-    add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
-    commons_configure_target(commons)
-    commons_link_dependencies(commons monolith)
-    target_sources(commons
-        PUBLIC
-            FILE_SET commons_modules TYPE CXX_MODULES
-            BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-            FILES ${COMMONS_MODULE_FILES}
-    )
-    set(COMMONS_ACTIVE_TARGETS commons)
-    set(COMMONS_LIBRARY_NAME commons)
-else()
-    if(COMMONS_SPLIT_SHARED_LIBS AND NOT TREX_ENABLE_SHARED_INTERNAL_LIBS)
-        message(STATUS "COMMONS_SPLIT_SHARED_LIBS is ignored because TREX_ENABLE_SHARED_INTERNAL_LIBS is OFF.")
-    endif()
+if(COMMONS_SPLIT_SHARED_LIBS AND NOT TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    message(STATUS "COMMONS_SPLIT_SHARED_LIBS is ignored because TREX_ENABLE_SHARED_INTERNAL_LIBS is OFF.")
+endif()
 
-    if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
-        add_library(commons_misc ${COMMONS_LIBRARY_TYPE} ${COMMONS_MISC_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons_misc)
-        commons_link_dependencies(commons_misc misc)
+set(COMMONS_SPLIT_ACTIVE OFF)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    set(COMMONS_SPLIT_ACTIVE ON)
+endif()
 
-        add_library(commons_file ${COMMONS_LIBRARY_TYPE} ${COMMONS_FILE_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons_file)
-        commons_link_dependencies(commons_file file)
-        target_link_libraries(commons_file PUBLIC commons_misc)
+if(COMMONS_SPLIT_ACTIVE)
+    add_library(commons_misc ${COMMONS_LIBRARY_TYPE} ${COMMONS_MISC_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons_misc)
+    commons_link_layer_external_dependencies(commons_misc misc PUBLIC)
+    commons_attach_modules(commons_misc ${COMMONS_TYPES_MODULE_FILES} ${COMMONS_MISC_MODULE_FILES})
 
-        add_library(commons_processing ${COMMONS_LIBRARY_TYPE} ${COMMONS_PROCESSING_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons_processing)
-        commons_link_dependencies(commons_processing processing)
-        target_link_libraries(commons_processing PUBLIC commons_file)
+    add_library(commons_file ${COMMONS_LIBRARY_TYPE} ${COMMONS_FILE_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons_file)
+    target_link_libraries(commons_file PUBLIC commons_misc)
+    commons_attach_modules(commons_file ${COMMONS_FILE_MODULE_FILES})
 
-        add_library(commons_video ${COMMONS_LIBRARY_TYPE} ${COMMONS_VIDEO_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons_video)
-        commons_link_dependencies(commons_video video)
-        target_link_libraries(commons_video PUBLIC commons_processing)
+    add_library(commons_processing ${COMMONS_LIBRARY_TYPE} ${COMMONS_PROCESSING_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons_processing)
+    target_link_libraries(commons_processing PUBLIC commons_file)
+    commons_attach_modules(commons_processing ${COMMONS_PROCESSING_MODULE_FILES})
 
-        add_library(commons_gui ${COMMONS_LIBRARY_TYPE} ${COMMONS_GUI_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons_gui)
-        commons_link_dependencies(commons_gui gui)
-        target_link_libraries(commons_gui PUBLIC commons_video)
+    add_library(commons_video ${COMMONS_LIBRARY_TYPE} ${COMMONS_VIDEO_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons_video)
+    target_link_libraries(commons_video PUBLIC commons_processing)
+    commons_link_layer_external_dependencies(commons_video video PUBLIC)
+    commons_attach_modules(commons_video ${COMMONS_VIDEO_MODULE_FILES})
 
+    add_library(commons_gui ${COMMONS_LIBRARY_TYPE} ${COMMONS_GUI_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons_gui)
+    target_link_libraries(commons_gui PUBLIC commons_video)
+    commons_link_layer_external_dependencies(commons_gui gui PUBLIC)
+    commons_attach_modules(commons_gui ${COMMONS_GUI_MODULE_FILES})
+
+    if(COMMONS_ENABLE_MODULES)
+        add_library(commons ${COMMONS_LIBRARY_TYPE})
+        commons_configure_target(commons)
+        target_link_libraries(commons PUBLIC commons_gui)
+        commons_attach_modules(commons ${COMMONS_ALL_MODULE_FILES})
+        set(COMMONS_LIBRARY_NAME commons)
+        set(COMMONS_ACTIVE_TARGETS
+            commons_misc
+            commons_file
+            commons_processing
+            commons_video
+            commons_gui
+            commons
+        )
+    else()
         add_library(commons INTERFACE)
         target_link_libraries(commons INTERFACE commons_gui)
         set(COMMONS_LIBRARY_NAME commons_gui)
@@ -233,13 +279,53 @@ else()
             commons_video
             commons_gui
         )
-    else()
-        add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
-        commons_configure_target(commons)
-        commons_link_dependencies(commons monolith)
-        set(COMMONS_LIBRARY_NAME commons)
-        set(COMMONS_ACTIVE_TARGETS commons)
     endif()
+else()
+    add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons)
+    commons_link_layer_external_dependencies(commons monolith PRIVATE)
+    commons_attach_modules(commons ${COMMONS_MODULE_FILES})
+    set(COMMONS_LIBRARY_NAME commons)
+
+    add_library(commons_misc INTERFACE)
+    target_link_libraries(commons_misc INTERFACE commons)
+    commons_link_layer_external_dependencies(commons_misc misc INTERFACE)
+
+    add_library(commons_file INTERFACE)
+    target_link_libraries(commons_file INTERFACE commons_misc)
+
+    add_library(commons_processing INTERFACE)
+    target_link_libraries(commons_processing INTERFACE commons_file)
+
+    add_library(commons_video INTERFACE)
+    target_link_libraries(commons_video INTERFACE commons_processing)
+    commons_link_layer_external_dependencies(commons_video video INTERFACE)
+
+    add_library(commons_gui INTERFACE)
+    target_link_libraries(commons_gui INTERFACE commons_video)
+    commons_link_layer_external_dependencies(commons_gui gui INTERFACE)
+
+    set(COMMONS_ACTIVE_TARGETS commons)
+endif()
+
+add_library(commons_all INTERFACE)
+if(COMMONS_SPLIT_ACTIVE AND COMMONS_ENABLE_MODULES)
+    target_link_libraries(commons_all INTERFACE commons commons_gui)
+elseif(COMMONS_SPLIT_ACTIVE)
+    target_link_libraries(commons_all INTERFACE commons)
+else()
+    target_link_libraries(commons_all INTERFACE commons_gui)
+endif()
+
+commons_register_public_target(commons_misc Misc)
+commons_register_public_target(commons_file File)
+commons_register_public_target(commons_processing Processing)
+commons_register_public_target(commons_video Video)
+commons_register_public_target(commons_gui Gui)
+commons_register_public_target(commons_all All)
+set_target_properties(commons PROPERTIES EXPORT_NAME commons)
+if(NOT TARGET Commons::commons)
+    add_library(Commons::commons ALIAS commons)
 endif()
 
 foreach(FILE ${HASH_HDR})
