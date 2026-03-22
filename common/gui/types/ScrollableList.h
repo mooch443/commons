@@ -53,7 +53,7 @@ namespace cmn::gui {
 
     template <typename T = std::string>
     requires list_compatible_item<T>
-    class TREX_TYPE_EXPORT ScrollableList : public Entangled {
+    class ScrollableList : public Entangled {
         ItemPadding_t _item_padding;
         ItemFont_t _item_font{ Font(0.75) };
         DetailFont_t _detail_font{ Font(0.55) };

@@ -238,6 +238,7 @@ retry_codec:
         _is_greyscale = false;
     }
     
+    cmn::Print("[FFMPEG] Opened video file: ", filePath, " with estimated frame count: ", estimated_frame_count(), ". Greyscale: ", is_greyscale(), " and hardware acceleration: ", chosenHWType != AV_HWDEVICE_TYPE_NONE ? Meta::toStr((int)chosenHWType) : "none");
     return true;
 }
 

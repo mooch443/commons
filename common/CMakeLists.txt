@@ -127,7 +127,7 @@ function(commons_configure_target target)
     endif()
 
     if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
-        target_compile_definitions(${target} PRIVATE TREX_EXPORTS)
+        target_compile_definitions(${target} PRIVATE COMMONS_EXPORTS)
         target_compile_definitions(${target} PUBLIC COMMONS_IS_SHARED_LIBRARY=1)
     else()
         target_compile_definitions(${target} PUBLIC COMMONS_IS_SHARED_LIBRARY=0)
