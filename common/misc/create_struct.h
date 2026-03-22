@@ -721,7 +721,6 @@ private: \
             obj = std::forward<T>(v); \
         } \
     } \
-    inline static std::once_flag flag; \
     inline static cmn::CallbackFuture _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
@@ -744,18 +743,27 @@ public: \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
-        std::call_once(flag, [](){ \
+        static std::once_flag init_flag; \
+        std::call_once(init_flag, []() { \
             _callback_id = cmn::GlobalSettings::register_callbacks(NAM :: names(), [](std::string_view name){ \
-                    auto& value = cmn::GlobalSettings::read_value<cmn::NoType>(name).get(); \
-                    variable_changed(cmn::sprite::Map::Signal::NONE, name, value); \
+                    auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
+                    if(!value.valid()) { \
+                        value = cmn::GlobalSettings::read_default_from_all(name); \
+                    } \
+                    if(value.valid()) { \
+                        variable_changed(cmn::sprite::Map::Signal::NONE, name, value.get()); \
+                    } \
             }); \
             for(auto &name : NAM :: names()) { \
-                if(auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
-                    value.valid()) \
+                auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
+                if(!value.valid()) { \
+                    value = cmn::GlobalSettings::read_default_from_all(name); \
+                } \
+                if(value.valid()) \
                 { \
                     variable_changed(cmn::sprite::Map::Signal::NONE, name, value.get()); \
                 } else { \
-                    cmn::FormatWarning("Cannot find parameter ", name, " in global settings."); \
+                    cmn::detail::checked_cast_warning("Cannot find parameter ", name, " in global settings."); \
                 } \
             } \
         }); \

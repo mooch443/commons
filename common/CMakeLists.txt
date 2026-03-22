@@ -71,11 +71,18 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
 add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
-target_include_directories(commons PUBLIC 
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-    "$<INSTALL_INTERFACE:include/commons>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+if(COMMONS_ENABLE_MODULES)
+    target_include_directories(commons PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+else()
+    target_include_directories(commons PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
+        "$<INSTALL_INTERFACE:include/commons>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+endif()
 
 if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
     target_compile_definitions(commons PRIVATE TREX_EXPORTS)
@@ -97,10 +104,6 @@ endif()
 if(COMMONS_ENABLE_MODULES)
     target_sources(commons
         PUBLIC
-            FILE_SET commons_headers TYPE HEADERS
-            BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
-            FILES ${HDRS}
-        PUBLIC
             FILE_SET commons_modules TYPE CXX_MODULES
             BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
             FILES ${COMMONS_MODULE_FILES}
@@ -111,8 +114,10 @@ foreach(FILE ${HASH_HDR})
     source_group("hash_map" FILES "${FILE}")
 endforeach()
 
-install(FILES ${HASH_HDR} DESTINATION include/commons COMPONENT devel)
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include/robin_hood.h" DESTINATION include/commons COMPONENT devel)
+if(NOT COMMONS_ENABLE_MODULES)
+    install(FILES ${HASH_HDR} DESTINATION include/commons COMPONENT devel)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include/robin_hood.h" DESTINATION include/commons COMPONENT devel)
+endif()
 
 foreach(FILE ${SRCS} ${HDRS} ${COMMONS_MODULE_FILES}) 
     # Get the directory of the source file
@@ -146,7 +151,11 @@ message(STATUS "  ICU_LIBRARIES: ${ICU_LIBRARIES}")
 message(STATUS "  ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
 
 # Add ICU include directories
-target_include_directories(commons PUBLIC ${ICU_INCLUDE_DIRS})
+if(COMMONS_ENABLE_MODULES)
+    target_include_directories(commons PRIVATE ${ICU_INCLUDE_DIRS})
+else()
+    target_include_directories(commons PUBLIC ${ICU_INCLUDE_DIRS})
+endif()
 
 target_link_libraries(commons
     PUBLIC cnpy

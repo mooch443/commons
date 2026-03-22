@@ -1,17 +1,12 @@
-module;
-#define IN_MODULE_INTERFACE 1
-
-#include <misc/GlobalSettings.h>
-#include <gui/GuiTypes.h>
-
 export module commons;
 
-export namespace cmn {
-using ::cmn::bool_setting;
-}
-
-export namespace cmn::gui {
-using ::cmn::gui::PrimitiveType;
-}
-
-#undef IN_MODULE_INTERFACE
+export import commons.types;
+export import commons.misc;
+export import commons.file;
+export import commons.processing;
+export import commons.video;
+export import commons.gui;
+export import commons.gui.dyn;
+#if WITH_MHD
+export import commons.http;
+#endif

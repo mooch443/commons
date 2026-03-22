@@ -90,7 +90,14 @@ private:
 // Macro to generate a lambda that updates the setting.
 // This lambda captures nothing and takes a pointer to the current object.
 #define UPDATE_UPDATER(NAME) +[](Store& self) { \
-    self.NAME = FAST_SETTING(NAME); \
+    if(auto value = GlobalSettings::read_value<track::Settings::NAME##_t>(#NAME); value.has_value()) { \
+        self.NAME = *value; \
+    } else { \
+        auto fallback = GlobalSettings::read_default_from_all(#NAME); \
+        if(fallback.valid()) { \
+            self.NAME = fallback.value<track::Settings::NAME##_t>(); \
+        } \
+    } \
 }
     //self.NAME = READ_SETTING(NAME, track::Settings::NAME##_t); \
 //}
@@ -313,7 +320,7 @@ public:
                 }
             }
         }
-       
+
         /**
          * @brief Grants external threads access to the settings object.
          *
@@ -470,7 +477,7 @@ public:
     static Guard round() {
         return Guard{object.get()};
     }
-    
+
     static ThreadObject* current() {
         return object.get();
     }

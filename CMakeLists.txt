@@ -1775,9 +1775,7 @@ if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
         ARCHIVE DESTINATION lib COMPONENT libs
         RUNTIME DESTINATION bin COMPONENT libs
         LIBRARY DESTINATION lib COMPONENT libs
-        FILE_SET commons_headers DESTINATION include/commons COMPONENT devel
         FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
-        INCLUDES DESTINATION include/commons
     )
 else()
     INSTALL(TARGETS "commons"

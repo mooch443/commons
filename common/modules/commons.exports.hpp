@@ -167,4 +167,6 @@
 #include <gui/types/Textfield.h>
 #include <gui/types/Tooltip.h>
 
+#if WITH_MHD
 #include <http/httpd.h>
+#endif

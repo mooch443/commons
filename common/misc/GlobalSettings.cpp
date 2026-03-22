@@ -6,6 +6,26 @@
 
 namespace cmn {
 
+std::mutex& GlobalSettings::instance_mutex() {
+    static std::mutex _mutex;
+    return _mutex;
+}
+
+GlobalSettings*& GlobalSettings::instance_storage() {
+    static GlobalSettings* _instance{new GlobalSettings()};
+    return _instance;
+}
+
+bool& GlobalSettings::is_reading_config_flag() {
+    static thread_local bool flag{false};
+    return flag;
+}
+
+bool& GlobalSettings::is_writing_config_flag() {
+    static thread_local bool flag{false};
+    return flag;
+}
+
 void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);
 }

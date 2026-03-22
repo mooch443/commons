@@ -22,6 +22,10 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
 
     void CommandLine::_init(int argc, char** argv, bool no_autoload_settings, const std::map<std::string, std::string>& deprecated)
     {
+        _options.clear();
+        _settings.clear();
+        _settings_keys.clear();
+
         _wd = Path(argv[0]).remove_filename();
         
         const size_t bufSize = PATH_MAX + 1;
@@ -77,10 +81,16 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
          * Process command-line options.
          */
         auto keys = GlobalSettings::keys();
+        std::vector<std::string> lowered_keys;
+        lowered_keys.reserve(keys.size());
+        for(const auto& key : keys) {
+            lowered_keys.push_back(utils::lowercase(key));
+        }
             
-        auto check_option = [&keys, &deprecated, this](std::string&& key, std::optional<std::string>&& val)
+        auto check_option = [&lowered_keys, &deprecated, this](std::string&& key, std::optional<std::string>&& val)
         {
             std::optional<std::string> sval{val};
+            auto normalized_key = utils::lowercase(key);
             if(sval) {
                 auto &_sval = *sval;
                 size_t offset = 0;
@@ -96,15 +106,15 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                     _sval = _sval.substr(offset, _sval.length()-offset*2);
             }
             
-            if(contains(keys, key)) {
-                _settings.emplace_back(key, sval);
+            if(contains(lowered_keys, normalized_key)) {
+                _settings.emplace_back(std::move(normalized_key), sval);
                 
-            } else if(deprecated.find(key) != deprecated.end()) {
-                FormatWarning("Found deprecated key ", key," = ", sval," in command-line (replaced by ", deprecated.at(key),").");
-                _settings.emplace_back(deprecated.at(key), std::move(sval));
+            } else if(deprecated.find(normalized_key) != deprecated.end()) {
+                FormatWarning("Found deprecated key ", normalized_key," = ", sval," in command-line (replaced by ", deprecated.at(normalized_key),").");
+                _settings.emplace_back(deprecated.at(normalized_key), std::move(sval));
                 
             } else {
-                _options.emplace_back(std::move(key), std::move(sval));
+                _options.emplace_back(std::move(normalized_key), std::move(sval));
             }
         };
             
@@ -180,6 +190,15 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             };
         
         auto keys = additional ? additional->keys() : (map ? map->keys() : std::vector<std::string>{});
+        if(map) {
+            auto map_keys = map->keys();
+            keys.insert(keys.end(), map_keys.begin(), map_keys.end());
+        }
+        for(auto& key : keys) {
+            key = utils::lowercase(key);
+        }
+        std::sort(keys.begin(), keys.end());
+        keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
         for(auto it = _options.begin(); it != _options.end();) {
             auto &option = *it;
             if(contains(keys, utils::lowercase(option.name))) {
