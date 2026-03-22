@@ -283,7 +283,7 @@ if(COMMONS_SPLIT_ACTIVE)
 else()
     add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
     commons_configure_target(commons)
-    commons_link_layer_external_dependencies(commons monolith PRIVATE)
+    commons_link_layer_external_dependencies(commons monolith PUBLIC)
     commons_attach_modules(commons ${COMMONS_MODULE_FILES})
     set(COMMONS_LIBRARY_NAME commons)
 
