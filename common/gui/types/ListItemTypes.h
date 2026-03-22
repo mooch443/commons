@@ -5,7 +5,7 @@ namespace cmn::gui {
     class List;
     class Rect;
 
-    class TREX_TYPE_EXPORT Item {
+    class Item {
     protected:
         GETTER_SETTER(long, ID);
         bool _selected;
@@ -34,7 +34,7 @@ namespace cmn::gui {
         void convert(std::shared_ptr<Rect> r) const;
     };
 
-    class TREX_TYPE_EXPORT TextItem : public Item {
+    class TextItem : public Item {
     protected:
         GETTER_SETTER(std::string, text);
         
@@ -55,7 +55,7 @@ namespace cmn::gui {
         }
     };
 
-    class TREX_TYPE_EXPORT DetailItem {
+    class DetailItem {
         GETTER_SETTER(std::string, name);
         GETTER_SETTER(std::string, detail);
         GETTER_SETTER(bool, disabled);
@@ -69,7 +69,7 @@ namespace cmn::gui {
         virtual bool operator!=(const DetailItem& other) const;
     };
 
-    class TREX_TYPE_EXPORT DetailTooltipItem {
+    class DetailTooltipItem {
         using disabled_t = std::variant<bool, std::string>;
         
         GETTER_SETTER(std::string, name);

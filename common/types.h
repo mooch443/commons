@@ -1,39 +1,41 @@
 #ifndef VIDEO_TYPES_H
 #define VIDEO_TYPES_H
 
+#ifndef COMMONS_IS_SHARED_LIBRARY
+    #define COMMONS_IS_SHARED_LIBRARY 0
+#endif
+
 #if !defined(_WIN32) && !defined(WIN32)
     #if __cplusplus <= 199711L
       #error This library needs at least a C++11 compliant compiler
     #endif
 
-    #if defined(TREX_EXPORTS)
-        #define TREX_EXPORT __attribute__((visibility("default")))
+    #if defined(COMMONS_EXPORTS)
+        #define COMMONS_EXPORT __attribute__((visibility("default")))
     #else
-        #define TREX_EXPORT
+        #define COMMONS_EXPORT
     #endif
 
     #if defined(__APPLE__) && defined(__clang__)
-        #define TREX_TYPE_EXPORT __attribute__((visibility("default"), type_visibility("default")))
+        #define COMMONS_TYPE_EXPORT __attribute__((visibility("default"), type_visibility("default")))
     #else
-        #define TREX_TYPE_EXPORT TREX_EXPORT
+        #define COMMONS_TYPE_EXPORT COMMONS_EXPORT
     #endif
 
     #define EXPIMP_TEMPLATE
 
 #else
-    #ifdef TREX_EXPORTS
-        #define TREX_EXPORT __declspec(dllexport)
-        #define EXPIMP_TEMPLATE
+    #if defined(COMMONS_EXPORTS)
+        #define COMMONS_EXPORT __declspec(dllexport)
+    #elif !COMMONS_IS_SHARED_LIBRARY
+        #define COMMONS_EXPORT
     #else
-        #define TREX_EXPORT __declspec(dllimport)
-        #define EXPIMP_TEMPLATE extern
+        #define COMMONS_EXPORT __declspec(dllimport)
     #endif
 
-    #define TREX_TYPE_EXPORT TREX_EXPORT
-#endif
+    #define COMMONS_TYPE_EXPORT COMMONS_EXPORT
 
-#ifndef COMMONS_IS_SHARED_LIBRARY
-    #define COMMONS_IS_SHARED_LIBRARY 0
+    #define EXPIMP_TEMPLATE
 #endif
 
 namespace cmn {
