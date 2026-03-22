@@ -258,6 +258,18 @@ public:
 static_assert(false, "OpenCV version insufficient.");
 #endif
 
+// Tracker headers use TREX export annotations, but some static-build
+// translation units (for example certain test targets) may not inherit
+// tracker target compile definitions. Provide a no-op fallback unless
+// the build already set explicit visibility attributes.
+#ifndef TREX_EXPORT
+#define TREX_EXPORT
+#endif
+
+#ifndef TREX_TYPE_EXPORT
+#define TREX_TYPE_EXPORT TREX_EXPORT
+#endif
+
 #ifdef IN_MODULE_INTERFACE
 #define CMN_MODULE_EXPORT export
 #else
