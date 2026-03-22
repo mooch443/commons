@@ -1778,7 +1778,7 @@ if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
         LIBRARY DESTINATION lib COMPONENT libs
         FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
     )
-elseif(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+elseif(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
     install(TARGETS
         commons_misc
         commons_file
@@ -1811,12 +1811,26 @@ install(
     DESTINATION lib/cmake/commons
 )
 
-if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
     target_include_directories(commons_gui PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
 else()
     target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
 endif()
 message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
+
+set(COMMONS_PUBLIC_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/common"
+    "${CMAKE_CURRENT_SOURCE_DIR}/common/../flat_hash_map"
+    "${CMAKE_CURRENT_SOURCE_DIR}/common/../robin-hood-hashing/src/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cnpy"
+    "${CMAKE_CURRENT_SOURCE_DIR}/cnpy/extern/libzippp"
+    "${glaze_PATH}/include"
+    ${OpenCV_INCLUDE_DIRS}
+    ${LIBZIP_INCLUDE_DIR}
+    ${ICU_INCLUDE_DIRS}
+    CACHE INTERNAL "Common include directories exported by commons"
+    FORCE
+)
 
 if(WIN32)
     if(COMMONS_BUILD_OPENCV)
@@ -1826,7 +1840,7 @@ if(WIN32)
     endif()
 endif()
 
-if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS AND NOT COMMONS_ENABLE_MODULES)
     export(TARGETS commons commons_misc commons_file commons_processing commons_video commons_gui cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
 else()
     export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )

@@ -114,7 +114,10 @@ function(commons_configure_target target)
     target_include_directories(${target} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>"
+        "$<BUILD_INTERFACE:${glaze_PATH}/include>"
+        "$<TARGET_PROPERTY:cnpy,INTERFACE_INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:Commons::OpenCV,INTERFACE_INCLUDE_DIRECTORIES>")
 
     if(NOT COMMONS_ENABLE_MODULES)
         target_include_directories(${target} PUBLIC "$<INSTALL_INTERFACE:include/commons>")
@@ -149,20 +152,17 @@ function(commons_configure_target target)
 endfunction()
 
 function(commons_link_dependencies target layer)
-    if(layer STREQUAL "misc" OR layer STREQUAL "monolith")
-        target_link_libraries(${target} PUBLIC
-            cnpy
-            Commons::OpenCV
-            Commons::LibPNG
-            Commons::LibZIP
-            Commons::LibZ
-            glaze::glaze
-            ${ICU_LIBRARIES}
-        )
+    target_link_libraries(${target} PUBLIC
+        cnpy
+        Commons::OpenCV
+        Commons::LibPNG
+        Commons::LibZIP
+        Commons::LibZ
+        ${ICU_LIBRARIES}
+    )
 
-        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            target_link_libraries(${target} PUBLIC atomic pthread m)
-        endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_link_libraries(${target} PUBLIC atomic pthread m)
     endif()
 
     if(layer STREQUAL "video" OR layer STREQUAL "monolith")

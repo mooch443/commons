@@ -131,7 +131,7 @@ static inline int __builtin_clzl(T x) {
 
 #endif
 
-#if !defined(HAVE_CONCEPT_IMPLEMENTATION)
+#if !defined(__cpp_concepts) || (__cpp_concepts < 201907L)
 namespace std {
 template<class From, class To>
     concept convertible_to =
@@ -144,9 +144,9 @@ template<class T>
 template<class T>
     concept integral = std::is_integral_v<T>;
 template <class T>
-    concept signed_integral = std::integral<T> && std::is_signed_v<T>;
+    concept signed_integral = std::is_integral_v<T> && std::is_signed_v<T>;
 template <class T>
-    concept unsigned_integral = std::integral<T> && !std::signed_integral<T>;
+    concept unsigned_integral = std::is_integral_v<T> && !std::is_signed_v<T>;
 }
 #endif
 
