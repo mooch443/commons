@@ -1,4 +1,4 @@
-#include "types.h"
+#include "misc/types.h"
 #include <png.h>
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>

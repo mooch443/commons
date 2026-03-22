@@ -37,6 +37,7 @@ option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
 option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
 option(COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES "Allow the commons module build on GCC in experimental mode." OFF)
+option(COMMONS_SPLIT_SHARED_LIBS "Build commons as separate shared libraries per layer when shared internal libs are enabled." OFF)
 option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
@@ -1777,6 +1778,22 @@ if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
         LIBRARY DESTINATION lib COMPONENT libs
         FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
     )
+elseif(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    install(TARGETS
+        commons_misc
+        commons_file
+        commons_processing
+        commons_video
+        commons_gui
+        EXPORT "commonsTargets"
+        ARCHIVE DESTINATION lib COMPONENT libs
+        RUNTIME DESTINATION bin COMPONENT libs
+        LIBRARY DESTINATION lib COMPONENT libs
+        INCLUDES DESTINATION include
+    )
+    install(TARGETS commons
+        EXPORT "commonsTargets"
+    )
 else()
     INSTALL(TARGETS "commons"
         EXPORT "commonsTargets"
@@ -1794,7 +1811,11 @@ install(
     DESTINATION lib/cmake/commons
 )
 
-target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    target_include_directories(commons_gui PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+else()
+    target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+endif()
 message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
 
 if(WIN32)
@@ -1805,4 +1826,8 @@ if(WIN32)
     endif()
 endif()
 
-export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    export(TARGETS commons commons_misc commons_file commons_processing commons_video commons_gui cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+else()
+    export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+endif()

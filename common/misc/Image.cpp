@@ -1,5 +1,6 @@
 #include "Image.h"
 #include <png.h>
+#include <file/Path.h>
 #include <misc/colors.h>
 #include <misc/stacktrace.h>
 
@@ -213,6 +214,86 @@ namespace cmn {
         _custom_data = std::unique_ptr<CustomData>(ptr);
     }
 
+    Image::Ptr from_png(const file::Path& path) {
+        int width, height;
+        png_byte color_type;
+        png_byte bit_depth;
+        png_bytep *row_pointers;
+
+        auto fp = path.fopen("rb");
+
+        struct PNGReadGuard {
+            png_structp png{nullptr};
+            png_infop info{nullptr};
+
+            ~PNGReadGuard() {
+                if (png) {
+                    png_destroy_read_struct(&png, &info, nullptr);
+                }
+            }
+        } guard;
+
+        guard.png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+        if(!guard.png) abort();
+
+        guard.info = png_create_info_struct(guard.png);
+        if(!guard.info) abort();
+
+        if(setjmp(png_jmpbuf(guard.png))) abort();
+
+        png_init_io(guard.png, fp.get());
+        png_read_info(guard.png, guard.info);
+
+        width      = png_get_image_width(guard.png, guard.info);
+        height     = png_get_image_height(guard.png, guard.info);
+        color_type = png_get_color_type(guard.png, guard.info);
+        bit_depth  = png_get_bit_depth(guard.png, guard.info);
+
+        if(bit_depth == 16)
+            png_set_strip_16(guard.png);
+
+        if(color_type == PNG_COLOR_TYPE_PALETTE)
+            png_set_palette_to_rgb(guard.png);
+
+        if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+            png_set_expand_gray_1_2_4_to_8(guard.png);
+
+        if(png_get_valid(guard.png, guard.info, PNG_INFO_tRNS))
+            png_set_tRNS_to_alpha(guard.png);
+
+        if(color_type == PNG_COLOR_TYPE_RGB ||
+           color_type == PNG_COLOR_TYPE_GRAY ||
+           color_type == PNG_COLOR_TYPE_PALETTE)
+            png_set_filler(guard.png, 0xFF, PNG_FILLER_AFTER);
+
+        if(color_type == PNG_COLOR_TYPE_GRAY ||
+           color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+            png_set_gray_to_rgb(guard.png);
+
+        png_read_update_info(guard.png, guard.info);
+
+        row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+        for(int y = 0; y < height; y++) {
+            row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(guard.png, guard.info));
+        }
+
+        png_read_image(guard.png, row_pointers);
+
+        static_assert(sizeof(png_byte) == sizeof(uchar), "Must be the same.");
+
+        auto ptr = Image::Make(height, width, 4);
+        for(int y = 0; y < height; y++) {
+            png_bytep row = row_pointers[y];
+            memcpy(ptr->data() + y * width * 4, row, width * 4);
+        }
+
+        for(int y = 0; y < height; y++) {
+            free(row_pointers[y]);
+        }
+        free(row_pointers);
+        return ptr;
+    }
+
     Image::Image(Image&& other) noexcept
         : _data(std::move(other._data)),
           _size(other._size),
@@ -400,84 +481,6 @@ namespace cmn {
         png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
     }
     
-    Image::Ptr from_png(const file::Path& path) {
-        int width, height;
-        png_byte color_type;
-        png_byte bit_depth;
-        png_bytep *row_pointers;
-        
-        auto fp = path.fopen("rb");
-        
-        png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-        if(!png) abort();
-        
-        png_infop info = png_create_info_struct(png);
-        if(!info) abort();
-        
-        if(setjmp(png_jmpbuf(png))) abort();
-        
-        png_init_io(png, fp.get());
-        
-        png_read_info(png, info);
-        
-        width      = png_get_image_width(png, info);
-        height     = png_get_image_height(png, info);
-        color_type = png_get_color_type(png, info);
-        bit_depth  = png_get_bit_depth(png, info);
-        
-        // Read any color_type into 8bit depth, RGBA format.
-        // See http://www.libpng.org/pub/png/libpng-manual.txt
-        
-        if(bit_depth == 16)
-            png_set_strip_16(png);
-        
-        if(color_type == PNG_COLOR_TYPE_PALETTE)
-            png_set_palette_to_rgb(png);
-        
-        // PNG_COLOR_TYPE_GRAY_ALPHA is always 8 or 16bit depth.
-        if(color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-            png_set_expand_gray_1_2_4_to_8(png);
-        
-        if(png_get_valid(png, info, PNG_INFO_tRNS))
-            png_set_tRNS_to_alpha(png);
-        
-        // These color_type don't have an alpha channel then fill it with 0xff.
-        if(color_type == PNG_COLOR_TYPE_RGB ||
-           color_type == PNG_COLOR_TYPE_GRAY ||
-           color_type == PNG_COLOR_TYPE_PALETTE)
-            png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
-        
-        if(color_type == PNG_COLOR_TYPE_GRAY ||
-           color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
-            png_set_gray_to_rgb(png);
-        
-        png_read_update_info(png, info);
-        
-        row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
-        for(int y = 0; y < height; y++) {
-            row_pointers[y] = (png_byte*)malloc(png_get_rowbytes(png,info));
-        }
-        
-        png_read_image(png, row_pointers);
-        
-        static_assert(sizeof(png_byte) == sizeof(uchar), "Must be the same.");
-        
-        auto ptr = Image::Make(height, width, 4);
-        for(int y = 0; y < height; y++) {
-            png_bytep row = row_pointers[y];
-            memcpy(ptr->data() + y * width * 4, row, width * 4);
-            /*for(int x = 0; x < width; x++) {
-                png_bytep px = &(row[x * 4]);
-                // Do something awesome for each pixel here...
-                printf("%4d, %4d = RGBA(%3d, %3d, %3d, %3d)\n", x, y, px[0], px[1], px[2], px[3]);
-            }*/
-        }
-        //memcpy(ptr->data(), row_pointers, height * width * 4);
-        
-        png_destroy_read_struct(&png, &info, NULL);
-        return ptr;
-    }
-
     template<typename T>
     struct always_false : std::false_type {};
     

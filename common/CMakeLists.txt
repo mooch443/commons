@@ -69,45 +69,177 @@ endif()
 # to include generated moc headers, since they are generated in binary dir
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
-add_dependencies(commons Commons::LibZIP Commons::LibZ Commons::GLFW Commons::OpenGL cnpy Commons::OpenCV Commons::LibPNG Commons::GLAD)
-if(COMMONS_ENABLE_MODULES)
-    target_include_directories(commons PUBLIC
+# Find ICU package early so the layer target helpers can use the result.
+find_package(ICU REQUIRED COMPONENTS uc i18n)
+
+# Output ICU variables for debugging
+message(STATUS "Found ICU:")
+message(STATUS "  ICU_VERSION: ${ICU_VERSION}")
+message(STATUS "  ICU_LIBRARIES: ${ICU_LIBRARIES}")
+message(STATUS "  ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
+
+set(COMMONS_FILE_CPP_SOURCES ${SRCS})
+list(FILTER COMMONS_FILE_CPP_SOURCES INCLUDE REGEX "^(file/|misc/(CommandLine|GlobalSettings)\\.cpp$)")
+list(REMOVE_ITEM COMMONS_FILE_CPP_SOURCES
+    file/Path.cpp
+    misc/CommandLine.cpp
+    misc/GlobalSettings.cpp
+)
+
+set(COMMONS_PROCESSING_CPP_SOURCES ${SRCS})
+list(FILTER COMMONS_PROCESSING_CPP_SOURCES INCLUDE REGEX "^(processing/|types\\.cpp$|misc/(PVBlob|PixelTree|ProximityGrid|bid)\\.cpp$)")
+
+set(COMMONS_VIDEO_CPP_SOURCES ${SRCS})
+list(FILTER COMMONS_VIDEO_CPP_SOURCES INCLUDE REGEX "^video/")
+
+set(COMMONS_GUI_CPP_SOURCES ${SRCS})
+list(FILTER COMMONS_GUI_CPP_SOURCES INCLUDE REGEX "^gui/")
+if(COMMONS_BUILD_HTTPD)
+    list(APPEND COMMONS_GUI_CPP_SOURCES http/httpd.cpp)
+endif()
+
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
+    list(APPEND COMMONS_FILE_CPP_SOURCES file/ask_for_permission.mm)
+endif()
+
+set(COMMONS_MISC_CPP_SOURCES ${SRCS})
+list(REMOVE_ITEM COMMONS_MISC_CPP_SOURCES
+    ${COMMONS_FILE_CPP_SOURCES}
+    ${COMMONS_PROCESSING_CPP_SOURCES}
+    ${COMMONS_VIDEO_CPP_SOURCES}
+    ${COMMONS_GUI_CPP_SOURCES}
+)
+
+function(commons_configure_target target)
+    target_include_directories(${target} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
-else()
-    target_include_directories(commons PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
-        "$<INSTALL_INTERFACE:include/commons>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../robin-hood-hashing/src/include>")
-endif()
 
-if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
-    target_compile_definitions(commons PRIVATE TREX_EXPORTS)
-    target_compile_definitions(commons PUBLIC COMMONS_IS_SHARED_LIBRARY=1)
-else()
-    target_compile_definitions(commons PUBLIC COMMONS_IS_SHARED_LIBRARY=0)
-endif()
+    if(NOT COMMONS_ENABLE_MODULES)
+        target_include_directories(${target} PUBLIC "$<INSTALL_INTERFACE:include/commons>")
+    endif()
 
-if(APPLE AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
-    set_target_properties(commons PROPERTIES
-        CXX_VISIBILITY_PRESET default
-        C_VISIBILITY_PRESET default
-        VISIBILITY_INLINES_HIDDEN OFF
-    )
-    target_compile_options(commons PRIVATE -fvisibility=default)
-    target_link_options(commons PRIVATE "-Wl,-undefined,error")
-endif()
+    if(COMMONS_ENABLE_MODULES)
+        target_include_directories(${target} PRIVATE ${ICU_INCLUDE_DIRS})
+    else()
+        target_include_directories(${target} PUBLIC ${ICU_INCLUDE_DIRS})
+    endif()
+
+    if(COMMONS_LIBRARY_TYPE STREQUAL "SHARED")
+        target_compile_definitions(${target} PRIVATE TREX_EXPORTS)
+        target_compile_definitions(${target} PUBLIC COMMONS_IS_SHARED_LIBRARY=1)
+    else()
+        target_compile_definitions(${target} PUBLIC COMMONS_IS_SHARED_LIBRARY=0)
+    endif()
+
+    if(APPLE AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+        set_target_properties(${target} PROPERTIES
+            CXX_VISIBILITY_PRESET default
+            C_VISIBILITY_PRESET default
+            VISIBILITY_INLINES_HIDDEN OFF
+        )
+        target_compile_options(${target} PRIVATE -fvisibility=default)
+        target_link_options(${target} PRIVATE "-Wl,-undefined,error")
+    endif()
+
+    if(NOT COMMONS_ENABLE_MODULES AND NOT COMMONS_DONT_USE_PCH)
+        target_precompile_headers(${target} PUBLIC commons.pc.h)
+    endif()
+endfunction()
+
+function(commons_link_dependencies target layer)
+    if(layer STREQUAL "misc" OR layer STREQUAL "monolith")
+        target_link_libraries(${target} PUBLIC
+            cnpy
+            Commons::OpenCV
+            Commons::LibPNG
+            Commons::LibZIP
+            Commons::LibZ
+            glaze::glaze
+            ${ICU_LIBRARIES}
+        )
+
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            target_link_libraries(${target} PUBLIC atomic pthread m)
+        endif()
+    endif()
+
+    if(layer STREQUAL "video" OR layer STREQUAL "monolith")
+        target_link_libraries(${target} PUBLIC Commons::FFMPEG)
+    endif()
+
+    if(layer STREQUAL "gui" OR layer STREQUAL "monolith")
+        target_link_libraries(${target} PUBLIC
+            Commons::IMGUI
+            Commons::GLFW
+            Commons::OpenGL
+        )
+        if(COMMONS_BUILD_HTTPD)
+            target_link_libraries(${target} PUBLIC Commons::HTTPD)
+        endif()
+    endif()
+endfunction()
 
 if(COMMONS_ENABLE_MODULES)
+    add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
+    commons_configure_target(commons)
+    commons_link_dependencies(commons monolith)
     target_sources(commons
         PUBLIC
             FILE_SET commons_modules TYPE CXX_MODULES
             BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
             FILES ${COMMONS_MODULE_FILES}
     )
+    set(COMMONS_ACTIVE_TARGETS commons)
+    set(COMMONS_LIBRARY_NAME commons)
+else()
+    if(COMMONS_SPLIT_SHARED_LIBS AND NOT TREX_ENABLE_SHARED_INTERNAL_LIBS)
+        message(STATUS "COMMONS_SPLIT_SHARED_LIBS is ignored because TREX_ENABLE_SHARED_INTERNAL_LIBS is OFF.")
+    endif()
+
+    if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+        add_library(commons_misc ${COMMONS_LIBRARY_TYPE} ${COMMONS_MISC_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons_misc)
+        commons_link_dependencies(commons_misc misc)
+
+        add_library(commons_file ${COMMONS_LIBRARY_TYPE} ${COMMONS_FILE_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons_file)
+        commons_link_dependencies(commons_file file)
+        target_link_libraries(commons_file PUBLIC commons_misc)
+
+        add_library(commons_processing ${COMMONS_LIBRARY_TYPE} ${COMMONS_PROCESSING_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons_processing)
+        commons_link_dependencies(commons_processing processing)
+        target_link_libraries(commons_processing PUBLIC commons_file)
+
+        add_library(commons_video ${COMMONS_LIBRARY_TYPE} ${COMMONS_VIDEO_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons_video)
+        commons_link_dependencies(commons_video video)
+        target_link_libraries(commons_video PUBLIC commons_processing)
+
+        add_library(commons_gui ${COMMONS_LIBRARY_TYPE} ${COMMONS_GUI_CPP_SOURCES} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons_gui)
+        commons_link_dependencies(commons_gui gui)
+        target_link_libraries(commons_gui PUBLIC commons_video)
+
+        add_library(commons INTERFACE)
+        target_link_libraries(commons INTERFACE commons_gui)
+        set(COMMONS_LIBRARY_NAME commons_gui)
+        set(COMMONS_ACTIVE_TARGETS
+            commons_misc
+            commons_file
+            commons_processing
+            commons_video
+            commons_gui
+        )
+    else()
+        add_library(commons ${COMMONS_LIBRARY_TYPE} ${SRCS} ${HDRS} ${HASH_HDR})
+        commons_configure_target(commons)
+        commons_link_dependencies(commons monolith)
+        set(COMMONS_LIBRARY_NAME commons)
+        set(COMMONS_ACTIVE_TARGETS commons)
+    endif()
 endif()
 
 foreach(FILE ${HASH_HDR})
@@ -141,46 +273,9 @@ foreach(FILE ${SRCS} ${HDRS} ${COMMONS_MODULE_FILES})
     source_group("${GROUP}" FILES "${FILE}")
 endforeach()
 
-# Find ICU package
-find_package(ICU REQUIRED COMPONENTS uc i18n)
-
-# Output ICU variables for debugging
-message(STATUS "Found ICU:")
-message(STATUS "  ICU_VERSION: ${ICU_VERSION}")
-message(STATUS "  ICU_LIBRARIES: ${ICU_LIBRARIES}")
-message(STATUS "  ICU_INCLUDE_DIRS: ${ICU_INCLUDE_DIRS}")
-
-# Add ICU include directories
-if(COMMONS_ENABLE_MODULES)
-    target_include_directories(commons PRIVATE ${ICU_INCLUDE_DIRS})
-else()
-    target_include_directories(commons PUBLIC ${ICU_INCLUDE_DIRS})
-endif()
-
-target_link_libraries(commons
-    PUBLIC cnpy
-    PUBLIC Commons::OpenCV
-    PUBLIC Commons::IMGUI 
-    PUBLIC Commons::GLFW
-    PUBLIC Commons::FFMPEG
-    PUBLIC Commons::OpenGL 
-    PUBLIC Commons::LibPNG 
-    PUBLIC Commons::LibZIP 
-    PUBLIC Commons::LibZ
-    PUBLIC glaze::glaze
-    PUBLIC ${ICU_LIBRARIES}
-    #PUBLIC nlohmann_json::nlohmann_json
-)
-
 option(COMMONS_DONT_USE_PCH OFF)
 if(${CMAKE_VERSION} VERSION_LESS "3.16.0")
     message("Please consider to switch to CMake 3.16.0")
-elseif(NOT COMMONS_DONT_USE_PCH AND NOT COMMONS_ENABLE_MODULES)
-    target_precompile_headers(commons
-      PUBLIC
-        commons.pc.h
-      PUBLIC
-    )
 endif()
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
@@ -214,8 +309,10 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
                 else()
                     set(COMMONS_MACOS_VERSION_MINOR 0)
                 endif()
-                target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MAJOR=${COMMONS_MACOS_VERSION_MAJOR})
-                target_compile_definitions(commons PUBLIC COMMONS_MACOS_VERSION_MINOR=${COMMONS_MACOS_VERSION_MINOR})
+                foreach(target ${COMMONS_ACTIVE_TARGETS})
+                    target_compile_definitions(${target} PUBLIC COMMONS_MACOS_VERSION_MAJOR=${COMMONS_MACOS_VERSION_MAJOR})
+                    target_compile_definitions(${target} PUBLIC COMMONS_MACOS_VERSION_MINOR=${COMMONS_MACOS_VERSION_MINOR})
+                endforeach()
                 message(STATUS "OSX Major: ${COMMONS_MACOS_VERSION_MAJOR}, Minor: ${COMMONS_MACOS_VERSION_MINOR}")
             else()
                 message(WARNING "Could not determine macOS version from sysroot or deployment target.")
@@ -228,47 +325,37 @@ try_compile(HAVE_CONCEPT_IMPLEMENTATION "${CMAKE_BINARY_DIR}/temp" "${CMAKE_CURR
              CXX_STANDARD 20
              CXX_STANDARD_REQUIRED TRUE)
 if(${HAVE_CONCEPT_IMPLEMENTATION})
-    target_compile_definitions(commons PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
+    foreach(target ${COMMONS_ACTIVE_TARGETS})
+        target_compile_definitions(${target} PUBLIC HAVE_CONCEPT_IMPLEMENTATION=true)
+    endforeach()
     message(STATUS "Setting to true.")
 endif()
 message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
 
-target_compile_definitions(commons PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
-if(COMMONS_NO_PYTHON)
-    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=true)
-else()
-    target_compile_definitions(commons PUBLIC COMMONS_NO_PYTHON=false)
-endif()
+foreach(target ${COMMONS_ACTIVE_TARGETS})
+    target_compile_definitions(${target} PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
+    if(COMMONS_NO_PYTHON)
+        target_compile_definitions(${target} PUBLIC COMMONS_NO_PYTHON=true)
+    else()
+        target_compile_definitions(${target} PUBLIC COMMONS_NO_PYTHON=false)
+    endif()
 
-if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
-    target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=true)
-else()
-    target_compile_definitions(commons PUBLIC CMN_USE_OPENGL2=false)
-endif()
+    if(CMN_USE_OPENGL2 AND NOT COMMONS_FOR_JS)
+        target_compile_definitions(${target} PUBLIC CMN_USE_OPENGL2=true)
+    else()
+        target_compile_definitions(${target} PUBLIC CMN_USE_OPENGL2=false)
+    endif()
 
-if(APPLE)
-  target_compile_options(commons PRIVATE "-DNS_FORMAT_ARGUMENT(A)=" "-D_Nullable_result=_Nullable")
-endif()
-
-if(COMMONS_BUILD_HTTPD)
-	target_link_libraries(commons PUBLIC Commons::HTTPD)
-    add_dependencies(commons Commons::HTTPD)
-endif()
-
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_link_libraries(commons PUBLIC atomic pthread m)
-endif()
-
-add_dependencies(commons Commons::OpenCV)
+    if(APPLE)
+        target_compile_options(${target} PRIVATE "-DNS_FORMAT_ARGUMENT(A)=" "-D_Nullable_result=_Nullable")
+    endif()
+endforeach()
 
 set(RESOURCE_COPY_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../fonts
 )
 set(RESOURCE_COPY_SINGLE_FILES
 )
-
-set(COMMONS_LIBRARY_NAME commons)
 
 message(STATUS "Copying files ${RESOURCE_COPY_SINGLE_FILES}")
 foreach(comp ${RESOURCE_COPY_SINGLE_FILES})
