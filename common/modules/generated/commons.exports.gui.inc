@@ -45,7 +45,9 @@ using ::cmn::gui::WindowResizedEvent;
 // gui/FileChooser.h
 using ::cmn::gui::FileChooser;
 // gui/GLImpl.h
+#ifndef __APPLE__
 using ::cmn::gui::GLImpl;
+#endif
 // gui/GUITaskQueue.h
 using ::cmn::gui::GUITaskQueue_t;
 using ::cmn::gui::IMGUIBase;
@@ -102,8 +104,10 @@ using ::cmn::gui::OnHover_tTag;
 // gui/MacProgressBar.h
 using ::cmn::gui::MacProgressBar;
 // gui/MetalImpl.h
+#ifdef __APPLE__
 using ::cmn::gui::MetalData;
 using ::cmn::gui::MetalImpl;
+#endif
 // gui/Passthrough.h
 using ::cmn::gui::Fallthrough;
 using ::cmn::gui::retrieve_ptr_type;
