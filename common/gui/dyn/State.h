@@ -28,7 +28,7 @@ struct Collectors {
 
 struct PatternStore {
     std::shared_ptr<Collectors> _collectors;
-    std::unordered_map<size_t, PatternMapType> by_hash;
+    std::unordered_map<size_t, PatternMapType> by_hash{};
 
     const Pattern& set(size_t hash, const std::string& name, Pattern&& pattern);
     std::optional<Pattern*> get(size_t hash, const std::string& name);
