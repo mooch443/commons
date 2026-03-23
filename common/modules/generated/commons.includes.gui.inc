@@ -16,7 +16,9 @@
 #include <gui/DynamicVariable.h>
 #include <gui/Event.h>
 #include <gui/FileChooser.h>
+#ifndef __APPLE__
 #include <gui/GLImpl.h>
+#endif
 #include <gui/GUITaskQueue.h>
 #include <gui/Graph.h>
 #include <gui/GuiTypes.h>
@@ -26,7 +28,9 @@
 #include <gui/LabeledField.h>
 #include <gui/ListAttributes.h>
 #include <gui/MacProgressBar.h>
+#ifdef __APPLE__
 #include <gui/MetalImpl.h>
+#endif
 #include <gui/ParseLayoutTypes.h>
 #include <gui/Passthrough.h>
 #include <gui/SFLoop.h>

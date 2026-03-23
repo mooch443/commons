@@ -44,8 +44,8 @@ using ::cmn::gui::TextEvent;
 using ::cmn::gui::WindowResizedEvent;
 // gui/FileChooser.h
 using ::cmn::gui::FileChooser;
-// gui/GLImpl.h
 #ifndef __APPLE__
+// gui/GLImpl.h
 using ::cmn::gui::GLImpl;
 #endif
 // gui/GUITaskQueue.h
@@ -103,8 +103,8 @@ using ::cmn::gui::OnHover_t;
 using ::cmn::gui::OnHover_tTag;
 // gui/MacProgressBar.h
 using ::cmn::gui::MacProgressBar;
-// gui/MetalImpl.h
 #ifdef __APPLE__
+// gui/MetalImpl.h
 using ::cmn::gui::MetalData;
 using ::cmn::gui::MetalImpl;
 #endif
