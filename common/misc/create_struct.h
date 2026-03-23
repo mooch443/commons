@@ -667,18 +667,19 @@ public: \
         STRUCT_FOR_EACH(NAM, STRUCT_STRING_MEMBERS, __VA_ARGS__) \
     }; \
     STRUCT_FOR_EACH(NAM, EXPRESS_MEMBER_TYPES, __VA_ARGS__) \
+    using callback_fn_t = std::function<void(const std::string_view&, const cmn::sprite::PropertyType&)>; \
 private: \
     static constexpr const char * VariableNames[] { STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; \
     template<Variables M> struct AccessEnum { }; \
+    inline static std::once_flag _init_flag; \
+    inline static CallbackHolder<Variables, callback_fn_t> _callbacks{ #NAM }; \
+    inline static Members _members; \
 \
 public: \
     static auto& members() { \
-        static Members _members; \
         return _members; \
     } \
-    typedef std::function<void(const std::string_view&, const cmn::sprite::PropertyType&)> callback_fn_t; \
     static auto& callbacks() { \
-        static CallbackHolder<Variables, callback_fn_t> _callbacks(#NAM); \
         return _callbacks._callbacks; \
     } \
     static inline const std::array<std::function<const cmn::sprite::PropertyType&()>, STRUCT_FOR_EACH_NARG(__VA_ARGS__)> _getters { \
@@ -743,8 +744,8 @@ public: \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
-        static std::once_flag init_flag; \
-        std::call_once(init_flag, []() { \
+        std::call_once(_init_flag, []() { \
+            std::cout << "Initializing struct '" << #NAM << "' with " << STRUCT_FOR_EACH_NARG(__VA_ARGS__) << " members." << std::endl; \
             _callback_id = cmn::GlobalSettings::register_callbacks(NAM :: names(), [](std::string_view name){ \
                     auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
                     if(!value.valid()) { \
