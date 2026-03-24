@@ -93,11 +93,11 @@ public:
 struct IfBody {
     pattern::UnresolvedStringPattern variable;
     glz::json_t __if, __else;
-    Layout::Ptr _if;
-    Layout::Ptr _else;
+    Layout::Ptr _if{};
+    Layout::Ptr _else{};
     
     size_t _assigned_hash{0};
-    std::unique_ptr<State> _state;
+    std::unique_ptr<State> _state{};
     //State _state;
 //#ifndef NDEBUG
     //std::unique_ptr<State> _state;

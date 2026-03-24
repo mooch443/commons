@@ -380,13 +380,13 @@ bool Line::swap_with(gui::Drawable *d) {
         return false;
     
     //if(*ptr != *this) {
-        if(diff) {
-            std::swap(_processed_points, ptr->_processed_points);
-            std::swap(_process_scale, ptr->_process_scale);
-            std::swap(_max_scale, ptr->_max_scale);
-            
-            points();
-        }
+    if(diff) {
+        std::swap(_processed_points, ptr->_processed_points);
+        std::swap(_process_scale, ptr->_process_scale);
+        std::swap(_max_scale, ptr->_max_scale);
+        
+        points();
+    }
         
         /*if(ptr->_processed_points) {
             std::swap(_processed_points, ptr->_processed_points);
