@@ -58,9 +58,9 @@ struct LoopBody {
     std::string variable;
     glz::json_t::object_t child;
 #ifndef NDEBUG
-    std::unique_ptr<State> _state;
+    //std::unique_ptr<State> _state;
 #endif
-    std::vector<std::shared_ptr<VarBase_t>> cache;
+    std::vector<std::shared_ptr<VarBase_t>> cache{};
 };
 
 // Index class manages unique identifiers for objects.
@@ -141,14 +141,14 @@ struct ListContents {
 #ifndef NDEBUG
     std::unique_ptr<State> _state;
 #endif
-    std::vector<std::shared_ptr<VarBase_t>> cache;
-    std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions;
+    std::vector<std::shared_ptr<VarBase_t>> cache{};
+    std::unordered_map<size_t, std::tuple<std::string, std::function<void()>>> on_select_actions{};
 };
 
 struct VarCache {
-    std::string _var, _value;
+    std::string _var, _value{};
     glz::json_t::object_t _obj;
-    std::weak_ptr<Drawable> _cached_ptr;
+    std::weak_ptr<Drawable> _cached_ptr{};
 };
 
 /*struct Pattern {

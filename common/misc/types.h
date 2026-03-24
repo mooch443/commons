@@ -576,8 +576,8 @@ struct SegmentedOutlines {
 struct Prediction {
     uint8_t clid{255u}; // up to 254 classes
     uint8_t p{0u}; // [0,255] -> [0,1]
-    blob::Pose pose;
-    blob::SegmentedOutlines outlines;
+    blob::Pose pose{};
+    blob::SegmentedOutlines outlines{};
     
     bool valid() const { return clid < 255u; }
     std::string toStr() const;

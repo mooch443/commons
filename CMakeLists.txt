@@ -19,6 +19,48 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules )
 
 message("CXX FLAGS: " ${CMAKE_CXX_FLAGS})
 
+function(commons_log_option option_name)
+    if(DEFINED ${option_name})
+        message(STATUS "[COMMONS CONFIG]   ${option_name}=${${option_name}}")
+    else()
+        message(STATUS "[COMMONS CONFIG]   ${option_name}=<UNDEFINED>")
+    endif()
+endfunction()
+
+function(commons_log_selected_options)
+    message(STATUS "[COMMONS CONFIG] Selected options:")
+    foreach(option_name IN ITEMS
+        COMMONS_WITH_OPENGL
+        COMMONS_BUILD_GLFW
+        COMMONS_BUILD_PNG
+        COMMONS_BUILD_ZIP
+        COMMONS_BUILD_EXAMPLES
+        COMMONS_FOR_JS
+        COMMONS_BUILD_ZLIB
+        COMMONS_BUILD_OPENCV
+        COMMONS_CONDA_PACKAGE_INSTALL
+        CMN_USE_OPENGL2
+        WITH_FFMPEG
+        COMMONS_BUILD_HTTPD
+        COMMONS_ENABLE_MODULES
+        COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES
+        COMMONS_SPLIT_SHARED_LIBS
+        NO_PUT_TIME
+        OPENCV_EXTRA_FLAGS
+        COMMONS_NO_PYTHON
+    )
+        commons_log_option(${option_name})
+    endforeach()
+
+    if(DEFINED TREX_ENABLE_SHARED_INTERNAL_LIBS)
+        commons_log_option(TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    endif()
+
+    if(APPLE AND DEFINED COMMONS_MACOS_VERSION)
+        commons_log_option(COMMONS_MACOS_VERSION)
+    endif()
+endfunction()
+
 if(APPLE)
     option(COMMONS_WITH_OPENGL OFF)
 else()
@@ -103,6 +145,8 @@ else()
     message(STATUS "Non-Apple systems use OpenGL.")
     SET(COMMONS_WITH_OPENGL ON CACHE BOOL "" FORCE)
 endif()
+
+commons_log_selected_options()
 
 if(NO_PUT_TIME)
     add_definitions(-DNO_PUT_TIME=true)

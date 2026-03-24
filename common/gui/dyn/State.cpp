@@ -586,10 +586,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     
     auto &obj = std::get<LoopBody>(object);
 #ifndef NDEBUG
-    if (not obj._state) {
+    /*if (not obj._state) {
         obj._state = std::make_unique<State>();
         obj._state->_current_object_handler = state._current_object_handler;
-    }
+    }*/
 #endif
     //obj._state->_variable_values.clear();
     
