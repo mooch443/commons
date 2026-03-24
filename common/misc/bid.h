@@ -23,6 +23,7 @@ enum class FilterReason {
     SplitFailed,
     OnlySegmentations,
     BdxIgnored,
+    History,
     
     Unknown
 };

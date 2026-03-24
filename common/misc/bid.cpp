@@ -18,6 +18,7 @@ const char* filter_reason_to_str(FilterReason reason) {
         case FilterReason::SplitFailed: return "Split failed";
         case FilterReason::OnlySegmentations: return "Only segmentations are tracked";
         case FilterReason::BdxIgnored: return "Inside track_ignore_bdx";
+        case FilterReason::History: return "history_split";
         case FilterReason::Unknown:
         default:
             return "unknown";
