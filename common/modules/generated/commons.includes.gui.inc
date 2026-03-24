@@ -27,7 +27,9 @@
 #include <gui/IatHook.h>
 #include <gui/LabeledField.h>
 #include <gui/ListAttributes.h>
+#ifdef __APPLE__
 #include <gui/MacProgressBar.h>
+#endif
 #ifdef __APPLE__
 #include <gui/MetalImpl.h>
 #endif

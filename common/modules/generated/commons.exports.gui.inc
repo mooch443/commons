@@ -101,9 +101,9 @@ using ::cmn::gui::ListLineClr_t;
 using ::cmn::gui::ListLineClr_tTag;
 using ::cmn::gui::OnHover_t;
 using ::cmn::gui::OnHover_tTag;
+#ifdef __APPLE__
 // gui/MacProgressBar.h
 using ::cmn::gui::MacProgressBar;
-#ifdef __APPLE__
 // gui/MetalImpl.h
 using ::cmn::gui::MetalData;
 using ::cmn::gui::MetalImpl;

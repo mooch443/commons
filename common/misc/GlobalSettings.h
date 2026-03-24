@@ -113,7 +113,7 @@ namespace cmn {
          */
         struct LoadOptions {
             sprite::MapSource source = sprite::MapSource("<none>");
-            Deprecations deprecations;
+            Deprecations deprecations{};
             AccessLevel access = AccessLevelType::PUBLIC;
             bool correct_deprecations = true;
             std::vector<std::string> exclude = {};
