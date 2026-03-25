@@ -842,7 +842,9 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     #target_compile_definitions(imgui PUBLIC TREX_ENABLE_EXPERIMENTAL_BLUR=0)
 endif()
 
-include_directories(${imgui_path})
+# Mark as SYSTEM so GCC's C++20 modules TU-local entity exposure check
+# does not flag static inline operators from imgui headers.
+include_directories(SYSTEM ${imgui_path})
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     #set_property (TARGET imgui APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc -D'NS_FORMAT_ARGUMENT(A)=' -D_Nullable_result=_Nullable")
@@ -856,6 +858,7 @@ target_include_directories(Commons::IMGUI INTERFACE
   "$<INSTALL_INTERFACE:${INSTALL_DIR}/lib>"
 )
 set_target_properties(Commons::IMGUI PROPERTIES
+  SYSTEM TRUE
   IMPORTED_LOCATION "imgui"
   INTERFACE_INCLUDE_DIRECTORIES "${imgui_path}"
   #INTERFACE_LINK_DIRECTORIES "${imgui_path}/lib"
@@ -1289,6 +1292,9 @@ endif()
 #    BUILDING      O P E N C V
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 add_library (Commons::OpenCV INTERFACE IMPORTED GLOBAL)
+# Mark as SYSTEM so GCC's C++20 modules TU-local entity exposure check
+# does not flag static inline operators from OpenCV headers.
+set_target_properties(Commons::OpenCV PROPERTIES SYSTEM TRUE)
 
 if(WIN32)
     set(OpenCV_STATIC ON)
@@ -1317,7 +1323,7 @@ if(NOT ${COMMONS_BUILD_OPENCV})
         set(COMMONS_BUILD_OPENCV ON CACHE BOOL "OpenCV Override" FORCE)
         message(STATUS "Cannot find OpenCV. Trying to build it.")
     else() 
-        include_directories( ${OpenCV_INCLUDE_DIRS} )
+        include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
         message(STATUS "Found OpenCV Version: ${OpenCV_VERSION} include: ${OpenCV_INCLUDE_DIRS} libs: ${OpenCV_LIBRARIES}")
         set(OpenCV_LIBS ${OpenCV_LIBRARIES})
     
@@ -1683,9 +1689,9 @@ endif()
 	endif()
     
     if(UNIX)
-        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
+        target_include_directories(Commons::OpenCV SYSTEM INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4 )
     else()
-        target_include_directories(Commons::OpenCV INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include )
+        target_include_directories(Commons::OpenCV SYSTEM INTERFACE ${CMAKE_BINARY_DIR}/opencv_install/include )
     endif()
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")

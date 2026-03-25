@@ -14,7 +14,7 @@
 #endif
 
 namespace cmn::gui {
-    constexpr static const Float2_t margin = 5;
+    constexpr Float2_t margin = 5;
 
     void set_clipboard(const std::string& text) {
 #ifdef CMN_CLIPBOARD_GLFW

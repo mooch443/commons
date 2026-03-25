@@ -325,7 +325,7 @@ namespace cmn::gui {
                 }
                 
                 if(options & NORMED) {
-                    constexpr static const float bwidth = 1;
+                    constexpr float bwidth = 1;
                     bin_y /= bin_y.sum() * bwidth;
                 }
             }

@@ -114,7 +114,7 @@ namespace cmn::gui {
     
     using namespace Keyboard;
     
-    constexpr static const Codes code_map[128] = {
+    constexpr Codes code_map[128] = {
         Codes::Unknown,
         Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Unknown,  Codes::Unknown,
         Codes::Unknown,  Codes::Unknown,  Codes::BackSpace,Codes::Tab,     Codes::Unknown,

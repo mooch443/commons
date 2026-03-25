@@ -5,7 +5,7 @@
 #include <misc/Timer.h>
 
 namespace cmn::gui {
-    constexpr static const Codes html_code_map[128] = {
+    constexpr Codes html_code_map[128] = {
         Codes::Unknown,
         Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Unknown,  Codes::Unknown,
         Codes::Unknown,  Codes::Unknown,  Codes::BackSpace,Codes::Tab,     Codes::Unknown,

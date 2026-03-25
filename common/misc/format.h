@@ -12,8 +12,8 @@
 namespace cmn {
 
 namespace print_colors {
-    inline static std::once_flag flag;
-    inline static bool dont_print = true;
+    inline std::once_flag flag;
+    inline bool dont_print = true;
 }
 
 namespace PrefixLiterals {
