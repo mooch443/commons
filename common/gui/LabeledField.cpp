@@ -1305,13 +1305,17 @@ void LabeledPathArray::updateDropdownItems() {
                         }
                         else {
                             auto parentPath = p.remove_filename();
-                            try {
-                                // If a separator was deleted, show parent folder contents
-                                auto parentFiles = parentPath.find_files();
-                                matches = { parentFiles.begin(), parentFiles.end() };
-                                //matches = pathArray.get_paths();
-                            } catch(const std::exception& e) {
-                                FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                            if(parentPath.empty()) {
+                                matches.clear();
+                            } else {
+                                try {
+                                    // If a separator was deleted, show parent folder contents
+                                    auto parentFiles = parentPath.find_files();
+                                    matches = { parentFiles.begin(), parentFiles.end() };
+                                    //matches = pathArray.get_paths();
+                                } catch(const std::exception& e) {
+                                    FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                                }
                             }
                         }
                     }

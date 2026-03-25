@@ -71,9 +71,13 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
         }
             
 #if __APPLE__
-        auto wd = _wd / ".."/ "Resources";
-        if(wd.exists())
-            _wd = wd.absolute();
+        // If the executable directory already points at Resources, don't append again.
+        if(_wd.filename() != "Resources") {
+            auto wd = _wd / ".." / "Resources";
+            if(wd.exists()) {
+                _wd = wd.absolute();
+            }
+        }
 #endif
         
         SETTING(wd) = _wd;
