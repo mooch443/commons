@@ -135,6 +135,15 @@ namespace date
 #  define NOEXCEPT noexcept
 #endif
 
+// C++20 modules require namespace-scope variables to have external linkage.
+// constexpr const (the default CONSTDATA) has internal linkage at namespace scope,
+// which causes "exposes TU-local entity" errors in module interface units.
+// Override to inline constexpr, which has external linkage.
+#if defined(CONSTDATA)
+#  undef CONSTDATA
+#  define CONSTDATA constexpr
+#endif
+
 #ifndef HAS_UNCAUGHT_EXCEPTIONS
 #  if __cplusplus >= 201703 || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 #    define HAS_UNCAUGHT_EXCEPTIONS 1

@@ -1083,7 +1083,7 @@ _FormatError(const Args&... args) -> _FormatError<Args...>;
 
 #define FormatError(...) _FormatError(cmn::source_location::current(), __VA_ARGS__)
 
-static constexpr const char EXCEPTION_PREFIX[] = "EXCEPT";
+inline constexpr const char EXCEPTION_PREFIX[] = "EXCEPT";
 template<typename... Args>
 struct _FormatExcept : FormatColoredPrefix<FormatterType::UNIX, PrefixLiterals::EXCEPT, FormatColor::RED, Args...> {
     _FormatExcept(cmn::source_location info, const Args& ...args)

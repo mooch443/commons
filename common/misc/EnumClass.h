@@ -191,10 +191,10 @@ namespace NAME { \
             __VA_ARGS__ \
         }; \
         \
-        constexpr const char *name = #NAME; \
-        constexpr static const size_t num_elements = PP_NARG( __VA_ARGS__ ) ; \
+        inline constexpr const char *name = #NAME; \
+        inline constexpr size_t num_elements = PP_NARG( __VA_ARGS__ ) ; \
         std::array<const char*, num_elements> docs_exist() noexcept; \
-        static inline constexpr std::array<std::string_view, num_elements> _names = {    \
+        inline constexpr std::array<std::string_view, num_elements> _names = {    \
           {IDENTITY( STRINGVIEWIZE(__VA_ARGS__) )}            \
         };                                \
          \
@@ -216,18 +216,18 @@ namespace NAME { \
     \
     typedef Enum<data::values, data::num_elements, data::names> Class; \
     \
-    constexpr const Class _APPLYXn(NAME, __VA_ARGS__); \
-    constexpr std::array<Class, data::num_elements> values = {{ __VA_ARGS__ }}; \
-    constexpr std::array<std::string_view, data::num_elements> names = data::names::str(); \
+    inline constexpr Class _APPLYXn(NAME, __VA_ARGS__); \
+    inline constexpr std::array<Class, data::num_elements> values = {{ __VA_ARGS__ }}; \
+    inline constexpr std::array<std::string_view, data::num_elements> names = data::names::str(); \
     template<typename T = std::string > \
-    static inline bool has(T name) noexcept { \
+    inline bool has(T name) noexcept { \
         for(size_t i=0; i<data::num_elements; i++) \
             if(cmn::utils::lowercase_equal_to(name, data::names::str()[i])) \
                 return true; \
         return false; \
     } \
     template<typename T = std::string> \
-    static constexpr const Class& get(T name) { \
+    inline constexpr const Class& get(T name) { \
         UNUSED(names); \
         for(auto &v : values) \
             if(cmn::utils::lowercase_equal_to(v.name(), name)) \

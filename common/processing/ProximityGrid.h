@@ -28,7 +28,7 @@ namespace cmn {
 namespace grid {
 
 using fdx_pos = pv::bid;
-static constexpr int proximity_res = 100;
+inline constexpr int proximity_res = 100;
 
 class ProximityGrid : public Grid2D<fdx_pos, std::vector<pixel<fdx_pos>>> {
 public:

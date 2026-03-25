@@ -6,7 +6,7 @@ using Char_t = char;
 
 struct construct_from_pointer_t { };
 
-constexpr auto construct_from_pointer = construct_from_pointer_t{};
+inline constexpr auto construct_from_pointer = construct_from_pointer_t{};
 
 template <size_t N> struct fixed_string {
     Char_t content[N] = {};

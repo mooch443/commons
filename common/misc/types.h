@@ -601,7 +601,7 @@ struct Pair {
 }
 
 typedef std::vector<blob::Pair> blobs_t;
-constexpr int CV_MAX_THICKNESS = 32767;
+inline constexpr int CV_MAX_THICKNESS = 32767;
 }
 
 

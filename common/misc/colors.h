@@ -369,7 +369,7 @@ inline std::ostream &operator<<(std::ostream &os, const Color*obj) {
     return operator<<(os, *obj);
 }
 
-constexpr Color
+inline constexpr Color
            White       = Color(255, 255, 255, 255),
            Black       = Color(0, 0, 0, 255),
             Gray       = Color(135, 135, 135, 255),
@@ -420,7 +420,7 @@ struct ColorPair {
 };
 
 #define DEFINE_COLOR(NAME) ColorPair{ NAME, #NAME }
-constexpr auto AllColors = std::array {
+inline constexpr auto AllColors = std::array {
     DEFINE_COLOR(White),
     DEFINE_COLOR(Black),
     DEFINE_COLOR(Gray),
