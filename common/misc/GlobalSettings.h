@@ -197,15 +197,31 @@ namespace cmn {
             is_invalid_fn() = std::move(fn);
         }
         
-        //! return the instance
+        //! Explicitly create and register the owned singleton instance.
+        //! Must be called before any read/write/instance() access.
+        static GlobalSettings& create();
+
+        //! return the instance, throwing if none has been set yet
         static GlobalSettings* instance(GlobalSettings* ptr = nullptr) {
-            std::unique_lock guard(instance_mutex());
-            auto& _instance = instance_storage();
-            if(ptr)
-                _instance = ptr;
-            return _instance;
+            GlobalSettings* result;
+            {
+                std::unique_lock guard(instance_mutex());
+                auto& _instance = instance_storage();
+                if(ptr)
+                    _instance = ptr;
+                result = _instance;
+            } // release lock before any throw so RuntimeError ctor cannot re-enter
+            if(!result)
+                throw RuntimeError("GlobalSettings::create() must be called before accessing the instance.");
+            return result;
         }
-        
+
+        //! return the instance without throwing — nullptr if none has been set yet
+        static GlobalSettings* instance_if_set() noexcept {
+            std::unique_lock guard(instance_mutex());
+            return instance_storage();
+        }
+
         static void set_instance(GlobalSettings*);
         
         enum class Access {

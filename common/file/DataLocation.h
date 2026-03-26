@@ -14,8 +14,13 @@ public:
     static file::Path parse(const std::string& purpose, file::Path path = file::Path(), const sprite::Map* settings = nullptr);
     static bool is_registered(std::string purpose);
 
+    //! Explicitly create and register the owned singleton instance.
+    //! Must be called before any register_path/parse/instance() access.
+    static DataLocation& create();
+
     //! managing instances in order to support Windows DLLs
     static DataLocation* instance();
+    static DataLocation* instance_if_set() noexcept;
     static void set_instance(DataLocation* instance);
 private:
     DataLocation() {}

@@ -13,8 +13,14 @@ std::mutex& GlobalSettings::instance_mutex() {
 }
 
 GlobalSettings*& GlobalSettings::instance_storage() {
-    static GlobalSettings* _instance{new GlobalSettings()};
+    static GlobalSettings* _instance{nullptr};
     return _instance;
+}
+
+GlobalSettings& GlobalSettings::create() {
+    static GlobalSettings _owned_instance{};
+    instance(&_owned_instance);
+    return _owned_instance;
 }
 
 bool& GlobalSettings::is_reading_config_flag() {
