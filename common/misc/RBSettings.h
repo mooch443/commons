@@ -384,29 +384,32 @@ private:
      * - Wraps the callback in logic that queues the updated setting name
      * - Immediately applies all settings (`update_settings<true>()`)
      */
-    inline static thread_local std::shared_ptr<ThreadObject> object{[](){
-        auto ptr = std::make_shared<ThreadObject>();
-        
-        ptr->_callback_collection = GlobalSettings::register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
-         ptr->setting_names,
-         [wptr = std::weak_ptr(ptr)](auto name) {
-            std::shared_ptr<ThreadObject> lock = wptr.lock();
-            if(not lock)
-                return;
+
+    inline static auto& object() {
+        thread_local std::shared_ptr<ThreadObject> obj {[](){
+            auto ptr = std::make_shared<ThreadObject>();
+            ptr->_callback_collection = GlobalSettings::register_callbacks<cmn::sprite::RegisterInit::DONT_TRIGGER>(
+             ptr->setting_names,
+             [wptr = std::weak_ptr(ptr)](auto name) {
+                std::shared_ptr<ThreadObject> lock = wptr.lock();
+                if(not lock)
+                    return;
             
-            if constexpr(use_atomic) {
-                auto var = lock->get_enum_name(name);
-                lock->updatedQueue.push(var);
+                if constexpr(use_atomic) {
+                    auto var = lock->get_enum_name(name);
+                    lock->updatedQueue.push(var);
                 
-            } else {
-                std::lock_guard guard{lock->_update_settings_mutex};
-                lock->_updated_settings.insert(name);
-            }
-         });
+                } else {
+                    std::lock_guard guard{lock->_update_settings_mutex};
+                    lock->_updated_settings.insert(name);
+                }
+             });
         
-        ptr->template update_settings<true>();
-        return ptr;
-    }()};
+            ptr->template update_settings<true>();
+            return ptr;
+        }()};
+        return obj;
+    }
     
     RBSettings() = default;
     
@@ -451,7 +454,7 @@ public:
      */
     template<ThreadObject::Variables key>
     static const auto& get() {
-        auto &settings = *object;
+        auto &settings = *object();
         assert(settings._thread_id == std::this_thread::get_id());
         return settings.template get<key>();
     }
@@ -462,24 +465,24 @@ public:
      */
     template<ct::utils::fixed_string key>
     static const auto& get() {
-        auto &settings = *object;
+        auto &settings = *object();
         assert(settings._thread_id == std::this_thread::get_id());
         return settings.template get<key>();
     }
     
     static void start_round() {
-        object->start_round();
+        object()->start_round();
     }
     static void end_round() {
-        object->end_round();
+        object()->end_round();
     }
     
     static Guard round() {
-        return Guard{object.get()};
+        return Guard{object().get()};
     }
 
     static ThreadObject* current() {
-        return object.get();
+        return object().get();
     }
 };
 
