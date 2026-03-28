@@ -131,7 +131,7 @@ static inline int __builtin_clzl(T x) {
 
 #endif
 
-#if !defined(HAVE_CONCEPT_IMPLEMENTATION)
+#if !defined(__cpp_concepts) || (__cpp_concepts < 201907L)
 namespace std {
 template<class From, class To>
     concept convertible_to =
@@ -144,9 +144,9 @@ template<class T>
 template<class T>
     concept integral = std::is_integral_v<T>;
 template <class T>
-    concept signed_integral = std::integral<T> && std::is_signed_v<T>;
+    concept signed_integral = std::is_integral_v<T> && std::is_signed_v<T>;
 template <class T>
-    concept unsigned_integral = std::integral<T> && !std::signed_integral<T>;
+    concept unsigned_integral = std::is_integral_v<T> && !std::is_signed_v<T>;
 }
 #endif
 
@@ -256,6 +256,18 @@ public:
 #define USE_GPU_MAT
 #else
 static_assert(false, "OpenCV version insufficient.");
+#endif
+
+// Tracker headers use TREX export annotations, but some static-build
+// translation units (for example certain test targets) may not inherit
+// tracker target compile definitions. Provide a no-op fallback unless
+// the build already set explicit visibility attributes.
+#ifndef TREX_EXPORT
+#define TREX_EXPORT
+#endif
+
+#ifndef TREX_TYPE_EXPORT
+#define TREX_TYPE_EXPORT TREX_EXPORT
 #endif
 
 #ifdef IN_MODULE_INTERFACE
@@ -1373,4 +1385,4 @@ public:
 //#undef isnormal
 #include <misc/math.h>
 #include <misc/stringutils.h>
-#include <types.h>
+#include <misc/types.h>

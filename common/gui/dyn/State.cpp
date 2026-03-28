@@ -6,6 +6,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/Passthrough.h>
+#include <misc/Path.h>
 #include <misc/default_settings.h>
 #include <gui/dyn/binders.h>
 
@@ -493,7 +494,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
     
     if(context.has(obj.variable, state)) {
         auto loop_variable = context.variable(obj.variable, state);
-        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(loop_variable->is_strict<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>({});
             
             IndexScopeHandler handler{state._current_index};
@@ -585,10 +586,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     
     auto &obj = std::get<LoopBody>(object);
 #ifndef NDEBUG
-    if (not obj._state) {
+    /*if (not obj._state) {
         obj._state = std::make_unique<State>();
         obj._state->_current_object_handler = state._current_object_handler;
-    }
+    }*/
 #endif
     //obj._state->_variable_values.clear();
     
@@ -597,7 +598,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
 
     if(context.has(props.name, state)) {
         auto loop_variable = context.variable(props.name, state);
-        if(loop_variable->is<std::vector<std::shared_ptr<VarBase_t>>&>()) {
+        if(loop_variable->is_strict<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
             
             //IndexScopeHandler handler{state._current_index};

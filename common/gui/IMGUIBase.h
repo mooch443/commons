@@ -3,6 +3,7 @@
 #include <commons.pc.h>
 #include "CrossPlatform.h"
 #include <gui/DrawBase.h>
+#include <misc/Path.h>
 #include <misc/Timer.h>
 #include <gui/Transform.h>
 #ifndef NDEBUG

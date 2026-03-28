@@ -1,7 +1,7 @@
 #ifndef _VIDEO_H
 #define _VIDEO_H
 
-#include "types.h"
+#include "misc/types.h"
 #include <misc/frame_t.h>
 
 /*#if CV_MAJOR_VERSION >= 3

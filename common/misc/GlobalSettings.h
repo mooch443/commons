@@ -10,11 +10,11 @@
 #undef min
 #endif
 
-#define SETTING(NAME) (cmn::setting(#NAME))
-#define BOOL_SETTING(NAME) (cmn::bool_setting(#NAME))
-#define OPTIONAL_SETTING(NAME, ...) (cmn::optional_setting< __VA_ARGS__ >( #NAME ))
-#define READ_SETTING(NAME, ...) (cmn::read_setting< __VA_ARGS__ >( #NAME ))
-#define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::read_setting_with_default( #NAME , __VA_ARGS__ ))
+#define SETTING(NAME) (cmn::setting_config(#NAME))
+#define BOOL_SETTING(NAME) (cmn::bool_setting_config(#NAME))
+#define OPTIONAL_SETTING(NAME, ...) (cmn::optional_setting_config< __VA_ARGS__ >( #NAME ))
+#define READ_SETTING(NAME, ...) (cmn::read_setting_config< __VA_ARGS__ >( #NAME ))
+#define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::read_setting_with_default_config( #NAME , __VA_ARGS__ ))
 
 namespace cmn {
     /*namespace detail {
@@ -113,7 +113,7 @@ namespace cmn {
          */
         struct LoadOptions {
             sprite::MapSource source = sprite::MapSource("<none>");
-            Deprecations deprecations;
+            Deprecations deprecations{};
             AccessLevel access = AccessLevelType::PUBLIC;
             bool correct_deprecations = true;
             std::vector<std::string> exclude = {};
@@ -132,6 +132,10 @@ namespace cmn {
         //friend struct detail::g_GSettingsSingletonStruct;
         static std::shared_mutex& mutex();
         static std::shared_mutex& defaults_mutex();
+        static std::mutex& instance_mutex();
+        static GlobalSettings*& instance_storage();
+        static bool& is_reading_config_flag();
+        static bool& is_writing_config_flag();
         
     public:
         GlobalSettings();
@@ -193,21 +197,32 @@ namespace cmn {
             is_invalid_fn() = std::move(fn);
         }
         
-        //! return the instance
+        //! Explicitly create and register the owned singleton instance.
+        //! Must be called before any read/write/instance() access.
+        static GlobalSettings& create();
+
+        //! return the instance, throwing if none has been set yet
         static GlobalSettings* instance(GlobalSettings* ptr = nullptr) {
-            static std::mutex _mutex;
-            static GlobalSettings* _instance{new GlobalSettings()};
-            
-            std::unique_lock guard(_mutex);
-            if(ptr)
-                _instance = ptr;
-            return _instance;
+            GlobalSettings* result;
+            {
+                std::unique_lock guard(instance_mutex());
+                auto& _instance = instance_storage();
+                if(ptr)
+                    _instance = ptr;
+                result = _instance;
+            } // release lock before any throw so RuntimeError ctor cannot re-enter
+            if(!result)
+                throw RuntimeError("GlobalSettings::create() must be called before accessing the instance.");
+            return result;
         }
-        
+
+        //! return the instance without throwing — nullptr if none has been set yet
+        static GlobalSettings* instance_if_set() noexcept {
+            std::unique_lock guard(instance_mutex());
+            return instance_storage();
+        }
+
         static void set_instance(GlobalSettings*);
-        
-        static inline thread_local bool is_reading_config{false};
-        static inline thread_local bool is_writing_config{false};
         
         enum class Access {
             CONFIGURATION,
@@ -216,20 +231,20 @@ namespace cmn {
         
         struct ReadG {
             ReadG() {
-                is_reading_config = true;
+                is_reading_config_flag() = true;
             }
             ~ReadG() {
-                is_reading_config = false;
+                is_reading_config_flag() = false;
             }
         };
         struct WriteG {
             WriteG() {
-                is_reading_config = true;
-                is_writing_config = true;
+                is_reading_config_flag() = true;
+                is_writing_config_flag() = true;
             }
             ~WriteG() {
-                is_writing_config = false;
-                is_reading_config = false;
+                is_writing_config_flag() = false;
+                is_reading_config_flag() = false;
             }
         };
         
@@ -237,7 +252,7 @@ namespace cmn {
         static auto write(Fn&& fn) {
             static constexpr Access access = std::invocable<Fn, Configuration&> ? Access::CONFIGURATION : Access::CURRENT;
             
-            if(is_writing_config) {
+            if(is_writing_config_flag()) {
                 if constexpr(access == Access::CONFIGURATION) {
                     return fn(instance()->_config);
                     
@@ -251,7 +266,7 @@ namespace cmn {
                 }
                 //
                 
-            } else if(is_reading_config) {
+            } else if(is_reading_config_flag()) {
                 throw RuntimeError("Cannot call write recursively with read.");
             }
             
@@ -272,13 +287,13 @@ namespace cmn {
                 static_assert(access == (Access)(size_t)-1, "Unknown access type.");
             }
         }
-        
+
         template<typename Fn>
         static auto read(Fn&& fn) {
             static constexpr Access access = std::invocable<Fn, const Configuration&> ? Access::CONFIGURATION : Access::CURRENT;
             
-            if(is_reading_config
-               || is_writing_config)
+            if(is_reading_config_flag()
+               || is_writing_config_flag())
             {
                 if constexpr(access == Access::CONFIGURATION) {
                     return fn(instance()->_config);
@@ -311,7 +326,7 @@ namespace cmn {
                 static_assert(access == (Access)(size_t)-1, "Unknown access type.");
             }
         }
-        
+
         /**
          * Returns a reference to the settings map.
          */
@@ -617,27 +632,96 @@ namespace cmn {
 }
 
 namespace cmn {
+    inline sprite::Reference setting_config(std::string_view name) {
+        return GlobalSettings::write([name](Configuration& config) {
+            return config.values[name];
+        });
+    }
+
+    inline bool bool_setting_config(std::string_view name) {
+        return GlobalSettings::read([name](const Configuration& config) {
+            auto value = config.values.at(name);
+            if(!value.valid()) {
+                return false;
+            }
+            try {
+                return value.value<bool>();
+            } catch(...) {
+                return Meta::fromStr<bool>(value.get().valueString());
+            }
+        });
+    }
+
+    template<typename T>
+    inline auto optional_setting_config(std::string_view name) {
+        return GlobalSettings::read([name](const Configuration& config) -> std::optional<T> {
+            auto value = config.values.at(name);
+            if(value.valid()) {
+                try {
+                    return value.value<T>();
+                } catch(...) {
+                    return Meta::fromStr<T>(value.get().valueString());
+                }
+            }
+            return std::nullopt;
+        });
+    }
+
+    template<typename T>
+    inline auto read_setting_config(std::string_view name) {
+        return GlobalSettings::read([name](const Configuration& config) -> T {
+            auto value = config.values.at(name);
+            if(value.valid()) {
+                try {
+                    return value.value<T>();
+                } catch(...) {
+                    return Meta::fromStr<T>(value.get().valueString());
+                }
+            }
+#ifndef NDEBUG
+            throw RuntimeError("Cannot dereference value for setting: ", name, " and type ", cmn::type_name<T>());
+#else
+            return T{};
+#endif
+        });
+    }
+
+    template<typename T>
+    inline auto read_setting_with_default_config(std::string_view name, T&& default_value) {
+        return GlobalSettings::read([name, &default_value](const Configuration& config) -> std::remove_reference_t<T> {
+            auto value = config.values.at(name);
+            if(!value.valid()) {
+                return default_value;
+            }
+            try {
+                return value.value<std::remove_reference_t<T>>();
+            } catch(...) {
+                return Meta::fromStr<std::remove_reference_t<T>>(value.get().valueString());
+            }
+        });
+    }
+
     inline sprite::Reference setting(std::string_view name) {
-        return GlobalSettings::_get(name);
+        return setting_config(name);
     }
 
     inline bool bool_setting(std::string_view name) {
-        return GlobalSettings::read_value_with_default(name, false);
+        return bool_setting_config(name);
     }
 
     template<typename T>
     inline auto optional_setting(std::string_view name) {
-        return GlobalSettings::read_value<T>(name);
+        return optional_setting_config<T>(name);
     }
 
     template<typename T>
     inline auto read_setting(std::string_view name) {
-        return GlobalSettings::read_deref_value<T>(name);
+        return read_setting_config<T>(name);
     }
 
     template<typename T>
     inline auto read_setting_with_default(std::string_view name, T&& default_value) {
-        return GlobalSettings::read_value_with_default(name, std::forward<T>(default_value));
+        return read_setting_with_default_config(name, std::forward<T>(default_value));
     }
 }
 

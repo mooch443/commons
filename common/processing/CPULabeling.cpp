@@ -4,7 +4,7 @@
 #include <misc/pretty.h>
 #include <misc/ranges.h>
 #include <misc/ThreadPool.h>
-#include <misc/PVBlob.h>
+#include <processing/PVBlob.h>
 #include <processing/Source.h>
 #include <processing/DLList.h>
 #include <processing/Brototype.h>

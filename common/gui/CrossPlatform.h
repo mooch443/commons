@@ -2,6 +2,7 @@
 
 #include <commons.pc.h>
 #include <misc/Image.h>
+#include <misc/Path.h>
 #include <gui/types/Basic.h>
 #include <gui/DrawBase.h>
 

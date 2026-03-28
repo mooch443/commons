@@ -1,7 +1,6 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <file/Path.h>
 #include <misc/colors.h>
 //#define IMAGE_DEBUG_MEMORY_ALLOC 1
 
@@ -255,9 +254,6 @@ concept CallableWithNArgs = requires (F&& f) {
         }
     };
 
-    void to_png(const Image& input, std::vector<uchar>& output);
-    Image::Ptr from_png(const file::Path& path);
-    
     cv::Mat restrict_image_keep_ratio(const Size2& max_size, const cv::Mat& input);
 
     template<typename MatOut>

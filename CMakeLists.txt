@@ -16,8 +16,52 @@ include(FetchContent)
 find_package(Git REQUIRED)
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules )
+include(CommonsMacOSVersion)
 
 message("CXX FLAGS: " ${CMAKE_CXX_FLAGS})
+
+function(commons_log_option option_name)
+    if(DEFINED ${option_name})
+        message(STATUS "[COMMONS CONFIG]   ${option_name}=${${option_name}}")
+    else()
+        message(STATUS "[COMMONS CONFIG]   ${option_name}=<UNDEFINED>")
+    endif()
+endfunction()
+
+function(commons_log_selected_options)
+    message(STATUS "[COMMONS CONFIG] Selected options:")
+    foreach(option_name IN ITEMS
+        COMMONS_WITH_OPENGL
+        COMMONS_BUILD_GLFW
+        COMMONS_BUILD_PNG
+        COMMONS_BUILD_ZIP
+        COMMONS_BUILD_EXAMPLES
+        COMMONS_FOR_JS
+        COMMONS_BUILD_ZLIB
+        COMMONS_BUILD_OPENCV
+        COMMONS_CONDA_PACKAGE_INSTALL
+        CMN_USE_OPENGL2
+        WITH_FFMPEG
+        COMMONS_BUILD_HTTPD
+        COMMONS_ENABLE_MODULES
+        COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES
+        COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE
+        COMMONS_SPLIT_SHARED_LIBS
+        NO_PUT_TIME
+        OPENCV_EXTRA_FLAGS
+        COMMONS_NO_PYTHON
+    )
+        commons_log_option(${option_name})
+    endforeach()
+
+    if(DEFINED TREX_ENABLE_SHARED_INTERNAL_LIBS)
+        commons_log_option(TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    endif()
+
+    if(APPLE AND DEFINED COMMONS_MACOS_VERSION)
+        commons_log_option(COMMONS_MACOS_VERSION)
+    endif()
+endfunction()
 
 if(APPLE)
     option(COMMONS_WITH_OPENGL OFF)
@@ -37,6 +81,8 @@ option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
 option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
 option(COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES "Allow the commons module build on GCC in experimental mode." OFF)
+option(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE "Require explicit dispatcher installation instead of per-image auto-creation." OFF)
+option(COMMONS_SPLIT_SHARED_LIBS "Build commons as separate shared libraries per layer when shared internal libs are enabled." OFF)
 option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
@@ -76,21 +122,7 @@ string( TOUPPER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE )
 set_property(GLOBAL PROPERTY DEBUG_CONFIGURATIONS "Debug;DEBUG;")
 
 if(APPLE)
-    if(CMAKE_OSX_DEPLOYMENT_TARGET AND NOT ${CMAKE_OSX_DEPLOYMENT_TARGET} MATCHES "")
-        message(STATUS "Found OSX deployment target: '${CMAKE_OSX_DEPLOYMENT_TARGET}'")
-        set(COMMONS_MACOS_VERSION ${CMAKE_OSX_DEPLOYMENT_TARGET})
-    else()
-        message(STATUS "Need to detect OSX version.")
-        if(NOT CMAKE_OSX_SYSROOT)
-            message(FATAL_ERROR "No OSX sysroot was set.")
-        else()
-            get_filename_component(osx_dir ${CMAKE_OSX_SYSROOT} NAME)
-            string(REPLACE ".sdk" "" osx_dir ${osx_dir})
-            string(REPLACE "MacOSX" "" osx_dir ${osx_dir})
-            message(STATUS "OSX Target: ${osx_dir}")
-            set(COMMONS_MACOS_VERSION ${osx_dir})
-        endif()
-    endif()
+    commons_detect_macos_version(COMMONS_MACOS_VERSION)
 endif()
 
 if(APPLE AND "${COMMONS_MACOS_VERSION}" VERSION_LESS "10.12")
@@ -101,6 +133,12 @@ elseif(APPLE)
 else()
     message(STATUS "Non-Apple systems use OpenGL.")
     SET(COMMONS_WITH_OPENGL ON CACHE BOOL "" FORCE)
+endif()
+
+commons_log_selected_options()
+
+if(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE)
+    add_compile_definitions(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE=1)
 endif()
 
 if(NO_PUT_TIME)
@@ -126,8 +164,11 @@ set(CMAKE_DEBUG_POSTFIX -d)
 
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+    if(COMMONS_LIBRARY_TYPE STREQUAL "STATIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
+        message(STATUS "Using hidden visibility for non-shared library build on Apple Clang.")
+    endif()
     if(APPLE)
         foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
             if(NOT ${flag_var} MATCHES "-Wl,-undefined,error")
@@ -260,7 +301,9 @@ elseif(NOT COMMONS_FOR_JS)
 endif()
 
 if(APPLE)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
+    foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+        set(${flag_var} "${${flag_var}} -framework IOKit -framework CoreFoundation -framework CoreGraphics -framework CoreVideo -framework OpenCL -framework Cocoa -framework AppKit -framework AVKit -framework AVFoundation -framework CoreMedia -framework QuartzCore -framework Accelerate")
+    endforeach()
     
     find_library(COCOA_LIBRARY Cocoa)
     find_library(IOKIT_LIBRARY IOKit)
@@ -299,7 +342,9 @@ if(APPLE)
             ${METALKIT_LIBRARY}
             ${METAL_LIBRARY}
         )
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -framework Metal")
+        foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
+            set(${flag_var} "${${flag_var}} -framework Metal")
+        endforeach()
     endif()
     
     #message(STATUS "Mac extra libs: ${EXTRA_LIBS}")
@@ -364,18 +409,22 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
 
     set(TREX_WARNING_FLAGS "-Wmove -Werror=return-stack-address") #-Wthread-safety")
 
+    set(COMMONS_RELEASE_LTO_FLAG "-flto")
+    if(APPLE AND COMMONS_ENABLE_MODULES)
+        set(COMMONS_RELEASE_LTO_FLAG "-fno-lto")
+    endif()
+
     set(C_SANITIZE_OPTIONS "")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g ${C_SANITIZE_OPTIONS} -fno-lto")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${M1OPTIONS} -O3 -flto -ffunction-sections -fdata-sections ${TREX_WARNING_FLAGS}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${M1OPTIONS} -O3 ${COMMONS_RELEASE_LTO_FLAG} -ffunction-sections -fdata-sections ${TREX_WARNING_FLAGS}")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g3 -gdwarf-5 -fno-omit-frame-pointer -fno-inline -fno-inline-functions -fno-lto ${TREX_WARNING_FLAGS}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++98-compat-pedantic -Wall -Wextra -pedantic ${TREX_WARNING_FLAGS}")
     
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=return-stack-address")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${M1OPTIONS} -O3 -flto -ffunction-sections -fdata-sections ${TREX_WARNING_FLAGS}")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${M1OPTIONS} -O3 ${COMMONS_RELEASE_LTO_FLAG} -ffunction-sections -fdata-sections ${TREX_WARNING_FLAGS}")
     set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${M1OPTIONS} -O3 -g ${C_SANITIZE_OPTIONS} -fno-omit-frame-pointer")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-c++98-compat-pedantic")
-    message(STATUS "hidden visibility in main project ${CMAKE_CXX_FLAGS}")
     message(STATUS "Apple Silicon: ${CMAKE_SYSTEM_PROCESSOR} -> ${M1OPTIONS}")
     
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-nullability-extension")
@@ -484,19 +533,28 @@ set(ORIGINAL_C_FLAGS "${CMAKE_C_FLAGS} ${disable_warnings_flags}")
 message(STATUS "ORIGINAL_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}")
 message(STATUS "ORIGINAL_C_FLAGS=${ORIGINAL_C_FLAGS}")
 
+set(COMMONS_SUBPROJECT_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
+set(COMMONS_SUBPROJECT_C_FLAGS "${ORIGINAL_C_FLAGS}")
+if(CONDA_PREFIX)
+    string(REPLACE "-isystem ${CONDA_PREFIX}/include" "" COMMONS_SUBPROJECT_CXX_FLAGS "${COMMONS_SUBPROJECT_CXX_FLAGS}")
+    string(REPLACE "-isystem ${CONDA_PREFIX}/include" "" COMMONS_SUBPROJECT_C_FLAGS "${COMMONS_SUBPROJECT_C_FLAGS}")
+    string(STRIP "${COMMONS_SUBPROJECT_CXX_FLAGS}" COMMONS_SUBPROJECT_CXX_FLAGS)
+    string(STRIP "${COMMONS_SUBPROJECT_C_FLAGS}" COMMONS_SUBPROJECT_C_FLAGS)
+endif()
+
 SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.10
     -DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
     -DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}
     -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
     -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
-    -DCMAKE_C_FLAGS:STRING=${ORIGINAL_C_FLAGS}
+    -DCMAKE_C_FLAGS:STRING=${COMMONS_SUBPROJECT_C_FLAGS}
     -DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}
     -DCMAKE_C_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_C_FLAGS_RELWITHDEBINFO}
     -DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}
     #-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
-    -DCMAKE_CXX_FLAGS=${ORIGINAL_CXX_FLAGS}
+    -DCMAKE_CXX_FLAGS=${COMMONS_SUBPROJECT_CXX_FLAGS}
     -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
     -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
     -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
@@ -629,6 +687,7 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
     message(STATUS "glad: ${INSTALL_DIR}")
 
     file(MAKE_DIRECTORY ${INSTALL_DIR}/include)
+        add_dependencies(Commons::GLAD gladex)
     target_link_libraries(Commons::GLAD INTERFACE glad)
     target_include_directories(Commons::GLAD INTERFACE
       "$<BUILD_INTERFACE:${INSTALL_DIR}/include>"
@@ -687,7 +746,8 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw)
 
     if(WIN32)
-        set(COMMONS_GLFW_PATCH "${GIT_EXECUTABLE}" apply --reject --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
+        # Linux-only patch; skip it on Windows.
+        set(COMMONS_GLFW_PATCH "")
     else()
         set(COMMONS_GLFW_PATCH patch -N -s -d ${COMMONS_GLFW_SOURCE_PATH}/ -p1 -i  "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1)
     endif()
@@ -1615,6 +1675,7 @@ endif()
     endif()
 
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4)
     target_include_directories(Commons::OpenCV INTERFACE
       "$<BUILD_INTERFACE:${png_install_dir}/include>"
       "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
@@ -1671,7 +1732,7 @@ endif()
     else()
         set_target_properties(Commons::OpenCV PROPERTIES
           IMPORTED_LOCATION "${OpenCV_LIBS}"
-          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include"
+          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
           INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
         )
     endif()
@@ -1681,9 +1742,6 @@ get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTO
 foreach(dir ${dirs})
   message(STATUS "dir='${dir}'")
 endforeach()
-
-
-message(STATUS "hidden visibility in commons project ${CMAKE_CXX_FLAGS}")
 
 add_library(Commons::HTTPD INTERFACE IMPORTED GLOBAL)
 if(COMMONS_BUILD_HTTPD)
@@ -1727,6 +1785,14 @@ else()
     target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=false)
 endif()
 
+find_package(ICU REQUIRED COMPONENTS uc i18n)
+
+add_library(commons_icu INTERFACE)
+target_link_libraries(commons_icu INTERFACE ${ICU_LIBRARIES})
+target_include_directories(commons_icu INTERFACE ${ICU_INCLUDE_DIRS})
+set_target_properties(commons_icu PROPERTIES EXPORT_NAME ICU)
+add_library(Commons::ICU ALIAS commons_icu)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/cnpy)
 
@@ -1750,18 +1816,49 @@ endif()
 
 message(STATUS "ZLIB: ${COMMONS_BUILD_ZLIB} ${COMMONS_BUILD_ZIP} ${LIBZIP_LIBRARY}")
 
+set(COMMONS_INSTALL_BINARY_TARGETS commons)
+set(COMMONS_INSTALL_EXPORT_ONLY_TARGETS
+    commons_misc
+    commons_file
+    commons_processing
+    commons_video
+    commons_gui
+    commons_all
+    commons_icu
+)
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    set(COMMONS_INSTALL_BINARY_TARGETS
+        commons_misc
+        commons_file
+        commons_processing
+        commons_video
+        commons_gui
+    )
+    list(REMOVE_ITEM COMMONS_INSTALL_EXPORT_ONLY_TARGETS
+        commons_misc
+        commons_file
+        commons_processing
+        commons_video
+        commons_gui
+    )
+    if(COMMONS_ENABLE_MODULES)
+        list(APPEND COMMONS_INSTALL_BINARY_TARGETS commons)
+    else()
+        list(APPEND COMMONS_INSTALL_EXPORT_ONLY_TARGETS commons)
+    endif()
+endif()
+
 if(COMMONS_ENABLE_MODULES AND NOT CMAKE_VERSION VERSION_LESS "3.28.0")
-    install(TARGETS "commons"
+    install(TARGETS ${COMMONS_INSTALL_BINARY_TARGETS}
         EXPORT "commonsTargets"
         ARCHIVE DESTINATION lib COMPONENT libs
         RUNTIME DESTINATION bin COMPONENT libs
         LIBRARY DESTINATION lib COMPONENT libs
-        FILE_SET commons_headers DESTINATION include/commons COMPONENT devel
+        INCLUDES DESTINATION include
         FILE_SET commons_modules DESTINATION include/commons/modules COMPONENT devel
-        INCLUDES DESTINATION include/commons
     )
 else()
-    INSTALL(TARGETS "commons"
+    install(TARGETS ${COMMONS_INSTALL_BINARY_TARGETS}
         EXPORT "commonsTargets"
         ARCHIVE DESTINATION lib COMPONENT libs
         RUNTIME DESTINATION bin COMPONENT libs
@@ -1770,6 +1867,10 @@ else()
     )
 endif()
 
+install(TARGETS ${COMMONS_INSTALL_EXPORT_ONLY_TARGETS}
+    EXPORT "commonsTargets"
+)
+
 install(
     EXPORT commonsTargets
     FILE commonsTargets.cmake
@@ -1777,7 +1878,14 @@ install(
     DESTINATION lib/cmake/commons
 )
 
-target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
+    target_include_directories(commons_gui PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+    if(COMMONS_ENABLE_MODULES)
+        target_include_directories(commons PRIVATE "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+    endif()
+else()
+    target_include_directories(commons PUBLIC "$<BUILD_INTERFACE:${dialogs_SOURCE_DIR}>")
+endif()
 message(STATUS "portable-file-dialogs: ${dialogs_SOURCE_DIR}")
 
 if(WIN32)
@@ -1788,4 +1896,13 @@ if(WIN32)
     endif()
 endif()
 
-export(TARGETS commons cnpy imgui glaze_glaze ${pybind11_LIBRARY} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )
+set(COMMONS_BUILD_EXPORT_TARGETS
+    ${COMMONS_INSTALL_BINARY_TARGETS}
+    ${COMMONS_INSTALL_EXPORT_ONLY_TARGETS}
+    cnpy
+    imgui
+    glaze_glaze
+    ${pybind11_LIBRARY}
+)
+list(REMOVE_DUPLICATES COMMONS_BUILD_EXPORT_TARGETS)
+export(TARGETS ${COMMONS_BUILD_EXPORT_TARGETS} NAMESPACE Commons FILE commons.cmake EXPORT_LINK_INTERFACE_LIBRARIES )

@@ -1,4 +1,5 @@
 #include "GuiTypes.h"
+#include <file/ImageIO.h>
 #include <misc/Base64.h>
 #include "DrawBase.h"
 #include <gui/DrawSFBase.h>
@@ -379,13 +380,13 @@ bool Line::swap_with(gui::Drawable *d) {
         return false;
     
     //if(*ptr != *this) {
-        if(diff) {
-            std::swap(_processed_points, ptr->_processed_points);
-            std::swap(_process_scale, ptr->_process_scale);
-            std::swap(_max_scale, ptr->_max_scale);
-            
-            points();
-        }
+    if(diff) {
+        std::swap(_processed_points, ptr->_processed_points);
+        std::swap(_process_scale, ptr->_process_scale);
+        std::swap(_max_scale, ptr->_max_scale);
+        
+        points();
+    }
         
         /*if(ptr->_processed_points) {
             std::swap(_processed_points, ptr->_processed_points);
@@ -667,7 +668,7 @@ std::ostream & ExternalImage::operator <<(std::ostream &os) {
     }
     
     std::vector<uchar> conv;
-    to_png(*_source, conv);
+    file::to_png(*_source, conv);
     
     auto str = base64_encode(conv.data(), conv.size());
     os << "\"" << str << "\"";

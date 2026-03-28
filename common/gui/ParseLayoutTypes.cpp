@@ -3,6 +3,7 @@
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/Action.h>
 #include <gui/dyn/binders.h>
+#include <misc/Path.h>
 
 namespace cmn::gui::dyn {
 

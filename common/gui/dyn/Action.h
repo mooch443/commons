@@ -25,7 +25,7 @@ void require_at_least(auto const & props, source_location loc) {
 
 struct Action {
     std::string name;
-    std::vector<std::string> parameters;
+    std::vector<std::string> parameters{};
     
     const std::string& first() const { return parameters.front(); }
     const std::string& last() const { return parameters.back(); }

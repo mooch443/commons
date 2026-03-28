@@ -1,4 +1,5 @@
 #include "FileChooser.h"
+#include <misc/Path.h>
 #include <misc/GlobalSettings.h>
 #include <gui/types/StaticText.h>
 #include <misc/SpriteMap.h>

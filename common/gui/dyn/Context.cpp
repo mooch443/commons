@@ -3,6 +3,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/dyn/ParseText.h>
+#include <misc/Path.h>
 #include <misc/DisplayValue.h>
 
 namespace cmn::gui::dyn {

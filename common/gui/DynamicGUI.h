@@ -2,7 +2,7 @@
 
 #include <commons.pc.h>
 #include <misc/colors.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <gui/types/Layout.h>
 #include <misc/PackLambda.h>
 #include <misc/SpriteMap.h>
@@ -89,16 +89,16 @@ struct DynamicGUI {
     file::Path path;
     //DrawStructure* graph{nullptr};
     Context context;
-    State state;
-    Base* base;
-    std::vector<Layout::Ptr> objects;
-    Timer last_load, last_update;
+    State state{};
+    Base* base{nullptr};
+    std::vector<Layout::Ptr> objects{};
+    Timer last_load{}, last_update{};
     bool first_load{true}, first_update{true};
-    std::string previous;
-    std::future<std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>> read_file_future;
+    std::string previous{};
+    std::future<std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>> read_file_future{};
     std::shared_ptr<CurrentObjectHandler> current_object_handler = std::make_shared<CurrentObjectHandler>();
 #ifndef NDEBUG
-    Timer _debug_timer;
+    Timer _debug_timer{};
 #endif
     
     void update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);

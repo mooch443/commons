@@ -21,12 +21,26 @@ void DataLocation::set_instance(DataLocation* ptr) {
     }
 }
 
-DataLocation* DataLocation::instance() {
+DataLocation& DataLocation::create() {
+    static DataLocation _owned_instance{};
+    set_instance(&_owned_instance);
+    return _owned_instance;
+}
+
+DataLocation* DataLocation::instance_if_set() noexcept {
     auto guard = LOGGED_LOCK(instance_mutex());
-    if (!_instance) {
-		_instance = new DataLocation();
-	}
-	return _instance;
+    return _instance;
+}
+
+DataLocation* DataLocation::instance() {
+    DataLocation* result;
+    {
+        auto guard = LOGGED_LOCK(instance_mutex());
+        result = _instance;
+    } // release lock before any throw so U_EXCEPTION cannot re-enter
+    if (!result)
+        throw U_EXCEPTION("DataLocation::create() must be called before accessing the instance.");
+    return result;
 }
 
 void DataLocation::register_path(std::string purpose, std::function<file::Path (const sprite::Map&, file::Path)> fn)

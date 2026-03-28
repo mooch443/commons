@@ -1464,9 +1464,10 @@ Q fromStr(cmn::StringLike auto&& str)
     Q r;
             
     auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-            
+    std::conditional_t<cmn::StringLike<typename Q::key_type>, std::string, typename Q::key_type> key;
+    
     for(std::string_view p : parts) {
-        auto value_key = util::parse_array_parts(p, ':');
+        std::vector<std::string_view> value_key = util::parse_array_parts(p, ':');
         if(value_key.size() != 2)
             throw std::invalid_argument("Illegal value/key pair: "+(std::string)p);
         
@@ -1475,23 +1476,30 @@ Q fromStr(cmn::StringLike auto&& str)
                && is_in(value_key[0].front(), '"', '\'')
                && value_key[0].front() == value_key[0].back())
             {
-                value_key[0] = Meta::fromStr<std::string>(value_key[0]);
+                key = Meta::fromStr<typename Q::key_type>(Meta::fromStr<std::string>(value_key[0]));
+            } else {
+                key = Meta::fromStr<typename Q::key_type>(value_key[0]);
             }
+            
+        } else {
+            key = Meta::fromStr<typename Q::key_type>(value_key[0]);
         }
         
-        auto x = Meta::fromStr<typename Q::key_type>(value_key[0]);
         try {
+            std::string y;
             if constexpr(not cmn::StringLike<typename Q::mapped_type>) {
                 if(value_key[1].size() > 1
                    && is_in(value_key[1].front(), '"', '\'')
                    && value_key[1].front() == value_key[1].back())
                 {
-                    value_key[1] = Meta::fromStr<std::string>(value_key[1]);
+                    r[key] = Meta::fromStr<typename Q::mapped_type>(Meta::fromStr<std::string>(value_key[1]));
+                } else {
+                    r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
                 }
+            } else {
+                r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
             }
             
-            auto y = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
-            r[x] = y;
         } catch(const std::logic_error&) {
             auto name = Meta::name<Q>();
             throw std::invalid_argument("Empty/illegal value in "+name+"['"+(std::string)value_key[0]+"'] = '"+(std::string)value_key[1]+"'.");

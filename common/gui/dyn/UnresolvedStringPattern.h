@@ -104,13 +104,13 @@ struct Prepared {
     };
 
     std::string_view original;
-    std::vector<PreparedPatterns> parameters;
-    gui::dyn::VarProps resolved;
+    std::vector<PreparedPatterns> parameters{};
+    gui::dyn::VarProps resolved{};
     
     /// Cached resolved output for this prepared node.
-    std::optional<std::string> _cached_value;
+    std::optional<std::string> _cached_value{};
     /// Variable-version snapshot captured when `_cached_value` was computed.
-    std::optional<CachedVariableVersions> _cached_variable_versions;
+    std::optional<CachedVariableVersions> _cached_variable_versions{};
     bool has_children{false};
     
     //Prepared(const Unprepared& unprepared);

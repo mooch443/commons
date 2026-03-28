@@ -1,8 +1,6 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <file/Path.h>
-#include <file/PathArray.h>
 #include <misc/CallbackManager.h>
 
 namespace cmn {
@@ -28,6 +26,8 @@ namespace cmn {
             const std::string _name; ///< Name of the property.
             const std::string _type_name; ///< Name of the type of the property
             const std::type_info* const _type_info;
+            const std::size_t _type_hash;
+            const std::size_t _canonical_type_hash;
             
             mutable std::shared_mutex _cache_mutex;
             mutable std::optional<std::string> _cache;
@@ -79,7 +79,11 @@ namespace cmn {
              * @param name Name of the property.
              */
             PropertyType(const std::string& type_name, const std::string_view& name, const std::type_info* index)
-                : _name(name), _type_name(type_name), _type_info(index)
+                : _name(name),
+                  _type_name(type_name),
+                  _type_info(index),
+                  _type_hash(index ? index->hash_code() : 0),
+                  _canonical_type_hash(std::hash<std::string_view>{}(_type_name))
             {
                 // Set default behaviors for lambda functions.
                 _set_value_from_string = [this](const std::string&){
@@ -196,19 +200,17 @@ namespace cmn {
 
             template<typename T>
             Property<T>& toProperty() {
-                Property<T> *tmp = dynamic_cast<Property<T>*>(this);
-                if(not tmp) {
+                if(not is_type<T>()) {
                     throw U_EXCEPTION("Cannot cast ", type_name(), " to ", Meta::name<T>(), " in ", *this);
                 }
-                return *tmp;
+                return *static_cast<Property<T>*>(this);
             }
 
             template<typename T>
             const Property<T>& toProperty(cmn::source_location loc = cmn::source_location::current()) const {
-                const Property<T> *tmp = dynamic_cast<const Property<T>*>(this);
-                if(not tmp)
+                if(not is_type<T>())
                     throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
-                return *tmp;
+                return *static_cast<const Property<T>*>(this);
             }
             
             /*template<typename T>
@@ -270,8 +272,18 @@ namespace cmn {
             
             template<typename T>
             bool is_type() const {
-                static const std::type_info* const _T_type = &typeid(T);
-                return _type_info == _T_type;
+                using RawT = std::remove_cvref_t<T>;
+                static const auto raw_type_hash = typeid(RawT).hash_code();
+                static const auto canonical_name_hash = []() -> std::size_t {
+                    if constexpr(std::same_as<RawT, glz::json_t> || std::same_as<RawT, std::string>) {
+                        return std::hash<std::string_view>{}(Meta::name<RawT>());
+                    } else {
+                        return 0;
+                    }
+                }();
+                return (_type_info && *_type_info == typeid(RawT))
+                    || _type_hash == raw_type_hash
+                    || (canonical_name_hash != 0 && _canonical_type_hash == canonical_name_hash);
             }
             
             void reset_cache() {
@@ -692,4 +704,3 @@ namespace cmn {
         }
     }
 }
-

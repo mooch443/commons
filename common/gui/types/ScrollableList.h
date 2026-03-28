@@ -6,6 +6,7 @@
 #include <gui/types/Tooltip.h>
 #include <gui/DrawStructure.h>
 #include <gui/ListAttributes.h>
+#include <gui/types/ListItemTypes.h>
 
 namespace cmn::gui {
     /*
@@ -92,12 +93,12 @@ namespace cmn::gui {
         GETTER(ItemBorderColor_t, item_line_color);
         GETTER_I(Color, text_color, White);
         float _line_spacing, _previous_width{-1};
-        GETTER_SETTER_I(long, last_hovered_item, -1);
+        GETTER_SETTER(std::optional<uint64_t>, last_hovered_item);
         GETTER_SETTER_I(bool, foldable, false);
         GETTER_I(bool, folded, false);
         GETTER_I(std::string, folded_label, "");
         GETTER_I(long, last_selected_item, -1);
-        GETTER_I(long, currently_highlighted_item, -1);
+        GETTER(std::optional<uint64_t>, currently_highlighted_item);
         GETTER_I(bool, stays_toggled, false);
         GETTER_I(bool, alternating_rows, false);
         
@@ -364,8 +365,8 @@ namespace cmn::gui {
             }
             
             _last_selected_item = -1;
-            _last_hovered_item = -1;
-            _currently_highlighted_item = -1;
+            _last_hovered_item.reset();
+            _currently_highlighted_item.reset();
             _items.clear();
 
             //Float2_t y = _line_spacing * objs.size();
@@ -518,13 +519,14 @@ namespace cmn::gui {
             _callback = fn;
         }
         
-        size_t highlighted_item() const {
+        std::optional<size_t> highlighted_item() const {
             for(auto &r : _rects) {
                 if(r->hovered()) {
                     size_t idx = rect_to_idx.count(r.get()) ? rect_to_idx.at(r.get()) : 0;
                     return idx;
                 }
             }
+            return std::nullopt;
         }
         
         void highlight_item(long index) {
@@ -549,8 +551,14 @@ namespace cmn::gui {
             
             first_visible = floorf(o->scroll_offset().y / _line_spacing);
             last_visible = min(_items.size()-1.0f, floorf((o->scroll_offset().y + o->height()) / _line_spacing));
-            _last_hovered_item = index;
-            _currently_highlighted_item = index;
+            
+            if(index < 0) {
+                _last_hovered_item.reset();
+                _currently_highlighted_item.reset();
+            } else {
+                _currently_highlighted_item = index;
+                _last_hovered_item = index;
+            }
             
             //draw_structure()->do_hover(_rects.at(index - first_visible));
             
@@ -583,8 +591,8 @@ namespace cmn::gui {
             if(!stage())
                 return false;
             
-            if(_last_hovered_item >= 0) {
-                select_item((uint64_t)_last_hovered_item);
+            if(_last_hovered_item) {
+                select_item(_last_hovered_item.value());
                 return true;
             }
             
@@ -644,14 +652,18 @@ namespace cmn::gui {
                         {
                             auto idx = rect_to_idx.at(r.get());
                             if(!e.hover.hovered) {
-                                if(_currently_highlighted_item == (long)idx) {
-                                    _currently_highlighted_item = -1;
+                                if(_currently_highlighted_item
+                                   && _currently_highlighted_item.value() == idx)
+                                {
+                                    _currently_highlighted_item.reset();
                                 }
                                 return;
                             } else {
-                                if(_last_hovered_item != (long)idx) {
-                                    _last_hovered_item = long(idx);
-                                    _currently_highlighted_item = long(idx);
+                                if(not _last_hovered_item
+                                   || _last_hovered_item != idx)
+                                {
+                                    _last_hovered_item = idx;
+                                    _currently_highlighted_item = idx;
                                     if(_on_hovered)
                                         _on_hovered(idx);
                                 }
@@ -1019,5 +1031,10 @@ namespace cmn::gui {
             }
         }
     };
-}
 
+    extern template class ScrollableList<std::string>;
+    extern template class ScrollableList<TextItem>;
+    extern template class ScrollableList<DetailItem>;
+    extern template class ScrollableList<DetailTooltipItem>;
+
+}

@@ -1,6 +1,6 @@
 #include "format.h"
-#include <file/Path.h>
 #include <misc/GlobalSettings.h>
+#include <misc/Path.h>
 
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
 namespace cmn {

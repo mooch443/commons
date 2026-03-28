@@ -1,5 +1,6 @@
 #include "IMGUIBase.h"
 #include <gui/DrawStructure.h>
+#include <misc/Path.h>
 
 #include <algorithm>
 #include <limits>

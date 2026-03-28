@@ -1,5 +1,5 @@
 set(COMMONS_PUBLIC_HEADERS
-    types.h
+    misc/types.h
     misc/Base64.h
     misc/Blob.h
     misc/Buffers.h
@@ -22,11 +22,13 @@ set(COMMONS_PUBLIC_HEADERS
     misc/ObjectManager.h
     misc/OptionsList.h
     misc/PBSettingsMacros.h
-    misc/PVBlob.h
+    misc/Path.h
+    misc/bid.h
+    processing/PVBlob.h
     misc/PackLambda.h
-    misc/PixelTree.h
+    processing/PixelTree.h
     misc/ProtectedProperty.h
-    misc/ProximityGrid.h
+    processing/ProximityGrid.h
     misc/RBSettings.h
     misc/ReverseAdapter.h
     misc/SampleInterpolator.h
@@ -40,7 +42,6 @@ set(COMMONS_PUBLIC_HEADERS
     misc/Timer.h
     misc/TooltipData.h
     misc/UnorderedVectorSet.h
-    misc/bid.h
     misc/checked_casts.h
     misc/cnpy_wrapper.h
     misc/colors.h
@@ -73,7 +74,7 @@ set(COMMONS_PUBLIC_HEADERS
     file/DataFormat.h
     file/DataLocation.h
     file/Export.h
-    file/Path.h
+    file/ImageIO.h
     file/PathArray.h
     file/ask_for_permission.h
     processing/Background.h
@@ -185,11 +186,9 @@ set(COMMONS_MISC_HEADERS
     misc/ObjectManager.h
     misc/OptionsList.h
     misc/PBSettingsMacros.h
-    misc/PVBlob.h
+    misc/Path.h
     misc/PackLambda.h
-    misc/PixelTree.h
     misc/ProtectedProperty.h
-    misc/ProximityGrid.h
     misc/RBSettings.h
     misc/ReverseAdapter.h
     misc/SampleInterpolator.h
@@ -239,7 +238,7 @@ set(COMMONS_FILE_HEADERS
     file/DataFormat.h
     file/DataLocation.h
     file/Export.h
-    file/Path.h
+    file/ImageIO.h
     file/PathArray.h
     file/ask_for_permission.h
 )
@@ -253,7 +252,12 @@ set(COMMONS_PROCESSING_HEADERS
     processing/ListCache.h
     processing/LuminanceGrid.h
     processing/Node.h
+    processing/BlobIdentity.h
+    processing/BlobWeakPtr.h
     processing/PadImage.h
+    processing/PVBlob.h
+    processing/PixelTree.h
+    processing/ProximityGrid.h
     processing/RawProcessing.h
     processing/Source.h
     processing/encoding.h
@@ -343,7 +347,7 @@ set(COMMONS_HTTP_HEADERS
 )
 
 set(COMMONS_CPP_SOURCES
-    types.cpp
+    misc/types.cpp
     misc/Base64.cpp
     misc/Blob.cpp
     misc/Buffers.cpp
@@ -355,16 +359,14 @@ set(COMMONS_CPP_SOURCES
     misc/GlobalSettings.cpp
     misc/Grid.cpp
     misc/Image.cpp
-    misc/PVBlob.cpp
-    misc/PixelTree.cpp
-    misc/ProximityGrid.cpp
+    misc/Path.cpp
+    misc/bid.cpp
     misc/SpriteMap.cpp
     misc/SpriteProperty.cpp
     misc/ThreadManager.cpp
     misc/ThreadPool.cpp
     misc/Timer.cpp
     misc/TooltipData.cpp
-    misc/bid.cpp
     misc/cnpy_wrapper.cpp
     misc/colors.cpp
     misc/curve_discussion.cpp
@@ -383,7 +385,7 @@ set(COMMONS_CPP_SOURCES
     file/DataFormat.cpp
     file/DataLocation.cpp
     file/Export.cpp
-    file/Path.cpp
+    file/ImageIO.cpp
     file/PathArray.cpp
     processing/Background.cpp
     processing/Brototype.cpp
@@ -391,7 +393,12 @@ set(COMMONS_CPP_SOURCES
     processing/DLList.cpp
     processing/ListCache.cpp
     processing/LuminanceGrid.cpp
+    processing/BlobIdentity.cpp
+    processing/BlobWeakPtr.cpp
     processing/PadImage.cpp
+    processing/PVBlob.cpp
+    processing/PixelTree.cpp
+    processing/ProximityGrid.cpp
     processing/RawProcessing.cpp
     processing/Source.cpp
     video/AveragingAccumulator.cpp
@@ -401,6 +408,7 @@ set(COMMONS_CPP_SOURCES
     video/VideoSource.cpp
     gui/ControlsAttributes.cpp
     gui/CornerFlags.cpp
+    gui/Dispatcher.cpp
     gui/DrawBase.cpp
     gui/DrawCVBase.cpp
     gui/DrawHTMLBase.cpp

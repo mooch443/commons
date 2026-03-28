@@ -1,5 +1,6 @@
 #pragma once
 
+#include <misc/Path.h>
 #include <misc/SpriteMap.h>
 
 namespace cmn::sprite {

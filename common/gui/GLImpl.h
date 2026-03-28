@@ -8,6 +8,7 @@
 #endif
 
 #include <gui/CrossPlatform.h>
+#include <misc/Path.h>
 #include <misc/Timer.h>
 #include <misc/colors.h>
 
@@ -62,4 +63,3 @@ namespace cmn::gui {
     };
 }
 #endif
-

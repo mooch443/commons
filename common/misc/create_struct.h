@@ -667,18 +667,19 @@ public: \
         STRUCT_FOR_EACH(NAM, STRUCT_STRING_MEMBERS, __VA_ARGS__) \
     }; \
     STRUCT_FOR_EACH(NAM, EXPRESS_MEMBER_TYPES, __VA_ARGS__) \
+    using callback_fn_t = std::function<void(const std::string_view&, const cmn::sprite::PropertyType&)>; \
 private: \
     static constexpr const char * VariableNames[] { STRUCT_FOR_EACH(NAM, STRINGIZE_MEMBERS, __VA_ARGS__) }; \
     template<Variables M> struct AccessEnum { }; \
+    inline static std::once_flag _init_flag; \
+    inline static CallbackHolder<Variables, callback_fn_t> _callbacks{ #NAM }; \
+    inline static Members _members; \
 \
 public: \
     static auto& members() { \
-        static Members _members; \
         return _members; \
     } \
-    typedef std::function<void(const std::string_view&, const cmn::sprite::PropertyType&)> callback_fn_t; \
     static auto& callbacks() { \
-        static CallbackHolder<Variables, callback_fn_t> _callbacks(#NAM); \
         return _callbacks._callbacks; \
     } \
     static inline const std::array<std::function<const cmn::sprite::PropertyType&()>, STRUCT_FOR_EACH_NARG(__VA_ARGS__)> _getters { \
@@ -721,7 +722,6 @@ private: \
             obj = std::forward<T>(v); \
         } \
     } \
-    inline static std::once_flag flag; \
     inline static cmn::CallbackFuture _callback_id; \
 public: \
     inline static NAM :: Members & impl() { return NAM :: members(); } \
@@ -744,18 +744,27 @@ public: \
         if(false) {} STRUCT_FOR_EACH(NAM, UPDATE_MEMBERS, __VA_ARGS__) \
     } \
     static inline void init() { \
-        std::call_once(flag, [](){ \
+        std::call_once(_init_flag, []() { \
+            std::cout << "Initializing struct '" << #NAM << "' with " << STRUCT_FOR_EACH_NARG(__VA_ARGS__) << " members." << std::endl; \
             _callback_id = cmn::GlobalSettings::register_callbacks(NAM :: names(), [](std::string_view name){ \
-                    auto& value = cmn::GlobalSettings::read_value<cmn::NoType>(name).get(); \
-                    variable_changed(cmn::sprite::Map::Signal::NONE, name, value); \
+                    auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
+                    if(!value.valid()) { \
+                        value = cmn::GlobalSettings::read_default_from_all(name); \
+                    } \
+                    if(value.valid()) { \
+                        variable_changed(cmn::sprite::Map::Signal::NONE, name, value.get()); \
+                    } \
             }); \
             for(auto &name : NAM :: names()) { \
-                if(auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
-                    value.valid()) \
+                auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
+                if(!value.valid()) { \
+                    value = cmn::GlobalSettings::read_default_from_all(name); \
+                } \
+                if(value.valid()) \
                 { \
                     variable_changed(cmn::sprite::Map::Signal::NONE, name, value.get()); \
                 } else { \
-                    cmn::FormatWarning("Cannot find parameter ", name, " in global settings."); \
+                    cmn::detail::checked_cast_warning("Cannot find parameter ", name, " in global settings."); \
                 } \
             } \
         }); \

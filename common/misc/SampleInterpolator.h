@@ -95,7 +95,8 @@ namespace cmn
 
             if constexpr (M == Method::nearest) return nearest_(x);
             if constexpr (M == Method::linear ) return linear_ (x);
-            /* M == cubic */                    return cubic_  (x);
+            /* M == cubic */                    
+            return cubic_  (x);
         }
 
         /** @return `true` if the interpolator holds no samples. */

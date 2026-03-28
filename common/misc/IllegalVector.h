@@ -146,7 +146,7 @@ public:
         //if constexpr(std::integral<T>)
         //    std::memset(_ptr + index, obj, N);
         //else {
-            std::fill(_ptr + index, _ptr + index + N, obj);
+        std::fill(_ptr + index, _ptr + index + N, obj);
         //}
     }
     

@@ -1,6 +1,7 @@
 #include "Graph.h"
 
 #include <file/CSVExport.h>
+#include <misc/Path.h>
 #include <gui/DrawSFBase.h>
 #include <misc/cnpy_wrapper.h>
 

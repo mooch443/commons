@@ -14,8 +14,8 @@ struct State;
 
 struct VarProps {
     std::string name;
-    std::vector<std::string> subs;
-    std::vector<std::string> parameters;
+    std::vector<std::string> subs{};
+    std::vector<std::string> parameters{};
     bool optional{false};
     bool html{false};
     

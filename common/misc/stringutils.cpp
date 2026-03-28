@@ -1,6 +1,6 @@
 #include <commons.pc.h>
 #include "stringutils.h"
-#include <file/Path.h>
+#include <misc/Path.h>
 
 namespace cmn::utils {
     // Explicitly instantiate the most commonly used forms of the contains function

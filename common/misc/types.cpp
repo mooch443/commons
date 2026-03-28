@@ -2,7 +2,7 @@
 #include <png.h>
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>
-#include <misc/PVBlob.h>
+#include <processing/PVBlob.h>
 
 namespace cmn {
 IMPLEMENT(blob::Pose::Skeleton::_mutex);

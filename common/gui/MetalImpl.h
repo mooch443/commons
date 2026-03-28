@@ -3,6 +3,7 @@
 #define COMMONS_METAL_AVAILABLE true
 
 #include <gui/CrossPlatform.h>
+#include <misc/Path.h>
 #include <misc/Timer.h>
 struct GLFWwindow;
 

@@ -2,6 +2,21 @@
 
 namespace cmn {
 
+template<typename From, typename To>
+concept convertible_to = std::is_convertible_v<From, To>;
+
+template<typename T>
+concept floating_point = std::is_floating_point_v<T>;
+
+template<typename T>
+concept integral = std::is_integral_v<T>;
+
+template<typename T>
+concept signed_integral = std::is_integral_v<T> && std::is_signed_v<T>;
+
+template<typename T>
+concept unsigned_integral = std::is_integral_v<T> && !std::is_signed_v<T>;
+
 template<typename Str>
 concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
                       std::is_same_v<std::remove_cvref_t<Str>, const char*> ||
@@ -103,10 +118,10 @@ concept are_the_same =
     std::same_as<std::remove_cvref_t<T>, typename std::remove_cvref_t<U>>;
 
 template<typename T>
-concept unsigned_number = (std::unsigned_integral<T> && !cmn::_clean_same<T, bool> && !cmn::_clean_same<T, unsigned char>);
+concept unsigned_number = (unsigned_integral<T> && !cmn::_clean_same<T, bool> && !cmn::_clean_same<T, unsigned char>);
 
 template<typename T>
-concept signed_number = (std::signed_integral<T> && !cmn::_clean_same<T, char>);
+concept signed_number = (signed_integral<T> && !cmn::_clean_same<T, char>);
 
 template <template<class...>class T, class U>
 concept _is_instance = (is_instantiation<T, U>::value);
@@ -120,15 +135,15 @@ concept is_unique_ptr
 
 template<typename T>
 concept _has_tostr_method = requires(const T* t) {
-    { t->toStr() } -> std::convertible_to<std::string>;
+    { t->toStr() } -> convertible_to<std::string>;
 };
 template<typename T>
 concept _has_blocking_tostr_method = requires(const T* t) {
-    { t->blocking_toStr() } -> std::convertible_to<std::string>;
+    { t->blocking_toStr() } -> convertible_to<std::string>;
 };
 template<typename T>
 concept has_to_json_method = requires(const T* t) {
-    { t->to_json() } -> std::convertible_to<glz::json_t>;
+    { t->to_json() } -> convertible_to<glz::json_t>;
 };
 template<typename T>
 concept _has_fromstr_method = (requires() {
@@ -141,7 +156,7 @@ concept _has_fromstr_method = (requires() {
 
 template<typename T, typename K = typename std::remove_cv<T>::type>
 concept _has_class_name = requires() {
-    { K::class_name() } -> std::convertible_to<std::string>;
+    { K::class_name() } -> convertible_to<std::string>;
 };
 
 template<typename T>
@@ -154,13 +169,13 @@ concept _is_dumb_pointer =
 
 template<typename T, typename K = typename std::remove_cv<T>::type>
 concept _is_number =
-    (!_clean_same<bool, T>) && (std::floating_point<K> || std::integral<K>); //|| std::convertible_to<T, int>);
+    (!_clean_same<bool, T>) && (floating_point<K> || integral<K>); //|| std::convertible_to<T, int>);
 
 template<typename T>
-concept is_numeric = (!_clean_same<bool, T>) && (std::floating_point<T> || std::integral<T>);
+concept is_numeric = (!_clean_same<bool, T>) && (floating_point<T> || integral<T>);
 
 template<typename T>
-concept integral_number = (!_clean_same<bool, T>) && std::integral<T>;
+concept integral_number = (!_clean_same<bool, T>) && integral<T>;
 
 template<typename T, typename... Args>
 constexpr bool contains_type() {
@@ -171,12 +186,12 @@ constexpr bool contains_type() {
 namespace check_abs_detail {
     template<typename T>
     concept has_coordinates = requires(T t) {
-        { t.x } -> std::convertible_to<float>;
+        { t.x } -> convertible_to<float>;
     };
 
     template<typename T>
     concept has_get = requires(T t) {
-        { t.get() } -> std::convertible_to<float>;
+        { t.get() } -> convertible_to<float>;
     };
 }
 

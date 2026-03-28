@@ -1,4 +1,5 @@
 #include "LabeledField.h"
+#include <file/PathArray.h>
 #include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>
@@ -420,7 +421,7 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
     return true;
 }
 
-void LabeledOptional::after_set_property(const Layout::Ptr& ptr, std::string_view name, std::function<std::string()> value_string) const {
+void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view name, std::function<std::string()> value_string) const {
     //if(ptr.get() == _create_button.get())
     {
         if(name == ALIAS<Font>) {
@@ -1304,13 +1305,17 @@ void LabeledPathArray::updateDropdownItems() {
                         }
                         else {
                             auto parentPath = p.remove_filename();
-                            try {
-                                // If a separator was deleted, show parent folder contents
-                                auto parentFiles = parentPath.find_files();
-                                matches = { parentFiles.begin(), parentFiles.end() };
-                                //matches = pathArray.get_paths();
-                            } catch(const std::exception& e) {
-                                FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                            if(parentPath.empty()) {
+                                matches.clear();
+                            } else {
+                                try {
+                                    // If a separator was deleted, show parent folder contents
+                                    auto parentFiles = parentPath.find_files();
+                                    matches = { parentFiles.begin(), parentFiles.end() };
+                                    //matches = pathArray.get_paths();
+                                } catch(const std::exception& e) {
+                                    FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                                }
                             }
                         }
                     }

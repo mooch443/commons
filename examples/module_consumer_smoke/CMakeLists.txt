@@ -9,4 +9,4 @@ endif()
 include("${COMMONS_CMAKE_DIR}/commonsTargets.cmake")
 
 add_executable(commons_module_consumer_smoke main.cpp)
-target_link_libraries(commons_module_consumer_smoke PRIVATE Commons::commons)
+target_link_libraries(commons_module_consumer_smoke PRIVATE Commons::All)

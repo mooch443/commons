@@ -412,8 +412,10 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     }
     
     Dropdown::TextItem Dropdown::hovered_item() const {
-        if(_list.last_hovered_item() != -1) {
-            auto index = FilteredIndex{(long_t)_list.last_hovered_item()};
+        if(auto item = _list.last_hovered_item();
+           item)
+        {
+            auto index = FilteredIndex{narrow_cast<long>(*item)};
             if(_filtered_items.contains(index)) {
                 RawIndex raw = _filtered_items.at(index);
                 if(raw.valid() && static_cast<size_t>(raw.value) < _items.size())
@@ -425,8 +427,10 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     }
 
 std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
-    if(_list.currently_highlighted_item() != -1) {
-        auto index = FilteredIndex{(long_t)_list.currently_highlighted_item()};
+    if(auto item = _list.currently_highlighted_item();
+       item)
+    {
+        auto index = FilteredIndex{narrow_cast<long>(*item)};
         if(_filtered_items.contains(index)) {
             RawIndex raw = _filtered_items.at(index);
             if(raw.valid() && static_cast<size_t>(raw.value) < _items.size())
