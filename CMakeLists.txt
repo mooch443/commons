@@ -45,6 +45,7 @@ function(commons_log_selected_options)
         COMMONS_BUILD_HTTPD
         COMMONS_ENABLE_MODULES
         COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES
+        COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE
         COMMONS_SPLIT_SHARED_LIBS
         NO_PUT_TIME
         OPENCV_EXTRA_FLAGS
@@ -80,6 +81,7 @@ option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
 option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
 option(COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES "Allow the commons module build on GCC in experimental mode." OFF)
+option(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE "Require explicit dispatcher installation instead of per-image auto-creation." OFF)
 option(COMMONS_SPLIT_SHARED_LIBS "Build commons as separate shared libraries per layer when shared internal libs are enabled." OFF)
 option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
@@ -134,6 +136,10 @@ else()
 endif()
 
 commons_log_selected_options()
+
+if(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE)
+    add_compile_definitions(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE=1)
+endif()
 
 if(NO_PUT_TIME)
     add_definitions(-DNO_PUT_TIME=true)

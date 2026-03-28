@@ -408,6 +408,7 @@ set(COMMONS_CPP_SOURCES
     video/VideoSource.cpp
     gui/ControlsAttributes.cpp
     gui/CornerFlags.cpp
+    gui/Dispatcher.cpp
     gui/DrawBase.cpp
     gui/DrawCVBase.cpp
     gui/DrawHTMLBase.cpp

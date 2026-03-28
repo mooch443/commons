@@ -278,6 +278,7 @@ using ::cmn::gui::attr::_IsNumberAlias;
 using ::cmn::gui::attr::pack_contains;
 // gui/Dispatcher.h
 using ::cmn::gui::attr::Dispatcher;
+using ::cmn::gui::attr::install_dispatcher_instance;
 }
 
 export namespace cmn::gui::dyn {
