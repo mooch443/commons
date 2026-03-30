@@ -12,6 +12,7 @@
 namespace cmn::pattern {
 
 using namespace cmn::gui::dyn;
+UnpreparedPatterns parse_words(std::string_view pattern);
 
 UnresolvedStringPattern::UnresolvedStringPattern(UnresolvedStringPattern&& other)
     : original(std::move(other.original)),
@@ -235,7 +236,8 @@ Unprepared extract_unprepared(std::string_view variable) {
     const size_t N = r.size();
     props.subs.resize(N - 1);
     for (size_t i=1, N = r.size(); i<N; ++i) {
-        props.subs[i - 1] = r[i];
+        props.subs[i - 1] = parse_words(r[i]);
+        //props.subs[i - 1] = r[i];
     }
 
     if(r.front() != std::string_view(props.name))
@@ -376,12 +378,30 @@ Prepared* Prepared::get(const Unprepared& unprepared) {
         prepared->parameters.push_back(std::move(r));
     }
     
+    prepared->subs.reserve(unprepared.subs.size());
+    for(auto &o : unprepared.subs) {
+        assert(std::holds_alternative<UnpreparedPatterns>(o));
+        PreparedPatterns r;
+        for(auto &p : std::get<UnpreparedPatterns>(o)) {
+            std::visit([&r](auto& obj) {
+                using T = std::decay_t<decltype(obj)>;
+                if constexpr(std::same_as<T, std::string_view>) {
+                    r.push_back(PreparedPattern::make_sv(obj));
+                } else if constexpr(std::same_as<T, Unprepared>) {
+                    r.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
+                    
+                } else {
+                    static_assert(std::same_as<T, void>, "unknown type.");
+                }
+            }, p);
+        }
+        prepared->subs.push_back(std::move(r));
+    }
+    
     auto& props = prepared->resolved;
     props.name = unprepared.name;
     props.html = unprepared.html;
     props.optional = unprepared.optional;
-    for(auto &sv : unprepared.subs)
-        props.subs.push_back((std::string)sv);
     return prepared;
 }
 
@@ -632,14 +652,15 @@ bool is_valid_number(std::string_view str) {
     return true;
 }
 
-void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::queue<std::string_view>&& subs);
-void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& json, std::queue<std::string_view>&& subs);
-void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2& json, std::queue<std::string_view>&& subs);
+template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::span<String> subs);
+template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& json, std::span<String> subs);
+template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2& json, std::span<String> subs);
 
-void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& size, std::queue<std::string_view>&& subs)
+template<typename String>
+void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& size, std::span<String> subs)
 {
-    auto name = subs.front();
-    subs.pop();
+    const auto& name = subs.front();
+    //subs = subs.subspan(1); /// we are not continuing here anyway
     
     if(not is_in(name, "w", "h", "width", "height")) {
         if(not modifiers.optional)
@@ -653,10 +674,11 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const Size
         apply_html(output, modifiers, Meta::toStr(size.height));
 }
 
-void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2& pos, std::queue<std::string_view>&& subs)
+template<typename String>
+void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2& pos, std::span<String> subs)
 {
-    auto name = subs.front();
-    subs.pop();
+    const auto& name = subs.front();
+    //subs = subs.subspan(1); /// we are not going further here anyway.
     
     if(not is_in(name, "x", "y")) {
         if(not modifiers.optional)
@@ -670,19 +692,18 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2
         apply_html(output, modifiers, Meta::toStr(pos.y));
 }
 
-template<typename Field>
-void access_map_subfield(std::string& output, const VarProps& modifiers, std::queue<std::string_view>&& subs, Field&& field) {
-    
+template<typename Field, typename String>
+void access_map_subfield(std::string& output, const VarProps& modifiers, std::span<String> subs, Field&& field) {
     if(field.is_array())  {
         if(not subs.empty()) {
-            auto name = subs.front();
+            const auto& name = subs.front();
             if(is_valid_number<uint16_t>(name)) {
                 auto idx = Meta::fromStr<uint16_t>(name);
                 Print("* Accessing array index ", idx, " of ", field);
-                subs.pop();
+                subs = subs.subspan(1);
                 
                 auto ptr = field.access_array(idx);
-                access_map_subfield(output, modifiers, std::move(subs), *ptr);
+                access_map_subfield(output, modifiers, subs, *ptr);
                 return;
             } else {
                 if(not modifiers.optional)
@@ -696,7 +717,7 @@ void access_map_subfield(std::string& output, const VarProps& modifiers, std::qu
     } else if(field.template is_type<glz::json_t>()) {
         // need another key
         if(not subs.empty()) {
-            access_sub_field(output, modifiers, field.template value<glz::json_t>(), std::move(subs));
+            access_sub_field(output, modifiers, field.template value<glz::json_t>(), subs);
             return;
         }
         
@@ -707,10 +728,11 @@ void access_map_subfield(std::string& output, const VarProps& modifiers, std::qu
     apply_html(output, modifiers, Meta::fromStr<std::string>(field.valueString()));
 }
 
-void access_sub_field(std::string& output, const VarProps& modifiers, const sprite::Map& map, std::queue<std::string_view>&& subs)
+template<typename String>
+void access_sub_field(std::string& output, const VarProps& modifiers, const sprite::Map& map, std::span<String> subs)
 {
-    auto name = subs.front();
-    subs.pop();
+    const auto& name = subs.front();
+    subs = subs.subspan(1);
     
     if(not map.has(name)) {
         if(not modifiers.optional)
@@ -726,47 +748,57 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const spri
         apply_html(output, modifiers, "null");
 }
 
-void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::queue<std::string_view>&& subs)
+template<typename String>
+void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::span<String> subs)
 {
-    auto name = subs.front();
-    subs.pop();
-    
-    if(json.is_array()) {
-        if(is_valid_number<uint16_t>(name)) {
-            Meta::fromStr<uint16_t>(name);
-            apply_html(output, modifiers, Meta::toStr(json[Meta::fromStr<uint16_t>(name)]));
+    if(subs.empty()) {
+        if(json.is_string()) {
+            apply_html(output, modifiers, json.template get<std::string>());
             return;
         }
-
-        throw InvalidArgumentException("Object ", json, " is an array and does not contain field ", name, ".");
-
-    } else if(not json.contains(name)) {
-        if(not json.is_object())
-            throw InvalidArgumentException("Object ", json, " is not an object and does not contain field ",name,".");
-        else
-            throw InvalidArgumentException("Object ", json, " does not contain field ", name, " contains: ", extract_keys(json.get_object()));
-    }
-    
-    const auto &field = json[std::forward<decltype(name)>(name)];
-    if(field.is_object()) {
-        // need another key
-        if(not subs.empty()) {
-            access_sub_field(output, modifiers, field, std::move(subs));
-            return;
-        }
-    } else if(field.is_array()) {
-        if(not subs.empty()) {
-            access_sub_field(output, modifiers, field, std::move(subs));
-            return;
-        }
-    }
-    
-    if(field.is_string()) {
-        apply_html(output, modifiers, field.get<std::string>());
+        
+        apply_html(output, modifiers, Meta::toStr(json));
         return;
     }
     
-    apply_html(output, modifiers, Meta::toStr(field));
+    const auto& name = subs.front();
+    subs = subs.subspan(1);
+    
+    if(json.is_array()) {
+        const auto& array = json.get_array();
+        if(is_valid_number<uint16_t>(name)) {
+            auto index = Meta::fromStr<uint16_t>(name);
+            const auto &obj = array[index];
+            if(obj.is_string()) {
+                apply_html(output, modifiers, obj.get_string());
+            } else
+                apply_html(output, modifiers, Meta::toStr(obj));
+            return;
+        }
+        
+        throw InvalidArgumentException("Cannot access index ",name," in array ", json);
+        
+    } else if(json.is_object()) {
+        auto &obj = json.get_object();
+        auto it = obj.find(name);
+        if(it == obj.end())
+            throw InvalidArgumentException("Object ", json, " does not contain field ", name, " contains: ", extract_keys(obj));
+        
+        if(const glz::json_t& field = *it->second;
+           not subs.empty())
+        {
+            access_sub_field(output, modifiers, field, subs);
+            return;
+        } else {
+            if(field.is_string())
+                apply_html(output, modifiers, field.get_string());
+            else
+                apply_html(output, modifiers, Meta::toStr(field));
+            return;
+        }
+    }
+    
+    throw InvalidArgumentException("Unknown access type to ", json, " with ", subs);
 }
 
 void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable, const VarProps& modifiers) {
@@ -776,20 +808,14 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
             apply_html(output, modifiers, variable.value_string(modifiers));
         } else if(variable.is<Size2>()) {
             variable.access_value<Size2>([&](auto&& value){
-                std::queue<std::string_view> subs;
-                for(auto &sub : modifiers.subs)
-                    subs.emplace(sub);
-                
-                access_sub_field(output, modifiers, value, std::move(subs));
+                std::span subs{ modifiers.subs };
+                access_sub_field(output, modifiers, value, subs);
             }, modifiers);
             
         } else if(variable.is<Vec2>()) {
             variable.access_value<Vec2>([&](auto&& value){
-                std::queue<std::string_view> subs;
-                for(auto &sub : modifiers.subs)
-                    subs.emplace(sub);
-                
-                access_sub_field(output, modifiers, value, std::move(subs));
+                std::span subs{ modifiers.subs };
+                access_sub_field(output, modifiers, value, subs);
             }, modifiers);
             
         } else if(variable.is<Range<Frame_t>>()) {
@@ -805,21 +831,15 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
             
         } else if(variable.is<glz::json_t>()) {
             variable.access_value<glz::json_t>([&](auto&& value){
-                std::queue<std::string_view> subs;
-                for(auto &sub : modifiers.subs)
-                    subs.emplace(sub);
-                
-                access_sub_field(output, modifiers, value, std::move(subs));
+                std::span subs{ modifiers.subs };
+                access_sub_field(output, modifiers, value, subs);
             }, modifiers);
         }
         else if(variable.is<sprite::Map>())
         {
             variable.access_value<sprite::Map>([&](auto&& value){
-                std::queue<std::string_view> subs;
-                for(auto &sub : modifiers.subs)
-                    subs.emplace(sub);
-                
-                access_sub_field(output, modifiers, value, std::move(subs));
+                std::span subs{ modifiers.subs };
+                access_sub_field(output, modifiers, value, subs);
             }, modifiers);
             
         } else
@@ -841,6 +861,15 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
 {
     auto& props = resolved;
     auto& parms = props.parameters;
+    
+    props.subs.resize(subs.size());
+    
+    for(size_t i = 0; i < subs.size(); ++i) {
+        props.subs[i].clear();
+        for(auto &p : subs[i]) {
+            p.resolve(props.subs[i], pattern, context, state);
+        }
+    }
     
     if(resolved.name == "if") {
         /// we have a special case here where we want lazy evaluation

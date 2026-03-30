@@ -54,22 +54,22 @@ _MUTEX_REGEXES = (
     r"^pthread_rwlock_t$",
     r"^_opaque_pthread_mutex_t$",
     r"^_opaque_pthread_rwlock_t$",
-    r"^std(?:::__1)?::mutex$",
-    r"^std(?:::__1)?::recursive_mutex$",
-    r"^std(?:::__1)?::timed_mutex$",
-    r"^std(?:::__1)?::recursive_timed_mutex$",
-    r"^std(?:::__1)?::__shared_mutex_base$",
-    r"^std(?:::__1)?::shared_mutex$",
-    r"^std(?:::__1)?::shared_timed_mutex$",
+    r"^std(::__1)?::mutex$",
+    r"^std(::__1)?::recursive_mutex$",
+    r"^std(::__1)?::timed_mutex$",
+    r"^std(::__1)?::recursive_timed_mutex$",
+    r"^std(::__1)?::__shared_mutex_base$",
+    r"^std(::__1)?::shared_mutex$",
+    r"^std(::__1)?::shared_timed_mutex$",
     r"^cmn::LoggedMutex<.+>$",
 )
 _MUTEX_CATEGORY = "trex_mutex"
 
 _LOCK_REGEXES = (
-    r"^std(?:::__1)?::unique_lock<.+>$",
-    r"^std(?:::__1)?::shared_lock<.+>$",
-    r"^std(?:::__1)?::lock_guard<.+>$",
-    r"^std(?:::__1)?::scoped_lock<.+>$",
+    r"^std(::__1)?::unique_lock<.+>$",
+    r"^std(::__1)?::shared_lock<.+>$",
+    r"^std(::__1)?::lock_guard<.+>$",
+    r"^std(::__1)?::scoped_lock<.+>$",
     r"^cmn::LoggedLock<.+>$",
 )
 _LOCK_CATEGORY = "trex_lock"

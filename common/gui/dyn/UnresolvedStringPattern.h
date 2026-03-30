@@ -88,7 +88,7 @@ struct Unprepared {
     std::string_view original;
     std::string_view name;
     std::vector<std::variant<std::string_view, UnpreparedPatterns>> parameters;
-    std::vector<std::string_view> subs;
+    std::vector<std::variant<std::string_view, UnpreparedPatterns>> subs;
     bool optional{false};
     bool html{false};
 };
@@ -105,6 +105,7 @@ struct Prepared {
 
     std::string_view original;
     std::vector<PreparedPatterns> parameters{};
+    std::vector<PreparedPatterns> subs{};
     gui::dyn::VarProps resolved{};
     
     /// Cached resolved output for this prepared node.
