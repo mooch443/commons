@@ -7,6 +7,8 @@ synthetic children for:
 - robin_hood hash maps / sets
 - ska flat_hash_map / bytell_hash_map style tables
 - std::expected
+- std/libc++ mutexes and lock wrappers
+- cmn::LoggedMutex / cmn::LoggedLock
 """
 
 import lldb
@@ -47,6 +49,31 @@ _STD_EXPECTED_REGEXES = (
 )
 _STD_EXPECTED_CATEGORY = "trex_std_expected"
 
+_MUTEX_REGEXES = (
+    r"^pthread_mutex_t$",
+    r"^pthread_rwlock_t$",
+    r"^_opaque_pthread_mutex_t$",
+    r"^_opaque_pthread_rwlock_t$",
+    r"^std(?:::__1)?::mutex$",
+    r"^std(?:::__1)?::recursive_mutex$",
+    r"^std(?:::__1)?::timed_mutex$",
+    r"^std(?:::__1)?::recursive_timed_mutex$",
+    r"^std(?:::__1)?::__shared_mutex_base$",
+    r"^std(?:::__1)?::shared_mutex$",
+    r"^std(?:::__1)?::shared_timed_mutex$",
+    r"^cmn::LoggedMutex<.+>$",
+)
+_MUTEX_CATEGORY = "trex_mutex"
+
+_LOCK_REGEXES = (
+    r"^std(?:::__1)?::unique_lock<.+>$",
+    r"^std(?:::__1)?::shared_lock<.+>$",
+    r"^std(?:::__1)?::lock_guard<.+>$",
+    r"^std(?:::__1)?::scoped_lock<.+>$",
+    r"^cmn::LoggedLock<.+>$",
+)
+_LOCK_CATEGORY = "trex_lock"
+
 
 def _get_uint(child, default=0):
     return child.GetValueAsUnsigned(default) if child.IsValid() else default
@@ -62,6 +89,14 @@ def _is_pointer_type(sbtype):
     if hasattr(sbtype, "IsPointerType"):
         return sbtype.IsPointerType()
     return bool(sbtype.GetTypeClass() & lldb.eTypeClassPointer)
+
+
+def _is_reference_type(sbtype):
+    if not sbtype.IsValid():
+        return False
+    if hasattr(sbtype, "IsReferenceType"):
+        return sbtype.IsReferenceType()
+    return bool(sbtype.GetTypeClass() & lldb.eTypeClassReference)
 
 
 def _find_member(valobj, name, depth=8):
@@ -90,6 +125,17 @@ def _create_named_value(parent, name, value):
     if not value.IsValid():
         return None
 
+    value_type = value.GetType()
+    if _is_reference_type(value_type):
+        pointer = value.AddressOf()
+        if not pointer.IsValid():
+            return value
+        address = pointer.GetValueAsUnsigned(0)
+        pointee_type = value_type.GetDereferencedType()
+        if not address or not pointee_type.IsValid():
+            return value
+        return parent.CreateValueFromAddress(name, address, pointee_type)
+
     pointer = value.AddressOf()
     if not pointer.IsValid():
         return value
@@ -98,7 +144,7 @@ def _create_named_value(parent, name, value):
     if not address:
         return value
 
-    return parent.CreateValueFromAddress(name, address, value.GetType())
+    return parent.CreateValueFromAddress(name, address, value_type)
 
 
 def _dereference_pointer(parent, name, pointer_value):
@@ -124,6 +170,57 @@ def _container_summary(size, buckets):
 
 def _bool_text(value):
     return "true" if value else "false"
+
+
+def _first_valid(*values):
+    for value in values:
+        if value is not None and value.IsValid():
+            return value
+    return lldb.SBValue()
+
+
+def _value_address(value):
+    if not value.IsValid():
+        return 0
+    if _is_pointer_type(value.GetType()):
+        return value.GetValueAsUnsigned(0)
+    pointer = value.AddressOf()
+    if pointer.IsValid():
+        return pointer.GetValueAsUnsigned(0)
+    return 0
+
+
+def _hex_or_null(address):
+    return "null" if not address else hex(address)
+
+
+def _value_text(value):
+    if not value.IsValid():
+        return None
+    summary = value.GetSummary()
+    if summary:
+        return summary
+    text = value.GetValue()
+    if text is not None and text != "":
+        return text
+    return None
+
+
+def _summary_join(parts):
+    return ", ".join(part for part in parts if part)
+
+
+def _collect_members_named(valobj, name, out, depth=8):
+    if depth < 0 or not valobj.IsValid():
+        return
+    for index in range(valobj.GetNumChildren()):
+        child = valobj.GetChildAtIndex(index)
+        if not child.IsValid():
+            continue
+        if child.GetName() == name:
+            out.append(child)
+            continue
+        _collect_members_named(child, name, out, depth - 1)
 
 
 def _is_nonnull_pointer(value):
@@ -541,6 +638,226 @@ def std_expected_summary(valobj, _dict):
     return f"has_value={_bool_text(False)}"
 
 
+def _native_mutex_summary(raw):
+    native = _first_valid(
+        raw.GetChildMemberWithName("__m_"),
+        raw if raw.GetChildMemberWithName("__sig").IsValid() else None,
+    )
+    signature = native.GetChildMemberWithName("__sig") if native.IsValid() else lldb.SBValue()
+    parts = []
+    if native.IsValid():
+        parts.append(f"native={_hex_or_null(_value_address(native))}")
+    sig_value = _get_int(signature, 0)
+    if signature.IsValid() and sig_value:
+        parts.append(f"sig=0x{sig_value:x}")
+    return _summary_join(parts) or "opaque"
+
+
+def _shared_mutex_summary(raw):
+    base = _first_valid(raw.GetChildMemberWithName("__base_"), raw)
+    state_child = _find_member(base, "__state_", depth=3)
+    state = _get_uint(state_child)
+    bits = max(state_child.GetType().GetByteSize() * 8, 1) if state_child.IsValid() else 32
+    write_mask = 1 << (bits - 1)
+    readers_mask = write_mask - 1
+    writer = bool(state & write_mask)
+    readers = state & readers_mask
+    if writer:
+        mode = "exclusive"
+    elif readers:
+        mode = f"shared({readers})"
+    else:
+        mode = "unlocked"
+    parts = [f"mode={mode}"]
+    if state_child.IsValid():
+        parts.append(f"state=0x{state:x}")
+    return _summary_join(parts)
+
+
+def _timed_mutex_summary(raw):
+    locked = bool(_get_uint(raw.GetChildMemberWithName("__locked_")))
+    native = raw.GetChildMemberWithName("__m_")
+    return _summary_join(
+        (
+            f"locked={_bool_text(locked)}",
+            f"native={_hex_or_null(_value_address(native))}" if native.IsValid() else None,
+        )
+    )
+
+
+def _recursive_timed_mutex_summary(raw):
+    count = _get_uint(raw.GetChildMemberWithName("__count_"))
+    owner = _find_member(raw.GetChildMemberWithName("__id_"), "__id_", depth=2)
+    owner_value = owner.GetValueAsUnsigned(0) if owner.IsValid() else 0
+    return _summary_join(
+        (
+            f"locked={_bool_text(bool(count))}",
+            f"count={count}",
+            f"owner={hex(owner_value)}" if owner_value else None,
+        )
+    )
+
+
+def _logged_mutex_summary(raw):
+    name = _value_text(raw.GetChildMemberWithName("_name"))
+    owner = _value_text(raw.GetChildMemberWithName("_thread_name"))
+    native = raw.GetChildMemberWithName("_mtx")
+    return _summary_join(
+        (
+            f"name={name}" if name and name != '"<none>"' else None,
+            f"native={_hex_or_null(_value_address(native))}" if native.IsValid() else None,
+            f"last_owner={owner}" if owner and owner != '""' else None,
+        )
+    ) or "logged_mutex"
+
+
+def mutex_summary(valobj, _dict):
+    raw = valobj.GetNonSyntheticValue()
+    type_name = raw.GetType().GetName() or ""
+
+    if "LoggedMutex<" in type_name:
+        return _logged_mutex_summary(raw)
+    if "shared_mutex" in type_name or "shared_timed_mutex" in type_name or "__shared_mutex_base" in type_name:
+        return _shared_mutex_summary(raw)
+    if "recursive_timed_mutex" in type_name:
+        return _recursive_timed_mutex_summary(raw)
+    if "timed_mutex" in type_name:
+        return _timed_mutex_summary(raw)
+    return _native_mutex_summary(raw)
+
+
+def _lock_pointer_summary(pointer_value):
+    return f"mutex={_hex_or_null(_value_address(pointer_value))}" if pointer_value.IsValid() else None
+
+
+def _single_lock_child(valobj, name, value):
+    if not value.IsValid():
+        return None
+    if _is_pointer_type(value.GetType()):
+        return _dereference_pointer(valobj, name, value)
+    return _create_named_value(valobj, name, value)
+
+
+def _scoped_lock_mutex_count(raw):
+    direct_mutex = raw.GetChildMemberWithName("__m_")
+    if direct_mutex.IsValid():
+        return 1
+    tuple_mutexes = []
+    _collect_members_named(raw.GetChildMemberWithName("__t_"), "__value_", tuple_mutexes, depth=8)
+    return len(tuple_mutexes)
+
+
+class LockLikeSyntheticProvider:
+    """Expose the underlying mutex for lock wrappers when LLDB can recover it."""
+
+    def __init__(self, valobj, _dict):
+        self.valobj = valobj
+        self.update()
+
+    def update(self):
+        raw = self.valobj.GetNonSyntheticValue()
+        self._children = []
+        type_name = raw.GetType().GetName() or ""
+
+        if "scoped_lock" in type_name:
+            self._collect_scoped_lock_children(raw)
+            return
+
+        mutex_value = _first_valid(
+            raw.GetChildMemberWithName("__m_"),
+            raw.GetChildMemberWithName("_mutex"),
+        )
+        child = _single_lock_child(self.valobj, "mutex", mutex_value)
+        if child is not None and child.IsValid():
+            self._children.append(child)
+
+    def _collect_scoped_lock_children(self, raw):
+        direct_mutex = raw.GetChildMemberWithName("__m_")
+        if direct_mutex.IsValid():
+            child = _single_lock_child(self.valobj, "mutex[0]", direct_mutex)
+            if child is not None and child.IsValid():
+                self._children.append(child)
+            return
+
+        tuple_mutexes = []
+        _collect_members_named(raw.GetChildMemberWithName("__t_"), "__value_", tuple_mutexes, depth=8)
+        for index, mutex_value in enumerate(tuple_mutexes):
+            child = _single_lock_child(self.valobj, f"mutex[{index}]", mutex_value)
+            if child is not None and child.IsValid():
+                self._children.append(child)
+
+    def has_children(self):
+        return bool(self._children)
+
+    def num_children(self):
+        return len(self._children)
+
+    def get_child_index(self, name):
+        for index, child in enumerate(self._children):
+            if child.IsValid() and child.GetName() == name:
+                return index
+        return -1
+
+    def get_child_at_index(self, index):
+        if index < 0 or index >= len(self._children):
+            return None
+        return self._children[index]
+
+
+def lock_summary(valobj, _dict):
+    raw = valobj.GetNonSyntheticValue()
+    type_name = raw.GetType().GetName() or ""
+
+    if "LoggedLock<" in type_name:
+        owns_lock = bool(_get_uint(raw.GetChildMemberWithName("_owns_lock")))
+        name = _value_text(raw.GetChildMemberWithName("_name"))
+        mutex_ptr = raw.GetChildMemberWithName("_mutex")
+        return _summary_join(
+            (
+                f"owns_lock={_bool_text(owns_lock)}",
+                _lock_pointer_summary(mutex_ptr),
+                f"name={name}" if name and name != '"<none>"' else None,
+            )
+        )
+
+    if "unique_lock<" in type_name:
+        owns_lock = bool(_get_uint(raw.GetChildMemberWithName("__owns_")))
+        mutex_ptr = raw.GetChildMemberWithName("__m_")
+        return _summary_join(
+            (
+                "mode=exclusive",
+                f"owns_lock={_bool_text(owns_lock)}",
+                _lock_pointer_summary(mutex_ptr),
+            )
+        )
+
+    if "shared_lock<" in type_name:
+        owns_lock = bool(_get_uint(raw.GetChildMemberWithName("__owns_")))
+        mutex_ptr = raw.GetChildMemberWithName("__m_")
+        return _summary_join(
+            (
+                "mode=shared",
+                f"owns_lock={_bool_text(owns_lock)}",
+                _lock_pointer_summary(mutex_ptr),
+            )
+        )
+
+    if "lock_guard<" in type_name:
+        mutex_ref = raw.GetChildMemberWithName("__m_")
+        return _summary_join(("owns_lock=true", _lock_pointer_summary(mutex_ref)))
+
+    if "scoped_lock<" in type_name:
+        mutex_count = _scoped_lock_mutex_count(raw)
+        return _summary_join(
+            (
+                "owns_lock=true",
+                f"mutexes={mutex_count}" if mutex_count else "mutexes=?",
+            )
+        )
+
+    return "lock"
+
+
 def __lldb_init_module(debugger, _dict):
     """Invoked automatically when the script is imported via `command script import`."""
     debugger.HandleCommand(
@@ -594,4 +911,25 @@ def __lldb_init_module(debugger, _dict):
         )
     debugger.HandleCommand(f"type category enable {_STD_EXPECTED_CATEGORY}")
 
-    print("[LLDB] IllegalArray, robin_hood, sherwood, and std::expected pretty-printers loaded.")
+    for regex in _MUTEX_REGEXES:
+        debugger.HandleCommand(
+            f"type summary add --category {_MUTEX_CATEGORY} "
+            f"--python-function {__name__}.mutex_summary "
+            f"--regex {regex}"
+        )
+    debugger.HandleCommand(f"type category enable {_MUTEX_CATEGORY}")
+
+    for regex in _LOCK_REGEXES:
+        debugger.HandleCommand(
+            f"type summary add --category {_LOCK_CATEGORY} "
+            f"--python-function {__name__}.lock_summary "
+            f"--regex {regex}"
+        )
+        debugger.HandleCommand(
+            f"type synthetic add --category {_LOCK_CATEGORY} "
+            f"--python-class {__name__}.LockLikeSyntheticProvider "
+            f"--regex {regex}"
+        )
+    debugger.HandleCommand(f"type category enable {_LOCK_CATEGORY}")
+
+    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, and mutex pretty-printers loaded.")

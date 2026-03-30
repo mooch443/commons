@@ -61,7 +61,11 @@ if(NOT COMMONS_NO_PYTHON)
         set_target_properties(test_python PROPERTIES LINK_FLAGS "${CMAKE_EXE_LINKER_FLAGS}") #--embed-file ${CMAKE_CURRENT_SOURCE_DIR}/../@fonts/Quicksand-.ttf")
     endif()
 
-    #target_precompile_headers(test_python REUSE_FROM commons)
+    if(NOT COMMONS_ENABLE_MODULES AND NOT COMMONS_DONT_USE_PCH
+            AND COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS
+            AND DEFINED COMMONS_PCH_OWNER AND NOT "${COMMONS_PCH_OWNER}" STREQUAL "")
+        target_precompile_headers(test_python REUSE_FROM ${COMMONS_PCH_OWNER})
+    endif()
 
     install(TARGETS test_python
         EXPORT test_python

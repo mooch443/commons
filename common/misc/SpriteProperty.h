@@ -52,6 +52,7 @@ namespace cmn {
             std::function<bool()> _optional_has_value;
             std::function<void()> _default_initialize_optional;
             std::function<void()> _reset_optional;
+            std::function<std::unique_ptr<PropertyType>(uint16_t)> _access_array;
             
             std::function<std::unique_ptr<PropertyType>()> _dereference_optional;
             std::function<std::unique_ptr<PropertyType>()> _get_optional_default_value;
@@ -62,6 +63,11 @@ namespace cmn {
             void reset_optional() const { _reset_optional(); }
             auto dereference_optional() const { return _dereference_optional(); }
             auto get_optional_default_value() const { return _get_optional_default_value(); }
+            auto access_array(uint16_t x) const {
+                if(not _access_array)
+                    throw RuntimeError("Cannot access index ",x," of ", *this, " because its likely not an array.");
+                return _access_array(x);
+            }
             
         protected:
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
@@ -348,8 +354,17 @@ namespace cmn {
                 _is_array = is_container<ValueType>::value;
                 _is_optional = is_instantiation<std::optional, ValueType>::value;
                 
+                init_array();
                 init_enum();
                 init_optional();
+            }
+            
+            void init_array() {
+                if constexpr(is_container<ValueType>::value) {
+                    _access_array = [this](uint16_t x) -> std::unique_ptr<PropertyType> {
+                        return std::make_unique<Property<typename ValueType::value_type>>(name(), value()[x]);
+                    };
+                }
             }
             
             template<typename T = ValueType>

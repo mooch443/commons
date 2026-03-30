@@ -130,7 +130,18 @@ set(COMMONS_ALL_MODULE_FILES
     modules/commons.cppm
 )
 
+set(COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS OFF)
+if(CMAKE_GENERATOR MATCHES "^(Ninja|Ninja Multi-Config|Unix Makefiles|MinGW Makefiles|NMake Makefiles)$")
+    set(COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS ON)
+endif()
+set(COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS "${COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS}" CACHE INTERNAL
+    "Whether the active generator supports reliable cross-target PCH reuse.")
+
 function(commons_configure_target target)
+    # Optional 2nd positional arg: name of target to REUSE_FROM for the precompiled header.
+    # If omitted, this target compiles and owns the PCH.
+    set(_pch_reuse_from "${ARGV1}")
+
     target_include_directories(${target} PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../flat_hash_map>"
@@ -158,7 +169,15 @@ function(commons_configure_target target)
     endif()
 
     if(NOT COMMONS_ENABLE_MODULES AND NOT COMMONS_DONT_USE_PCH)
-        target_precompile_headers(${target} PUBLIC commons.pc.h)
+        if(_pch_reuse_from AND COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS)
+            target_precompile_headers(${target} REUSE_FROM ${_pch_reuse_from})
+        else()
+            if(XCODE)
+                target_precompile_headers(${target} PRIVATE commons.pc.h)
+            else()
+                target_precompile_headers(${target} PUBLIC commons.pc.h)
+            endif()
+        endif()
     endif()
 endfunction()
 
@@ -233,31 +252,31 @@ if(COMMONS_SPLIT_ACTIVE)
     commons_attach_modules(commons_misc ${COMMONS_TYPES_MODULE_FILES} ${COMMONS_MISC_MODULE_FILES})
 
     add_library(commons_file ${COMMONS_LIBRARY_TYPE} ${COMMONS_FILE_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-    commons_configure_target(commons_file)
+    commons_configure_target(commons_file commons_misc)
     target_link_libraries(commons_file PUBLIC commons_misc)
     commons_link_layer_external_dependencies(commons_file file PUBLIC)
     commons_attach_modules(commons_file ${COMMONS_FILE_MODULE_FILES})
 
     add_library(commons_processing ${COMMONS_LIBRARY_TYPE} ${COMMONS_PROCESSING_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-    commons_configure_target(commons_processing)
+    commons_configure_target(commons_processing commons_misc)
     target_link_libraries(commons_processing PUBLIC commons_file)
     commons_attach_modules(commons_processing ${COMMONS_PROCESSING_MODULE_FILES})
 
     add_library(commons_video ${COMMONS_LIBRARY_TYPE} ${COMMONS_VIDEO_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-    commons_configure_target(commons_video)
+    commons_configure_target(commons_video commons_misc)
     target_link_libraries(commons_video PUBLIC commons_processing)
     commons_link_layer_external_dependencies(commons_video video PUBLIC)
     commons_attach_modules(commons_video ${COMMONS_VIDEO_MODULE_FILES})
 
     add_library(commons_gui ${COMMONS_LIBRARY_TYPE} ${COMMONS_GUI_CPP_SOURCES} ${HDRS} ${HASH_HDR})
-    commons_configure_target(commons_gui)
+    commons_configure_target(commons_gui commons_misc)
     target_link_libraries(commons_gui PUBLIC commons_video)
     commons_link_layer_external_dependencies(commons_gui gui PUBLIC)
     commons_attach_modules(commons_gui ${COMMONS_GUI_MODULE_FILES})
 
     if(COMMONS_ENABLE_MODULES)
         add_library(commons ${COMMONS_LIBRARY_TYPE})
-        commons_configure_target(commons)
+        commons_configure_target(commons commons_misc)
         target_link_libraries(commons PUBLIC commons_gui)
         commons_attach_modules(commons ${COMMONS_ALL_MODULE_FILES})
         set(COMMONS_LIBRARY_NAME commons)
@@ -308,6 +327,26 @@ else()
     commons_link_layer_external_dependencies(commons_gui gui INTERFACE)
 
     set(COMMONS_ACTIVE_TARGETS commons)
+endif()
+
+# Publish which target owns the precompiled header so consumer projects can
+# call target_precompile_headers(<target> REUSE_FROM ${COMMONS_PCH_OWNER}) when
+# the active generator supports reliable cross-target PCH reuse. Xcode is
+# explicitly excluded here: transitive/cross-target PCH usage can produce stale
+# incremental builds in consumers (for example test_dyngui after commons_misc
+# changes), so Xcode builds keep PCH target-local for correctness.
+if(NOT COMMONS_ENABLE_MODULES AND NOT COMMONS_DONT_USE_PCH AND COMMONS_CAN_REUSE_PCH_ACROSS_TARGETS)
+    if(COMMONS_SPLIT_ACTIVE)
+        # Expose the lowest layer for consumers that have matching flags.
+        set(COMMONS_PCH_OWNER "commons_misc" CACHE INTERNAL
+            "Target owning commons.pc.h for supported cross-target REUSE_FROM builds.")
+    else()
+        set(COMMONS_PCH_OWNER "commons" CACHE INTERNAL
+            "Target owning commons.pc.h for supported cross-target REUSE_FROM builds.")
+    endif()
+else()
+    set(COMMONS_PCH_OWNER "" CACHE INTERNAL
+        "No reusable cross-target PCH owner: modules, PCH, or generator support disabled.")
 endif()
 
 add_library(commons_all INTERFACE)
