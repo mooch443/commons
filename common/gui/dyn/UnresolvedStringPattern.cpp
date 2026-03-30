@@ -11,6 +11,19 @@
 
 namespace cmn::pattern {
 
+template<typename Number>
+    requires std::integral<Number>
+bool is_valid_number(std::string_view str) {
+    if(str.empty())
+        return false;
+    
+    for(char c : str) {
+        if(not std::isdigit(c))
+            return false;
+    }
+    return true;
+}
+
 using namespace cmn::gui::dyn;
 UnpreparedPatterns parse_words(std::string_view pattern);
 
@@ -584,6 +597,33 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             //Print("* defaults contain ", props);
             //Print("* => ", it->second->value<std::string>(context, state));
             //[[maybe_unused]] CTimer ctimer("custom var");
+            if(not props.subs.empty()) {
+                /// here we might need to check for x,y / array accessors
+                auto &key = props.subs.front();
+                if(is_in(key, "x", "y")) {
+                    /// treated special
+                    std::string tmp = it->second->value<std::string>(context, state);
+                    
+                    auto parts = util::parse_array_parts(util::truncate(tmp));
+                    if(parts.size() != 2) {
+                        throw InvalidArgumentException("String 'array' ", tmp, " does not have 2 elements and cant be accessed using .x/.y");
+                    }
+                    if(key == "x")
+                        utils::fast_fromstr(output, parts[0]);
+                    else
+                        utils::fast_fromstr(output, parts[1]);
+                    return;
+                    
+                } else if(is_valid_number<uint16_t>(key)) {
+                    std::string tmp = it->second->value<std::string>(context, state);
+                    auto parts = util::parse_array_parts(util::truncate(tmp));
+                    
+                    auto index = Meta::fromStr<uint8_t>(key);
+                    utils::fast_fromstr(output, parts.at(index));
+                    return;
+                }
+            }
+            
             utils::fast_fromstr(output, it->second->value<std::string>(context, state));
             return;
             
@@ -636,21 +676,6 @@ void apply_html(std::string& output, const VarProps& modifiers, StringLike auto&
     else
         output += str;
 };
-
-
-
-template<typename Number>
-    requires std::integral<Number>
-bool is_valid_number(std::string_view str) {
-    if(str.empty())
-        return false;
-    
-    for(char c : str) {
-        if(not std::isdigit(c))
-            return false;
-    }
-    return true;
-}
 
 template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::span<String> subs);
 template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& json, std::span<String> subs);
@@ -842,9 +867,38 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
                 access_sub_field(output, modifiers, value, subs);
             }, modifiers);
             
-        } else
+        } else {
+            if(not modifiers.subs.empty()) {
+                /// need to check for special subs
+                if(auto& key = modifiers.subs.front();
+                   is_in(key, "x", "y"))
+                {
+                    std::string tmp = variable.value_string(modifiers);
+                    auto parts = util::parse_array_parts(util::truncate(tmp));
+                    if(parts.size() != 2u) {
+                        throw InvalidArgumentException("Expecting 2 values in string 'array' ", tmp, " for index ", key,".");
+                    }
+                    
+                    apply_html(output, modifiers,
+                               key == "x" ? parts[0] : parts[1]);
+                    return;
+                    
+                } else if(is_valid_number<uint16_t>(key)) {
+                    auto index = Meta::fromStr<uint16_t>(key);
+                    std::string tmp = variable.value_string(modifiers);
+                    auto parts = util::parse_array_parts(util::truncate(tmp));
+                    
+                    apply_html(output, modifiers, parts.at(index));
+                    //Print("* got unknown variable ", modifiers, " with subs => ", tmp);
+                    return;
+                } else {
+                    /// here we trust the variable function to handle the modifiers
+                    //throw InvalidArgumentException("Received subs ", modifiers.subs, " to variable of unknown/string type => ", variable.value_string(modifiers));
+                }
+            }
             apply_html(output, modifiers,
                        variable.value_string(modifiers));
+        }
         
         //if(modifiers.html)
         //    return settings::htmlify(ret);
