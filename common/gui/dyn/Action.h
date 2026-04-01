@@ -30,7 +30,7 @@ struct Action {
     const std::string& first() const { return parameters.front(); }
     const std::string& last() const { return parameters.back(); }
     std::string toStr() const;
-    static std::string class_name() { return "Action"; }
+    static consteval std::string_view class_name() { return "Action"; }
 };
 
 struct PreAction {
@@ -71,7 +71,7 @@ struct PreAction {
     
     static PreAction fromStr(std::string_view);
     std::string toStr() const;
-    static std::string class_name() { return "PreAction"; }
+    static consteval std::string_view class_name() { return "PreAction"; }
     
     Action parse(const Context& context, State& state) const;
 };

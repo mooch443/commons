@@ -135,7 +135,7 @@ public:
     explicit operator std::string() const { return str(); }
     std::string toStr() const { return Meta::toStr<std::string>(str()); }
     glz::json_t to_json() const;
-    static std::string class_name() { return "path"; }
+    static consteval std::string_view class_name() { return "path"; }
     static file::Path fromStr(cmn::StringLike auto&& str) {
         return Path(Meta::fromStr<std::string>(str));
     }

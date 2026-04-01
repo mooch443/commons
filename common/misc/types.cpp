@@ -130,10 +130,6 @@ std::string blob::Pose::toStr() const {
     return str + "]";
 }
 
-std::string blob::Pose::class_name() {
-    return "Pose";
-}
-
 glz::json_t blob::Pose::to_json() const {
     std::vector<glz::json_t> j;
     for(size_t i = 0; i < points.size(); ++i) {

@@ -124,7 +124,7 @@ public:
     bool properties_ready() const { return _properties.ready; }
     
     std::string toStr() const;
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "Blob";
     }
     
@@ -404,7 +404,7 @@ public:
     }
     
     std::string toStr() const;
-    static std::string class_name() { return "CompressedBlob"; }
+    static consteval std::string_view class_name() { return "CompressedBlob"; }
 };
 
 }

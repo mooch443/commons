@@ -50,7 +50,7 @@ public:
             return name;
         }
         
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "FileChooser::Settings";
         }
     };

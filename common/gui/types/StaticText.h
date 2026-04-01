@@ -62,7 +62,7 @@ namespace cmn::gui {
         
         std::string toStr() const;
             
-        static std::string class_name();
+        static consteval std::string_view class_name() { return "TRange"; }
     };
 
     class StaticText : public Entangled {

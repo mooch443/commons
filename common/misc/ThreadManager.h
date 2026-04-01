@@ -45,7 +45,7 @@ struct ThreadGroupId {
         return index <=> other.index;
     }
     std::string toStr() const;
-    static std::string class_name() { return "ThreadGroupId"; }
+    static consteval std::string_view class_name() { return "ThreadGroupId"; }
 };
 
 /**

@@ -156,7 +156,7 @@ struct VarCache {
     std::vector<std::string_view> variables;
 
     std::string toStr() const;
-    static std::string class_name() { return "Pattern"; }
+    static consteval std::string_view class_name() { return "Pattern"; }
 };*/
 
 struct CustomElement {

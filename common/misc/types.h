@@ -282,7 +282,7 @@ struct Pose {
         static Point fromStr(cmn::StringLike auto&& str) {
             return Point(cmn::Meta::fromStr<Vec2>(str));
         }
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "Pose::Point";
         }
         std::string toStr() const {
@@ -316,7 +316,7 @@ struct Pose {
             constexpr bool operator==(const Connection& other) const noexcept = default;
             constexpr bool operator!=(const Connection& other) const noexcept = default;
 
-            static std::string class_name() noexcept { return "Connection"; }
+            static consteval std::string_view class_name() noexcept { return "Connection"; }
             static Connection fromStr(std::string_view);
             glz::json_t to_json() const;
         };
@@ -355,7 +355,7 @@ struct Pose {
                 array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(std::forward<decltype(str)>(str));
                 
             } catch(...) {
-                auto outer = util::parse_array_parts(util::truncate(std::string_view(str)));
+                auto outer = util::parse_array_parts(util::truncate(utils::string_like_view(str)));
                 if(outer.size() < 2)
                     throw InvalidArgumentException("Invalid skeleton string: ", str);
                 array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
@@ -367,7 +367,7 @@ struct Pose {
         bool empty() const;
         std::string toStr() const;
         glz::json_t to_json() const;
-        static std::string class_name() noexcept { return "Skeleton"; }
+        static consteval std::string_view class_name() noexcept { return "Skeleton"; }
         //static void add(Skeleton&&);
         static Skeleton get(const std::string&);
         static bool exists(const std::string& name);
@@ -380,7 +380,7 @@ struct Pose {
         
         std::string toStr() const;
         glz::json_t to_json() const;
-        static std::string class_name() noexcept { return "Skeletons"; }
+        static consteval std::string_view class_name() noexcept { return "Skeletons"; }
         static Skeletons fromStr(cmn::StringLike auto&& str) {
             try {
                 return Skeletons{
@@ -495,7 +495,7 @@ struct Pose {
     }
 
     std::string toStr() const;
-    static std::string class_name();
+    static consteval std::string_view class_name() { return "Pose"; }
     static Pose fromStr(const std::string&);
 
     constexpr bool operator==(const Pose& other) const noexcept {
@@ -581,7 +581,7 @@ struct Prediction {
     
     bool valid() const { return clid < 255u; }
     std::string toStr() const;
-    static std::string class_name() { return "Prediction"; }
+    static consteval std::string_view class_name() { return "Prediction"; }
     constexpr float probability() const { return float(p) / 255.f; }
     
     constexpr bool operator==(const Prediction&) const noexcept = default;

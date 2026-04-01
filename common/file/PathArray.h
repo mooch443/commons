@@ -369,7 +369,7 @@ public:
     glz::json_t to_json() const {
         return glz::json_t(source());
     }
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "PathArray";
     }
     

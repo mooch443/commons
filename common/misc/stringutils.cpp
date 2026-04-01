@@ -232,7 +232,7 @@ static inline constexpr std::size_t IncompleteMultibyteSequence = static_cast<st
 }
 
 std::string PreprocessedData::toStr() const {
-    std::string str = class_name();
+    std::string str(class_name());
     str += "<";
     str += "docFrequency=" + cmn::Meta::toStr(docFrequency) + " ";
     str += "termVectors=" + cmn::Meta::toStr(termVectors) + " ";

@@ -144,7 +144,7 @@ public:
             return get();
         return nullptr;
     }
-    [[nodiscard]] static std::string class_name() {
+    [[nodiscard]] static consteval std::string_view class_name() {
         return "frame";
     }
     [[nodiscard]] static BFrame_t fromStr(cmn::StringLike auto&& str) {

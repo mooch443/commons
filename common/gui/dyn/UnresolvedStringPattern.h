@@ -116,7 +116,7 @@ struct Prepared {
     
     //Prepared(const Unprepared& unprepared);
     std::string toStr() const;
-    static std::string class_name() { return "Prepared"; }
+    static consteval std::string_view class_name() { return "Prepared"; }
     
     void resolve(UnresolvedStringPattern&, std::string&, const gui::dyn::Context& context, gui::dyn::State& state);
     const std::optional<std::string>& cached() const {

@@ -463,7 +463,7 @@ namespace cmn::gui {
         virtual void update_bounds();
         
         virtual std::string toStr() const;
-        static std::string class_name() { return "Drawable"; }
+        static consteval std::string_view class_name() { return "Drawable"; }
     };
     
     class Rect;

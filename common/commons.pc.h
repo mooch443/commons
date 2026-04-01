@@ -970,7 +970,7 @@ struct timestamp_t {
         return "null";
     }
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
-    static std::string class_name() { return "timestamp"; }
+    static consteval std::string_view class_name() { return "timestamp"; }
     static timestamp_t fromStr(cmn::StringLike auto&& str) { return timestamp_t(std::atoll(str.c_str())); }
     glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
     

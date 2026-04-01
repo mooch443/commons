@@ -239,7 +239,7 @@ concept CallableWithNArgs = requires (F&& f) {
         }
         
         std::string toStr() const;
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "Image";
         }
         static timestamp_t now() {

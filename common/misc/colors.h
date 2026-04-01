@@ -358,7 +358,7 @@ public:
     }
 
     static Color fromStr(cmn::StringLike auto&& str);
-    static std::string class_name() { return "color"; }
+    static consteval std::string_view class_name() { return "color"; }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Color& obj) {

@@ -294,7 +294,7 @@ struct Vector2D<Scalar, true>
 
     Vector2D_COMMON_FUNCTIONS
 
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "vec";
     }
 };
@@ -321,7 +321,7 @@ struct Vector2D<Scalar, false>
 
     Vector2D_COMMON_FUNCTIONS
 
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "size";
     }
 };
@@ -578,7 +578,7 @@ public:
             throw std::invalid_argument("Can only initialize Bounds with exactly four or no elements. ('"+(std::string)str+"')");
         return Bounds(vec[0], vec[1], vec[2], vec[3]);
     }
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "bounds";
     }
 };

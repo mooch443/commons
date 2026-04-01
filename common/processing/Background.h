@@ -26,7 +26,7 @@ namespace cmn {
     std::string toStr() const { \
         return std::string( #NAME ) + "<channels:"+Meta::toStr(channels) + " encoding:" + Meta::toStr(encoding)+">"; \
     } \
-    static std::string class_name() { return #NAME ; } \
+    static consteval std::string_view class_name() { return #NAME ; } \
     \
     template<typename Info> \
         requires explicitly_convertible_to<Info, ImageInfo> \

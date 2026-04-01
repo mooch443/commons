@@ -20,9 +20,6 @@ std::string Dropdown::TextItem::toStr() const {
         return "Item<name="+Meta::toStr(name())+" search="+Meta::toStr(search_name())+" display="+Meta::toStr(display_name())+">";
     return "Item<'"+name()+"'>";
 }
-std::string Dropdown::TextItem::class_name() {
-    return "Dropdown::TextItem";
-}
 
     std::atomic_long _automatic_id = 0;
     Dropdown::Item::Item(long ID) : _ID(ID) {

@@ -45,7 +45,7 @@ namespace cmn {
             }
             
             std::string toStr() const;
-            static std::string class_name() {
+            static consteval std::string_view class_name() {
                 return "Peak";
             }
         };

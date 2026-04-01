@@ -327,7 +327,7 @@ struct FrameRange {
             cvt2json(end())
         };
     }
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "FrameRange";
     }
 

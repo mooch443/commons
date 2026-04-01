@@ -124,7 +124,7 @@ namespace cmn {
         static void repair_lines_array(std::vector<HorizontalLine>&);
         
         std::string toStr() const;
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "HorizontalLine";
         }
     };

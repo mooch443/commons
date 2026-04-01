@@ -24,7 +24,7 @@ struct VarProps {
     
     static VarProps fromStr(std::string);
     std::string toStr() const;
-    static std::string class_name() { return "VarProps"; }
+    static consteval std::string_view class_name() { return "VarProps"; }
     //operator std::string() const { return last(); }
     
     bool operator==(const VarProps&) const = default;
@@ -48,7 +48,7 @@ struct PreVarProps {
     PreVarProps(PreVarProps&& other) noexcept;
     
     std::string toStr() const;
-    static std::string class_name() { return "PreVarProps"; }
+    static consteval std::string_view class_name() { return "PreVarProps"; }
     VarProps parse(const Context& context, State& state) const;
 };
 

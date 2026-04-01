@@ -150,20 +150,22 @@ inline bool isWhitespaceOrAdditional(UChar32 c) {
 
 enum class TrimDirection { Left, Right };
 
-template<StringLike Str, TrimDirection Direction>
-auto trim_impl(Str&& s) {
+template<TrimDirection Direction>
+auto trim_impl(StringLike auto&& s) {
+    using Str = decltype(s);
     using StrDecayed = std::remove_cvref_t<Str>;
+    auto sv = utils::string_like_view(s);
 
-    if (s.empty()) {
+    if (sv.empty()) {
         if constexpr (std::is_same_v<StrDecayed, std::string>) {
-            return std::forward<Str>(s);
+            return std::forward<decltype(s)>(s);
         } else {
             return std::string_view{};
         }
     }
 
-    const char* data = s.data();
-    int32_t length = static_cast<int32_t>(s.size());
+    const char* data = sv.data();
+    int32_t length = static_cast<int32_t>(sv.size());
     int32_t start = 0;
     int32_t end = length;
 
@@ -224,19 +226,16 @@ auto trim_impl(Str&& s) {
     }
 }
 
-template<StringLike Str>
-auto ltrim(Str&& s) {
-    return trim_impl<Str, TrimDirection::Left>(std::forward<Str>(s));
+auto ltrim(StringLike auto && s) {
+    return trim_impl<TrimDirection::Left>(std::forward<decltype(s)>(s));
 }
 
-template<StringLike Str>
-auto rtrim(Str&& s) {
-    return trim_impl<Str, TrimDirection::Right>(std::forward<Str>(s));
+auto rtrim(StringLike auto && s) {
+    return trim_impl<TrimDirection::Right>(std::forward<decltype(s)>(s));
 }
 
-template<StringLike Str>
-auto trim(Str&& s) {
-    return rtrim(ltrim(std::forward<Str>(s)));
+auto trim(StringLike auto && s) {
+    return rtrim(ltrim(std::forward<decltype(s)>(s)));
 }
 
 template<typename Char = char>
@@ -516,7 +515,7 @@ struct PreprocessedData {
     std::string toStr() const;
 
     // Static function to return the class name as a string
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "PreprocessedData";
     }
 };
@@ -547,7 +546,7 @@ struct PreprocessedDataWithDocs {
     std::string toStr() const;
 
     // Static function to return the class name as a string
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "PreprocessedDataWithDocs";
     }
 };

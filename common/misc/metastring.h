@@ -144,7 +144,7 @@ struct DurationUS {
         return ss.str();
     }
     
-    static std::string class_name() { return "duration"; }
+    static consteval std::string_view class_name() { return "duration"; }
     std::string toStr() const {
         return to_string();
     }
@@ -173,7 +173,7 @@ struct FileSize {
         return ss.str();
     }
 
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "filesize";
     }
     std::string toStr() const {
@@ -931,7 +931,7 @@ std::string name() {
 template<class Q>
     requires _has_class_name<Q>
 std::string name() {
-    return Q::class_name();
+    return std::string(Q::class_name());
 }
     
 template< template < typename...> class Tuple, typename ...Ts >
@@ -1142,7 +1142,7 @@ template<class Q>
     requires _is_smart_pointer<Q> && _has_class_name<typename Q::element_type>
 std::string toStr(const Q& obj) {
     using K = typename Q::element_type;
-    return "ptr<"+K::class_name() + ">" + (obj == nullptr ? "null" : Meta::toStr<K>(*obj));
+    return "ptr<"+std::string(K::class_name()) + ">" + (obj == nullptr ? "null" : Meta::toStr<K>(*obj));
 }
 
 template<class Q,
@@ -1150,7 +1150,7 @@ template<class Q,
     class K = typename std::remove_pointer<C>::type>
   requires _is_dumb_pointer<C> && _has_class_name<K> && _has_tostr_method<K>
 std::string toStr(C obj) {
-    return "ptr<"+K::class_name()+">" + obj->toStr();
+    return "ptr<"+std::string(K::class_name())+">" + obj->toStr();
 }
         
 template<class Q>
