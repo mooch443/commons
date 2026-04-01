@@ -66,6 +66,10 @@ public:
     constexpr auto operator<=>(const BFrame_t& other) const {
         if(not valid() && not other.valid())
             return std::strong_ordering::equal;
+        if(valid() && not other.valid())
+            return std::strong_ordering::greater;
+        if(not valid() && other.valid())
+            return std::strong_ordering::less;
        return get() <=> other.get();
     }
     constexpr bool operator==(const BFrame_t& other) const {
