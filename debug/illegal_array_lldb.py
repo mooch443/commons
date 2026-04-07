@@ -249,6 +249,7 @@ class IllegalArraySyntheticProvider:
         cap_child = raw.GetChildMemberWithName("_capacity")
         self._size = size_child.GetValueAsUnsigned(0) if size_child.IsValid() else 0
         self._capacity = cap_child.GetValueAsUnsigned(0) if cap_child.IsValid() else 0
+        self._child_count = 0
         self._valid = False
         if self._ptr.IsValid():
             self._elem_type = self._ptr.GetType().GetPointeeType()
@@ -262,18 +263,20 @@ class IllegalArraySyntheticProvider:
             and self._elem_type is not None
             and self._elem_size > 0
             and _is_reasonable_count(self._capacity, _MAX_ILLEGAL_ARRAY_CAPACITY)
-            and _is_reasonable_count(self._size, min(self._capacity, _MAX_SYNTHETIC_CHILDREN))
+            and _is_reasonable_count(self._size, self._capacity)
             and self._size <= self._capacity
         )
+        if self._valid:
+            self._child_count = min(self._size, _MAX_SYNTHETIC_CHILDREN)
 
     def has_children(self):
-        return self._valid and bool(self._size)
+        return self._valid and bool(self._child_count)
 
     def num_children(self):
-        return self._size if self._valid else 0
+        return self._child_count if self._valid else 0
 
     def get_child_at_index(self, index):
-        if not self._valid or index < 0 or index >= self._size:
+        if not self._valid or index < 0 or index >= self._child_count:
             return None
         offset = index * self._elem_size
         return self._ptr.CreateChildAtOffset(f"[{index}]", offset, self._elem_type)
@@ -287,10 +290,11 @@ def illegal_array_summary(valobj, _dict):
     if (
         not _is_reasonable_count(capacity, _MAX_ILLEGAL_ARRAY_CAPACITY)
         or size > capacity
-        or size > _MAX_SYNTHETIC_CHILDREN
         or (size and not _is_nonnull_pointer(ptr))
     ):
         return "invalid/uninitialized"
+    if size > _MAX_SYNTHETIC_CHILDREN:
+        return f"size={size}, capacity={capacity}, showing={_MAX_SYNTHETIC_CHILDREN}"
     return f"size={size}, capacity={capacity}"
 
 

@@ -204,19 +204,19 @@ namespace cmn {
              */
             virtual glz::json_t to_json() const = 0;
 
-            template<typename T>
-            Property<T>& toProperty() {
-                if(not is_type<T>()) {
-                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", Meta::name<T>(), " in ", *this);
+            template<typename T, typename K = std::remove_cvref_t<T>>
+            Property<K>& toProperty() {
+                if(not is_type<K>()) {
+                    throw U_EXCEPTION("Cannot cast ", type_name(), " to ", Meta::name<K>(), " in ", *this);
                 }
-                return *static_cast<Property<T>*>(this);
+                return *static_cast<Property<K>*>(this);
             }
 
-            template<typename T>
-            const Property<T>& toProperty(cmn::source_location loc = cmn::source_location::current()) const {
-                if(not is_type<T>())
-                    throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<T>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
-                return *static_cast<const Property<T>*>(this);
+            template<typename T, typename K = std::remove_cvref_t<T>>
+            const Property<K>& toProperty(cmn::source_location loc = cmn::source_location::current()) const {
+                if(not is_type<K>())
+                    throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<K>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
+                return *static_cast<const Property<K>*>(this);
             }
             
             /*template<typename T>
@@ -657,6 +657,7 @@ namespace cmn {
                 } else {
                     std::shared_lock guard(_property_mutex);
                     //if constexpr(std::is_trivially_copyable_v<ValueType>)
+                    assert(_value.has_value());
                     return _value.value();
                     //else
                     //    return

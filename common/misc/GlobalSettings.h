@@ -694,9 +694,9 @@ namespace cmn {
                 return default_value;
             }
             try {
-                return value.value<std::remove_reference_t<T>>();
+                return value.value<std::remove_cvref_t<T>>();
             } catch(...) {
-                return Meta::fromStr<std::remove_reference_t<T>>(value.get().valueString());
+                return Meta::fromStr<std::remove_cvref_t<T>>(value.get().valueString());
             }
         });
     }

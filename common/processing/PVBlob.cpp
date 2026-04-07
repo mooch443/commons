@@ -1779,7 +1779,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
     
     void Blob::set_pixels(pixel_ptr_t&& pixels) {
         _pixels = std::move(pixels);
-        assert(!_pixels || _pixels->size() == num_pixels());
+        assert(!_pixels || _pixels->size() == num_pixels() * channels());
     }
 
 void Blob::set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels)
