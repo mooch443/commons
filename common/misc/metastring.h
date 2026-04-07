@@ -1486,7 +1486,6 @@ Q fromStr(cmn::StringLike auto&& str)
         }
         
         try {
-            std::string y;
             if constexpr(not cmn::StringLike<typename Q::mapped_type>) {
                 if(value_key[1].size() > 1
                    && is_in(value_key[1].front(), '"', '\'')
@@ -1500,9 +1499,9 @@ Q fromStr(cmn::StringLike auto&& str)
                 r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
             }
             
-        } catch(const std::logic_error&) {
+        } catch(const std::logic_error& e) {
             auto name = Meta::name<Q>();
-            throw std::invalid_argument("Empty/illegal value in "+name+"['"+(std::string)value_key[0]+"'] = '"+(std::string)value_key[1]+"'.");
+            throw std::invalid_argument("Empty/illegal value in "+name+"["+(std::string)value_key[0]+"] = "+(std::string)value_key[1]+": " + std::string(e.what()));
         }
     }
             
