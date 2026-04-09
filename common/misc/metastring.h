@@ -711,19 +711,6 @@ auto parse_array_parts(cmn::StringLike auto&& str,
 {
     using Str = decltype(str);
 
-    std::string_view sv;
-    if constexpr(std::is_array_v<std::remove_cvref_t<Str>>
-                 || _is_dumb_pointer<Str>)
-    {
-        sv = std::string_view(str);
-    } else if constexpr(_clean_same<Str, std::string_view>) {
-        sv = str;
-    } else if constexpr(_clean_same<Str, std::wstring>) {
-        static_assert(std::same_as<std::string, Str>, "");
-    } else {
-        sv = std::string_view(str);
-    }
-
     // ---- choose element type ------------------------------------------------
     // We can safely hand out string_views only when the caller guarantees
     // that the underlying buffer will out‑live the views.  That is true for
@@ -742,7 +729,8 @@ auto parse_array_parts(cmn::StringLike auto&& str,
     std::stack<char> brackets;
     char   prev        = 0;
     size_t token_start = 0;
-    
+
+    std::string_view sv = utils::string_like_view(std::forward<Str>(str));
     if(sv.empty())
         return ret;
 
