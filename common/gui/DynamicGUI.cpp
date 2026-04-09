@@ -553,19 +553,18 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     if(TakeTiming take(timing);
        parent)
     {
-        //! check if we need anything more to be done to the objects before adding
-        if(before_add) {
-            auto copy = objects;
-            before_add(copy);
-            parent->set_children(copy);
-        } else {
-            parent->set_children(objects);
-        }
-        
-        for(auto &obj : objects) {
+        auto copy = objects;
+        for(auto &obj : copy) {
             if(do_update_objects)
                 update_objects(gui, graph, obj, context, state);
         }
+
+        //! check if we need anything more to be done to the objects before adding
+        if(before_add) {
+            before_add(copy);
+        }
+        parent->set_children(copy);
+        objects = std::move(copy);
         
     } else {
         //! check if we need anything more to be done to the objects before adding
@@ -577,13 +576,21 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
                     update_objects(gui, graph, obj, context, state);
                 graph.wrap_object(*obj);
             }
+            objects = std::move(copy);
             
-        } else {
-            for(auto &obj : objects) {
-                if(do_update_objects)
-                    update_objects(gui, graph, obj, context, state);
+        } else if(do_update_objects) {
+            auto copy = objects;
+            for(auto &obj : copy) {
+                if(update_objects(gui, graph, obj, context, state)) {
+                    //Print("* object ", hex(obj.get()), " changed.");
+                }
                 graph.wrap_object(*obj);
             }
+            objects = std::move(copy);
+            
+        } else {
+            for(auto &obj : objects)
+                graph.wrap_object(*obj);
         }
     }
     

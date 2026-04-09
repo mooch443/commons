@@ -577,26 +577,35 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
     });
     _text_field->add_event_handler(EventType::SELECT, [this](Event e){
         if(not e.select.selected)
+        {
             try {
+                if(not _text_field)
+                    throw RuntimeError("No text_field set.");
+
                 ref().get().set_value_from_string(_text_field->text());
                 
             } catch(...) {
-                FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().valid() ? std::string(ref().get().type_name()) : "<unknown ref:"+(std::string)ref().name()+">");
+                FormatExcept("Cannot convert ", _text_field ? _text_field->text() : "null", " to ", ref().valid() ? std::string(ref().get().type_name()) : "<unknown ref:"+(std::string)ref().name()+">");
             }
+        }
     });
     _text_field->on_enter([this](){
         try {
+            if(not _text_field)
+                throw RuntimeError("No text_field set.");
+        
             ref().get().set_value_from_string(_text_field->text());
             
         } catch(...) {
-            FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().get().type_name());
+            FormatExcept("Cannot convert ", _text_field ? _text_field->text() : "null", " to ", ref().get().type_name());
         }
     });
 }
 
 LabeledTextField::~LabeledTextField() {
     if(_text_field) {
-        _text_field->clear_event_handlers();
+        //Print("Clearing event handlers on ", hex(this), " and deleting ", hex(_text_field.get()));
+        //_text_field->clear_event_handlers();
     }
 }
 

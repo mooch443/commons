@@ -268,21 +268,29 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         if(_var_cache.has_value())
         {
             auto lock = _var_cache->_cached_ptr.lock();
-            if(not lock || lock.get() != ptr.get()) {
+            if(not lock) {
+                _var_cache->_cached_ptr = std::weak_ptr(ptr.get_smart());
+
+            } else if(lock.get() != ptr.get()) {
                 changed = true;
                 
                 try {
                     if(not field->ref().name().empty()) {
 #ifndef NDEBUG
-                        FormatWarning("* renew item ", o.get());
+                        FormatWarning("* renew item ", hex(o.get()), " and value_box = ", hex(_value_box.get()), " for ptr ", hex(ptr.get()));
 #endif
                         /// workaround currently necessary maybe
                         /// regenerating the entire subtree so we
                         /// update immediately
                         o = parse_object(gui, _var_cache->_obj, context, state, context.defaults, hash);
                         
+                        auto hashed = state.get_monostate(hash, o);
+
                         field = _value_box.get();
                         ptr = field->representative();
+#ifndef NDEBUG
+                        FormatWarning("* => value_box = ", hex(_value_box.get()), " for ptr ", hex(ptr.get()));
+#endif
                     }
                     
                     _var_cache->_cached_ptr = std::weak_ptr(ptr.get_smart());
@@ -912,6 +920,8 @@ std::shared_ptr<HashedObject> State::get_monostate(size_t hash, const Layout::Pt
     if(auto it = _collectors->objects.find(hash);
        it != _collectors->objects.end())
     {
+        if(ptr)
+            register_delete_callback(it->second, ptr);
         return it->second;
     }
     
