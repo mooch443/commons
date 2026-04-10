@@ -244,6 +244,25 @@ void DataFormat::start_reading() {
     _read_header();
 }
 
+void DataFormat::promote_to_modify() {
+    if(not is_write_mode()) {
+        throw RuntimeError("Cannot promote ", filename(), " to modify mode, since its not in write mode.");
+    }
+    
+    auto index = tell();
+    sync();
+    DataFormat::close();
+    
+    f = _filename.fopen("r+");
+    if(!f)
+        throw U_EXCEPTION("Cannot open file ",filename(),".");
+    
+    _open_for_modifying = true;
+    _open_for_writing = false;
+    _file_offset = index;
+    seek(index);
+}
+
 void DataFormat::hint_access_pattern(AccessPattern pattern) const {
 #if defined(__unix__) || defined(__APPLE__)
     int advice = (pattern == AccessPattern::Sequential
@@ -289,6 +308,15 @@ void DataFormat::stop_writing() {
     assert(_open_for_writing);
     close();
     
+    _open_for_writing = false;
+    _header_written = false;
+}
+
+void DataFormat::stop_modifying() {
+    assert(_open_for_modifying);
+    close();
+    
+    _open_for_modifying = false;
     _open_for_writing = false;
     _header_written = false;
 }

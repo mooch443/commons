@@ -240,7 +240,10 @@ namespace cmn {
         virtual void start_modifying();
         virtual void start_writing(bool overwrite = false);
         virtual void stop_writing();
+        virtual void stop_modifying();
         virtual void close();
+        
+        void promote_to_modify();
         
         void truncate();
         void sync();
