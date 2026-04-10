@@ -163,7 +163,7 @@ void DataFormat::start_modifying() {
     if(is_open())
         close();
     
-    f = _filename.fopen("r+");
+    f = _filename.fopen("r+b");
     if(!f)
         throw U_EXCEPTION("Cannot open file ",_filename,".");
     
@@ -182,11 +182,34 @@ bool DataFormat::is_write_mode() const {
 }
 
 uint64_t DataFormat::current_offset() const {
+    if (f) {
+#ifdef _WIN32
+        if (auto t = _ftelli64(f.get());
+            t != _file_offset)
+        {
+            FormatWarning("File offset is off (", _file_offset, " != ", t);
+        }
+#endif
+    }
     return _file_offset;
 }
 uint64_t DataFormat::tell() const {
+    if (f) {
+#ifdef _WIN32
+        if (auto t = _ftelli64(f.get());
+            t != _file_offset)
+        {
+            FormatWarning("File offset is off (", _file_offset, " != ", t);
+        }
+#endif
+    }
+
     if(f)
-        return ftell(f.get());
+#ifdef _WIN32
+        return _ftelli64(f.get());
+#else
+        return ftello(f.get());
+#endif
     return current_offset(); /*ftell(f);*/
 }
 
@@ -253,7 +276,7 @@ void DataFormat::promote_to_modify() {
     sync();
     DataFormat::close();
     
-    f = _filename.fopen("r+");
+    f = _filename.fopen("r+b");
     if(!f)
         throw U_EXCEPTION("Cannot open file ",filename(),".");
     
@@ -423,7 +446,11 @@ void DataFormat::truncate() {
         
         auto index = tell();
         //Print("* truncating to ", index);
+#ifdef _WIN32
+        _chsize_s(fd, index);
+#else
         ftruncate(fd, index);
+#endif
         sync();
         seek(0); seek(index);
     }
@@ -437,7 +464,11 @@ void DataFormat::sync() {
         assert(fd != 0);
         //Print("* syncing to ", tell());
         fflush(f.get());
+#ifdef _WIN32
+        _commit(fd);
+#else
         fsync(fd);
+#endif
     }
 }
 
