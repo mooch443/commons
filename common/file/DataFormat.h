@@ -242,6 +242,9 @@ namespace cmn {
         virtual void stop_writing();
         virtual void close();
         
+        void truncate();
+        void sync();
+        
         [[nodiscard("This method tells you whether the file is open.")]] bool is_open() const { return f || _mmapped; }
         
         const file::Path& filename() const { return _filename; }

@@ -185,6 +185,8 @@ uint64_t DataFormat::current_offset() const {
     return _file_offset;
 }
 uint64_t DataFormat::tell() const {
+    if(f)
+        return ftell(f.get());
     return current_offset(); /*ftell(f);*/
 }
 
@@ -381,6 +383,34 @@ uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
     uint64_t before = _file_offset;
     _file_offset += num_bytes;
     return before;
+}
+
+void DataFormat::truncate() {
+    
+    if(f
+       && _open_for_modifying)
+    {
+        auto fd = fileno(f.get());
+        assert(fd != 0);
+        
+        auto index = tell();
+        //Print("* truncating to ", index);
+        ftruncate(fd, index);
+        sync();
+        seek(0); seek(index);
+    }
+}
+
+void DataFormat::sync() {
+    if(f
+       && (_open_for_modifying || _open_for_writing))
+    {
+        auto fd = fileno(f.get());
+        assert(fd != 0);
+        //Print("* syncing to ", tell());
+        fflush(f.get());
+        fsync(fd);
+    }
 }
 
 /**

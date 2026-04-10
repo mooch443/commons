@@ -165,7 +165,8 @@ function(commons_configure_target target)
             VISIBILITY_INLINES_HIDDEN OFF
         )
         target_compile_options(${target} PRIVATE -fvisibility=default)
-        target_link_options(${target} PRIVATE "-Wl,-undefined,error")
+        # Keep Apple defaults for undefined symbols so unresolved references
+        # still fail the link without emitting deprecated linker warnings.
     endif()
 
     if(NOT COMMONS_ENABLE_MODULES AND NOT COMMONS_DONT_USE_PCH)
