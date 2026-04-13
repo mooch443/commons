@@ -605,18 +605,16 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             if(not props.subs.empty()) {
                 /// here we might need to check for x,y / array accessors
                 auto &key = props.subs.front();
-                if(is_in(key, "x", "y")) {
+                if(auto index = is_in_index(key, "x", "y", "w", "h");
+                   index < 4u) {
                     /// treated special
                     std::string tmp = it->second->value<std::string>(context, state);
                     
                     auto parts = util::parse_array_parts(util::truncate(tmp));
-                    if(parts.size() != 2) {
-                        throw InvalidArgumentException("String 'array' ", tmp, " does not have 2 elements and cant be accessed using .x/.y");
+                    if(index >= parts.size()) {
+                        throw InvalidArgumentException("String 'array' ", tmp, " does not have ",index," elements and cant be accessed using .x/.y/.w/.h");
                     }
-                    if(key == "x")
-                        utils::fast_fromstr(output, parts[0]);
-                    else
-                        utils::fast_fromstr(output, parts[1]);
+                    utils::fast_fromstr(output, parts[index]);
                     return;
                     
                 } else if(is_valid_number<uint16_t>(key)) {
@@ -796,7 +794,17 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
     
     if(json.is_array()) {
         const auto& array = json.get_array();
-        if(is_valid_number<uint16_t>(name)) {
+        if(size_t index = is_in_index(name, "x", "y", "w", "h");
+           index < 4)
+        {
+            const auto &obj = array[index];
+            if(obj.is_string()) {
+                apply_html(output, modifiers, obj.get_string());
+            } else
+                apply_html(output, modifiers, Meta::toStr(obj));
+            return;
+        }
+        else if(is_valid_number<uint16_t>(name)) {
             auto index = Meta::fromStr<uint16_t>(name);
             const auto &obj = array[index];
             if(obj.is_string()) {
@@ -875,17 +883,17 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
         } else {
             if(not modifiers.subs.empty()) {
                 /// need to check for special subs
-                if(auto& key = modifiers.subs.front();
-                   is_in(key, "x", "y"))
+                auto& key = modifiers.subs.front();
+                if(auto index = is_in_index(key, "x", "y", "w", "h");
+                   index < 4)
                 {
                     std::string tmp = variable.value_string(modifiers);
                     auto parts = util::parse_array_parts(util::truncate(tmp));
-                    if(parts.size() != 2u) {
-                        throw InvalidArgumentException("Expecting 2 values in string 'array' ", tmp, " for index ", key,".");
+                    if(index >= parts.size()) {
+                        throw InvalidArgumentException("Expecting at least ",index," values in string 'array' ", tmp, " for index ", key," (=>",index,").");
                     }
                     
-                    apply_html(output, modifiers,
-                               key == "x" ? parts[0] : parts[1]);
+                    apply_html(output, modifiers, parts[index]);
                     return;
                     
                 } else if(is_valid_number<uint16_t>(key)) {

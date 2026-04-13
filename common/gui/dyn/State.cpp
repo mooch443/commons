@@ -668,8 +668,20 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 }
             }
         }
-        else if(loop_variable->is<std::vector<glz::json_t>>()) {
-            auto vector = loop_variable->value<std::vector<glz::json_t>>(props);
+        else if(loop_variable->is<glz::json_t>()
+                || loop_variable->is<std::vector<glz::json_t>>())
+        {
+            std::vector<glz::json_t> vector;
+            
+            if(loop_variable->is<glz::json_t>()) {
+                auto object = loop_variable->value<glz::json_t>(props);
+                if(object.is_array()) {
+                    vector = object.get_array();
+                }
+                
+            } else {
+                vector = loop_variable->value<std::vector<glz::json_t>>(props);
+            }
             
             std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
             ptrs.resize(vector.size());

@@ -400,6 +400,14 @@ TooltipData LabeledOptional::tooltip() const {
                 .docs = "Set to <c>null</c>"
             }
         };
+    if(_create_button
+        && _create_button->hovered())
+        return TooltipData{
+            TooltipData::Both {
+                .name = "",
+                .docs = "Initialize value (it is currently set to <c>null</c>)"
+            }
+        };
     return _value->tooltip();
 }
 
@@ -407,6 +415,8 @@ std::shared_ptr<Drawable> LabeledOptional::tooltip_object() const
 {
     if(_reset_button->hovered())
         return _reset_button.get_smart();
+    if(_create_button && _create_button->hovered())
+        return _create_button.get_smart();
     return _value->representative().get_smart();
 }
 
@@ -513,7 +523,7 @@ void LabeledOptional::update_ref_in_main_thread() {
         //_value = nullptr;
         _null_value->update([this](Entangled& base) {
             //auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
-            auto text = base.add<Text>(Str{"null"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
+            auto text = base.add<Text>(Str{"no value"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
             _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });

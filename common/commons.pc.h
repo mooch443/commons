@@ -593,6 +593,19 @@ constexpr bool is_in(First &&first, T && ... t)
     return ((first == t) || ...);
 }
 
+template<typename First, typename ... T>
+constexpr std::size_t is_in_index(First &&first, T && ... t)
+{
+    constexpr std::size_t npos = static_cast<std::size_t>(-1);
+    
+    std::size_t i = 0;
+    std::size_t result = npos;
+    
+    ((first == t && result == npos ? (result = i) : 0, i++, first == t) || ...);
+    
+    return result;
+}
+
 template<typename T>
 typename T::value_type percentile(const T& values, float percent, typename std::enable_if<is_set<T>::value || is_container<T>::value, T>::type* = NULL)
 {
