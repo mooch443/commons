@@ -153,6 +153,11 @@ UnresolvedStringPattern& UnresolvedStringPattern::operator=(const UnresolvedStri
         for (auto& paramVec : prep.parameters)
             for (auto& child : paramVec)
                 fix_ptrs(child);
+        
+        for(auto& sub : prep.subs) {
+            for(auto &child: sub)
+                fix_ptrs(child);
+        }
     };
 
     for (auto& obj : objects)
@@ -1207,6 +1212,13 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) 
         result.all_patterns.push_back(prepared);
         
         for(auto &p : prepared->parameters) {
+            for(auto &o : p) {
+                if(o.type == PreparedPattern::PREPARED)
+                    q.push_front(&o);
+            }
+        }
+
+        for(auto &p : prepared->subs) {
             for(auto &o : p) {
                 if(o.type == PreparedPattern::PREPARED)
                     q.push_front(&o);

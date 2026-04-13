@@ -512,7 +512,8 @@ void LabeledOptional::update_ref_in_main_thread() {
     } else {
         //_value = nullptr;
         _null_value->update([this](Entangled& base) {
-            auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
+            //auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
+            auto text = base.add<Text>(Str{"null"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
             _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });
