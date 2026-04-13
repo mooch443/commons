@@ -22,7 +22,7 @@ namespace cmn::gui {
     };
 #endif
 
-    IMPLEMENT(Drawable::accent_color) = Color(25, 40, 80, 200);
+    COMMONS_EXPORT Color Drawable::accent_color = Color(25, 40, 80, 200);
     IMPLEMENT(hidden::Global::interface_scale) = 1;
     cmn::CallbackFuture callback;
 

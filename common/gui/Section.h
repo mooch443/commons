@@ -18,7 +18,7 @@ namespace cmn::gui {
         GETTER(bool, enabled);
         GETTER(bool, section_clickable);
         GETTER_SETTER(bool, debug_rects);
-        static ColorWheel wheel;
+        static COMMONS_EXPORT ColorWheel wheel;
         Color _clr;
         
         Rect* prect;

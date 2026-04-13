@@ -24,7 +24,7 @@ namespace PrefixLiterals {
         INFO
     };
 
-    extern const std::array<const char*, 4> names;
+    extern COMMONS_EXPORT const std::array<const char*, 4> names;
 };
 
 template<uint8_t N, typename T>

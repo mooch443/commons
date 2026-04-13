@@ -85,14 +85,6 @@ namespace cmn {
         }
     }
 
-#ifdef IMAGE_DEBUG_MEMORY_ALLOC
-    Image::~Image() {
-        if (_data) {
-            Print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
-        }
-    }
-#endif
-
     void Image::create(uint rows, uint cols, uint dims, long_t index) {
         create(rows, cols, dims, index, now());
     }

@@ -5,7 +5,7 @@
 #ifdef COMMONS_FORMAT_LOG_TO_FILE
 namespace cmn {
 
-extern IMPLEMENT(PrefixLiterals::names) = {
+COMMONS_EXPORT const std::array<const char*, 4> PrefixLiterals::names = {
     "⚠",
     "⮿",
     "⮿",

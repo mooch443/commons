@@ -80,7 +80,7 @@ namespace cmn::gui {
         
         //! A color that is used in Drawables throughout the GUI
         //  as the accent / base color.
-        static Color accent_color;
+        static COMMONS_EXPORT Color accent_color;
         
     protected:
         std::unordered_map<EventType, std::vector<callback_handle_t>> _event_handlers;

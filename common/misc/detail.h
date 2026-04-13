@@ -48,8 +48,8 @@ namespace cmn {
 
     class CrashProgram {
     public:
-        static std::thread::id crash_pid, main_pid;
-        static bool do_crash;
+        static COMMONS_EXPORT std::thread::id crash_pid, main_pid;
+        static COMMONS_EXPORT bool do_crash;
         static void crash() { char *s = nullptr;
             *s = 0;}
     };

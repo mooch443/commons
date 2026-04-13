@@ -7,9 +7,9 @@
 #include <misc/GlobalSettings.h>
 
 namespace cmn {
-    IMPLEMENT(CrashProgram::do_crash) = false;
-    IMPLEMENT(CrashProgram::crash_pid);
-    IMPLEMENT(CrashProgram::main_pid);
+    COMMONS_EXPORT bool CrashProgram::do_crash = false;
+    COMMONS_EXPORT std::thread::id CrashProgram::crash_pid;
+    COMMONS_EXPORT std::thread::id CrashProgram::main_pid;
     
     void check_conditions(std::vector<HorizontalLine>& array) {
         if(array.empty())

@@ -151,7 +151,11 @@ concept CallableWithNArgs = requires (F&& f) {
         Image& operator=(const Image& other) noexcept = delete;
         
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-        ~Image();
+        ~Image() {
+            if (_data) {
+                Print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
+            }
+        }
 #endif
         
         Image(const Image& other, long_t index = -1);
