@@ -649,7 +649,6 @@ void DrawStructure::close_dialogs() {
         select(d);
         
         if(first_set) {
-            cmn::Print("Mouse down on ", d);
             _mdown_object = d;
         }
         
