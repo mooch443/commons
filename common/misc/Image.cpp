@@ -129,7 +129,7 @@ namespace cmn {
 
             _data.malloc(_array_size * sizeof(uchar));
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-            Print("New malloc for ",cols,"x",rows," of size ",_size," at ",_data," (",_array_size," >= ",N,")");
+            Print("New malloc for ",cols,"x",rows," of size ",N," at ",_data," (",_array_size," >= ",N,")");
             //print_stacktrace(stdout);
 #endif
         }

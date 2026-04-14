@@ -322,6 +322,12 @@ public:
             _buffers.clear();
         }
     }
+    
+    void clear() {
+        std::unique_lock guard(mutex());
+        _image_size = {};
+        _buffers.clear();
+    }
 };
 
 }
