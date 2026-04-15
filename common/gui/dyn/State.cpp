@@ -692,6 +692,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             //obj._state->_collectors->objects.clear();
             
             size_t i = 0;
+            auto have_index = scoped_handler->get_variable_value("index");
+            
             for(auto &v : vector) {
                 auto scope = scoped_handler->scope();
                 scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::json_t {
@@ -700,6 +702,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                     return i;
                 }).second);
+                if(have_index)
+                    scope.set("p.index", VarFunc("p.index", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                        return index;
+                    }).second);
                 
                 // try to reuse existing objects first:
                 Layout::Ptr ptr = ptrs.at(i);
