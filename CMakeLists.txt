@@ -28,6 +28,23 @@ function(commons_log_option option_name)
     endif()
 endfunction()
 
+function(commons_strip_deprecated_apple_undefined_flag flag_var)
+    if(NOT APPLE)
+        return()
+    endif()
+
+    set(_value "${${flag_var}}")
+    string(REPLACE "-Wl,-undefined,error" "" _value "${_value}")
+    string(REGEX REPLACE "[ \t]+" " " _value "${_value}")
+    string(STRIP "${_value}" _value)
+    set(${flag_var} "${_value}" PARENT_SCOPE)
+
+    get_property(_has_cache CACHE ${flag_var} PROPERTY TYPE SET)
+    if(_has_cache)
+        set(${flag_var} "${_value}" CACHE STRING "Sanitized Apple linker flags" FORCE)
+    endif()
+endfunction()
+
 function(commons_log_selected_options)
     message(STATUS "[COMMONS CONFIG] Selected options:")
     foreach(option_name IN ITEMS
@@ -162,6 +179,26 @@ endif()
 
 set(CMAKE_DEBUG_POSTFIX -d)
 
+foreach(flag_var
+    CMAKE_EXE_LINKER_FLAGS
+    CMAKE_SHARED_LINKER_FLAGS
+    CMAKE_MODULE_LINKER_FLAGS
+    CMAKE_EXE_LINKER_FLAGS_DEBUG
+    CMAKE_EXE_LINKER_FLAGS_RELEASE
+    CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
+    CMAKE_EXE_LINKER_FLAGS_MINSIZEREL
+    CMAKE_SHARED_LINKER_FLAGS_DEBUG
+    CMAKE_SHARED_LINKER_FLAGS_RELEASE
+    CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO
+    CMAKE_SHARED_LINKER_FLAGS_MINSIZEREL
+    CMAKE_MODULE_LINKER_FLAGS_DEBUG
+    CMAKE_MODULE_LINKER_FLAGS_RELEASE
+    CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO
+    CMAKE_MODULE_LINKER_FLAGS_MINSIZEREL
+)
+    commons_strip_deprecated_apple_undefined_flag(${flag_var})
+endforeach()
+
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
     if(COMMONS_LIBRARY_TYPE STREQUAL "STATIC")
@@ -169,13 +206,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility-inlines-hidden -fvisibility=hidden")
         message(STATUS "Using hidden visibility for non-shared library build on Apple Clang.")
     endif()
-    if(APPLE)
-        foreach(flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS CMAKE_MODULE_LINKER_FLAGS)
-            if(NOT ${flag_var} MATCHES "-Wl,-undefined,error")
-                set(${flag_var} "${${flag_var}} -Wl,-undefined,error")
-            endif()
-        endforeach()
-    else()
+    # Apple's linker still errors on undefined symbols by default. Avoid
+    # passing the now-deprecated explicit "-undefined error" spelling.
+    if(NOT APPLE)
         if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-Wl,--no-undefined")
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-undefined")
         endif()

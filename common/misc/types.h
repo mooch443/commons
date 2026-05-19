@@ -270,6 +270,7 @@ struct Pose {
 
         constexpr bool operator==(const Point&) const noexcept = default;
         constexpr bool operator!=(const Point&) const noexcept = default;
+        constexpr auto operator<=>(const Point&) const = default;
         
         bool valid() const noexcept {
             return x > 0 || y > 0;

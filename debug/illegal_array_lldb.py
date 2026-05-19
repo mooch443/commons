@@ -336,6 +336,29 @@ def _optional_has_value(raw, summary_lower):
     return None
 
 
+def _optional_payload_value(raw):
+    type_name = _type_name(raw)
+
+    if "TrivialOptional<" in type_name:
+        payload = raw.GetChildMemberWithName("value_")
+        return payload if payload.IsValid() else lldb.SBValue()
+
+    payload_names = (
+        "__val_",
+        "__value_",
+        "_M_value",
+        "value_",
+        "Value",
+        "value",
+    )
+    for name in payload_names:
+        payload = _find_member(raw, name, depth=8)
+        if payload.IsValid():
+            return payload
+
+    return lldb.SBValue()
+
+
 def _squash_optional_like(value):
     if not value.IsValid():
         return "null"
@@ -427,6 +450,52 @@ class IllegalArraySyntheticProvider:
             return None
         offset = index * self._elem_size
         return self._ptr.CreateChildAtOffset(f"[{index}]", offset, self._elem_type)
+
+
+class OptionalSyntheticProvider:
+    """Expose engaged optional-like objects as a single expandable value child."""
+
+    def __init__(self, valobj, _dict):
+        self.valobj = valobj
+        self.update()
+
+    def update(self):
+        raw = self.valobj.GetNonSyntheticValue()
+        summary_lower = (self.valobj.GetSummary() or "").lower()
+        self._children = []
+
+        type_name = _type_name(raw)
+        if "TrivialOptional<" in type_name:
+            if not _trivial_optional_has_value(raw):
+                return
+        else:
+            has_value = _optional_has_value(raw, summary_lower)
+            if has_value is False:
+                return
+
+        payload = _optional_payload_value(raw)
+        if not payload.IsValid():
+            return
+
+        child = _create_named_value(self.valobj, "value", payload)
+        if child is not None and child.IsValid():
+            self._children.append(child)
+
+    def has_children(self):
+        return bool(self._children)
+
+    def num_children(self):
+        return len(self._children)
+
+    def get_child_index(self, name):
+        if name in {"value", "[0]"} and self._children:
+            return 0
+        return -1
+
+    def get_child_at_index(self, index):
+        if index < 0 or index >= len(self._children):
+            return None
+        return self._children[index]
 
 
 class EmptySyntheticProvider:
@@ -1041,8 +1110,25 @@ def lock_summary(valobj, _dict):
     return "lock"
 
 
+def _run_lldb_command(debugger, command):
+    result = lldb.SBCommandReturnObject()
+    debugger.GetCommandInterpreter().HandleCommand(command, result)
+    return result
+
+
 def __lldb_init_module(debugger, _dict):
     """Invoked automatically when the script is imported via `command script import`."""
+    for category in (
+        _ILLEGAL_ARRAY_CATEGORY,
+        _ROBIN_HOOD_CATEGORY,
+        _SHERWOOD_CATEGORY,
+        _STD_EXPECTED_CATEGORY,
+        _OPTIONAL_CATEGORY,
+        _MUTEX_CATEGORY,
+        _LOCK_CATEGORY,
+    ):
+        _run_lldb_command(debugger, f"type category delete {category}")
+
     debugger.HandleCommand(
         f"type summary add --category {_ILLEGAL_ARRAY_CATEGORY} "
         f"--python-function {__name__}.illegal_array_summary "
@@ -1108,13 +1194,13 @@ def __lldb_init_module(debugger, _dict):
 
     for regex in _OPTIONAL_REGEXES:
         debugger.HandleCommand(
-            f"type summary add --category {_OPTIONAL_CATEGORY} "
+            f"type summary add --expand --hide-empty --category {_OPTIONAL_CATEGORY} "
             f"--python-function {__name__}.optional_summary "
             f"--regex {regex}"
         )
         debugger.HandleCommand(
             f"type synthetic add --category {_OPTIONAL_CATEGORY} "
-            f"--python-class {__name__}.EmptySyntheticProvider "
+            f"--python-class {__name__}.OptionalSyntheticProvider "
             f"--regex {regex}"
         )
     debugger.HandleCommand(f"type category enable {_OPTIONAL_CATEGORY}")

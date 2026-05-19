@@ -910,9 +910,13 @@ void Context::init() const {
             VarFunc("cmap", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);
                 using namespace cmn::cmap;
-                
+
                 auto cmap = CMaps::Class::fromStr(utils::lowercase(props.first()));
                 return cmap::ColorMap::value(cmap, Meta::fromStr<double>(props.last()));
+            }),
+            VarFunc("wheel", [](const VarProps& props) -> Color {
+                REQUIRE_EXACTLY(1, props);
+                return ColorWheel(Meta::fromStr<uint32_t>(props.first())).next();
             }),
             VarFunc("meanVector", [](const VarProps& props) -> Vec2 {
                 REQUIRE_EXACTLY(1, props);

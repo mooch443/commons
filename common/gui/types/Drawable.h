@@ -542,6 +542,9 @@ namespace cmn::gui {
         
         FillClr bg_fill_color() const;
         LineClr bg_line_color() const;
+        CornerFlags corner_flags() const {
+            return _bg.flags;
+        }
         
     protected:
         virtual void remove_child(Drawable *child) = 0;

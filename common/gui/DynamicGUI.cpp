@@ -163,7 +163,7 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
     DefaultSettings defaults;
     try {
         glz::json_t obj{};
-        auto error = glz::read_json(obj, text);
+        auto error = glz::read_jsonc(obj, text);
         if(error != glz::error_code::none)
             return std::unexpected(glz::format_error(error, text));
         
