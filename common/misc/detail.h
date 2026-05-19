@@ -227,6 +227,12 @@ namespace cmn {
     constexpr inline T saturate(K val, T min = 0, T max = 255) {
         return std::clamp(T(val), min, max);
     }
+
+    template<typename T, typename K>
+        requires (std::integral<T>)
+    constexpr T clamp_cast(K&& k) {
+        return static_cast<T>(saturate(k, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
+    }
     
     /**
      * ======================
