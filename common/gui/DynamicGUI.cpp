@@ -380,6 +380,10 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 return false;
             }));
             
+            context.actions.emplace(ActionFunc("print", [object_handler = tmp._current_object_handler](const Action& props) {
+                Print(props);
+            }));
+            
             context.system_variables().emplace(VarFunc("selected", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
                 if(props.parameters.empty()) {
                     auto lock = object_handler.lock();

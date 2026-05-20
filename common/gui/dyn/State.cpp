@@ -14,6 +14,35 @@ namespace cmn::gui::dyn {
 
 static constexpr uint64_t max_displayed_objects = 10000u;
 
+static std::optional<glz::json_t> access_loop_json_subfields(glz::json_t value, const std::vector<std::string>& subs) {
+    for(const auto& sub : subs) {
+        if(value.is_object()) {
+            if(not value.contains(sub)) {
+                return std::nullopt;
+            }
+            value = value[sub];
+            
+        } else if(value.is_array()) {
+            uint16_t index{};
+            try {
+                index = Meta::fromStr<uint16_t>(sub);
+            } catch(...) {
+                return std::nullopt;
+            }
+            auto& array = value.get_array();
+            if(index >= array.size()) {
+                return std::nullopt;
+            }
+            value = array[index];
+            
+        } else {
+            return std::nullopt;
+        }
+    }
+    
+    return value;
+}
+
 static std::shared_ptr<CurrentObjectHandler> ensure_current_object_handler(State& state) {
     auto handler = state._current_object_handler.lock();
     if(not handler) {
@@ -515,10 +544,17 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
 #endif
             
             auto scoped_handler = ensure_current_object_handler(state);
+            auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+            
             for(auto &v : vector) {
                 auto scope = scoped_handler->scope();
                 scope.set("i", v);
                 scope.set("index", Meta::toStr(index));
+                if(have_index)
+                    scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                        return index;
+                    }).second);
+                
                 try {
                     auto item = convert_to_item(obj.item, state);
                     ptrs.emplace_back(std::move(item));
@@ -616,6 +652,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 
                 //State &state = *obj._state;
                 auto scoped_handler = ensure_current_object_handler(state);
+                auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
                 //obj._state->_current_index = {};
                 //obj._state->_collectors->objects.clear();
                 
@@ -624,6 +661,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     auto scope = scoped_handler->scope();
                     scope.set("i", v);
                     scope.set("index", Meta::toStr(i));
+                    if(have_index)
+                        scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                            return index;
+                        }).second);
                     
                     // try to reuse existing objects first:
                     Layout::Ptr ptr = ptrs.at(i);
@@ -654,10 +695,17 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             } else {
                 //State &state = *obj._state;
                 auto scoped_handler = ensure_current_object_handler(state);
+                auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+                
                 for(size_t i=0; i<obj.cache.size() && i < max_displayed_objects; ++i) {
                     auto scope = scoped_handler->scope();
                     scope.set("i", obj.cache[i]);
                     scope.set("index", Meta::toStr(i));
+                    if(have_index)
+                        scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                            return index;
+                        }).second);
+                    
                     auto& p = o.to<Layout>()->objects().at(i);
                     if(p) {
                         if(DynamicGUI::update_objects(gui, g, p, context, state)) {
@@ -674,9 +722,11 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             std::vector<glz::json_t> vector;
             
             if(loop_variable->is<glz::json_t>()) {
-                auto object = loop_variable->value<glz::json_t>(props);
-                if(object.is_array()) {
-                    vector = object.get_array();
+                auto object = loop_variable->access_value<glz::json_t>([&props](auto&& value) {
+                    return access_loop_json_subfields(value, props.subs);
+                }, props);
+                if(object && object->is_array()) {
+                    vector = object->get_array();
                 }
                 
             } else {
@@ -692,7 +742,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             //obj._state->_collectors->objects.clear();
             
             size_t i = 0;
-            auto have_index = scoped_handler->get_variable_value("index");
+            auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
             
             for(auto &v : vector) {
                 auto scope = scoped_handler->scope();
@@ -703,7 +753,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     return i;
                 }).second);
                 if(have_index)
-                    scope.set("p.index", VarFunc("p.index", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                    scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
                         return index;
                     }).second);
                 
@@ -757,6 +807,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 //obj._state->_collectors->objects.clear();
                 
                 auto scoped_handler = ensure_current_object_handler(state);
+                auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+                
                 std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
                 if(ptrs.size() != min(max_displayed_objects, vector.size()))
                     dirty = true;
@@ -771,6 +823,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string {
                         return v;
                     }).second);
+                    if(have_index)
+                        scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                            return index;
+                        }).second);
                     
                     // try to reuse existing objects first:
                     Layout::Ptr &ptr = ptrs.at(i);
@@ -824,6 +880,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 ptrs.resize(vector.size());
 
                 auto scoped_handler = ensure_current_object_handler(state);
+                auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+                
                 size_t i = 0;
                 for(auto &v : vector) {
                     auto scope = scoped_handler->scope();
@@ -833,6 +891,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     scope.set("i", VarFunc("i", [v = std::string(v)](const VarProps&) -> std::string {
                         return v;
                     }).second);
+                    if(have_index)
+                        scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                            return index;
+                        }).second);
                     
                     // try to reuse existing objects first:
                     Layout::Ptr &ptr = ptrs.at(i);
@@ -992,6 +1054,10 @@ std::optional<std::string_view> State::cached_variable_value(std::string_view na
     }
     
     // Loop-local/scoped variables (e.g. i, idx) are resolved from live values.
+    if(lock->get_dynamic_variable(name) != nullptr)
+    {
+        return std::nullopt;
+    }
     return lock->get_variable_value(name);
 }
 

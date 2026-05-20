@@ -431,6 +431,9 @@ std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::st
         if(auto scoped_it = it->find(name);
            scoped_it != it->end())
         {
+            if(scoped_it->second.is_dynamic()) {
+                throw InvalidArgumentException("Cannot get_variable_value for a dynamic variable (",name,"). Ask for dynamic first.");
+            }
             return scoped_it->second.is_string()
                 ? std::optional<std::string_view>(scoped_it->second.string())
                 : std::nullopt;
@@ -440,6 +443,9 @@ std::optional<std::string_view> CurrentObjectHandler::get_variable_value(std::st
     if(auto it = _variable_values.find(name);
        it != _variable_values.end())
     {
+        if(it->second.is_dynamic()) {
+            throw InvalidArgumentException("Cannot get_variable_value for a dynamic variable (",name,"). Ask for dynamic first.");
+        }
         return it->second.is_string()
             ? std::optional<std::string_view>(it->second.string())
             : std::nullopt;
@@ -472,6 +478,20 @@ std::shared_ptr<VarBase_t> CurrentObjectHandler::get_dynamic_variable(std::strin
     }
     
     return nullptr;
+}
+
+std::optional<std::string> CurrentObjectHandler::evaluate_variable_value(std::string_view name, const VarProps& props) const
+{
+    if(auto variable = get_dynamic_variable(name);
+       variable != nullptr)
+    {
+        return variable->value_string(props);
+    }
+    
+    auto value = get_variable_value(name);
+    if(value.has_value())
+        return std::string(*value);
+    return std::nullopt;
 }
 
 std::optional<std::string_view> CurrentObjectHandler::get_cached_variable_value(std::string_view name) const
