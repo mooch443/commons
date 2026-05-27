@@ -345,6 +345,9 @@ void DataFormat::stop_modifying() {
 }
 
 uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
+    if(buffer == nullptr)
+        throw InvalidArgumentException("Passed a nullptr buffer.");
+    
     if(!_mmapped) {
         std::lock_guard<std::mutex> guard(_internal_modification);
         if(!f)

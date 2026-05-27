@@ -138,6 +138,11 @@ namespace cmn {
         
         virtual uint64_t tell() const override { return pos; }
         virtual void seek(uint64_t p) override {
+            if(_capacity > 0
+               && p > _capacity)
+            {
+                throw InvalidArgumentException(p, " is out of bounds for capacity ",_capacity,".");
+            }
             pos = p;
         }
     };

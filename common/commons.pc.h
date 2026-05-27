@@ -1056,12 +1056,26 @@ private:
 public:
     read_once() : data(std::nullopt) {}
 
-    bool set(T& value) {
+    template<typename K = T>
+        requires (not std::is_trivial_v<K>)
+    bool set(K& value) {
         std::scoped_lock lock(mtx);
         if(data) {
             return false;
         } else {
             data = std::move(value);
+            return true;
+        }
+    }
+    
+    template<typename K = T>
+        requires (std::is_trivial_v<K>)
+    bool set(K value) {
+        std::scoped_lock lock(mtx);
+        if(data) {
+            return false;
+        } else {
+            data = value;
             return true;
         }
     }
