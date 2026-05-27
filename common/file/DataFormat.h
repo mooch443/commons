@@ -271,22 +271,7 @@ namespace cmn {
         const char* read_data_fast(uint64_t num_bytes) override;
         void set_project_name(const std::string& name) { _project_name = name; }
         
-        virtual void seek(uint64_t pos) override {
-            if(!_mmapped) {
-                /// no action needed
-                if(_file_offset == pos)
-                    return;
-                
-                if(!f)
-                    throw U_EXCEPTION("File not open.");
-#ifdef WIN32
-                _fseeki64(f.get(), (int64_t)pos, SEEK_SET);
-#else
-                fseeko(f.get(), (off_t)pos, SEEK_SET);
-#endif
-            }
-            _file_offset = pos;
-        }
+        virtual void seek(uint64_t pos) override;
 
     public:
         enum class AccessPattern { Random, Sequential };

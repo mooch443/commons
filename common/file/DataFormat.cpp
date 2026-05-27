@@ -181,6 +181,33 @@ bool DataFormat::is_write_mode() const {
     return _open_for_writing;
 }
 
+void DataFormat::seek(uint64_t pos) {
+    if (!_mmapped) {
+        /// no action needed
+        if (_file_offset == pos)
+            return;
+
+        if (!f)
+            throw U_EXCEPTION("File not open.");
+
+        // Validate position is within valid range for _fseeki64
+        if (pos > INT64_MAX) {
+            throw U_EXCEPTION("Position ", pos, " exceeds maximum seekable position (", INT64_MAX, ") in file ", _filename.str());
+        }
+
+#ifdef WIN32
+        if (_fseeki64(f.get(), (int64_t)pos, SEEK_SET) != 0) {
+            throw U_EXCEPTION("Failed to seek to position ", pos, " in file ", _filename.str());
+        }
+#else
+        if (fseeko(f.get(), (off_t)pos, SEEK_SET) != 0) {
+            throw U_EXCEPTION("Failed to seek to position ", pos, " in file ", _filename.str());
+        }
+#endif
+    }
+    _file_offset = pos;
+}
+
 uint64_t DataFormat::current_offset() const {
     if (f) {
 #ifdef _WIN32
