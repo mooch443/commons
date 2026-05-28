@@ -42,9 +42,21 @@ public:
                 return true;
         return false;
     }
-    
+
     bool operator==(const OptionsList<T> &other) const {
-		return list == other.list;
+        auto lhs = list;
+        auto rhs = other.list;
+        std::sort(lhs.begin(), lhs.end());
+        std::sort(rhs.begin(), rhs.end());
+		return lhs == rhs;
+    }
+
+    bool operator<(const OptionsList<T> &other) const {
+        auto lhs = list;
+        auto rhs = other.list;
+        std::sort(lhs.begin(), lhs.end());
+        std::sort(rhs.begin(), rhs.end());
+        return lhs < rhs;
     }
 };
 
