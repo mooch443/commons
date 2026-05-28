@@ -3,6 +3,7 @@
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/Action.h>
 #include <gui/dyn/binders.h>
+#include <misc/Path.h>
 
 namespace cmn::gui::dyn {
 
@@ -637,8 +638,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ptr = Layout::Make<HorizontalLayout>(Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
         
         auto hashed = state.get_monostate(hash, ptr);
+        //Print("* creating hash ", hash, " for ", hex(ptr.get()));
         
-        //if(not hashed->_text_field)
+        if(var.empty()
+           || not hashed->_value_box
+           || (hashed->_var_cache
+               && (var != hashed->_var_cache->_var
+                   || invert != hashed->_var_cache->_invert)))
         {
             hashed->_value_box = LabeledField::Make({}, gui, var, state, *this, invert);
             if(not hashed->_value_box) {
@@ -646,12 +652,23 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
                 FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",v.valid() ? v.get().type_name() : "(null)",".");
                 return nullptr;
             }
+            
+            hashed->_var_cache = VarCache{
+                ._var = var,
+                ._invert = invert,
+                ._obj = obj
+            };
+            
+        } else {
+            auto ref = GlobalSettings::write_value<NoType>(var);
+            if(not ref.valid())
+                throw U_EXCEPTION("GlobalSettings has no parameter named ", var,".");
+            hashed->_value_box->update_ref_in_main_thread();
+            hashed->_var_cache->_obj = obj;
+            hashed->_var_cache->_var = var;
+            hashed->_var_cache->_invert = invert;
+            hashed->_var_cache->_cached_ptr = std::weak_ptr(hashed->_value_box->representative().get_smart());
         }
-        
-        hashed->_var_cache = VarCache{
-            ._var = var,
-            ._obj = obj
-        };
         
         auto& ref = hashed->_value_box;
         

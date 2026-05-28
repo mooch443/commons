@@ -48,8 +48,8 @@ namespace cmn {
 
     class CrashProgram {
     public:
-        static std::thread::id crash_pid, main_pid;
-        static bool do_crash;
+        static COMMONS_EXPORT std::thread::id crash_pid, main_pid;
+        static COMMONS_EXPORT bool do_crash;
         static void crash() { char *s = nullptr;
             *s = 0;}
     };
@@ -124,7 +124,7 @@ namespace cmn {
         static void repair_lines_array(std::vector<HorizontalLine>&);
         
         std::string toStr() const;
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "HorizontalLine";
         }
     };
@@ -226,6 +226,12 @@ namespace cmn {
         requires (not is_rgb_array<K>::value)
     constexpr inline T saturate(K val, T min = 0, T max = 255) {
         return std::clamp(T(val), min, max);
+    }
+
+    template<typename T, typename K>
+        requires (std::integral<T>)
+    constexpr T clamp_cast(K&& k) {
+        return static_cast<T>(saturate(k, std::numeric_limits<T>::min(), std::numeric_limits<T>::max()));
     }
     
     /**

@@ -55,7 +55,7 @@ namespace cmn::gui {
         
         std::ostream &operator <<(std::ostream &os);
         std::string toStr() const;
-        static std::string class_name() { return "Vertex"; }
+        static consteval std::string_view class_name() { return "Vertex"; }
     };
     
     enum Style
@@ -118,7 +118,7 @@ namespace cmn::gui {
                 (Align)Meta::fromStr<int>(parts[2])
             };
         }
-        static std::string class_name() { return "Font"; }
+        static consteval std::string_view class_name() { return "Font"; }
     };
 }
 

@@ -1,4 +1,5 @@
 #include "LabeledField.h"
+#include <file/PathArray.h>
 #include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
 #include <gui/ParseLayoutTypes.h>
@@ -399,6 +400,14 @@ TooltipData LabeledOptional::tooltip() const {
                 .docs = "Set to <c>null</c>"
             }
         };
+    if(_create_button
+        && _create_button->hovered())
+        return TooltipData{
+            TooltipData::Both {
+                .name = "",
+                .docs = "Initialize value (it is currently set to <c>null</c>)"
+            }
+        };
     return _value->tooltip();
 }
 
@@ -406,6 +415,8 @@ std::shared_ptr<Drawable> LabeledOptional::tooltip_object() const
 {
     if(_reset_button->hovered())
         return _reset_button.get_smart();
+    if(_create_button && _create_button->hovered())
+        return _create_button.get_smart();
     return _value->representative().get_smart();
 }
 
@@ -420,7 +431,7 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
     return true;
 }
 
-void LabeledOptional::after_set_property(const Layout::Ptr& ptr, std::string_view name, std::function<std::string()> value_string) const {
+void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view name, std::function<std::string()> value_string) const {
     //if(ptr.get() == _create_button.get())
     {
         if(name == ALIAS<Font>) {
@@ -511,7 +522,8 @@ void LabeledOptional::update_ref_in_main_thread() {
     } else {
         //_value = nullptr;
         _null_value->update([this](Entangled& base) {
-            auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
+            //auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
+            auto text = base.add<Text>(Str{"no value"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
             _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });
@@ -576,26 +588,35 @@ LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name,
     });
     _text_field->add_event_handler(EventType::SELECT, [this](Event e){
         if(not e.select.selected)
+        {
             try {
+                if(not _text_field)
+                    throw RuntimeError("No text_field set.");
+
                 ref().get().set_value_from_string(_text_field->text());
                 
             } catch(...) {
-                FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().valid() ? std::string(ref().get().type_name()) : "<unknown ref:"+(std::string)ref().name()+">");
+                FormatExcept("Cannot convert ", _text_field ? _text_field->text() : "null", " to ", ref().valid() ? std::string(ref().get().type_name()) : "<unknown ref:"+(std::string)ref().name()+">");
             }
+        }
     });
     _text_field->on_enter([this](){
         try {
+            if(not _text_field)
+                throw RuntimeError("No text_field set.");
+        
             ref().get().set_value_from_string(_text_field->text());
             
         } catch(...) {
-            FormatExcept("Cannot convert ", _text_field->text(), " to ", ref().get().type_name());
+            FormatExcept("Cannot convert ", _text_field ? _text_field->text() : "null", " to ", ref().get().type_name());
         }
     });
 }
 
 LabeledTextField::~LabeledTextField() {
     if(_text_field) {
-        _text_field->clear_event_handlers();
+        //Print("Clearing event handlers on ", hex(this), " and deleting ", hex(_text_field.get()));
+        //_text_field->clear_event_handlers();
     }
 }
 
@@ -1304,13 +1325,17 @@ void LabeledPathArray::updateDropdownItems() {
                         }
                         else {
                             auto parentPath = p.remove_filename();
-                            try {
-                                // If a separator was deleted, show parent folder contents
-                                auto parentFiles = parentPath.find_files();
-                                matches = { parentFiles.begin(), parentFiles.end() };
-                                //matches = pathArray.get_paths();
-                            } catch(const std::exception& e) {
-                                FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                            if(parentPath.empty()) {
+                                matches.clear();
+                            } else {
+                                try {
+                                    // If a separator was deleted, show parent folder contents
+                                    auto parentFiles = parentPath.find_files();
+                                    matches = { parentFiles.begin(), parentFiles.end() };
+                                    //matches = pathArray.get_paths();
+                                } catch(const std::exception& e) {
+                                    FormatWarning("Cannot list files inside ", parentPath,": ", e.what());
+                                }
                             }
                         }
                     }

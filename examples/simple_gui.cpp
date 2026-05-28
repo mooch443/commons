@@ -7,7 +7,7 @@
 #include <video/FFmpegVideoCapture.h>
 #include <video/VideoSource.h>
 #include <file/PathArray.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 
 using namespace cmn;
 using namespace gui;

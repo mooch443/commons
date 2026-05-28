@@ -2,6 +2,7 @@
 
 #include <commons.pc.h>
 #include <misc/bid.h>
+#include <processing/BlobWeakPtr.h>
 #include <misc/ranges.h>
 #include <processing/Background.h>
 #include <processing/CPULabeling.h>

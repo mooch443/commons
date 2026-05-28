@@ -163,7 +163,7 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
     DefaultSettings defaults;
     try {
         glz::json_t obj{};
-        auto error = glz::read_json(obj, text);
+        auto error = glz::read_jsonc(obj, text);
         if(error != glz::error_code::none)
             return std::unexpected(glz::format_error(error, text));
         
@@ -380,6 +380,10 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 return false;
             }));
             
+            context.actions.emplace(ActionFunc("print", [object_handler = tmp._current_object_handler](const Action& props) {
+                Print(props);
+            }));
+            
             context.system_variables().emplace(VarFunc("selected", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
                 if(props.parameters.empty()) {
                     auto lock = object_handler.lock();
@@ -515,7 +519,8 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     
     
     //! clear variable state
-    current_object_handler->clear_variable_values();
+    if(current_object_handler)
+        current_object_handler->clear_variable_values();
     
 #if !defined(NDEBUG) && false
     if(_debug_timer.elapsed() > 10) {
@@ -553,19 +558,18 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     if(TakeTiming take(timing);
        parent)
     {
-        //! check if we need anything more to be done to the objects before adding
-        if(before_add) {
-            auto copy = objects;
-            before_add(copy);
-            parent->set_children(copy);
-        } else {
-            parent->set_children(objects);
-        }
-        
-        for(auto &obj : objects) {
+        auto copy = objects;
+        for(auto &obj : copy) {
             if(do_update_objects)
                 update_objects(gui, graph, obj, context, state);
         }
+
+        //! check if we need anything more to be done to the objects before adding
+        if(before_add) {
+            before_add(copy);
+        }
+        parent->set_children(copy);
+        objects = std::move(copy);
         
     } else {
         //! check if we need anything more to be done to the objects before adding
@@ -577,13 +581,21 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
                     update_objects(gui, graph, obj, context, state);
                 graph.wrap_object(*obj);
             }
+            objects = std::move(copy);
             
-        } else {
-            for(auto &obj : objects) {
-                if(do_update_objects)
-                    update_objects(gui, graph, obj, context, state);
+        } else if(do_update_objects) {
+            auto copy = objects;
+            for(auto &obj : copy) {
+                if(update_objects(gui, graph, obj, context, state)) {
+                    //Print("* object ", hex(obj.get()), " changed.");
+                }
                 graph.wrap_object(*obj);
             }
+            objects = std::move(copy);
+            
+        } else {
+            for(auto &obj : objects)
+                graph.wrap_object(*obj);
         }
     }
     

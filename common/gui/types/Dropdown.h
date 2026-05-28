@@ -38,7 +38,7 @@ namespace cmn::gui {
             bool valid() const { return (bool)*this; }
             
             std::string toStr() const { return value != -1 ? Meta::toStr(value) : "null"; }
-            static std::string class_name() { return "FilteredIndex"; }
+            static consteval std::string_view class_name() { return "FilteredIndex"; }
 
             // Equality operators
             friend bool operator==(const FilteredIndex& lhs, const FilteredIndex& rhs) { return lhs.value == rhs.value; }
@@ -57,7 +57,7 @@ namespace cmn::gui {
             bool valid() const { return (bool)*this; }
             
             std::string toStr() const { return value != -1 ? Meta::toStr(value) : "null"; }
-            static std::string class_name() { return "RawIndex"; }
+            static consteval std::string_view class_name() { return "RawIndex"; }
 
             // Equality operators
             friend bool operator==(const RawIndex& lhs, const RawIndex& rhs) { return lhs.value == rhs.value; }
@@ -131,7 +131,7 @@ namespace cmn::gui {
             }
             
             std::string toStr() const;
-            static std::string class_name();
+            static consteval std::string_view class_name() { return "Dropdown::TextItem"; }
             
             static TextItem invalid_item() {
                 TextItem item;

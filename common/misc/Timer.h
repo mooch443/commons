@@ -22,7 +22,7 @@ public:
     }
     
     std::string toStr() const;
-    static std::string class_name() { return "Timer"; }
+    static consteval std::string_view class_name() { return "Timer"; }
 
 private:
     typedef std::chrono::high_resolution_clock clock_;

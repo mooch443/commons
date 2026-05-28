@@ -1,5 +1,6 @@
 #pragma once
 #include <commons.pc.h>
+#include <misc/Image.h>
 //#undef NDEBUG
 //#define DEBUG_BUFFER_IMAGES 1
 
@@ -213,7 +214,7 @@ public:
         UNUSED(name);
     }
     
-    T get(cmn::source_location loc) {
+    T get(const cmn::Size2& expected_size, cmn::source_location loc) {
         if(std::unique_lock guard(mutex());
            not _buffers.empty())
         {
@@ -224,6 +225,31 @@ public:
 #endif
 
             _buffers.pop_back();
+
+            if constexpr (std::same_as<Image::Ptr, std::remove_cvref_t<decltype(ptr)>>) {
+				Image::Ptr& img_ptr = ptr;
+                if (img_ptr->dimensions() != expected_size)
+                {
+                    throw U_EXCEPTION("[", type_name<ImageBuffers>(), "] Got image with invalid size: ", img_ptr->dimensions(), " != expected ", expected_size);
+                }
+			}
+            else if constexpr (std::same_as< std::unique_ptr<cv::Mat>, std::remove_cvref_t<decltype(ptr)>>) {
+                std::unique_ptr<cv::Mat>& mat_ptr = ptr;
+                if (Size2(mat_ptr->cols, mat_ptr->rows) != expected_size)
+                {
+                    throw U_EXCEPTION("[", type_name<ImageBuffers>(), "] Got Mat with invalid size: ", Size2(mat_ptr->cols, mat_ptr->rows), " != expected ", expected_size);
+				}
+            }
+            else if constexpr (std::same_as< std::unique_ptr<cv::UMat>, std::remove_cvref_t<decltype(ptr)>>) {
+                std::unique_ptr<cv::UMat>& mat_ptr = ptr;
+                if (Size2(mat_ptr->cols, mat_ptr->rows) != expected_size)
+                {
+                    throw U_EXCEPTION("[", type_name<ImageBuffers>(), "] Got Mat with invalid size: ", Size2(mat_ptr->cols, mat_ptr->rows), " != expected ", expected_size);
+                }
+            }
+            else {
+                static_assert(std::same_as<T, void>, "Unsupported buffer type");
+			}
             return ptr;
         }
         
@@ -236,11 +262,12 @@ public:
         if (ptr) {
             std::unique_lock guard(mutex());
             _created.insert(ptr.get());
+            _image_size = expected_size;
 
             if constexpr (std::is_same_v<typename T::element_type, Image>)
                 ptr->set_custom_data(new ImageSource{ _name.c_str()});
 
-            if (_created.size() > 100)
+            if (_created.size() % 10u == 0u)
                 thread_print("[", type_name<ImageBuffers>(), "] ", _name, " created ", _created.size(), " images");
         }
 #endif
@@ -294,6 +321,12 @@ public:
 #endif
             _buffers.clear();
         }
+    }
+    
+    void clear() {
+        std::unique_lock guard(mutex());
+        _image_size = {};
+        _buffers.clear();
     }
 };
 

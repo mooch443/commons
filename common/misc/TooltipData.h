@@ -31,7 +31,7 @@ struct TooltipData {
     std::string text() const;
     
     std::string toStr() const;
-    static std::string class_name() { return "TooltipData"; }
+    static consteval std::string_view class_name() { return "TooltipData"; }
 };
 
 }

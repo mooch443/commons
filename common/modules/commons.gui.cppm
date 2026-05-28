@@ -1,2 +1,8 @@
+module;
+
+#include <commons.pc.h>
+#include "generated/commons.includes.gui.inc"
+
 export module commons.gui;
-export import commons;
+
+#include "generated/commons.exports.gui.inc"

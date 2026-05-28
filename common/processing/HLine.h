@@ -139,7 +139,7 @@ constexpr bool operator<(const HLine& other) const noexcept {
         assert(this->y() == y);
     }
     
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "HLine";
     }
     

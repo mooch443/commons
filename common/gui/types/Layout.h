@@ -239,7 +239,7 @@ public:
     }
     
     std::string toStr() const;
-    static std::string class_name() { return "GridInfo"; }
+    static consteval std::string_view class_name() { return "GridInfo"; }
 };
 
 NUMBER_ALIAS(CellFillInterval, uint16_t);

@@ -2,6 +2,7 @@
 #include <misc/GlobalSettings.h>
 #include <gui/GuiTypes.h>
 #include <gui/types/List.h>
+#include <gui/types/ScrollableList.h>
 
 namespace cmn::gui {
 void Item::operator=(const Item& other) {
@@ -51,5 +52,10 @@ DetailTooltipItem::DetailTooltipItem(const std::string& name,
 bool DetailTooltipItem::operator!=(const DetailTooltipItem& other) const {
     return _name != other._name || _detail != other._detail || _tooltip != other._tooltip || _disabled != other._disabled || _disabled_template != other._disabled_template;
 }
+
+template class ScrollableList<std::string>;
+template class ScrollableList<TextItem>;
+template class ScrollableList<DetailItem>;
+template class ScrollableList<DetailTooltipItem>;
 
 }

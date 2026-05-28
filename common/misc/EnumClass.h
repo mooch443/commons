@@ -159,7 +159,7 @@ public:
     glz::json_t to_json() const {
         return name();
     }
-    static std::string class_name() noexcept { return std::string(_names::class_name());}
+    static consteval std::string_view class_name() noexcept { return _names::class_name(); }
     
     static const self_type& get(cmn::StringLike auto&& name) {
         if constexpr (EnumMeta::HasCustomParser<self_type>::value) {

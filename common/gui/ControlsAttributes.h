@@ -134,7 +134,7 @@ public:
     
     static self_type fromStr(cmn::StringLike auto&& str) { return self_type{ Meta::fromStr<T>(str) }; }
     std::string toStr() const { return Meta::toStr<T>(value); }
-    static std::string class_name() { return type_name<self_type>(); }
+    static consteval std::string_view class_name() { return type_name<self_type>(); }
 };
 
 template<typename T> struct _IsNumberAlias : std::false_type {};

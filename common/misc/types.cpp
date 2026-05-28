@@ -2,7 +2,7 @@
 #include <png.h>
 #include <misc/Image.h>
 #include <misc/GlobalSettings.h>
-#include <misc/PVBlob.h>
+#include <processing/PVBlob.h>
 
 namespace cmn {
 IMPLEMENT(blob::Pose::Skeleton::_mutex);
@@ -128,10 +128,6 @@ std::string blob::Pose::toStr() const {
             str += ",";
     }
     return str + "]";
-}
-
-std::string blob::Pose::class_name() {
-    return "Pose";
 }
 
 glz::json_t blob::Pose::to_json() const {

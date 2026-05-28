@@ -163,7 +163,7 @@ void DataFormat::start_modifying() {
     if(is_open())
         close();
     
-    f = _filename.fopen("r+");
+    f = _filename.fopen("r+b");
     if(!f)
         throw U_EXCEPTION("Cannot open file ",_filename,".");
     
@@ -181,10 +181,62 @@ bool DataFormat::is_write_mode() const {
     return _open_for_writing;
 }
 
+void DataFormat::seek(uint64_t pos) {
+    if (!_mmapped) {
+        /// no action needed
+        if (_file_offset == pos)
+            return;
+
+        if (!f)
+            throw U_EXCEPTION("File not open.");
+
+        // Validate position is within valid range for _fseeki64
+        if (pos > INT64_MAX) {
+            throw U_EXCEPTION("Position ", pos, " exceeds maximum seekable position (", INT64_MAX, ") in file ", _filename.str());
+        }
+
+#ifdef WIN32
+        if (_fseeki64(f.get(), (int64_t)pos, SEEK_SET) != 0) {
+            throw U_EXCEPTION("Failed to seek to position ", pos, " in file ", _filename.str());
+        }
+#else
+        if (fseeko(f.get(), (off_t)pos, SEEK_SET) != 0) {
+            throw U_EXCEPTION("Failed to seek to position ", pos, " in file ", _filename.str());
+        }
+#endif
+    }
+    _file_offset = pos;
+}
+
 uint64_t DataFormat::current_offset() const {
+    if (f) {
+#ifdef _WIN32
+        if (auto t = _ftelli64(f.get());
+            t != _file_offset)
+        {
+            FormatWarning("File offset is off (", _file_offset, " != ", t);
+        }
+#endif
+    }
     return _file_offset;
 }
 uint64_t DataFormat::tell() const {
+    if (f) {
+#ifdef _WIN32
+        if (auto t = _ftelli64(f.get());
+            t != _file_offset)
+        {
+            FormatWarning("File offset is off (", _file_offset, " != ", t);
+        }
+#endif
+    }
+
+    if(f)
+#ifdef _WIN32
+        return _ftelli64(f.get());
+#else
+        return ftello(f.get());
+#endif
     return current_offset(); /*ftell(f);*/
 }
 
@@ -242,6 +294,25 @@ void DataFormat::start_reading() {
     _read_header();
 }
 
+void DataFormat::promote_to_modify() {
+    if(not is_write_mode()) {
+        throw RuntimeError("Cannot promote ", filename(), " to modify mode, since its not in write mode.");
+    }
+    
+    auto index = tell();
+    sync();
+    DataFormat::close();
+    
+    f = _filename.fopen("r+b");
+    if(!f)
+        throw U_EXCEPTION("Cannot open file ",filename(),".");
+    
+    _open_for_modifying = true;
+    _open_for_writing = false;
+    _file_offset = index;
+    seek(index);
+}
+
 void DataFormat::hint_access_pattern(AccessPattern pattern) const {
 #if defined(__unix__) || defined(__APPLE__)
     int advice = (pattern == AccessPattern::Sequential
@@ -291,7 +362,19 @@ void DataFormat::stop_writing() {
     _header_written = false;
 }
 
+void DataFormat::stop_modifying() {
+    assert(_open_for_modifying);
+    close();
+    
+    _open_for_modifying = false;
+    _open_for_writing = false;
+    _header_written = false;
+}
+
 uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
+    if(buffer == nullptr)
+        throw InvalidArgumentException("Passed a nullptr buffer.");
+    
     if(!_mmapped) {
         std::lock_guard<std::mutex> guard(_internal_modification);
         if(!f)
@@ -381,6 +464,42 @@ uint64_t DataFormat::write_data(uint64_t num_bytes, const char *buffer) {
     uint64_t before = _file_offset;
     _file_offset += num_bytes;
     return before;
+}
+
+void DataFormat::truncate() {
+    
+    if(f
+       && _open_for_modifying)
+    {
+        auto fd = fileno(f.get());
+        assert(fd != 0);
+        
+        auto index = tell();
+        //Print("* truncating to ", index);
+#ifdef _WIN32
+        _chsize_s(fd, index);
+#else
+        ftruncate(fd, index);
+#endif
+        sync();
+        seek(0); seek(index);
+    }
+}
+
+void DataFormat::sync() {
+    if(f
+       && (_open_for_modifying || _open_for_writing))
+    {
+        auto fd = fileno(f.get());
+        assert(fd != 0);
+        //Print("* syncing to ", tell());
+        fflush(f.get());
+#ifdef _WIN32
+        _commit(fd);
+#else
+        fsync(fd);
+#endif
+    }
 }
 
 /**

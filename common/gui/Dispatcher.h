@@ -1,12 +1,18 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <file/PathArray.h>
+#include <gui/types/Drawable.h>
 
 namespace cmn::gui {
 
 // Attribute dispatch registry to allow late-bound (runtime) attribute application
 // without having to hard-code every derived Drawable/Entangled type here.
 namespace attr {
+#ifndef COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE
+#define COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE 0
+#endif
+
 class Dispatcher {
 public:
     using Key = std::pair<std::type_index, std::type_index>;
@@ -17,10 +23,62 @@ public:
     };
 
     using Fn = std::function<bool(Drawable&, const void*)>;
+    using PendingRegistration = void(*)(Dispatcher&);
 
     static Dispatcher& instance() {
-        static Dispatcher d;
-        return d;
+        auto& state = state_storage();
+        std::lock_guard<std::mutex> lock(state.mtx);
+        if (!state.instance) {
+#if COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE
+            throw RuntimeError("Dispatcher::set_instance() or Dispatcher::create() must be called before accessing the dispatcher in explicit-instance mode.");
+#else
+            state.owned = std::make_unique<Dispatcher>();
+            state.instance = state.owned.get();
+#endif
+        }
+        state.apply_pending_locked(*state.instance);
+        return *state.instance;
+    }
+
+    static Dispatcher* instance_if_set() noexcept {
+        auto& state = state_storage();
+        std::lock_guard<std::mutex> lock(state.mtx);
+        return state.instance;
+    }
+
+    static Dispatcher& create() {
+        auto& state = state_storage();
+        std::lock_guard<std::mutex> lock(state.mtx);
+        if (!state.instance) {
+            state.owned = std::make_unique<Dispatcher>();
+            state.instance = state.owned.get();
+        }
+        state.apply_pending_locked(*state.instance);
+        return *state.instance;
+    }
+
+    static void set_instance(Dispatcher* dispatcher) {
+        auto& state = state_storage();
+        std::lock_guard<std::mutex> lock(state.mtx);
+        state.instance = dispatcher;
+        if (!dispatcher || dispatcher != state.owned.get()) {
+            state.owned.reset();
+        }
+        if (state.instance) {
+            state.apply_pending_locked(*state.instance);
+        } else {
+            state.pending_applied_to = nullptr;
+        }
+    }
+
+    static bool register_pending(PendingRegistration registration) {
+        auto& state = state_storage();
+        std::lock_guard<std::mutex> lock(state.mtx);
+        state.pending.push_back(registration);
+        if (state.instance) {
+            state.apply_pending_locked(*state.instance);
+        }
+        return true;
     }
 
     template<class Obj, class Attr>
@@ -69,9 +127,33 @@ public:
     }
 
 private:
+    struct InstanceState {
+        std::mutex mtx;
+        Dispatcher* instance{nullptr};
+        std::unique_ptr<Dispatcher> owned;
+        Dispatcher* pending_applied_to{nullptr};
+        std::vector<PendingRegistration> pending;
+
+        void apply_pending_locked(Dispatcher& dispatcher) {
+            if (pending_applied_to == &dispatcher)
+                return;
+            for (auto pending_registration : pending) {
+                pending_registration(dispatcher);
+            }
+            pending_applied_to = &dispatcher;
+        }
+    };
+
+    static InstanceState& state_storage() {
+        static InstanceState state;
+        return state;
+    }
+
     mutable std::mutex _mtx;
     std::unordered_map<Key, Fn, PairHash> _table;
 };
+
+COMMONS_EXPORT void install_dispatcher_instance(Dispatcher* dispatcher);
 
 // Helper macro for easy header-only registration. Uses an inline variable to avoid ODR issues.
 // Note: Avoid pasting the attribute type (which might be qualified like file::PathArray)
@@ -88,8 +170,9 @@ private:
 
 #define CMN_GUI_REGISTER_ATTRIBUTE_MEMBER(OBJ, ATTR) \
     inline const bool CMN_GUI_UNIQUE_NAME2(CMN_GUI_UNIQUE_REG, OBJ) = [](){ \
-        ::cmn::gui::attr::Dispatcher::instance().template register_member<OBJ, ATTR>(); \
-        return true; \
+        return ::cmn::gui::attr::Dispatcher::register_pending(+[](::cmn::gui::attr::Dispatcher& dispatcher){ \
+            dispatcher.template register_member<OBJ, ATTR>(); \
+        }); \
     }()
 } // namespace attr
     

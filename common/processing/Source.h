@@ -15,13 +15,13 @@ struct Source {
         Node::Ptr node;
     };
     
-    std::vector<LinePtr> _ptrs;
+    std::vector<LinePtr> _ptrs{};
     //std::vector<Line> _lines;
     //std::vector<Line> _full_lines;
     //std::vector<typename Node::Ptr> _nodes;
     
-    std::vector<coord_t> _row_y;
-    std::vector<size_t> _row_offsets;
+    std::vector<coord_t> _row_y{};
+    std::vector<size_t> _row_offsets{};
     
     coord_t lw = 0, lh = 0;
     

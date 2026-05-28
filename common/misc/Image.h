@@ -1,7 +1,6 @@
 #pragma once
 
 #include <commons.pc.h>
-#include <file/Path.h>
 #include <misc/colors.h>
 //#define IMAGE_DEBUG_MEMORY_ALLOC 1
 
@@ -152,7 +151,11 @@ concept CallableWithNArgs = requires (F&& f) {
         Image& operator=(const Image& other) noexcept = delete;
         
 #ifdef IMAGE_DEBUG_MEMORY_ALLOC
-        ~Image();
+        ~Image() {
+            if (_data) {
+                Print("freeing memory at ", _data, " of size ", _array_size, " and dimensions ", cols, "x", rows);
+            }
+        }
 #endif
         
         Image(const Image& other, long_t index = -1);
@@ -240,7 +243,7 @@ concept CallableWithNArgs = requires (F&& f) {
         }
         
         std::string toStr() const;
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "Image";
         }
         static timestamp_t now() {
@@ -255,9 +258,6 @@ concept CallableWithNArgs = requires (F&& f) {
         }
     };
 
-    void to_png(const Image& input, std::vector<uchar>& output);
-    Image::Ptr from_png(const file::Path& path);
-    
     cv::Mat restrict_image_keep_ratio(const Size2& max_size, const cv::Mat& input);
 
     template<typename MatOut>

@@ -144,7 +144,7 @@ struct DurationUS {
         return ss.str();
     }
     
-    static std::string class_name() { return "duration"; }
+    static consteval std::string_view class_name() { return "duration"; }
     std::string toStr() const {
         return to_string();
     }
@@ -173,7 +173,7 @@ struct FileSize {
         return ss.str();
     }
 
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "filesize";
     }
     std::string toStr() const {
@@ -711,19 +711,6 @@ auto parse_array_parts(cmn::StringLike auto&& str,
 {
     using Str = decltype(str);
 
-    std::string_view sv;
-    if constexpr(std::is_array_v<std::remove_cvref_t<Str>>
-                 || _is_dumb_pointer<Str>)
-    {
-        sv = std::string_view(str);
-    } else if constexpr(_clean_same<Str, std::string_view>) {
-        sv = str;
-    } else if constexpr(_clean_same<Str, std::wstring>) {
-        static_assert(std::same_as<std::string, Str>, "");
-    } else {
-        sv = std::string_view(str);
-    }
-
     // ---- choose element type ------------------------------------------------
     // We can safely hand out string_views only when the caller guarantees
     // that the underlying buffer will out‑live the views.  That is true for
@@ -742,7 +729,8 @@ auto parse_array_parts(cmn::StringLike auto&& str,
     std::stack<char> brackets;
     char   prev        = 0;
     size_t token_start = 0;
-    
+
+    std::string_view sv = utils::string_like_view(std::forward<Str>(str));
     if(sv.empty())
         return ret;
 
@@ -931,7 +919,7 @@ std::string name() {
 template<class Q>
     requires _has_class_name<Q>
 std::string name() {
-    return Q::class_name();
+    return std::string(Q::class_name());
 }
     
 template< template < typename...> class Tuple, typename ...Ts >
@@ -1142,7 +1130,7 @@ template<class Q>
     requires _is_smart_pointer<Q> && _has_class_name<typename Q::element_type>
 std::string toStr(const Q& obj) {
     using K = typename Q::element_type;
-    return "ptr<"+K::class_name() + ">" + (obj == nullptr ? "null" : Meta::toStr<K>(*obj));
+    return "ptr<"+std::string(K::class_name()) + ">" + (obj == nullptr ? "null" : Meta::toStr<K>(*obj));
 }
 
 template<class Q,
@@ -1150,7 +1138,7 @@ template<class Q,
     class K = typename std::remove_pointer<C>::type>
   requires _is_dumb_pointer<C> && _has_class_name<K> && _has_tostr_method<K>
 std::string toStr(C obj) {
-    return "ptr<"+K::class_name()+">" + obj->toStr();
+    return "ptr<"+std::string(K::class_name())+">" + obj->toStr();
 }
         
 template<class Q>
@@ -1464,9 +1452,10 @@ Q fromStr(cmn::StringLike auto&& str)
     Q r;
             
     auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-            
+    std::conditional_t<cmn::StringLike<typename Q::key_type>, std::string, typename Q::key_type> key;
+    
     for(std::string_view p : parts) {
-        auto value_key = util::parse_array_parts(p, ':');
+        std::vector<std::string_view> value_key = util::parse_array_parts(p, ':');
         if(value_key.size() != 2)
             throw std::invalid_argument("Illegal value/key pair: "+(std::string)p);
         
@@ -1475,26 +1464,32 @@ Q fromStr(cmn::StringLike auto&& str)
                && is_in(value_key[0].front(), '"', '\'')
                && value_key[0].front() == value_key[0].back())
             {
-                value_key[0] = Meta::fromStr<std::string>(value_key[0]);
+                key = Meta::fromStr<typename Q::key_type>(Meta::fromStr<std::string>(value_key[0]));
+            } else {
+                key = Meta::fromStr<typename Q::key_type>(value_key[0]);
             }
+            
+        } else {
+            key = Meta::fromStr<typename Q::key_type>(value_key[0]);
         }
         
-        auto x = Meta::fromStr<typename Q::key_type>(value_key[0]);
         try {
             if constexpr(not cmn::StringLike<typename Q::mapped_type>) {
                 if(value_key[1].size() > 1
                    && is_in(value_key[1].front(), '"', '\'')
                    && value_key[1].front() == value_key[1].back())
                 {
-                    value_key[1] = Meta::fromStr<std::string>(value_key[1]);
+                    r[key] = Meta::fromStr<typename Q::mapped_type>(Meta::fromStr<std::string>(value_key[1]));
+                } else {
+                    r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
                 }
+            } else {
+                r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
             }
             
-            auto y = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
-            r[x] = y;
-        } catch(const std::logic_error&) {
+        } catch(const std::logic_error& e) {
             auto name = Meta::name<Q>();
-            throw std::invalid_argument("Empty/illegal value in "+name+"['"+(std::string)value_key[0]+"'] = '"+(std::string)value_key[1]+"'.");
+            throw std::invalid_argument("Empty/illegal value in "+name+"["+(std::string)value_key[0]+"] = "+(std::string)value_key[1]+": " + std::string(e.what()));
         }
     }
             

@@ -4,7 +4,7 @@
 #include <gui/Passthrough.h>
 
 namespace cmn::gui {
-    ColorWheel Section::wheel;
+    COMMONS_EXPORT ColorWheel Section::wheel;
 
     void Section::remove_child(Drawable* d) {
         auto it = _wrapped_children.find(d);

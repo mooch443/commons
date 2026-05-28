@@ -88,7 +88,7 @@ struct Unprepared {
     std::string_view original;
     std::string_view name;
     std::vector<std::variant<std::string_view, UnpreparedPatterns>> parameters;
-    std::vector<std::string_view> subs;
+    std::vector<std::variant<std::string_view, UnpreparedPatterns>> subs;
     bool optional{false};
     bool html{false};
 };
@@ -104,18 +104,19 @@ struct Prepared {
     };
 
     std::string_view original;
-    std::vector<PreparedPatterns> parameters;
-    gui::dyn::VarProps resolved;
+    std::vector<PreparedPatterns> parameters{};
+    std::vector<PreparedPatterns> subs{};
+    gui::dyn::VarProps resolved{};
     
     /// Cached resolved output for this prepared node.
-    std::optional<std::string> _cached_value;
+    std::optional<std::string> _cached_value{};
     /// Variable-version snapshot captured when `_cached_value` was computed.
-    std::optional<CachedVariableVersions> _cached_variable_versions;
+    std::optional<CachedVariableVersions> _cached_variable_versions{};
     bool has_children{false};
     
     //Prepared(const Unprepared& unprepared);
     std::string toStr() const;
-    static std::string class_name() { return "Prepared"; }
+    static consteval std::string_view class_name() { return "Prepared"; }
     
     void resolve(UnresolvedStringPattern&, std::string&, const gui::dyn::Context& context, gui::dyn::State& state);
     const std::optional<std::string>& cached() const {

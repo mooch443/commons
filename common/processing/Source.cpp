@@ -106,6 +106,7 @@ void Source::init(const cv::Mat& image, bool enable_threads) {
         
         distribute_indexes([&](const uint8_t, int32_t start, int32_t end, const uint8_t i){
             Source source{
+                ._pixels = {},
                 .lw = lw,
                 .lh = lh,
             };

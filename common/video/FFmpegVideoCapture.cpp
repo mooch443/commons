@@ -1,4 +1,5 @@
 #include "FFmpegVideoCapture.h"
+#include <misc/Path.h>
 #include <misc/Timer.h>
 #include <file/ask_for_permission.h>
 
@@ -238,6 +239,7 @@ retry_codec:
         _is_greyscale = false;
     }
     
+    cmn::Print("[FFMPEG] Opened video file: ", filePath, " with estimated frame count: ", estimated_frame_count(), ". Greyscale: ", is_greyscale(), " and hardware acceleration: ", chosenHWType != AV_HWDEVICE_TYPE_NONE ? Meta::toStr((int)chosenHWType) : "none");
     return true;
 }
 

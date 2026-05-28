@@ -1,2 +1,8 @@
+module;
+
+#include <commons.pc.h>
+#include "generated/commons.includes.processing.inc"
+
 export module commons.processing;
-export import commons;
+
+#include "generated/commons.exports.processing.inc"

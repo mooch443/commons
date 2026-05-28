@@ -1,2 +1,8 @@
+module;
+
+#include <commons.pc.h>
+#include "generated/commons.includes.gui_dyn.inc"
+
 export module commons.gui.dyn;
-export import commons;
+
+#include "generated/commons.exports.gui_dyn.inc"

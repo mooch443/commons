@@ -114,10 +114,6 @@ bool TRange::operator<(const TRange& other) const {
 std::string TRange::toStr() const {
     return "TRange<"+std::string(name)+"> "+Meta::toStr(range)+" "+Meta::toStr(subranges)+" '"+std::string(text)+"'";
 }
-    
-std::string TRange::class_name() {
-    return "TRange";
-}
 
 void StaticText::set_txt(const std::string& txt) {
     auto p = utils::find_replace(txt, "<br/>", "\n");

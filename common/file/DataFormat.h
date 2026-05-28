@@ -3,7 +3,7 @@
 
 #include <commons.pc.h>
 #include <sys/stat.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <misc/CropOffsets.h>
 
 namespace cmn {
@@ -138,6 +138,11 @@ namespace cmn {
         
         virtual uint64_t tell() const override { return pos; }
         virtual void seek(uint64_t p) override {
+            if(_capacity > 0
+               && p > _capacity)
+            {
+                throw InvalidArgumentException(p, " is out of bounds for capacity ",_capacity,".");
+            }
             pos = p;
         }
     };
@@ -240,7 +245,13 @@ namespace cmn {
         virtual void start_modifying();
         virtual void start_writing(bool overwrite = false);
         virtual void stop_writing();
+        virtual void stop_modifying();
         virtual void close();
+        
+        void promote_to_modify();
+        
+        void truncate();
+        void sync();
         
         [[nodiscard("This method tells you whether the file is open.")]] bool is_open() const { return f || _mmapped; }
         
@@ -265,22 +276,7 @@ namespace cmn {
         const char* read_data_fast(uint64_t num_bytes) override;
         void set_project_name(const std::string& name) { _project_name = name; }
         
-        virtual void seek(uint64_t pos) override {
-            if(!_mmapped) {
-                /// no action needed
-                if(_file_offset == pos)
-                    return;
-                
-                if(!f)
-                    throw U_EXCEPTION("File not open.");
-#ifdef WIN32
-                _fseeki64(f.get(), (int64_t)pos, SEEK_SET);
-#else
-                fseeko(f.get(), (off_t)pos, SEEK_SET);
-#endif
-            }
-            _file_offset = pos;
-        }
+        virtual void seek(uint64_t pos) override;
 
     public:
         enum class AccessPattern { Random, Sequential };

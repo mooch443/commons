@@ -88,7 +88,7 @@ public:
     LabeledField(GUITaskQueue_t*, const std::string& name);
     virtual ~LabeledField();
     
-    static std::string class_name() { return "Field"; }
+    static consteval std::string_view class_name() { return "Field"; }
     std::string toStr() const;
     virtual void add_to(std::vector<Layout::Ptr>& v) {
         assert(_text != nullptr);

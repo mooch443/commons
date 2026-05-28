@@ -66,8 +66,9 @@ VarProps PreVarProps::parse(const Context& context, State& state) const {
     };
     
     props.subs.reserve(subs.size());
-    for(auto &s : subs)
-        props.subs.emplace_back(s);
+    for(auto &s : subs) {
+        props.subs.emplace_back(parse_text(s, context, state));
+    }
     
     if(props.name == "if" || props.name == "for")  {
         for(auto &p : parameters)

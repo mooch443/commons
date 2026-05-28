@@ -5,8 +5,9 @@
 #include <processing/Background.h>
 #include <misc/Image.h>
 #include <misc/Grid.h>
-#include <misc/ProximityGrid.h>
 #include <misc/bid.h>
+#include <processing/ProximityGrid.h>
+#include <processing/BlobIdentity.h>
 #include <file/DataFormat.h>
 #include <misc/Buffers.h>
 
@@ -123,7 +124,7 @@ public:
     bool properties_ready() const { return _properties.ready; }
     
     std::string toStr() const;
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return "Blob";
     }
     
@@ -399,11 +400,11 @@ public:
     }
     
     void reset_id() {
-        own_id = pv::bid::from_blob(*this);
+        own_id = pv::blob_bid(*this);
     }
     
     std::string toStr() const;
-    static std::string class_name() { return "CompressedBlob"; }
+    static consteval std::string_view class_name() { return "CompressedBlob"; }
 };
 
 }

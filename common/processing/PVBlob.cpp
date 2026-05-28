@@ -1,4 +1,4 @@
-#include <misc/PVBlob.h>
+#include <processing/PVBlob.h>
 #include <misc/GlobalSettings.h>
 #include <misc/Timer.h>
 #include <misc/create_struct.h>
@@ -782,7 +782,7 @@ pv::BlobPtr CompressedBlob::unpack() const {
 //#endif
         
         calculate_properties();
-        _blob_id = bid::from_blob(*this);
+        _blob_id = blob_bid(*this);
     }
 
     int32_t Blob::last_recount_threshold() const {
@@ -1779,7 +1779,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
     
     void Blob::set_pixels(pixel_ptr_t&& pixels) {
         _pixels = std::move(pixels);
-        assert(!_pixels || _pixels->size() == num_pixels());
+        assert(!_pixels || _pixels->size() == num_pixels() * channels());
     }
 
 void Blob::set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels)
@@ -1846,7 +1846,7 @@ void Blob::set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels)
         }
         
         //auto center = bounds().pos() + bounds().size() * 0.5;
-        _blob_id = bid::from_blob(*this);
+        _blob_id = blob_bid(*this);
     }
     
     void Blob::scale_coordinates(const cmn::Vec2 &scale) {

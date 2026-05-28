@@ -1,9 +1,9 @@
 #ifndef _VIDEO_SOURCE_H
 #define _VIDEO_SOURCE_H
 
-#include "types.h"
+#include "misc/types.h"
 #include <video/GenericVideo.h>
-#include <file/Path.h>
+#include <misc/Path.h>
 #include <video/Video.h>
 #include <file/PathArray.h>
 #include <video/FFmpegVideoCapture.h>

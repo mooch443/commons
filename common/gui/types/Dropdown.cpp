@@ -20,9 +20,6 @@ std::string Dropdown::TextItem::toStr() const {
         return "Item<name="+Meta::toStr(name())+" search="+Meta::toStr(search_name())+" display="+Meta::toStr(display_name())+">";
     return "Item<'"+name()+"'>";
 }
-std::string Dropdown::TextItem::class_name() {
-    return "Dropdown::TextItem";
-}
 
     std::atomic_long _automatic_id = 0;
     Dropdown::Item::Item(long ID) : _ID(ID) {
@@ -412,8 +409,10 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     }
     
     Dropdown::TextItem Dropdown::hovered_item() const {
-        if(_list.last_hovered_item() != -1) {
-            auto index = FilteredIndex{(long_t)_list.last_hovered_item()};
+        if(auto item = _list.last_hovered_item();
+           item)
+        {
+            auto index = FilteredIndex{narrow_cast<long>(*item)};
             if(_filtered_items.contains(index)) {
                 RawIndex raw = _filtered_items.at(index);
                 if(raw.valid() && static_cast<size_t>(raw.value) < _items.size())
@@ -425,8 +424,10 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
     }
 
 std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
-    if(_list.currently_highlighted_item() != -1) {
-        auto index = FilteredIndex{(long_t)_list.currently_highlighted_item()};
+    if(auto item = _list.currently_highlighted_item();
+       item)
+    {
+        auto index = FilteredIndex{narrow_cast<long>(*item)};
         if(_filtered_items.contains(index)) {
             RawIndex raw = _filtered_items.at(index);
             if(raw.valid() && static_cast<size_t>(raw.value) < _items.size())

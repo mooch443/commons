@@ -78,7 +78,7 @@ void MacProgressBar::set_percent(double value) {
     });
 }
 
-void MacProgressBar::set_visible(bool visible)
+void MacProgressBar::set_visible([[maybe_unused]] bool visible)
 {
     /*dispatch_async(dispatch_get_main_queue(), ^{
         if (visible) {

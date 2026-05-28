@@ -142,6 +142,8 @@ struct CurrentObjectHandler {
     std::optional<std::string_view> get_variable_value(std::string_view name) const;
     /// Resolve a typed variable by checking scoped overlays first, then global values.
     std::shared_ptr<VarBase_t> get_dynamic_variable(std::string_view name) const;
+    
+    std::optional<std::string> evaluate_variable_value(std::string_view name, const VarProps& props) const;
     /// Remove a global (non-scoped) variable.
     void remove_variable(std::string_view name);
     /// Clear global values, scoped overlays, and parse caches.

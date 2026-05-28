@@ -1,23 +1,52 @@
 #ifndef VIDEO_TYPES_H
 #define VIDEO_TYPES_H
 
-#ifndef WIN32
+#ifndef COMMONS_IS_SHARED_LIBRARY
+    #define COMMONS_IS_SHARED_LIBRARY 0
+#endif
+
+#if !defined(_WIN32) && !defined(WIN32)
     #if __cplusplus <= 199711L
       #error This library needs at least a C++11 compliant compiler
     #endif
 
-    #define TREX_EXPORT
+    #if defined(COMMONS_EXPORTS)
+        #define COMMONS_EXPORT __attribute__((visibility("default")))
+    #else
+        #define COMMONS_EXPORT
+    #endif
+
+    #if defined(__APPLE__) && defined(__clang__)
+        #define COMMONS_TYPE_EXPORT __attribute__((visibility("default"), type_visibility("default")))
+    #else
+        #define COMMONS_TYPE_EXPORT COMMONS_EXPORT
+    #endif
+
     #define EXPIMP_TEMPLATE
 
 #else
-    #ifdef TREX_EXPORTS
-        #define TREX_EXPORT __declspec(dllexport)
-        #define EXPIMP_TEMPLATE
+    #if defined(COMMONS_EXPORTS)
+        #define COMMONS_EXPORT __declspec(dllexport)
+    #elif !COMMONS_IS_SHARED_LIBRARY
+        #define COMMONS_EXPORT
     #else
-        #define TREX_EXPORT __declspec(dllimport)
-        #define EXPIMP_TEMPLATE extern
+        #define COMMONS_EXPORT __declspec(dllimport)
     #endif
+
+    #define COMMONS_TYPE_EXPORT COMMONS_EXPORT
+
+    #define EXPIMP_TEMPLATE
 #endif
+
+namespace cmn {
+consteval bool commons_is_shared_library() {
+#if COMMONS_IS_SHARED_LIBRARY
+    return true;
+#else
+    return false;
+#endif
+}
+}
 
 
 #include <misc/metastring.h>
@@ -89,6 +118,83 @@ inline int __builtin_ctz32(uint32_t value) {
     return __builtin_ctz(value);
 }
 #endif
+
+namespace cmn::file {
+class FilePtr {
+public:
+    FilePtr() : file_(nullptr) {}
+    
+    explicit FilePtr(FILE* file)
+        : file_(file)
+    {}
+    
+    ~FilePtr() {
+        if (file_) {
+            std::fclose(file_);
+        }
+    }
+
+    FilePtr(const FilePtr&) = delete;
+    FilePtr& operator=(const FilePtr&) = delete;
+
+    FilePtr(FilePtr&& other) noexcept : file_(other.file_) {
+        other.file_ = nullptr;
+    }
+
+    FilePtr& operator=(FilePtr&& other) noexcept {
+        if (this != &other) {
+            if (file_) {
+                std::fclose(file_);
+            }
+            file_ = other.file_;
+            other.file_ = nullptr;
+        }
+        return *this;
+    }
+    
+    explicit operator bool() const {
+        return file_ != nullptr;
+    }
+    
+    bool operator==(const FilePtr& other) const {
+        return file_ == other.file_;
+    }
+
+    bool operator!=(const FilePtr& other) const {
+        return !(*this == other);
+    }
+
+    bool operator==(std::nullptr_t) const {
+        return file_ == nullptr;
+    }
+
+    bool operator!=(std::nullptr_t) const {
+        return file_ != nullptr;
+    }
+    
+    // Reset the FilePtr to a new value
+    void reset(FILE* newFile = nullptr) {
+        if (file_) {
+            std::fclose(file_);
+        }
+        file_ = newFile;
+    }
+
+    // Assignment operator for nullptr
+    FilePtr& operator=(std::nullptr_t) {
+        reset();
+        return *this;
+    }
+    
+    FILE* get() const {
+        return file_;
+    }
+
+private:
+    FILE* file_;
+};
+}
+
 
 /**
  * ======================
@@ -164,6 +270,7 @@ struct Pose {
 
         constexpr bool operator==(const Point&) const noexcept = default;
         constexpr bool operator!=(const Point&) const noexcept = default;
+        constexpr auto operator<=>(const Point&) const = default;
         
         bool valid() const noexcept {
             return x > 0 || y > 0;
@@ -176,7 +283,7 @@ struct Pose {
         static Point fromStr(cmn::StringLike auto&& str) {
             return Point(cmn::Meta::fromStr<Vec2>(str));
         }
-        static std::string class_name() {
+        static consteval std::string_view class_name() {
             return "Pose::Point";
         }
         std::string toStr() const {
@@ -210,7 +317,7 @@ struct Pose {
             constexpr bool operator==(const Connection& other) const noexcept = default;
             constexpr bool operator!=(const Connection& other) const noexcept = default;
 
-            static std::string class_name() noexcept { return "Connection"; }
+            static consteval std::string_view class_name() noexcept { return "Connection"; }
             static Connection fromStr(std::string_view);
             glz::json_t to_json() const;
         };
@@ -249,7 +356,7 @@ struct Pose {
                 array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(std::forward<decltype(str)>(str));
                 
             } catch(...) {
-                auto outer = util::parse_array_parts(util::truncate(std::string_view(str)));
+                auto outer = util::parse_array_parts(util::truncate(utils::string_like_view(str)));
                 if(outer.size() < 2)
                     throw InvalidArgumentException("Invalid skeleton string: ", str);
                 array = Meta::fromStr<std::vector<blob::Pose::Skeleton::Connection>>(outer.at(1));
@@ -261,7 +368,7 @@ struct Pose {
         bool empty() const;
         std::string toStr() const;
         glz::json_t to_json() const;
-        static std::string class_name() noexcept { return "Skeleton"; }
+        static consteval std::string_view class_name() noexcept { return "Skeleton"; }
         //static void add(Skeleton&&);
         static Skeleton get(const std::string&);
         static bool exists(const std::string& name);
@@ -274,7 +381,7 @@ struct Pose {
         
         std::string toStr() const;
         glz::json_t to_json() const;
-        static std::string class_name() noexcept { return "Skeletons"; }
+        static consteval std::string_view class_name() noexcept { return "Skeletons"; }
         static Skeletons fromStr(cmn::StringLike auto&& str) {
             try {
                 return Skeletons{
@@ -389,7 +496,7 @@ struct Pose {
     }
 
     std::string toStr() const;
-    static std::string class_name();
+    static consteval std::string_view class_name() { return "Pose"; }
     static Pose fromStr(const std::string&);
 
     constexpr bool operator==(const Pose& other) const noexcept {
@@ -470,12 +577,12 @@ struct SegmentedOutlines {
 struct Prediction {
     uint8_t clid{255u}; // up to 254 classes
     uint8_t p{0u}; // [0,255] -> [0,1]
-    blob::Pose pose;
-    blob::SegmentedOutlines outlines;
+    blob::Pose pose{};
+    blob::SegmentedOutlines outlines{};
     
     bool valid() const { return clid < 255u; }
     std::string toStr() const;
-    static std::string class_name() { return "Prediction"; }
+    static consteval std::string_view class_name() { return "Prediction"; }
     constexpr float probability() const { return float(p) / 255.f; }
     
     constexpr bool operator==(const Prediction&) const noexcept = default;

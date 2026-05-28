@@ -24,7 +24,7 @@ namespace PrefixLiterals {
         INFO
     };
 
-    extern const std::array<const char*, 4> names;
+    extern COMMONS_EXPORT const std::array<const char*, 4> names;
 };
 
 template<uint8_t N, typename T>
@@ -175,14 +175,15 @@ struct Formatter {
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::HTML)
-    static constexpr auto tint(const std::string& s) noexcept {
-        if(s.empty())
+    static constexpr std::string tint(StringLike auto&& s) noexcept {
+        auto sv = utils::string_like_view(s);
+        if(sv.empty())
             return std::string();
-        if(utils::trim(s).empty())
-            return s;
+        if(utils::trim(sv).empty())
+            return std::string(sv);
         if constexpr(*tag() == 0)
-            return s;
-        return std::string("<") + tag() + ">" + s + "</" + tag() + ">";
+            return std::string(sv);
+        return std::string("<") + tag() + ">" + std::string(sv) + "</" + tag() + ">";
     }
 
     /*template<char value>
@@ -203,14 +204,15 @@ struct Formatter {
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::TAGS)
-    static constexpr auto tint(const std::string& s) noexcept {
+    static constexpr std::string tint(StringLike auto&& s) noexcept {
         constexpr char buffer[] = { from_tag_to_code<tag()>(), from_tag_to_code<tag(), true>() };
-        return std::string(buffer, 1) + s + std::string(buffer + 1, 1);
+        auto sv = utils::string_like_view(s);
+        return std::string(buffer, 1) + std::string(sv) + std::string(buffer + 1, 1);
     }
 
     template<FormatColor_t value = _value>
         requires (type == FormatterType::UNIX)
-    static auto tint(const std::string& s) noexcept {
+    static std::string tint(StringLike auto&& s) noexcept {
         std::call_once(print_colors::flag, []() {
 #if __APPLE__
             auto TERM = getenv("TERM");
@@ -237,23 +239,24 @@ struct Formatter {
 #endif
         });
 
+        auto sv = utils::string_like_view(s);
         if(print_colors::dont_print)
-            return s;
+            return std::string(sv);
         
-        return tag() + s + COLOR<0, 0>;
+        return tag() + std::string(sv) + COLOR<0, 0>;
     }
     
     template<FormatColor_t value = _value>
         requires (type == FormatterType::NONE)
-    static constexpr auto tint(const std::string& s) noexcept {
-        return s;
+    static constexpr std::string tint(StringLike auto&& s) noexcept {
+        return std::string(utils::string_like_view(s));
     }
 };
 
 template<FormatColor_t value, FormatterType type>
-auto console_color(const std::string& str) noexcept {
+auto console_color(StringLike auto&& str) noexcept {
     using Formatter_t = Formatter<type, value>;
-    return Formatter_t::tint(str);
+    return Formatter_t::tint(std::forward<decltype(str)>(str));
 }
 
 template<typename T, typename U>

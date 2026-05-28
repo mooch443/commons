@@ -75,7 +75,7 @@ struct CornerFlags {
     ///     ImDrawFlags flags = static_cast<ImDrawFlags>(cornerFlags);
     constexpr explicit operator ImDrawFlags() const { return to_imdraw_flags(); }
     
-    static std::string class_name() { return "CornerFlags"; }
+    static consteval std::string_view class_name() { return "CornerFlags"; }
     
     
     static CornerFlags fromStr(cmn::StringLike auto&& s)

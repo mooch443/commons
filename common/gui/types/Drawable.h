@@ -80,7 +80,7 @@ namespace cmn::gui {
         
         //! A color that is used in Drawables throughout the GUI
         //  as the accent / base color.
-        static Color accent_color;
+        static COMMONS_EXPORT Color accent_color;
         
     protected:
         std::unordered_map<EventType, std::vector<callback_handle_t>> _event_handlers;
@@ -463,7 +463,7 @@ namespace cmn::gui {
         virtual void update_bounds();
         
         virtual std::string toStr() const;
-        static std::string class_name() { return "Drawable"; }
+        static consteval std::string_view class_name() { return "Drawable"; }
     };
     
     class Rect;
@@ -542,6 +542,9 @@ namespace cmn::gui {
         
         FillClr bg_fill_color() const;
         LineClr bg_line_color() const;
+        CornerFlags corner_flags() const {
+            return _bg.flags;
+        }
         
     protected:
         virtual void remove_child(Drawable *child) = 0;

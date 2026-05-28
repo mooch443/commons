@@ -1,2 +1,8 @@
+module;
+
+#include <commons.pc.h>
+#include "generated/commons.includes.file.inc"
+
 export module commons.file;
-export import commons;
+
+#include "generated/commons.exports.file.inc"

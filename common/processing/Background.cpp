@@ -154,6 +154,9 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                            InputInfo input, OutputInfo output, DifferenceMethod method>()
     {
         using value_t = decltype(diffable_pixel_value<input, output>(pixels_ptr));
+        //using value_t = decltype(dual_diffable_pixel_value<input, output>(pixels_ptr));
+        //value_t value;
+        //int diff;
         value_t value, diff;
         
         for (auto &l : lines) {
@@ -163,6 +166,13 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                 if constexpr(input.channels == 0) {
                     pixel_is_set = true;
                     
+                    /*if constexpr(is_rgb_array<std::tuple_element_t<0, value_t>>::value) {
+                        value = value_t{ {255, 255, 255}, 255 };
+                        diff = 255;
+                    } else {
+                        value = {255, 255};
+                        diff = 255;
+                    }*/
                     if constexpr(is_rgb_array<value_t>::value) {
                         value = value_t{ 255, 255, 255 };
                         diff = value;
@@ -174,12 +184,15 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                 } else if constexpr(has_pixels) {
                     if(base_threshold > 0 || has_image || has_differences) {
                         value = diffable_pixel_value<input, output>(pixels_ptr);
+                        //value = dual_diffable_pixel_value<input, output>(pixels_ptr);
                     }
                     if((not pixel_is_set && base_threshold > 0) || has_differences) {
                         diff = background->diff<output, method>(x, l.y, value);
+                        //diff = background->diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, l.y, std::get<1>(value));
                     }
                     
                     pixel_is_set = pixel_is_set || background->is_value_different<output>(x, l.y, diff, base_threshold);
+                    //pixel_is_set = pixel_is_set || background->is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, l.y, diff, base_threshold);
                 }
                 
                 if(pixel_is_set) {
@@ -192,15 +205,18 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                             if constexpr(has_image) {
                                 assert(output_greyscale->channels() == 3);
                                 output_greyscale->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(value[0], value[1], value[2]);
+                                //output_greyscale->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(std::get<0>(value)[0], std::get<0>(value)[1], std::get<0>(value)[2]);
                             }
                             
                             if constexpr(has_differences)
                                 output_differences->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(diff[0], diff[1], diff[2]);
+                                //output_differences->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(diff, diff, diff);
                             
                         } else if constexpr(output.channels == 1) {
                             if constexpr(has_image) {
                                 if constexpr(input.channels == 1) {
                                     output_greyscale->at<uchar>(l.y - r.y, x - r.x) = value;
+                                    //output_greyscale->at<uchar>(l.y - r.y, x - r.x) = std::get<0>(value);
                                     
                                 } else if constexpr(input.channels == 3) {
                                     if constexpr(is_rgb_array<decltype(value)>::value) {
@@ -208,6 +224,7 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                                         output_greyscale->at<uchar>(l.y - r.y, x - r.x) = grey_value;
                                     } else {
                                         output_greyscale->at<uchar>(l.y - r.y, x - r.x) = value;
+                                        //output_greyscale->at<uchar>(l.y - r.y, x - r.x) = std::get<0>(value);
                                     }
                                 }
                             }

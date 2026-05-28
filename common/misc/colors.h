@@ -3,6 +3,26 @@
 
 #include <commons.pc.h>
 
+#if defined(CMN_WITH_IMGUI_INSTALLED) && CMN_WITH_IMGUI_INSTALLED
+#elif __has_include(<imgui.h>)
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imconfig.h>
+#include <imgui.h>
+#else
+#ifndef IM_COL32_R_SHIFT
+#define IM_COL32_R_SHIFT 0
+#endif
+#ifndef IM_COL32_G_SHIFT
+#define IM_COL32_G_SHIFT 8
+#endif
+#ifndef IM_COL32_B_SHIFT
+#define IM_COL32_B_SHIFT 16
+#endif
+#ifndef IM_COL32_A_SHIFT
+#define IM_COL32_A_SHIFT 24
+#endif
+#endif
+
 namespace cmn::gui {
 namespace const_funcs {
     //! computes ⌊val⌋, the largest integer value not greater than val
@@ -338,7 +358,7 @@ public:
     }
 
     static Color fromStr(cmn::StringLike auto&& str);
-    static std::string class_name() { return "color"; }
+    static consteval std::string_view class_name() { return "color"; }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Color& obj) {

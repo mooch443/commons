@@ -656,9 +656,8 @@ concept Iterable = requires(T obj) {
         requires (not std::same_as<T, bool>)
     Reference::operator const T() {
         auto ptr = _type.lock();
-        Property<T> *tmp = dynamic_cast<Property<T>*>(ptr.get());
-        if (tmp) {
-            return tmp->value();
+        if (ptr && ptr->template is_type<T>()) {
+            return static_cast<Property<T>*>(ptr.get())->value();
         }
         
         std::string e = not ptr || not ptr->valid()
@@ -675,7 +674,7 @@ concept Iterable = requires(T obj) {
         {
             return false;
         } else
-            return dynamic_cast<const Property<T>*>(ptr.get()) != nullptr;
+            return ptr->template is_type<T>();
     }
     
 template<typename T>
@@ -716,9 +715,8 @@ void Reference::operator=(const T& value) {
         requires (not std::same_as<T, bool>)
     ConstReference::operator const T() const {
         auto ptr = _type.lock();
-        const Property<T> *tmp = dynamic_cast<const Property<T>*>(ptr.get());
-        if (tmp) {
-            return tmp->value();
+        if (ptr && ptr->template is_type<T>()) {
+            return static_cast<const Property<T>*>(ptr.get())->value();
         }
         
         std::string e = not ptr || not ptr->valid()
@@ -738,7 +736,7 @@ void Reference::operator=(const T& value) {
             if constexpr (std::same_as<T, sprite::Map>)
                 return false;
             else
-                return dynamic_cast<const Property<T>*>(ptr.get()) != nullptr;
+                return ptr->template is_type<T>();
         }
     }
 
@@ -759,11 +757,11 @@ void Reference::operator=(const T& value) {
         
         // Not an optional type, proceed with normal assignment
 #ifndef NDEBUG
-        auto ptr = dynamic_cast<Property<T>*>(this);
-        if(not ptr) {
+        if(not is_type<T>()) {
             throw InvalidArgumentException("Cannot cast property ", name(), " to ", Meta::name<T>(), " because it is ", type_name(),".");
         }
-        
+
+        auto ptr = static_cast<Property<T>*>(this);
         if(ptr->valid()) {
             *ptr = value;
             

@@ -10,6 +10,19 @@
 
 namespace cmn::gui::dyn {
 
+template<typename Number>
+    requires std::integral<Number>
+bool is_valid_number(std::string_view str) {
+    if(str.empty())
+        return false;
+    
+    for(char c : str) {
+        if(not std::isdigit(c))
+            return false;
+    }
+    return true;
+}
+
 bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const Action& value) {
     std::unordered_map<std::string_view, std::function<void(const Layout::Ptr&, const Action&)>, MultiStringHash, MultiStringEqual> applicators {
         { "pos",
@@ -36,22 +49,26 @@ bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const
     return false;
 }
 
-std::string access_sub_field(const glz::json_t& json, StringLike auto && name, std::queue<std::string_view> subs) {
-    if(not json.contains(name))
-        throw InvalidArgumentException("Object ", json, " does not contain field ", name);
-    auto field = json[std::forward<decltype(name)>(name)];
-    if(field.is_object()) {
-        // need another key
-        if(not subs.empty()) {
-            auto key = subs.front();
-            subs.pop();
-            return access_sub_field(field, key, subs);
+std::string access_sub_field(const glz::json_t& json, std::queue<std::string_view> subs) {
+    if(not subs.empty()) {
+        const auto& name = subs.front();
+        subs.pop();
+        
+        if(json.is_object()) {
+            if(not json.contains(name))
+                throw InvalidArgumentException("Object ", json, " does not contain field ", name);
+            return access_sub_field(json[name], subs);
+        
+        } else if(json.is_array()) {
+            auto index = Meta::fromStr<uint16_t>(name);
+            auto& obj = json.get_array()[index];
+            return access_sub_field(obj, subs);
         }
     }
     
-    if(field.is_string())
-        return field.template get<std::string>();
-    return Meta::toStr(field);
+    if(json.is_string())
+        return json.template get<std::string>();
+    return Meta::toStr(json);
 }
 
 std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifiers, std::optional<std::queue<std::string_view>> subs = std::nullopt) {
@@ -92,14 +109,7 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                 
         } else if(variable.is<glz::json_t>()) {
             return variable.access_value<glz::json_t>([&](auto&& value){
-                if(auto key = subs->front();
-                   value.contains(key))
-                {
-                    subs->pop();
-                    return access_sub_field(value, key, *subs);
-                    //return glz::write_json(value[key]).value_or("null");
-                } else
-                    throw InvalidArgumentException("No key named ", modifiers, " in object.");
+                return access_sub_field(value, *subs);
             }, modifiers);
         }
         else if(variable.is<sprite::Map>()) {
@@ -112,11 +122,19 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                     auto prop = value.at(key);
                     assert(prop.valid());
                     if(prop->template is_type<glz::json_t>()) {
-                        if(not subs->empty()) {
-                            return access_sub_field(prop->template value<glz::json_t>(), subs->front(), *subs);
+                        return access_sub_field(prop->template value<glz::json_t>(), *subs);
+                    } else if(prop->is_array()
+                              && not subs->empty())
+                    {
+                        auto p = prop->access_array(Meta::fromStr<uint16_t>(subs->front()));
+                        if(p
+                           && p->valid())
+                        {
+                            return Meta::fromStr<std::string>(p->valueString());
                         }
+                        
                     } else if(prop->template is_type<sprite::Map>()) {
-                        FormatWarning("is this even supported?");
+                        throw InvalidArgumentException("Accessing a sprite::Map inside a sprite::Map is unsupported (", modifiers,").");
                     }
                     
                     return Meta::fromStr<std::string>(value.at(key)->valueString());
@@ -124,11 +142,44 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                     throw InvalidArgumentException("No key named ", modifiers, " in map.");
             }, modifiers);
             
-        } else
+        } else {
             ret = variable.value_string(modifiers);
-        //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
-        //auto str = modifiers.toStr();
-        //Print(str.c_str(), " resolves to ", ret);
+            //throw InvalidArgumentException("Variable ", modifiers.name, " does not have arguments (requested ", modifiers.parameters,").");
+            //auto str = modifiers.toStr();
+            //Print(str.c_str(), " resolves to ", ret);
+            
+            /// support array access for string-arrays
+            if(subs
+               && not subs->empty()
+               && not ret.empty())
+            {
+                if(ret.front() == '['
+                   && ret.back() == ']')
+                {
+                    if(is_in(subs->front(), "x", "y")) {
+                        /// we specifically allow x/y subtypes if the array has two elements
+                        auto parts = util::parse_array_parts(util::truncate(ret));
+                        if(parts.size() != 2)
+                            throw InvalidArgumentException("Expected exactly 2 array elements for string 'array' ", ret, ". Got ", parts, " instead.");
+                        if(subs->front() == "x") {
+                            ret = parts[0];
+                        } else
+                            ret = parts[1];
+                        
+                    } else if(is_valid_number<uint16_t>(subs->front())) {
+                        /// must be resolved to an integer!
+                        auto index = Meta::fromStr<uint16_t>(subs->front());
+                        
+                        /// this is an array
+                        ret = util::parse_array_parts(util::truncate(ret)).at(index);
+                    }
+                    
+                } else {
+                    //throw InvalidArgumentException("Suspected string 'array' ", ret, " is not an array (with subs ", *subs,").");
+                }
+            }
+        }
+        
         if(modifiers.html)
             return settings::htmlify(ret);
         return ret;

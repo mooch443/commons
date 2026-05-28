@@ -3,8 +3,35 @@
  */
 
 #include "GlobalSettings.h"
+#include <misc/Path.h>
 
 namespace cmn {
+
+std::mutex& GlobalSettings::instance_mutex() {
+    static std::mutex _mutex;
+    return _mutex;
+}
+
+GlobalSettings*& GlobalSettings::instance_storage() {
+    static GlobalSettings* _instance{nullptr};
+    return _instance;
+}
+
+GlobalSettings& GlobalSettings::create() {
+    static GlobalSettings _owned_instance{};
+    instance(&_owned_instance);
+    return _owned_instance;
+}
+
+bool& GlobalSettings::is_reading_config_flag() {
+    static thread_local bool flag{false};
+    return flag;
+}
+
+bool& GlobalSettings::is_writing_config_flag() {
+    static thread_local bool flag{false};
+    return flag;
+}
 
 void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);

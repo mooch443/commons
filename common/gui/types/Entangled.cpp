@@ -681,7 +681,7 @@ void SectionInterface::children_rect_changed() {
             if(c)
                 c->set_parent(this);
         }else*/
-            d->set_parent(this);
+        d->set_parent(this);
         
         _owned[d] = own;
     }

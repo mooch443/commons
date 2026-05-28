@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <misc/Path.h>
 #include <misc/Image.h>
 
 extern "C" {
