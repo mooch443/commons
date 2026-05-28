@@ -356,7 +356,7 @@ void GLImpl::init_pbo(uint width, uint height) {
             pboOutput = Image::Make(height, width, 4);
             
             glGenBuffers(2, pboIds);
-            auto nbytes = width * height * 4;
+            size_t nbytes = static_cast<size_t>(width) * static_cast<size_t>(height) * 4u * sizeof(uint8_t);
             for(int i=0; i<2; ++i) {
                 glBindBuffer(GL_PIXEL_PACK_BUFFER, pboIds[i]);
                 glBufferData(GL_PIXEL_PACK_BUFFER, nbytes, NULL, GL_STREAM_READ);
@@ -747,4 +747,3 @@ void GLImpl::set_title(std::string title) {
 
 }
 #endif
-
