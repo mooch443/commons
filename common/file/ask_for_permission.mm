@@ -34,6 +34,13 @@ static std::expected<void, std::string> resolve_bookmark(const std::string& path
 
 std::expected<void, std::string> request_access(const std::string& path)
 {
+    @autoreleasepool {
+        NSString *ns_path = [NSString stringWithUTF8String:path.c_str()];
+        if (ns_path && [[NSFileManager defaultManager] isReadableFileAtPath:ns_path]) {
+            return {};
+        }
+    }
+
     // 1️⃣ Create a promise/future pair
     auto prom = std::make_shared<std::promise<std::expected<void, std::string>>>();
     auto fut  = prom->get_future();
