@@ -1646,6 +1646,10 @@ endif()
                 -DCMAKE_DEBUG_POSTFIX=
                 ${OPENCV_EXTRA_FLAGS})
 
+    if(WIN32)
+        list(APPEND OPENCV_CMAKE_ARGS -DVIDEOIO_PLUGIN_LIST=ffmpeg)
+    endif()
+
     set(COMMONS_OPENCV_VERSION "4.12.0")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
