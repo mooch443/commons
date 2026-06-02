@@ -16,6 +16,7 @@ source:
     git_rev: locusts
 
 build:
+    skip: true
     script_env:
       - GITHUB_WORKFLOW
     number: 26
