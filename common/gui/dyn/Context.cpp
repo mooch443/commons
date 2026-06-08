@@ -1137,13 +1137,32 @@ void Context::init() const {
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 
-                auto index = Meta::fromStr<size_t>(props.parameters.front());
                 auto trunc = props.parameters.at(1);
-                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                if(is_in(utils::trim(trunc).front(), '{')) {
+                    auto key = Meta::fromStr<std::string>(props.parameters.front());
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
-                    return parts.at(index);
-                } else if(is_in(trunc.front(), '\'', '"')) {
-                    return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
+                    
+                    for(auto &part : parts) {
+                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        if(key_value.size() != 2) {
+                            throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
+                        }
+                        
+                        if(key == Meta::fromStr<std::string>(key_value.front())) {
+                            return key_value.back();
+                        }
+                    }
+                    
+                    throw InvalidArgumentException("Cannot find key ", key," in ", trunc);
+                    
+                } else {
+                    auto index = Meta::fromStr<size_t>(props.parameters.front());
+                    if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                        auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                        return parts.at(index);
+                    } else if(is_in(trunc.front(), '\'', '"')) {
+                        return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
+                    }
                 }
                 
                 throw InvalidArgumentException("Needs to be an indexable type.");

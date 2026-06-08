@@ -145,7 +145,7 @@ protected:
         NUMBER_ALIAS(Thickness_t, Float2_t)
     private:
         std::shared_ptr<std::vector<Vertex>> _processed_points;
-        Color _line_clr;
+        Color _line_clr{White};
         Float2_t _process_scale;
         GETTER(Float2_t, max_scale);
         
@@ -215,19 +215,26 @@ protected:
 
             addVertices(ps, args...);
             VertexArray::create(std::move(ps), PrimitiveType::LineStrip);
+            _line_clr = clr0;
+        }
+        void set(Point_t p0, Point_t p1, Thickness_t t = Thickness_t{1}) {
+            set(p0, p1, LineClr{_line_clr}, t);
         }
         void set(Point_t p0, Point_t p1, LineClr clr, Thickness_t t = Thickness_t{1}) {
             set_thickness(t);
             VertexArray::create(PrimitiveType::LineStrip, Vertex(p0, clr), Vertex(p1, clr));
+            _line_clr = clr;
         }
         void set(Point_t p0, LineClr clr0, Point_t p1, LineClr clr1, Thickness_t t = Thickness_t{ 1 }) {
             set_thickness(t);
             VertexArray::create(PrimitiveType::LineStrip, Vertex(p0, clr0), Vertex(p1, clr1));
+            _line_clr = clr0;
         }
         const std::vector<Vertex>& points() override final;
         std::ostream &operator <<(std::ostream &os) override;
         decltype(_processed_points) processed_points() const { return _processed_points; }
         const decltype(_points)& raw_points() const { return _points; }
+        const Color& line_clr() const { return _line_clr; }
         
     protected:
         bool swap_with(Drawable* d) override;
@@ -783,4 +790,3 @@ void reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Flo
 }
 
 #endif
-

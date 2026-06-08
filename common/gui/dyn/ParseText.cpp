@@ -217,12 +217,16 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     break;
                 case '{':
                     if(!comment_out) nesting_start_positions.push(i + 1);
-                    else output << ch;
+                    else {
+                        output << ch;
+                    }
                     comment_out = false;
                     break;
                 case '}':
                     if(!comment_out) throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                    else output << ch;
+                    else {
+                        output << ch;
+                    }
                     comment_out = false;
                     break;
                 default:
@@ -234,7 +238,7 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
             }
         } else {
             if(comment_out) {
-                output << ch;
+                //output << ch;
                 comment_out = false;
                 
             } else if(ch == '\\') {

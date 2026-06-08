@@ -320,73 +320,61 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     }
     
     if(obj.count("drag") || obj.count("click")) {
-        auto action = PreAction::fromStr(obj.at(obj.count("drag") ? "drag" : "click").get<std::string>());
+        auto run_action = [](const PreAction& action, const Context& context, State& state) {
+            std::string_view name = action.name;
+            std::string pattern;
+            if(utils::contains(name, '{')) {
+                pattern = parse_text(name, context, state);
+                auto a = PreAction::fromStr(pattern);
+                if(auto it = context.actions.find(a.name);
+                   it != context.actions.end())
+                {
+                    it->second(a.parse(context, state));
+                } else
+                    Print("Unknown Action [", name, "]: ", action);
+
+                return;
+            }
+
+            if(auto it = context.actions.find(name);
+               it != context.actions.end())
+            {
+                it->second(action.parse(context, state));
+            } else
+                Print("Unknown Action [", name, "]: ", action);
+        };
         
         if(obj.count("drag")) {
-            static constexpr auto handle_name = "_drag_handle";
+            auto action = PreAction::fromStr(obj.at("drag").get<std::string>());
+            static constexpr auto handle_name = "_dynamic_drag_handle";
             auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-            auto h = bind_event_with_state(ptr, EventType::HOVER, state._current_object_handler, context, [action, _ptr = std::weak_ptr(ptr.get_smart())](Event event, const Context& context, State& state) {
-                auto ptr = _ptr.lock();
-#ifndef NDEBUG
-                if(not ptr)
-                    FormatWarning("HOVER object does not exist anymore.");
-#endif
-                
-                if(ptr
-                   && ptr->pressed()
-                   && event.hover.hovered)
-                {
-                    try {
-                        if(auto it = context.actions.find(action.name);
-                           it != context.actions.end())
-                        {
-                            it->second(action.parse(context, state));
-                        } else
-                            Print("Unknown Action: ", action);
-                        
-                    } catch(...) {
-                        FormatExcept("error using action ", action);
-                    }
+            auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
+                try {
+                    run_action(action, context, state);
+                } catch(...) {
+                    FormatExcept("error using action ", action);
                 }
             }, handle);
             
             ptr->add_custom_data(handle_name, (void*)h.get());
         }
         
-        static constexpr auto handle_name = "_drag_handle";
-        auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-        auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action](Event event, const Context& context, State& state)
-        {
-            if(event.mbutton.pressed && event.mbutton.started_here) {
-                try {
-                    std::string_view name = action.name;
-                    std::string pattern;
-                    if(utils::contains(name, '{')) {
-                        pattern = parse_text(name, context, state);
-                        auto a = PreAction::fromStr(pattern);
-                        if(auto it = context.actions.find(a.name);
-                           it != context.actions.end())
-                        {
-                            it->second(a.parse(context, state));
-                        } else
-                            Print("Unknown Action [",name,"]: ", action);
-                        
-                        return;
+        if(obj.count("click")) {
+            auto action = PreAction::fromStr(obj.at("click").get<std::string>());
+            static constexpr auto handle_name = "_click_handle";
+            auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+            auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action, run_action](Event event, const Context& context, State& state)
+            {
+                if(event.mbutton.pressed && event.mbutton.started_here) {
+                    try {
+                        run_action(action, context, state);
+                    } catch(...) {
+                        FormatExcept("error using action ", action);
                     }
-                    
-                    if(auto it = context.actions.find(name);
-                       it != context.actions.end())
-                    {
-                        it->second(action.parse(context, state));
-                    } else
-                        Print("Unknown Action [",name,"]: ", action);
-                    
-                } catch(...) {
-                    FormatExcept("error using action ", action);
                 }
-            }
-        }, handle);
-        ptr->add_custom_data(handle_name, (void*)h.get());
+            }, handle);
+            ptr->add_custom_data(handle_name, (void*)h.get());
+        }
     }
     
     ptr->add_custom_data("object_index", (void*)hash);
@@ -402,20 +390,23 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::line>()
 {
     Layout::Ptr ptr;
+    auto line_color = has("color")
+        ? get(Color{White}, "color")
+        : get(Color{White}, "line");
+    auto thickness = get(Float2_t{1}, "thickness");
+
     if(obj.count("from") && obj.count("to")) {
-        
         auto from = get(Vec2{}, "from");
         auto to = get(Vec2{}, "to");
-        
-        ptr = Layout::Make<Line>(from, to);
-        Print("adding line from ", from, " to ", to);
-        
+
+        ptr = Layout::Make<Line>(Line::Point_t{from}, Line::Point_t{to}, LineClr{line_color}, Line::Thickness_t{thickness});
+
     } else if(obj.count("points")) {
         auto points = get(std::vector<Vec2>{}, "points");
-        ptr = Layout::Make<Line>(Line::Points_t{points});
+        ptr = Layout::Make<Line>(Line::Points_t{points}, LineClr{line_color}, Line::Thickness_t{thickness});
     } else
         throw InvalidArgumentException("Need to specify points somehow.");
-    
+
     return ptr;
 }
 
@@ -943,6 +934,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
             
             state.register_variant(hash, ptr, LoopBody{
                 .variable = obj.at("var").get<std::string>(),
+                .item_name = obj.count("as") && obj.at("as").is_string()
+                    ? obj.at("as").get<std::string>()
+                    : "i",
                 .child = child.get_object()
             });
         }

@@ -52,6 +52,10 @@ static std::shared_ptr<CurrentObjectHandler> ensure_current_object_handler(State
     return handler;
 }
 
+static std::string loop_item_name(const LoopBody& loop) {
+    return loop.item_name.empty() ? std::string("i") : loop.item_name;
+}
+
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
     //! something that needs to be executed before everything runs
@@ -369,6 +373,63 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             FormatError("Error parsing context; ", patterns, ": ", e.what());
         }
     };
+
+    if(ptr.is<Line>()) {
+        auto line_ptr = ptr.to<Line>();
+        auto check_line_field = [&]<typename SourceType>(std::string_view name, auto&& apply) -> bool {
+            auto it = patterns.find(name);
+            if(it == patterns_end)
+                return false;
+
+            try {
+                auto text = it->second.realize(context, state);
+                auto trimmed = utils::trim(std::string_view(text));
+                if constexpr(std::same_as<SourceType, Vec2> || std::same_as<SourceType, Size2>) {
+                    if(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null"))
+                        return true;
+                }
+                apply(Meta::fromStr<SourceType>(text));
+            } catch(const std::exception& e) {
+                FormatError("Error parsing line context; ", patterns, ": ", e.what());
+            }
+            return true;
+        };
+
+        check_line_field.operator()<Color>("color", [&](const auto& value) {
+            line_ptr->set(LineClr{value});
+        });
+        check_line_field.operator()<Float2_t>("thickness", [&](const auto& value) {
+            line_ptr->set(Line::Thickness_t{value});
+        });
+
+        if(not check_line_field.operator()<std::vector<Vec2>>("points", [&](const auto& value) {
+            line_ptr->set(Line::Points_t{value});
+        })) {
+            auto points = line_ptr->raw_points();
+            if(points.size() < 2) {
+                points = {
+                    Vertex(Vec2{}, LineClr{line_ptr->line_clr()}),
+                    Vertex(Vec2{}, LineClr{line_ptr->line_clr()})
+                };
+            }
+
+            bool changed_points = false;
+            const auto bounds_pos = line_ptr->bounds().pos();
+            auto from = bounds_pos + points.front().position();
+            auto to = bounds_pos + points.at(1).position();
+            auto color = line_ptr->line_clr();
+            changed_points |= check_line_field.operator()<Vec2>("from", [&](const auto& value) {
+                from = value;
+            });
+            changed_points |= check_line_field.operator()<Vec2>("to", [&](const auto& value) {
+                to = value;
+            });
+
+            if(changed_points) {
+                line_ptr->set(Line::Point_t{from}, Line::Point_t{to}, LineClr{color}, Line::Thickness_t{line_ptr->thickness()});
+            }
+        }
+    }
     
     check_field.operator()<Color, FillClr>("fill");
     check_field.operator()<Color, TextClr>("color");
@@ -389,10 +450,12 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             auto trimmed = utils::trim(std::string_view(text));
             if(!(trimmed.empty() || trimmed == "null" || utils::contains(trimmed, "null"))) {
                 auto value = Meta::fromStr<Vec2>(text);
-                if(field)
-                    o->set(Loc{value});
-                else
-                    LabeledField::delegate_to_proper_type(Loc{value}, ptr);
+                if(not (o->draggable() && o->being_dragged())) {
+                    if(field)
+                        o->set(Loc{value});
+                    else
+                        LabeledField::delegate_to_proper_type(Loc{value}, ptr);
+                }
             }
         } catch(const std::exception& e) {
             FormatError("Error parsing context; ", patterns, ": ", e.what());
@@ -638,7 +701,8 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     //obj._state->_variable_values.clear();
     
     PreVarProps ps = extractControls(obj.variable);
-    auto props = ps.parse(context, state);
+    const auto props = ps.parse(context, state);
+    const auto item_name = loop_item_name(obj);
 
     if(context.has(props.name, state)) {
         auto loop_variable = context.variable(props.name, state);
@@ -659,7 +723,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 size_t i = 0;
                 for(auto &v : vector) {
                     auto scope = scoped_handler->scope();
-                    scope.set("i", v);
+                    scope.set(item_name, v);
                     scope.set("index", Meta::toStr(i));
                     if(have_index)
                         scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
@@ -699,7 +763,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 
                 for(size_t i=0; i<obj.cache.size() && i < max_displayed_objects; ++i) {
                     auto scope = scoped_handler->scope();
-                    scope.set("i", obj.cache[i]);
+                    scope.set(item_name, obj.cache[i]);
                     scope.set("index", Meta::toStr(i));
                     if(have_index)
                         scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
@@ -746,7 +810,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             for(auto &v : vector) {
                 auto scope = scoped_handler->scope();
-                scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::json_t {
+                scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> glz::json_t {
                     return v;
                 }).second);
                 scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
@@ -820,7 +884,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                         return i;
                     }).second);
-                    scope.set("i", VarFunc("i", [v](const VarProps&) -> std::string {
+                    scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> std::string {
                         return v;
                     }).second);
                     if(have_index)
@@ -888,7 +952,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                         return i;
                     }).second);
-                    scope.set("i", VarFunc("i", [v = std::string(v)](const VarProps&) -> std::string {
+                    scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> std::string {
                         return v;
                     }).second);
                     if(have_index)

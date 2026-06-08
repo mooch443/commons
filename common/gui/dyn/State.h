@@ -56,6 +56,7 @@ struct PatternStore {
 
 struct LoopBody {
     std::string variable;
+    std::string item_name{"i"};
     glz::json_t::object_t child;
 #ifndef NDEBUG
     //std::unique_ptr<State> _state;
