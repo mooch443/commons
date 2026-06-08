@@ -346,17 +346,37 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         if(obj.count("drag")) {
             auto action = PreAction::fromStr(obj.at("drag").get<std::string>());
-            static constexpr auto handle_name = "_dynamic_drag_handle";
-            auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-            auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
-                try {
-                    run_action(action, context, state);
-                } catch(...) {
-                    FormatExcept("error using action ", action);
-                }
-            }, handle);
+            if(ptr->draggable()) {
+                static constexpr auto handle_name = "_dynamic_drag_handle";
+                auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+                auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
+                    try {
+                        run_action(action, context, state);
+                    } catch(...) {
+                        FormatExcept("error using action ", action);
+                    }
+                }, handle);
             
-            ptr->add_custom_data(handle_name, (void*)h.get());
+                ptr->add_custom_data(handle_name, (void*)h.get());
+            } else {
+                static constexpr auto handle_name = "_hover_drag_handle";
+                auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+                auto h = bind_event_with_state(ptr, EventType::HOVER, state._current_object_handler, context, [action, run_action, _ptr = std::weak_ptr(ptr.get_smart())](Event event, const Context& context, State& state) {
+                    auto ptr = _ptr.lock();
+                    if(ptr
+                       && ptr->pressed()
+                       && event.hover.hovered)
+                    {
+                        try {
+                            run_action(action, context, state);
+                        } catch(...) {
+                            FormatExcept("error using action ", action);
+                        }
+                    }
+                }, handle);
+
+                ptr->add_custom_data(handle_name, (void*)h.get());
+            }
         }
         
         if(obj.count("click")) {
