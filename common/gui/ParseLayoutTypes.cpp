@@ -217,7 +217,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     if(obj.count("modules")) {
         if(obj.at("modules").is_array()) {
             for(auto mod : obj.at("modules").get_array()) {
-                Print("module ", mod.get<std::string>());
+                //Print("module ", mod.get<std::string>());
                 auto m = Modules::exists(mod.get<std::string>());
                 if(m)
                     m->_apply(hash, state, ptr);
