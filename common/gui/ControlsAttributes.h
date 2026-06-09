@@ -68,6 +68,72 @@ struct AttributeAlias : T {
     static AttributeAlias fromStr(cmn::StringLike auto&& str) {
         return AttributeAlias{K::fromStr(str)};
     }
+
+    template<typename K = T>
+        requires requires { { K::Square() } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Square() {
+        return AttributeAlias{K::Square()};
+    }
+
+    template<typename K = T>
+        requires requires(float r) { { K::Rounded(r) } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Rounded(float r) {
+        return AttributeAlias{K::Rounded(r)};
+    }
+
+    template<typename K = T>
+        requires requires { { K::Left() } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Left() {
+        return AttributeAlias{K::Left()};
+    }
+
+    template<typename K = T>
+        requires requires(float r) { { K::Left(r) } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Left(float r) {
+        return AttributeAlias{K::Left(r)};
+    }
+
+    template<typename K = T>
+        requires requires { { K::Right() } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Right() {
+        return AttributeAlias{K::Right()};
+    }
+
+    template<typename K = T>
+        requires requires(float r) { { K::Right(r) } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Right(float r) {
+        return AttributeAlias{K::Right(r)};
+    }
+
+    template<typename K = T>
+        requires requires { { K::Top() } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Top() {
+        return AttributeAlias{K::Top()};
+    }
+
+    template<typename K = T>
+        requires requires(float r) { { K::Top(r) } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Top(float r) {
+        return AttributeAlias{K::Top(r)};
+    }
+
+    template<typename K = T>
+        requires requires { { K::Bottom() } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Bottom() {
+        return AttributeAlias{K::Bottom()};
+    }
+
+    template<typename K = T>
+        requires requires(float r) { { K::Bottom(r) } -> std::convertible_to<K>; }
+    constexpr static AttributeAlias Bottom(float r) {
+        return AttributeAlias{K::Bottom(r)};
+    }
+
+    template<typename U, typename K = T>
+        requires requires(const K& lhs, const U& rhs) { { lhs | rhs } -> std::convertible_to<K>; }
+    [[nodiscard]] constexpr AttributeAlias operator|(const U& rhs) const {
+        return AttributeAlias{static_cast<const K&>(*this) | rhs};
+    }
 };
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \

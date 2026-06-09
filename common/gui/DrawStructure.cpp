@@ -743,12 +743,11 @@ void DrawStructure::close_dialogs() {
                 return text_entered(e.text.c);
                 
             case SCROLL:
-                d = _hovered_object;
 #if __linux__ || WIN32
                 e.scroll.dx *= 15;
                 e.scroll.dy *= 15;
 #endif
-                scroll(Vec2(e.scroll.dx, e.scroll.dy));
+                d = scroll(Vec2(e.scroll.dx, e.scroll.dy));
                 break;
             default:
                 break;
@@ -825,15 +824,23 @@ void DrawStructure::close_dialogs() {
         return false;
     }
     
-    void DrawStructure::scroll(const Vec2& delta) {
-        if(_hovered_object) {
-            Event e(SCROLL);
-            e.scroll.dx = delta.x;
-            e.scroll.dy = delta.y;
-            _hovered_object->scroll(e);
-            
-            update_hover();
+    Drawable* DrawStructure::scroll(const Vec2& delta) {
+        std::vector<Drawable*> results;
+        _root.find(mouse_position().x, mouse_position().y, results);
+        
+        Event e(SCROLL);
+        e.scroll.dx = delta.x;
+        e.scroll.dy = delta.y;
+        
+        for(auto r : results) {
+            auto* handled = r->scroll(e);
+            if(handled) {
+                update_hover();
+                return handled;
+            }
         }
+        
+        return nullptr;
     }
     
     Drawable* Section::find(const std::string& search) {

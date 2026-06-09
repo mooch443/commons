@@ -82,8 +82,10 @@ namespace cmn::gui {
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false);
         
-        event_handler_yes_t scrolling = [this](Event e){
+        event_handler_t scrolling = [this](Event e){
+            const auto previous = _scroll_offset;
             set_scroll_offset(_scroll_offset - Vec2(e.scroll.dx, e.scroll.dy));
+            return previous != _scroll_offset;
         };
         callback_handle_t callback_ptr = nullptr;
         

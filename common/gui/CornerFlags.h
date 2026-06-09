@@ -43,10 +43,37 @@ struct CornerFlags {
         if(v) mask |= c;
         else  mask &= static_cast<uint8_t>(~c);
     }
-    
+
     /// handy factories
     constexpr static CornerFlags Rounded(float r) { return CornerFlags(DefaultCorners, r); }
-    constexpr static CornerFlags Square()         { return CornerFlags(DefaultCorners, DefaultRadius); }
+    constexpr static CornerFlags Square()         { return CornerFlags(Corner::None, 0); }
+    constexpr static CornerFlags Left(float r = DefaultRadius) {
+        return CornerFlags(TopLeft | BottomLeft, r);
+    }
+    constexpr static CornerFlags Right(float r = DefaultRadius) {
+        return CornerFlags(TopRight | BottomRight, r);
+    }
+    constexpr static CornerFlags Top(float r = DefaultRadius) {
+        return CornerFlags(TopLeft | TopRight, r);
+    }
+    constexpr static CornerFlags Bottom(float r = DefaultRadius) {
+        return CornerFlags(BottomLeft | BottomRight, r);
+    }
+
+    [[nodiscard]] constexpr CornerFlags operator|(Corner corner) const {
+        return CornerFlags(mask | corner, radius);
+    }
+    [[nodiscard]] constexpr CornerFlags operator|(CornerFlags other) const {
+        return CornerFlags(static_cast<uint8_t>(mask | other.mask), radius);
+    }
+    constexpr CornerFlags& operator|=(Corner corner) {
+        set(corner);
+        return *this;
+    }
+    constexpr CornerFlags& operator|=(CornerFlags other) {
+        mask |= other.mask;
+        return *this;
+    }
     
     /// equality / inequality (constexpr)
     [[nodiscard]] constexpr bool operator==(const CornerFlags& other) const

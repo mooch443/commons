@@ -677,16 +677,24 @@ namespace cmn::gui {
         return true;
     }
     
-    void Drawable::scroll(Event event) {
+    Drawable* Drawable::scroll(Event event) {
+        bool handled = false;
         for(auto &e : _event_handlers[SCROLL]) {
 #ifndef NDEBUG
             Handler handler{this};
 #endif
-            (*e)(event);
+            if((*e)(event)) {
+                handled = true;
+            }
         }
         
+        if(handled)
+            return this;
+        
         if(parent())
-            parent()->scroll(event);
+            return parent()->scroll(event);
+        
+        return nullptr;
     }
     
     void Drawable::hover(Event e) {

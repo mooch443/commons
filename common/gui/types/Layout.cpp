@@ -179,7 +179,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
                 if(c > 1)
                     counts[ptr.get()] = c;
             }
-            throw U_EXCEPTION("Cannot insert the same object multiple times (", set.size()," vs. ", objects.size(), "): ", counts);
+            throw U_EXCEPTION("Cannot insert the same object multiple times (", set.size()," vs. ", objects.size(), "): ", counts, " in ", set, " vs. ", objects);
         }
 #endif
         

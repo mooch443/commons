@@ -157,11 +157,17 @@ public:
     constexpr bool is() const;
     
     bool operator==(Base* raw) const { return get() == raw; }
-    bool operator==(const derived_ptr<Base>& other) const { return get() == other.get(); }
+    
+    template<typename OtherT>
+        requires std::derived_from<OtherT, Base>
+    bool operator==(const derived_ptr<OtherT>& other) const {
+        return get() == other.get();
+    }
     bool operator<(Base* raw) const { return get() < raw; }
+    
     bool operator<(const derived_ptr<Base>& other) const { return get() < other.get(); }
     
-    operator bool() const { return get() != nullptr; }
+    explicit operator bool() const { return get() != nullptr; }
     Base* operator ->() const { return get(); }
     
     template<typename T>
@@ -176,6 +182,10 @@ public:
     
     bool has_value() const {
         return _ptr != nullptr;
+    }
+    
+    std::string toStr() const {
+        return "ptr<" + Meta::toStr(get()) + ">";
     }
 };
 

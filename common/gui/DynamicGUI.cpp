@@ -155,7 +155,7 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
     } catch(const std::exception& e) {
         std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj).value_or("null")+"</c>";
         FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj).value_or("null"));
-        return Layout::Make<ErrorElement>(attr::Str{text}, Loc{layout.pos}, Size{layout.size});
+        return Layout::Make<ErrorElement>{attr::Str{text}, Loc{layout.pos}, Size{layout.size}};
     }
 }
 

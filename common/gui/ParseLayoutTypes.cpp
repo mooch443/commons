@@ -419,11 +419,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::line>()
         auto from = get(Vec2{}, "from");
         auto to = get(Vec2{}, "to");
 
-        ptr = Layout::Make<Line>(Line::Point_t{from}, Line::Point_t{to}, LineClr{line_color}, Line::Thickness_t{thickness});
+        ptr = Layout::Make<Line>{Line::Point_t{from}, Line::Point_t{to}, LineClr{line_color}, Line::Thickness_t{thickness}};
 
     } else if(obj.count("points")) {
         auto points = get(std::vector<Vec2>{}, "points");
-        ptr = Layout::Make<Line>(Line::Points_t{points}, LineClr{line_color}, Line::Thickness_t{thickness});
+        ptr = Layout::Make<Line>{Line::Points_t{points}, LineClr{line_color}, Line::Thickness_t{thickness}};
     } else
         throw InvalidArgumentException("Need to specify points somehow.");
 
@@ -476,9 +476,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::image>()
     }
     
     if(img) {
-        return Layout::Make<ExternalImage>(std::move(img));
+        return Layout::Make<ExternalImage>{std::move(img)};
     } else {
-        return Layout::Make<ExternalImage>();
+        return Layout::Make<ExternalImage>{};
     }
 }
 
@@ -496,7 +496,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
         }
     }
     
-    auto ptr = Layout::Make<VerticalLayout>(std::move(children));
+    auto ptr = Layout::Make<VerticalLayout>{std::move(children)}();
     if(obj.count("align")) {
         if(obj.at("align").is_string()) {
             std::string align = obj.at("align").get<std::string>();
@@ -527,7 +527,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
         }
     }
     
-    auto ptr = Layout::Make<HorizontalLayout>(std::move(children));
+    auto ptr = Layout::Make<HorizontalLayout>{std::move(children)}();
     if(obj.count("align")) {
         if(obj.at("align").is_string()) {
             std::string align = obj.at("align").get<std::string>();
@@ -586,14 +586,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
                             }
                         }
                         
-                        cols.emplace_back(Layout::Make<Layout>(std::move(objects), attr::Margins{0,0,0,0}));
+                        cols.emplace_back(Layout::Make<Layout>{std::move(objects), attr::Margins{0,0,0,0}});
                         cols.back()->set_name("Col");
                         cols.back().to<Layout>()->update();
                         cols.back().to<Layout>()->update_layout();
                         cols.back().to<Layout>()->auto_size();
                     }
                 }
-                rows.emplace_back(Layout::Make<Layout>(std::move(cols), attr::Margins{0, 0, 0, 0}));
+                rows.emplace_back(Layout::Make<Layout>{std::move(cols), attr::Margins{0, 0, 0, 0}});
                 rows.back()->set_name("Row");
                 rows.back().to<Layout>()->update();
                 rows.back().to<Layout>()->update_layout();
@@ -602,7 +602,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>()
         }
     }
     
-    return Layout::Make<GridLayout>(valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr}, CellFillClr{cellFillClr}, CellLineClr{cellLineClr}, CellFillInterval{cellFillInterval}, MinCellSize{minCellSize});
+    return Layout::Make<GridLayout>{valign, halign, std::move(rows), VerticalClr{vertical_clr}, HorizontalClr{horizontal_clr}, CellFillClr{cellFillClr}, CellLineClr{cellLineClr}, CellFillInterval{cellFillInterval}, MinCellSize{minCellSize}};
 }
 
 template <>
@@ -621,7 +621,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::collection>()
         }
     }
     
-    auto ptr = Layout::Make<Layout>(std::move(children));
+    auto ptr = Layout::Make<Layout>{std::move(children)}();
     ptr->set_name("collection");
     return ptr;
 }
@@ -646,7 +646,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
     }
     
     {
-        ptr = Layout::Make<HorizontalLayout>(Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0});
+        ptr = Layout::Make<HorizontalLayout>{Loc(), Box{0, 0, 0, 0}, Margins{0,0,0,0}};
         
         auto hashed = state.get_monostate(hash, ptr);
         //Print("* creating hash ", hash, " for ", hex(ptr.get()));
@@ -803,7 +803,7 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::button>()
 {
     std::string text = get(std::string(), "text");
-    auto ptr = Layout::Make<Button>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
+    auto ptr = Layout::Make<Button>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font}();
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
@@ -834,7 +834,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
     std::string text = get(std::string(), "text");
     bool checked = get(false, "checked");
     
-    auto ptr = Layout::Make<Checkbox>(attr::Str(text), attr::Checked(checked), font);
+    auto ptr = Layout::Make<Checkbox>{attr::Str(text), attr::Checked(checked), font}();
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
@@ -865,7 +865,7 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
 {
     std::string text = get(std::string(), "text");
-    auto ptr = Layout::Make<Textfield>(attr::Str(text), attr::Scale(scale), attr::Origin(origin), font);
+    auto ptr = Layout::Make<Textfield>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font}();
     
     if(obj.count("action")) {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
@@ -898,7 +898,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>()
     StaticText::Shadow_t shadow{get(0.f, "shadow")};
     Alpha alpha{get(1.f, "alpha")};
     
-    return Layout::Make<StaticText>(
+    return Layout::Make<StaticText>{
          Str{text},
          attr::Scale(scale),
          attr::Loc(pos),
@@ -910,12 +910,12 @@ Layout::Ptr LayoutContext::create_object<LayoutType::stext>()
          attr::Name{text},
          attr::SizeLimit{max_size},
          alpha
-    );
+    };
 }
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::rect>() {
-    auto ptr = Layout::Make<Rect>(attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line});
+    auto ptr = Layout::Make<Rect>{attr::Scale(scale), attr::Loc(pos), attr::Size(size), attr::Origin(origin), FillClr{fill}, LineClr{line}}();
     
     
     return ptr;
@@ -926,7 +926,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::text>()
 {
     Text::Shadow_t shadow{get(0.f, "shadow")};
     auto text = get(std::string(), "text");
-    return Layout::Make<Text>(Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, shadow, Name{text});
+    return Layout::Make<Text>{Str{text}, attr::Scale(scale), attr::Loc(pos), attr::Origin(origin), font, shadow, Name{text}};
 }
 
 template <>
@@ -934,7 +934,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::circle>()
 {
     Layout::Ptr ptr;
     Radius radius {get(5.f, "radius")};
-    ptr = Layout::Make<Circle>(attr::Scale(scale), attr::Loc(pos), radius, attr::Origin(origin), attr::FillClr{fill}, attr::LineClr{line});
+    ptr = Layout::Make<Circle>{attr::Scale(scale), attr::Loc(pos), radius, attr::Origin(origin), attr::FillClr{fill}, attr::LineClr{line}};
 
     return ptr;
 }
@@ -949,7 +949,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::each>()
             //Print("collection: ", child.dump());
             // all successfull, add collection:
             
-            ptr = Layout::Make<PlaceinLayout>(std::vector<Layout::Ptr>{});
+            ptr = Layout::Make<PlaceinLayout>{std::vector<Layout::Ptr>{}};
             ptr->set_name("foreach<"+obj.at("var").get<std::string>()+" "+Meta::toStr(hash)+">");
             
             state.register_variant(hash, ptr, LoopBody{
@@ -978,7 +978,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
             copy->_current_object_handler = state._current_object_handler;
 #endif
             
-            ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
+            ptr = Layout::Make<ScrollableList<DetailTooltipItem>>{Box{pos, size}};
             auto exp = glz::read_json<ListContents::ItemTemplate>(child.get_object());
             
             auto body = state.register_variant(hash, ptr, ListContents{
@@ -1008,7 +1008,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
     } else if(obj.count("items") && obj.at("items").is_array()) {
         auto& child = obj.at("items").get_array();
         
-        ptr = Layout::Make<ScrollableList<DetailTooltipItem>>(Box{pos, size});
+        ptr = Layout::Make<ScrollableList<DetailTooltipItem>>{Box{pos, size}};
         std::vector<PreAction> actions;
         
         ManualListContents contents;
@@ -1195,7 +1195,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>()
             //state._current_index.inc();
             //state._current_index.inc();
             
-            ptr = Layout::Make<Fallthrough>();
+            ptr = Layout::Make<Fallthrough>{};
             //ptr->clear_delete_handlers();
             auto weak = std::weak_ptr(state.register_variant(hash, ptr, IfBody{
                 .variable = pattern::UnresolvedStringPattern::prepare(obj.at("var").get<std::string>()),

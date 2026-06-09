@@ -7,9 +7,40 @@
 namespace cmn::gui {
     ATTRIBUTE_ALIAS(MinSize, Size2);
 
+    namespace detail {
+        template<class Obj, class... Args>
+        concept HasSetPack =
+            requires(Obj& obj, Args&&... args)
+            {
+                { obj.set(std::forward<Args>(args)...) } -> std::same_as<void>;
+            };
+
+        template<class Obj, class... Args>
+        concept HasSetEach = (HasSet<Obj, Args> && ...);
+
+        template<class Obj, class... Args>
+        concept HasCreateSetArgs =
+            sizeof...(Args) == 0
+            || HasSetPack<Obj, Args...>
+            || HasSetEach<Obj, Args...>;
+
+        template<class Obj, class... Args>
+        struct AllowDirectMakeArgs : std::false_type {};
+
+        template<class Obj, class... Args>
+        inline constexpr bool AllowDirectMakeArgs_v =
+            AllowDirectMakeArgs<Obj, std::remove_cvref_t<Args>...>::value;
+
+        template<class Obj, class... Args>
+        concept HasMakeArgs =
+            HasCreateSetArgs<Obj, Args...>
+            || AllowDirectMakeArgs_v<Obj, Args...>
+            || (!std::is_base_of_v<Entangled, Obj> && std::constructible_from<Obj, Args...>);
+    }
+
     class Layout : public Entangled {
     public:
-        typedef derived_ptr<Drawable> Ptr;
+        using Ptr = derived_ptr<Drawable>;
         
     private:
         GETTER_NCONST(std::vector<Ptr>, objects);
@@ -20,10 +51,38 @@ namespace cmn::gui {
         GETTER(MinSize, minSize);
         
     public:
-        template<typename T, typename... Args>
-        static Layout::Ptr Make(Args&&... args) {
-            return Layout::Ptr(new T(std::forward<Args>(args)...));
-        }
+        template<typename T>
+        struct [[nodiscard]] Make {
+            static_assert(std::is_base_of_v<Drawable, T>);
+
+            derived_ptr<T> ptr;
+
+            Make(const Make&) = delete;
+            Make(Make&&) = delete;
+            Make& operator=(const Make&) = delete;
+            Make& operator=(Make&&) = delete;
+
+            template<typename... Args>
+                requires detail::HasMakeArgs<T, Args...>
+            explicit Make(Args&&... args)
+                : ptr(new T(std::forward<Args>(args)...))
+            {}
+
+            template<typename Base>
+                requires std::is_base_of_v<Base, T>
+            operator derived_ptr<Base>() && {
+                return ptr;
+            }
+
+            template<typename Base>
+            operator derived_ptr<Base>() & = delete;
+
+            derived_ptr<T> operator()() && {
+                return ptr;
+            }
+
+            derived_ptr<T> operator()() & = delete;
+        };
         
     public:
         template<typename... Args>

@@ -1005,7 +1005,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             ? context.variable(props.name, state)->value_string(props)
             : std::string(props.name);
         auto text = settings::htmlify("Invalid loop for "+ loop_text + " in "+glz::write_json(obj.child).value_or("null"));
-        ptrs.push_back(Layout::Make<StaticText>(attr::Str{text}));
+        ptrs.push_back(Layout::Make<StaticText>{attr::Str{text}});
         o.to<Layout>()->set_children(std::move(ptrs));
         o.to<Layout>()->set_layout_dirty();
         o.to<Layout>()->update();

@@ -351,7 +351,7 @@ namespace cmn::gui {
         //  continously pressed but moved.
         virtual void mdown(Float2_t x, Float2_t y, bool left_button);
         virtual void mup(Float2_t x, Float2_t y, bool left_button);
-        virtual void scroll(Event e);
+        virtual Drawable* scroll(Event e);
         
         virtual bool kdown(Event e);
         virtual bool kup(Event e);
