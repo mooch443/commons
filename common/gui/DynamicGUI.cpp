@@ -178,6 +178,8 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
                 if(d.contains("pad"))
                     defaults.pad = Meta::fromStr<Bounds>(glz::write_json(d["pad"]).value());
+                if(d.contains("outer_pad"))
+                    defaults.outer_pad = Meta::fromStr<Bounds>(glz::write_json(d["outer_pad"]).value());
                 
                 if(d.contains("vars") && d["vars"].is_object()) {
                     for(auto &[name, value] : d["vars"].get_object()) {

@@ -112,6 +112,8 @@ struct CornerFlags {
         // Bare radius (no brackets) → all corners
         if (!sv.empty() && sv.front() != '[') {
             float r = Meta::fromStr<float>(sv);
+            if(r == 0)
+                return CornerFlags(None, 0);
             return CornerFlags(All, r);
         }
 
@@ -139,51 +141,46 @@ struct CornerFlags {
         
         uint8_t m = None;
         auto addCorner = [&](uint8_t c){ m |= c; };
+        bool no_specifier = true;
 
         for (auto& raw : parts) {
             // Trim whitespace and strip optional single or double quotes
             auto tok = utils::trim(raw);
-            if (!tok.empty()
+            if (tok.length() >= 2
                 && (tok.front() == '\"'
                     || tok.front() == '\''))
             {
                 //tok.erase(tok.begin());
-                tok = tok.substr(1);
+                tok = tok.substr(1, tok.length() - 2);
             }
-            if (!tok.empty() && (tok.back() == '\"' || tok.back() == '\'')) {
-                //tok.pop_back();
-                tok = tok.substr(0, tok.length() - 1);
-            }
-            // Convert to lower‑case for uniform comparison
-            /*std::transform(tok.begin(), tok.end(), tok.begin(),
-                           [](unsigned char c){ return std::tolower(c); });*/
-
+            
             if (cmn::utils::lowercase_equal_to(tok, "all"))
-                { m = All; break; }
+                { no_specifier = false; m = All; break; }
             else if (cmn::utils::lowercase_equal_to(tok, "none"))
-                { m = None; }
+                { no_specifier = false; m = None; break; }
             else if (cmn::utils::lowercase_equal_to(tok, "left"))
-                { addCorner(TopLeft  | BottomLeft); }
+                { no_specifier = false; addCorner(TopLeft  | BottomLeft); }
             else if (cmn::utils::lowercase_equal_to(tok , "right"))
-                { addCorner(TopRight | BottomRight); }
+                { no_specifier = false; addCorner(TopRight | BottomRight); }
             else if (cmn::utils::lowercase_equal_to(tok, "top"))
-                { addCorner(TopLeft  | TopRight); }
+                { no_specifier = false; addCorner(TopLeft  | TopRight); }
             else if (cmn::utils::lowercase_equal_to(tok, "bottom"))
-                { addCorner(BottomLeft | BottomRight); }
+                { no_specifier = false; addCorner(BottomLeft | BottomRight); }
             else if (cmn::utils::lowercase_equal_to(tok, "tl") || cmn::utils::lowercase_equal_to(tok, "topleft"))
-                { addCorner(TopLeft); }
+                { no_specifier = false; addCorner(TopLeft); }
             else if (cmn::utils::lowercase_equal_to(tok, "tr") || cmn::utils::lowercase_equal_to(tok, "topright"))
-                { addCorner(TopRight); }
+                { no_specifier = false; addCorner(TopRight); }
             else if (cmn::utils::lowercase_equal_to(tok, "br") || cmn::utils::lowercase_equal_to(tok,"bottomright"))
-                { addCorner(BottomRight); }
+                { no_specifier = false; addCorner(BottomRight); }
             else if (cmn::utils::lowercase_equal_to(tok, "bl") || cmn::utils::lowercase_equal_to(tok, "bottomleft"))
-                { addCorner(BottomLeft); }
+                { no_specifier = false; addCorner(BottomLeft); }
             // Unknown tokens are ignored.
         }
 
-        if (m == None && parts.empty())
+        if (m == None && no_specifier)
             m = All;   // [2.5] case handled here
-
+        if(radius == 0 || m == None)
+            return CornerFlags(None, 0);
         return CornerFlags(m, radius);
     }
 

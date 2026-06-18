@@ -9,6 +9,9 @@ std::string CornerFlags::toStr() const
     // All corners → just “[radius]”
     if (mask == All)
         return "[" + radiusStr + "]";
+    if(mask == None || radius == 0) {
+        return "['none']";
+    }
 
     // Compose token list
     std::vector<std::string> toks;

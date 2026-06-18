@@ -56,6 +56,30 @@ static std::string loop_item_name(const LoopBody& loop) {
     return loop.item_name.empty() ? std::string("i") : loop.item_name;
 }
 
+// Shared by `list` and `each`: accepts raw JSON arrays, vectors of JSON
+// values, and variables that expose a to_json() array through VarBase.
+static std::optional<std::vector<glz::json_t>> json_array_from_variable(
+    const std::shared_ptr<VarBase_t>& variable,
+    const VarProps& props)
+{
+    if(variable->is<glz::json_t>()) {
+        auto object = variable->access_value<glz::json_t>([&props](auto&& value) {
+            return access_loop_json_subfields(value, props.subs);
+        }, props);
+        if(object && object->is_array())
+            return object->get_array();
+        return std::vector<glz::json_t>{};
+    }
+
+    if(variable->is<std::vector<glz::json_t>>()) {
+        return variable->access_value<std::vector<glz::json_t>>([](auto&& value) {
+            return std::vector<glz::json_t>(value.begin(), value.end());
+        }, props);
+    }
+
+    return std::nullopt;
+}
+
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
     //! something that needs to be executed before everything runs
@@ -441,6 +465,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<std::string, Placeholder_t>("placeholder");
     check_field.operator()<CornerFlags_t, CornerFlags_t>("corners");
     check_field.operator()<Bounds, Margins>("pad");
+    check_field.operator()<Bounds, OuterPadding>("outer_pad");
     check_field.operator()<Float2_t, Alpha>("alpha");
     if(auto it = patterns.find("pos");
        it != patterns_end)
@@ -629,6 +654,46 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             
             o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
         }
+        else if(loop_variable->is_vector()) {
+            PreVarProps ps = extractControls(obj.variable);
+            const auto props = ps.parse(context, state);
+            
+            auto vector = json_array_from_variable(loop_variable, props);
+            
+            IndexScopeHandler handler{state._current_index};
+            std::vector<DetailTooltipItem> ptrs;
+#ifndef NDEBUG
+            obj._state = std::make_unique<State>();
+            obj._state->_current_object_handler = state._current_object_handler;
+#endif
+
+            auto scoped_handler = ensure_current_object_handler(state);
+            auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+
+            for(auto& v : *vector) {
+                auto scope = scoped_handler->scope();
+                scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::json_t {
+                    return v;
+                }).second);
+                scope.set("index", VarFunc("index", [index](const VarProps&) -> size_t {
+                    return index;
+                }).second);
+                if(have_index)
+                    scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                        return index;
+                    }).second);
+
+                try {
+                    auto item = convert_to_item(obj.item, state);
+                    ptrs.emplace_back(std::move(item));
+                    ++index;
+                } catch(const std::exception&) {
+                    FormatExcept("Cannot create list items for template: ", glz::write_json(obj.item).value_or("null"), " and type json.");
+                }
+            }
+
+            o.to<ScrollableList<DetailTooltipItem>>()->set_items(ptrs);
+        }
         else {
             Print("Variable ", obj.variable, " has unknown type ", loop_variable->class_name(),".");
         }
@@ -780,25 +845,11 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                 }
             }
         }
-        else if(loop_variable->is<glz::json_t>()
-                || loop_variable->is<std::vector<glz::json_t>>())
+        else if(auto vector = json_array_from_variable(loop_variable, props);
+                vector.has_value())
         {
-            std::vector<glz::json_t> vector;
-            
-            if(loop_variable->is<glz::json_t>()) {
-                auto object = loop_variable->access_value<glz::json_t>([&props](auto&& value) {
-                    return access_loop_json_subfields(value, props.subs);
-                }, props);
-                if(object && object->is_array()) {
-                    vector = object->get_array();
-                }
-                
-            } else {
-                vector = loop_variable->value<std::vector<glz::json_t>>(props);
-            }
-            
             std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
-            ptrs.resize(vector.size());
+            ptrs.resize(vector->size());
             
             //State &state = *obj._state;
             auto scoped_handler = ensure_current_object_handler(state);
@@ -808,7 +859,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             size_t i = 0;
             auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
             
-            for(auto &v : vector) {
+            for(auto &v : *vector) {
                 auto scope = scoped_handler->scope();
                 scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> glz::json_t {
                     return v;

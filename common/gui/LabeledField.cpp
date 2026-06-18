@@ -428,6 +428,11 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
         } else
             return false;
     }
+    if(_reset_button
+       && name == ALIAS<LabelCornerFlags>)
+    {
+        Print("Applying ", name, " to ", _ref);
+    }
     return true;
 }
 
@@ -470,6 +475,14 @@ void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view n
             auto clr = Meta::fromStr<Color>(value_string());
             _reset_button->set(TextClr{clr});
             
+        } else if(name == ALIAS<LabelCornerFlags>) {
+            auto flags = Meta::fromStr<LabelCornerFlags>(value_string());
+            if(_reset_button) {
+                flags.set(LabelCornerFlags::TopRight, false);
+                flags.set(LabelCornerFlags::BottomRight, false);
+                _value->set(flags);
+            }
+            
         } else if(name == ALIAS<CornerFlags_t>) {
             auto flags = Meta::fromStr<CornerFlags>(value_string());
             auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
@@ -480,10 +493,11 @@ void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view n
             bool _does_not_equal_default = true;
 
             if(_reset_button && _does_not_equal_default) {
-                if(not _value->set(LabelCornerFlags(false, false, false, false))) {
-                    _value->set(CornerFlags_t(false, false, false, false));
+                if(not _value->set(LabelCornerFlags::Square())) {
+                    _value->set(CornerFlags_t::Square());
                 }
                 _reset_button->set(CornerFlags_t{right_box});
+                
             } else if(not _value->set(LabelCornerFlags{right_box})) {
                 _value->set(CornerFlags_t{right_box});
             }

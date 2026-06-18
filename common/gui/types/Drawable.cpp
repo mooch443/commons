@@ -580,11 +580,12 @@ namespace cmn::gui {
             .y = (Float2_t)r.y
         }; //rx, ry};
         
+        bool handled = false;
         for(auto &e : _event_handlers[MBUTTON]) {
 #ifndef NDEBUG
             Handler handler{this};
 #endif
-            (*e)(event);
+            handled = (*e)(event) || handled;
         }
         
         if(!_pressed) {
@@ -592,7 +593,7 @@ namespace cmn::gui {
             set_dirty();
         }
         
-        if(parent())
+        if(!handled && parent())
             parent()->mdown(x, y, left_button);
     }
     
@@ -627,8 +628,9 @@ namespace cmn::gui {
         /**
          * TODO: This has to happen *after* the whole stuff + parent->mup is happening, otherwise we might delete the object in it's own handler.
          */
+        bool handled = false;
         for(auto &e : _event_handlers[MBUTTON]) {
-            (*e)(event);
+            handled = (*e)(event) || handled;
         }
         
         if(_pressed) {
@@ -636,7 +638,7 @@ namespace cmn::gui {
             set_dirty();
         }
         
-        if(parent())
+        if(!handled && parent())
             parent()->mup(x, y, left_button);
 
         _being_dragged = false;

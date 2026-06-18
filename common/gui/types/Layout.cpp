@@ -328,29 +328,48 @@ void VerticalLayout::auto_size() {
 }
     
     void HorizontalLayout::_update_layout() {
-        float x = 0;
-        float max_height = _margins.y + _margins.height;
+        float x = _outer_padding.x;
+        const float outer_height = _outer_padding.y + _outer_padding.height;
+        float max_height = outer_height;
         
         apply_to_children([&](Drawable* c) {
             c->update_bounds();
-            max_height = max(max_height, c->local_bounds().height + _margins.height + _margins.y);
+            if(c->local_bounds().width > 0)
+                max_height = max(max_height, c->local_bounds().height + outer_height);
         });
         
+        bool first = true;
+        
         apply_to_children([&](Drawable* c) {
-            x += _margins.x;
-
             auto local = c->local_bounds();
             auto offset = local.size().mul(c->origin());
             
-            if(_policy == CENTER)
-                c->set_pos(offset + Vec2(x, (max_height - local.height) * 0.5));
+            if(local.width == 0 || local.height == 0)
+            {
+                c->set_pos({});
+                return;
+            }
+            
+            if(not first)
+                x += _margins.x;
+            else
+                first = false;
+            
+            if(_policy == CENTER) {
+                const auto inner_height = max_height - _outer_padding.y - _outer_padding.height;
+                c->set_pos(offset + Vec2(x, _outer_padding.y + (inner_height - local.height) * 0.5));
+            }
             else if(_policy == TOP)
-                c->set_pos(offset + Vec2(x, _margins.y));
+                c->set_pos(offset + Vec2(x, _outer_padding.y));
             else if(_policy == BOTTOM)
-                c->set_pos(offset + Vec2(x, max_height - _margins.height - local.height));
+                c->set_pos(offset + Vec2(x, max_height - _outer_padding.height - local.height));
             
             x += local.width + _margins.width;
         });
+        
+        if(not first) {
+            x += _outer_padding.width;
+        }
         
         if(not Size2(x, max(0, max_height)).Equals(size())) {
             set_size(Size2(x, max(0, max_height)));
@@ -372,30 +391,40 @@ void VerticalLayout::auto_size() {
     }
     
     void VerticalLayout::_update_layout() {
-        float y = 0;
-        float max_width = _margins.x + _margins.width;
+        float y = _outer_padding.y;
+        const float outer_width = _outer_padding.x + _outer_padding.width;
+        float max_width = outer_width;
         
         apply_to_children([&](Drawable* c) {
             c->update_bounds();
-            max_width = max(max_width, c->local_bounds().width + _margins.width + _margins.x);
+            max_width = max(max_width, c->local_bounds().width + outer_width);
             assert(not std::isnan(max_width));
         });
         
+        bool first = true;
+        
         apply_to_children([&](Drawable* c) {
-            y += _margins.y;
+            if(not first)
+                y += _margins.y;
+            else
+                first = false;
             
             auto local = c->local_bounds();
             auto offset = local.size().mul(c->origin());
             
-            if(_policy == CENTER)
-                c->set_pos(offset + Vec2((max_width - local.width) * 0.5, y));
+            if(_policy == CENTER) {
+                const auto inner_width = max_width - _outer_padding.x - _outer_padding.width;
+                c->set_pos(offset + Vec2(_outer_padding.x + (inner_width - local.width) * 0.5, y));
+            }
             else if(_policy == LEFT)
-                c->set_pos(offset + Vec2(_margins.x, y));
+                c->set_pos(offset + Vec2(_outer_padding.x, y));
             else if(_policy == RIGHT)
-                c->set_pos(offset + Vec2(max_width - _margins.width - local.width, y));
+                c->set_pos(offset + Vec2(max_width - _outer_padding.width - local.width, y));
             
             y += local.height + _margins.height;
         });
+        
+        y += _outer_padding.height;
         
         if(not Size2(max_width, max(0.f, y)).Equals(size())) {
             set_size(Size2(max_width, max(0.f, y)));
@@ -422,9 +451,11 @@ void VerticalLayout::auto_size() {
         
         if(mi.x != std::numeric_limits<Float2_t>::max()) {
             //ma += Vec2(max(0.f, _margins.width + _margins.x), max(0.f, _margins.height + _margins.y));
-            set_size(ma);
+            set_size(ma + Vec2(_outer_padding.x + _outer_padding.width,
+                               _outer_padding.y + _outer_padding.height));
         } else {
-            set_size(Size2());
+            set_size(Size2(max(0.f, _outer_padding.x + _outer_padding.width),
+                           max(0.f, _outer_padding.y + _outer_padding.height)));
         }
     }
     
@@ -649,6 +680,38 @@ void GridLayout::_update_layout() {
         
         max_row_heights.push_back(row_height);
     }
+    
+    auto is_active_col = [&](size_t col) {
+        return col < max_col_widths.size() && max_col_widths[col] > 0;
+    };
+    auto is_active_row = [&](size_t row) {
+        return row < max_row_heights.size() && max_row_heights[row] > 0;
+    };
+    
+    const auto first_active_col = [&]() -> size_t {
+        for(size_t i = 0; i < max_col_widths.size(); ++i)
+            if(is_active_col(i))
+                return i;
+        return max_col_widths.size();
+    }();
+    const auto last_active_col = [&]() -> size_t {
+        for(size_t i = max_col_widths.size(); i > 0; --i)
+            if(is_active_col(i - 1))
+                return i - 1;
+        return max_col_widths.size();
+    }();
+    const auto first_active_row = [&]() -> size_t {
+        for(size_t i = 0; i < max_row_heights.size(); ++i)
+            if(is_active_row(i))
+                return i;
+        return max_row_heights.size();
+    }();
+    const auto last_active_row = [&]() -> size_t {
+        for(size_t i = max_row_heights.size(); i > 0; --i)
+            if(is_active_row(i - 1))
+                return i - 1;
+        return max_row_heights.size();
+    }();
 
     // Step 2: Update the position of each row and cell, relative to its parent
     float y = 0;
@@ -665,7 +728,7 @@ void GridLayout::_update_layout() {
         float x = 0;
 
         float row_height = max_row_heights[row_idx];
-        if(row_height > 0)
+        if(is_active_row(row_idx))
             row_height += margins().height + margins().y;
         size_t col_idx = 0;  // Column index
 
@@ -675,8 +738,15 @@ void GridLayout::_update_layout() {
 
             Layout* cell = _cell.to<Layout>();
             cell->auto_size();
-            
+	            
             auto cell_bounds = cell->local_bounds();
+            
+            if(!is_active_col(col_idx)) {
+                rowBounds.push_back({});
+                cell->set_pos({});
+                ++col_idx;
+                continue;
+            }
 
             float cell_y = _margins.y;
             if(_settings.vpolicy == VPolicy::CENTER) {
@@ -686,10 +756,20 @@ void GridLayout::_update_layout() {
             }
             
             // Add this cell's bounds to rowBounds
+            Vec2 extra_offset{
+                col_idx != first_active_col ? _outer_padding.x : 0,
+                row_idx != first_active_row ? _outer_padding.y : 0
+            };
+	            
+            Size2 extra_size{
+                (col_idx == first_active_col ? _outer_padding.x : 0) + (col_idx == last_active_col ? _outer_padding.width : 0),
+                (row_idx == first_active_row ? _outer_padding.y : 0) + (row_idx == last_active_row ? _outer_padding.height : 0)
+            };
+            
             rowBounds.push_back({
-                x, y,
-                max_col_widths[col_idx] + margins().width + margins().x,
-                row_height
+                x + extra_offset.x, y + extra_offset.y,
+                max_col_widths[col_idx] + margins().width + margins().x + extra_size.width,
+                row_height + extra_size.height
             });
             
             // Ensure that cell_x is calculated afresh for each cell based on x and not dependent on old value.
@@ -716,20 +796,39 @@ void GridLayout::_update_layout() {
         // Update the position of the row itself here if necessary
         // Corrected this part
         //row->auto_size();
-        row->set_pos({0, y});
-        row->set_size({x, row_height});
+        row->set_pos({
+            _outer_padding.x,
+            y + _outer_padding.y
+        });
+        row->set_size({
+            x + _outer_padding.x + _outer_padding.width,
+            row_height
+        });
         
         // Add this row's bounds to gridBounds
         gridBounds.push_back(rowBounds);
         
-        y += row->height(); // Updated to row_height from max_row_heights[col_idx]
+        if(is_active_row(row_idx))
+            y += row->height(); // Updated to row_height from max_row_heights[col_idx]
         ++row_idx; // Increment row index
     }
+	    
+    const auto active_col_width = std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f, [](float sum, float width) {
+        return width > 0 ? sum + width : sum;
+    });
+    const auto active_col_count = static_cast<float>(std::count_if(max_col_widths.begin(), max_col_widths.end(), [](float width) {
+        return width > 0;
+    }));
     
-    if(not max_col_widths.empty()) {
+    if(active_col_count > 0 || first_active_row != max_row_heights.size()) {
         set_size({
-            std::accumulate(max_col_widths.begin(), max_col_widths.end(), 0.0f) + (margins().width + margins().x) * max_col_widths.size(),
-            y
+            active_col_width + (margins().width + margins().x) * active_col_count + _outer_padding.x + _outer_padding.width,
+            y + _outer_padding.y + _outer_padding.height
+        });
+    } else {
+        set_size({
+            max(0.f, _outer_padding.x + _outer_padding.width),
+            max(0.f, _outer_padding.y + _outer_padding.height)
         });
     }
     

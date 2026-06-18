@@ -93,6 +93,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     pos = get(_defaults.pos, "pos");
     origin = get(_defaults.origin, "origin");
     pad = get(_defaults.pad, "pad");
+    outer_pad = get(_defaults.outer_pad, "outer_pad");
     name = get(std::string(), "name");
     fill = get(_defaults.fill, "fill");
     corners = get(_defaults.corners, "corners");
@@ -173,6 +174,9 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
 
     apply_field("pad", pad, [&](const auto& value) {
         LabeledField::delegate_to_proper_type(attr::Margins{value}, ptr);
+    });
+    apply_field("outer_pad", outer_pad, [&](const auto& value) {
+        LabeledField::delegate_to_proper_type(OuterPadding{value}, ptr);
     });
 
     LabeledField::delegate_to_proper_type(font, ptr);
@@ -866,26 +870,49 @@ Layout::Ptr LayoutContext::create_object<LayoutType::textfield>()
 {
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Textfield>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font}();
-    
-    if(obj.count("action")) {
-        auto action = PreAction::fromStr(obj.at("action").get<std::string>());
-        ptr.to<Textfield>()->on_enter(
+    auto textfield = ptr.to<Textfield>();
+    auto bind_text_action = [&](const char* field, auto&& apply) {
+        if(!obj.count(field))
+            return;
+
+        const auto action = PreAction::fromStr(obj.at(field).get<std::string>());
+        apply(
             bind_with_state(state._current_object_handler, context,
-              [action](const Context& context, State& state) {
-                  try {
-                      if(auto it = context.actions.find(action.name);
-                         it != context.actions.end())
-                      {
-                          it->second(action.parse(context, state));
-                      } else
-                          Print("Unknown Action: ", action);
-                  } catch(const std::exception& ex) {
-                      FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
-                  }
-              }
+                [action, textfield](const Context& context, State& state) {
+                    try {
+                        if(auto handler = state._current_object_handler.lock()) {
+                            auto scope = handler->scope();
+                            scope.set("text", textfield->text());
+                            auto parsed = action.parse(context, state);
+                            if(auto it = context.actions.find(parsed.name);
+                               it != context.actions.end())
+                            {
+                                it->second(std::move(parsed));
+                            } else
+                                Print("Unknown Action: ", parsed);
+                        } else {
+                            auto parsed = action.parse(context, state);
+                            if(auto it = context.actions.find(parsed.name);
+                               it != context.actions.end())
+                            {
+                                it->second(std::move(parsed));
+                            } else
+                                Print("Unknown Action: ", parsed);
+                        }
+                    } catch(const std::exception& ex) {
+                        FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
+                    }
+                }
             )
         );
-    }
+    };
+
+    bind_text_action("action", [textfield](auto&& fn) {
+        textfield->on_enter(std::forward<decltype(fn)>(fn));
+    });
+    bind_text_action("on_text_changed", [textfield](auto&& fn) {
+        textfield->on_text_changed(std::forward<decltype(fn)>(fn));
+    });
     
     return ptr;
 }

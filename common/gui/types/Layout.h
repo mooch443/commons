@@ -6,6 +6,7 @@
 
 namespace cmn::gui {
     ATTRIBUTE_ALIAS(MinSize, Size2);
+    ATTRIBUTE_ALIAS(OuterPadding, cmn::Bounds);
 
     namespace detail {
         template<class Obj, class... Args>
@@ -48,6 +49,7 @@ namespace cmn::gui {
         
     protected:
         GETTER(attr::Margins, margins);
+        GETTER(OuterPadding, outer_padding);
         GETTER(MinSize, minSize);
         
     public:
@@ -98,6 +100,7 @@ namespace cmn::gui {
         void create(Args... args) {
             _minSize = MinSize{};
             _margins = Margins{};
+            _outer_padding = OuterPadding{};
             
             (set(std::forward<Args>(args)), ...);
             init();
@@ -123,6 +126,15 @@ namespace cmn::gui {
         using Entangled::set;
         void set(attr::Margins margins) {
             set_margins(margins);
+        }
+        void set(OuterPadding outer_padding) {
+            if(_outer_padding == outer_padding)
+                return;
+            
+            _outer_padding = outer_padding;
+            
+            set_layout_dirty();
+            set_content_changed(true);
         }
         void set(const std::vector<Layout::Ptr>& ptr) {
             set_children(ptr);

@@ -90,6 +90,7 @@ public:
     Vec2 pos;
     Vec2 origin;
     Bounds pad;
+    Bounds outer_pad;
     std::string name;
     Color fill;
     Color line;

@@ -435,6 +435,10 @@ endif()
 message(STATUS "HAVE_CONCEPT_IMPLEMENTATION = ${HAVE_CONCEPT_IMPLEMENTATION}")
 
 foreach(target ${COMMONS_ACTIVE_TARGETS})
+    if(COMMONS_CONDA_PACKAGE_INSTALL)
+        target_compile_definitions(${target} PUBLIC COMMONS_CONDA_PACKAGE_INSTALL=1)
+    endif()
+
     target_compile_definitions(${target} PUBLIC COMMONS_HAS_OPENGL=${CMN_FOUND_OPENGL} COMMONS_PYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}")
     if(COMMONS_NO_PYTHON)
         target_compile_definitions(${target} PUBLIC COMMONS_NO_PYTHON=true)
