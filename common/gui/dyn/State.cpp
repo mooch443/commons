@@ -56,6 +56,31 @@ static std::string loop_item_name(const LoopBody& loop) {
     return loop.item_name.empty() ? std::string("i") : loop.item_name;
 }
 
+static bool can_parse_as_simple_loop_variable(std::string_view variable) noexcept {
+    variable = utils::trim(variable);
+    if(variable.empty())
+        return false;
+
+    if(variable.front() == '{') {
+        if(variable.back() != '}')
+            return false;
+        variable = variable.substr(1, variable.size() - 2);
+        variable = utils::trim(variable);
+        if(variable.empty())
+            return false;
+    }
+
+    bool has_name_character = false;
+    for(const char c : variable) {
+        if(c == ':' || c == '{' || c == '}' || c == '[' || c == ']' || c == '\'' || c == '"')
+            return false;
+        if(!std::isspace(static_cast<unsigned char>(c)) && c != '#' && c != '.')
+            has_name_character = true;
+    }
+
+    return has_name_character;
+}
+
 // Shared by `list` and `each`: accepts raw JSON arrays, vectors of JSON
 // values, and variables that expose a to_json() array through VarBase.
 static std::optional<std::vector<glz::json_t>> json_array_from_variable(
@@ -764,12 +789,87 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     }*/
 #endif
     //obj._state->_variable_values.clear();
-    
-    PreVarProps ps = extractControls(obj.variable);
-    const auto props = ps.parse(context, state);
+
     const auto item_name = loop_item_name(obj);
 
-    if(context.has(props.name, state)) {
+    auto generate_objects_from_string = [&](const std::string& str){
+        if(not utils::beginsWith(str, '[')
+           || not utils::endsWith(str, ']'))
+        {
+            return false;
+        }
+
+        std::vector<std::string_view> vector;
+
+        try {
+            vector = util::parse_array_parts(util::truncate(std::string_view(str)));
+        } catch(const std::exception& ex) {
+            return false;
+        }
+
+        std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
+        if(ptrs.size() != min(max_displayed_objects, vector.size()))
+            dirty = true;
+        ptrs.resize(vector.size());
+
+        auto scoped_handler = ensure_current_object_handler(state);
+        auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
+
+        size_t i = 0;
+        for(auto &v : vector) {
+            auto scope = scoped_handler->scope();
+            scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
+                return i;
+            }).second);
+            scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> std::string {
+                return v;
+            }).second);
+            if(have_index)
+                scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
+                    return index;
+                }).second);
+
+            // try to reuse existing objects first:
+            Layout::Ptr &ptr = ptrs.at(i);
+            if(not ptr) {
+                ptr = parse_object(gui, obj.child, context, state, context.defaults);
+                dirty = true;
+            }
+            if(ptr) {
+                if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
+                    dirty = true;
+                } else if(ptr && ptr->is_dirty()) {
+                    dirty = true;
+                }
+            }
+
+            ++i;
+            if (i >= max_displayed_objects) {
+                break;
+            }
+        }
+
+        ptrs.resize(i);
+        o.to<Layout>()->set_children(std::move(ptrs));
+
+        if(dirty) {
+            //Print(o.to<Layout>(), " is dirty.");
+            o.to<Layout>()->set_layout_dirty();
+            o.to<Layout>()->update();
+        }
+
+        return true;
+    };
+
+    std::optional<VarProps> typed_props;
+    if(can_parse_as_simple_loop_variable(obj.variable)) {
+        auto props = extractControls(obj.variable).parse(context, state);
+        if(context.has(props.name, state))
+            typed_props = std::move(props);
+    }
+
+    if(typed_props.has_value()) {
+        const auto& props = typed_props.value();
         auto loop_variable = context.variable(props.name, state);
         if(loop_variable->is_strict<std::vector<std::shared_ptr<VarBase_t>>&>()) {
             auto& vector = loop_variable->value<std::vector<std::shared_ptr<VarBase_t>>&>(props);
@@ -978,83 +1078,41 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
         }
         else if(loop_variable->is<std::string>()) {
             auto str = loop_variable->value<std::string>(props);
-            if(utils::beginsWith(str, '[')
-               && utils::endsWith(str, ']'))
-            {
-                std::vector<std::string_view> vector;
-                
-                try {
-                    vector = util::parse_array_parts(util::truncate(std::string_view(str)));
-                } catch(const std::exception& ex) {
-                    error = true;
-                }
-                
-                std::vector<Layout::Ptr> ptrs = o.to<Layout>()->objects();
-                if(ptrs.size() != min(max_displayed_objects, vector.size()))
-                    dirty = true;
-                ptrs.resize(vector.size());
-
-                auto scoped_handler = ensure_current_object_handler(state);
-                auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
-                
-                size_t i = 0;
-                for(auto &v : vector) {
-                    auto scope = scoped_handler->scope();
-                    scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
-                        return i;
-                    }).second);
-                    scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> std::string {
-                        return v;
-                    }).second);
-                    if(have_index)
-                        scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
-                            return index;
-                        }).second);
-                    
-                    // try to reuse existing objects first:
-                    Layout::Ptr &ptr = ptrs.at(i);
-                    if(not ptr) {
-                        ptr = parse_object(gui, obj.child, context, state, context.defaults);
-                        dirty = true;
-                    }
-                    if(ptr) {
-                        if(DynamicGUI::update_objects(gui, g, ptr, context, state)) {
-                            dirty = true;
-                        } else if(ptr && ptr->is_dirty()) {
-                            dirty = true;
-                        }
-                    }
-                    
-                    ++i;
-                    if (i >= max_displayed_objects) {
-                        break;
-                    }
-                }
-                
-                ptrs.resize(i);
-                o.to<Layout>()->set_children(std::move(ptrs));
-                
-                if(dirty) {
-                    //Print(o.to<Layout>(), " is dirty.");
-                    o.to<Layout>()->set_layout_dirty();
-                    o.to<Layout>()->update();
-                }
-                
-            } else {
+            if(not generate_objects_from_string(str))
                 error = true;
-            }
         }
         else {
             error = true;
         }
     }
-    else error = true;
+    else {
+        auto parsed = parse_text(obj.variable, context, state);
+        if(utils::beginsWith(parsed, '[')
+           && utils::endsWith(parsed, ']'))
+        {
+            if(not generate_objects_from_string(parsed))
+                error = true;
+
+            if(error) {
+                auto ptrs = std::vector<Layout::Ptr>();
+                auto text = settings::htmlify("Invalid loop for "+ parsed + " in "+glz::write_json(obj.child).value_or("null"));
+                ptrs.push_back(Layout::Make<StaticText>{attr::Str{text}});
+                o.to<Layout>()->set_children(std::move(ptrs));
+                o.to<Layout>()->set_layout_dirty();
+                o.to<Layout>()->update();
+            }
+
+            return dirty;
+        }
+
+        error = true;
+    }
     
     if(error) {
         auto ptrs = std::vector<Layout::Ptr>();
-        auto loop_text = context.has(props.name, state)
-            ? context.variable(props.name, state)->value_string(props)
-            : std::string(props.name);
+        auto loop_text = typed_props.has_value()
+            ? context.variable(typed_props->name, state)->value_string(*typed_props)
+            : std::string(obj.variable);
         auto text = settings::htmlify("Invalid loop for "+ loop_text + " in "+glz::write_json(obj.child).value_or("null"));
         ptrs.push_back(Layout::Make<StaticText>{attr::Str{text}});
         o.to<Layout>()->set_children(std::move(ptrs));

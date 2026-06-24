@@ -5,8 +5,98 @@
 #include <gui/dyn/ParseText.h>
 #include <misc/Path.h>
 #include <misc/DisplayValue.h>
+#include <file/PathArray.h>
 
 namespace cmn::gui::dyn {
+
+robin_hood::unordered_map<std::string, LocalSettingTypes::Factory, MultiStringHash, MultiStringEqual>& LocalSettingTypes::registry() {
+    static robin_hood::unordered_map<std::string, Factory, MultiStringHash, MultiStringEqual> map;
+    return map;
+}
+
+void LocalSettingTypes::ensure_defaults() {
+    static std::once_flag once;
+    std::call_once(once, [] {
+        register_type<bool>("bool");
+        register_type<int>("int");
+        register_type<uint64_t>("uint");
+        register_type<float>("float");
+        register_type<double>("double");
+        register_type<std::string>("string");
+        register_type<file::Path>("path");
+        register_type<file::PathArray>("path_array");
+        registry()["bool_array"] = [](sprite::Map& map, std::string_view local_name, const glz::json_t* value, bool has_value) {
+            std::vector<uint8_t> values;
+            if(has_value && value != nullptr) {
+                if(value->is_array()) {
+                    for(const auto& item : value->get_array()) {
+                        if(item.is_boolean())
+                            values.push_back(item.get<bool>() ? 1 : 0);
+                        else if(item.is_number())
+                            values.push_back(item.get<double>() != 0.0 ? 1 : 0);
+                        else if(item.is_string())
+                            values.push_back(convert_to_bool(item.get<std::string>()) ? 1 : 0);
+                        else
+                            throw InvalidArgumentException("bool_array values must be booleans, numbers, or strings.");
+                    }
+                } else if(value->is_string()) {
+                    for(const auto& part : util::parse_array_parts(util::truncate(value->get<std::string>())))
+                        values.push_back(convert_to_bool(part) ? 1 : 0);
+                } else {
+                    throw InvalidArgumentException("bool_array local settings must use a JSON array or string array.");
+                }
+            }
+            const auto name = std::string(local_name);
+            map[name] = values;
+        };
+        register_type<std::vector<int>>("int_array");
+        register_type<std::vector<uint64_t>>("uint_array");
+        register_type<std::vector<float>>("float_array");
+        register_type<std::vector<double>>("double_array");
+        register_type<std::vector<std::string>>("string_array");
+        register_type<Vec2>("vec2");
+        register_type<Size2>("size");
+        register_type<Color>("color");
+    });
+}
+
+bool LocalSettingTypes::has(std::string_view alias) {
+    ensure_defaults();
+    return registry().contains(std::string(alias));
+}
+
+std::vector<std::string> LocalSettingTypes::available_names() {
+    ensure_defaults();
+    std::vector<std::string> names;
+    names.reserve(registry().size());
+    for(const auto& [name, _] : registry())
+        names.push_back(name);
+    std::sort(names.begin(), names.end());
+    return names;
+}
+
+std::string LocalSettingTypes::available_names_string() {
+    auto names = available_names();
+    std::string text;
+    for(const auto& name : names) {
+        if(!text.empty())
+            text += ", ";
+        text += name;
+    }
+    return text;
+}
+
+void LocalSettingTypes::make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value) {
+    ensure_defaults();
+    auto it = registry().find(std::string(alias));
+    if(it == registry().end()) {
+        throw InvalidArgumentException(
+            "Unknown DynamicGUI local setting type '", alias, "'. Available types: ",
+            available_names_string(), "."
+        );
+    }
+    it->second(map, local_name, value, has_value);
+}
 
 void CurrentObjectHandler::register_tooltipable(std::weak_ptr<LabeledField> field, std::weak_ptr<Drawable> ptr) {
     _textfields.emplace_back(field, ptr);
@@ -642,6 +732,73 @@ std::optional<decltype(Context::variables)::const_iterator> Context::find(std::s
     if(it != system_variables().end())
         return it;
     return std::nullopt;
+}
+
+bool Context::is_local_setting_name(std::string_view name) noexcept {
+    return utils::beginsWith(name, "local.");
+}
+
+std::string_view Context::local_setting_key(std::string_view name) {
+    if(!is_local_setting_name(name))
+        throw InvalidArgumentException("Expected local setting name but got '", name, "'.");
+
+    auto key = name.substr(std::string_view("local.").size());
+    if(key.empty() || key.find('.') != std::string_view::npos)
+        throw InvalidArgumentException("Local settings support one-level names as local.name, got '", name, "'.");
+    return key;
+}
+
+sprite::Reference Context::local_setting_ref(std::string_view name) const {
+    const auto key = local_setting_key(name);
+    const auto local_name = std::string(key);
+    if(!local_settings.has(local_name))
+        throw InvalidArgumentException("DynamicGUI local setting '", name, "' has not been declared.");
+    return local_settings[local_name];
+}
+
+std::optional<std::string> Context::local_setting_alias(std::string_view name) const {
+    const auto key = local_setting_key(name);
+    auto it = local_setting_aliases.find(std::string(key));
+    if(it == local_setting_aliases.end())
+        return std::nullopt;
+    return it->second;
+}
+
+void Context::apply_local_settings(const DefaultSettings& defaults) const {
+    LocalSettingTypes::ensure_defaults();
+
+    for(auto it = local_setting_aliases.begin(); it != local_setting_aliases.end();) {
+        if(!defaults.locals.contains(it->first)) {
+            if(local_settings.has(it->first))
+                local_settings.erase(it->first);
+            it = local_setting_aliases.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    for(const auto& [name, setting] : defaults.locals) {
+        if(name.empty() || name.find('.') != std::string::npos)
+            throw InvalidArgumentException("DynamicGUI local setting names must be one-level names, got '", name, "'.");
+
+        auto alias_it = local_setting_aliases.find(name);
+        const bool alias_changed = alias_it != local_setting_aliases.end() && alias_it->second != setting.type;
+        const bool missing = !local_settings.has(name);
+
+        if(alias_changed && local_settings.has(name))
+            local_settings.erase(name);
+
+        if(alias_changed || missing) {
+            LocalSettingTypes::make(
+                local_settings,
+                setting.type,
+                name,
+                setting.has_value ? &setting.value : nullptr,
+                setting.has_value
+            );
+            local_setting_aliases[name] = setting.type;
+        }
+    }
 }
 
 template<typename T, bool allow_null_ambiguity = false>
@@ -1283,6 +1440,14 @@ void Context::init() const {
                     return "null";
                 auto v = GlobalSettings::read_value<NoType>(props.subs.front());
                 return sprite::display_property(v);
+            }),
+            VarFunc("local", [this](const VarProps& props) -> std::string {
+                if(props.subs.empty())
+                    return "null";
+                const auto& key = props.subs.front();
+                if(!local_settings.has(key))
+                    throw InvalidArgumentException("DynamicGUI local setting 'local.", key, "' has not been declared.");
+                return sprite::display_property(local_settings[key]);
             }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);

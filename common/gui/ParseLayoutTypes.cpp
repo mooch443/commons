@@ -654,33 +654,63 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         auto hashed = state.get_monostate(hash, ptr);
         //Print("* creating hash ", hash, " for ", hex(ptr.get()));
+        const bool is_local_setting = Context::is_local_setting_name(var);
+        std::string field_var = var;
+        sprite::Map* local_settings = nullptr;
+        std::string local_alias;
+        if(is_local_setting) {
+            auto local_ref = context.local_setting_ref(var);
+            if(not local_ref.valid())
+                throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+            field_var = std::string(Context::local_setting_key(var));
+            local_settings = &context.local_settings;
+            local_alias = context.local_setting_alias(var).value_or(std::string{});
+        }
         
         if(var.empty()
            || not hashed->_value_box
            || (hashed->_var_cache
                && (var != hashed->_var_cache->_var
+                   || local_alias != hashed->_var_cache->_local_alias
                    || invert != hashed->_var_cache->_invert)))
         {
-            hashed->_value_box = LabeledField::Make({}, gui, var, state, *this, invert);
+            hashed->_value_box = LabeledField::Make({}, gui, field_var, local_settings, state, *this, invert);
             if(not hashed->_value_box) {
-                auto v = GlobalSettings::read_value<NoType>(var);
-                FormatWarning("Cannot create representative of field ", var, " when creating controls for type ",v.valid() ? v.get().type_name() : "(null)",".");
+                std::string type_name = "(null)";
+                if(is_local_setting) {
+                    auto v = context.local_setting_ref(var);
+                    if(v.valid())
+                        type_name = v.get().type_name();
+                } else {
+                    auto v = GlobalSettings::write_value<NoType>(var);
+                    if(v.valid())
+                        type_name = v.get().type_name();
+                }
+                FormatWarning("Cannot create representative of field ", var, " when creating controls for type ", type_name,".");
                 return nullptr;
             }
             
             hashed->_var_cache = VarCache{
                 ._var = var,
+                ._local_alias = local_alias,
                 ._invert = invert,
                 ._obj = obj
             };
             
         } else {
-            auto ref = GlobalSettings::write_value<NoType>(var);
-            if(not ref.valid())
-                throw U_EXCEPTION("GlobalSettings has no parameter named ", var,".");
+            if(is_local_setting) {
+                auto ref = context.local_setting_ref(var);
+                if(not ref.valid())
+                    throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+            } else {
+                auto ref = GlobalSettings::write_value<NoType>(var);
+                if(not ref.valid())
+                    throw U_EXCEPTION("GlobalSettings has no parameter named ", var,".");
+            }
             hashed->_value_box->update_ref_in_main_thread();
             hashed->_var_cache->_obj = obj;
             hashed->_var_cache->_var = var;
+            hashed->_var_cache->_local_alias = local_alias;
             hashed->_var_cache->_invert = invert;
             hashed->_var_cache->_cached_ptr = std::weak_ptr(hashed->_value_box->representative().get_smart());
         }

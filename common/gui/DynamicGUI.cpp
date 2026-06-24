@@ -189,6 +189,42 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                     }
                 }
             }
+            if(obj.contains("locals")) {
+                if(!obj.at("locals").is_object())
+                    throw InvalidSyntaxException("DynamicGUI top-level 'locals' must be an object.");
+
+                for(auto& [name, value] : obj.at("locals").get_object()) {
+                    DefaultSettings::LocalSetting local;
+                    if(value.is_string()) {
+                        local.type = value.get<std::string>();
+
+                    } else if(value.is_object()) {
+                        const auto& local_object = value.get_object();
+                        auto type_it = local_object.find("type");
+                        if(type_it == local_object.end() || !type_it->second.is_string())
+                            throw InvalidSyntaxException("DynamicGUI local setting '", name, "' must specify a string 'type'.");
+                        local.type = type_it->second.get<std::string>();
+
+                        if(auto value_it = local_object.find("value");
+                           value_it != local_object.end())
+                        {
+                            local.value = value_it->second;
+                            local.has_value = true;
+                        }
+
+                    } else {
+                        throw InvalidSyntaxException("DynamicGUI local setting '", name, "' must be an object or type alias string.");
+                    }
+
+                    if(!LocalSettingTypes::has(local.type)) {
+                        throw InvalidSyntaxException(
+                            "Unknown DynamicGUI local setting type '", local.type, "' for local '", name,
+                            "'. Available types: ", LocalSettingTypes::available_names_string(), "."
+                        );
+                    }
+                    defaults.locals[name] = std::move(local);
+                }
+            }
         } catch(const std::exception& ex) {
             //FormatExcept("Cannot parse layout due to: ", ex.what());
             //return std::unexpected(ex.what());
@@ -296,8 +332,6 @@ void DynamicGUI::reload(DrawStructure& graph) {
         read_file_future.get().transform([&, graph = &graph](const auto& result) {
             auto&& [defaults, layout] = result;
             //state._text_fields.clear();
-            context.defaults = std::move(defaults);
-            
             State tmp;
             tmp._current_object_handler = std::weak_ptr(current_object_handler);
             
@@ -306,6 +340,10 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 tmp._last_settings_box = std::move(state._last_settings_box);
                 tmp._settings_was_selected = graph->selected_object() ? (graph->selected_object()->is_child_of(tmp._last_settings_box.get()) || graph->selected_object() == tmp._last_settings_box.get()) : false;
             }
+
+            state = {};
+            context.apply_local_settings(defaults);
+            context.defaults = std::move(defaults);
             
             context.system_variables().emplace(VarFunc("hovered", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
                 if(props.parameters.empty()) {
@@ -415,7 +453,6 @@ void DynamicGUI::reload(DrawStructure& graph) {
             
             std::vector<Layout::Ptr> objs;
             objects.clear();
-            state = {};
             for(auto &obj : layout.get_array()) {
                 auto ptr = parse_object(gui, obj.get_object(), context, tmp, context.defaults);
                 if(ptr) {

@@ -1376,7 +1376,7 @@ Q fromStr(cmn::StringLike auto&& str)
     for(auto &s : parts) {
         if(s.empty()) {
             ret.push_back(typename Q::value_type());
-            throw std::invalid_argument("Empty value in '"+std::string(str)+"'.");
+            //throw std::invalid_argument("Empty value in '"+std::string(str)+"'.");
         }
         else {
             auto v = Meta::fromStr<typename Q::value_type>(s);

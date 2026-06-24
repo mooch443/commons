@@ -5,6 +5,8 @@
 #include <gui/GuiTypes.h>
 #include <gui/types/SettingsTooltip.h>
 #include <misc/TooltipData.h>
+#include <misc/Path.h>
+#include <misc/SpriteMap.h>
 
 namespace cmn::gui::dyn {
 
@@ -14,6 +16,12 @@ struct Action;
 struct CustomElement;
 
 struct DefaultSettings {
+    struct LocalSetting {
+        std::string type;
+        glz::json_t value{};
+        bool has_value{false};
+    };
+
     Vec2 scale{1.f};
     Vec2 pos{0.f};
     Vec2 origin{0.f};
@@ -38,7 +46,58 @@ struct DefaultSettings {
     Font font{0.75f};
     
     std::unordered_map<std::string, std::shared_ptr<VarBase<const Context&, State&>>, MultiStringHash, MultiStringEqual> variables;
+    std::unordered_map<std::string, LocalSetting, MultiStringHash, MultiStringEqual> locals;
 };
+
+class LocalSettingTypes {
+public:
+    using Factory = std::function<void(sprite::Map&, std::string_view, const glz::json_t*, bool)>;
+
+    /// Register a C++ type under a JSON-facing alias for DynamicGUI local settings.
+    template<typename T>
+    static void register_type(std::string alias);
+
+    static bool has(std::string_view alias);
+    static std::vector<std::string> available_names();
+    static std::string available_names_string();
+    static void make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value);
+    static void ensure_defaults();
+
+private:
+    static robin_hood::unordered_map<std::string, Factory, MultiStringHash, MultiStringEqual>& registry();
+};
+
+namespace detail {
+    template<typename T>
+    T local_setting_from_json(const glz::json_t* value, bool has_value) {
+        if(!has_value || value == nullptr)
+            return T{};
+
+        if constexpr(std::same_as<T, std::string>) {
+            if(value->is_string())
+                return value->get<std::string>();
+            return glz::write_json(*value).value_or(std::string{});
+
+        } else if constexpr(std::same_as<T, file::Path>) {
+            if(value->is_string())
+                return file::Path(value->get<std::string>());
+            return Meta::fromStr<file::Path>(glz::write_json(*value).value());
+
+        } else {
+            if(value->is_string())
+                return Meta::fromStr<T>(value->get<std::string>());
+            return Meta::fromStr<T>(glz::write_json(*value).value());
+        }
+    }
+}
+
+template<typename T>
+void LocalSettingTypes::register_type(std::string alias) {
+    registry()[std::move(alias)] = [](sprite::Map& map, std::string_view local_name, const glz::json_t* value, bool has_value) {
+        const auto name = std::string(local_name);
+        map[name] = detail::local_setting_from_json<T>(value, has_value);
+    };
+}
 
 struct CurrentObjectHandler {
     struct VariableValue {
@@ -200,6 +259,8 @@ struct Context {
     DefaultSettings defaults;
     
     mutable std::optional<robin_hood::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
+    mutable sprite::Map local_settings;
+    mutable std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> local_setting_aliases;
 
     std::unordered_map<std::string, std::shared_ptr<CustomElement>> custom_elements;
     Vec2 _last_mouse;
@@ -213,6 +274,13 @@ struct Context {
     [[nodiscard]] std::shared_ptr<VarBase_t> variable(std::string_view, const State&) const;
     [[nodiscard]] bool has(std::string_view, const State&) const noexcept;
     [[nodiscard]] std::optional<decltype(variables)::const_iterator> find(std::string_view) const noexcept;
+    /// Reconcile the per-DynamicGUI local settings map with the latest layout declarations.
+    void apply_local_settings(const DefaultSettings&) const;
+    /// Helpers for resolving settings vars such as "local.dataset_file".
+    [[nodiscard]] static bool is_local_setting_name(std::string_view) noexcept;
+    [[nodiscard]] static std::string_view local_setting_key(std::string_view);
+    [[nodiscard]] sprite::Reference local_setting_ref(std::string_view) const;
+    [[nodiscard]] std::optional<std::string> local_setting_alias(std::string_view) const;
 
     Context() noexcept = default;
     Context(std::initializer_list<std::variant<ActionPair, VariablePair>> init_list);

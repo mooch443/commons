@@ -40,6 +40,8 @@ constexpr double video_chooser_column_width = 300;
 
 
 sprite::Reference LabeledField::ref() const {
+    if(_local_settings)
+        return (*_local_settings)[_ref];
     return GlobalSettings::write_value<NoType>(_ref);
 }
 
@@ -62,8 +64,8 @@ std::shared_ptr<Drawable> LabeledField::tooltip_object() const
     return representative().get_smart();
 }
 
-LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
-    : _gui(gui), _ref(name), _text(new gui::Text(Str{name}))
+LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name, sprite::Map* local_settings)
+    : _gui(gui), _ref(name), _local_settings(local_settings), _text(new gui::Text(Str{name}))
 {
     //if(name.empty())
     //    throw std::invalid_argument("Name cannot be empty.");
@@ -71,15 +73,20 @@ LabeledField::LabeledField(GUITaskQueue_t* gui, const std::string& name)
     _text->set_color(White);
     
     if(not _ref.empty()
-       && GlobalSettings::has_value(_ref))
+       && ((_local_settings && _local_settings->has(_ref))
+           || (!_local_settings && GlobalSettings::has_value(_ref))))
     {
-        _callback_id = GlobalSettings::register_callbacks({name}, [this](auto){
+        auto callback = [this](auto) {
             trigger_ref_update();
-        });
+        };
+        if(_local_settings)
+            _callback_id = _local_settings->register_callbacks({name}, callback);
+        else
+            _callback_id = GlobalSettings::register_callbacks({name}, callback);
     }
 //#ifndef NDEBUG
     else if(not name.empty()) {
-        throw U_EXCEPTION("Ref invalid: ", name);
+        throw U_EXCEPTION("Ref invalid: ", _local_settings ? "local." : "", name);
     }
 //#endif
 }
@@ -128,8 +135,12 @@ LabeledField::~LabeledField() {
         std::unique_lock g{*m};
     }
     
-    if(_callback_id)
-        GlobalSettings::unregister_callbacks(std::move(_callback_id));
+    if(_callback_id) {
+        if(_local_settings)
+            _local_settings->unregister_callbacks(std::move(_callback_id));
+        else
+            GlobalSettings::unregister_callbacks(std::move(_callback_id));
+    }
     _delete_callbacks.callAll();
 }
 
@@ -229,6 +240,13 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
     return Make(d, gui, parm, state, c, invert);
 }
 
+std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t* gui, std::string parm, sprite::Map* local_settings, bool invert) {
+    State state;
+    LayoutContext c(gui, {}, state, {}, {});
+    assert(not parm.empty());
+    return Make(d, gui, parm, local_settings, state, c, invert);
+}
+
 struct TypeInfo_ref {
     const sprite::Reference& _prop;
     
@@ -296,6 +314,10 @@ struct TypeInfo_optional {
 };
 
 std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t* gui, std::string parm, State& state, const LayoutContext& context, bool invert) {
+    return Make(d, gui, std::move(parm), nullptr, state, context, invert);
+}
+
+std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t* gui, std::string parm, sprite::Map* local_settings, State& state, const LayoutContext& context, bool invert) {
     if(parm.empty()) {
         //! this will instantiate the combobox for choosing settings
         //! so we cant specify a reference - this is for _all_ parameters.
@@ -303,25 +325,27 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
         return ptr;
     }
     
-    auto ref = GlobalSettings::write_value<NoType>(parm);
+    auto ref = local_settings
+        ? (*local_settings)[parm]
+        : GlobalSettings::write_value<NoType>(parm);
     if(not ref.valid())
-        throw U_EXCEPTION("GlobalSettings has no parameter named ", parm,".");
+        throw U_EXCEPTION(local_settings ? "DynamicGUI locals have no parameter named " : "GlobalSettings has no parameter named ", parm,".");
     
     /*if(ref.is_type<bool>()) {
         ptr = std::make_unique<LabeledCheckbox>(parm, parm, obj,invert);
         
     } else*/
     
-    auto create_element = [&parm, gui, &context, invert](const auto& type_info)
+    auto create_element = [&parm, gui, &context, invert, local_settings](const auto& type_info)
         -> std::unique_ptr<LabeledField>
     {
         std::unique_ptr<LabeledField> ptr;
         
         if(type_info.is_optional()) {
-            ptr = std::make_unique<LabeledOptional>(gui, parm, context.obj);
+            ptr = std::make_unique<LabeledOptional>(gui, parm, context.obj, local_settings);
             
         } else if(type_info.template is_type<std::string>()) {
-            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj, local_settings);
             ptr->representative().to<Textfield>()->set_text(type_info.template value<std::string>());
             
         } else if(type_info.template is_type<int>()
@@ -329,23 +353,24 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
                   || type_info.template is_type<double>()
                   || type_info.template is_type<uint8_t>()
                   || type_info.template is_type<uint16_t>()
+                  || type_info.template is_type<uint32_t>()
                   || type_info.template is_type<uint64_t>()
                   || type_info.template is_type<timestamp_t>())
         {
-            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj, local_settings);
             ptr->representative().to<Textfield>()->set_text(type_info.valueString());
             
         } else if(type_info.template is_type<file::Path>()) {
-            ptr = std::make_unique<LabeledPath>(gui, parm, parm, type_info.template value<file::Path>());
+            ptr = std::make_unique<LabeledPath>(gui, parm, parm, type_info.template value<file::Path>(), local_settings);
             
         } else if(type_info.template is_type<file::PathArray>()) {
-            ptr = std::make_unique<LabeledPathArray>(gui, parm, &context);
+            ptr = std::make_unique<LabeledPathArray>(gui, parm, &context, local_settings);
             
         } else if(type_info.template is_type<bool>() || type_info.is_enum()) {
-            ptr = std::make_unique<LabeledList>(gui, parm, context.obj, invert);
+            ptr = std::make_unique<LabeledList>(gui, parm, context.obj, invert, local_settings);
             
         } else {
-            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj);
+            ptr = std::make_unique<LabeledTextField>(gui, parm, context.obj, local_settings);
             ptr->representative().to<Textfield>()->set_text(type_info.valueString());
             //throw U_EXCEPTION("Cannot find the appropriate control for type ", ref.get().type_name());
         }
@@ -364,12 +389,12 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
     return create_element(TypeInfo_ref{(const sprite::Reference&)ref});
 }
 
-LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
-    : LabeledField(gui, name),
+LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+    : LabeledField(gui, name, local_settings),
       _create_button(new Button(Str{"+"}, Size{30,30})),
       _null_value(new Entangled())
 {
-    _value = LabeledField::Make({true}, gui, (std::string)ref().name());
+    _value = LabeledField::Make({true}, gui, (std::string)ref().name(), local_settings);
     _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28});
     
     _reset_button->on_click([this](auto){
@@ -544,8 +569,8 @@ void LabeledOptional::update_ref_in_main_thread() {
     }
 }
 
-LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert)
-: LabeledField(gui, name),
+LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert, sprite::Map* local_settings)
+: LabeledField(gui, name, local_settings),
 _checkbox(new gui::Checkbox(attr::Str(desc))),
 _invert(invert)
 {
@@ -582,8 +607,8 @@ void LabeledCheckbox::set_description(std::string desc) {
 LabeledCheckbox::~LabeledCheckbox() {
 }
 
-LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
-    : LabeledField(gui, name),
+LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+    : LabeledField(gui, name, local_settings),
     _text_field(new gui::Textfield(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     _text_field->set_placeholder(name);
@@ -646,8 +671,8 @@ void LabeledTextField::update_ref_in_main_thread() {
     }
 }
 
-LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert)
-: LabeledField(gui, name),
+LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert, sprite::Map* local_settings)
+: LabeledField(gui, name, local_settings),
 _list(new gui::List(
     Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
   std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this, ptr = std::weak_ptr(_ref_mutex)](List* list, const gui::Item& item){
@@ -799,8 +824,8 @@ void LabeledList::update_ref_in_main_thread() {
     
 }
 
-LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&)
-: LabeledField(gui, name),
+LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+: LabeledField(gui, name, local_settings),
 _dropdown(new gui::Dropdown(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
     replace_docs(TooltipData{name});
@@ -850,8 +875,8 @@ Color LabeledPath::FileItem::color() const {
     return _path.is_folder() ? Color(180, 255, 255, 255) : White;
 }
 
-LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::string&, file::Path path)
-    : LabeledField(gui, name),
+LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::string&, file::Path path, sprite::Map* local_settings)
+    : LabeledField(gui, name, local_settings),
     _files([](const file::Path& A, const file::Path& B) -> bool {
         return (A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str()); //A.str() == ".." || (A.str() != ".." && ((A.is_folder() && !B.is_folder()) || (A.is_folder() == B.is_folder() && A.str() < B.str())));
     }), _path(path)
@@ -1079,8 +1104,8 @@ void LabeledPath::update_ref_in_main_thread() {
     }
 }
 
-LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name, const LayoutContext* context)
-    : LabeledField(gui, name)
+LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name, const LayoutContext* context, sprite::Map* local_settings)
+    : LabeledField(gui, name, local_settings)
 {
     // Initialize Dropdown, attach handlers for events
     _dropdown = new CustomDropdown(attr::Size(300,40));
