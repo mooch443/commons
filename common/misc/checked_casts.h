@@ -56,7 +56,7 @@ void fail_type(From&&
     auto start2 = Meta::toStr(std::numeric_limits<ToType>::min());
     auto end2 = Meta::toStr(std::numeric_limits<ToType>::max());
     
-    detail::checked_cast_warning("Failed converting ", type1.c_str(),"(", value1.c_str(),") [", start1.c_str(),",", end1.c_str(),"] -> type ", type2.c_str()," [", start2.c_str(),",", end2.c_str(),"]");
+    detail::checked_cast_warning("Failed converting ", type1,"(", value1,") [", start1,",", end1,"] -> type ", type2," [", start2,",", end2,"]");
 #endif
 }
 
@@ -131,7 +131,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        detail::checked_cast_warning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " (same) = ", str.c_str(), ".");
+        detail::checked_cast_warning("Narrowing ", tstr0, " -> ", tstr1, " (same) = ", str, ".");
 #endif
         if constexpr(std::is_signed_v<ToType> || sizeof(FromType) > sizeof(ToType))
                 return value >= std::numeric_limits<ToType>::min()
@@ -144,7 +144,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        detail::checked_cast_warning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to int64_t and comparing (fs) = ", str.c_str(), ".");
+        detail::checked_cast_warning("Narrowing ", tstr0, " -> ", tstr1, " | converting to int64_t and comparing (fs) = ", str, ".");
 #endif
         return value >= static_cast<FromType>(std::numeric_limits<ToType>::min())
             && value <= static_cast<FromType>(std::numeric_limits<ToType>::max());
@@ -154,7 +154,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        detail::checked_cast_warning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to uint64_t and comparing (fu) = ", str.c_str(), ".");
+        detail::checked_cast_warning("Narrowing ", tstr0, " -> ", tstr1, " | converting to uint64_t and comparing (fu) = ", str, ".");
 #endif
         return value >= FromType(0)
             && value <= static_cast<FromType>(std::numeric_limits<ToType>::max());
@@ -164,7 +164,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        detail::checked_cast_warning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to int64_t and comparing (us) = ", str.c_str(), ".");
+        detail::checked_cast_warning("Narrowing ", tstr0, " -> ", tstr1, " | converting to int64_t and comparing (us) = ", str, ".");
 #endif
         return value < static_cast<typename std::make_unsigned<ToType>::type>(std::numeric_limits<ToType>::max());
     }
@@ -174,7 +174,7 @@ constexpr bool check_narrow_cast(const From& value) noexcept {
 #ifdef _NARROW_PRINT_VERBOSE
         auto tstr0 = Meta::name<FromType>();
         auto tstr1 = Meta::name<ToType>();
-        detail::checked_cast_warning("Narrowing ", tstr0.c_str(), " -> ", tstr1.c_str(), " | converting to uint64_t and comparing (su) = ", str.c_str(), ".");
+        detail::checked_cast_warning("Narrowing ", tstr0, " -> ", tstr1, " | converting to uint64_t and comparing (su) = ", str, ".");
 #endif
         return value >= FromType(0)
             && static_cast<typename std::make_unsigned<FromType>::type>(value) <= std::numeric_limits<ToType>::max();
@@ -197,7 +197,7 @@ constexpr To narrow_cast(From&& value, struct tag::warn_on_error) noexcept {
         auto tstr = Meta::name<To>();
         auto fstr = Meta::name<From>();
         auto result = check_narrow_cast<To, From>(value);
-        detail::checked_cast_warning("Value ",vstr," in narrowing conversion of ",fstr.c_str()," -> ",tstr.c_str()," is not within limits [",lstr.c_str(),",",rstr.c_str(),"].", result);
+        detail::checked_cast_warning("Value ",vstr," in narrowing conversion of ",fstr," -> ",tstr," is not within limits [",lstr,",",rstr,"].", result);
     }
 #endif
     return static_cast<To>(std::forward<From>(value));
@@ -217,7 +217,7 @@ noexcept
 
         auto tstr = Meta::name<To>();
         auto fstr = Meta::name<From>();
-        throw U_EXCEPTION("Value ",vstr," in narrowing conversion of ",fstr.c_str()," -> ",tstr.c_str()," is not within limits [",lstr.c_str(),",",rstr.c_str(),"].");
+        throw U_EXCEPTION("Value ",vstr," in narrowing conversion of ",fstr," -> ",tstr," is not within limits [",lstr.c_str(),",",rstr.c_str(),"].");
     }
 #endif
     return static_cast<To>(std::forward<From>(value));

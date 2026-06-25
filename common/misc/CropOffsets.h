@@ -23,7 +23,7 @@ public:
     std::string toStr() const;
     glz::json_t to_json() const;
     static CropOffsets fromStr(const std::string&);
-    static const std::string& class_name();
+    static consteval std::string_view class_name() { return "offsets"; }
     bool operator==(const CropOffsets&) const;
 };
 

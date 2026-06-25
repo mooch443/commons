@@ -717,284 +717,6 @@ auto insert_sorted(std::vector<T>& vector, const T& element) {
 }
 
 namespace cmn {
-
-/**
- * @class TrivialOptional
- * @brief A minimal optional implementation for arithmetic types that uses a reserved invalid value.
- *
- * @details
- * Limitations:
- * - Only supports arithmetic types (integral and floating-point).
- * - Uses a sentinel value (e.g., -1 or infinity) which may conflict with valid data values.
- *
- * Advantages:
- * - Zero overhead: occupies the same memory as the underlying type (no extra tag or allocation).
- * - Trivially copyable and constexpr-friendly.
- * - Fast operations with no heap allocations or additional flags.
- *
- * Use std::optional<T> when:
- * - You need a robust optional without sentinel collision risks.
- * - You require full support for all T values, in-place construction, or monadic utilities.
- */
-enum class TrivialIllegalValueType {
-    NegativeOne,
-    Infinity,
-    Lowest
-};
-
-template<typename Numeric,
-         TrivialIllegalValueType InvalidValueType =
-               std::unsigned_integral<Numeric>
-                 ? TrivialIllegalValueType::NegativeOne
-                 : (std::signed_integral<Numeric> || not std::numeric_limits<Numeric>::has_infinity
-                       ? TrivialIllegalValueType::Lowest
-                       : TrivialIllegalValueType::Infinity)>
-    /// TrivialOptional can only be used with integral or floating-point types.
-    requires ((std::integral<Numeric> || std::floating_point<Numeric>) && not std::same_as<Numeric, bool>)
-class TrivialOptional {
-public:
-    static_assert(
-        std::unsigned_integral<Numeric>
-        || std::signed_integral<Numeric>
-        || std::floating_point<Numeric>,
-        "TrivialOptional can only be used with integral or floating-point types"
-    );
-    static_assert(
-        InvalidValueType != TrivialIllegalValueType::Infinity
-                  || std::numeric_limits<Numeric>::has_infinity,
-        "Floating-point TrivialOptional requires IEEE-style infinity"
-    );
-
-    static constexpr Numeric InvalidValue =
-        InvalidValueType == TrivialIllegalValueType::NegativeOne
-            ? static_cast<Numeric>(-1)
-            : (InvalidValueType == TrivialIllegalValueType::Infinity
-                ? std::numeric_limits<Numeric>::infinity()
-                : std::numeric_limits<Numeric>::lowest());
-    
-    static constexpr TrivialIllegalValueType InvalidType = InvalidValueType;
-    
-private:
-    Numeric value_{InvalidValue};
-
-public:
-    using value_type = Numeric;
-    
-    constexpr TrivialOptional() noexcept = default;
-    constexpr TrivialOptional(const TrivialOptional&) noexcept = default;
-    constexpr TrivialOptional(TrivialOptional&&) noexcept = default;
-    constexpr explicit TrivialOptional(Numeric value) noexcept : value_(value) {
-        assert(value != InvalidValue);
-    }
-    constexpr explicit TrivialOptional(std::nullopt_t) noexcept {}
-    
-    constexpr TrivialOptional& operator=(const TrivialOptional&) noexcept = default;
-    constexpr TrivialOptional& operator=(TrivialOptional&&) noexcept = default;
-    constexpr TrivialOptional& operator=(Numeric value) noexcept {
-        assert(value != InvalidValue);
-        value_ = value;
-        return *this;
-    }
-    // Support brace-list assignment: {} resets, {value} assigns that value
-    constexpr TrivialOptional& operator=(std::initializer_list<Numeric> il) noexcept {
-        if (il.size() == 0) {
-            // empty list clears the optional
-            return *this = std::nullopt;
-        } else {
-            // single-element list assigns that value
-            assert(il.size() == 1 && "TrivialOptional initializer-list assignment requires at most one element");
-            return *this = *il.begin();
-        }
-    }
-    constexpr TrivialOptional& operator=(std::nullopt_t) noexcept {
-        value_ = InvalidValue;
-        return *this;
-    }
-
-    constexpr bool has_value() const noexcept {
-        return value_ != InvalidValue;
-    }
-
-    constexpr const Numeric& value() const noexcept {
-        assert(has_value());
-        return value_;
-    }
-
-    constexpr Numeric& value() noexcept {
-        assert(has_value());
-        return value_;
-    }
-
-    constexpr Numeric value_or(Numeric default_value) const noexcept {
-        return has_value() ? value_ : default_value;
-    }
-
-    constexpr void reset() noexcept {
-        value_ = InvalidValue;
-    }
-
-    constexpr Numeric& operator*() noexcept {
-        return value_;
-    }
-
-    constexpr const Numeric& operator*() const noexcept {
-        return value_;
-    }
-
-    constexpr TrivialOptional& operator+=(Numeric value) noexcept {
-        value_ += value;
-        return *this;
-    }
-    constexpr TrivialOptional& operator+=(const TrivialOptional& value) noexcept {
-        assert(value.has_value());
-        assert(has_value());
-        value_ += value;
-        return *this;
-    }
-
-    constexpr Numeric* operator->() noexcept {
-        return &value_;
-    }
-
-    constexpr const Numeric* operator->() const noexcept {
-        return &value_;
-    }
-
-    constexpr explicit operator bool() const noexcept {
-        return has_value();
-    }
-
-    // Comparison operators
-    constexpr friend bool operator==(const TrivialOptional& lhs, const TrivialOptional& rhs) {
-        return lhs.value_ == rhs.value_;
-    }
-
-    constexpr friend bool operator!=(const TrivialOptional& lhs, const TrivialOptional& rhs) {
-        return !(lhs == rhs);
-    }
-    
-    std::string toStr() const {
-        return has_value() ? std::to_string(value_) : "nullopt";
-    }
-    
-    static std::string class_name() {
-        return "TOptional<"+(std::string)typeid(Numeric).name()+">";
-    }
-    
-    glz::json_t to_json() const {
-        return has_value() ? glz::json_t{ value() } : glz::json_t{};
-    }
-    
-    /// we do not have Meta:: available here yet, so we have to go with our manual
-    /// implementation for fromStr
-    static TrivialOptional fromStr(cmn::StringLike auto&& str) {
-        if (str == "null")
-            return {};
-        if constexpr (std::is_integral_v<Numeric>) {
-            long long v = std::stoll(str);
-            return TrivialOptional(static_cast<Numeric>(v));
-        } else if constexpr (std::is_floating_point_v<Numeric>) {
-            long double v = std::stold(str);
-            return TrivialOptional(static_cast<Numeric>(v));
-        } else {
-            static_assert(std::is_integral_v<Numeric> || std::is_floating_point_v<Numeric>,
-                          "TrivialOptional::fromStr not implemented for this type");
-        }
-    }
-};
-
-struct timestamp_t {
-    using value_type = uint64_t;
-    TrivialOptional<value_type> value;
-    
-    timestamp_t() = default;
-    timestamp_t(const timestamp_t&) = default;
-    timestamp_t(timestamp_t&&) = default;
-    
-    constexpr timestamp_t(value_type v) : value(v) {}
-    template<typename Rep, typename C>
-    explicit timestamp_t(const std::chrono::duration<Rep, C>& duration)
-        : value(std::chrono::duration_cast<std::chrono::microseconds>(duration).count())
-    {}
-    //constexpr timestamp_t(double v) : value(v) {}
-    
-    constexpr timestamp_t& operator=(const timestamp_t&) = default;
-    constexpr timestamp_t& operator=(timestamp_t&&) = default;
-    
-    explicit constexpr operator value_type() const { return get(); }
-    explicit constexpr operator double() const { return double(get()); }
-    constexpr operator std::chrono::microseconds() const { return std::chrono::microseconds(valid() ? get() : 0); }
-#ifndef NDEBUG
-    constexpr value_type get(cmn::source_location loc = cmn::source_location::current()) const {
-        if(!valid())
-            throw std::invalid_argument("Invalid access to "+std::string(loc.file_name())+":"+std::to_string(loc.line())+".");
-        return value.value();
-    }
-#else
-    constexpr value_type get() const { return value.value(); }
-#endif
-    
-    constexpr bool valid() const { return value.has_value(); }
-    
-    constexpr bool operator==(const timestamp_t& other) const {
-        return other.get() == get();
-    }
-    constexpr bool operator!=(const timestamp_t& other) const {
-        return other.get() != get();
-    }
-    
-    constexpr bool operator<(const timestamp_t& other) const {
-        return get() < other.get();
-    }
-    constexpr bool operator>(const timestamp_t& other) const {
-        return get() > other.get();
-    }
-    
-    constexpr bool operator<=(const timestamp_t& other) const {
-        return get() <= other.get();
-    }
-    constexpr bool operator>=(const timestamp_t& other) const {
-        return get() >= other.get();
-    }
-    
-    constexpr timestamp_t operator-(const timestamp_t& other) const {
-        return timestamp_t(get() - other.get());
-    }
-    constexpr timestamp_t operator+(const timestamp_t& other) const {
-        return timestamp_t(get() + other.get());
-    }
-    constexpr timestamp_t operator/(const timestamp_t& other) const {
-        return timestamp_t(get() / other.get());
-    }
-    constexpr timestamp_t operator*(const timestamp_t& other) const {
-        return timestamp_t(get() * other.get());
-    }
-    
-    std::string to_date_string() const {
-        if(valid()) {
-            auto ms = std::chrono::microseconds(get());
-            auto time = std::chrono::time_point<std::chrono::system_clock>(ms);
-            std::time_t t = std::chrono::system_clock::to_time_t(time);
-            std::tm tm = *std::localtime(&t);
-            std::stringstream ss;
-            ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
-            return ss.str();
-        }
-        return "null";
-    }
-    std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
-    static consteval std::string_view class_name() { return "timestamp"; }
-    static timestamp_t fromStr(cmn::StringLike auto&& str) { return timestamp_t(std::atoll(str.c_str())); }
-    glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
-    
-    static timestamp_t now() {
-        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-        return timestamp_t(std::chrono::time_point_cast<std::chrono::microseconds>(now).time_since_epoch().count());
-    }
-};
-}
-
-namespace cmn {
 #if !defined(__EMSCRIPTEN__) || true
 template<typename T>
 using atomic = std::atomic<T>;
@@ -1407,9 +1129,352 @@ public:
 
 #endif
 
+
+struct timestamp_t;
 }
 
 //#undef isnormal
 #include <misc/math.h>
 #include <misc/stringutils.h>
 #include <misc/types.h>
+
+namespace cmn {
+
+/**
+ * @class TrivialOptional
+ * @brief A minimal optional implementation for arithmetic types that uses a reserved invalid value.
+ *
+ * @details
+ * Limitations:
+ * - Only supports arithmetic types (integral and floating-point).
+ * - Uses a sentinel value (e.g., -1 or infinity) which may conflict with valid data values.
+ *
+ * Advantages:
+ * - Zero overhead: occupies the same memory as the underlying type (no extra tag or allocation).
+ * - Trivially copyable and constexpr-friendly.
+ * - Fast operations with no heap allocations or additional flags.
+ *
+ * Use std::optional<T> when:
+ * - You need a robust optional without sentinel collision risks.
+ * - You require full support for all T values, in-place construction, or monadic utilities.
+ */
+enum class TrivialIllegalValueType {
+    NegativeOne,
+    Infinity,
+    Lowest
+};
+
+template<typename Numeric,
+         TrivialIllegalValueType InvalidValueType =
+               std::unsigned_integral<Numeric>
+                 ? TrivialIllegalValueType::NegativeOne
+                 : (std::signed_integral<Numeric> || not std::numeric_limits<Numeric>::has_infinity
+                       ? TrivialIllegalValueType::Lowest
+                       : TrivialIllegalValueType::Infinity)>
+    /// TrivialOptional can only be used with integral or floating-point types.
+    requires ((std::integral<Numeric> || std::floating_point<Numeric>) && not std::same_as<Numeric, bool>)
+class TrivialOptional {
+public:
+    static_assert(
+        std::unsigned_integral<Numeric>
+        || std::signed_integral<Numeric>
+        || std::floating_point<Numeric>,
+        "TrivialOptional can only be used with integral or floating-point types"
+    );
+    static_assert(
+        InvalidValueType != TrivialIllegalValueType::Infinity
+                  || std::numeric_limits<Numeric>::has_infinity,
+        "Floating-point TrivialOptional requires IEEE-style infinity"
+    );
+
+    static constexpr Numeric InvalidValue =
+        InvalidValueType == TrivialIllegalValueType::NegativeOne
+            ? static_cast<Numeric>(-1)
+            : (InvalidValueType == TrivialIllegalValueType::Infinity
+                ? std::numeric_limits<Numeric>::infinity()
+                : std::numeric_limits<Numeric>::lowest());
+    
+    static constexpr TrivialIllegalValueType InvalidType = InvalidValueType;
+    
+private:
+    Numeric value_{InvalidValue};
+
+public:
+    using value_type = Numeric;
+    
+    constexpr TrivialOptional() noexcept = default;
+    constexpr TrivialOptional(const TrivialOptional&) noexcept = default;
+    constexpr TrivialOptional(TrivialOptional&&) noexcept = default;
+    constexpr explicit TrivialOptional(Numeric value) noexcept : value_(value) {
+        assert(value != InvalidValue);
+    }
+    constexpr explicit TrivialOptional(std::nullopt_t) noexcept {}
+    
+    constexpr TrivialOptional& operator=(const TrivialOptional&) noexcept = default;
+    constexpr TrivialOptional& operator=(TrivialOptional&&) noexcept = default;
+    constexpr TrivialOptional& operator=(Numeric value) noexcept {
+        assert(value != InvalidValue);
+        value_ = value;
+        return *this;
+    }
+    // Support brace-list assignment: {} resets, {value} assigns that value
+    constexpr TrivialOptional& operator=(std::initializer_list<Numeric> il) noexcept {
+        if (il.size() == 0) {
+            // empty list clears the optional
+            return *this = std::nullopt;
+        } else {
+            // single-element list assigns that value
+            assert(il.size() == 1 && "TrivialOptional initializer-list assignment requires at most one element");
+            return *this = *il.begin();
+        }
+    }
+    constexpr TrivialOptional& operator=(std::nullopt_t) noexcept {
+        value_ = InvalidValue;
+        return *this;
+    }
+
+    constexpr bool has_value() const noexcept {
+        return value_ != InvalidValue;
+    }
+
+    constexpr const Numeric& value() const noexcept {
+        assert(has_value());
+        return value_;
+    }
+
+    constexpr Numeric& value() noexcept {
+        assert(has_value());
+        return value_;
+    }
+
+    constexpr Numeric value_or(Numeric default_value) const noexcept {
+        return has_value() ? value_ : default_value;
+    }
+
+    constexpr void reset() noexcept {
+        value_ = InvalidValue;
+    }
+
+    constexpr Numeric& operator*() noexcept {
+        return value_;
+    }
+
+    constexpr const Numeric& operator*() const noexcept {
+        return value_;
+    }
+
+    constexpr TrivialOptional& operator+=(Numeric value) noexcept {
+        value_ += value;
+        return *this;
+    }
+    constexpr TrivialOptional& operator+=(const TrivialOptional& value) noexcept {
+        assert(value.has_value());
+        assert(has_value());
+        value_ += value;
+        return *this;
+    }
+
+    constexpr Numeric* operator->() noexcept {
+        return &value_;
+    }
+
+    constexpr const Numeric* operator->() const noexcept {
+        return &value_;
+    }
+
+    constexpr explicit operator bool() const noexcept {
+        return has_value();
+    }
+
+    // Comparison operators
+    constexpr friend bool operator==(const TrivialOptional& lhs, const TrivialOptional& rhs) {
+        return lhs.value_ == rhs.value_;
+    }
+
+    constexpr friend bool operator!=(const TrivialOptional& lhs, const TrivialOptional& rhs) {
+        return !(lhs == rhs);
+    }
+    
+    std::string toStr() const {
+        return has_value() ? std::to_string(value_) : "nullopt";
+    }
+    
+    static consteval std::string_view class_name() {
+        static constexpr util::ConstString_t ret("TOptional<", Meta::name<Numeric>(), ">" );
+        return ret.view();
+    }
+    
+    glz::json_t to_json() const {
+        return has_value() ? glz::json_t{ value() } : glz::json_t{};
+    }
+    
+    /// we do not have Meta:: available here yet, so we have to go with our manual
+    /// implementation for fromStr
+    static TrivialOptional fromStr(cmn::StringLike auto&& str) {
+        if (str == "null")
+            return {};
+        if constexpr (std::is_integral_v<Numeric>) {
+            long long v = std::stoll(str);
+            return TrivialOptional(static_cast<Numeric>(v));
+        } else if constexpr (std::is_floating_point_v<Numeric>) {
+            long double v = std::stold(str);
+            return TrivialOptional(static_cast<Numeric>(v));
+        } else {
+            static_assert(std::is_integral_v<Numeric> || std::is_floating_point_v<Numeric>,
+                          "TrivialOptional::fromStr not implemented for this type");
+        }
+    }
+};
+
+struct timestamp_t {
+    using value_type = uint64_t;
+    TrivialOptional<value_type> value;
+    
+    timestamp_t() = default;
+    timestamp_t(const timestamp_t&) = default;
+    timestamp_t(timestamp_t&&) = default;
+    
+    constexpr timestamp_t(value_type v) : value(v) {}
+    template<typename Rep, typename C>
+    explicit timestamp_t(const std::chrono::duration<Rep, C>& duration)
+        : value(std::chrono::duration_cast<std::chrono::microseconds>(duration).count())
+    {}
+    //constexpr timestamp_t(double v) : value(v) {}
+    
+    constexpr timestamp_t& operator=(const timestamp_t&) = default;
+    constexpr timestamp_t& operator=(timestamp_t&&) = default;
+    
+    explicit constexpr operator value_type() const { return get(); }
+    explicit constexpr operator double() const { return double(get()); }
+    constexpr operator std::chrono::microseconds() const { return std::chrono::microseconds(valid() ? get() : 0); }
+#ifndef NDEBUG
+    constexpr value_type get(cmn::source_location loc = cmn::source_location::current()) const {
+        if(!valid())
+            throw std::invalid_argument("Invalid access to "+std::string(loc.file_name())+":"+std::to_string(loc.line())+".");
+        return value.value();
+    }
+#else
+    constexpr value_type get() const { return value.value(); }
+#endif
+    
+    constexpr bool valid() const { return value.has_value(); }
+    
+    constexpr bool operator==(const timestamp_t& other) const {
+        return other.get() == get();
+    }
+    constexpr bool operator!=(const timestamp_t& other) const {
+        return other.get() != get();
+    }
+    
+    constexpr bool operator<(const timestamp_t& other) const {
+        return get() < other.get();
+    }
+    constexpr bool operator>(const timestamp_t& other) const {
+        return get() > other.get();
+    }
+    
+    constexpr bool operator<=(const timestamp_t& other) const {
+        return get() <= other.get();
+    }
+    constexpr bool operator>=(const timestamp_t& other) const {
+        return get() >= other.get();
+    }
+    
+    constexpr timestamp_t operator-(const timestamp_t& other) const {
+        return timestamp_t(get() - other.get());
+    }
+    constexpr timestamp_t operator+(const timestamp_t& other) const {
+        return timestamp_t(get() + other.get());
+    }
+    constexpr timestamp_t operator/(const timestamp_t& other) const {
+        return timestamp_t(get() / other.get());
+    }
+    constexpr timestamp_t operator*(const timestamp_t& other) const {
+        return timestamp_t(get() * other.get());
+    }
+    
+    std::string to_date_string() const {
+        if(valid()) {
+            auto ms = std::chrono::microseconds(get());
+            auto time = std::chrono::time_point<std::chrono::system_clock>(ms);
+            std::time_t t = std::chrono::system_clock::to_time_t(time);
+            std::tm tm = *std::localtime(&t);
+            std::stringstream ss;
+            ss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+            return ss.str();
+        }
+        return "null";
+    }
+    std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
+    static consteval std::string_view class_name() { return "timestamp"; }
+    static timestamp_t fromStr(cmn::StringLike auto&& str) { return timestamp_t(std::atoll(str.c_str())); }
+    glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
+    
+    static timestamp_t now() {
+        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+        return timestamp_t(std::chrono::time_point_cast<std::chrono::microseconds>(now).time_since_epoch().count());
+    }
+};
+
+
+struct DurationUS {
+//! A duration in microseconds.
+timestamp_t timestamp;
+    
+std::string to_string() const {
+    static constexpr std::array<std::string_view, 5> names{{"us", "ms", "s", "min", "h"}};
+    static constexpr std::array<double, 5> ratios{{1000, 1000, 60, 60, 24}};
+        
+    double scaled = static_cast<double>(timestamp.get()), previous_scaled = 0;
+    size_t i = 0;
+    while(i < ratios.size()-1 && scaled >= ratios[i]) {
+        scaled /= ratios[i];
+            
+        previous_scaled = scaled - size_t(scaled);
+        previous_scaled *= ratios[i];
+            
+        i++;
+    }
+        
+    size_t sub_part = (size_t)previous_scaled;
+        
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(0) << scaled;
+    if(i>0 && i > 2)
+        ss << ":" << std::setfill('0') << std::setw(2) << sub_part;
+    ss << std::string(names[i].begin(), names[i].end());
+    return ss.str();
+}
+    
+std::string to_html() const {
+    static constexpr std::array<std::string_view, 5> names{{"us", "ms", "s", "min", "h"}};
+    static constexpr std::array<double, 5> ratios{{1000, 1000, 60, 60, 24}};
+        
+    double scaled = static_cast<double>(timestamp.get()), previous_scaled = 0;
+    size_t i = 0;
+    while(i < ratios.size()-1 && scaled >= ratios[i]) {
+        scaled /= ratios[i];
+            
+        previous_scaled = scaled - size_t(scaled);
+        previous_scaled *= ratios[i];
+            
+        i++;
+    }
+        
+    size_t sub_part = (size_t)previous_scaled;
+        
+    std::stringstream ss;
+    ss << "<nr>" << std::fixed << std::setprecision(0) << scaled << "</nr>";
+    if(i>0 && i > 2)
+        ss << ":<nr>" << std::setfill('0') << std::setw(2) << sub_part << "</nr>";
+    ss << std::string(names[i].begin(), names[i].end());
+    return ss.str();
+}
+
+static consteval std::string_view class_name() { return "duration"; }
+std::string toStr() const {
+    return to_string();
+}
+};
+
+}

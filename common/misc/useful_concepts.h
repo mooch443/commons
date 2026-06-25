@@ -156,7 +156,7 @@ concept _has_fromstr_method = (requires() {
 
 template<typename T, typename K = typename std::remove_cv<T>::type>
 concept _has_class_name = requires() {
-    { K::class_name() } -> cmn::StringLike;
+    { K::class_name() } -> std::same_as<std::string_view>;
 };
 
 template<typename T>

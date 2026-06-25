@@ -146,7 +146,10 @@ public:
     constexpr size_t size() const { return num_steps(); }
     
     std::string toStr() const { return "["+std::to_string(first)+","+std::to_string(last)+"]"; }
-    static std::string class_name() { return "arange<"+(std::string)type_name<T>()+">"; }
+    static consteval std::string_view class_name() {
+        static constexpr util::ConstString_t ret( "arange<", type_name<T>(), ">" );
+        return ret.view();
+    }
 };
 
 typedef arange<int> irange;
@@ -213,7 +216,10 @@ struct Range {
             cvt2json(end)
         };
     }
-    static std::string class_name() { return "range<" + Meta::template name<T>() + ">"; }
+    static consteval std::string_view class_name() {
+        static constexpr util::ConstString_t ret( "range<", Meta::template name<T>(), ">" );
+        return ret.view();
+    }
 
     static Range<T> fromStr(cmn::StringLike auto&& str)
     {

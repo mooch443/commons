@@ -104,7 +104,7 @@ public:
         return Meta::toStr((const std::array<T, N>&)*this);
     }
 
-    static std::string class_name() {
+    static consteval std::string_view class_name() {
         return cmn::Meta::name<std::array<T, N>>();
     }
 

@@ -2,11 +2,6 @@
 
 namespace cmn {
 
-const std::string& CropOffsets::class_name() {
-    static const std::string name = "offsets";
-    return name;
-}
-
 std::string CropOffsets::toStr() const {
     return Meta::toStr(std::array<float, 4>{left,top,right,bottom});
 }

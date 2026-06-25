@@ -661,8 +661,8 @@ concept Iterable = requires(T obj) {
         }
         
         std::string e = not ptr || not ptr->valid()
-            ? "Cannot find variable '" + (std::string)_name + "' of type " + Meta::name<T>() + " in map."
-            : "Cannot cast '" + (std::string)_name + "' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
+            ? "Cannot find variable '" + (std::string)_name + "' of type " + (std::string)Meta::name<T>() + " in map."
+            : "Cannot cast '" + (std::string)_name + "' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ (std::string)Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
@@ -720,8 +720,8 @@ void Reference::operator=(const T& value) {
         }
         
         std::string e = not ptr || not ptr->valid()
-            ? "Cannot find variable of type " + Meta::name<T>() + " in map."
-            : "Cannot cast variable '"+(std::string)ptr->name()+"' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ Meta::name<T>() +".";
+            ? "Cannot find variable of type " + (std::string)Meta::name<T>() + " in map."
+            : "Cannot cast variable '"+(std::string)ptr->name()+"' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ (std::string)Meta::name<T>() +".";
         FormatError(e.c_str());
         throw PropertyException(e);
     }
@@ -768,7 +768,7 @@ void Reference::operator=(const T& value) {
         } else {
             std::stringstream ss;
             ss << "Reference to "+toStr()+" cannot be cast to type of ";
-            ss << Meta::name<T>();
+            ss << (std::string)Meta::name<T>();
             FormatError(ss.str().c_str());
             throw PropertyException(ss.str());
         }

@@ -1228,11 +1228,11 @@ template<typename... Args>
 OutOfRangeException(Args... args) -> OutOfRangeException<Args...>;
 
 namespace Meta {
-template<> inline std::string name<SoftExceptionImpl>() {
+template<> consteval inline std::string_view name<SoftExceptionImpl>() {
     return "SoftException";
 }
 
-template<> inline std::string name<UtilsException>() {
+template<> consteval inline std::string_view name<UtilsException>() {
     return "UtilsException";
 }
 }

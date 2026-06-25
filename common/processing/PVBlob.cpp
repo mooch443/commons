@@ -222,6 +222,11 @@ void Blob::calculate_properties() {
     int num_pixels = 0;
     
     for (auto &h: *_hor_lines) {
+#ifndef NDEBUG
+        if(h.x0 > h.x1)
+            throw RuntimeError("Illegal object ", h);
+#endif
+        
         if (h.x0 < x)
             x = h.x0;
         if (h.x1 > maxx)

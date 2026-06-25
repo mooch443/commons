@@ -77,14 +77,14 @@ namespace cmn {
             
         public:
             // Constructors
-            PropertyType(const std::string& type_name, const std::type_info* index) : PropertyType(type_name, "<invalid>", index) {}
+            PropertyType(std::string_view type_name, const std::type_info* index) : PropertyType(type_name, "<invalid>", index) {}
 
             /**
              * Primary constructor for the PropertyType.
              * @param map Pointer to associated map object.
              * @param name Name of the property.
              */
-            PropertyType(const std::string& type_name, const std::string_view& name, const std::type_info* index)
+            PropertyType(std::string_view type_name, const std::string_view& name, const std::type_info* index)
                 : _name(name),
                   _type_name(type_name),
                   _type_info(index),
@@ -215,7 +215,7 @@ namespace cmn {
             template<typename T, typename K = std::remove_cvref_t<T>>
             const Property<K>& toProperty(cmn::source_location loc = cmn::source_location::current()) const {
                 if(not is_type<K>())
-                    throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+Meta::name<K>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
+                    throw PropertyException("Cannot cast " + toStr() + " to const reference type ("+(std::string)Meta::name<K>()+ ") called at: "+Meta::toStr(loc.file_name()) + ":"+Meta::toStr(loc.line()) + ".");
                 return *static_cast<const Property<K>*>(this);
             }
             
