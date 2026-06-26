@@ -128,6 +128,23 @@ namespace util {
 const char* to_readable_errc(const std::errc& error_code);
 
 template<size_t N>
+class ConstexprString;
+
+template <typename T>
+inline constexpr bool is_conststring_v = false;
+
+template <size_t N>
+inline constexpr bool is_conststring_v<ConstexprString<N>> = true;
+
+template <typename T>
+concept ConstexprStringType =
+    is_conststring_v<std::remove_cvref_t<T>>;
+
+template <typename... Ts>
+inline constexpr bool all_conststrings_v =
+    (... && ConstexprStringType<Ts>);
+
+template<size_t N>
 class ConstexprString {
 public:
     static constexpr size_t Size = N;
@@ -140,7 +157,7 @@ public:
 
     // Constructor for multiple strings to concatenate
     template<typename... Multiple>
-        requires (sizeof...(Multiple) > 1)
+        requires (sizeof...(Multiple) > 1 && not all_conststrings_v<Multiple...>)
     explicit consteval ConstexprString(const Multiple& ...pack) noexcept {
         _length = 0;
         
@@ -153,6 +170,22 @@ public:
                 constexpr std::size_t M = std::extent_v<std::remove_cvref_t<decltype(arr)>>;
                 for (std::size_t i = 0; i < M - 1; ++i)
                     _data[_length++] = arr[i];
+            }
+        };
+        
+        (_append(pack), ...);
+        
+        _data[_length] = 0;
+    }
+    
+    template<typename... Multiple>
+        requires all_conststrings_v<Multiple...>
+    explicit consteval ConstexprString(const Multiple& ...pack) noexcept {
+        _length = 0;
+        
+        auto _append = [&]<size_t _N>(const ConstexprString<_N>& arr) consteval {
+            for(size_t i = 0; i < arr.size(); ++i) {
+                _data[_length++] = arr[i];
             }
         };
         
@@ -191,6 +224,7 @@ public:
 
     // Constructor from another ConstexprString and applies a function
     template<size_t M, typename Func>
+        requires (std::invocable<Func, char>)
     constexpr ConstexprString(const ConstexprString<M>& other, Func&& func) noexcept {
         static_assert(M <= N, "Source string size exceeds destination capacity");
         _length = other.size();
@@ -205,6 +239,7 @@ public:
 
     // Constructor from const char array and applies a function
     template<size_t M, typename Func>
+        requires (std::invocable<Func, char>)
     constexpr ConstexprString(const char (&arr)[M], Func&& func) noexcept : _length(M - 1) {
         static_assert(M <= N, "Source string size exceeds destination capacity");
         _length = M - 1;
@@ -902,11 +937,75 @@ consteval std::string_view name() {
     return Q::class_name();
 }
     
-template< template < typename...> class Tuple, typename ...Ts >
-consteval std::string_view tuple_name (Tuple< Ts... >&&)
+template <typename T, std::size_t I, std::size_t N>
+consteval util::ConstString_t type_name_with_comma()
 {
-    static constexpr util::ConstString_t ret( "tuple<", Meta::name<std::remove_cvref_t<Ts>>()..., ">" );
-    return ret.view();
+    if constexpr (I == 0) {
+        if constexpr(I + 1 < N) {
+            return util::ConstString_t(
+                 std::string_view("tuple<"),
+                 Meta::name<std::remove_cvref_t<T>>(),
+                 std::string_view(",")
+            );
+            
+        } else {
+            return util::ConstString_t(
+                 std::string_view("tuple<"),
+                 Meta::name<std::remove_cvref_t<T>>(),
+                 std::string_view(">")
+            );
+        }
+        
+    } else if constexpr (I + 1 < N)
+        return util::ConstString_t(
+            Meta::name<std::remove_cvref_t<T>>(),
+            std::string_view(",")
+        );
+    else
+        return util::ConstString_t(
+            Meta::name<std::remove_cvref_t<T>>(),
+            std::string_view(">")
+        );
+}
+
+
+template <typename Tuple, typename Seq>
+struct tuple_name_storage;
+
+template <
+    template <typename...> class Tuple,
+    typename... Ts,
+    std::size_t... Is
+>
+struct tuple_name_storage<Tuple<Ts...>, std::index_sequence<Is...>> {
+    static constexpr util::ConstString_t value{
+        type_name_with_comma<Ts, Is, sizeof...(Ts)>()...
+    };
+};
+
+template <
+    template <typename...> class Tuple,
+    typename... Ts,
+    std::size_t... Is
+>
+consteval std::string_view tuple_name_impl(
+    Tuple<Ts...>&&,
+    std::index_sequence<Is...>
+)
+{
+    return tuple_name_storage<
+        Tuple<Ts...>,
+        std::index_sequence<Is...>
+    >::value.view();
+}
+
+template<template <typename...> class Tuple, typename... Ts>
+consteval std::string_view tuple_name(Tuple<Ts...>&& t)
+{
+    return tuple_name_impl(
+        std::forward<Tuple<Ts...>>(t),
+        std::index_sequence_for<Ts...>{}
+    );
 }
     
 template<class Q>
@@ -1757,8 +1856,8 @@ template<template <typename ...> class T, typename Rt, typename... Args>
 std::string get_name(const T<Rt(Args...)>&) {
     std::string ss;
     bool first = true;
-    ((ss = ss + (first ? "" : ", ") + std::string(Meta::name<Args>()), first = false), ...);
-    return "function<"+Meta::name<Rt>()+"("+ss+")>";
+    ((ss = ss + std::string(first ? "" : ", ") + std::string(Meta::name<Args>()), first = false), ...);
+    return "function<"+(std::string)Meta::name<Rt>()+"("+ss+")>";
 }
 
 }
