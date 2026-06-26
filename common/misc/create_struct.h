@@ -774,9 +774,9 @@ STRUCT_FOR_EACH(NAM, EXPRESS_MEMBER_FUNCTIONS, __VA_ARGS__)
 
 #define STRUCT_META_EXTENSIONS(NAM) \
  \
-template<> inline std::string cmn::Meta::toStr<NAM :: Variables>(const NAM :: Variables& value, const NAM :: Variables* ) { return NAM :: names()[value]; } \
-template<> inline consteval std::string_view cmn::Meta::name<enum NAM :: Variables>(const enum NAM :: Variables*) { return #NAM ; } \
-template<> inline enum NAM :: Variables cmn::Meta::fromStr<enum NAM :: Variables>(const std::string& str, const enum NAM :: Variables* ) { \
+template<> inline std::string cmn::Meta::toStr<NAM :: Variables>(const NAM :: Variables& value) { return NAM :: names()[value]; } \
+template<> inline consteval std::string_view cmn::Meta::name<enum NAM :: Variables>() { return #NAM ; } \
+template<> inline enum NAM :: Variables cmn::Meta::fromStr<enum NAM :: Variables>(const std::string& str) { \
     size_t index = 0; \
     for(auto &name : NAM :: names()) { \
         if(str == name) { \

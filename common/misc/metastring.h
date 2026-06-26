@@ -821,59 +821,66 @@ consteval inline std::string_view name<illegal_syntax>() {
 }
 
 template<typename Q>
-inline consteval std::string_view name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (std::is_pointer_v<Q> && !std::is_same_v<Q, const char*>)
+inline constexpr std::string_view name();
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (std::is_pointer_v<Q> && !std::is_same_v<Q, const char*>)
+inline std::string toStr(Q value);
         
 template<typename Q, typename K = typename cmn::remove_cvref<Q>::type>
     requires is_instantiation<std::atomic, K>::value
 inline std::string toStr(const Q& value);
 
 template<typename Q>
-inline consteval std::string_view name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (std::is_pointer_v<Q> && std::is_same_v<Q, const char*>)
+inline consteval std::string_view name();
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (std::is_pointer_v<Q> && std::is_same_v<Q, const char*>)
+inline std::string toStr(Q value);
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires std::is_pointer_v<Q>
+inline T fromStr(cmn::StringLike auto&& str);
 
 template<typename Q>
-    requires is_instantiation<std::optional, Q>::value
-inline consteval std::string_view name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (!std::is_pointer_v<Q> && is_instantiation<std::optional, Q>::value)
+inline constexpr std::string_view name();
 
 template<typename Q>
-    requires (!std::is_base_of<std::exception, Q>::value)
-        && (!is_instantiation<std::atomic, Q>::value)
-        && (!is_instantiation<std::optional, Q>::value)
-inline consteval std::string_view name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (!std::is_pointer_v<Q>
+        && !std::is_base_of_v<std::exception, Q>
+        && !is_instantiation<std::atomic, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline constexpr std::string_view name();
         
 template<typename Q>
-    requires (!std::is_base_of<std::exception, Q>::value)
-        && (!is_instantiation<std::atomic, Q>::value)
-        && (not is_instantiation<std::function, Q>::value)
-        && (not is_instantiation<std::optional, Q>::value)
-inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (!std::is_pointer_v<Q>
+        && !std::is_base_of_v<std::exception, Q>
+        && !is_instantiation<std::atomic, Q>::value
+        && !is_instantiation<std::function, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline std::string toStr(const Q& value);
 
 template<typename Q>
     requires (is_instantiation<std::optional, Q>::value)
 inline std::string toStr(const Q& value);
         
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< !std::is_pointer<Q>::value
-                 && (not is_instantiation<std::function, Q>::value)
-                 && (not is_instantiation<std::optional, Q>::value),
-                 typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (!std::is_pointer_v<Q>
+        && !is_instantiation<std::function, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline T fromStr(cmn::StringLike auto&& str);
 
 
 template<typename Q, typename T = typename cmn::remove_cvref<Q>::type>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< !std::is_pointer<Q>::value
-                 && (is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type* =nullptr);
+    requires (!std::is_pointer_v<Q> && is_instantiation<std::optional, Q>::value)
+inline T fromStr(cmn::StringLike auto&& str);
 
 template<typename Q>
     requires is_instantiation<std::function, Q>::value
-inline Q fromStr(const std::string&, const Q* = nullptr) {
+inline Q fromStr(const std::string&) {
     throw std::runtime_error("Cannot generate function from string.");
 }
 
@@ -889,41 +896,105 @@ namespace _Meta {
     * These methods return the appropriate type name as a string.
     * Such as "vector<pair<int,float>>".
     */
-//template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_integral<typename std::remove_cv<Q>::type>::value && !std::is_same<bool, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return sizeof(Q) == sizeof(long) ? "long" : "int"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<void, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "void"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<int, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int"; }
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, void>
+consteval std::string_view name() { return "void"; }
 
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<glz::json_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "json"; }
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, int>
+consteval std::string_view name() { return "int"; }
 
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<short, typename std::remove_cv<Q>::type>::value && !std::is_same<int16_t, short>::value, Q >::type* =nullptr) { return "short"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< !std::is_same<int32_t, int>::value && std::is_same<int32_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int32"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< !std::is_same<uint32_t, unsigned int>::value && std::is_same<uint32_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uint32"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<int16_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int16"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<uint16_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uint16"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<unsigned int, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uint"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<unsigned short, typename std::remove_cv<Q>::type>::value && !std::is_same<uint16_t, unsigned short>::value, Q >::type* =nullptr) { return "ushort"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< !std::is_same<uint64_t, unsigned long>::value && std::is_same<uint64_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uint64"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<unsigned long, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "ulong"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< !std::is_same<int64_t, long>::value && std::is_same<int64_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "int64"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<long, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "long"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<uint8_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "uchar"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<int8_t, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "char"; }
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, glz::json_t>
+consteval std::string_view name() { return "json"; }
+
+template<class Q>
+    requires (std::same_as<std::remove_cv_t<Q>, short> && !std::same_as<int16_t, short>)
+consteval std::string_view name() { return "short"; }
+
+template<class Q>
+    requires (!std::same_as<int32_t, int> && std::same_as<std::remove_cv_t<Q>, int32_t>)
+consteval std::string_view name() { return "int32"; }
+
+template<class Q>
+    requires (!std::same_as<uint32_t, unsigned int> && std::same_as<std::remove_cv_t<Q>, uint32_t>)
+consteval std::string_view name() { return "uint32"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, int16_t>
+consteval std::string_view name() { return "int16"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, uint16_t>
+consteval std::string_view name() { return "uint16"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, unsigned int>
+consteval std::string_view name() { return "uint"; }
+
+template<class Q>
+    requires (std::same_as<std::remove_cv_t<Q>, unsigned short> && !std::same_as<uint16_t, unsigned short>)
+consteval std::string_view name() { return "ushort"; }
+
+template<class Q>
+    requires (!std::same_as<uint64_t, unsigned long> && std::same_as<std::remove_cv_t<Q>, uint64_t>)
+consteval std::string_view name() { return "uint64"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, unsigned long>
+consteval std::string_view name() { return "ulong"; }
+
+template<class Q>
+    requires (!std::same_as<int64_t, long> && std::same_as<std::remove_cv_t<Q>, int64_t>)
+consteval std::string_view name() { return "int64"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, long>
+consteval std::string_view name() { return "long"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, uint8_t>
+consteval std::string_view name() { return "uchar"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, int8_t>
+consteval std::string_view name() { return "char"; }
     
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_floating_point<typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return sizeof(double) == sizeof(Q) ? "double" : "float"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<std::string, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "string"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<std::string_view, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "string_view"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<std::wstring, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "wstring"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<bool, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "bool"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<cv::Mat, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "mat"; }
-template<class Q> consteval std::string_view name(const typename std::enable_if< std::is_same<cv::Range, typename std::remove_cv<Q>::type>::value, Q >::type* =nullptr) { return "range"; }
+template<class Q>
+    requires std::is_floating_point_v<std::remove_cv_t<Q>>
+consteval std::string_view name() { return sizeof(double) == sizeof(Q) ? "double" : "float"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, std::string>
+consteval std::string_view name() { return "string"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, std::string_view>
+consteval std::string_view name() { return "string_view"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, std::wstring>
+consteval std::string_view name() { return "wstring"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, bool>
+consteval std::string_view name() { return "bool"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, cv::Mat>
+consteval std::string_view name() { return "mat"; }
+
+template<class Q>
+    requires std::same_as<std::remove_cv_t<Q>, cv::Range>
+consteval std::string_view name() { return "range"; }
 
 template<typename Q>
     requires (_is_dumb_pointer<Q> && not std::same_as<Q, const char*>)
-consteval std::string_view name();
+constexpr std::string_view name();
 
 template<typename Q>
     requires (is_instantiation<std::optional, Q>::value)
-consteval std::string_view name() {
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "optional<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
@@ -933,7 +1004,7 @@ consteval std::string_view name() {
  */
 template<class Q>
     requires _has_class_name<Q>
-consteval std::string_view name() {
+constexpr std::string_view name() {
     return Q::class_name();
 }
     
@@ -1021,46 +1092,51 @@ consteval std::string_view name() {
 }
 
 template<class Q>
-consteval std::string_view name(const typename std::enable_if< is_container<Q>::value, Q >::type* =nullptr) {
+    requires is_container<Q>::value
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "array<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
 template<class Q>
-consteval std::string_view name(const typename std::enable_if< is_queue<Q>::value, Q >::type* =nullptr) {
+    requires is_queue<Q>::value
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "queue<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
 template<class Q>
-consteval std::string_view name(const typename std::enable_if< is_set<Q>::value, Q >::type* =nullptr) {
+    requires is_set<Q>::value
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "set<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
 template<class Q>
-consteval std::string_view name(const typename std::enable_if< is_map<Q>::value, Q >::type* =nullptr) {
+    requires is_map<Q>::value
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "map<", Meta::name<typename Q::key_type>(), ",", name<typename Q::mapped_type>(), ">" );
     return ret.view();
 }
 template<class Q>
-consteval std::string_view name(const typename std::enable_if< is_pair<Q>::value, Q >::type* =nullptr) {
+    requires is_pair<Q>::value
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "pair<", Meta::name<typename Q::first_type>(), ",", name<typename Q::second_type>(), ">" );
     return ret.view();
 }
 template<class Q>
     requires (is_instantiation<cv::Size_, Q>::value)
-consteval std::string_view name() {
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "size<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
 template<class Q>
     requires (is_instantiation<cv::Rect_, Q>::value)
-consteval std::string_view name() {
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "rect<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
 
 template<typename Q>
     requires (_is_dumb_pointer<Q> && not std::same_as<Q, const char*>)
-consteval std::string_view name() {
+constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( Meta::name<typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type>(), "*" );
     return ret.view();
 }
@@ -1731,26 +1807,28 @@ Q fromStr(cmn::StringLike auto&& str)
 namespace Meta {
 
 template<typename Q>
-    requires (!std::is_base_of<std::exception, Q>::value)
-        && (!is_instantiation<std::atomic, Q>::value)
-        && (!is_instantiation<std::optional, Q>::value)
-inline consteval std::string_view name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (!std::is_pointer_v<Q>
+        && !std::is_base_of_v<std::exception, Q>
+        && !is_instantiation<std::atomic, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline constexpr std::string_view name() {
     return _Meta::name<typename cmn::remove_cvref<Q>::type>();
 }
 
 template<typename Q>
-    requires is_instantiation<std::optional, Q>::value
-inline consteval std::string_view name(const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (!std::is_pointer_v<Q> && is_instantiation<std::optional, Q>::value)
+inline constexpr std::string_view name() {
     static constexpr util::ConstString_t ret("optional<", _Meta::name<typename cmn::remove_cvref<typename Q::value_type>::type>(), ">" );
     return ret.view();
 }
         
 template<typename Q>
-    requires (!std::is_base_of<std::exception, Q>::value)
-        && (!is_instantiation<std::atomic, Q>::value)
-        && (not is_instantiation<std::function, Q>::value)
-        && (not is_instantiation<std::optional, Q>::value)
-inline std::string toStr(const Q& value, const typename std::enable_if< !std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (!std::is_pointer_v<Q>
+        && !std::is_base_of_v<std::exception, Q>
+        && !is_instantiation<std::atomic, Q>::value
+        && !is_instantiation<std::function, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline std::string toStr(const Q& value) {
     return _Meta::toStr<typename cmn::remove_cvref<Q>::type>(value);
 }
 
@@ -1777,40 +1855,48 @@ inline std::string toStr(const Q& val) {
 }
         
 template<typename Q, typename T>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< !std::is_pointer<Q>::value && (not is_instantiation<std::function, Q>::value) && (not is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
+    requires (!std::is_pointer_v<Q>
+        && !is_instantiation<std::function, Q>::value
+        && !is_instantiation<std::optional, Q>::value)
+inline T fromStr(cmn::StringLike auto&& str) {
     return _Meta::fromStr<T>(std::forward<decltype(str)>(str));
 }
 
 template<typename Q, typename T>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< !std::is_pointer<Q>::value
-                 && (is_instantiation<std::optional, Q>::value), typename cmn::remove_cvref<Q>::type >::type*) {
+    requires (!std::is_pointer_v<Q> && is_instantiation<std::optional, Q>::value)
+inline T fromStr(cmn::StringLike auto&& str) {
     if(str == "null")
         return std::nullopt;
     return _Meta::fromStr<typename T::value_type>(std::forward<decltype(str)>(str));
 }
 
 template<typename Q, typename T>
-inline T fromStr(cmn::StringLike auto&& str, const typename std::enable_if< std::is_pointer<Q>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires std::is_pointer_v<Q>
+inline T fromStr(cmn::StringLike auto&& str) {
     return new typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>(std::forward<decltype(str)>(str));
 }
         
 template<typename Q>
-inline consteval std::string_view name(const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (std::is_pointer_v<Q> && std::is_same_v<Q, const char*>)
+inline consteval std::string_view name() {
     return "c_str";
 }
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (std::is_pointer_v<Q> && std::is_same_v<Q, const char*>)
+inline std::string toStr(Q value) {
     return Meta::toStr(std::string(value));
 }
         
 template<typename Q>
-inline consteval std::string_view name(const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (std::is_pointer_v<Q> && !std::is_same_v<Q, const char*>)
+inline constexpr std::string_view name() {
     return Meta::name<typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type>();
 }
         
 template<typename Q>
-inline std::string toStr(Q value, const typename std::enable_if< std::is_pointer<Q>::value && !std::is_same<Q, const char*>::value, typename cmn::remove_cvref<Q>::type >::type* ) {
+    requires (std::is_pointer_v<Q> && !std::is_same_v<Q, const char*>)
+inline std::string toStr(Q value) {
     return "("+(std::string)Meta::name<Q>()+"*)"+Meta::toStr<const typename std::remove_pointer<typename cmn::remove_cvref<Q>::type>::type&>(*value);
 }
 
@@ -1856,7 +1942,7 @@ template<template <typename ...> class T, typename Rt, typename... Args>
 std::string get_name(const T<Rt(Args...)>&) {
     std::string ss;
     bool first = true;
-    ((ss = ss + std::string(first ? "" : ", ") + std::string(Meta::name<Args>()), first = false), ...);
+    ((ss = ss + std::string(first ? "" : ",") + std::string(Meta::name<Args>()), first = false), ...);
     return "function<"+(std::string)Meta::name<Rt>()+"("+ss+")>";
 }
 
