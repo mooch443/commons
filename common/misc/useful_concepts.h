@@ -103,9 +103,9 @@ struct is_variant : public std::false_type {};
 template< class... Ts >
 struct is_variant< std::variant< Ts... > > : public std::true_type {};
 
-template<template<class...>class Template, class T>
+template<template<typename...>class Template, class T>
 struct is_instantiation : std::false_type {};
-template<template<class...>class Template, class... Ts>
+template<template<typename...>class Template, class... Ts>
 struct is_instantiation<Template, Template<Ts...>> : std::true_type {};
 
 #pragma region basic_concepts

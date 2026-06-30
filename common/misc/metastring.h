@@ -998,7 +998,22 @@ constexpr std::string_view name() {
     static constexpr util::ConstString_t ret( "optional<", Meta::name<typename Q::value_type>(), ">" );
     return ret.view();
 }
-        
+// cmn::TrivialOptional (and TrivialIllegalValueType) are defined later in
+// commons.pc.h, after this header has already been pulled in via misc/types.h,
+// so we cannot refer to either of them by name here. Detect it structurally via
+// its distinctive static members instead: the constraint is only evaluated when
+// name<Q>() is actually instantiated, by which point the type is complete.
+template<typename Q>
+    requires requires {
+        typename Q::value_type;
+        { Q::InvalidValue };
+        { Q::InvalidType };
+    }
+constexpr std::string_view name() {
+    static constexpr util::ConstString_t ret( "TOptional<", Meta::name<typename Q::value_type>(), ">" );
+    return ret.view();
+}
+
 /**
  * chrono:: time objects
  */

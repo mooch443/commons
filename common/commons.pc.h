@@ -1298,12 +1298,11 @@ public:
     std::string toStr() const {
         return has_value() ? std::to_string(value_) : "nullopt";
     }
-    
-    static consteval std::string_view class_name() {
-        static constexpr util::ConstString_t ret("TOptional<", Meta::name<Numeric>(), ">" );
-        return ret.view();
-    }
-    
+
+    /// NOTE: The parameterized type name ("TOptional<int>") is provided by a
+    /// _Meta::name<> overload in misc/metastring.h, because util::ConstString_t
+    /// and Meta:: are not yet declared at this point in commons.pc.h.
+
     glz::json_t to_json() const {
         return has_value() ? glz::json_t{ value() } : glz::json_t{};
     }

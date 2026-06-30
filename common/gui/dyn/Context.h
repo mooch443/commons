@@ -49,7 +49,7 @@ struct DefaultSettings {
     std::unordered_map<std::string, LocalSetting, MultiStringHash, MultiStringEqual> locals;
 };
 
-class LocalSettingTypes {
+class COMMONS_EXPORT LocalSettingTypes {
 public:
     using Factory = std::function<void(sprite::Map&, std::string_view, const glz::json_t*, bool)>;
 
@@ -99,7 +99,7 @@ void LocalSettingTypes::register_type(std::string alias) {
     };
 }
 
-struct CurrentObjectHandler {
+struct COMMONS_EXPORT CurrentObjectHandler {
     struct VariableValue {
         enum class Kind : uint8_t {
             none,
@@ -248,7 +248,7 @@ private:
     void set_variable_value(std::string_view name, std::shared_ptr<VarBase_t> value);
 };
 
-struct Context {
+struct COMMONS_EXPORT Context {
     //using ActionPair = robin_hood::pair<std::string, std::function<void(Action)>>;
     //using VariablePair = robin_hood::pair<std::string, std::function<void(Action)>>;
     robin_hood::unordered_map<std::string, std::function<void(Action)>, MultiStringHash, MultiStringEqual> actions;
