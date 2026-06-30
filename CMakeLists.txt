@@ -237,6 +237,35 @@ endif()
 
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
+if(WIN32)
+    set(_trex_opencv_arch "x64")
+    if(DEFINED CMAKE_SIZEOF_VOID_P AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+        set(_trex_opencv_arch "x86")
+    endif()
+
+    set(_trex_opencv_runtime "")
+    if(MSVC_VERSION MATCHES "^195[0-9]$")
+        set(_trex_opencv_runtime "vc18")
+    elseif(MSVC_VERSION MATCHES "^19[34][0-9]$")
+        set(_trex_opencv_runtime "vc17")
+    elseif(MSVC_VERSION MATCHES "^192[0-9]$")
+        set(_trex_opencv_runtime "vc16")
+    elseif(MSVC_VERSION MATCHES "^191[0-9]$")
+        set(_trex_opencv_runtime "vc15")
+    elseif(MSVC_VERSION MATCHES "^1900$")
+        set(_trex_opencv_runtime "vc14")
+    elseif(CMAKE_GENERATOR MATCHES "Visual Studio ([0-9]+)")
+        set(_trex_opencv_runtime "vc${CMAKE_MATCH_1}")
+    endif()
+
+    if(NOT _trex_opencv_runtime)
+        message(FATAL_ERROR "Could not determine OpenCV runtime for MSVC_VERSION='${MSVC_VERSION}' and generator '${CMAKE_GENERATOR}'.")
+    endif()
+
+    set(OpenCV_ARCH "${_trex_opencv_arch}")
+    set(OpenCV_RUNTIME "${_trex_opencv_runtime}")
+    message(STATUS "OpenCV Windows target: ARCH=${OpenCV_ARCH} RUNTIME=${OpenCV_RUNTIME}")
+endif()
 
 if(WIN32)
     set(BUILD_SHARED_LIBS OFF)
@@ -1646,7 +1675,10 @@ endif()
                 ${OPENCV_EXTRA_FLAGS})
 
     if(WIN32)
-        list(APPEND OPENCV_CMAKE_ARGS -DVIDEOIO_PLUGIN_LIST=ffmpeg)
+        list(APPEND OPENCV_CMAKE_ARGS
+            -DVIDEOIO_PLUGIN_LIST=ffmpeg
+            -DOpenCV_ARCH:STRING=${OpenCV_ARCH}
+            -DOpenCV_RUNTIME:STRING=${OpenCV_RUNTIME})
     endif()
 
     set(COMMONS_OPENCV_VERSION "4.12.0")
@@ -1714,13 +1746,10 @@ endif()
         set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
         set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core opencv_gapi libwebp ade ${FFMPEG_LIBRARIES})
     elseif(WIN32)
-        string(REPLACE " " ";" VERSION_LIST ${CMAKE_GENERATOR})
-        list(GET VERSION_LIST 2 VSTD_VERSION_MAJOR)
-        
         math (EXPR MSVC_TOOLSET_MAJOR "${MSVC_VERSION}/10")
-        message(STATUS "CMAKE_GENERATOR_TOOLSET ${MSVC_TOOLSET_MAJOR} ${CMAKE_GENERATOR} ${VSTD_VERSION_MAJOR}")
-        message("Including OpenCV lib path: ${CMAKE_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib")
-        set(OpenCV_LIB_PATH ${CMAKE_BINARY_DIR}/opencv_install/x64/vc${VSTD_VERSION_MAJOR}/staticlib)
+        message(STATUS "CMAKE_GENERATOR_TOOLSET ${MSVC_TOOLSET_MAJOR} ${CMAKE_GENERATOR} ${OpenCV_RUNTIME}")
+        message("Including OpenCV lib path: ${CMAKE_BINARY_DIR}/opencv_install/${OpenCV_ARCH}/${OpenCV_RUNTIME}/staticlib")
+        set(OpenCV_LIB_PATH ${CMAKE_BINARY_DIR}/opencv_install/${OpenCV_ARCH}/${OpenCV_RUNTIME}/staticlib)
         link_directories(${OpenCV_LIB_PATH})
         set(OpenCV_LIBS opencv_core${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgproc${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_imgcodecs${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_video${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_videoio${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_highgui${COMMONS_OPENCV_VERSION_NO_DOTS} 
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
