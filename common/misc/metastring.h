@@ -1054,35 +1054,20 @@ struct tuple_name_storage<Tuple<Ts...>, std::index_sequence<Is...>> {
     };
 };
 
-template <
-    template <typename...> class Tuple,
-    typename... Ts,
-    std::size_t... Is
->
-consteval std::string_view tuple_name_impl(
-    Tuple<Ts...>&&,
-    std::index_sequence<Is...>
-)
+template<typename Tuple>
+consteval std::string_view tuple_name()
 {
+    using CleanTuple = std::remove_cvref_t<Tuple>;
     return tuple_name_storage<
-        Tuple<Ts...>,
-        std::index_sequence<Is...>
+        CleanTuple,
+        std::make_index_sequence<std::tuple_size_v<CleanTuple>>
     >::value.view();
-}
-
-template<template <typename...> class Tuple, typename... Ts>
-consteval std::string_view tuple_name(Tuple<Ts...>&& t)
-{
-    return tuple_name_impl(
-        std::forward<Tuple<Ts...>>(t),
-        std::index_sequence_for<Ts...>{}
-    );
 }
     
 template<class Q>
     requires (is_instantiation<std::tuple, Q>::value)
 consteval std::string_view name() {
-    return tuple_name(Q{});
+    return tuple_name<Q>();
 }
 
 template<class Q>
