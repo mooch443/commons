@@ -4,6 +4,46 @@
 #include <misc/GlobalSettings.h>
 #include <processing/PVBlob.h>
 
+namespace cmn::file {
+// All FILE* operations live here so they execute inside commons' CRT, matching
+// Path::fopen. See the FilePtr comment in types.h for why this matters with /MT.
+FilePtr::~FilePtr() {
+    if (file_) {
+        std::fclose(file_);
+    }
+}
+
+FilePtr& FilePtr::operator=(FilePtr&& other) noexcept {
+    if (this != &other) {
+        if (file_) {
+            std::fclose(file_);
+        }
+        file_ = other.file_;
+        other.file_ = nullptr;
+    }
+    return *this;
+}
+
+void FilePtr::reset(FILE* newFile) {
+    if (file_) {
+        std::fclose(file_);
+    }
+    file_ = newFile;
+}
+
+size_t FilePtr::write(const void* data, size_t bytes) {
+    if (!file_)
+        return 0;
+    return std::fwrite(data, 1, bytes, file_);
+}
+
+size_t FilePtr::read(void* data, size_t bytes) {
+    if (!file_)
+        return 0;
+    return std::fread(data, 1, bytes, file_);
+}
+}
+
 namespace cmn {
 IMPLEMENT(blob::Pose::Skeleton::_mutex);
 IMPLEMENT(blob::Pose::Skeleton::_registered);

@@ -120,19 +120,27 @@ inline int __builtin_ctz32(uint32_t value) {
 #endif
 
 namespace cmn::file {
+/// RAII wrapper around a C ``FILE*``.
+///
+/// IMPORTANT: every operation that touches the underlying ``FILE*`` (closing,
+/// writing, reading) is implemented out-of-line in ``types.cpp`` and therefore
+/// always runs inside ``commons``' C runtime -- the same one that ``Path::fopen``
+/// used to create the handle. Because the modules link the static CRT (``/MT``),
+/// each binary owns a *private* copy of the runtime (separate FILE tables, file
+/// descriptors and heap). Opening a ``FILE*`` in ``commons`` and then writing or
+/// closing it from another module (e.g. ``trex``) is undefined behaviour: the fd
+/// is meaningless in the other CRT and the flush at ``fclose`` aborts the process
+/// via the invalid-parameter handler. Keep all I/O behind these methods; never
+/// call ``fwrite``/``fclose`` on ``get()`` outside of ``commons``.
 class FilePtr {
 public:
     FilePtr() : file_(nullptr) {}
-    
+
     explicit FilePtr(FILE* file)
         : file_(file)
     {}
-    
-    ~FilePtr() {
-        if (file_) {
-            std::fclose(file_);
-        }
-    }
+
+    ~FilePtr();
 
     FilePtr(const FilePtr&) = delete;
     FilePtr& operator=(const FilePtr&) = delete;
@@ -141,21 +149,12 @@ public:
         other.file_ = nullptr;
     }
 
-    FilePtr& operator=(FilePtr&& other) noexcept {
-        if (this != &other) {
-            if (file_) {
-                std::fclose(file_);
-            }
-            file_ = other.file_;
-            other.file_ = nullptr;
-        }
-        return *this;
-    }
-    
+    FilePtr& operator=(FilePtr&& other) noexcept;
+
     explicit operator bool() const {
         return file_ != nullptr;
     }
-    
+
     bool operator==(const FilePtr& other) const {
         return file_ == other.file_;
     }
@@ -171,21 +170,23 @@ public:
     bool operator!=(std::nullptr_t) const {
         return file_ != nullptr;
     }
-    
-    // Reset the FilePtr to a new value
-    void reset(FILE* newFile = nullptr) {
-        if (file_) {
-            std::fclose(file_);
-        }
-        file_ = newFile;
-    }
+
+    // Reset the FilePtr to a new value (closes the current handle, if any).
+    void reset(FILE* newFile = nullptr);
 
     // Assignment operator for nullptr
     FilePtr& operator=(std::nullptr_t) {
         reset();
         return *this;
     }
-    
+
+    /// Write ``bytes`` bytes from ``data``; returns the number of bytes written.
+    /// Must be used instead of ``fwrite(.., get())`` from outside ``commons``.
+    size_t write(const void* data, size_t bytes);
+
+    /// Read up to ``bytes`` bytes into ``data``; returns the number of bytes read.
+    size_t read(void* data, size_t bytes);
+
     FILE* get() const {
         return file_;
     }
