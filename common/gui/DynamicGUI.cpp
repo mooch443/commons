@@ -23,6 +23,140 @@ namespace dyn {
     return "Pattern<" + std::string(original) + ">";
 }*/
 
+namespace {
+
+std::string variable_expression_from_json(const glz::json_t& value) {
+    return Meta::fromStr<std::string>(glz::write_json(value).value());
+}
+
+void collect_variable_references(std::string_view pattern, std::vector<std::string>& references);
+
+void collect_expression_references(std::string_view expression, std::vector<std::string>& references) {
+    try {
+        auto props = extractControls(expression);
+        if(!props.name.empty()) {
+            references.emplace_back(props.name);
+        }
+        for(const auto& sub : props.subs) {
+            collect_variable_references(sub, references);
+        }
+        for(const auto& parameter : props.parameters) {
+            collect_variable_references(parameter, references);
+        }
+    } catch(...) {
+        // Preserve the existing behavior of reporting malformed expressions at
+        // evaluation time; this pass only rejects recursive variable references.
+    }
+}
+
+void collect_variable_references(std::string_view pattern, std::vector<std::string>& references) {
+    std::stack<std::size_t> nesting_start_positions;
+    bool escaped = false;
+
+    for(std::size_t i = 0; i < pattern.size(); ++i) {
+        const char ch = pattern[i];
+
+        if(escaped) {
+            escaped = false;
+            continue;
+        }
+
+        if(ch == '\\') {
+            escaped = true;
+            continue;
+        }
+
+        if(ch == '{') {
+            nesting_start_positions.push(i + 1);
+            continue;
+        }
+
+        if(ch == '}' && !nesting_start_positions.empty()) {
+            const auto start_pos = nesting_start_positions.top();
+            nesting_start_positions.pop();
+
+            if(nesting_start_positions.empty()) {
+                collect_expression_references(pattern.substr(start_pos, i - start_pos), references);
+            }
+        }
+    }
+}
+
+std::string variable_cycle_message(const std::vector<std::string>& stack, const std::string& repeated_name) {
+    std::string cycle;
+    auto it = std::find(stack.begin(), stack.end(), repeated_name);
+    if(it == stack.end()) {
+        cycle = repeated_name;
+    } else {
+        for(; it != stack.end(); ++it) {
+            if(!cycle.empty()) {
+                cycle += " -> ";
+            }
+            cycle += *it;
+        }
+    }
+
+    if(!cycle.empty()) {
+        cycle += " -> ";
+    }
+    cycle += repeated_name;
+
+    return cycle;
+}
+
+void validate_variable_cycles(const robin_hood::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual>& expressions) {
+    enum class VisitState : uint8_t {
+        visiting,
+        visited
+    };
+
+    robin_hood::unordered_map<std::string, std::vector<std::string>, MultiStringHash, MultiStringEqual> dependencies;
+    for(const auto& [name, expression] : expressions) {
+        auto& refs = dependencies[name];
+        collect_variable_references(expression, refs);
+        refs.erase(std::remove_if(refs.begin(), refs.end(), [&](const std::string& ref) {
+            return !expressions.contains(ref);
+        }), refs.end());
+    }
+
+    robin_hood::unordered_map<std::string, VisitState, MultiStringHash, MultiStringEqual> states;
+    std::vector<std::string> stack;
+
+    std::function<void(const std::string&)> visit = [&](const std::string& name) {
+        states[name] = VisitState::visiting;
+        stack.push_back(name);
+
+        for(const auto& dependency : dependencies[name]) {
+            auto state_it = states.find(dependency);
+            if(state_it == states.end()) {
+                visit(dependency);
+                continue;
+            }
+
+            if(state_it->second == VisitState::visiting) {
+                throw InvalidSyntaxException(
+                    "DynamicGUI variable '", dependency,
+                    "' is recursively defined: ",
+                    variable_cycle_message(stack, dependency),
+                    "."
+                );
+            }
+        }
+
+        stack.pop_back();
+        states[name] = VisitState::visited;
+    };
+
+    for(const auto& entry : expressions) {
+        const auto& name = entry.first;
+        if(!states.contains(name)) {
+            visit(name);
+        }
+    }
+}
+
+}
+
 namespace Modules {
 std::unordered_map<std::string, Module> mods;
 
@@ -182,8 +316,15 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                     defaults.outer_pad = Meta::fromStr<Bounds>(glz::write_json(d["outer_pad"]).value());
                 
                 if(d.contains("vars") && d["vars"].is_object()) {
+                    robin_hood::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> variable_expressions;
                     for(auto &[name, value] : d["vars"].get_object()) {
-                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value = Meta::fromStr<std::string>(glz::write_json(value).value())](const Context& context, State& state) -> std::string {
+                        variable_expressions[name] = variable_expression_from_json(value);
+                    }
+
+                    validate_variable_cycles(variable_expressions);
+
+                    for(auto& [name, value] : variable_expressions) {
+                        defaults.variables[name] = std::unique_ptr<VarBase<const Context&, State&>>(new Variable([value](const Context& context, State& state) -> std::string {
                             return parse_text(value, context, state);
                         }));
                     }

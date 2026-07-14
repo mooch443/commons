@@ -35,6 +35,8 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                     return Meta::fromStr<Result>(parse_text(p.parameters.at(1), context, state));
                 else if(p.parameters.size() == 3)
                     return Meta::fromStr<Result>(parse_text(p.parameters.at(2), context, state));
+                else
+                    return "";
             }
             
         } else if(props.name == "for") {

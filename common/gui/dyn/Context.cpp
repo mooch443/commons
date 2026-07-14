@@ -99,7 +99,37 @@ void LocalSettingTypes::make(sprite::Map& map, std::string_view alias, std::stri
 }
 
 void CurrentObjectHandler::register_tooltipable(std::weak_ptr<LabeledField> field, std::weak_ptr<Drawable> ptr) {
-    _textfields.emplace_back(field, ptr);
+    _textfields.emplace_back(std::make_tuple(field, ptr));
+}
+
+void CurrentObjectHandler::register_tooltipable(std::weak_ptr<Drawable> ptr) {
+    _textfields.emplace_back(ptr);
+}
+
+void CurrentObjectHandler::unregister_tooltipable(std::weak_ptr<Drawable> field) {
+    auto ptr = field.lock();
+    if(not ptr)
+        return; /// invalid input
+    
+    for(auto it = _textfields.begin(); it != _textfields.end();) {
+        if(std::holds_alternative<std::weak_ptr<Drawable>>(*it)) {
+            if(auto lock = std::get<std::weak_ptr<Drawable>>(*it).lock();
+               lock == nullptr)
+            {
+                it = _textfields.erase(it);
+                
+            } else if(lock == ptr) {
+                _textfields.erase(it);
+                return;
+                
+            } else {
+                ++it;
+            }
+            
+        } else {
+            ++it;
+        }
+    }
 }
 
 void CurrentObjectHandler::unregister_tooltipable(std::weak_ptr<LabeledField> field) {
@@ -108,14 +138,21 @@ void CurrentObjectHandler::unregister_tooltipable(std::weak_ptr<LabeledField> fi
         return; /// invalid input
     
     for(auto it = _textfields.begin(); it != _textfields.end();) {
-        if(auto lock = std::get<0>(*it).lock();
-           lock == nullptr)
-        {
-            it = _textfields.erase(it);
-            
-        } else if(lock == ptr) {
-            _textfields.erase(it);
-            return;
+        using type_t = std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>;
+        if(std::holds_alternative<type_t>(*it)) {
+            auto &tuple = std::get<type_t>(*it);
+            if(auto lock = std::get<0>(tuple).lock();
+               lock == nullptr)
+            {
+                it = _textfields.erase(it);
+                
+            } else if(lock == ptr) {
+                _textfields.erase(it);
+                return;
+                
+            } else {
+                ++it;
+            }
             
         } else {
             ++it;
@@ -129,33 +166,60 @@ void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
     std::unique_ptr<sprite::Reference> ref;
     
     for(auto it = _textfields.begin(); it != _textfields.end(); ) {
-        auto &[_field, _ptr] = *it;
-        auto ptr = _field.lock();
-        
-        if(not ptr) {
-            it = _textfields.erase(it);
-            continue;
+        if(std::holds_alternative<std::weak_ptr<Drawable>>(*it)) {
+            auto container = std::get<std::weak_ptr<Drawable>>(*it);
+            auto ptr = container.lock();
+            
+            /// underlying object has been deleted
+            if(not ptr) {
+                it = _textfields.erase(it);
+                continue;
+            } else {
+                ++it;
+            }
+            
+            if(ptr->is_staged()
+               && ptr->hovered()
+               && ptr->type() == Type::ENTANGLED)
+            {
+                auto data = static_cast<Entangled*>(ptr.get())->tooltip_data();
+                if(data) {
+                    found = ptr;
+                    name = data.value();
+                    break;
+                }
+            }
+            
         } else {
-            ++it;
-        }
-        
-        ptr->text()->set_clickable(true);
-        
-        const Drawable* hover_object = dynamic_cast<const LabeledCombobox*>(ptr.get()) ? ptr->representative().get() : ptr->tooltip_object().get();
-        if(hover_object
-           && hover_object->type() == Type::ENTANGLED
-           && static_cast<const Entangled*>(hover_object)->tooltip_object())
-        {
-            hover_object = static_cast<const Entangled*>(hover_object)->tooltip_object();
-        }
-        
-        if(hover_object
-           && hover_object->is_staged()
-           && hover_object->hovered())
-        {
-            found = ptr->tooltip_object();
-            name = ptr->tooltip();
-            break;
+            using type_t = std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>;
+            auto &[_field, _ptr] = std::get<type_t>(*it);
+            auto ptr = _field.lock();
+            
+            if(not ptr) {
+                it = _textfields.erase(it);
+                continue;
+            } else {
+                ++it;
+            }
+            
+            ptr->text()->set_clickable(true);
+            
+            const Drawable* hover_object = dynamic_cast<const LabeledCombobox*>(ptr.get()) ? ptr->representative().get() : ptr->tooltip_object().get();
+            if(hover_object
+               && hover_object->type() == Type::ENTANGLED
+               && static_cast<const Entangled*>(hover_object)->tooltip_object())
+            {
+                hover_object = static_cast<const Entangled*>(hover_object)->tooltip_object();
+            }
+            
+            if(hover_object
+               && hover_object->is_staged()
+               && hover_object->hovered())
+            {
+                found = ptr->tooltip_object();
+                name = ptr->tooltip();
+                break;
+            }
         }
     }
     

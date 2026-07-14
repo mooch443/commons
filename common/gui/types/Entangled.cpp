@@ -152,6 +152,11 @@ void Entangled::update_scrollbar() {
 }
 
 const Drawable* Entangled::tooltip_object() const {
+    if(auto data = custom_data("tooltip");
+       data)
+    {
+        return this;
+    }
     return nullptr;
 }
 
@@ -160,6 +165,18 @@ std::optional<TooltipData> Entangled::tooltip_data() const {
        ptr && ptr != this)
     {
         return ptr->type() == Type::ENTANGLED ? static_cast<const Entangled*>(ptr)->tooltip_data() : std::nullopt;
+    }
+
+    if(auto data = custom_data("tooltip");
+       data)
+    {
+        TooltipData tooltip{
+            TooltipData::Both {
+                .name = std::string(),
+                .docs = std::string(*(const std::string*)data)
+            }
+        };
+        return tooltip;
     }
     
     return std::nullopt;

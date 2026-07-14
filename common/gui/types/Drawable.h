@@ -99,21 +99,9 @@ namespace cmn::gui {
         virtual void set_name(const std::string& name) {
             _name = name;
         }
-        void add_custom_data(std::string_view key, void* data, std::function<void(void*)> deleter = [](void*){}) {
-            _custom_data[key] = {data, deleter};
-        }
-        void remove_custom_data(std::string_view key) {
-            auto it = _custom_data.find(key);
-            if(it != _custom_data.end())
-                _custom_data.erase(key);
-        }
-        void* custom_data(std::string_view key) const {
-            auto it = _custom_data.find(key);
-            if(it != _custom_data.end()) {
-                return std::get<0>(it->second);
-            }
-            return NULL;
-        }
+        void add_custom_data(std::string_view key, void* data, std::function<void(void*)> deleter = nullptr);
+        void remove_custom_data(std::string_view key);
+        void* custom_data(std::string_view key) const;
         
         template<typename T> bool tagged(T tag) const { return _custom_tags.count((uint32_t)tag); }
         template<typename T> void tag(T t) { if(!tagged(t)) _custom_tags.insert((uint32_t)t); }
@@ -174,7 +162,7 @@ namespace cmn::gui {
 #ifndef NDEBUG
         //! This will be true during *event_handlers* being called.
         //! Makes sure we get a warning if we are deleting ourselves...
-        bool _is_in_its_own_handler = false;
+        const char* _is_in_its_own_handler = nullptr;
         friend struct cmn::gui::Handler;
 #endif
         

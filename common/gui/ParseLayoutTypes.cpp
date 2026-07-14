@@ -322,6 +322,40 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         ptr->add_custom_data(hover_name, (void*)handle.get());
     }
+
+    if(obj.count("tooltip")
+       && ptr
+       && ptr.is<Entangled>())
+    {
+        auto tooltip = obj.at("tooltip").get<std::string>();
+        if(not tooltip.empty()) {
+            tooltip = parse_text(tooltip, context, state);
+            
+            auto entangled = ptr.get_smart();
+            //auto entangled = derived_ptr<Entangled>(ptr).get_smart();
+            entangled->add_custom_data("tooltip", (void*)new std::string(tooltip), [](void*p) {
+                delete (std::string*)p;
+            });
+            
+            if(auto handler = state._current_object_handler.lock();
+                handler)
+            {
+                handler->register_tooltipable(entangled);
+                ptr->on_delete([_handler = state._current_object_handler, ptr = std::weak_ptr(entangled)]()
+                {
+                   auto handler = _handler.lock();
+                   if(not handler)
+                       return;
+
+                   auto lock = ptr.lock();
+                   if(not lock)
+                       return;
+
+                   handler->unregister_tooltipable(lock);
+                });
+            }
+        }
+    }
     
     if(obj.count("drag") || obj.count("click")) {
         auto run_action = [](const PreAction& action, const Context& context, State& state) {
@@ -838,19 +872,29 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
 {
     std::string text = get(std::string(), "text");
     auto ptr = Layout::Make<Button>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font}();
+    bool disabled = get(false, "disabled");
     
-    if(obj.count("action")) {
+    if(obj.count("action"))
+    {
         auto action = PreAction::fromStr(obj.at("action").get<std::string>());
         
         ptr->on_click(
           bind_with_state<Event>(state._current_object_handler, context, [action](Event, const Context& context, State& state) {
               try {
-                  if(auto it = context.actions.find(action.name);
+                  auto name = parse_text(action.name, context, state);
+                  if(auto it = context.actions.find(name);
                      it != context.actions.end())
                   {
                       it->second(action.parse(context, state));
-                  } else
-                      Print("Unknown Action: ", action);
+                  } else {
+                      auto _action = PreAction::fromStr(name);
+                      if(it = context.actions.find(_action.name);
+                         it != context.actions.end())
+                      {
+                          it->second(_action.parse(context, state));
+                      } else
+                          Print("Unknown Action: ", action);
+                  }
                   
               } catch(const std::exception& ex) {
                   FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied

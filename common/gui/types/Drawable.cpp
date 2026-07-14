@@ -12,12 +12,14 @@
 namespace cmn::gui {
 #ifndef NDEBUG
     struct Handler {
-        Drawable *ptr;
-        Handler(Drawable* ptr) : ptr(ptr) {
-            ptr->_is_in_its_own_handler = true;
+        const char* name{nullptr};
+        Drawable *ptr{nullptr};
+        Handler(const char* name, Drawable* ptr) : name(name), ptr(ptr)
+        {
+            ptr->_is_in_its_own_handler = name;
         }
         ~Handler() {
-            ptr->_is_in_its_own_handler = false;
+            ptr->_is_in_its_own_handler = nullptr;
         }
     };
 #endif
@@ -118,6 +120,41 @@ namespace cmn::gui {
         }
         return hidden::Global::interface_scale;
     }
+
+void Drawable::add_custom_data(std::string_view key, void* data, std::function<void(void*)> deleter) {
+    if(auto it = _custom_data.find(key);
+       it != _custom_data.end())
+    {
+        /// call deleter
+        {
+            auto& fn = std::get<1>(it->second);
+            if(fn)
+                fn(std::get<0>(it->second));
+        }
+        
+        it->second = {data, deleter};
+        
+    } else {
+        _custom_data[key] = {data, deleter};
+    }
+}
+void Drawable::remove_custom_data(std::string_view key) {
+    auto it = _custom_data.find(key);
+    if(it != _custom_data.end()) {
+        /// call deleter
+        auto &fn = std::get<1>(it->second);
+        if(fn)
+            fn(std::get<0>(it->second));
+        _custom_data.erase(key);
+    }
+}
+void* Drawable::custom_data(std::string_view key) const {
+    auto it = _custom_data.find(key);
+    if(it != _custom_data.end()) {
+        return std::get<0>(it->second);
+    }
+    return NULL;
+}
     
     Drawable::Drawable(const Type::Class& type)
         : _type(type),
@@ -213,8 +250,8 @@ namespace cmn::gui {
     
     Drawable::~Drawable() {
 #ifndef NDEBUG
-        if(_is_in_its_own_handler) {
-            FormatError("Cannot delete myself while I am in my own event_handler.");
+        if(_is_in_its_own_handler != nullptr) {
+            FormatError("Cannot delete myself while I am in my own event_handler (", _is_in_its_own_handler,")");
         }
         //Print("* Dealloc ", hex(this));
 #endif
@@ -231,8 +268,10 @@ namespace cmn::gui {
         clear_cache();
         _event_handlers.clear();
         
-        for(auto && [name, pair] : _custom_data)
-            std::get<1>(pair)(std::get<0>(pair));
+        for(auto && [name, pair] : _custom_data) {
+            if(std::get<1>(pair))
+                std::get<1>(pair)(std::get<0>(pair));
+        }
         
 #ifdef _DEBUG_MEMORY
         {
@@ -538,7 +577,7 @@ namespace cmn::gui {
             
             for(auto &e : _event_handlers[SELECT]) {
 #ifndef NDEBUG
-                Handler handler{this};
+                Handler handler{"SELECT", this};
 #endif
                 (*e)(event);
             }
@@ -558,7 +597,7 @@ namespace cmn::gui {
             
             for(auto &e : _event_handlers[SELECT]) {
 #ifndef NDEBUG
-                Handler handler{this};
+                Handler handler{"DeSELECT", this};
 #endif
                 (*e)(event);
             }
@@ -583,7 +622,7 @@ namespace cmn::gui {
         bool handled = false;
         for(auto &e : _event_handlers[MBUTTON]) {
 #ifndef NDEBUG
-            Handler handler{this};
+            Handler handler{"MBUTTON", this};
 #endif
             handled = (*e)(event) || handled;
         }
@@ -599,7 +638,7 @@ namespace cmn::gui {
     
     void Drawable::mup(Float2_t x, Float2_t y, bool left_button) {
 #ifndef NDEBUG
-        Handler handler{this};
+        Handler handler{"mup", this};
 #endif
         const Vec2 r = global_transform().getInverse().transformPoint(Vec2(x, y));
         Event event(MBUTTON);
@@ -651,7 +690,7 @@ namespace cmn::gui {
         bool result = false;
         for(auto &e : _event_handlers[KEY]) {
 #ifndef NDEBUG
-            Handler handler{this};
+            Handler handler{"KEY", this};
 #endif
             if((*e)(event)) {
                 result = true;
@@ -671,7 +710,7 @@ namespace cmn::gui {
         
         for(auto &e : _event_handlers[TEXT_ENTERED]) {
 #ifndef NDEBUG
-            Handler handler{this};
+            Handler handler{"TEXT_ENTERED", this};
 #endif
             (*e)(event);
         }
@@ -683,7 +722,7 @@ namespace cmn::gui {
         bool handled = false;
         for(auto &e : _event_handlers[SCROLL]) {
 #ifndef NDEBUG
-            Handler handler{this};
+            Handler handler{"SCROLL", this};
 #endif
             if((*e)(event)) {
                 handled = true;
@@ -715,7 +754,7 @@ namespace cmn::gui {
         // hover position changed (only called upon mouse_move)
         for(auto &handler : _event_handlers[HOVER]) {
 #ifndef NDEBUG
-            Handler guard{this};
+            Handler guard{"HOVER", this};
 #endif
             (*handler)(e);
         }

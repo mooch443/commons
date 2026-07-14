@@ -190,7 +190,7 @@ struct COMMONS_EXPORT CurrentObjectHandler {
     uint64_t _scoped_variable_values_version{1};
     
     std::shared_ptr<SettingsTooltip> _tooltip_object;
-    std::vector<std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>> _textfields;
+    std::vector<std::variant<std::weak_ptr<Drawable>, std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>>> _textfields;
     
     void reset();
     void select(const std::shared_ptr<Drawable>&);
@@ -235,7 +235,9 @@ struct COMMONS_EXPORT CurrentObjectHandler {
     void set_tooltip(std::nullptr_t);
     
     void register_tooltipable(std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>);
+    void register_tooltipable(std::weak_ptr<Drawable>);
     void unregister_tooltipable(std::weak_ptr<LabeledField>);
+    void unregister_tooltipable(std::weak_ptr<Drawable>);
     void update_tooltips(DrawStructure&);
     
 private:

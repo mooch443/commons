@@ -385,6 +385,8 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
             
             if (!_video->is_open())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
+            if(output.empty())
+                throw U_EXCEPTION("Should not pass an empty cv::Mat to FFmpeg loaders.");
             
             if(_video->read(frameIndex.get(), output)) {
                 output.set_index(frameIndex.get());
@@ -440,6 +442,8 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& outpu
             
             if (!_video->is_open())
                 throw U_EXCEPTION("Video ",_filename," cannot be opened.");
+            if(output.empty())
+                throw U_EXCEPTION("Should not pass an empty cv::Mat to FFmpeg loaders.");
             
             _video->read(frameIndex.get(), output);
             
@@ -780,6 +784,14 @@ void VideoSource::frame(Frame_t globalIndex, gpuMat& output, cmn::source_locatio
         || globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ", globalIndex, "/", _length, " requested (caller ", loc.file_name(), ":", loc.line(), ")");
 
+    if(output.empty()) {
+#ifndef NDEBUG
+        //FormatWarning("Should not pass an empty cv::Mat to VideoSource::frame().");
+#endif
+        auto size = this->size();
+        output.create(size.height, size.width, CV_8UC(required_image_channels(_colors)));
+    }
+    
     if (type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
         if (_last_file && _last_file != f)
@@ -832,6 +844,14 @@ bool VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
         || globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ", globalIndex, "/", _length, " requested (caller ", loc.file_name(), ":", loc.line(), ")");
 
+    if(output.empty()) {
+#ifndef NDEBUG
+        //FormatWarning("Should not pass an empty cv::Mat to VideoSource::frame().");
+#endif
+        auto size = this->size();
+        output.create(size.height, size.width, CV_8UC(required_image_channels(_colors)));
+    }
+    
     if (type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
         if (_last_file && _last_file != f)
@@ -865,6 +885,14 @@ bool VideoSource::frame(Frame_t globalIndex, Image& output, cmn::source_location
     if (!globalIndex.valid()
         || globalIndex >= _length)
         throw U_EXCEPTION("Invalid frame ",globalIndex,"/",_length," requested (caller ", loc.file_name(), ":", loc.line(),")");
+    
+    if(output.empty()) {
+#ifndef NDEBUG
+        //FormatWarning("Should not pass an empty cv::Mat to VideoSource::frame().");
+#endif
+        auto size = this->size();
+        output.create(size.height, size.width, required_image_channels(_colors));
+    }
     
     if(type() == File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
