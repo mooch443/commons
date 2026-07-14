@@ -671,16 +671,16 @@ bool FfmpegVideoCapture::convert_frame_to_mat(const AVFrame* frame, Mat& mat) {
     if constexpr(std::is_same_v<Mat, cv::Mat>
               || std::is_same_v<Mat, gpuMat>) 
     {
-        if(mat.empty())
-            throw InvalidArgumentException("cv::Mat or gpuMat is empty. Please create it with the correct dimensions before calling this function.");
+        if(mat.channels() == 0)
+            throw InvalidArgumentException("cv::Mat or gpuMat is empty. Please create it - at least with the right number of requested channels - before calling this function.");
         cols = mat.cols;
-		rows = mat.rows;
+        rows = mat.rows;
 		dims = mat.channels();
 	} else {
-        if(mat.empty())
-            throw InvalidArgumentException("cv::Mat or gpuMat is empty. Please create it with the correct dimensions before calling this function.");
-		cols = mat.cols;
-		rows = mat.rows;
+        if(mat.channels() == 0)
+            throw InvalidArgumentException("Image is empty. Please create it - at least with the right number of requested channels - before calling this function.");
+        cols = mat.cols;
+        rows = mat.rows;
 		dims = mat.dims;
 	}
 
