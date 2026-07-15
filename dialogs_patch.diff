@@ -8,3 +8,32 @@ index 3be61ae..40abb9c 100644
  
  project(portable_file_dialogs VERSION 1.00 LANGUAGES CXX)
  
+diff --git a/portable-file-dialogs.h b/portable-file-dialogs.h
+--- a/portable-file-dialogs.h
++++ b/portable-file-dialogs.h
+@@ -1298,12 +1298,17 @@
+     {
+         command.push_back("--file-selection");
+-
+-        // If the default path is a directory, make sure it ends with "/" otherwise zenity will
+-        // open the file dialog in the parent directory.
+-        auto filename_arg = "--filename=" + default_path;
+-        if (in_type != type::folder && !ends_with(default_path, "/") && internal::is_directory(default_path))
+-            filename_arg += "/";
+-        command.push_back(filename_arg);
+-
++
++        // An empty --filename makes Zenity fall back to the process working directory.
++        // Omit it so the native file chooser can use its usual recent/default location.
++        if (!default_path.empty())
++        {
++            // If the default path is a directory, make sure it ends with "/" otherwise zenity will
++            // open the file dialog in the parent directory.
++            auto filename_arg = "--filename=" + default_path;
++            if (in_type != type::folder && !ends_with(default_path, "/") && internal::is_directory(default_path))
++                filename_arg += "/";
++            command.push_back(filename_arg);
++        }
++
+         command.push_back("--title");
+         command.push_back(title);
