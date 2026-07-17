@@ -173,6 +173,7 @@ namespace cmn::gui {
         
         std::vector<Drawable*> collect();
         bool is_key_pressed(Codes code) const;
+        bool is_system_pressed() const;
         
         void Print(const Base*);
         

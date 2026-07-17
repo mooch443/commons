@@ -474,10 +474,10 @@ namespace cmn {
             INVALID
         };
         
-        SupportedDataTypes estimate_datatype(const std::string& value) {
+        SupportedDataTypes estimate_datatype([[maybe_unused]] const std::string& value) {
             return INVALID;
             
-            if(value.empty())
+            /*if(value.empty())
                 return INVALID;
             
             if(utils::beginsWith(value, '"') && utils::endsWith(value, '"'))
@@ -502,7 +502,7 @@ namespace cmn {
             if(value == "true" || value == "false")
                 return BOOL;
             
-            return INVALID;
+            return INVALID;*/
         }
         
         std::set<std::string> parse_values(MapSource, Map& map, std::string str, const sprite::Map* additional, const std::vector<std::string>& exclude, const Deprecations& deprecations) {

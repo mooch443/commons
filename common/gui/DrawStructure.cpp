@@ -698,7 +698,9 @@ void DrawStructure::close_dialogs() {
                 d = mouse_move(hover.hover.x, hover.hover.y);
                 set_dirty(NULL);
                 
-                if(selected_object()) {
+                if(selected_object()
+                    && not is_system_pressed()) 
+                {
                     Drawable *draggable = selected_object();
                     while (draggable && !draggable->draggable())
                         draggable = draggable->parent();
@@ -812,6 +814,14 @@ void DrawStructure::close_dialogs() {
     
     bool DrawStructure::is_key_pressed(Codes code) const {
         return pressed_keys.count(code);
+    }
+
+    bool DrawStructure::is_system_pressed() const {
+#ifdef __APPLE__
+        return is_key_pressed(Codes::LSystem) || is_key_pressed(Codes::RSystem);
+#else
+        return is_key_pressed(Codes::LControl) || is_key_pressed(Codes::RControl);
+#endif
     }
     
     bool DrawStructure::text_entered(char c) {

@@ -110,6 +110,36 @@ std::string find_replace(std::string_view str, std::string_view oldStr, std::str
 
 inline std::string find_replace(
     const std::string_view& subject,
+    const std::pair<char, char>& search_replace_pairs)
+{
+    auto &[search, replace] = search_replace_pairs;
+    std::string result{subject};
+    for (char& ch : result) {
+        if(ch == search) {
+            ch = replace;
+        }
+    }
+    return result;
+}
+
+inline std::string find_replace(
+    const std::string_view& subject,
+    const std::vector<std::pair<char, char>>& search_replace_pairs)
+{
+    std::string result{subject};
+    for (char& ch : result) {
+        for (const auto& [search, replace] : search_replace_pairs) {
+            if(ch == search) {
+                ch = replace;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+inline std::string find_replace(
+    const std::string_view& subject,
     const std::vector<std::pair<std::string_view, std::string_view>>& search_replace_pairs) {
 
     if (subject.empty() || search_replace_pairs.empty()) {

@@ -1843,12 +1843,10 @@ if(COMMONS_BUILD_HTTPD)
     message(STATUS "Adding microhttpd")
 	ExternalProject_Add(LibMicroHttpd
 	  PREFIX ${httpd_PREFIX}
-	  GIT_REPOSITORY https://git.gnunet.org/libmicrohttpd.git
-	  GIT_TAG v0.9.75
-	  #SOURCE_DIR ${httpd_PREFIX}/
-	  BINARY_DIR ${httpd_PREFIX}/src/LibMicroHttpd/
+	  URL https://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.77.tar.gz
+	  URL_HASH SHA256=9e7023a151120060d2806a6ea4c13ca9933ece4eacfc5c9464d20edddb76b0a0
 	  INSTALL_DIR ${httpd_INSTALL_DIR}
-	  CONFIGURE_COMMAND cd ${httpd_PREFIX}/src/LibMicroHttpd/ && autoreconf -fi && ./configure --bindir=${httpd_INSTALL_DIR}/lib --prefix=${httpd_INSTALL_DIR}
+	  CONFIGURE_COMMAND <SOURCE_DIR>/configure --bindir=${httpd_INSTALL_DIR}/lib --prefix=${httpd_INSTALL_DIR}
 	  UPDATE_COMMAND ""
 	)
     add_custom_command(TARGET LibMicroHttpd POST_BUILD

@@ -39,7 +39,6 @@ namespace cmn::gui {
         
         std::function<std::string(Drawable*, bool)> fn = [&](Drawable*o, bool is_background = false)
         {
-            auto d = o;
             o = o->type() == Type::SINGLETON
                     ? static_cast<SingletonObject*>(o)->ptr()
                     : o;

@@ -69,11 +69,7 @@ namespace cmn::gui {
         
         // TODO: Must also accept this from Httpd!
         if(!nowindow) {
-#if __APPLE__
-            system = stage() && (stage()->is_key_pressed(LSystem) || stage()->is_key_pressed(RSystem));
-#else
-            system = stage() && (stage()->is_key_pressed(LControl) || stage()->is_key_pressed(LControl));
-#endif
+            system = stage() && stage()->is_system_pressed();
             alt = stage() && (stage()->is_key_pressed(RAlt) || stage()->is_key_pressed(LAlt));
         }
         

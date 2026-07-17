@@ -1942,7 +1942,7 @@ template<template <typename ...> class T, typename Rt, typename... Args>
 std::string get_name(const T<Rt(Args...)>&) {
     std::string ss;
     bool first = true;
-    ((ss = ss + std::string(first ? "" : ",") + std::string(Meta::name<Args>()), first = false), ...);
+    ((static_cast<void>(ss += std::string(first ? "" : ",") + std::string(Meta::name<Args>())), first = false), ...);
     return "function<"+(std::string)Meta::name<Rt>()+"("+ss+")>";
 }
 

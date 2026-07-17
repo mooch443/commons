@@ -1377,7 +1377,8 @@ void SectionInterface::set(CornerFlags_t flags) {
             });
         }
         
-        if(!_clickable || !global_bounds().contains(x, y))
+        if(!_clickable || !global_bounds().contains(x, y)
+           || (stage() && draggable() && stage()->is_system_pressed()))
             return;
         
         results.push_back(this);

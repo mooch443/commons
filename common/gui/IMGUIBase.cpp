@@ -1366,8 +1366,10 @@ ImVec2 ImRotationCenter(int rotation_start_index, ImDrawList* list)
     ImVec2 l(FLT_MAX, FLT_MAX), u(-FLT_MAX, -FLT_MAX); // bounds
 
     const auto& buf = list->VtxBuffer;
-    for (int i = rotation_start_index; i < buf.Size; i++)
-        l = ImMin(l, buf[i].pos), u = ImMax(u, buf[i].pos);
+    for (int i = rotation_start_index; i < buf.Size; i++) {
+        l = ImMin(l, buf[i].pos);
+        u = ImMax(u, buf[i].pos);
+    }
 
     return ImVec2((l.x+u.x)/2, (l.y+u.y)/2); // or use _ClipRectStack?
 }

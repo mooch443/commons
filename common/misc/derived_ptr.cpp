@@ -8,8 +8,9 @@ IMPLEMENT(DebugPointers::zones);
 IMPLEMENT(DebugPointers::current_zone);
 
 void DebugPointers::register_named(const std::string& key, void* ptr) {
-    if (not ptr)
+    if (not ptr) {
         return;
+    }
 	if (current_zone.has_value()) {
 		auto it = zones[current_zone.value()].pointers.find(ptr);
 		if (it != zones[current_zone.value()].pointers.end()) {
@@ -30,9 +31,10 @@ void DebugPointers::register_named(const std::string& key, void* ptr) {
 }
 
 
-void DebugPointers::unregister_named(const std::string& key, void* ptr) {
-    if (not ptr)
+void DebugPointers::unregister_named([[maybe_unused]] const std::string& key, void* ptr) {
+    if (not ptr) {
         return;
+    }
 	if (current_zone.has_value()) {
 		if (zones[current_zone.value()].pointers.find(ptr) != zones[current_zone.value()].pointers.end()) {
 			zones[current_zone.value()].pointers.erase(ptr);

@@ -49,7 +49,7 @@ MHD_Result accept_callback(void *cls,
 
 Httpd::Httpd(const url_callback& get_image, const std::string& default_page, const init_session & init, const no_access& access) : _default_page(default_page), _get_url(get_image), _init_session(init), _no_access(access)
 {
-    const int default_port = GlobalSettings::has("httpd_port") ? SETTING(httpd_port).value<int>() : 8080;
+    const int default_port = GlobalSettings::has_value("httpd_port") ? SETTING(httpd_port).value<int>() : 8080;
     int port = default_port;
     
     daemon = NULL;
@@ -114,13 +114,13 @@ const char HEX2DEC[256] =
     /* F */ -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1
 };
 
-std::string UriDecode(std::string_view sSrc)
+std::string UriDecode(std::string_view _sSrc)
 {
     // Note from RFC1630: "Sequences which start with a percent
     // sign but are not followed by two hexadecimal characters
     // (0-9, A-F) are reserved for future extension"
     
-    sSrc = utils::find_replace(sSrc, "+", " ");
+    auto sSrc = utils::find_replace(_sSrc, {'+', ' '});
     
     const unsigned char * pSrc = (const unsigned char *)sSrc.data();
     const size_t SRC_LEN = sSrc.length();
@@ -128,8 +128,8 @@ std::string UriDecode(std::string_view sSrc)
     // last decodable '%'
     const unsigned char * const SRC_LAST_DEC = SRC_END - 2;
     
-    char * const pStart = new char[SRC_LEN];
-    char * pEnd = pStart;
+    std::string sResult;
+    sResult.reserve(SRC_LEN + 1u);
     
     while (pSrc < SRC_LAST_DEC)
     {
@@ -139,21 +139,19 @@ std::string UriDecode(std::string_view sSrc)
             if (-1 != (dec1 = HEX2DEC[*(pSrc + 1)])
                 && -1 != (dec2 = HEX2DEC[*(pSrc + 2)]))
             {
-                *pEnd++ = (dec1 << 4) + dec2;
+                sResult.push_back((dec1 << 4) + dec2);
                 pSrc += 3;
                 continue;
             }
         }
         
-        *pEnd++ = *pSrc++;
+        sResult.push_back(*pSrc++);
     }
     
     // the last 2- chars
     while (pSrc < SRC_END)
-        *pEnd++ = *pSrc++;
+        sResult.push_back(*pSrc++);
     
-    std::string sResult(pStart, pEnd);
-    delete [] pStart;
     return sResult;
 }
 
@@ -284,7 +282,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
     const std::string sub_dir = "html";
     
     if(utils::endsWith(url, "/favicon.ico") && file::Path(root_dir+"gfx/icon.ico").exists()) {
-        auto str = utils::read_file(root_dir+"gfx/icon.ico");
+        auto str = file::Path(root_dir+"gfx/icon.ico").read_file();
         *response = MHD_create_response_from_buffer (str.size(), (void*) str.data(),
                                                     MHD_RESPMEM_MUST_COPY);
         MHD_add_response_header(*response, "Content-Type", "image/x-icon");
@@ -306,7 +304,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
             return ret;
             
         } else {
-            auto str = utils::read_file(sub_dir+url);
+            auto str = file::Path(sub_dir+url).read_file();
             *response = MHD_create_response_from_buffer (str.size(), (void*) str.data(),
                                                         MHD_RESPMEM_MUST_COPY);
         }
@@ -314,7 +312,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
     } else if(utils::contains(url, "/get_settings")) {
         std::stringstream ss;
         ss << "{\"keys\":[";
-        auto keys = GlobalSettings::map().keys();
+        auto keys = GlobalSettings::keys();
         std::map<std::string, std::string> map;
         for (auto &k : keys) {
             map[k] = GlobalSettings::get(k).get().type_name();
@@ -353,7 +351,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
                     
                     Print("Received: '%S' = '%S'", &n, &v);
                     
-                    if(!GlobalSettings::map().has(n)) {
+                    if(!GlobalSettings::has_value(n)) {
                         return MHD_NO;
                         
                     } else {

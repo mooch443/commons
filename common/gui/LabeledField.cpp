@@ -392,7 +392,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
 LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
     : LabeledField(gui, name, local_settings),
       _create_button(new Button(Str{"+"}, Size{30,30})),
-      _null_value(new Entangled())
+      _null_value(new Entangled(Clickable{true}))
 {
     _value = LabeledField::Make({true}, gui, (std::string)ref().name(), local_settings);
     _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28});
@@ -442,7 +442,7 @@ std::shared_ptr<Drawable> LabeledOptional::tooltip_object() const
         return _reset_button.get_smart();
     if(_create_button && _create_button->hovered())
         return _create_button.get_smart();
-    return _value->representative().get_smart();
+    return representative().get_smart();
 }
 
 bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_view name) const {

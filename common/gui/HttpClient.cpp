@@ -38,7 +38,7 @@ namespace cmn::gui {
 HttpClient::HttpClient(DrawStructure& graph, const std::function<void(Event)>& event_handler, const std::string& default_page)
     : _httpd([this](auto, const std::string& url){ return this->page(url); }, default_page), _gui(graph), _event_handler(event_handler)
 {
-    if(!GlobalSettings::has("web_time_threshold"))
+    if(!GlobalSettings::has_value("web_time_threshold"))
         SETTING(web_time_threshold) = float(0.050);
 }
 
