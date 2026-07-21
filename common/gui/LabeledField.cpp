@@ -1146,7 +1146,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
                 dropdown->on_select()(Dropdown::RawIndex{}, Dropdown::TextItem::invalid_item());
 
             updateDropdownItems();
-            list->set_last_hovered_item(-1);
+            list->set_last_hovered_item(std::nullopt);
         }
     });
     

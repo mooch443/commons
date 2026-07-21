@@ -82,6 +82,7 @@ public:
     void set(ItemLineColor_t value);
     void set(ItemTextClr_t value);
     void set(CornerFlags_t value) override;
+    void set(LabelCornerFlags value);
 
     void set(LabelDims_t value);
     void set(ListDims_t value);

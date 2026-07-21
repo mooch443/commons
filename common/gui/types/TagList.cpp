@@ -33,6 +33,14 @@ void TagList::init() {
     _dropdown->set(Textfield::OnEnter_t{[this] {
         if(auto selected = _dropdown->currently_hovered_item(); selected.has_value())
             request_add(selected->name(), true);
+        else if(auto keyboard = _dropdown->selected_item();
+                keyboard.ID() != Dropdown::Item::INVALID_ID)
+        {
+            /// the hover-based highlight is reset when the enter key
+            /// deselects the textfield (closing the list), so fall back
+            /// to the arrow-key selection
+            request_add(keyboard.name(), true);
+        }
         else
             commit_typed_text();
     }});
@@ -194,6 +202,11 @@ void TagList::set(CornerFlags_t value) {
         return;
     _item_corners = value;
     mark_structure_dirty();
+}
+
+void TagList::set(LabelCornerFlags value) {
+    if(_dropdown)
+        _dropdown->set(value);
 }
 
 void TagList::set(LabelDims_t value) {

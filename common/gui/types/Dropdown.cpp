@@ -144,7 +144,18 @@ void Dropdown::init() {
                     if (stage())
                         stage()->select(NULL);
                 }
-                _list.select_highlighted_item();
+                /// prefer the explicit arrow-key selection over the
+                /// hover-based highlight: hover state can be reset by the
+                /// deselect above (which closes the list), or clobbered by
+                /// wherever the mouse happens to rest on the list
+                if(auto it = _items_to_filtered_items.find(_selected_item);
+                   _selected_item.valid()
+                   && it != _items_to_filtered_items.end())
+                {
+                    _list.select_item(sign_cast<uint64_t>(it->second.value));
+                } else {
+                    _list.select_highlighted_item();
+                }
             } else {
                 if(_closes_after_select) {
                     if(stage())
@@ -159,7 +170,7 @@ void Dropdown::init() {
             //    stage()->do_hover(NULL);
             if(_closes_after_select)
                 _set_open(false);
-            _list.set_last_hovered_item(-1);
+            _list.set_last_hovered_item(std::nullopt);
         });
     }
     
@@ -187,7 +198,7 @@ void Dropdown::init() {
         }
         
         _set_open(false);
-        _list.set_last_hovered_item(-1);
+        _list.set_last_hovered_item(std::nullopt);
         
         this->set_content_changed(true);
         
