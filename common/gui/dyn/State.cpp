@@ -6,6 +6,7 @@
 #include <gui/dyn/Action.h>
 #include <gui/DynamicGUI.h>
 #include <gui/Passthrough.h>
+#include <gui/types/TagList.h>
 #include <misc/Path.h>
 #include <misc/default_settings.h>
 #include <gui/dyn/binders.h>
@@ -105,6 +106,61 @@ static std::optional<std::vector<glz::json_t>> json_array_from_variable(
     return std::nullopt;
 }
 
+static std::vector<std::string> string_values_from_source(
+    const glz::json_t& source,
+    const Context& context,
+    State& state)
+{
+    glz::json_t resolved = source;
+    if(source.is_string()) {
+        const auto spec = source.get<std::string>();
+        try {
+            auto prepared = extractControls(spec);
+            auto props = prepared.parse(context, state);
+            if(context.has(props.name, state)) {
+                auto variable = context.variable(props.name, state);
+                if(auto values = json_array_from_variable(variable, props); values.has_value()) {
+                    glz::json_t::array_t array;
+                    array.assign(values->begin(), values->end());
+                    resolved = std::move(array);
+                } else if(variable->value_string) {
+                    glz::json_t::array_t array;
+                    for(auto& value : Meta::fromStr<std::vector<std::string>>(variable->value_string(props)))
+                        array.emplace_back(std::move(value));
+                    resolved = std::move(array);
+                } else {
+                    resolved = glz::json_t::array_t{};
+                }
+            } else {
+                const auto text = parse_text(spec, context, state);
+                glz::json_t parsed;
+                if(glz::read_json(parsed, text) == glz::error_code::none) {
+                    resolved = std::move(parsed);
+                } else {
+                    glz::json_t::array_t array;
+                    for(auto& value : Meta::fromStr<std::vector<std::string>>(text))
+                        array.emplace_back(std::move(value));
+                    resolved = std::move(array);
+                }
+            }
+        } catch(const std::exception& e) {
+            FormatWarning("Cannot resolve string-list source ", spec, ": ", e.what());
+            resolved = glz::json_t::array_t{};
+        }
+    }
+
+    std::vector<std::string> values;
+    if(not resolved.is_array())
+        return values;
+
+    values.reserve(resolved.size());
+    for(const auto& item : resolved.get_array()) {
+        if(item.is_string())
+            values.emplace_back(item.get<std::string>());
+    }
+    return values;
+}
+
 bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, Layout::Ptr &o, const Context &context, State &state)
 {
     //! something that needs to be executed before everything runs
@@ -159,6 +215,8 @@ bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, La
         (void)update_lists(gui, hash, g, o, context, state);
     } else if(std::holds_alternative<ManualListContents>(object)) {
         (void)update_manual_lists(gui, hash, g, o, context, state);
+    } else if(std::holds_alternative<TagListContents>(object)) {
+        (void)update_tag_lists(gui, hash, g, o, context, state);
     }
     return changed;
 }
@@ -546,8 +604,19 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     
     check_field.operator()<Size2, SizeLimit>("max_size");
     check_field.operator()<Size2, SizeLimit>("preview_max_size");
-    check_field.operator()<Color, ItemBorderColor_t>("item_line");
-    check_field.operator()<Color, ItemColor_t>("item_color");
+    check_field.operator()<bool, TagList::AllowNew_t>("allow_new");
+    check_field.operator()<float, TagList::MatchThreshold_t>("match_threshold");
+    check_field.operator()<Vec2, ItemPadding_t>("item_pad");
+    check_field.operator()<Color, ItemFillClr_t>("item_fill");
+    check_field.operator()<Color, ItemLineColor_t>("item_line");
+    check_field.operator()<Color, ItemTextClr_t>("item_color");
+    check_field.operator()<CornerFlags_t, CornerFlags_t>("item_corners");
+    check_field.operator()<Size2, LabelDims_t>("input_size");
+    check_field.operator()<Size2, ListDims_t>("input_list_size");
+    check_field.operator()<std::string, Placeholder_t>("input_placeholder");
+    check_field.operator()<Color, LabelFillClr_t>("input_fill");
+    check_field.operator()<Color, LabelLineColor_t>("input_line");
+    check_field.operator()<Color, LabelColor_t>("input_color");
     check_field.operator()<Color, LabelLineColor_t>("label_line");
     check_field.operator()<Color, LabelFillClr_t>("label_fill");
     check_field.operator()<Color, LabelColor_t>("label_color");
@@ -774,6 +843,17 @@ bool HashedObject::update_manual_lists(GUITaskQueue_t *, uint64_t, DrawStructure
             o.set_disabled(Meta::fromStr<bool>(std::get<pattern::UnresolvedStringPattern>(item.disabled_template).realize(context, state)));
     }
     o.to<ScrollableList<DetailTooltipItem>>()->set_items(std::move(output));
+    return false;
+}
+
+bool HashedObject::update_tag_lists(GUITaskQueue_t*, uint64_t, DrawStructure&, const Layout::Ptr& o, const Context& context, State& state) {
+    if(not o.is<TagList>())
+        return false;
+
+    const auto& contents = std::get<TagListContents>(object);
+    auto tag_list = o.to<TagList>();
+    tag_list->set_tags(string_values_from_source(contents.values, context, state));
+    tag_list->set_catalog(string_values_from_source(contents.catalog, context, state));
     return false;
 }
 

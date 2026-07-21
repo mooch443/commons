@@ -138,7 +138,7 @@ struct AttributeAlias : T {
 
 #define ATTRIBUTE_ALIAS(ALIAS_NAME, BASE_TYPE)                            \
     struct ALIAS_NAME##Tag { using base_type = BASE_TYPE; static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
-    using ALIAS_NAME = AttributeAlias<BASE_TYPE, ALIAS_NAME##Tag>;
+    using ALIAS_NAME = ::cmn::gui::attr::AttributeAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 // Using the ALIAS macro to define type aliases
 ATTRIBUTE_ALIAS(Loc, cmn::Vec2)
@@ -168,7 +168,7 @@ ATTRIBUTE_ALIAS(Placeholder_t, std::string)
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \
 struct ALIAS_NAME##Tag { using base_type = BASE_TYPE; static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
-    using ALIAS_NAME = NumberAlias<BASE_TYPE, ALIAS_NAME##Tag>;
+    using ALIAS_NAME = ::cmn::gui::attr::NumberAlias<BASE_TYPE, ALIAS_NAME##Tag>;
 
 template <typename T, class Tag>
 struct NumberAlias {

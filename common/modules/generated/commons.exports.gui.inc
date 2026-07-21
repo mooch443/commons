@@ -71,10 +71,10 @@ using ::cmn::gui::DetailFont_t;
 using ::cmn::gui::DetailFont_tTag;
 using ::cmn::gui::Foldable_t;
 using ::cmn::gui::Foldable_tTag;
-using ::cmn::gui::ItemBorderColor_t;
-using ::cmn::gui::ItemBorderColor_tTag;
-using ::cmn::gui::ItemColor_t;
-using ::cmn::gui::ItemColor_tTag;
+using ::cmn::gui::ItemLineColor_t;
+using ::cmn::gui::ItemLineColor_tTag;
+using ::cmn::gui::ItemFillClr_t;
+using ::cmn::gui::ItemFillClr_tTag;
 using ::cmn::gui::ItemFont_t;
 using ::cmn::gui::ItemFont_tTag;
 using ::cmn::gui::ItemPadding_t;
@@ -143,11 +143,13 @@ using ::cmn::gui::ClosesAfterSelect;
 using ::cmn::gui::Dropdown;
 // gui/types/Entangled.h
 using ::cmn::gui::Margin;
+using ::cmn::gui::ScrollAxis;
 // gui/types/ErrorElement.h
 using ::cmn::gui::ErrorElement;
 // gui/types/Layout.h
 using ::cmn::gui::CellFillInterval;
 using ::cmn::gui::CellFillIntervalTag;
+using ::cmn::gui::FloatingLayout;
 using ::cmn::gui::GridInfo;
 using ::cmn::gui::GridLayout;
 using ::cmn::gui::HorizontalLayout;
@@ -156,6 +158,8 @@ using ::cmn::gui::MinCellSize;
 using ::cmn::gui::MinCellSizeTag;
 using ::cmn::gui::MinSize;
 using ::cmn::gui::MinSizeTag;
+using ::cmn::gui::OuterPadding;
+using ::cmn::gui::OuterPaddingTag;
 using ::cmn::gui::PlaceinLayout;
 using ::cmn::gui::VerticalLayout;
 // gui/types/List.h
@@ -179,6 +183,8 @@ using ::cmn::gui::SingletonObject;
 using ::cmn::gui::TRange;
 // gui/types/Table.h
 using ::cmn::gui::Table;
+// gui/types/TagList.h
+using ::cmn::gui::TagList;
 // gui/types/Textfield.h
 using ::cmn::gui::ClearText_t;
 using ::cmn::gui::ClearText_tTag;

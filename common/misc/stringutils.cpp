@@ -412,7 +412,7 @@ PreprocessedDataWithDocs preprocess_corpus(const std::vector<std::string> &names
 }
 
 // Compute the Levenshtein distance between two strings
-int levenshtein_distance(const std::string &s1, const std::string &s2) {
+int levenshtein_distance(std::string_view s1, std::string_view s2) {
     size_t len1 = s1.size();
     size_t len2 = s2.size();
 

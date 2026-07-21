@@ -181,6 +181,11 @@ struct ManualListContents {
     std::vector<DetailTooltipItem> rendered;
 };
 
+struct TagListContents {
+    glz::json_t values;
+    glz::json_t catalog;
+};
+
 
 class IndexScopeHandler {
 private:
@@ -205,7 +210,7 @@ struct CustomBody {
 };
 
 struct HashedObject {
-    using VariantType = std::variant<std::monostate, IfBody, CustomBody, LoopBody, ListContents, ManualListContents>;
+    using VariantType = std::variant<std::monostate, IfBody, CustomBody, LoopBody, ListContents, ManualListContents, TagListContents>;
     
     size_t hash;
     Timer timer;
@@ -244,6 +249,7 @@ struct HashedObject {
     bool update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::Ptr &o, const Context &context, State &state);
     bool update_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &,  const Layout::Ptr &o, const Context &context, State &state);
     bool update_manual_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &,  const Layout::Ptr &o, const Context &context, State &state);
+    bool update_tag_lists(GUITaskQueue_t*, uint64_t hash, DrawStructure &, const Layout::Ptr &o, const Context &context, State &state);
     bool update_loops(GUITaskQueue_t* gui, uint64_t hash, DrawStructure &g, const Layout::Ptr &o, const Context &context, State &state);
 };
 

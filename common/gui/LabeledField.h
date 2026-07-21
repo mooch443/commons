@@ -8,6 +8,7 @@
 #include <gui/types/ScrollableList.h>
 #include <gui/types/Checkbox.h>
 #include <gui/types/List.h>
+#include <gui/types/TagList.h>
 #include <file/PathArray.h>
 #include <gui/types/Combobox.h>
 #include <gui/GUITaskQueue.h>
@@ -224,6 +225,12 @@ public:
                         return true;
                     }
                 }
+                else if (object.is<TagList>()) {
+                    if constexpr (takes_attribute<TagList, T>) {
+                        object.to<TagList>()->set(attribute);
+                        return true;
+                    }
+                }
                 else if (object.is<Checkbox>()) {
                     if constexpr (takes_attribute<Checkbox, T>) {
                         object.to<Checkbox>()->set(attribute);
@@ -237,7 +244,12 @@ public:
                     }
                 }
                 else if (object.is<Layout>()) {
-                    if(object.is<GridLayout>()) {
+                    if(object.is<FloatingLayout>()) {
+                        if constexpr (takes_attribute<FloatingLayout, T>) {
+                            object.to<FloatingLayout>()->set(attribute);
+                            return true;
+                        }
+                    } else if(object.is<GridLayout>()) {
                         if constexpr (takes_attribute<GridLayout, T>) {
                             object.to<GridLayout>()->set(attribute);
                         }

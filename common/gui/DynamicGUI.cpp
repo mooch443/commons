@@ -209,6 +209,9 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
             case LayoutType::hlayout:
                 ptr = layout.create_object<LayoutType::hlayout>();
                 break;
+            case LayoutType::floatinglayout:
+                ptr = layout.create_object<LayoutType::floatinglayout>();
+                break;
             case LayoutType::gridlayout:
                 ptr = layout.create_object<LayoutType::gridlayout>();
                 break;
@@ -247,6 +250,9 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                 break;
             case LayoutType::image:
                 ptr = layout.create_object<LayoutType::image>();
+                break;
+            case LayoutType::taglist:
+                ptr = layout.create_object<LayoutType::taglist>();
                 break;
             default:
                 if (auto it = context.custom_elements.find(obj.at("type").get_string());

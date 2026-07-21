@@ -3,6 +3,7 @@
 #include <gui/dyn/ParseText.h>
 #include <gui/dyn/Action.h>
 #include <gui/dyn/binders.h>
+#include <gui/types/TagList.h>
 #include <misc/Path.h>
 
 namespace cmn::gui::dyn {
@@ -76,7 +77,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     }
     this->hash = hash;
     
-    if(is_in(type, LayoutType::vlayout, LayoutType::hlayout, LayoutType::collection, LayoutType::gridlayout))
+    if(is_in(type, LayoutType::vlayout, LayoutType::hlayout, LayoutType::floatinglayout, LayoutType::collection, LayoutType::gridlayout))
     {
         if(obj.contains("size")) {
             size = get(_defaults.size, "size");
@@ -579,6 +580,29 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
         }
     }
     return ptr;
+}
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::floatinglayout>()
+{
+    std::vector<Layout::Ptr> children;
+    if(obj.count("children")) {
+        IndexScopeHandler handler{state._current_index};
+        for(auto& child : obj.at("children").get_array()) {
+            auto ptr = parse_object(gui, child.get_object(), context, state, context.defaults);
+            if(ptr)
+                children.push_back(ptr);
+        }
+    }
+
+    auto policy = FloatingLayout::Policy::HorizontalFirst;
+    const auto policy_name = utils::lowercase(get(std::string("horizontal-first"), "policy"));
+    if(policy_name == "vertical-first")
+        policy = FloatingLayout::Policy::VerticalFirst;
+    else if(policy_name != "horizontal-first")
+        throw InvalidArgumentException("Unknown floatinglayout policy: ", policy_name);
+
+    return Layout::Make<FloatingLayout>{std::move(children), policy, attr::SizeLimit{max_size}};
 }
 
 template <>
@@ -1200,6 +1224,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         
         state.register_variant(hash, ptr, std::move(contents));
     }
+    else {
+        throw InvalidArgumentException("Need to provide 'var' and 'template' or 'items' in order to set up a list.");
+    }
     
     if(ptr) {
         auto list = ptr.to<ScrollableList<DetailTooltipItem>>();
@@ -1255,8 +1282,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 
                 list->set(ItemPadding_t{ dyn::get(state, p, Vec2(5), "pad", hash, "item_") });
                 list->set(ItemFont_t{parse_font(p, Font(0.75), "font")});
-                list->set(ItemColor_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
-                list->set(ItemBorderColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
+                list->set(ItemFillClr_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
+                list->set(ItemLineColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
             }
         }
         
@@ -1278,6 +1305,109 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         }
     }
     
+    return ptr;
+}
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
+{
+    if(not obj.contains("var"))
+        throw InvalidArgumentException("taglist requires a 'var' string-list source.");
+
+    const bool has_add_action = obj.contains("add_action") && obj.at("add_action").is_string();
+    const bool has_remove_action = obj.contains("remove_action") && obj.at("remove_action").is_string();
+    if(has_add_action && not obj.contains("catalog"))
+        throw InvalidArgumentException("taglist with add_action requires a 'catalog' string-list source.");
+
+    auto ptr = Layout::Make<TagList>{}();
+    auto tag_list = ptr.to<TagList>();
+    tag_list->set(attr::SizeLimit{max_size});
+    tag_list->set(TagList::AllowNew_t{get(true, "allow_new")});
+    tag_list->set(TagList::MatchThreshold_t{get(1.f, "match_threshold")});
+
+    if(obj.contains("item") && obj.at("item").is_object()) {
+        const auto& item = obj.at("item").get_object();
+        tag_list->set(ItemFont_t{parse_font(item, Font(0.65f))});
+        tag_list->set(ItemPadding_t{dyn::get(state, item, Vec2{8, 4}, "pad", hash, "item_")});
+        tag_list->set(ItemLineColor_t{dyn::get(state, item, Transparent, "line", hash, "item_")});
+        tag_list->set(ItemTextClr_t{dyn::get(state, item, White, "color", hash, "item_")});
+        tag_list->set(dyn::get(state, item, CornerFlags_t{CornerFlags::Rounded(8)}, "corners", hash, "item_"));
+        if(item.contains("fill")) {
+            const auto fill = dyn::get(state, item, Transparent, "fill", hash, "item_");
+            if(not state.pattern().get(hash, "item_fill").has_value())
+                tag_list->set(ItemFillClr_t{fill});
+        }
+    }
+
+    if(obj.contains("input") && obj.at("input").is_object()) {
+        const auto& input = obj.at("input").get_object();
+        tag_list->set(LabelDims_t{dyn::get(state, input, Size2{150, 28}, "size", hash, "input_")});
+        tag_list->set(ListDims_t{dyn::get(state, input, Size2{220, 180}, "list_size", hash, "input_")});
+        tag_list->set(Placeholder_t{dyn::get(state, input, std::string("Add tag..."), "placeholder", hash, "input_")});
+        tag_list->set(LabelFont_t{parse_font(input, Font(0.65f))});
+        tag_list->set(LabelFillClr_t{dyn::get(state, input, White.alpha(210), "fill", hash, "input_")});
+        tag_list->set(LabelLineColor_t{dyn::get(state, input, White.alpha(50), "line", hash, "input_")});
+        tag_list->set(LabelColor_t{dyn::get(state, input, Black, "color", hash, "input_")});
+    }
+
+    if(has_add_action) {
+        const auto action = PreAction::fromStr(obj.at("add_action").get<std::string>());
+        auto bound = bind_with_state<std::string>(state._current_object_handler, context,
+            [action](std::string tag, const Context& context, State& state) {
+                try {
+                    if(auto handler = state._current_object_handler.lock()) {
+                        auto scope = handler->scope();
+                        scope.set("tag", tag);
+                        auto parsed = action.parse(context, state);
+                        if(parsed.parameters.empty())
+                            parsed.parameters = {tag};
+                        if(auto it = context.actions.find(parsed.name); it != context.actions.end())
+                            it->second(std::move(parsed));
+                        else
+                            FormatWarning("Unknown tag-list add action: ", parsed.name);
+                    }
+                } catch(const std::exception& e) {
+                    FormatWarning("Cannot execute tag-list add action: ", e.what());
+                }
+            });
+        tag_list->on_add([bound = std::move(bound)](const std::string& tag) mutable {
+            bound(tag);
+        });
+    }
+
+    if(has_remove_action) {
+        const auto action = PreAction::fromStr(obj.at("remove_action").get<std::string>());
+        auto bound = bind_with_state<size_t, std::string>(state._current_object_handler, context,
+            [action](size_t index, std::string tag, const Context& context, State& state) {
+                try {
+                    if(auto handler = state._current_object_handler.lock()) {
+                        auto scope = handler->scope();
+                        scope.set("tag", tag);
+                        scope.set("index", Meta::toStr(index));
+                        auto parsed = action.parse(context, state);
+                        if(parsed.parameters.empty())
+                            parsed.parameters = {tag, Meta::toStr(index)};
+                        if(auto it = context.actions.find(parsed.name); it != context.actions.end())
+                            it->second(std::move(parsed));
+                        else
+                            FormatWarning("Unknown tag-list remove action: ", parsed.name);
+                    }
+                } catch(const std::exception& e) {
+                    FormatWarning("Cannot execute tag-list remove action: ", e.what());
+                }
+            });
+        tag_list->on_remove([bound = std::move(bound)](size_t index, const std::string& tag) mutable {
+            bound(index, tag);
+        });
+    }
+
+    glz::json_t catalog_source = glz::json_t::array_t{};
+    if(obj.contains("catalog"))
+        catalog_source = obj.at("catalog");
+    state.register_variant(hash, ptr, TagListContents{
+        .values = obj.at("var"),
+        .catalog = std::move(catalog_source)
+    });
     return ptr;
 }
 

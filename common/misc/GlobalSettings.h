@@ -701,6 +701,22 @@ namespace cmn {
         });
     }
 
+
+    template<typename Fn, typename T = std::remove_cvref_t<typename cmn::detail::arg_type<Fn>::type>>
+        requires std::invocable<Fn, T&>
+    inline void safely_change_setting(std::string_view key, Fn &&fn) {
+        GlobalSettings::write([&](Configuration& config)
+        {
+            if(not config.values.has(key)) {
+                config.values.insert(key, T{});
+            }
+            
+            auto copy = config.values.at(key).value<T>();
+            fn(copy); /// copy is modified
+            config.values[key] = std::move(copy);
+        });
+    };
+
     inline sprite::Reference setting(std::string_view name) {
         return setting_config(name);
     }

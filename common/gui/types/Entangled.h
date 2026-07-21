@@ -12,6 +12,12 @@
 #endif
 
 namespace cmn::gui {
+    enum class ScrollAxis : uint8_t {
+        Both,
+        Horizontal,
+        Vertical
+    };
+
     struct Margin {
         //float left, top,
         Float2_t right, bottom;
@@ -82,11 +88,6 @@ namespace cmn::gui {
         robin_hood::unordered_map<Drawable*, bool> _owned;
         GETTER_I(std::atomic_bool, begun, false);
         
-        event_handler_t scrolling = [this](Event e){
-            const auto previous = _scroll_offset;
-            set_scroll_offset(_scroll_offset - Vec2(e.scroll.dx, e.scroll.dy));
-            return previous != _scroll_offset;
-        };
         callback_handle_t callback_ptr = nullptr;
         
         //! Scroll values in x and y direction.
@@ -94,6 +95,7 @@ namespace cmn::gui {
         //! Enables or disables scrolling
         GETTER_I(bool, scroll_enabled, false);
         GETTER(bool, scroll_show_bar){true};
+        GETTER_I(ScrollAxis, scroll_axis, ScrollAxis::Both);
         
         GETTER_I(Rangef, scroll_limit_x, Rangef(0, FLT_MAX));
         GETTER_I(Rangef, scroll_limit_y, Rangef(0, FLT_MAX));
@@ -153,6 +155,7 @@ namespace cmn::gui {
         void set_scroll_offset(Vec2 scroll_offset);
         void set_scroll_enabled(bool enable);
         void set_scroll_show_bar(bool enable);
+        void set_scroll_axis(ScrollAxis axis);
         void set_scroll_limits(const Rangef& x, const Rangef& y);
         bool empty() const;
         

@@ -157,6 +157,7 @@ set(COMMONS_PUBLIC_HEADERS
     gui/types/SingletonObject.h
     gui/types/StaticText.h
     gui/types/Table.h
+    gui/types/TagList.h
     gui/types/Textfield.h
     gui/types/Tooltip.h
     http/httpd.h
@@ -326,6 +327,7 @@ set(COMMONS_GUI_HEADERS
     gui/types/SingletonObject.h
     gui/types/StaticText.h
     gui/types/Table.h
+    gui/types/TagList.h
     gui/types/Textfield.h
     gui/types/Tooltip.h
 )
@@ -456,6 +458,7 @@ set(COMMONS_CPP_SOURCES
     gui/types/SingletonObject.cpp
     gui/types/StaticText.cpp
     gui/types/Table.cpp
+    gui/types/TagList.cpp
     gui/types/Textfield.cpp
     gui/types/Tooltip.cpp
     http/httpd.cpp

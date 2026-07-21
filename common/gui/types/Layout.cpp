@@ -311,7 +311,8 @@ void Layout::set_bounds(const Bounds& bounds) {
 
     void Layout::apply_to_children(const std::function<void (Drawable *)> & fn) {
         apply_to_objects(children(), [&](auto c){
-            _apply_to_children(c, fn);
+            if(c && c->custom_data("scrollbar") == nullptr)
+                _apply_to_children(c, fn);
         });
     }
     
@@ -467,6 +468,154 @@ void VerticalLayout::auto_size() {
         set_layout_dirty();
         set_content_changed(true);
     }
+
+void FloatingLayout::init() {
+    Layout::init();
+}
+
+void FloatingLayout::set(Policy policy) {
+    if(_policy == policy)
+        return;
+
+    _policy = policy;
+    set_layout_dirty();
+    set_content_changed(true);
+}
+
+void FloatingLayout::set(attr::SizeLimit limit) {
+    if(_max_size == limit)
+        return;
+
+    _max_size = limit;
+    set_layout_dirty();
+    set_content_changed(true);
+}
+
+void FloatingLayout::auto_size() {
+    set_layout_dirty();
+    update_layout();
+}
+
+void FloatingLayout::update_scrolling(const Size2& viewport) {
+    const bool horizontal_first = _policy == Policy::HorizontalFirst;
+    const auto overflow = horizontal_first
+        ? max(0.f, _content_size.height - viewport.height)
+        : max(0.f, _content_size.width - viewport.width);
+
+    set_scroll_axis(horizontal_first ? ScrollAxis::Vertical : ScrollAxis::Horizontal);
+    set_scroll_limits(horizontal_first ? Rangef(0, 0) : Rangef(0, overflow),
+                      horizontal_first ? Rangef(0, overflow) : Rangef(0, 0));
+    Print("viewport = ",viewport," _content_size = ", _content_size, " Overflow = ", overflow, " offset=", scroll_offset());
+    if(overflow > 0) {
+        set_scroll_enabled(true);
+        set_scroll_offset(scroll_offset());
+    } else if(scroll_enabled()) {
+        set_scroll_offset({});
+        set_scroll_enabled(false);
+    }
+}
+
+void FloatingLayout::_update_layout() {
+    std::vector<Drawable*> visible;
+    apply_to_children([&](Drawable* child) {
+        child->update_bounds();
+        const auto local = child->local_bounds();
+        if(local.width <= 0 || local.height <= 0) {
+            child->set_pos({});
+            return;
+        }
+        visible.push_back(child);
+    });
+
+    const auto left = _outer_padding.x;
+    const auto top = _outer_padding.y;
+    const auto right = _outer_padding.width;
+    const auto bottom = _outer_padding.height;
+
+    if(_policy == Policy::HorizontalFirst) {
+        float x = left;
+        float y = top;
+        float row_height = 0;
+        float max_right = left;
+        bool row_empty = true;
+        const auto wrap = _max_size.width > 0 ? _max_size.width : 0.f;
+
+        for(auto* child : visible) {
+            const auto local = child->bounds();
+            Print(child, " => ", local);
+            const auto required_width = _margins.x + local.width + _margins.width;
+            const auto required_height = _margins.y + local.height + _margins.height;
+
+            if(wrap > 0 && not row_empty && x + required_width + right > wrap) {
+                y += row_height;
+                x = left;
+                row_height = 0;
+                row_empty = true;
+            }
+
+            const auto offset = Vec2(); //local.size().mul(child->origin());
+            child->set_pos(offset + Vec2(x + _margins.x, y + _margins.y));
+            x += required_width;
+            row_height = max(row_height, required_height);
+            max_right = max(max_right, x);
+            row_empty = false;
+        }
+        
+        y += row_height;
+
+        _content_size = Size2(max_right + right, y + bottom);
+        
+    } else {
+        float x = left;
+        float y = top;
+        float column_width = 0;
+        float max_bottom = top;
+        bool column_empty = true;
+        const auto wrap = _max_size.height > 0 ? _max_size.height : 0.f;
+
+        for(auto* child : visible) {
+            const auto local = child->local_bounds();
+            const auto required_width = _margins.x + local.width + _margins.width;
+            const auto required_height = _margins.y + local.height + _margins.height;
+
+            if(wrap > 0 && not column_empty && y + required_height + bottom > wrap) {
+                x += column_width;
+                y = top;
+                column_width = 0;
+                column_empty = true;
+            }
+
+            const auto offset = local.size().mul(child->origin());
+            child->set_pos(offset + Vec2(x + _margins.x, y + _margins.y));
+            y += required_height;
+            column_width = max(column_width, required_width);
+            max_bottom = max(max_bottom, y);
+            column_empty = false;
+        }
+
+        _content_size = visible.empty()
+            ? Size2(left + right, top + bottom)
+            : Size2(x + column_width + right, max_bottom + bottom);
+    }
+
+    Size2 viewport = _content_size;
+    if(_policy == Policy::HorizontalFirst) {
+        if(_max_size.height > 0)
+            viewport.height = min(viewport.height, _max_size.height);
+    } else if(_max_size.width > 0) {
+        viewport.width = min(viewport.width, _max_size.width);
+    }
+
+    if(not viewport.Equals(size()))
+        set_size(viewport);
+    update_scrolling(viewport);
+}
+
+void FloatingLayout::set(ItemPadding_t pad) {
+    /// set padding in x/y, there is no margin here
+    Print("Setting padding to ", pad);
+    //_margins = attr::Margins{ 0_F, 0_F, pad.x, pad.y };
+}
 
 template<typename Lambda>
 void process_layout(const std::vector<Layout::Ptr> &_objects, Lambda&& lambda) {

@@ -77,9 +77,13 @@ public:
 	derived_ptr(derived_ptr&&) noexcept = default;
 	derived_ptr(const derived_ptr&) noexcept = default;
 
-    derived_ptr& operator= (Base* ptr) noexcept {
-        this->~derived_ptr();
-        new (this) derived_ptr(ptr);
+    /// Assignment from a raw pointer takes ownership, so it must not accept
+    /// derived types: a Derived* that is already owned elsewhere (e.g. from
+    /// to<Derived>()) would otherwise silently gain a second owner here.
+    template<typename T>
+        requires std::same_as<T, Base>
+    derived_ptr& operator= (T* ptr) noexcept {
+        *this = derived_ptr(ptr);
         return *this;
     }
 	derived_ptr& operator= (derived_ptr&&) noexcept = default;

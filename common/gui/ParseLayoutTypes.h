@@ -147,6 +147,9 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>();
 
 template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::floatinglayout>();
+
+template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::gridlayout>();
 
 template <>
@@ -187,5 +190,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::condition>();
 
 template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::list>();
+
+template <>
+Layout::Ptr LayoutContext::create_object<LayoutType::taglist>();
 
 }

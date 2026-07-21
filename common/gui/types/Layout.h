@@ -3,6 +3,7 @@
 #include <commons.pc.h>
 #include <gui/types/Entangled.h>
 #include <misc/derived_ptr.h>
+#include <gui/ListAttributes.h>
 
 namespace cmn::gui {
     ATTRIBUTE_ALIAS(MinSize, Size2);
@@ -267,6 +268,50 @@ namespace cmn::gui {
         
     protected:
         void _update_layout() override;
+    };
+
+    class FloatingLayout : public Layout {
+    public:
+        enum class Policy : uint8_t {
+            HorizontalFirst,
+            VerticalFirst
+        };
+
+    private:
+        GETTER_I(Policy, policy, Policy::HorizontalFirst);
+        GETTER(attr::SizeLimit, max_size);
+        GETTER(Size2, content_size);
+
+    public:
+        template<typename... Args>
+        FloatingLayout(Args... args) {
+            create(std::forward<Args>(args)...);
+        }
+
+        FloatingLayout(FloatingLayout&&) = delete;
+        FloatingLayout& operator=(FloatingLayout&&) = delete;
+
+        template<typename... Args>
+        void create(Args... args) {
+            _policy = Policy::HorizontalFirst;
+            _max_size = attr::SizeLimit{};
+            _content_size = {};
+            (set(std::forward<Args>(args)), ...);
+            init();
+        }
+
+        using Layout::set;
+        void set(Policy);
+        void set(attr::SizeLimit);
+        void set(ItemPadding_t);
+
+        std::string name() const override { return "FloatingLayout"; }
+        void auto_size() override;
+
+    private:
+        void init();
+        void _update_layout() override;
+        void update_scrolling(const Size2& viewport);
     };
 
 class GridInfo {

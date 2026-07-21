@@ -588,6 +588,8 @@ PreprocessedDataWithDocs preprocess_corpus(const std::vector<std::string>& corpu
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const PreprocessedData&);
 std::vector<int> text_search(const std::string &search_text, const std::vector<std::string> &corpus, const std::vector<std::string>& docs, const PreprocessedDataWithDocs&);
 
+int levenshtein_distance(std::string_view s1, std::string_view s2);
+
 namespace cmn::utils {
 
 template<cmn::StringLike Str>

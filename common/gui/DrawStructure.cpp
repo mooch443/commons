@@ -770,6 +770,8 @@ void DrawStructure::close_dialogs() {
         
         if(previous) {
             parent = previous->parent();
+            if(previous->pressed())
+                previous->mup(0, 0, true);
             previous->deselect();
             
             if(d && d->is_child_of(parent)) {

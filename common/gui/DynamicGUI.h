@@ -30,6 +30,7 @@ ENUM_CLASS(LayoutType,
            condition,
            vlayout,
            hlayout,
+           floatinglayout,
            gridlayout,
            collection,
            line,
@@ -44,6 +45,7 @@ ENUM_CLASS(LayoutType,
            combobox,
            image,
            list,
+           taglist,
            unknown);
 
 template<typename Fn>

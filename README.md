@@ -311,6 +311,60 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
 
 ```
 
+### Wrapping layouts and tag lists
+
+`floatinglayout` wraps ordinary DynamicGUI children. `horizontal-first` fills rows and
+scrolls vertically when `max_size.y` is exceeded; `vertical-first` fills columns and
+scrolls horizontally when `max_size.x` is exceeded.
+
+```json
+{
+  "type": "floatinglayout",
+  "policy": "horizontal-first",
+  "max_size": [500, 160],
+  "pad": [4, 4, 4, 4],
+  "children": [
+    { "type": "button", "text": "One" },
+    { "type": "button", "text": "Two" }
+  ]
+}
+```
+
+`taglist` reads its selected strings from `var`. Add/remove actions only request a
+change; the context variable remains authoritative and is read again on the next
+DynamicGUI update. A parameterless add action receives the tag. A parameterless
+remove action receives the tag followed by its index. `catalog` may name a context
+variable, use a global expression such as `{global.known_tags}`, or be a literal
+string array. At the default `match_threshold` of `1.0`, Enter canonicalizes only
+case-insensitive exact catalog matches; lower thresholds opt into fuzzy matching.
+In C++, chip styling uses the standard `ItemFont_t`, `ItemPadding_t`,
+`ItemFillClr_t`, `ItemLineColor_t`, `TextClr`, and `CornerFlags_t` attributes.
+Input styling uses `LabelDims_t`, `ListDims_t`, `Placeholder_t`, `LabelFont_t`,
+`LabelFillClr_t`, `LabelLineColor_t`, and `LabelColor_t`; all are accepted by
+the usual `set(...)` overloads and DynamicGUI attribute delegation.
+
+```json
+{
+  "type": "taglist",
+  "var": "selected_tags",
+  "catalog": "known_tags",
+  "add_action": "add_tag",
+  "remove_action": "remove_tag",
+  "allow_new": true,
+  "match_threshold": 1.0,
+  "max_size": [500, 120],
+  "item": {
+    "pad": [8, 4],
+    "corners": [8]
+  },
+  "input": {
+    "size": [150, 28],
+    "list_size": [220, 180],
+    "placeholder": "Add tag..."
+  }
+}
+```
+
 ## Contributions
 
 Feel free to contribute to the project by opening Pull Requests or Issues. Please follow the coding guidelines and keep your code as clean as possible. Thank you!

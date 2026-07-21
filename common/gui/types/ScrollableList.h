@@ -90,7 +90,7 @@ namespace cmn::gui {
         
         GETTER(LabelFont_t, label_font);
         GETTER(Color, item_color);
-        GETTER(ItemBorderColor_t, item_line_color);
+        GETTER(ItemLineColor_t, item_line_color);
         GETTER_I(Color, text_color, White);
         float _line_spacing, _previous_width{-1};
         GETTER_SETTER(std::optional<uint64_t>, last_hovered_item);
@@ -184,8 +184,8 @@ namespace cmn::gui {
         
         void init() {
             set(ItemPadding_t{5,5});
-            set(ItemColor_t(50,50,50,220));
-            set(ItemBorderColor_t(Transparent));
+            set(ItemFillClr_t(50,50,50,220));
+            set(ItemLineColor_t(Transparent));
             set(ItemFont_t{ Font(0.75) });
             set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
@@ -394,10 +394,10 @@ namespace cmn::gui {
             _item_color = item_color;
             set_dirty();
         }
-        void set(const ItemColor_t& item_color) {
+        void set(const ItemFillClr_t& item_color) {
 			set_item_color(item_color);
 		}
-        void set(const ItemBorderColor_t& c) {
+        void set(const ItemLineColor_t& c) {
             if(_item_line_color == c)
                 return;
             _item_line_color = c;

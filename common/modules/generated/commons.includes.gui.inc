@@ -61,5 +61,6 @@
 #include <gui/types/SingletonObject.h>
 #include <gui/types/StaticText.h>
 #include <gui/types/Table.h>
+#include <gui/types/TagList.h>
 #include <gui/types/Textfield.h>
 #include <gui/types/Tooltip.h>

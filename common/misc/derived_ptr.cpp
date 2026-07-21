@@ -7,22 +7,39 @@ IMPLEMENT(DebugPointers::allocated_pointers);
 IMPLEMENT(DebugPointers::zones);
 IMPLEMENT(DebugPointers::current_zone);
 
+namespace {
+std::optional<std::string> find_registration(void* ptr) {
+	for (auto& [key, pointers] : DebugPointers::allocated_pointers) {
+		if (pointers.contains(ptr))
+			return key;
+	}
+	for (auto& [name, zone] : DebugPointers::zones) {
+		if (auto it = zone.pointers.find(ptr);
+			it != zone.pointers.end())
+		{
+			return it->second + " in zone " + name;
+		}
+	}
+	return std::nullopt;
+}
+}
+
 void DebugPointers::register_named(const std::string& key, void* ptr) {
     if (not ptr) {
         return;
     }
+	/// A pointer that is still registered anywhere is still owned by a live
+	/// derived_ptr - registering it again means a second owner was created
+	/// for the same object, which will double-delete it later.
+	if (auto existing = find_registration(ptr);
+		existing.has_value())
+	{
+		FormatWarning("Pointer", hex(ptr), " registered as ", key, " is already owned as ", existing.value(), " - a second owning derived_ptr was created for a live object.");
+	}
+
 	if (current_zone.has_value()) {
-		auto it = zones[current_zone.value()].pointers.find(ptr);
-		if (it != zones[current_zone.value()].pointers.end()) {
-			FormatWarning("Pointer", hex(ptr), " already contained in allocated_ptrs in zone", current_zone.value());
-		}
 		zones[current_zone.value()].pointers[ptr] = key;
 		//Print(" ** registered ", zones[current_zone.value()].pointers.size(), " objects for ", key, " in zone ", current_zone.value(), " => ", hex(ptr));
-		for (auto& [k, v] : allocated_pointers) {
-			if (v.contains(ptr)) {
-				FormatWarning("Pointer", hex(ptr), " already contained in allocated_ptrs for ", k);
-			}
-		}
 	}
 	else {
 		allocated_pointers[key].insert(ptr);
