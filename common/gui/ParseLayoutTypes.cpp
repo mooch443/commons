@@ -814,6 +814,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         
         LabelAutoSize_t auto_limit_size{ get(LabelAutoSize_t{true}, "auto_limit_size") };
         ref->set(auto_limit_size);
+
+        AlwaysOpen_t always_open{ get(AlwaysOpen_t{false}, "always_open") };
+        ref->set(always_open);
         
         ref->set(placeholder);
         
@@ -1282,8 +1285,9 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                 
                 list->set(ItemPadding_t{ dyn::get(state, p, Vec2(5), "pad", hash, "item_") });
                 list->set(ItemFont_t{parse_font(p, Font(0.75), "font")});
-                list->set(ItemFillClr_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
+                list->set(ItemFillClr_t{ dyn::get(state, p, Transparent, "fill", hash, "item_") });
                 list->set(ItemLineColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
+                list->set(ItemTextClr_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
             }
         }
         

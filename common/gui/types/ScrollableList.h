@@ -282,6 +282,9 @@ namespace cmn::gui {
         void set(TextClr lr) {
             set_text_color(lr);
         }
+        void set(ItemTextClr_t clr) {
+            set_text_color(clr);
+        }
         void set(DetailFont_t font) {
             if(_detail_font == font)
                 return;

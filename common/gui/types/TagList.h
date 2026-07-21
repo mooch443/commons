@@ -36,6 +36,7 @@ private:
     std::optional<Color> _item_fill_color;
 
     Size2 _input_size{150, 28};
+    attr::SizeLimit _size_limit;
     Size2 _input_list_size{220, 180};
     std::string _input_placeholder_text{"Add tag..."};
     Font _input_font{0.65f};
@@ -101,6 +102,7 @@ public:
 private:
     void init();
     void mark_structure_dirty();
+    void update_flow_size_limit();
     void rebuild_structure();
     void refresh_catalog();
     void position_input();

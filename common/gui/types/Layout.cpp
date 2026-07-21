@@ -93,7 +93,7 @@ void Layout::set_stage(gui::DrawStructure *s) {
     }
 
     void Layout::set_layout_dirty() {
-        if(_layout_dirty || not stage())
+        if(_layout_dirty)
             return;
         
         for(auto &ptr : objects()) {
@@ -505,7 +505,6 @@ void FloatingLayout::update_scrolling(const Size2& viewport) {
     set_scroll_axis(horizontal_first ? ScrollAxis::Vertical : ScrollAxis::Horizontal);
     set_scroll_limits(horizontal_first ? Rangef(0, 0) : Rangef(0, overflow),
                       horizontal_first ? Rangef(0, overflow) : Rangef(0, 0));
-    Print("viewport = ",viewport," _content_size = ", _content_size, " Overflow = ", overflow, " offset=", scroll_offset());
     if(overflow > 0) {
         set_scroll_enabled(true);
         set_scroll_offset(scroll_offset());
@@ -541,8 +540,7 @@ void FloatingLayout::_update_layout() {
         const auto wrap = _max_size.width > 0 ? _max_size.width : 0.f;
 
         for(auto* child : visible) {
-            const auto local = child->bounds();
-            Print(child, " => ", local);
+            const auto local = child->local_bounds();
             const auto required_width = _margins.x + local.width + _margins.width;
             const auto required_height = _margins.y + local.height + _margins.height;
 
@@ -553,7 +551,7 @@ void FloatingLayout::_update_layout() {
                 row_empty = true;
             }
 
-            const auto offset = Vec2(); //local.size().mul(child->origin());
+            const auto offset = local.size().mul(child->origin());
             child->set_pos(offset + Vec2(x + _margins.x, y + _margins.y));
             x += required_width;
             row_height = max(row_height, required_height);
@@ -613,7 +611,7 @@ void FloatingLayout::_update_layout() {
 
 void FloatingLayout::set(ItemPadding_t pad) {
     /// set padding in x/y, there is no margin here
-    Print("Setting padding to ", pad);
+    (void)pad;
     //_margins = attr::Margins{ 0_F, 0_F, pad.x, pad.y };
 }
 

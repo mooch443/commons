@@ -338,7 +338,7 @@ variable, use a global expression such as `{global.known_tags}`, or be a literal
 string array. At the default `match_threshold` of `1.0`, Enter canonicalizes only
 case-insensitive exact catalog matches; lower thresholds opt into fuzzy matching.
 In C++, chip styling uses the standard `ItemFont_t`, `ItemPadding_t`,
-`ItemFillClr_t`, `ItemLineColor_t`, `TextClr`, and `CornerFlags_t` attributes.
+`ItemFillClr_t`, `ItemLineColor_t`, `ItemTextClr_t`, and `CornerFlags_t` attributes.
 Input styling uses `LabelDims_t`, `ListDims_t`, `Placeholder_t`, `LabelFont_t`,
 `LabelFillClr_t`, `LabelLineColor_t`, and `LabelColor_t`; all are accepted by
 the usual `set(...)` overloads and DynamicGUI attribute delegation.

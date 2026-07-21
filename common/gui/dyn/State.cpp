@@ -622,6 +622,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<Color, LabelColor_t>("label_color");
     check_field.operator()<Size2, LabelDims_t>("label_size");
     check_field.operator()<CornerFlags, LabelCornerFlags>("label_corners");
+    check_field.operator()<bool, AlwaysOpen_t>("always_open");
     check_field.operator()<Size2, ListDims_t>("list_size");
     check_field.operator()<Color, ListLineClr_t>("list_line");
     check_field.operator()<Color, ListFillClr_t>("list_fill");

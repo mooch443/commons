@@ -272,15 +272,35 @@ void Dropdown::set(Placeholder_t placeholder) {
         _textfield = nullptr;
     }
 
+    void Dropdown::set(AlwaysOpen_t always) {
+        if(_always_open == (bool)always)
+            return;
+
+        _always_open = always;
+        /// the list is a permanent part of the control - open it
+        /// without the overlay behavior of set_opened() (no z-index bump,
+        /// no on_open callbacks)
+        _opened = _always_open;
+
+        set((LabelCornerFlags)(CornerFlags)_label_corner_flags);
+        set(_list_corner_flags);
+        set_bounds_changed();
+        set_content_changed(true);
+    }
+
     void Dropdown::_set_open(bool open) {
+        if(_always_open && not open)
+            return;
         if(open != _opened) {
             set_opened(open);
             if(this->_on_open)
                 this->_on_open(open);
         }
     }
-    
+
     void Dropdown::set_opened(bool opened) {
+        if(_always_open && not opened)
+            return;
         if(_opened == opened)
             return;
         
@@ -302,8 +322,15 @@ void Dropdown::set(Placeholder_t placeholder) {
     }
     
     void Dropdown::select_textfield() {
-        if(stage() && _textfield) {
+        if(stage() && _textfield && _textfield->parent()) {
             stage()->select(_textfield.get());
+        } else if(_textfield) {
+            /// the textfield is not attached to the stage yet (e.g. the
+            /// dropdown was created this frame and has not been updated) -
+            /// remember the request and execute it in update(), once the
+            /// hierarchy up to the stage is complete
+            _pending_select_textfield = true;
+            set_content_changed(true);
         }
     }
     void Dropdown::clear_textfield() {
@@ -315,17 +342,23 @@ void Dropdown::set(Placeholder_t placeholder) {
     
     void Dropdown::update() {
         apply_item_filtering();
-        
-        if(!content_changed())
-            return;
-        
-        auto ctx = OpenContext();
-        if(_opened)
-            advance_wrap(_list);
-        if(_button)
-            advance_wrap(*_button);
-        else
-            advance_wrap(*_textfield);
+
+        if(content_changed()) {
+            auto ctx = OpenContext();
+            if(_opened)
+                advance_wrap(_list);
+            if(_button)
+                advance_wrap(*_button);
+            else
+                advance_wrap(*_textfield);
+        }
+
+        if(_pending_select_textfield
+           && stage() && _textfield && _textfield->parent())
+        {
+            _pending_select_textfield = false;
+            stage()->select(_textfield.get());
+        }
     }
 
 Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
@@ -443,7 +476,27 @@ std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
             return;
         
         Entangled::update_bounds();
-        
+
+        if(_always_open) {
+            /// the list is an embedded part of the control: label row on top,
+            /// list implicitly filling the remainder of our own box
+            set_inverted(false);
+
+            const auto local = Size2(width(), height()).div(scale());
+            const Float2_t row = _label_dims
+                ? _label_dims->height
+                : (_button ? _button->height() : _textfield->height());
+
+            if(_button)
+                _button->set_size(Size2(local.width, row));
+            else if(_textfield)
+                _textfield->set_size(Size2(local.width, row));
+
+            _list.set(ListDims_t{local.width, max(Float2_t(0), local.height - row)});
+            _list.set(Loc(0, row));
+            return;
+        }
+
         if(stage()) {
             auto &gb = global_bounds();
             if(gb.y >= stage()->height()/stage()->scale().y * 0.5) {
@@ -451,10 +504,10 @@ std::optional<Dropdown::TextItem> Dropdown::currently_hovered_item() const {
             } else
                 set_inverted(false);
         }
-        
+
         if(_textfield)
             _textfield->set_size(Size2(width(), height()).div(scale()));
-         
+
             //_list.set(LabelDims_t{width() / scale().x, _list.height()});
             //_list.set(ListDims_t{width() / scale().x, _list.height()});
         _list.set(Loc(0, _inverted ? -_list.height() : height()));

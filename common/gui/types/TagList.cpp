@@ -113,7 +113,17 @@ void TagList::request_remove(size_t index) {
 }
 
 void TagList::set(attr::SizeLimit limit) {
-    auto new_value = attr::SizeLimit{limit.width, max(0, limit.height - 10 - _input_size.height)};
+    if(_size_limit == limit)
+        return;
+    _size_limit = limit;
+    update_flow_size_limit();
+}
+
+void TagList::update_flow_size_limit() {
+    auto new_value = attr::SizeLimit{
+        _size_limit.width,
+        max(0, _size_limit.height - 10 - _input_size.height)
+    };
     if(new_value != _flow->max_size()) {
         _flow->set(new_value);
         mark_structure_dirty();
@@ -191,6 +201,7 @@ void TagList::set(LabelDims_t value) {
         return;
     _input_size = value;
     _dropdown->set_size(value);
+    update_flow_size_limit();
     mark_structure_dirty();
 }
 

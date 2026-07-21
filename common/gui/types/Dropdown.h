@@ -153,9 +153,18 @@ namespace cmn::gui {
         std::vector<TextItem> _original_items;
         
         GETTER_I(bool, opened, false);
+        GETTER_I(bool, always_open, false);
         GETTER_I(Type, type, SEARCH);
         GETTER_I(bool, inverted, false);
         GETTER(ClosesAfterSelect, closes_after_select);
+
+        //! label row dims ("label" = the control that remains if the list closes);
+        //! only consumed in always-open mode, where the list fills the rest of the Box
+        std::optional<Size2> _label_dims;
+
+        //! set when select_textfield() was called before the textfield was
+        //! attached to a stage; executed in the next update()
+        bool _pending_select_textfield{false};
         
         RawIndex _selected_item;
         
@@ -176,7 +185,15 @@ namespace cmn::gui {
             if(_button) _button->set(font);
         }
         void set(ListDims_t dims) { _list.set(dims); }
-        void set(LabelDims_t dims) { _list.set(dims); }
+        void set(LabelDims_t dims) {
+            _label_dims = dims;
+            _list.set(dims);
+            if(_always_open) {
+                set_bounds_changed();
+                set_content_changed(true);
+            }
+        }
+        void set(AlwaysOpen_t);
         void set(ListFillClr_t dims) { _list.set(dims); }
         void set(ListLineClr_t dims) { _list.set(dims); }
         void set(LabelFillClr_t dims);
