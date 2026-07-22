@@ -169,9 +169,17 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         });
     }
 
-    apply_field("corners", corners, [&](const auto& value) {
-        LabeledField::delegate_to_proper_type(value, ptr);
-    });
+    const bool has_taglist_item_corners =
+        type == LayoutType::taglist
+        && obj.contains("item")
+        && obj.at("item").is_object()
+        && obj.at("item").get_object().contains("corners");
+
+    if(not has_taglist_item_corners) {
+        apply_field("corners", corners, [&](const auto& value) {
+            LabeledField::delegate_to_proper_type(value, ptr);
+        });
+    }
 
     apply_field("pad", pad, [&](const auto& value) {
         LabeledField::delegate_to_proper_type(attr::Margins{value}, ptr);
