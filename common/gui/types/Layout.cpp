@@ -604,6 +604,14 @@ void FloatingLayout::_update_layout() {
         viewport.width = min(viewport.width, _max_size.width);
     }
 
+    /// stick to the optional minimum size even if the content is smaller
+    /// (0 = no minimum in that dimension); applied after the max-size
+    /// clamp, so an explicit minimum wins if both are set
+    if(_minSize.width > 0)
+        viewport.width = max(viewport.width, (Float2_t)_minSize.width);
+    if(_minSize.height > 0)
+        viewport.height = max(viewport.height, (Float2_t)_minSize.height);
+
     if(not viewport.Equals(size()))
         set_size(viewport);
     update_scrolling(viewport);

@@ -12,6 +12,7 @@ set(COMMONS_PUBLIC_HEADERS
     misc/DisplayValue.h
     misc/EnumClass.h
     misc/FormatColor.h
+    misc/FrameTag.h
     misc/GlobalSettings.h
     misc/Grid.h
     misc/IllegalVector.h
@@ -177,6 +178,7 @@ set(COMMONS_MISC_HEADERS
     misc/DisplayValue.h
     misc/EnumClass.h
     misc/FormatColor.h
+    misc/FrameTag.h
     misc/GlobalSettings.h
     misc/Grid.h
     misc/IllegalVector.h
@@ -358,6 +360,7 @@ set(COMMONS_CPP_SOURCES
     misc/CommandLine.cpp
     misc/CropOffsets.cpp
     misc/Deprecations.cpp
+    misc/FrameTag.cpp
     misc/GlobalSettings.cpp
     misc/Grid.cpp
     misc/Image.cpp

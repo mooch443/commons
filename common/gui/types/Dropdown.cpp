@@ -197,7 +197,11 @@ void Dropdown::init() {
             _textfield->set_text(txt);
         }
         
-        _set_open(false);
+        if(_closes_after_select
+           && not _always_open)
+        {
+            _set_open(false);
+        }
         _list.set_last_hovered_item(std::nullopt);
         
         this->set_content_changed(true);
@@ -222,6 +226,10 @@ void Dropdown::init() {
 
 void Dropdown::set(Textfield::OnClearText_t c) {
     _on_clear = c;
+}
+
+void Dropdown::set(ListCornerFlags flags) {
+    set(CornerFlags_t((CornerFlags)flags));
 }
 
 void Dropdown::set(CornerFlags_t flags) {
@@ -422,6 +430,7 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
             //{
                 _items.emplace_back(o.name(), i, o.search_name(), o.custom(), o.docs());
                 _items.back().set_color(o.color());
+                _items.back().set_display(o.display());
             //} else {
             //    _items.emplace_back(o);
             //}

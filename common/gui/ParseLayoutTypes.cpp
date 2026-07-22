@@ -385,6 +385,13 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         
         if(obj.count("drag")) {
             auto action = PreAction::fromStr(obj.at("drag").get<std::string>());
+
+            // A drag action owns the pointer gesture even when the drawable itself is not movable.
+            static constexpr auto capture_handle_name = "_dynamic_drag_capture_handle";
+            auto capture_handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(capture_handle_name);
+            auto capture = ptr->add_event_handler_replace(EventType::MBUTTON, [](Event) {}, capture_handle);
+            ptr->add_custom_data(capture_handle_name, (void*)capture.get());
+
             if(ptr->draggable()) {
                 static constexpr auto handle_name = "_dynamic_drag_handle";
                 auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
@@ -602,7 +609,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::floatinglayout>()
     else if(policy_name != "horizontal-first")
         throw InvalidArgumentException("Unknown floatinglayout policy: ", policy_name);
 
-    return Layout::Make<FloatingLayout>{std::move(children), policy, attr::SizeLimit{max_size}};
+    return Layout::Make<FloatingLayout>{std::move(children), policy, attr::SizeLimit{max_size}, MinSize{get(Size2(), "min_size")}};
 }
 
 template <>
@@ -1357,7 +1364,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
     if(has_add_action) {
         const auto action = PreAction::fromStr(obj.at("add_action").get<std::string>());
         auto bound = bind_with_state<std::string>(state._current_object_handler, context,
-            [action](std::string tag, const Context& context, State& state) {
+            [action](const std::string& tag, const Context& context, State& state) {
                 try {
                     if(auto handler = state._current_object_handler.lock()) {
                         auto scope = handler->scope();
@@ -1374,8 +1381,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
                     FormatWarning("Cannot execute tag-list add action: ", e.what());
                 }
             });
-        tag_list->on_add([bound = std::move(bound)](const std::string& tag) mutable {
-            bound(tag);
+        tag_list->on_add([bound = std::move(bound)](const FrameTag& tag) mutable {
+            bound(tag.toStr());
         });
     }
 
@@ -1400,8 +1407,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
                     FormatWarning("Cannot execute tag-list remove action: ", e.what());
                 }
             });
-        tag_list->on_remove([bound = std::move(bound)](size_t index, const std::string& tag) mutable {
-            bound(index, tag);
+        tag_list->on_remove([bound = std::move(bound)](size_t index, const FrameTag& tag) mutable {
+            bound(index, tag.toStr());
         });
     }
 

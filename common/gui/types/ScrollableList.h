@@ -99,6 +99,11 @@ namespace cmn::gui {
         GETTER_I(std::string, folded_label, "");
         GETTER_I(long, last_selected_item, -1);
         GETTER(std::optional<uint64_t>, currently_highlighted_item);
+        //! true while _currently_highlighted_item was set through
+        //! highlight_item() (keyboard navigation) - such a highlight is not
+        //! cleared when the mouse un-hovers a row, only when the mouse
+        //! actively hovers another row or the highlight is reassigned
+        bool _keyboard_highlight{false};
         GETTER_I(bool, stays_toggled, false);
         GETTER_I(bool, alternating_rows, false);
         
@@ -168,7 +173,7 @@ namespace cmn::gui {
             _list.add_event_handler(SCROLL, [this](auto) {
                 this->update_items();
             });
-            _list.set_z_index(1);
+            //_list.set_z_index(1);
         }
         
         template<typename... Args>
@@ -370,6 +375,7 @@ namespace cmn::gui {
             _last_selected_item = -1;
             _last_hovered_item.reset();
             _currently_highlighted_item.reset();
+            _keyboard_highlight = false;
             _items.clear();
 
             //Float2_t y = _line_spacing * objs.size();
@@ -537,8 +543,17 @@ namespace cmn::gui {
             float first_visible = o->scroll_offset().y / _line_spacing;
             float last_visible = (o->scroll_offset().y + height()) / _line_spacing;
             
-            if(index == -1)
+            if(index == -1) {
+                if(_keyboard_highlight && stage()) {
+                    auto* hovered = stage()->hovered_object();
+                    if(hovered && rect_to_idx.contains(hovered))
+                        stage()->do_hover(nullptr);
+                }
+                _keyboard_highlight = false;
+                _last_hovered_item.reset();
+                _currently_highlighted_item.reset();
                 return;
+            }
             
             if(o->scroll_enabled()) {
                 if(index > last_visible-1) {
@@ -571,6 +586,11 @@ namespace cmn::gui {
             {
                     stage()->do_hover(_rects.at(sign_cast<size_t>(index - first_visible)).get());
             }
+
+            /// mark as keyboard-driven only after the synthetic hover above:
+            /// the rect hover handler treats every hover as mouse-driven and
+            /// would clear the flag again
+            _keyboard_highlight = true;
         }
         
         void select_item(uint64_t index) {
@@ -656,7 +676,8 @@ namespace cmn::gui {
                             auto idx = rect_to_idx.at(r.get());
                             if(!e.hover.hovered) {
                                 if(_currently_highlighted_item
-                                   && _currently_highlighted_item.value() == idx)
+                                   && _currently_highlighted_item.value() == idx
+                                   && not _keyboard_highlight)
                                 {
                                     _currently_highlighted_item.reset();
                                 }
@@ -667,6 +688,7 @@ namespace cmn::gui {
                                 {
                                     _last_hovered_item = idx;
                                     _currently_highlighted_item = idx;
+                                    _keyboard_highlight = false;
                                     if(_on_hovered)
                                         _on_hovered(idx);
                                 }
@@ -1017,8 +1039,16 @@ namespace cmn::gui {
 
                 if (rect->pressed() || (_stays_toggled && (long)rect_to_idx[rect.get()] == _last_selected_item))
                     rect->set_fillclr(base_color.exposure(0.15f));
-                else if (rect->hovered())
+                else if (rect->hovered()
+                         || (_currently_highlighted_item
+                             && *_currently_highlighted_item == idx))
+                {
+                    /// hovered by the mouse, or highlighted via keyboard
+                    /// navigation - the keyboard highlight has to be drawn
+                    /// independently of the hover flag, since the mouse can
+                    /// hover (and thus visually claim) a different row
                     rect->set_fillclr(base_color.exposure(1.25f));
+                }
                 else
                     rect->set_fillclr(base_color.alpha(50));
                 

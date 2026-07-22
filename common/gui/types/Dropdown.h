@@ -214,6 +214,7 @@ namespace cmn::gui {
         }
         void set(CornerFlags_t) override;
         void set(LabelCornerFlags);
+        void set(ListCornerFlags);
         
         void set_bounds(const Bounds& bounds) override;
         void set_size(const Size2& size) override;

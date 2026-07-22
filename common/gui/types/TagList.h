@@ -4,6 +4,7 @@
 #include <gui/ListAttributes.h>
 #include <gui/types/Dropdown.h>
 #include <gui/types/Layout.h>
+#include <misc/FrameTag.h>
 
 namespace cmn::gui {
 
@@ -12,17 +13,21 @@ public:
     NUMBER_ALIAS(AllowNew_t, bool)
     NUMBER_ALIAS(MatchThreshold_t, float)
 
-    using AddCallback = std::function<void(const std::string&)>;
-    using RemoveCallback = std::function<void(size_t, const std::string&)>;
+    using AddCallback = std::function<void(const FrameTag&)>;
+    using RemoveCallback = std::function<void(size_t, const FrameTag&)>;
+    //! maps a raw tag value to the text shown for it; only affects display -
+    //! the raw values keep driving matching, colors and the add/remove callbacks
+    using DisplayFilter = std::function<std::string(const std::string&)>;
 
 private:
-    GETTER(std::vector<std::string>, tags);
+    GETTER(std::vector<FrameTag>, tags);
     GETTER(std::vector<std::string>, catalog);
     GETTER_I(bool, allow_new, true);
     GETTER_I(float, match_threshold, 1.f);
 
     AddCallback _on_add;
     RemoveCallback _on_remove;
+    DisplayFilter _display_filter;
 
     derived_ptr<FloatingLayout> _flow{new FloatingLayout};
     derived_ptr<Dropdown> _dropdown{new Dropdown};
@@ -55,16 +60,17 @@ public:
     TagList& operator=(TagList&&) = delete;
 
     using Entangled::set;
-    void set(const std::vector<std::string>& values) { set_tags(values); }
+    void set(const std::vector<FrameTag>& values) { set_tags(values); }
     void set(attr::SizeLimit limit);
     void set(attr::Margins margins);
     void set(OuterPadding padding);
     void set(FloatingLayout::Policy policy);
     void set(AllowNew_t value) { set_allow_new(value); }
     void set(MatchThreshold_t value) { set_match_threshold(value); }
+    void set(DisplayFilter filter) { set_display_filter(std::move(filter)); }
 
-    void set_tags(const std::vector<std::string>& values);
-    void set_tags(std::vector<std::string>&& values);
+    void set_tags(const std::vector<FrameTag>& values);
+    void set_tags(std::vector<FrameTag>&& values);
     void set_catalog(const std::vector<std::string>& values);
     void set_catalog(std::vector<std::string>&& values);
     void set_allow_new(bool value);
@@ -72,6 +78,7 @@ public:
 
     void on_add(AddCallback callback);
     void on_remove(RemoveCallback callback);
+    void set_display_filter(DisplayFilter callback);
     void request_remove(size_t index);
 
     void set(ItemFont_t value);
@@ -110,9 +117,10 @@ private:
     void commit_typed_text();
     void request_add(std::string value, bool explicit_selection);
     static std::vector<std::string> normalize_values(std::vector<std::string> values);
+    std::string display_name(const FrameTag& value) const;
     static float similarity(std::string_view lhs, std::string_view rhs);
     static bool equivalent(std::string_view lhs, std::string_view rhs);
-    Color tag_color(std::string_view value);
+    Color tag_color(const FrameTag& value);
 };
 
 }

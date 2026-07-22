@@ -603,6 +603,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     }
     
     check_field.operator()<Size2, SizeLimit>("max_size");
+    check_field.operator()<Size2, MinSize>("min_size");
     check_field.operator()<Size2, SizeLimit>("preview_max_size");
     check_field.operator()<bool, TagList::AllowNew_t>("allow_new");
     check_field.operator()<float, TagList::MatchThreshold_t>("match_threshold");
@@ -853,7 +854,11 @@ bool HashedObject::update_tag_lists(GUITaskQueue_t*, uint64_t, DrawStructure&, c
 
     const auto& contents = std::get<TagListContents>(object);
     auto tag_list = o.to<TagList>();
-    tag_list->set_tags(string_values_from_source(contents.values, context, state));
+    auto _tags = string_values_from_source(contents.values, context, state);
+    std::vector<FrameTag> tags;
+    for(auto &tag : _tags)
+        tags.emplace_back(Meta::fromStr<FrameTag>(tag));
+    tag_list->set_tags(std::move(tags));
     tag_list->set_catalog(string_values_from_source(contents.catalog, context, state));
     return false;
 }
@@ -875,8 +880,12 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     const auto item_name = loop_item_name(obj);
 
     auto generate_objects_from_string = [&](const std::string& str){
-        if(not utils::beginsWith(str, '[')
-           || not utils::endsWith(str, ']'))
+        const bool is_map = utils::beginsWith(str, '{')
+                            && utils::endsWith(str, '}');
+        const bool is_vector = utils::beginsWith(str, '[')
+                               && utils::endsWith(str, ']');
+        if(not is_map
+           && not is_vector)
         {
             return false;
         }
@@ -898,7 +907,15 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
         auto have_index = scoped_handler->evaluate_variable_value("index", VarProps{});
 
         size_t i = 0;
-        for(auto &v : vector) {
+        for(auto v : vector) {
+            if(is_map) {
+                auto parts = util::parse_array_parts(v, ':');
+                if(parts.size() != 2) {
+                    throw InvalidArgumentException("Cannot parse map item ", v, " because it does not split into 2 parts.");
+                }
+                v = parts[0];
+            }
+
             auto scope = scoped_handler->scope();
             scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                 return i;
@@ -1169,8 +1186,10 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
     }
     else {
         auto parsed = parse_text(obj.variable, context, state);
-        if(utils::beginsWith(parsed, '[')
+        if((utils::beginsWith(parsed, '[')
            && utils::endsWith(parsed, ']'))
+           || (utils::beginsWith(parsed, '{')
+               && utils::endsWith(parsed, '}')))
         {
             if(not generate_objects_from_string(parsed))
                 error = true;

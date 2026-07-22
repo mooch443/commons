@@ -717,13 +717,20 @@ void CurrentObjectHandler::register_named(const std::string &name, const std::sh
 {
     if(not ptr)
         throw InvalidArgumentException("Cannot register a null pointer for name ",name,".");
-    ptr->on_delete([this, name, ptr = std::weak_ptr(ptr)]() {
+    ptr->on_delete([weak = weak_from_this(), name, ptr = std::weak_ptr(ptr)]() {
         //Print("Deleting ", name, " from named entities.");
-        if(auto it = _named_entities.find(name);
-           it != _named_entities.end())
+        /// drawables can outlive the handler (e.g. during app shutdown,
+        /// when scene data is destroyed after the dynamic GUI state) -
+        /// in that case there is nothing left to clean up
+        auto self = weak.lock();
+        if(not self)
+            return;
+
+        if(auto it = self->_named_entities.find(name);
+           it != self->_named_entities.end())
         {
             if(it->second.lock() == ptr.lock())
-                _named_entities.erase(it);
+                self->_named_entities.erase(it);
 #ifndef NDEBUG
             else
                 Print("Error: ", name, " is not the same as the one in the map.");
@@ -1354,6 +1361,30 @@ void Context::init() const {
                 }
                 
                 throw InvalidArgumentException("Argument in ", props, " not indexable.");
+            }),
+            VarFunc("contains", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(2, props);
+
+                auto trunc = props.parameters.at(1);
+                if(is_in(utils::trim(trunc).front(), '{')) {
+                    auto key = Meta::fromStr<std::string>(props.parameters.front());
+                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+
+                    for(auto &part : parts) {
+                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        if(key_value.size() != 2) {
+                            throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
+                        }
+
+                        if(key == Meta::fromStr<std::string>(key_value.front())) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+
+                throw InvalidArgumentException("Needs to be an indexable type.");
             }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);

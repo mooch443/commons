@@ -48,10 +48,15 @@ bind_event_with_state(
     auto bound = bind_with_state<Event>(handler, context, [fn = std::move(fn)](Event e, const Context& context, State& state) {
         return fn(e, context, state);
     });
+    auto object_ptr = std::weak_ptr<Drawable>(object.get_smart());
 
     return object->add_event_handler_replace(
         type,
-        [bound = std::move(bound)](Event e) {
+        [bound = std::move(bound), handler, object_ptr](Event e) {
+            if(auto current_handler = handler.lock(); current_handler) {
+                if(auto current_object = object_ptr.lock(); current_object)
+                    current_handler->select(current_object);
+            }
             return bound(e);
         },
         handle

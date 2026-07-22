@@ -491,6 +491,16 @@ void DynamicGUI::reload(DrawStructure& graph) {
             state = {};
             context.apply_local_settings(defaults);
             context.defaults = std::move(defaults);
+
+            context.actions.emplace(ActionFunc("set-local", [this](const Action& action) {
+                REQUIRE_EXACTLY(2, action);
+
+                auto name = action.first();
+                if(not Context::is_local_setting_name(name))
+                    name = "local." + name;
+
+                context.local_setting_ref(name).get().set_value_from_string(action.last());
+            }));
             
             context.system_variables().emplace(VarFunc("hovered", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {
                 if(props.parameters.empty()) {
@@ -515,6 +525,27 @@ void DynamicGUI::reload(DrawStructure& graph) {
                     }
                 }
                 return false;
+            }));
+
+            context.system_variables().emplace(VarFunc("mouse_relative", [this, object_handler = tmp._current_object_handler](const VarProps& props) -> Vec2 {
+                auto lock = object_handler.lock();
+                if(not lock)
+                    return {};
+
+                std::shared_ptr<Drawable> ptr;
+                if(props.parameters.empty())
+                    ptr = lock->get();
+                else if(props.parameters.size() == 1)
+                    ptr = lock->retrieve_named(props.first());
+
+                if(not ptr)
+                    return {};
+
+                auto mouse = context._last_mouse;
+                if(ptr->parent() && ptr->parent()->stage())
+                    mouse = ptr->parent()->stage()->mouse_position();
+
+                return ptr->global_transform().getInverse().transformPoint(mouse);
             }));
             
             context.system_variables().emplace(VarFunc("pos", [object_handler = tmp._current_object_handler](const VarProps& props) -> Size2 {

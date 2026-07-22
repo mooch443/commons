@@ -25,7 +25,7 @@ void TagList::init() {
     _dropdown->set(ListLineClr_t{_input_line_color});
     _dropdown->set(TextClr{_input_text_color});
     _dropdown->textfield()->set_placeholder(_input_placeholder_text);
-    _dropdown->set(ZIndex{3});
+    //_dropdown->set(ZIndex{3});
 
     _dropdown->on_select([this](Dropdown::RawIndex, const Dropdown::TextItem& item) {
         request_add(item.name(), true);
@@ -60,15 +60,15 @@ std::vector<std::string> TagList::normalize_values(std::vector<std::string> valu
     return normalized;
 }
 
-void TagList::set_tags(const std::vector<std::string>& values) {
-    set_tags(std::vector<std::string>(values));
+void TagList::set_tags(const std::vector<FrameTag>& values) {
+    set_tags(std::vector<FrameTag>(values));
 }
 
-void TagList::set_tags(std::vector<std::string>&& values) {
-    auto normalized = normalize_values(std::move(values));
-    if(_tags == normalized)
+void TagList::set_tags(std::vector<FrameTag>&& values) {
+    //auto normalized = normalize_values(std::move(values));
+    if(_tags == values)
         return;
-    _tags = std::move(normalized);
+    _tags = std::move(values);
     refresh_catalog();
     mark_structure_dirty();
 }
@@ -111,6 +111,19 @@ void TagList::on_remove(RemoveCallback callback) {
     _on_remove = std::move(callback);
     if(had_callback != bool(_on_remove))
         mark_structure_dirty();
+}
+
+void TagList::set_display_filter(DisplayFilter callback) {
+    _display_filter = std::move(callback);
+    /// force the dropdown to rebuild its items: TextItems compare equal by
+    /// raw name, so a pure display change would otherwise be skipped by
+    /// Dropdown::set_items
+    _dropdown->set_items({});
+    mark_structure_dirty();
+}
+
+std::string TagList::display_name(const FrameTag& value) const {
+    return _display_filter ? _display_filter(value.toStr()) : value.toStr();
 }
 
 void TagList::request_remove(size_t index) {
@@ -223,6 +236,7 @@ void TagList::set(ListDims_t value) {
         return;
     _input_list_size = value;
     _dropdown->set(value);
+    _flow->set(MinSize{_input_list_size.width, 0});
 }
 
 void TagList::set(Placeholder_t value) {
@@ -270,16 +284,16 @@ void TagList::mark_structure_dirty() {
     set_content_changed(true);
 }
 
-Color TagList::tag_color(std::string_view value) {
+Color TagList::tag_color(const FrameTag& value) {
     if(not _catalog.empty()) {
-        auto it = std::find(_catalog.begin(), _catalog.end(), value);
+        auto it = std::find(_catalog.begin(), _catalog.end(), value.get_name());
         auto index = std::distance(_catalog.begin(), it);
         
         ColorWheel wheel((uint32_t)saturate(index, 0, (int)_catalog.size()));
         return wheel.next().saturation(0.65f).exposure(0.72f).alpha(220);
     }
     
-    auto hash = std::hash<std::string_view>{}(value);
+    auto hash = std::hash<std::string_view>{}(value.get_name());
     /*uint32_t hash = 2166136261u;
     for(const auto c : value) {
         hash ^= static_cast<uint8_t>(c);
@@ -329,7 +343,7 @@ void TagList::rebuild_structure() {
             auto ptr = Layout::Make<HorizontalLayout>{
                 std::vector<Layout::Ptr>{
                     Layout::Make<StaticText>{
-                        Str{tag},
+                        Str{display_name(tag)},
                         TextClr{_item_text_color},
                         SizeLimit{_flow->max_size().width - _item_padding.x * 2 - (_on_remove ? 30 : 0), 0},
                         attr::Margins{
@@ -362,7 +376,7 @@ void TagList::rebuild_structure() {
                 _on_remove ? 1 : _item_padding.x,
                 _item_padding.y
             });
-            front->set(Str{tag});
+            front->set(Str{display_name(tag)});
             
             if(chip->children().size() == 1
                && _on_remove)
@@ -408,12 +422,19 @@ void TagList::refresh_catalog() {
     available.reserve(_catalog.size());
     for(const auto& candidate : _catalog) {
         if(std::none_of(_tags.begin(), _tags.end(), [&](const auto& tag) {
-            return equivalent(tag, candidate);
+            return equivalent(tag.get_name(), candidate);
         })) {
             available.push_back(candidate);
         }
     }
-    _dropdown->set_items(std::vector<Dropdown::TextItem>(available.begin(), available.end()));
+    std::vector<Dropdown::TextItem> items;
+    items.reserve(available.size());
+    for(const auto& value : available) {
+        auto& item = items.emplace_back(value);
+        if(_display_filter)
+            item.set_display(_display_filter(value));
+    }
+    _dropdown->set_items(items);
 }
 
 bool TagList::equivalent(std::string_view lhs, std::string_view rhs) {
@@ -429,9 +450,9 @@ float TagList::similarity(std::string_view lhs, std::string_view rhs) {
     return 1.f - float(levenshtein_distance(left, right)) / float(length);
 }
 
-void TagList::request_add(std::string value, bool explicit_selection) {
-    value = trimmed(value);
-    if(value.empty()) {
+void TagList::request_add(std::string _value, bool explicit_selection) {
+    _value = trimmed(_value);
+    if(_value.empty()) {
         _dropdown->clear_textfield();
         _dropdown->set_opened(false);
         return;
@@ -441,7 +462,7 @@ void TagList::request_add(std::string value, bool explicit_selection) {
         float best_score = -1.f;
         std::string best;
         auto consider = [&](const std::string& candidate) {
-            const auto score = similarity(value, candidate);
+            const auto score = similarity(_value, candidate);
             if(score > best_score) {
                 best_score = score;
                 best = candidate;
@@ -450,19 +471,19 @@ void TagList::request_add(std::string value, bool explicit_selection) {
         for(const auto& candidate : _catalog)
             consider(candidate);
         for(const auto& candidate : _tags)
-            consider(candidate);
+            consider(std::string(candidate.get_name()));
 
         if(best_score >= _match_threshold)
-            value = std::move(best);
+            _value = std::move(best);
         else if(not _allow_new)
             return;
     }
 
     const bool duplicate = std::any_of(_tags.begin(), _tags.end(), [&](const auto& tag) {
-        return equivalent(tag, value);
+        return equivalent(tag.get_name(), _value);
     });
     if(not duplicate && _on_add)
-        _on_add(value);
+        _on_add(Meta::fromStr<FrameTag>(_value));
 
     _dropdown->clear_textfield();
     _dropdown->set_opened(false);
@@ -492,11 +513,16 @@ void TagList::position_input() {
 
 void TagList::update() {
     rebuild_structure();
-    
-    _flow->set(Loc{0, _on_add ? _dropdown->height() + 10 : 0});
 
+    _flow->set(Loc{0, _on_add ? _dropdown->height() + 10 : 0});
     _flow->update();
-    Entangled::set_size(_flow->size() + Size2(0, _on_add ? (10 + _dropdown->height()) : 0));
+
+    Size2 current_size = _flow->size() + Size2(0, _on_add ? (10 + _dropdown->height()) : 0);
+   /* if(current_size.width < _input_list_size.width) {
+        current_size.width = _input_list_size.width;
+        _flow->set_size(Size2(current_size.width, _flow->height()));
+    }*/
+    Entangled::set_size(current_size);
     position_input();
 
     auto context = OpenContext();

@@ -99,7 +99,7 @@ void LocalSettingTypes::register_type(std::string alias) {
     };
 }
 
-struct COMMONS_EXPORT CurrentObjectHandler {
+struct COMMONS_EXPORT CurrentObjectHandler : std::enable_shared_from_this<CurrentObjectHandler> {
     struct VariableValue {
         enum class Kind : uint8_t {
             none,
