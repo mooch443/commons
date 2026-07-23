@@ -550,7 +550,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::vlayout>()
         }
     }
     
-    auto ptr = Layout::Make<VerticalLayout>{std::move(children)}();
+    auto ptr = Layout::Make<VerticalLayout>{std::move(children), MinSize{get(Size2(), "min_size")}}();
     if(obj.count("align")) {
         if(obj.at("align").is_string()) {
             std::string align = obj.at("align").get<std::string>();
@@ -581,7 +581,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::hlayout>()
         }
     }
     
-    auto ptr = Layout::Make<HorizontalLayout>{std::move(children)}();
+    auto ptr = Layout::Make<HorizontalLayout>{std::move(children), MinSize{get(Size2(), "min_size")}}();
     if(obj.count("align")) {
         if(obj.at("align").is_string()) {
             std::string align = obj.at("align").get<std::string>();
@@ -935,7 +935,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
                       {
                           it->second(_action.parse(context, state));
                       } else
-                          Print("Unknown Action: ", action);
+                          Print("Unknown Action ",name," from ", action,".");
                   }
                   
               } catch(const std::exception& ex) {

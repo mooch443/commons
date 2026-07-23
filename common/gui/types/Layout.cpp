@@ -372,6 +372,14 @@ void VerticalLayout::auto_size() {
             x += _outer_padding.width;
         }
         
+        /// stick to the optional minimum size even if the content is smaller
+        /// (0 = no minimum in that dimension); applied after the max-size
+        /// clamp, so an explicit minimum wins if both are set
+        if(_minSize.width > 0)
+            x = max(x, (Float2_t)_minSize.width);
+        if(_minSize.height > 0)
+            max_height = max(max_height, (Float2_t)_minSize.height);
+        
         if(not Size2(x, max(0, max_height)).Equals(size())) {
             set_size(Size2(x, max(0, max_height)));
         }
@@ -426,6 +434,14 @@ void VerticalLayout::auto_size() {
         });
         
         y += _outer_padding.height;
+        
+        /// stick to the optional minimum size even if the content is smaller
+        /// (0 = no minimum in that dimension); applied after the max-size
+        /// clamp, so an explicit minimum wins if both are set
+        if(_minSize.width > 0)
+            max_width = max(max_width, (Float2_t)_minSize.width);
+        if(_minSize.height > 0)
+            y = max(y, (Float2_t)_minSize.height);
         
         if(not Size2(max_width, max(0.f, y)).Equals(size())) {
             set_size(Size2(max_width, max(0.f, y)));
