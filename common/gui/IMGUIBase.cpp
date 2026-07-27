@@ -141,7 +141,8 @@ class PolyCache : public CacheObject {
             
 #ifndef NDEBUG
             if(_texture) {
-                auto it = all_gpu_texture.find((ImTextureID)_texture->ptr);
+                auto texture_id = *static_cast<ImTextureID*>(_texture->ptr);
+                auto it = all_gpu_texture.find(texture_id);
                 if(it != all_gpu_texture.end()) {
                     all_gpu_texture.erase(it);
                 } else
@@ -153,7 +154,7 @@ class PolyCache : public CacheObject {
             
 #ifndef NDEBUG
             if(_texture) {
-                all_gpu_texture.insert((ImTextureID)_texture->ptr);
+                all_gpu_texture.insert(*static_cast<ImTextureID*>(_texture->ptr));
             }
 #endif
         }
@@ -851,12 +852,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                     ptr = io.Fonts->AddFontDefault();
                     im_font_scale = max(1, dpi_scale) * 0.5_F;
                 }
-                //ptr->Sources->GlyphOffset = ImVec2(1,0);
-                ptr->FontSize = base_font_scale * im_font_scale * scale;
+                //ptr->Sources[0]->GlyphOffset = ImVec2(1,0);
+                ptr->LegacySize = base_font_scale * im_font_scale * scale;
 
                 return ptr;
             };
 
+            config.GlyphOffset.y = 1.8;
             _fonts[Style::Regular] = load_font(0, "", path);
             _fonts[Style::Italic] = load_font(0, "-i", path);
             _fonts[Style::Bold] = load_font(0, "-b", path);
@@ -888,8 +890,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             
             config.GlyphOffset.x = 0;
             config.GlyphOffset.y = 0;
-
-            io.Fonts->Build();
         }
 
         _platform->post_init();
@@ -1506,7 +1506,7 @@ void IMGUIBase::draw_debug_rectangle(Drawable *o) {
     auto font = _fonts.at(Style::Regular);
     auto _font = Font(0.3, Style::Regular);
     
-    list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+    list->AddText(font, font->LegacySize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
 }
 
 void IMGUIBase::draw_element(const DrawOrder& order) {
@@ -1627,6 +1627,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                   (ImVec2)transform.transformPoint(o->size()),
                                   cvtClr(ptr->bg().line.value()),
                                   corners.radius,
+                                  1.0f,
                                   flags);
                 }
                 type = Type::NONE;
@@ -1663,7 +1664,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             if(ptr->fill_clr() != Transparent)
                 list->AddConvexPolyFilled(list->_Path.Data, list->_Path.Size, (ImColor)ptr->fill_clr());
             if(ptr->line_clr() != Transparent)
-                list->AddPolyline(list->_Path.Data, list->_Path.Size, (ImColor)ptr->line_clr(), true, 1);
+                list->AddPolyline(list->_Path.Data, list->_Path.Size, (ImColor)ptr->line_clr(), 1.0f, ImDrawFlags_Closed);
             
             // reset path
             list->_Path.Size = 0;
@@ -1740,7 +1741,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 }
                 
                 if(ptr->border_clr() != Transparent)
-                    list->AddPolyline(points.data(), (int)points.size() - 1, (ImColor)ptr->border_clr(), true, 1);
+                    list->AddPolyline(points.data(), (int)points.size() - 1, (ImColor)ptr->border_clr(), 1.0f, ImDrawFlags_Closed);
             }
             
             break;
@@ -1753,14 +1754,14 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 break;
             
             ImFont* font = _fonts.at(ptr->font().style);
-            auto font_scale = ptr->global_text_scale().x * font->FontSize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
+            auto font_scale = ptr->global_text_scale().x * font->LegacySize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
             
             //Vec2 rounded(round(bds.x), round(bds.y));
             Vec2 rounded(bds.x, bds.y);
             //Print(ptr->txt(), "scale = ", font_scale, " rounded = ", Vec2(rounded), " (", bds.pos(),")");
             
             if(ptr->shadow() > 0) {
-                Vec2 offset = Vec2(1.5_F * global_scale + font->Sources->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
+                Vec2 offset = Vec2(1.5_F * global_scale + font->Sources[0]->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
                 
                 list->AddText(font,
                               font_scale,
@@ -1826,7 +1827,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                                       (tex_cache->texture()->image_height-1) / float(tex_cache->texture()->height)),
                                col);
             } else {*/
-                list->AddImage((ImTextureID)tex_cache->texture()->ptr,
+                list->AddImage(*static_cast<ImTextureID*>(tex_cache->texture()->ptr),
                                ImVec2(0, 0),
                                ImVec2(o->width() - 0.5, o->height() - 0.5),
                                ImVec2(0, 0),
@@ -1859,6 +1860,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                               (ImVec2)transform.transformPoint(o->size()),
                               cvtClr(ptr->lineclr()),
                               ptr->corners().radius,
+                              1.0f,
                               flags);
             
             break;
@@ -1932,7 +1934,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         auto _font = Font(0.3, Style::Regular);
         
         if(o->in_bounds(_graph->mouse_position().x, _graph->mouse_position().y)) {
-            list->AddText(font, font->FontSize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
+            list->AddText(font, font->LegacySize * (_font.size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)White.alpha(200), text.c_str());
         }
     }
     
@@ -1959,7 +1961,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     
     auto font = _fonts.at(Style::Regular);
     auto str = Meta::toStr(o->bounds().pos().map(std::roundf))+ " p:" + Meta::toStr(o->global_bounds().pos().map(std::roundf))+" scale:"+Meta::toStr(o->scale())+" "+Meta::toStr((int*)o->parent());
-    list->AddText(font, 0.5 * font->FontSize * (1.f / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)Green, str.c_str());
+    list->AddText(font, 0.5 * font->LegacySize * (1.f / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x), bds.pos(), (ImColor)Green, str.c_str());
 #endif
     
 }
@@ -2143,7 +2145,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
         
         auto imfont = _fonts.at(font.style);
-        Vec2 size = imfont->CalcTextSizeA(imfont->FontSize * font.size / im_font_scale, FLT_MAX, -1_F, text.c_str(), text.c_str() + text.length(), NULL);
+        Vec2 size = imfont->CalcTextSizeA(imfont->LegacySize * font.size / im_font_scale, FLT_MAX, -1_F, text.c_str(), text.c_str() + text.length(), NULL);
         // Round
         //size.x = max(0, (float)(int)(size.x - 0.95_F));
         //size.y = line_spacing(font);
@@ -2158,7 +2160,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             FormatWarning("Trying to get line_spacing without a font loaded.");
             return Base::line_spacing(font);
         }
-        return font.size * _fonts.at(font.style)->FontSize / im_font_scale;
+        return font.size * _fonts.at(font.style)->LegacySize / im_font_scale;
     }
 
     void IMGUIBase::set_title(std::string title) {

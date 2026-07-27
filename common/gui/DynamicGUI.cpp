@@ -316,6 +316,9 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                 if(d.contains("line")) defaults.line = parse_color(d["line"]);
                 if(d.contains("highlight_clr")) defaults.highlightClr = parse_color(d["highlight_clr"]);
                 if(d.contains("window_color")) defaults.window_color = parse_color(d["window_color"]);
+                if(d.contains("pointer-events")) {
+                    defaults.pointer_events = Meta::fromStr<pointer::Events>(glz::write_json(d["pointer-events"]).value());
+                }
                 if(d.contains("pad"))
                     defaults.pad = Meta::fromStr<Bounds>(glz::write_json(d["pad"]).value());
                 if(d.contains("outer_pad"))

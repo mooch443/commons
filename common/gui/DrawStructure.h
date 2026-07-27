@@ -98,6 +98,30 @@ namespace cmn::gui {
         GETTER_PTR(Drawable*, selected_object);
         GETTER_PTR(Drawable*, mdown_object){nullptr};
 
+        struct PointerGesture {
+            // Object resolved by the press-time Drag hit test. It is stored while
+            // the gesture is provisional, then receives movement after capture.
+            Drawable* drag_target{nullptr};
+
+            // Object resolved by the press-time Click hit test. When click and
+            // drag target differ, mouse_down() and mouse_up() return this object
+            // even if drag_target ultimately captures the gesture.
+            Drawable* press_target{nullptr};
+
+            // Initial press position recorded for a provisional gesture, in
+            // DrawStructure coordinates. Movement is measured from it to cross
+            // the threshold; an early release replays the click at this position.
+            Vec2 down_position{0};
+
+            // False while differing click and drag targets wait on the movement
+            // threshold. begin_drag_capture() sets it; move/up and cleanup read it
+            // to choose between drag dispatch and the deferred click lifecycle.
+            bool captured{false};
+        };
+        // _mdown_object retains the provisional click target while this is pending.
+        // Both stored targets are non-owning; removal invalidates them via erase().
+        std::optional<PointerGesture> _pointer_gesture;
+
         GETTER(uint16_t, width);
         GETTER(uint16_t, height);
         Vec2 _scale{0};
@@ -258,11 +282,17 @@ namespace cmn::gui {
         void set_scale(const Vec2& s) { if(_scale == s) return; _scale = s; all_changed(); }
         
         Drawable* find(const std::string& name);
-        Drawable* find(Float2_t x, Float2_t y);
+        Drawable* find(
+            Float2_t x,
+            Float2_t y,
+            pointer::Events events = pointer::Events::All);
         
         Drawable* mouse_move(Float2_t x, Float2_t y);
         Drawable* mouse_down(bool left_button);
         Drawable* mouse_up(bool left_button);
+        [[nodiscard]] bool has_active_pointer_gesture() const {
+            return _pointer_gesture.has_value();
+        }
         
         bool is_mouse_down(int button) const;
         
@@ -324,9 +354,20 @@ namespace cmn::gui {
         void update_hover();
         void all_changed();
         void clear_hover();
+        void begin_drag_capture(Drawable* target, const Vec2& down_position);
+        Drawable* dispatch_captured_drag(Float2_t x, Float2_t y);
+        void clear_pointer_gesture();
+        [[nodiscard]] Drawable* captured_drag_target() const;
         
         bool remove_wrapped(gui::Drawable *d);
-        void clear() { _root.clear(); }
+        void clear() {
+            clear_pointer_gesture();
+            if(_mdown_object)
+                _mdown_object->set_pointer_interaction(false);
+            _mdown_object = nullptr;
+            mouse_state = {false, false};
+            _root.clear();
+        }
         
         Section* begin_section(const std::string& name, bool reuse = false);
         void finalize_section(const std::string& name);

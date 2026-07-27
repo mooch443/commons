@@ -3,6 +3,7 @@
 #include <gui/dyn/VarProps.h>
 #include <misc/colors.h>
 #include <gui/GuiTypes.h>
+#include <gui/Event.h>
 #include <gui/types/SettingsTooltip.h>
 #include <misc/TooltipData.h>
 #include <misc/Path.h>
@@ -42,6 +43,7 @@ struct DefaultSettings {
     Color textClr{White};
     Color window_color{Transparent};
     bool clickable{false};
+    pointer::Events pointer_events{pointer::Events::All};
     Size2 max_size{0.f};
     Font font{0.75f};
     

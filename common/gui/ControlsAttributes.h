@@ -3,6 +3,7 @@
 #include <commons.pc.h>
 #include <gui/types/Basic.h>
 #include <gui/CornerFlags.h>
+#include <gui/Event.h>
 
 namespace cmn::gui {
 namespace attr {
@@ -164,6 +165,7 @@ ATTRIBUTE_ALIAS(Name, std::string)
 
 ATTRIBUTE_ALIAS(CornerFlags_t, CornerFlags)
 ATTRIBUTE_ALIAS(Placeholder_t, std::string)
+ATTRIBUTE_ALIAS(PointerEvents, pointer::Events)
 
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \

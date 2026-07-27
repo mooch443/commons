@@ -2,6 +2,92 @@
 #include <commons.pc.h>
 
 namespace cmn::gui {
+    namespace pointer {
+        class Events {
+            uint8_t _value;
+
+        public:
+            static const Events None;
+            static const Events Hover;
+            static const Events Click;
+            static const Events Drag;
+            static const Events Scroll;
+            static const Events All;
+
+            constexpr Events() : _value(0) {}
+            explicit constexpr Events(uint8_t value) : _value(value) {}
+
+            std::string toStr() const {
+                if(*this == None) return "none";
+                if(*this == Hover) return "hover";
+                if(*this == Click) return "click";
+                if(*this == Drag) return "drag";
+                if(*this == Scroll) return "scroll";
+                if(*this == All) return "all";
+
+                std::string value = "[";
+                uint8_t debug = 0;
+                for(auto event : {Hover, Click, Drag, Scroll}) {
+                    if(bool(event & *this)) {
+                        if(debug != 0)
+                            value += ",";
+                        value += event.toStr();
+                        debug |= event._value;
+                    }
+                }
+                return value + "]";
+            }
+            static Events fromStr(cmn::StringLike auto&& value) {
+                const std::string text(value);
+                if(not text.empty() && text.front() == '[') {
+                    Events result;
+                    for(auto event : Meta::fromStr<std::vector<Events>>(text))
+                        result |= event;
+                    return result;
+                }
+
+                const auto token = utils::lowercase(Meta::fromStr<std::string>(text));
+                if(token == "none") return None;
+                if(token == "hover") return Hover;
+                if(token == "click") return Click;
+                if(token == "drag") return Drag;
+                if(token == "scroll") return Scroll;
+                if(token == "all") return All;
+                throw InvalidArgumentException("Unknown pointer event '", token, "'.");
+            }
+
+            friend constexpr bool operator==(Events, Events) = default;
+
+            friend constexpr Events operator|(Events lhs, Events rhs) {
+                lhs._value |= rhs._value;
+                return lhs;
+            }
+
+            friend constexpr Events operator&(Events lhs, Events rhs) {
+                lhs._value &= rhs._value;
+                return lhs;
+            }
+
+            constexpr Events& operator|=(Events rhs) {
+                _value |= rhs._value;
+                return *this;
+            }
+
+            [[nodiscard]] constexpr explicit operator bool() const {
+                return _value != 0;
+            }
+
+            static consteval std::string_view class_name() { return "Events"; }
+        };
+
+        inline constexpr Events Events::None{0};
+        inline constexpr Events Events::Hover{1 << 0};
+        inline constexpr Events Events::Click{1 << 1};
+        inline constexpr Events Events::Drag{1 << 2};
+        inline constexpr Events Events::Scroll{1 << 3};
+        inline constexpr Events Events::All{(1 << 0) | (1 << 1) | (1 << 2) | (1 << 3)};
+    }
+
     namespace Keyboard {
         enum Codes
         {

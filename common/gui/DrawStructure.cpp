@@ -6,6 +6,8 @@
 #include <gui/Passthrough.h>
 
 namespace cmn::gui {
+    static constexpr Float2_t pointer_drag_threshold = 5;
+
     struct ErrorMessage {
         std::chrono::time_point<std::chrono::system_clock> time, last;
         std::string msg;
@@ -365,6 +367,7 @@ void Dialog::set_closed() {
         //auto guard = GUI_LOCK(_lock);
         //cmn::Print("* Deselecting ", hex(_selected_object));
         _selected_object = _hovered_object = _mdown_object = nullptr;
+        _pointer_gesture.reset();
         _active_section = nullptr;
         _root.set_stage(NULL);
         clear();
@@ -480,9 +483,15 @@ void DrawStructure::close_dialogs() {
     }
     
     void DrawStructure::update_hover() {
+        if(captured_drag_target())
+            return;
+
         // triggered by hovered drawable if its size is changed,
         // or if it is moved
-        auto d = find(_mouse_position.x, _mouse_position.y);
+        auto d = find(
+            _mouse_position.x,
+            _mouse_position.y,
+            pointer::Events::Hover);
         if(d != _hovered_object) {
             Event e(HOVER);
             e.hover.x = _mouse_position.x;
@@ -561,6 +570,15 @@ void DrawStructure::close_dialogs() {
     }
     
     void DrawStructure::erase(gui::Drawable *d) {
+        auto references = [d](Drawable* target) {
+            return target && target->is_child_of(d);
+        };
+        if(_pointer_gesture
+           && (references(_pointer_gesture->drag_target)
+               || references(_pointer_gesture->press_target)
+               || (!_pointer_gesture->captured && references(_mdown_object))))
+            clear_pointer_gesture();
+
         if(_selected_object 
            && (_selected_object == d || _selected_object->is_child_of(d)))
         {
@@ -575,7 +593,10 @@ void DrawStructure::close_dialogs() {
         if(_mdown_object
            && (_mdown_object == d ||
                _mdown_object->is_child_of(d)))
+        {
+            _mdown_object->set_pointer_interaction(false);
             _mdown_object = nullptr;
+        }
     }
     
     void DrawStructure::finalize_section(const std::string& name) {
@@ -591,10 +612,14 @@ void DrawStructure::close_dialogs() {
         pop_section();
     }
     
-    Drawable* DrawStructure::find(Float2_t x, Float2_t y) {
+    Drawable* DrawStructure::find(
+        Float2_t x,
+        Float2_t y,
+        pointer::Events events)
+    {
         _root.update_bounds();
         results.clear();
-        _root.find(x, y, results);
+        _root.find(x, y, results, events);
         
         int64_t Z = -1;
         Drawable* found = nullptr;
@@ -606,12 +631,99 @@ void DrawStructure::close_dialogs() {
         }
         return found;
     }
+
+    Drawable* DrawStructure::captured_drag_target() const {
+        return _pointer_gesture && _pointer_gesture->captured
+            ? _pointer_gesture->drag_target
+            : nullptr;
+    }
+
+    void DrawStructure::begin_drag_capture(Drawable* target, const Vec2& down_position) {
+        if(not target)
+            return;
+
+        auto* press_target = _pointer_gesture
+            ? _pointer_gesture->press_target
+            : target;
+        if(_pointer_gesture && !_pointer_gesture->captured && _mdown_object) {
+            _mdown_object->set_pointer_interaction(false);
+            _mdown_object = nullptr;
+        }
+
+        _pointer_gesture = PointerGesture{
+            .drag_target = target,
+            .press_target = press_target,
+            .captured = true
+        };
+
+        target->set_pointer_interaction(true, down_position);
+        // Capture is exclusive: crossed objects must not retain or receive hover.
+        clear_hover();
+    }
+
+    Drawable* DrawStructure::dispatch_captured_drag(Float2_t x, Float2_t y) {
+        auto* target = captured_drag_target();
+        if(not target || is_system_pressed())
+            return target;
+
+        auto pos = target->global_transform()
+                         .getInverse()
+                         .transformPoint(Vec2(x, y));
+        auto delta = pos - target->relative_drag_start();
+
+        if(target->draggable())
+            target->set_pos(target->pos() + delta);
+
+        // DRAG also represents non-moving "drag-on" actions.
+        auto handlers = target->_event_handlers.find(EventType::DRAG);
+        if(handlers != target->_event_handlers.end()) {
+            Event drag(EventType::DRAG);
+            drag.drag.x = target->pos().x;
+            drag.drag.y = target->pos().y;
+            drag.drag.rx = delta.x;
+            drag.drag.ry = delta.y;
+            for(auto& handler : handlers->second)
+                (*handler)(drag);
+        }
+
+        return target;
+    }
+
+    void DrawStructure::clear_pointer_gesture() {
+        auto gesture = std::exchange(_pointer_gesture, std::nullopt);
+        if(not gesture)
+            return;
+
+        if(not gesture->captured && _mdown_object) {
+            _mdown_object->set_pointer_interaction(false);
+            _mdown_object = nullptr;
+        }
+        if(gesture->drag_target)
+            gesture->drag_target->set_pointer_interaction(false);
+    }
     
     Drawable* DrawStructure::mouse_move(Float2_t x, Float2_t y) {
         _mouse_position.x = x;
         _mouse_position.y = y;
+
+        if(captured_drag_target())
+            return dispatch_captured_drag(x, y);
+
+        if(_pointer_gesture && !_pointer_gesture->captured
+           && _pointer_gesture->drag_target)
+        {
+            const auto gesture = *_pointer_gesture;
+            // A split click/drag gesture remains provisional until this threshold.
+            if(not is_system_pressed()
+               && (Vec2(x, y) - gesture.down_position).sqlength()
+               > pointer_drag_threshold * pointer_drag_threshold)
+            {
+                begin_drag_capture(gesture.drag_target, gesture.down_position);
+                return dispatch_captured_drag(x, y);
+            }
+        }
         
-        auto d = find(x, y);
+        auto d = find(x, y, pointer::Events::Hover);
         Event e(HOVER);
         e.hover.x = x;
         e.hover.y = y;
@@ -623,17 +735,12 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* DrawStructure::mouse_down(bool left_button) {
-        bool first_set = false;
-        if(left_button
-           && not mouse_state[0])
-        {
-            first_set = true;
-        }
-        
-        mouse_state[left_button ? 0 : 1] = true;
+        const auto button_index = left_button ? 0u : 1u;
+        const bool first_set = not mouse_state[button_index];
+        mouse_state[button_index] = true;
         
         Float2_t x = _mouse_position.x, y = _mouse_position.y;
-        auto d = find(x, y);
+        auto d = find(x, y, pointer::Events::Click);
         
         if(not first_set
            && d != _mdown_object)
@@ -645,7 +752,46 @@ void DrawStructure::close_dialogs() {
         e.hover.x = x;
         e.hover.y = y;
         
-        do_hover(d, e);
+        auto* hover_target = find(x, y, pointer::Events::Hover);
+        e.hover.hovered = hover_target != nullptr;
+        do_hover(hover_target, e);
+
+        Drawable* drag_target = nullptr;
+        if(first_set && left_button) {
+            clear_pointer_gesture();
+
+            drag_target = find(x, y, pointer::Events::Drag);
+            // Default-All click children retain the legacy draggable-ancestor path.
+            if(drag_target && drag_target == d) {
+                do {
+                    auto handlers = drag_target->_event_handlers.find(EventType::DRAG);
+                    if(drag_target->does_receive(pointer::Events::Drag)
+                       && (drag_target->draggable()
+                           || (handlers != drag_target->_event_handlers.end()
+                               && !handlers->second.empty())))
+                    {
+                        break;
+                    }
+                    drag_target = drag_target->parent();
+                } while(drag_target);
+            }
+
+            if(drag_target && drag_target != d) {
+                // Arm both visuals, but defer click dispatch and selection.
+                _pointer_gesture = PointerGesture{
+                    .drag_target = drag_target,
+                    .press_target = d,
+                    .down_position = Vec2(x, y)
+                };
+                _mdown_object = d;
+
+                if(d)
+                    d->set_pointer_interaction(true);
+                drag_target->set_pointer_interaction(true);
+                return d ? d : drag_target;
+            }
+        }
+
         select(d);
         
         if(first_set) {
@@ -654,24 +800,90 @@ void DrawStructure::close_dialogs() {
         
         if(d) {
             d->mdown(x, y, left_button); // ? dragging
+
+            if(_mdown_object == d
+               && first_set
+               && left_button
+               && not is_system_pressed()
+               && drag_target == d)
+            {
+                begin_drag_capture(drag_target, Vec2(x, y));
+            }
         }
         
-        return d;
+        return _mdown_object == d ? d : nullptr;
     }
     
     Drawable* DrawStructure::mouse_up(bool left_button) {
         mouse_state[left_button ? 0 : 1] = false;
-        
-        if(_selected_object) {
-            std::string type(_selected_object->type().name());
-            if(not _selected_object->name().empty())
-                type = _selected_object->name();
-            
-            Float2_t x = _mouse_position.x, y = _mouse_position.y;
-            _selected_object->mup(x, y, left_button);
+
+        Float2_t x = _mouse_position.x, y = _mouse_position.y;
+        auto release_selected = [&](bool left) {
+            if(not _mdown_object || not _selected_object)
+                return;
+
+            auto* release_target = find(x, y, pointer::Events::Click);
+            _selected_object->mup(
+                x, y, left,
+                release_target
+                && _mdown_object == release_target
+                && release_target->is_child_of(_selected_object));
+        };
+
+        if(left_button && captured_drag_target()) {
+            release_selected(true);
+            auto* result = _pointer_gesture
+                ? (_pointer_gesture->press_target
+                    ? _pointer_gesture->press_target
+                    : _pointer_gesture->drag_target)
+                : nullptr;
+            clear_pointer_gesture();
+            _mdown_object = nullptr;
+            mouse_move(x, y);
+            return result;
+        }
+
+        if(left_button && _pointer_gesture && !_pointer_gesture->captured) {
+            // Below the threshold, commit the deferred underlying click.
+            const auto gesture = std::exchange(_pointer_gesture, std::nullopt);
+            if(gesture->drag_target)
+                gesture->drag_target->set_pointer_interaction(false);
+
+            auto* click_target = _mdown_object;
+            if(click_target)
+                select(click_target);
+            if(click_target
+               && _selected_object == click_target)
+            {
+                _mdown_object = click_target;
+                click_target->mdown(
+                    gesture->down_position.x,
+                    gesture->down_position.y,
+                    true);
+            }
+            if(click_target
+               && _mdown_object == click_target)
+            {
+                auto* release_target = find(x, y, pointer::Events::Click);
+                click_target->mup(
+                    x,
+                    y,
+                    true,
+                    release_target == click_target);
+            }
+
+            _mdown_object = nullptr;
+            mouse_move(x, y);
+            return _selected_object;
+        }
+
+        if(_selected_object && (not left_button || _mdown_object)) {
+            release_selected(left_button);
         }
         
         _mdown_object = nullptr;
+        if(left_button && not _hovered_object)
+            mouse_move(x, y);
         return _selected_object;
     }
     
@@ -697,36 +909,6 @@ void DrawStructure::close_dialogs() {
                 
                 d = mouse_move(hover.hover.x, hover.hover.y);
                 set_dirty(NULL);
-                
-                if(selected_object()
-                    && not is_system_pressed()) 
-                {
-                    Drawable *draggable = selected_object();
-                    while (draggable && !draggable->draggable())
-                        draggable = draggable->parent();
-                    
-                    if(draggable && draggable->pressed() && draggable->being_dragged()) {
-                        auto pos = Vec2(hover.hover.x, hover.hover.y);
-                        pos = draggable->global_transform().getInverse().transformPoint(pos);
-                        
-                        auto dg = draggable->relative_drag_start();
-                        
-                        if(draggable->draggable())
-                            draggable->set_pos(draggable->pos() + pos - dg);
-                        
-                        auto it = draggable->_event_handlers.find(EventType::DRAG);
-                        if(it != draggable->_event_handlers.end()) {
-                            Event drag(EventType::DRAG);
-                            drag.drag.x = draggable->pos().x;
-                            drag.drag.y = draggable->pos().y;
-                            drag.drag.rx = (pos - dg).x;
-                            drag.drag.ry = (pos - dg).y;
-                            for(auto &handler : it->second) {
-                                (*handler)(drag);
-                            }
-                        }
-                    }
-                }
                 break;
             }
             case MBUTTON:
@@ -771,7 +953,7 @@ void DrawStructure::close_dialogs() {
         if(previous) {
             parent = previous->parent();
             if(previous->pressed())
-                previous->mup(0, 0, true);
+                previous->mup(0, 0, true, false);
             previous->deselect();
             
             if(d && d->is_child_of(parent)) {
@@ -838,7 +1020,11 @@ void DrawStructure::close_dialogs() {
     
     Drawable* DrawStructure::scroll(const Vec2& delta) {
         std::vector<Drawable*> results;
-        _root.find(mouse_position().x, mouse_position().y, results);
+        _root.find(
+            mouse_position().x,
+            mouse_position().y,
+            results,
+            pointer::Events::Scroll);
         
         Event e(SCROLL);
         e.scroll.dx = delta.x;
@@ -853,13 +1039,6 @@ void DrawStructure::close_dialogs() {
         }
         
         return nullptr;
-    }
-    
-    Drawable* Section::find(const std::string& search) {
-        if(name() == search)
-            return this;
-        
-        return SectionInterface::find(search);
     }
     
     Drawable* DrawStructure::find(const std::string& name) {

@@ -226,11 +226,18 @@ namespace cmn::gui {
         //  mouse events. For sections it depends on the current, as
         //  well as descendant objects.
         bool _clickable;
+
+        //! Filters which pointer-event hit tests may target this object.
+        //  `clickable` remains the master interaction gate.
+        GETTER(pointer::Events, pointer_events);
         
         //! Returns the position, relative to object x/y, where dragging
-        //  started. Only valid if _dragged == true.
+        //  started.
         GETTER(Vec2, relative_drag_start);
         GETTER(Vec2, absolute_drag_start);
+
+        //! True only while a draggable object itself is being moved.
+        //  Non-moving drag recipients can receive DRAG with this false.
         GETTER_I(bool, being_dragged, false);
         
         //! Gives a Z-Index for an item. If this is set > 0, then it will be drawn later than items with smaller z indexes
@@ -258,7 +265,12 @@ namespace cmn::gui {
         void on_hover(const event_handler_yes_t& fn);
         void on_click(const event_handler_yes_t& fn);
         callback_handle_t add_event_handler(EventType type, const event_handler_t& fn); // returns handler-id
-        callback_handle_t add_event_handler(EventType type, const event_handler_yes_t& fn);
+
+        template<typename T = event_handler_yes_t>
+            requires std::same_as<void, std::invoke_result_t<T, Event>>
+        callback_handle_t add_event_handler(EventType type, T&& fn) {
+            return add_event_handler(type, [fn = std::forward<T>(fn)](Event e) mutable -> bool { fn(e); return true; });
+        }
         callback_handle_t add_event_handler_replace(EventType type, const event_handler_yes_t& fn, const callback_handle_t::element_type*);
         void remove_event_handler(EventType type, const callback_handle_t handler_id);
         void remove_event_handler_raw(EventType type, const callback_handle_t::element_type* handler_id);
@@ -325,6 +337,7 @@ namespace cmn::gui {
         virtual void set(attr::Name name) { set_name(name); }
         virtual void set(attr::ZIndex index) { set_z_index(index); }
         virtual void set(attr::Clickable c) { set_clickable((bool)c); }
+        virtual void set(attr::PointerEvents events) { set_pointer_events(events); }
         
     protected:
         /**
@@ -338,7 +351,8 @@ namespace cmn::gui {
         //! Mouse-down is repeatedly called, even if the mouse is just
         //  continously pressed but moved.
         virtual void mdown(Float2_t x, Float2_t y, bool left_button);
-        virtual void mup(Float2_t x, Float2_t y, bool left_button);
+        virtual void mup(Float2_t x, Float2_t y, bool left_button,
+                         bool started_here);
         virtual Drawable* scroll(Event e);
         
         virtual bool kdown(Event e);
@@ -361,6 +375,11 @@ namespace cmn::gui {
         //  Otherwise it will be skipped.
         virtual bool clickable();
         void set_clickable(bool c);
+        void set_pointer_events(pointer::Events events);
+
+        //! Returns true when this object is eligible for at least one of
+        //  the requested pointer-event hit tests.
+        [[nodiscard]] bool does_receive(pointer::Events events) const;
         
         //! checks whether the Drawable is child (or distant child) of
         //  the given other Drawable
@@ -421,6 +440,10 @@ namespace cmn::gui {
         friend class SingletonObject;
         friend class Entangled;
         friend class SectionInterface;
+
+        void set_pointer_interaction(
+            bool pressed,
+            std::optional<Vec2> drag_start = std::nullopt);
         
         //! If swapping fails or objects are incompatible, return false to indicate failure
         virtual bool swap_with(Drawable* d);
@@ -482,8 +505,10 @@ namespace cmn::gui {
         
         virtual std::vector<Drawable*>& children() = 0;
         
-        virtual void find(Float2_t x, Float2_t y, std::vector<Drawable*>& results);
-        virtual Drawable* find(const std::string& search);
+        void find(Float2_t x, Float2_t y,
+                          std::vector<Drawable*>& results,
+                          pointer::Events events);
+        Drawable* find(const std::string& search);
         
         virtual bool is_animating() noexcept override;
         

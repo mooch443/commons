@@ -3,7 +3,6 @@
 #include <cstdio>
 
 #include <imgui.h>
-using ImTextureID_t = ImGui_OpenGL3_TextureID;
 
 #include <backends/imgui_impl_opengl3.h>
 #if defined(__EMSCRIPTEN__)
@@ -593,19 +592,13 @@ TexturePtr GLImpl::texture(const Image * ptr) {
 #endif
     glBindTexture(GL_TEXTURE_2D, 0); checkGLError();
     return std::make_unique<PlatformTexture>(
-        new ImTextureID_t{ (uint64_t)my_opengl_texture,
-#if !defined(__EMSCRIPTEN__)
-            uint8_t(ptr->dims)
-#else
-            uint8_t(ptr->dims)
-#endif
-        },
+        new ImTextureID{IMGUI_TREX_OPENGL_TEXTURE_ID(my_opengl_texture, ptr->dims)},
         [texture_updates = _texture_updates, mutex_share = texture_mutex](void ** ptr) {
             std::lock_guard guard(*mutex_share);
-            texture_updates->emplace_back([object = (ImTextureID_t*)*ptr](){
+            texture_updates->emplace_back([object = static_cast<ImTextureID*>(*ptr)](){
                 //GLIMPL_CHECK_THREAD_ID();
                 
-                GLuint _id = (GLuint) object->texture_id;
+                GLuint _id = (GLuint)IMGUI_TREX_OPENGL_TEXTURE_NAME(*object);
                 
                 glBindTexture(GL_TEXTURE_2D, _id); checkGLError();
                 glDeleteTextures(1, &_id); checkGLError();
@@ -624,8 +617,8 @@ TexturePtr GLImpl::texture(const Image * ptr) {
 void GLImpl::clear_texture(TexturePtr&&) {
     /*GLIMPL_CHECK_THREAD_ID();
     
-    auto object = (ImTextureID_t*)id_->ptr;
-    GLuint _id = (GLuint) object->texture_id;
+    auto object = static_cast<ImTextureID*>(id_->ptr);
+    GLuint _id = (GLuint)IMGUI_TREX_OPENGL_TEXTURE_NAME(*object);
     
     glBindTexture(GL_TEXTURE_2D, _id);
     glDeleteTextures(1, &_id);
@@ -637,8 +630,8 @@ void GLImpl::clear_texture(TexturePtr&&) {
 void GLImpl::bind_texture(const PlatformTexture& id_) {
     GLIMPL_CHECK_THREAD_ID();
     
-    auto object = (ImTextureID_t*)id_.ptr;
-    GLuint _id = (GLuint) object->texture_id;
+    auto object = static_cast<ImTextureID*>(id_.ptr);
+    GLuint _id = (GLuint)IMGUI_TREX_OPENGL_TEXTURE_NAME(*object);
     
     glBindTexture(GL_TEXTURE_2D, _id);
 }
@@ -646,11 +639,11 @@ void GLImpl::bind_texture(const PlatformTexture& id_) {
 void GLImpl::update_texture(PlatformTexture& id_, const Image *ptr) {
     GLIMPL_CHECK_THREAD_ID();
     
-    auto object = (ImTextureID_t*)id_.ptr;
-    GLuint _id = (GLuint) object->texture_id;
+    auto object = static_cast<ImTextureID*>(id_.ptr);
+    GLuint _id = (GLuint)IMGUI_TREX_OPENGL_TEXTURE_NAME(*object);
     
-    //if(object->greyscale != (ptr->dims == 2))
-    //    throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (",ptr->dims,") != texture (",object->greyscale ? 1 : 4,")");
+    //if(IMGUI_TREX_OPENGL_TEXTURE_CHANNELS(*object) != ptr->dims)
+    //    throw U_EXCEPTION("Texture has not been allocated for number of color channels in Image (",ptr->dims,").");
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _id);

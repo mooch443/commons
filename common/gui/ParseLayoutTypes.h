@@ -104,6 +104,7 @@ public:
     Size2 minCellSize;
     TextClr textClr;
     bool clickable;
+    pointer::Events pointer_events{pointer::Events::All};
     Font font;
     uint64_t hash;
     LayoutType::Class type;

@@ -92,7 +92,6 @@ namespace cmn::gui {
         
         void clear();
         
-        Drawable* find(const std::string& name) override;
         Section* find_section(const std::string& name) const;
         
         bool remove_wrapped(Drawable* d);
@@ -112,7 +111,7 @@ namespace cmn::gui {
         void set_enabled(bool enable) {
             _enabled = enable;
         }
-        
+
         template<typename T>
         T* add(T* d) {
             // special case for custom drawable collections
@@ -161,8 +160,6 @@ namespace cmn::gui {
         
         void wrap_object(Drawable* d);
         void end();
-        
-        void find(Float2_t x, Float2_t y, std::vector<Drawable*>&) override;
         
     private:
         void reuse_current_object();

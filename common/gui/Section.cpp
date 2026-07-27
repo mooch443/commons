@@ -387,13 +387,6 @@ namespace cmn::gui {
         SectionInterface::update_bounds();
     }
     
-    void Section::find(Float2_t x, Float2_t y, std::vector<Drawable*>& results) {
-        if(!enabled())
-            return;
-        
-        SectionInterface::find(x, y, results);
-    }
-    
     void Section::clear() {
         //DrawStructure::Lock_t *guard = NULL;
         //if(stage())

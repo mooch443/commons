@@ -672,9 +672,12 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
         id <MTLTexture> texture = [_data->device newTextureWithDescriptor:textureDescriptor];
         [texture replaceRegion:MTLRegionMake2D(0, 0, ptr->cols, ptr->rows) mipmapLevel:0 withBytes:ptr->data() bytesPerRow:ptr->cols * ptr->dims];
         
-        return std::unique_ptr<PlatformTexture>(new PlatformTexture{(__bridge void*)texture, [this](void** ptr){
+        auto texture_id = new ImTextureID{(ImTextureID)(intptr_t)(__bridge void*)texture};
+        return std::unique_ptr<PlatformTexture>(new PlatformTexture{texture_id, [this](void** ptr){
             std::lock_guard<std::mutex> guard(_texture_mutex);
-            _delete_textures.emplace_back(*ptr);
+            auto texture_id = static_cast<ImTextureID*>(*ptr);
+            _delete_textures.emplace_back((void*)(intptr_t)*texture_id);
+            delete texture_id;
             
             *ptr = nullptr;
             //id<MTLTexture> texture = (__bridge id<MTLTexture>)ptr;
@@ -706,7 +709,8 @@ void MetalImpl::set_frame_buffer_receiver(std::function<void (Image::Ptr &&)> fn
     void MetalImpl::update_texture(PlatformTexture& tex, const Image * ptr) {
         GLIMPL_CHECK_THREAD_ID();
         
-        id<MTLTexture> texture = (__bridge id<MTLTexture>)tex.ptr;
+        auto texture_id = static_cast<ImTextureID*>(tex.ptr);
+        id<MTLTexture> texture = (__bridge id<MTLTexture>)(void*)(intptr_t)*texture_id;
         
         MTLRegion region = {
             { 0, 0, 0 },                   // MTLOrigin

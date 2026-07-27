@@ -899,14 +899,15 @@ endif()
 #    BUILDING      I M G U I
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-set (imgui_path ${CMAKE_BINARY_DIR}/_deps/imgui)
+set(imgui_version v1.92.9)
+set(imgui_path "${CMAKE_BINARY_DIR}/_deps/imgui-${imgui_version}")
 
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.9
+    GIT_TAG ${imgui_version}
     SOURCE_DIR ${imgui_path}
-    PATCH_COMMAND "${GIT_EXECUTABLE}" apply "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff" || echo 1
+    PATCH_COMMAND "${GIT_EXECUTABLE}" apply --unidiff-zero "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff"
     UPDATE_DISCONNECTED 1
 )
 

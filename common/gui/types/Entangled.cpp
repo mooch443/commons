@@ -1,4 +1,5 @@
 #include "Entangled.h"
+#include <gui/GuiTypes.h>
 #include <gui/DrawStructure.h>
 #include <gui/types/Dropdown.h>
 #include <misc/stacktrace.h>
@@ -25,6 +26,7 @@ namespace cmn::gui {
           _scroll_axis(std::move(other._scroll_axis)),
           _scroll_limit_x(std::move(other._scroll_limit_x)),
           _scroll_limit_y(std::move(other._scroll_limit_y)),
+          _scrollbar_hitbox(std::move(other._scrollbar_hitbox)),
           _index(std::move(other._index)),
           _content_changed(std::move(other._content_changed)),
           _content_changed_while_updating(std::move(other._content_changed_while_updating))
@@ -47,6 +49,7 @@ namespace cmn::gui {
             _scroll_axis = std::move(other._scroll_axis);
             _scroll_limit_x = std::move(other._scroll_limit_x);
             _scroll_limit_y = std::move(other._scroll_limit_y);
+            _scrollbar_hitbox = std::move(other._scrollbar_hitbox);
             _index = std::move(other._index);
             _content_changed = std::move(other._content_changed);
             _content_changed_while_updating = std::move(other._content_changed_while_updating);
@@ -92,7 +95,86 @@ void Entangled::update_scrollbar() {
     if(not scroll_enabled() || not scroll_show_bar())
         return;
 
-    const char* handle_name = "_scrollbar_drag";
+    const char* drag_handle_name = "_scrollbar_drag";
+    const char* click_handle_name = "_scrollbar_click";
+
+    auto bind_vertical = [this, drag_handle_name, click_handle_name](Rect* rect) {
+        auto scroll_to = [this, rect](Float2_t local_y) {
+            auto y = rect->pos().y - scroll_offset().y
+                - rect->height() * rect->origin().y
+                + local_y;
+            if(height() > 0) {
+                auto percentage = y / height();
+                auto offset = scroll_offset();
+                offset.y = percentage
+                    * (scroll_limit_y().end - scroll_limit_y().start)
+                    + scroll_limit_y().start;
+                set_scroll_offset(offset);
+            }
+        };
+
+        auto handle = (Drawable::callback_handle_t::element_type*)
+            rect->custom_data(drag_handle_name);
+        auto h = rect->add_event_handler_replace(
+            EventType::DRAG,
+            [this, rect, scroll_to](Event e) {
+                if(not stage() || not stage()->is_mouse_down(0))
+                    return;
+                scroll_to(rect->relative_drag_start().y + e.drag.ry);
+            },
+            handle);
+        rect->add_custom_data(drag_handle_name, (void*)h.get());
+
+        handle = (Drawable::callback_handle_t::element_type*)
+            rect->custom_data(click_handle_name);
+        h = rect->add_event_handler_replace(
+            EventType::MBUTTON,
+            [scroll_to](Event e) {
+                if(e.mbutton.button == 0 && e.mbutton.pressed)
+                    scroll_to(e.mbutton.y);
+            },
+            handle);
+        rect->add_custom_data(click_handle_name, (void*)h.get());
+    };
+
+    auto bind_horizontal = [this, drag_handle_name, click_handle_name](Rect* rect) {
+        auto scroll_to = [this, rect](Float2_t local_x) {
+            auto x = rect->pos().x - scroll_offset().x
+                - rect->width() * rect->origin().x
+                + local_x;
+            if(width() > 0) {
+                auto percentage = x / width();
+                auto offset = scroll_offset();
+                offset.x = percentage
+                    * (scroll_limit_x().end - scroll_limit_x().start)
+                    + scroll_limit_x().start;
+                set_scroll_offset(offset);
+            }
+        };
+
+        auto handle = (Drawable::callback_handle_t::element_type*)
+            rect->custom_data(drag_handle_name);
+        auto h = rect->add_event_handler_replace(
+            EventType::DRAG,
+            [this, rect, scroll_to](Event e) {
+                if(not stage() || not stage()->is_mouse_down(0))
+                    return;
+                scroll_to(rect->relative_drag_start().x + e.drag.rx);
+            },
+            handle);
+        rect->add_custom_data(drag_handle_name, (void*)h.get());
+
+        handle = (Drawable::callback_handle_t::element_type*)
+            rect->custom_data(click_handle_name);
+        h = rect->add_event_handler_replace(
+            EventType::MBUTTON,
+            [scroll_to](Event e) {
+                if(e.mbutton.button == 0 && e.mbutton.pressed)
+                    scroll_to(e.mbutton.x);
+            },
+            handle);
+        rect->add_custom_data(click_handle_name, (void*)h.get());
+    };
 
     if(scroll_axis() != ScrollAxis::Horizontal
        && scroll_limit_y().end != FLT_MAX
@@ -106,25 +188,9 @@ void Entangled::update_scrollbar() {
                           percentage * height()),
                       Origin(1,0),
                       FillClr{Black.alpha(150)},
-                      Clickable{true});
+                      Clickable{false},
+                      PointerEvents{pointer::Events::None});
             top->add_custom_data("scrollbar", (void*)0x1);
-            
-            auto handle = (Drawable::callback_handle_t::element_type*)top->custom_data(handle_name);
-            auto h = top->add_event_handler_replace(EventType::HOVER, [this, rect = top](Event e) {
-                if(not stage() || not stage()->is_mouse_down(0))
-                    return;
-                
-                auto y = rect->pos().y - scroll_offset().y - rect->height() * rect->origin().y + e.hover.y;
-                auto max_y = height();
-                if(max_y > 0) {
-                    auto percentage = y / max_y;
-                    auto scroll_y = percentage * (scroll_limit_y().end - scroll_limit_y().start) + scroll_limit_y().start;
-                    auto offset = scroll_offset();
-                    offset.y = scroll_y;
-                    set_scroll_offset(offset);
-                }
-            }, handle);
-            top->add_custom_data(handle_name, (void*)h.get());
             
             auto rect = add<Rect>(Box(scroll_offset().x + width() - 8,
                           scroll_offset().y + height(),
@@ -132,25 +198,30 @@ void Entangled::update_scrollbar() {
                           (1-percentage) * height()),
                       Origin(1,1),
                       FillClr{Gray.alpha(50)},
-                    Clickable{true});
+                      Clickable{false},
+                      PointerEvents{pointer::Events::None});
             
-            handle = (Drawable::callback_handle_t::element_type*)rect->custom_data(handle_name);
             rect->add_custom_data("scrollbar", (void*)0x1);
-            h = rect->add_event_handler_replace(EventType::HOVER, [this, rect](Event e) {
-                if(not stage() || not stage()->is_mouse_down(0))
-                    return;
-                
-                auto y = rect->pos().y - scroll_offset().y - rect->height() * rect->origin().y + e.hover.y;
-                auto max_y = height();
-                if(max_y > 0) {
-                    auto percentage = y / max_y;
-                    auto scroll_y = percentage * (scroll_limit_y().end - scroll_limit_y().start) + scroll_limit_y().start;
-                    auto offset = scroll_offset();
-                    offset.y = scroll_y;
-                    set_scroll_offset(offset);
-                }
-            }, handle);
-            rect->add_custom_data(handle_name, (void*)h.get());
+
+            if(not _scrollbar_hitbox)
+                _scrollbar_hitbox = std::make_unique<Rect>();
+            auto* hitbox = static_cast<Rect*>(_scrollbar_hitbox.get());
+            hitbox->create(
+                Box(scroll_offset().x + width() - 16,
+                    scroll_offset().y,
+                    16,
+                    height()),
+                Origin(0, 0),
+                FillClr{Transparent},
+                LineClr{Transparent},
+                Clickable{true},
+                PointerEvents{
+                    pointer::Events::Click
+                    | pointer::Events::Drag
+                    | pointer::Events::Hover});
+            hitbox->add_custom_data("scrollbar", (void*)0x1);
+            bind_vertical(hitbox);
+            advance_wrap(*hitbox);
     }
 
     if(scroll_axis() == ScrollAxis::Horizontal
@@ -165,23 +236,9 @@ void Entangled::update_scrollbar() {
                                   8),
                               Origin(0, 1),
                               FillClr{Black.alpha(150)},
-                              Clickable{true});
+                              Clickable{false},
+                              PointerEvents{pointer::Events::None});
         left->add_custom_data("scrollbar", (void*)0x1);
-
-        auto handle = (Drawable::callback_handle_t::element_type*)left->custom_data(handle_name);
-        auto h = left->add_event_handler_replace(EventType::HOVER, [this, rect = left](Event e) {
-            if(not stage() || not stage()->is_mouse_down(0))
-                return;
-
-            auto x = rect->pos().x - scroll_offset().x - rect->width() * rect->origin().x + e.hover.x;
-            if(width() > 0) {
-                auto percentage = x / width();
-                auto offset = scroll_offset();
-                offset.x = percentage * (scroll_limit_x().end - scroll_limit_x().start) + scroll_limit_x().start;
-                set_scroll_offset(offset);
-            }
-        }, handle);
-        left->add_custom_data(handle_name, (void*)h.get());
 
         auto right = add<Rect>(Box(scroll_offset().x + width(),
                                    scroll_offset().y + height(),
@@ -189,23 +246,29 @@ void Entangled::update_scrollbar() {
                                    8),
                                Origin(1, 1),
                                FillClr{Gray.alpha(50)},
-                               Clickable{true});
+                               Clickable{false},
+                               PointerEvents{pointer::Events::None});
         right->add_custom_data("scrollbar", (void*)0x1);
 
-        handle = (Drawable::callback_handle_t::element_type*)right->custom_data(handle_name);
-        h = right->add_event_handler_replace(EventType::HOVER, [this, rect = right](Event e) {
-            if(not stage() || not stage()->is_mouse_down(0))
-                return;
-
-            auto x = rect->pos().x - scroll_offset().x - rect->width() * rect->origin().x + e.hover.x;
-            if(width() > 0) {
-                auto percentage = x / width();
-                auto offset = scroll_offset();
-                offset.x = percentage * (scroll_limit_x().end - scroll_limit_x().start) + scroll_limit_x().start;
-                set_scroll_offset(offset);
-            }
-        }, handle);
-        right->add_custom_data(handle_name, (void*)h.get());
+        if(not _scrollbar_hitbox)
+            _scrollbar_hitbox = std::make_unique<Rect>();
+        auto* hitbox = static_cast<Rect*>(_scrollbar_hitbox.get());
+        hitbox->create(
+            Box(scroll_offset().x,
+                scroll_offset().y + height(),
+                width(),
+                8),
+            Origin(0, 1),
+            FillClr{Transparent},
+            LineClr{Transparent},
+            Clickable{true},
+            PointerEvents{
+                pointer::Events::Click
+                | pointer::Events::Drag
+                | pointer::Events::Hover});
+        hitbox->add_custom_data("scrollbar", (void*)0x1);
+        bind_horizontal(hitbox);
+        advance_wrap(*hitbox);
     }
 }
 

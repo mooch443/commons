@@ -550,6 +550,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<Bounds, Margins>("pad");
     check_field.operator()<Bounds, OuterPadding>("outer_pad");
     check_field.operator()<Float2_t, Alpha>("alpha");
+    check_field.operator()<pointer::Events, attr::PointerEvents>("pointer-events");
     if(auto it = patterns.find("pos");
        it != patterns_end)
     {

@@ -100,6 +100,7 @@ LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& o
     corners = get(_defaults.corners, "corners");
     line = get(_defaults.line, "line");
     clickable = get(_defaults.clickable, "clickable");
+    pointer_events = get(attr::PointerEvents{_defaults.pointer_events}, "pointer-events");
     max_size = get(_defaults.max_size, "max_size");
     zindex = get(ZIndex(0), "z-index");
     
@@ -202,6 +203,10 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
 
     apply_field_if("clickable", clickable, false, [&](const auto& value) {
         ptr->set_clickable(value);
+    });
+
+    apply_field("pointer-events", pointer_events, [&](const auto& value){
+        ptr->set(attr::PointerEvents{value});
     });
     
     if(auto pattern = state.pattern().get(hash, "name");
@@ -394,43 +399,27 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         if(obj.count("drag")) {
             auto action = PreAction::fromStr(obj.at("drag").get<std::string>());
 
-            // A drag action owns the pointer gesture even when the drawable itself is not movable.
+            // A drag action owns the button lifecycle even when the object itself
+            // does not move. Keep MBUTTON from bubbling into an interactive parent.
             static constexpr auto capture_handle_name = "_dynamic_drag_capture_handle";
             auto capture_handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(capture_handle_name);
-            auto capture = ptr->add_event_handler_replace(EventType::MBUTTON, [](Event) {}, capture_handle);
+            auto capture = ptr->add_event_handler_replace(
+                EventType::MBUTTON,
+                [](Event) {},
+                capture_handle);
             ptr->add_custom_data(capture_handle_name, (void*)capture.get());
 
-            if(ptr->draggable()) {
-                static constexpr auto handle_name = "_dynamic_drag_handle";
-                auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-                auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
-                    try {
-                        run_action(action, context, state);
-                    } catch(...) {
-                        FormatExcept("error using action ", action);
-                    }
-                }, handle);
-            
-                ptr->add_custom_data(handle_name, (void*)h.get());
-            } else {
-                static constexpr auto handle_name = "_hover_drag_handle";
-                auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
-                auto h = bind_event_with_state(ptr, EventType::HOVER, state._current_object_handler, context, [action, run_action, _ptr = std::weak_ptr(ptr.get_smart())](Event event, const Context& context, State& state) {
-                    auto ptr = _ptr.lock();
-                    if(ptr
-                       && ptr->pressed()
-                       && event.hover.hovered)
-                    {
-                        try {
-                            run_action(action, context, state);
-                        } catch(...) {
-                            FormatExcept("error using action ", action);
-                        }
-                    }
-                }, handle);
+            static constexpr auto handle_name = "_dynamic_drag_handle";
+            auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+            auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
+                try {
+                    run_action(action, context, state);
+                } catch(...) {
+                    FormatExcept("error using action ", action);
+                }
+            }, handle);
 
-                ptr->add_custom_data(handle_name, (void*)h.get());
-            }
+            ptr->add_custom_data(handle_name, (void*)h.get());
         }
         
         if(obj.count("click")) {

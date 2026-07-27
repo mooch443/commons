@@ -170,6 +170,7 @@ void* Drawable::custom_data(std::string_view key) const {
         _pressed(false),
         _draggable(false),
         _clickable(false),
+        _pointer_events(pointer::Events::All),
         _z_index(0)
     {
 #ifdef _DEBUG_MEMORY
@@ -516,12 +517,6 @@ void* Drawable::custom_data(std::string_view key) const {
         _event_handlers[type].push_back(handle);
         return handle;
     }
-    
-    Drawable::callback_handle_t Drawable::add_event_handler(EventType type, const event_handler_yes_t& fn) {
-        auto handle = std::make_shared<event_handler_t>([fn](Event e) -> bool { fn(e); return true; });
-        _event_handlers[type].push_back(handle);
-        return handle;
-    }
 
     Drawable::callback_handle_t Drawable::add_event_handler_replace(EventType type, const event_handler_yes_t& fn, const callback_handle_t::element_type* handle) {
         auto it = _event_handlers.find(type);
@@ -636,7 +631,8 @@ void* Drawable::custom_data(std::string_view key) const {
             parent()->mdown(x, y, left_button);
     }
     
-    void Drawable::mup(Float2_t x, Float2_t y, bool left_button) {
+    void Drawable::mup(Float2_t x, Float2_t y, bool left_button,
+                       bool started_here) {
 #ifndef NDEBUG
         Handler handler{"mup", this};
 #endif
@@ -645,24 +641,10 @@ void* Drawable::custom_data(std::string_view key) const {
         event.mbutton = {
             .button = left_button ? 0 : 1,
             .pressed = false,
-            .started_here = true,
+            .started_here = started_here,
             .x = (Float2_t)r.x,
             .y = (Float2_t)r.y
         }; //rx, ry};
-        
-        if(parent() && parent()->stage()) {
-            auto stage = parent()->stage();
-            
-            if(auto h = stage->hovered_object();
-               not h || not h->is_child_of(this))
-            {
-                event.mbutton.started_here = false;
-            } else if(auto start = stage->mdown_object();
-                      start != h)
-            {
-                event.mbutton.started_here = false;
-            }
-        }
         
         /**
          * TODO: This has to happen *after* the whole stuff + parent->mup is happening, otherwise we might delete the object in it's own handler.
@@ -678,7 +660,7 @@ void* Drawable::custom_data(std::string_view key) const {
         }
         
         if(!handled && parent())
-            parent()->mup(x, y, left_button);
+            parent()->mup(x, y, left_button, started_here);
 
         _being_dragged = false;
     }
@@ -777,33 +759,58 @@ void* Drawable::custom_data(std::string_view key) const {
         // it potentially needs to update its _section_clickable
         structure_changed(false);
     }
-    
+
+    void Drawable::set_pointer_events(pointer::Events events) {
+        if(events == _pointer_events)
+            return;
+
+        _pointer_events = events;
+        structure_changed(false);
+    }
+
+    bool Drawable::does_receive(pointer::Events events) const {
+        return _clickable
+            && bool(_pointer_events & events);
+    }
+
+    void Drawable::set_pointer_interaction(
+        bool pressed,
+        std::optional<Vec2> drag_start)
+    {
+        if(drag_start) {
+            _relative_drag_start = global_transform()
+                .getInverse().transformPoint(*drag_start);
+            _absolute_drag_start = global_bounds().pos();
+        }
+
+        const bool dragged = pressed && drag_start && _draggable;
+        if(_pressed == pressed && _being_dragged == dragged)
+            return;
+
+        _pressed = pressed;
+        _being_dragged = dragged;
+        set_dirty();
+    }
+
     void Drawable::set_draggable(bool value) {
         if(value == _draggable)
             return;
         
         _draggable = value;
-        
+
         if(_drag_handle) {
             remove_event_handler(MBUTTON, _drag_handle);
             _drag_handle = nullptr;
         }
-        
-        if(!value)
+
+        if(not value) {
+            _being_dragged = false;
             return;
-        
+        }
+
         set_clickable(true);
-        _drag_handle = add_event_handler(MBUTTON, [this](Event e) {
-            if (e.mbutton.pressed && e.mbutton.button == 0) {// save previous relative position
-                if (!parent() || !parent()->stage() ||  parent()->stage()->hovered_object() == this ||
-                    (parent()->stage()->hovered_object() && parent()->stage()->hovered_object()->is_child_of(this)))
-                {
-                    _relative_drag_start = Vec2(e.mbutton.x, e.mbutton.y);
-                    _absolute_drag_start = global_bounds().pos();
-                    _being_dragged = true;
-                }
-            }
-        });
+        // Dragging owns the button lifecycle and must not release/click an ancestor.
+        _drag_handle = add_event_handler(MBUTTON, [](Event) {});
     }
 
 bool Drawable::is_animating() noexcept {
@@ -837,6 +844,7 @@ bool SectionInterface::is_animating() noexcept {
         set_origin(d->_origin);
         set_rotation(d->_rotation);
         set_clickable(d->_clickable);
+        set_pointer_events(d->_pointer_events);
         
         return true;
     }
@@ -1343,7 +1351,15 @@ void SectionInterface::set(CornerFlags_t flags) {
         }
     }
     
-    void SectionInterface::find(Float2_t x, Float2_t y, std::vector<Drawable*>& results) {
+    void SectionInterface::find(Float2_t x, Float2_t y,
+                                std::vector<Drawable*>& results,
+                                pointer::Events events)
+    {
+        if(type() == Type::SECTION) {
+            if(not static_cast<Section*>(this)->enabled())
+                return;
+        }
+
         /// find clickable items at position (x, y) and write the results
         /// to the output array
         bool cropped = type() == Type::ENTANGLED
@@ -1365,19 +1381,21 @@ void SectionInterface::set(CornerFlags_t flags) {
             apply_to_object(*it, [&](auto ptr){
                 if(not ptr->clickable())
                     return;
-                
+
                 if(ptr->type() == Type::SECTION
                    || ptr->type() == Type::ENTANGLED)
                 {
-                    static_cast<SectionInterface*>(ptr)->find(x, y, results);
+                    static_cast<SectionInterface*>(ptr)->find(
+                        x, y, results, events);
                     
-                } else if(ptr->in_bounds(x, y)) {
+                } else if(ptr->does_receive(events)
+                          && ptr->in_bounds(x, y)) {
                     results.push_back(ptr);
                 }
             });
         }
         
-        if(!_clickable || !global_bounds().contains(x, y)
+        if(!does_receive(events) || !global_bounds().contains(x, y)
            || (stage() && draggable() && stage()->is_system_pressed()))
             return;
         
@@ -1385,12 +1403,21 @@ void SectionInterface::set(CornerFlags_t flags) {
     }
     
     Drawable* SectionInterface::find(const std::string& search) {
+        if(name() == search)
+            return this;
+
         Drawable* r = nullptr;
         for(auto it=children().begin(), ite=children().end();
             it != ite && not r;
             ++it)
         {
             r = apply_to_object(*it, [&search](auto c) -> Drawable* {
+                if(not c)
+                    return nullptr;
+
+                if(c->name() == search)
+                    return c;
+
                 if(c->type() == Type::SECTION
                    || c->type() == Type::ENTANGLED)
                 {
@@ -1399,10 +1426,6 @@ void SectionInterface::set(CornerFlags_t flags) {
                     if(r) {
                         return r;
                     }
-                    
-                } else {
-                    if(c && c->name() == search)
-                        return c;
                 }
                 
                 return nullptr;

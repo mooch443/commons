@@ -2,7 +2,6 @@
 
 #include <commons.pc.h>
 #include <gui/types/Drawable.h>
-//#include <gui/GuiTypes.h>
 //#include <set>
 #include <misc/ranges.h>
 #include <misc/TooltipData.h>
@@ -99,6 +98,7 @@ namespace cmn::gui {
         
         GETTER_I(Rangef, scroll_limit_x, Rangef(0, FLT_MAX));
         GETTER_I(Rangef, scroll_limit_y, Rangef(0, FLT_MAX));
+        std::unique_ptr<Drawable> _scrollbar_hitbox;
         
         //! For delta updates.
         size_t _index = 0;
