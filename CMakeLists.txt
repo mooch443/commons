@@ -1025,7 +1025,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v3.0.2")
+set(pybind11_version_tag "v3.0.4")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -1230,7 +1230,7 @@ if(COMMONS_BUILD_ZIP)
         PREFIX ${libzip_install_dir}
         DEPENDS Commons::LibZ
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
-        GIT_TAG v1.9.2
+        GIT_TAG v1.11.4
         UPDATE_COMMAND ""
         PATCH_COMMAND "${ZIP_PATCH}"
         CMAKE_ARGS
@@ -1313,8 +1313,8 @@ if(${COMMONS_BUILD_PNG})
         UPDATE_COMMAND ""
         #PATCH_COMMAND ${PNG_PATCH}
 
-        GIT_REPOSITORY  https://github.com/glennrp/libpng.git
-        GIT_TAG v1.6.47
+        GIT_REPOSITORY  https://github.com/pnggroup/libpng.git
+        GIT_TAG v1.6.58
 
         INSTALL_DIR ${png_install_dir}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON -DPNG_TOOLS:BOOL=OFF
@@ -1696,12 +1696,6 @@ endif()
 
     set(OCV_CMAKE_BUILD_TYPE Release) #COMMONS_CMAKE_BUILD_TYPE
 
-    if(APPLE)
-        set(OPENCV_PATCH patch -N -s -d ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV -p1 -i ${CMAKE_CURRENT_SOURCE_DIR}/opencv_patch.patch || echo 1)
-    else()
-        set(OPENCV_PATCH "")
-    endif()
-
     if(UNIX)
         #message(STATUS "Using custom configure command CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV")
         ExternalProject_add(CustomOpenCV
@@ -1710,7 +1704,6 @@ endif()
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             GIT_CONFIG core.longpaths=true
             UPDATE_COMMAND ""
-            PATCH_COMMAND "${OPENCV_PATCH}"
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
             BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
             INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
@@ -1722,7 +1715,6 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             GIT_CONFIG core.longpaths=true
-            PATCH_COMMAND "${OPENCV_PATCH}"
             UPDATE_COMMAND ""
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
