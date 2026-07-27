@@ -2,6 +2,22 @@
 
 namespace cmn {
 
+std::string IdentifiedTag::toStr() const {
+    return "["+Meta::toStr(fdx)+","+Meta::toStr(bds)+","+Meta::toStr(name)+"]";
+}
+
+glz::json_t IdentifiedTag::to_json() const {
+    return cvt2json(std::make_tuple(fdx, bds, name));
+}
+
+std::string SpatialTag::toStr() const {
+    return "["+Meta::toStr(bds)+","+Meta::toStr(name)+"]";
+}
+
+glz::json_t SpatialTag::to_json() const {
+    return cvt2json(std::make_tuple(bds, name));
+}
+
 void FrameTag::validate_name(std::string_view value) {
     bool has_alphanumeric = false;
     for(const unsigned char c : value) {
@@ -20,27 +36,32 @@ void FrameTag::validate_name(std::string_view value) {
 }
 
 std::string FrameTag::toStr() const {
-    if(std::holds_alternative<std::string>(name))
-        return std::get<std::string>(name);
-    auto& pair = std::get<std::pair<Bounds, std::string>>(name);
-    return Meta::toStr(pair);
+    if(std::holds_alternative<SimpleTag>(name))
+        return std::get<SimpleTag>(name);
+    if(has_identity())
+        return Meta::toStr(std::get<IdentifiedTag>(name));
+    return Meta::toStr(std::get<SpatialTag>(name));
 }
 
 glz::json_t FrameTag::to_json() const {
-    if(std::holds_alternative<std::string>(name))
-        return cvt2json(std::get<std::string>(name));
-    auto& pair = std::get<std::pair<Bounds, std::string>>(name);
-    return cvt2json(pair);
+    if(std::holds_alternative<SimpleTag>(name))
+        return cvt2json(std::get<SimpleTag>(name));
+    if(has_identity())
+        return cvt2json(std::get<IdentifiedTag>(name));
+    return cvt2json(std::get<SpatialTag>(name));
 }
 
 FrameTag::operator std::string_view() const {
-    if(std::holds_alternative<std::string>(name))
-        return std::string_view(std::get<std::string>(name));
-    return std::string_view(std::get<std::pair<Bounds, std::string>>(name).second);
+    if(std::holds_alternative<SimpleTag>(name))
+        return std::string_view(std::get<SimpleTag>(name));
+    if(has_identity())
+        return std::string_view(std::get<IdentifiedTag>(name).name);
+    return std::string_view(std::get<SpatialTag>(name).name);
 }
 
 bool FrameTag::has_location() const {
-    return std::holds_alternative<std::pair<Bounds, std::string>>(name);
+    return std::holds_alternative<SpatialTag>(name)
+            || std::holds_alternative<IdentifiedTag>(name);
 }
 
 std::string_view FrameTag::get_name() const {
@@ -49,8 +70,18 @@ std::string_view FrameTag::get_name() const {
 
 Bounds FrameTag::get_location() const {
     if(not has_location())
-        throw RuntimeError("FrameTag ", *this, " has not location data.");
-    return std::get<std::pair<Bounds,std::string>>(name).first;
+        throw RuntimeError("FrameTag ", *this, " has no location data.");
+    if(std::holds_alternative<IdentifiedTag>(name))
+        return std::get<IdentifiedTag>(name).bds;
+    return std::get<SpatialTag>(name).bds;
+}
+
+bool FrameTag::has_identity() const {
+    return std::holds_alternative<IdentifiedTag>(name);
+}
+
+uint32_t FrameTag::get_identity() const {
+    return std::get<IdentifiedTag>(name).fdx;
 }
 
 }

@@ -478,6 +478,8 @@ public:
     constexpr bool operator<(const Bounds& other) const {
         return pos() < other.pos() || (pos() == other.pos() && size() < other.size());
     }
+    
+    constexpr auto operator<=>(const Bounds&) const = default;
         
     constexpr bool Equals(const Bounds& other) const {
         return pos().Equals(other.pos()) && size().Equals(other.size());

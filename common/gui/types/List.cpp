@@ -38,7 +38,7 @@ namespace cmn::gui {
             // toggle folded state by clicking on title
             if(this->foldable())
                 this->set_folded(!this->folded());
-            stage()->select(this);
+            //stage()->select(this);
         });
         
         add_event_handler(EventType::KEY, (event_handler_t)[this](Event e) -> bool {
