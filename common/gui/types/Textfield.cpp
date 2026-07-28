@@ -16,6 +16,28 @@
 namespace cmn::gui {
     constexpr static const Float2_t margin = 5;
 
+    namespace {
+        std::string utf8_codepoint(uint32_t codepoint) {
+            std::string result;
+            if(codepoint <= 0x7f) {
+                result.push_back(static_cast<char>(codepoint));
+            } else if(codepoint <= 0x7ff) {
+                result.push_back(static_cast<char>(0xc0 | (codepoint >> 6)));
+                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3f)));
+            } else if(codepoint <= 0xffff && (codepoint < 0xd800 || codepoint > 0xdfff)) {
+                result.push_back(static_cast<char>(0xe0 | (codepoint >> 12)));
+                result.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
+                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3f)));
+            } else if(codepoint <= 0x10ffff) {
+                result.push_back(static_cast<char>(0xf0 | (codepoint >> 18)));
+                result.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f)));
+                result.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
+                result.push_back(static_cast<char>(0x80 | (codepoint & 0x3f)));
+            }
+            return result;
+        }
+    }
+
     void set_clipboard(const std::string& text) {
 #ifdef CMN_CLIPBOARD_GLFW
         glfwSetClipboardString(nullptr, text.c_str());
@@ -381,13 +403,14 @@ Textfield::~Textfield() {
     }
     
     bool Textfield::onEnter(gui::Event e) {
-        std::string k = std::string()+e.text.c;
-        if(e.text.c == 8)
+        const uint32_t codepoint = e.text.codepoint ? e.text.codepoint : static_cast<unsigned char>(e.text.c);
+        std::string k = e.text.codepoint ? utf8_codepoint(codepoint) : std::string() + e.text.c;
+        if(codepoint == 8)
             return true;
-        if(e.text.c < 10)
+        if((e.text.codepoint ? codepoint < 10 : e.text.c < 10) || k.empty())
             return false;
         
-        switch (e.text.c) {
+        switch (codepoint) {
             case '\n':
             case '\r':
             case 8:
@@ -406,10 +429,13 @@ Textfield::~Textfield() {
                     _cursor_position = _selection.first;
                 }
                 copy.insert(_cursor_position, k);
-                _cursor_position++;
+                _cursor_position += k.size();
                 _display_text_len++;
                 
-                if(isTextValid(copy, e.text.c, _cursor_position-1)) {
+                const auto c = e.text.codepoint
+                    ? (codepoint <= 0x7f ? static_cast<char>(codepoint) : char(0))
+                    : e.text.c;
+                if(isTextValid(copy, c, _cursor_position-k.size())) {
                     _settings.text = copy;
                     _selection = lrange(_cursor_position, _cursor_position);
                     

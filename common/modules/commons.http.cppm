@@ -5,7 +5,7 @@ module;
 
 export module commons.http;
 
-#if WITH_MHD
+#if COMMONS_HAS_HTTPD
 #include "generated/commons.exports.http.inc"
 #else
 export namespace cmn::http_module {

@@ -14,6 +14,7 @@
 #include <misc/DisplayValue.h>
 #include <misc/EnumClass.h>
 #include <misc/FormatColor.h>
+#include <misc/FrameTag.h>
 #include <misc/GlobalSettings.h>
 #include <misc/Grid.h>
 #include <misc/IllegalVector.h>
@@ -94,6 +95,9 @@
 #include <video/GenericVideo.h>
 #include <video/Video.h>
 #include <video/VideoSource.h>
+#include <gui/BrowserBase.h>
+#include <gui/BrowserProtocol.h>
+#include <gui/BrowserTransport.h>
 #include <gui/ControlsAttributes.h>
 #include <gui/CornerFlags.h>
 #include <gui/CrossPlatform.h>
@@ -115,7 +119,6 @@
 #include <gui/GUITaskQueue.h>
 #include <gui/Graph.h>
 #include <gui/GuiTypes.h>
-#include <gui/HttpClient.h>
 #include <gui/IMGUIBase.h>
 #include <gui/IatHook.h>
 #include <gui/LabeledField.h>
@@ -128,6 +131,7 @@
 #endif
 #include <gui/ParseLayoutTypes.h>
 #include <gui/Passthrough.h>
+#include <gui/RenderTraversal.h>
 #include <gui/SFLoop.h>
 #include <gui/SVG.h>
 #include <gui/Section.h>
@@ -166,6 +170,3 @@
 #include <gui/types/TagList.h>
 #include <gui/types/Textfield.h>
 #include <gui/types/Tooltip.h>
-#if WITH_MHD
-#include <http/httpd.h>
-#endif

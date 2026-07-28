@@ -43,8 +43,6 @@ if(APPLE)
 endif()
 
 if(NOT COMMONS_BUILD_HTTPD)
-    list(REMOVE_ITEM HDRS http/httpd.h)
-    list(REMOVE_ITEM SRCS http/httpd.cpp)
     list(REMOVE_ITEM COMMONS_MODULE_FILES modules/commons.http.cppm)
 endif()
 
@@ -88,9 +86,6 @@ list(FILTER COMMONS_VIDEO_CPP_SOURCES INCLUDE REGEX "^video/")
 
 set(COMMONS_GUI_CPP_SOURCES ${SRCS})
 list(FILTER COMMONS_GUI_CPP_SOURCES INCLUDE REGEX "^gui/")
-if(COMMONS_BUILD_HTTPD)
-    list(APPEND COMMONS_GUI_CPP_SOURCES http/httpd.cpp)
-endif()
 
 if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "^(Apple)?Clang$" AND METAL_LIBRARY)
     list(APPEND COMMONS_FILE_CPP_SOURCES file/ask_for_permission.mm)
@@ -233,10 +228,8 @@ function(commons_link_layer_external_dependencies target layer visibility)
             Commons::IMGUI
             Commons::GLFW
             Commons::OpenGL
+            Commons::HTTPD
         )
-        if(COMMONS_BUILD_HTTPD)
-            target_link_libraries(${target} ${visibility} Commons::HTTPD)
-        endif()
     endif()
 endfunction()
 

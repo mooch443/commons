@@ -7,6 +7,6 @@ export import commons.processing;
 export import commons.video;
 export import commons.gui;
 export import commons.gui.dyn;
-#if WITH_MHD
+#if COMMONS_HAS_HTTPD
 export import commons.http;
 #endif

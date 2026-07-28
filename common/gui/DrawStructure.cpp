@@ -919,12 +919,12 @@ void DrawStructure::close_dialogs() {
                 break;
             case KEY:
                 if(e.key.pressed)
-                    return key_down((Codes)e.key.code, e.key.shift);
+                    return key_down(e.key);
                 else
-                    return key_up((Codes)e.key.code, e.key.shift);
+                    return key_up(e.key);
                 break;
             case TEXT_ENTERED:
-                return text_entered(e.text.c);
+                return text_entered(e.text);
                 
             case SCROLL:
 #if __linux__ || WIN32
@@ -971,29 +971,39 @@ void DrawStructure::close_dialogs() {
         }
     }
     
-    bool DrawStructure::key_down(Codes code, bool shift) {
-        pressed_keys.insert(code);
+    bool DrawStructure::key_down(const KeyEvent& key) {
+        pressed_keys.insert(key.code);
         
         if(_selected_object) {
             Event e(KEY);
-            e.key = {code, true, shift};
+            e.key = key;
+            e.key.pressed = true;
             return _selected_object->kdown(e);
         }
         
         return false;
     }
     
-    bool DrawStructure::key_up(Codes code, bool shift) {
-        if(pressed_keys.count(code))
-            pressed_keys.erase(code);
+    bool DrawStructure::key_up(const KeyEvent& key) {
+        if(pressed_keys.count(key.code))
+            pressed_keys.erase(key.code);
         
         if(_selected_object) {
             Event e(KEY);
-            e.key = {code, false, shift};
+            e.key = key;
+            e.key.pressed = false;
             return _selected_object->kup(e);
         }
         
         return false;
+    }
+
+    bool DrawStructure::key_down(Codes code, bool shift) {
+        return key_down(KeyEvent{code, true, shift, false, false, false, false});
+    }
+
+    bool DrawStructure::key_up(Codes code, bool shift) {
+        return key_up(KeyEvent{code, false, shift, false, false, false, false});
     }
     
     bool DrawStructure::is_key_pressed(Codes code) const {
@@ -1008,14 +1018,18 @@ void DrawStructure::close_dialogs() {
 #endif
     }
     
-    bool DrawStructure::text_entered(char c) {
+    bool DrawStructure::text_entered(const TextEvent& text) {
         if(_selected_object) {
             Event e(TEXT_ENTERED);
-            e.text = {c};
+            e.text = text;
             return _selected_object->text_entered(e);
         }
         
         return false;
+    }
+
+    bool DrawStructure::text_entered(char c) {
+        return text_entered(TextEvent{c, 0});
     }
     
     Drawable* DrawStructure::scroll(const Vec2& delta) {

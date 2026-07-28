@@ -95,6 +95,9 @@ set(COMMONS_PUBLIC_HEADERS
     video/GenericVideo.h
     video/Video.h
     video/VideoSource.h
+    gui/BrowserBase.h
+    gui/BrowserProtocol.h
+    gui/BrowserTransport.h
     gui/ControlsAttributes.h
     gui/CornerFlags.h
     gui/CrossPlatform.h
@@ -114,7 +117,6 @@ set(COMMONS_PUBLIC_HEADERS
     gui/GUITaskQueue.h
     gui/Graph.h
     gui/GuiTypes.h
-    gui/HttpClient.h
     gui/IMGUIBase.h
     gui/IatHook.h
     gui/LabeledField.h
@@ -123,6 +125,7 @@ set(COMMONS_PUBLIC_HEADERS
     gui/MetalImpl.h
     gui/ParseLayoutTypes.h
     gui/Passthrough.h
+    gui/RenderTraversal.h
     gui/SFLoop.h
     gui/SVG.h
     gui/Section.h
@@ -161,7 +164,6 @@ set(COMMONS_PUBLIC_HEADERS
     gui/types/TagList.h
     gui/types/Textfield.h
     gui/types/Tooltip.h
-    http/httpd.h
     modules/commons.exports.hpp
 )
 
@@ -275,6 +277,9 @@ set(COMMONS_VIDEO_HEADERS
 )
 
 set(COMMONS_GUI_HEADERS
+    gui/BrowserBase.h
+    gui/BrowserProtocol.h
+    gui/BrowserTransport.h
     gui/ControlsAttributes.h
     gui/CornerFlags.h
     gui/CrossPlatform.h
@@ -294,7 +299,6 @@ set(COMMONS_GUI_HEADERS
     gui/GUITaskQueue.h
     gui/Graph.h
     gui/GuiTypes.h
-    gui/HttpClient.h
     gui/IMGUIBase.h
     gui/IatHook.h
     gui/LabeledField.h
@@ -303,6 +307,7 @@ set(COMMONS_GUI_HEADERS
     gui/MetalImpl.h
     gui/ParseLayoutTypes.h
     gui/Passthrough.h
+    gui/RenderTraversal.h
     gui/SFLoop.h
     gui/SVG.h
     gui/Section.h
@@ -346,9 +351,7 @@ set(COMMONS_GUI_DYN_HEADERS
     gui/dyn/binders.h
 )
 
-set(COMMONS_HTTP_HEADERS
-    http/httpd.h
-)
+set(COMMONS_HTTP_HEADERS)
 
 set(COMMONS_CPP_SOURCES
     misc/types.cpp
@@ -412,6 +415,9 @@ set(COMMONS_CPP_SOURCES
     video/Video.cpp
     video/VideoSource.cpp
     gui/ControlsAttributes.cpp
+    gui/BrowserBase.cpp
+    gui/BrowserProtocol.cpp
+    gui/BrowserTransport.cpp
     gui/CornerFlags.cpp
     gui/Dispatcher.cpp
     gui/DrawBase.cpp
@@ -427,10 +433,10 @@ set(COMMONS_CPP_SOURCES
     gui/GLImpl.cpp
     gui/Graph.cpp
     gui/GuiTypes.cpp
-    gui/HttpClient.cpp
     gui/IMGUIBase.cpp
     gui/LabeledField.cpp
     gui/ParseLayoutTypes.cpp
+    gui/RenderTraversal.cpp
     gui/SFLoop.cpp
     gui/SVG.cpp
     gui/Section.cpp
@@ -464,7 +470,6 @@ set(COMMONS_CPP_SOURCES
     gui/types/TagList.cpp
     gui/types/Textfield.cpp
     gui/types/Tooltip.cpp
-    http/httpd.cpp
 )
 
 set(COMMONS_MODULE_INTERFACE_UNITS

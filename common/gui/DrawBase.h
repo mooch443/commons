@@ -4,6 +4,7 @@
 #include <commons.pc.h>
 #include <gui/types/Basic.h>
 #include <gui/Event.h>
+#include <misc/Path.h>
 //#include <gui/GuiTypes.h>
 //#include <gui/DrawStructure.h>
 
@@ -25,6 +26,8 @@ namespace cmn::gui {
         std::function<Bounds(const std::string&, Drawable*, const Font&)> _previous_line_bounds;
         std::function<Float2_t(const Font&)> _previous_line_spacing;
         Base *_previous_base;
+        std::mutex _base_queue_mutex;
+        std::queue<std::shared_ptr<std::packaged_task<void()>>> _base_main_queue;
         
     public:
         Base();
@@ -44,6 +47,18 @@ namespace cmn::gui {
         virtual Bounds get_window_bounds() const = 0;
         virtual const std::string& title() const = 0;
         virtual Size2 window_dimensions() const;
+        virtual const Float2_t& dpi_scale() const {
+            static const Float2_t value = 1_F;
+            return value;
+        }
+        virtual const bool& focussed() const {
+            static const bool value = true;
+            return value;
+        }
+        virtual void center(const Size2&) {}
+        virtual void set_open_files_fn(std::function<bool(const std::vector<file::Path>&)>) {}
+        virtual std::future<void> enqueue_main(std::function<void()>);
+        virtual void process_main_queue();
         virtual Event toggle_fullscreen(DrawStructure&g);
         
         virtual Float2_t text_width(const Text &text) const;

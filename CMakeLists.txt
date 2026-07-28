@@ -59,6 +59,7 @@ function(commons_log_selected_options)
         COMMONS_CONDA_PACKAGE_INSTALL
         CMN_USE_OPENGL2
         WITH_FFMPEG
+        WITH_HTTPD
         COMMONS_BUILD_HTTPD
         COMMONS_ENABLE_MODULES
         COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES
@@ -95,7 +96,8 @@ option(COMMONS_BUILD_OPENCV ON)
 option(COMMONS_CONDA_PACKAGE_INSTALL OFF)
 option(CMN_USE_OPENGL2 OFF)
 option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
-option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
+option(WITH_HTTPD "Enable HTTP/WebSocket support." OFF)
+option(COMMONS_BUILD_HTTPD "Build commons HTTP/WebSocket support." OFF)
 option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
 option(COMMONS_ENABLE_EXPERIMENTAL_GCC_MODULES "Allow the commons module build on GCC in experimental mode." OFF)
 option(COMMONS_DISPATCHER_REQUIRE_EXPLICIT_INSTANCE "Require explicit dispatcher installation instead of per-image auto-creation." OFF)
@@ -104,6 +106,16 @@ option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
 set(OPENCV_EXTRA_FLAGS "")
+
+# Keep the standalone commons project compatible with TRex's public option.
+# When commons is a subdirectory the parent has already normalized these.
+if(WITH_HTTPD OR COMMONS_BUILD_HTTPD)
+    set(WITH_HTTPD ON CACHE BOOL "Enable HTTP/WebSocket support." FORCE)
+    set(COMMONS_BUILD_HTTPD ON CACHE BOOL "Build commons HTTP/WebSocket support." FORCE)
+else()
+    set(WITH_HTTPD OFF CACHE BOOL "Enable HTTP/WebSocket support." FORCE)
+    set(COMMONS_BUILD_HTTPD OFF CACHE BOOL "Build commons HTTP/WebSocket support." FORCE)
+endif()
 
 message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CMAKE_CXX_COMPILER_VERSION: ${CMAKE_CXX_COMPILER_VERSION}")
@@ -1843,44 +1855,27 @@ foreach(dir ${dirs})
   message(STATUS "dir='${dir}'")
 endforeach()
 
-add_library(Commons::HTTPD INTERFACE IMPORTED GLOBAL)
+add_library(commons_httpd INTERFACE)
+add_library(Commons::HTTPD ALIAS commons_httpd)
+set_target_properties(commons_httpd PROPERTIES EXPORT_NAME HTTPD)
+
 if(COMMONS_BUILD_HTTPD)
-	set(httpd_PREFIX "${CMAKE_BINARY_DIR}/lmhttpd")
-	set(httpd_INSTALL_DIR "${CMAKE_BINARY_DIR}/lmhttpd")
-	set(httpd_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${httpd_INSTALL_DIR})
-    message(STATUS "Adding microhttpd")
-	ExternalProject_Add(LibMicroHttpd
-	  PREFIX ${httpd_PREFIX}
-	  URL https://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.77.tar.gz
-	  URL_HASH SHA256=9e7023a151120060d2806a6ea4c13ca9933ece4eacfc5c9464d20edddb76b0a0
-	  INSTALL_DIR ${httpd_INSTALL_DIR}
-	  CONFIGURE_COMMAND <SOURCE_DIR>/configure --bindir=${httpd_INSTALL_DIR}/lib --prefix=${httpd_INSTALL_DIR}
-	  UPDATE_COMMAND ""
-	)
-    add_custom_command(TARGET LibMicroHttpd POST_BUILD
-        COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Release")
-    add_custom_command(TARGET LibMicroHttpd POST_BUILD
-        COMMAND mkdir -p "${httpd_INSTALL_DIR}/lib/Debug")
+    set(CPP_HTTPLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpp-httplib")
+    set(CPP_HTTPLIB_HEADER "${CPP_HTTPLIB_DIR}/httplib.h")
+    if(NOT EXISTS "${CPP_HTTPLIB_HEADER}")
+        message(FATAL_ERROR
+            "HTTPD support requires the pinned cpp-httplib header at '${CPP_HTTPLIB_HEADER}'."
+        )
+    endif()
 
-    target_link_libraries(Commons::HTTPD INTERFACE microhttpd)
-
-	message(STATUS "HTTPD dir ${httpd_INSTALL_DIR}/lib")
-    file(MAKE_DIRECTORY "${httpd_INSTALL_DIR}/include")
-    
-    target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=true)
-    target_include_directories(Commons::HTTPD INTERFACE
-      "$<BUILD_INTERFACE:${httpd_INSTALL_DIR}/include>"
-      "$<INSTALL_INTERFACE:${httpd_INSTALL_DIR}/lib>"
+    message(STATUS "Using bundled cpp-httplib v0.50.1")
+    target_compile_definitions(commons_httpd INTERFACE COMMONS_HAS_HTTPD=1)
+    target_include_directories(commons_httpd INTERFACE
+        "$<BUILD_INTERFACE:${CPP_HTTPLIB_DIR}>"
+        "$<INSTALL_INTERFACE:include/commons/third_party/cpp-httplib>"
     )
-    set_target_properties(Commons::HTTPD PROPERTIES
-      IMPORTED_LOCATION "microhttpd"
-      TARGET_INCLUDE_DIRECTORIES "${httpd_INSTALL_DIR}/include"
-      TARGET_LINK_DIRECTORIES "${httpd_INSTALL_DIR}/lib"
-    )
-    add_dependencies(Commons::HTTPD LibMicroHttpd)
-
 else()
-    target_compile_definitions(Commons::HTTPD INTERFACE WITH_MHD=false)
+    target_compile_definitions(commons_httpd INTERFACE COMMONS_HAS_HTTPD=0)
 endif()
 
 find_package(ICU REQUIRED COMPONENTS uc i18n)
@@ -1923,6 +1918,7 @@ set(COMMONS_INSTALL_EXPORT_ONLY_TARGETS
     commons_gui
     commons_all
     commons_icu
+    commons_httpd
 )
 if(COMMONS_SPLIT_SHARED_LIBS AND TREX_ENABLE_SHARED_INTERNAL_LIBS)
     set(COMMONS_INSTALL_BINARY_TARGETS
@@ -1968,6 +1964,19 @@ endif()
 install(TARGETS ${COMMONS_INSTALL_EXPORT_ONLY_TARGETS}
     EXPORT "commonsTargets"
 )
+
+if(COMMONS_BUILD_HTTPD)
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpp-httplib/httplib.h"
+        DESTINATION include/commons/third_party/cpp-httplib
+        COMPONENT devel
+    )
+    install(FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/cpp-httplib/LICENSE"
+        DESTINATION share/licenses/commons/cpp-httplib
+        COMPONENT devel
+    )
+endif()
 
 install(
     EXPORT commonsTargets
