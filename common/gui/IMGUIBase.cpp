@@ -1168,29 +1168,24 @@ void IMGUIBase::process_main_queue() {
         set_last_framebuffer(Size2(fw, fh));
         
         //auto lock = GUI_LOCK(s.lock());
-        auto objects = s.collect();
         _objects_drawn = 0;
         _skipped = 0;
 #ifdef COMMONS_COUNT_OBJECTS
         _type_counts.clear();
 #endif
-        _draw_order.clear();
         _above_z.clear();
         _rotation_starts.clear();
-        
-        apply_to_objects(objects, [this](Drawable* o) {
-            redraw(o, _draw_order, _above_z);
-        });
-        
-        std::sort(_above_z.begin(), _above_z.end(), [](const auto& A, const auto& B) {
-            return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);
-        });
-        
-        for(auto & order : _draw_order) {
-            draw_element(order);
-        }
 
-        for (auto& order : _above_z) {
+        auto& io = ImGui::GetIO();
+        const Vec2 scale = (s.scale() / gui::interface_scale() / _dpi_scale)
+            .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y));
+        _draw_order = RenderTraversal::collect(s, {
+            .scale = scale,
+            .viewport = window_dimensions() / _dpi_scale,
+            .cull = true
+        });
+
+        for(auto & order : _draw_order) {
             draw_element(order);
         }
         

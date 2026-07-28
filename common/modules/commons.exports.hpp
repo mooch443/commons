@@ -121,7 +121,6 @@
 #include <gui/GUITaskQueue.h>
 #include <gui/Graph.h>
 #include <gui/GuiTypes.h>
-#include <gui/HttpClient.h>
 #include <gui/IMGUIBase.h>
 #include <gui/IatHook.h>
 #include <gui/LabeledField.h>
@@ -170,7 +169,3 @@
 #include <gui/types/TagList.h>
 #include <gui/types/Textfield.h>
 #include <gui/types/Tooltip.h>
-
-#if WITH_MHD
-#include <http/httpd.h>
-#endif

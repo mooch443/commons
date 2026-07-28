@@ -2,6 +2,9 @@
 // Do not edit by hand.
 
 export namespace cmn::gui {
+// gui/BrowserBase.h
+using ::cmn::gui::BrowserBase;
+using ::cmn::gui::BrowserBaseConfig;
 // gui/CornerFlags.h
 using ::cmn::gui::CornerFlags;
 // gui/CrossPlatform.h
@@ -50,7 +53,6 @@ using ::cmn::gui::GLImpl;
 #endif
 // gui/GUITaskQueue.h
 using ::cmn::gui::GUITaskQueue_t;
-using ::cmn::gui::IMGUIBase;
 // gui/Graph.h
 using ::cmn::gui::Graph;
 // gui/GuiTypes.h
@@ -97,6 +99,8 @@ using ::cmn::gui::LabelFont_t;
 using ::cmn::gui::LabelFont_tTag;
 using ::cmn::gui::LabelLineColor_t;
 using ::cmn::gui::LabelLineColor_tTag;
+using ::cmn::gui::ListCornerFlags;
+using ::cmn::gui::ListCornerFlagsTag;
 using ::cmn::gui::ListDims_t;
 using ::cmn::gui::ListDims_tTag;
 using ::cmn::gui::ListFillClr_t;
@@ -115,6 +119,10 @@ using ::cmn::gui::MetalImpl;
 // gui/Passthrough.h
 using ::cmn::gui::Fallthrough;
 using ::cmn::gui::retrieve_ptr_type;
+// gui/RenderTraversal.h
+using ::cmn::gui::RenderCommand;
+using ::cmn::gui::RenderTraversal;
+using ::cmn::gui::RenderTraversalOptions;
 // gui/SFLoop.h
 using ::cmn::gui::SFLoop;
 // gui/SVG.h
@@ -262,6 +270,8 @@ using ::cmn::gui::attr::ParmName;
 using ::cmn::gui::attr::ParmNameTag;
 using ::cmn::gui::attr::Placeholder_t;
 using ::cmn::gui::attr::Placeholder_tTag;
+using ::cmn::gui::attr::PointerEvents;
+using ::cmn::gui::attr::PointerEventsTag;
 using ::cmn::gui::attr::Postfix;
 using ::cmn::gui::attr::PostfixTag;
 using ::cmn::gui::attr::Prefix;
@@ -289,6 +299,35 @@ using ::cmn::gui::attr::pack_contains;
 // gui/Dispatcher.h
 using ::cmn::gui::attr::Dispatcher;
 using ::cmn::gui::attr::install_dispatcher_instance;
+}
+
+export namespace cmn::gui::browser {
+// gui/BrowserBase.h
+using ::cmn::gui::browser::EncodedImage;
+using ::cmn::gui::browser::encode_image;
+using ::cmn::gui::browser::font_face_style;
+using ::cmn::gui::browser::logical_viewport_size;
+// gui/BrowserProtocol.h
+using ::cmn::gui::browser::ClientMessage;
+using ::cmn::gui::browser::FrameUpdate;
+using ::cmn::gui::browser::ImageJob;
+using ::cmn::gui::browser::InputKind;
+using ::cmn::gui::browser::InputPacket;
+using ::cmn::gui::browser::MessageType;
+using ::cmn::gui::browser::Modifier;
+using ::cmn::gui::browser::PrimitiveKind;
+using ::cmn::gui::browser::SceneEncoder;
+using ::cmn::gui::browser::browser_key_code;
+using ::cmn::gui::browser::clients_message;
+using ::cmn::gui::browser::decode_client_message;
+using ::cmn::gui::browser::error_message;
+using ::cmn::gui::browser::image_message;
+using ::cmn::gui::browser::protocol_version;
+using ::cmn::gui::browser::x58525442;
+// gui/BrowserTransport.h
+using ::cmn::gui::browser::Asset;
+using ::cmn::gui::browser::BrowserTransport;
+using ::cmn::gui::browser::TransportConfig;
 }
 
 export namespace cmn::gui::dyn {
@@ -333,6 +372,11 @@ using ::cmn::gui::dyn::Modules::remove;
 export namespace cmn::gui::hidden {
 // gui/types/Drawable.h
 using ::cmn::gui::hidden::Global;
+}
+
+export namespace cmn::gui::pointer {
+// gui/Event.h
+using ::cmn::gui::pointer::Events;
 }
 
 export namespace cmn::utils {

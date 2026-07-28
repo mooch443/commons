@@ -270,10 +270,15 @@ namespace cmn::gui {
         Codes code;
         bool pressed;
         bool shift;
+        bool control;
+        bool alt;
+        bool system;
+        bool repeat;
     };
     
     struct TextEvent {
         char c;
+        uint32_t codepoint;
     };
     
     struct ScrollEvent {
@@ -301,6 +306,9 @@ namespace cmn::gui {
             DragEvent drag;
         };
         
-        Event(EventType t) : type(t) {}
+        // Event payloads have historically been populated field-by-field. Keep
+        // the complete union storage zeroed so newly added payload fields remain
+        // backwards-compatible with those producers.
+        Event(EventType t) : type(t), drag{} {}
     };
 }

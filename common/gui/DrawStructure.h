@@ -302,8 +302,11 @@ namespace cmn::gui {
         
         void select(Drawable*);
         
+        bool key_down(const KeyEvent&);
+        bool key_up(const KeyEvent&);
         bool key_down(Codes code, bool shift);
         bool key_up(Codes code, bool shift);
+        bool text_entered(const TextEvent&);
         bool text_entered(char c);
         Drawable* scroll(const Vec2& delta);
         

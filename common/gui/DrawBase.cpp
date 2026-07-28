@@ -16,6 +16,28 @@ namespace cmn::gui {
         return e;
     }
 
+    std::future<void> Base::enqueue_main(std::function<void()> fn) {
+        auto task = std::make_shared<std::packaged_task<void()>>(std::move(fn));
+        auto future = task->get_future();
+        {
+            std::lock_guard guard(_base_queue_mutex);
+            _base_main_queue.push(std::move(task));
+        }
+        return future;
+    }
+
+    void Base::process_main_queue() {
+        std::queue<std::shared_ptr<std::packaged_task<void()>>> tasks;
+        {
+            std::lock_guard guard(_base_queue_mutex);
+            tasks.swap(_base_main_queue);
+        }
+        while(not tasks.empty()) {
+            (*tasks.front())();
+            tasks.pop();
+        }
+    }
+
     Size2 Base::text_dimensions(const std::string& text, Drawable* obj, const Font& font) {
         auto size = default_text_bounds(text, obj, font);
         return Size2(size.pos() + size.size());

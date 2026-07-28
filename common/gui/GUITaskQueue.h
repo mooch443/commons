@@ -3,9 +3,8 @@
 #include <misc/TaskQueue.h>
 
 namespace cmn::gui {
-class IMGUIBase;
+class Base;
 class DrawStructure;
 
-using GUITaskQueue_t = TaskQueue<gui::IMGUIBase*, gui::DrawStructure&>;
+using GUITaskQueue_t = TaskQueue<gui::Base*, gui::DrawStructure&>;
 }
-

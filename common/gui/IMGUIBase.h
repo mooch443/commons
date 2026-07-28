@@ -5,6 +5,7 @@
 #include <gui/DrawBase.h>
 #include <misc/Path.h>
 #include <misc/Timer.h>
+#include <gui/RenderTraversal.h>
 #include <gui/Transform.h>
 #ifndef NDEBUG
 #include <gui/types/Drawable.h>
@@ -72,7 +73,7 @@ namespace cmn::gui {
         GETTER_NCONST(std::shared_ptr<CrossPlatform>, platform);
         CrossPlatform::custom_function_t _custom_loop;
         GETTER(Bounds, work_area);
-        GETTER_I(bool, focussed, true);
+        bool _focussed{true};
         std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
         size_t _objects_drawn, _skipped;
 #ifdef COMMONS_COUNT_OBJECTS
@@ -80,33 +81,15 @@ namespace cmn::gui {
 #endif
         Timer _last_debug_print;
         Size2 _last_framebuffer_size;
-        GETTER(Float2_t, dpi_scale);
+        Float2_t _dpi_scale;
         Float2_t _last_dpi_scale = -1;
         std::string _title;
         std::function<bool(const std::vector<file::Path>&)> _open_files_fn;
         
     public:
-        struct DrawOrder {
-            enum Type {
-                DEFAULT = 0,
-                BACKGROUND,
-                BACKGROUND_LINE,
-                //POP,
-                END_ROTATION,
-                START_ROTATION
-            };
-            Type type = DEFAULT;
-            size_t index;
-            Drawable* ptr;
-            gui::Transform transform;
-            Bounds bounds;
-            ImVec4 _clip_rect;
-            
-            DrawOrder() {}
-            DrawOrder(Type type, size_t index, Drawable*ptr, const gui::Transform& transform, const Bounds& bounds, const ImVec4& clip)
-            : type(type), index(index), ptr(ptr), transform(transform), bounds(bounds), _clip_rect(clip)
-            {}
-        };
+        using DrawOrder = RenderCommand;
+        const bool& focussed() const override { return _focussed; }
+        const Float2_t& dpi_scale() const override { return _dpi_scale; }
         
     protected:
         std::unordered_map<Drawable*, std::tuple<int, Vec2>> _rotation_starts;
@@ -167,10 +150,10 @@ namespace cmn::gui {
             _graph = std::move(base);
         }*/
         void init(const std::string& title, bool soft = false);
-        void center(const Size2&);
+        void center(const Size2&) override;
         ~IMGUIBase();
         
-        void set_open_files_fn(std::function<bool(const std::vector<file::Path>&)> fn) {
+        void set_open_files_fn(std::function<bool(const std::vector<file::Path>&)> fn) override {
             _open_files_fn = fn;
         }
         
@@ -204,7 +187,10 @@ namespace cmn::gui {
             //_exec_main_queue.push(std::bind([](F& fn){ fn(); }, std::move(fn)));
             return future;
         }
-        void process_main_queue();
+        std::future<void> enqueue_main(std::function<void()> fn) override {
+            return exec_main_queue(std::move(fn));
+        }
+        void process_main_queue() override;
         Event toggle_fullscreen(DrawStructure& g) override;
         
     private:

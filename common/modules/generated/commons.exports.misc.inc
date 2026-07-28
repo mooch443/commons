@@ -29,6 +29,11 @@ using ::cmn::FormatColor;
 using ::cmn::FormatColorNames;
 using ::cmn::FormatColor_t;
 using ::cmn::FormatterType;
+// misc/FrameTag.h
+using ::cmn::FrameTag;
+using ::cmn::IdentifiedTag;
+using ::cmn::SimpleTag;
+using ::cmn::SpatialTag;
 // misc/GlobalSettings.h
 using ::cmn::Configuration;
 using ::cmn::GlobalSettings;
