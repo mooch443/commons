@@ -661,6 +661,14 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
     -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
 )
 
+if(MSVC)
+    # Subprojects using CMP0091 NEW otherwise default to /MD even though
+    # commons and TRex consistently use the static MSVC runtime.
+    list(APPEND COMMONS_subproject_CMAKE_ARGS
+        "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}"
+    )
+endif()
+
 if(APPLE)
     set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
         -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
@@ -901,13 +909,20 @@ endif()
 
 set(imgui_version v1.92.9)
 set(imgui_path "${CMAKE_BINARY_DIR}/_deps/imgui-${imgui_version}")
+set(imgui_patch_command
+    ${CMAKE_COMMAND}
+        "-DIMGUI_SOURCE_DIR=<SOURCE_DIR>"
+        "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+        "-DIMGUI_PATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.cmake"
+)
 
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG ${imgui_version}
     SOURCE_DIR ${imgui_path}
-    PATCH_COMMAND "${GIT_EXECUTABLE}" apply --unidiff-zero "${CMAKE_CURRENT_SOURCE_DIR}/imgui_patch.diff"
+    PATCH_COMMAND ${imgui_patch_command}
     UPDATE_DISCONNECTED 1
 )
 
