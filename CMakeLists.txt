@@ -248,7 +248,7 @@ endif()
 
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
-if(WIN32)
+if(WIN32 AND COMMONS_BUILD_OPENCV)
     set(_trex_opencv_arch "x64")
     if(DEFINED CMAKE_SIZEOF_VOID_P AND CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(_trex_opencv_arch "x86")
