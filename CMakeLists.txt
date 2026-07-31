@@ -890,6 +890,9 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     #PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
     
     set(GLFW_INCLUDE_DIR ${GLFW_INSTALL_DIR}/include)
+    # Imported/interface include paths must exist when CMake generates consumers.
+    # ExternalProject installs this directory later, so prepare its prefix now.
+    file(MAKE_DIRECTORY "${GLFW_INCLUDE_DIR}")
     link_directories(${GLFW_INSTALL_DIR}/lib)
     message(STATUS "GLFW LIBRARIES install:${GLFW_INSTALL_DIR}")
     message(STATUS "glfw include: ${GLFW_INCLUDE_DIR}")
