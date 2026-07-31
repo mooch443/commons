@@ -8,7 +8,7 @@
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v libpng_custom CustomOpenCV test_gui",
+      "buildCommandArgs": "-v test_gui",
       "ctestCommandArgs": "",
       "intellisenseOptions": {
         "additionalCompilerArgs": "-DCMN_USE_OPENGL2=false -DCOMMONS_HAS_OPENGL=false -DIMGUI_IMPL_OPENGL_LOADER_GLAD=true -IC:/Users/tristan/trex/Application/src/commons/out/build/webassembly/opencv_install/include/opencv4 -IC:/Users/tristan/trex/Application/src/commons -IC:/Users/tristan/trex/Application/src/commons/examples/../common -IC:/Users/tristan/trex/Application/src/commons/common/../flat_hash_map -IC:/Users/tristan/trex/Application/src/commons/common/../sparse-map/include -IC:/Users/tristan/trex/Application/src/commons/common/../robin-hood-hashing/src/include -IC:/Users/tristan/trex/Application/src/commons/cnpy -IC:/Users/tristan/trex/Application/src/commons/cnpy/extern/libzippp -isystem C:/Users/tristan/trex/Application/src/commons/imgui -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/zlib/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/libzip/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/libpng/include -isystem C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/opencv_install/include -fexceptions -O3  -O3 -DNDEBUG -std=c++2a -fbracket-depth=400 -std=c++20 -Winvalid-pch -Xclang -include-pch -Xclang C:/Users/tristan/trex/Application/src/commons/out/build/webassembly/examples/CMakeFiles/test_gui.dir/cmake_pch.hxx.pch -Xclang"

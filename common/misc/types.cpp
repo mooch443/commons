@@ -6,7 +6,7 @@
 
 namespace cmn::file {
 // All FILE* operations live here so they execute inside commons' CRT, matching
-// Path::fopen. See the FilePtr comment in types.h for why this matters with /MT.
+// Path::fopen. See the FilePtr comment in types.h for the /MT and /MD rationale.
 FilePtr::~FilePtr() {
     if (file_) {
         std::fclose(file_);

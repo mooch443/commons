@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.17)
 cmake_policy(SET CMP0091 NEW)
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(_commons_msvc_runtime_inherited OFF)
+if(DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+    set(_commons_msvc_runtime_inherited ON)
+else()
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 if(POLICY CMP0114)
   cmake_policy(PUSH)
   cmake_policy(SET CMP0114 NEW)
@@ -85,15 +90,15 @@ if(APPLE)
 else()
     option(COMMONS_WITH_OPENGL ON)
 endif()
-option(COMMONS_BUILD_GLFW ON)
-option(COMMONS_BUILD_PNG ON)
-option(COMMONS_BUILD_ZIP ON)
-option(COMMONS_BUILD_EXAMPLES ON)
-option(COMMONS_FOR_JS OFF)
-option(COMMONS_BUILD_ZLIB ON)
-option(COMMONS_BUILD_OPENCV ON)
-option(COMMONS_CONDA_PACKAGE_INSTALL OFF)
-option(CMN_USE_OPENGL2 OFF)
+option(COMMONS_BUILD_GLFW "Build the bundled GLFW" ON)
+option(COMMONS_BUILD_PNG "Build the bundled libpng instead of using the environment provider" ON)
+option(COMMONS_BUILD_ZIP "Build the bundled libzip instead of using the environment provider" ON)
+option(COMMONS_BUILD_EXAMPLES "Build commons examples" ON)
+option(COMMONS_FOR_JS "Build commons for JavaScript/WebAssembly" OFF)
+option(COMMONS_BUILD_ZLIB "Build the bundled zlib instead of using the environment provider" ON)
+option(COMMONS_BUILD_OPENCV "Build the bundled OpenCV instead of using the environment provider" ON)
+option(COMMONS_CONDA_PACKAGE_INSTALL "Build commons as part of the Conda package" OFF)
+option(CMN_USE_OPENGL2 "Use OpenGL 2" OFF)
 option(WITH_FFMPEG "Compile with ffmpeg streaming support" ON)
 option(COMMONS_BUILD_HTTPD "Compile with libmicrohttpd (enable web features)" OFF)
 option(COMMONS_ENABLE_MODULES "Build commons with C++ named module interfaces." OFF)
@@ -104,6 +109,12 @@ option(NO_PUT_TIME "Disables std::put_time usage" OFF)
 option(OPENCV_EXTRA_FLAGS "OpenCV extra CMake flags" "")
 option(COMMONS_NO_PYTHON "Disable Python support" OFF)
 set(OPENCV_EXTRA_FLAGS "")
+
+if(MSVC AND NOT _commons_msvc_runtime_inherited)
+    if(NOT COMMONS_BUILD_OPENCV OR NOT COMMONS_BUILD_PNG OR NOT COMMONS_BUILD_ZIP OR NOT COMMONS_BUILD_ZLIB)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    endif()
+endif()
 
 message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CMAKE_CXX_COMPILER_VERSION: ${CMAKE_CXX_COMPILER_VERSION}")
@@ -288,13 +299,13 @@ if(WIN32)
     #set(CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_SHARED_LINKER_FLAGS_RELWITHDEBINFO} /LTCG")
     #set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /LTCG")
 
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT /O2 /Oi /Oy /Ot /Ob2 /Gy /GF")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd /bigobj")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /Oy /Ot /Ob2 /Gy /GF")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
     
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT /O2 /Oi /Oy /Ot /Ob2 /Gy /GF")
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd /bigobj")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /MT /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /O2 /Oi /Oy /Ot /Ob2 /Gy /GF")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /bigobj")
+    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /bigobj /O2 /Oi /Oy /Ot /Ob2 /Zi")
     
     set(GLEW_STATIC ON)
 else()
@@ -506,7 +517,10 @@ else()
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-local-addr -Wno-stringop-overflow -static-libstdc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-local-addr -Wno-stringop-overflow")
+    if(COMMONS_BUILD_OPENCV)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+    endif()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -pedantic -Wall -Wextra -Wno-long-long -ggdb -DOM_DEBUG -O0 -no-pie")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g0 -no-pie -ffunction-sections -fdata-sections")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O2 -ggdb -no-pie -ffunction-sections -fdata-sections")
@@ -662,8 +676,8 @@ SET(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
 )
 
 if(MSVC)
-    # Subprojects using CMP0091 NEW otherwise default to /MD even though
-    # commons and TRex consistently use the static MSVC runtime.
+    # Keep ExternalProject dependencies on the same runtime selected by TRex
+    # (/MT for all-custom builds, /MD when any provider is external).
     list(APPEND COMMONS_subproject_CMAKE_ARGS
         "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}"
     )
@@ -827,7 +841,14 @@ endif()
 if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     set(GLFW_add_flags "")
     if(WIN32)
-        set(GLFW_add_flags ${GLFW_add_flags} -DCMAKE_CXX_FLAGS_RELEASE="/MT" -DCMAKE_CXX_FLAGS_DEBUG="/MTd" -DUSE_MSVC_RUNTIME_LIBRARY_DLL=OFF)
+        if(CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL")
+            set(_commons_glfw_shared_runtime ON)
+        else()
+            set(_commons_glfw_shared_runtime OFF)
+        endif()
+        list(APPEND GLFW_add_flags
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}"
+            "-DUSE_MSVC_RUNTIME_LIBRARY_DLL:BOOL=${_commons_glfw_shared_runtime}")
     endif()
 
     set(GLFW_CXX_FLAGS "${ORIGINAL_CXX_FLAGS}")
@@ -985,6 +1006,10 @@ endif()
 add_library (Commons::FFMPEG INTERFACE IMPORTED GLOBAL)
 
 if(WITH_FFMPEG)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(PC_AVCODEC QUIET libavcodec)
+    endif()
     find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
     find_library(AVCODEC_LIBRARY avcodec)
 
@@ -1011,10 +1036,12 @@ if(WITH_FFMPEG)
         -DOPENCV_FFMPEG_ENABLE_LIBAVDEVICE=ON
     )
 
-    if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVDEVICE_LIBRARY OR NOT LIBSWSSCALE_LIBRARY)
-        message(STATUS "Cannot find the FFMPEG libraries (WITH_FFMPEG=ON) avformat:${AVFORMAT_LIBRARY} avdevice:${AVDEVICE_LIBRARY} swsscale:${LIBSWSSCALE_LIBRARY}")
-        message(STATUS "Disabling FFMPEG.")
-        set(WITH_FFMPEG OFF)
+    if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT AVDEVICE_LIBRARY OR NOT LIBSWSSCALE_LIBRARY)
+        message(FATAL_ERROR
+            "WITH_FFMPEG=ON requires environment-provided shared FFmpeg libraries. "
+            "Detected avcodec='${AVCODEC_LIBRARY}', avformat='${AVFORMAT_LIBRARY}', avutil='${AVUTIL_LIBRARY}', "
+            "avdevice='${AVDEVICE_LIBRARY}', swscale='${LIBSWSSCALE_LIBRARY}'. Install FFmpeg and add its prefix to CMAKE_PREFIX_PATH."
+        )
     else()
         set(FFMPEG_INCLUDE_DIRS ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
         set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${LIBSWSSCALE_LIBRARY})
@@ -1022,17 +1049,19 @@ if(WITH_FFMPEG)
         target_link_libraries(Commons::FFMPEG INTERFACE ${FFMPEG_LIBRARIES})
         include_directories(${FFMPEG_INCLUDE_DIRS})
 
-        file(MAKE_DIRECTORY ${GLFW_INCLUDE_DIR})
         target_include_directories(Commons::FFMPEG INTERFACE
-          "$<BUILD_INTERFACE:${GLFW_INCLUDE_DIR}>"
-          "$<INSTALL_INTERFACE:${GLFW_INSTALL_DIR}/lib>"
-        )
-        set_target_properties(Commons::FFMPEG PROPERTIES
-          IMPORTED_LOCATION "${FFMPEG_LIBRARIES}"
-          INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIRS}"
-          #INTERFACE_LINK_DIRECTORIES "${GLFW_INSTALL_DIR}/lib"
-        )
+            ${FFMPEG_INCLUDE_DIRS})
+        set(_commons_ffmpeg_provider "environment")
+        set(_commons_ffmpeg_version "${PC_AVCODEC_VERSION}")
+        if(NOT _commons_ffmpeg_version)
+            set(_commons_ffmpeg_version "unknown")
+        endif()
+        set(_commons_ffmpeg_path "${FFMPEG_DIR}")
     endif()
+else()
+    set(_commons_ffmpeg_provider "disabled")
+    set(_commons_ffmpeg_version "n/a")
+    set(_commons_ffmpeg_path "n/a")
 endif()
 
 
@@ -1078,61 +1107,19 @@ elseif(NOT COMMONS_NO_PYTHON)
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#    PREPARING for libpng by seeing whether
-#    we can link to a previously existing one
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
-
-if(NOT COMMONS_BUILD_PNG AND NOT ${COMMONS_BUILD_PNG})
-    find_package(PNG)
-    
-    if(NOT PNG_FOUND)
-        message(STATUS "Did not find PNG. Trying to build it.")
-        set(COMMONS_BUILD_PNG ON CACHE BOOL "" FORCE)
-        
-    else()
-        include_directories(${PNG_INCLUDE_DIR})
-        target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARIES})
-        target_include_directories(Commons::LibPNG INTERFACE
-          "$<BUILD_INTERFACE:${PNG_INCLUDE_DIR}>"
-          "$<INSTALL_INTERFACE:${PNG_LIBRARIES}>"
-        )
-        set_target_properties(Commons::LibPNG PROPERTIES
-          IMPORTED_LOCATION "${PNG_LIBRARIES}"
-          INTERFACE_INCLUDE_DIRECTORIES "${PNG_INCLUDE_DIR}"
-          #INTERFACE_LINK_DIRECTORIES "${png_install_dir}/lib"
-        )
-    
-        message(STATUS "png: ${PNG_LIBRARIES} ${PNG_INCLUDE_DIR}")
-    endif()
-endif()
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      L I B Z
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 add_library (Commons::LibZ INTERFACE IMPORTED GLOBAL)
-find_package(ZLIB)
-if((NOT ${COMMONS_BUILD_ZLIB}) AND ZLIB_FOUND AND ZLIB_VERSION_STRING VERSION_GREATER 1.2.10)
-    message(STATUS "Found zlib here: ${ZLIB_LIBRARY}")
-    set(libzip_zlib_lib "${ZLIB_LIBRARY}")
-    
-    target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
-    unset(ZLIB_LIBRARY)
-    
-else()
-    message(STATUS "Building libZ and libZIP")
-    set(COMMONS_BUILD_ZLIB ON CACHE BOOL "" FORCE)
-    set(COMMONS_BUILD_ZIP ON CACHE BOOL "" FORCE)
-    set(ZLIB_LIBRARY "z")
+if(COMMONS_BUILD_ZLIB)
+    message(STATUS "Building bundled zlib")
     set(zlib_install_dir "${CMAKE_BINARY_DIR}/zlib")
-    
+
     if(WIN32)
-        link_directories(${zlib_install_dir}/lib/)
         set(ZLIB_LIBRARY "${zlib_install_dir}/lib/zlibstatic$<IF:$<CONFIG:Debug>,d,>.lib")
-        set(libzip_zlib_lib "${zlib_install_dir}/lib/zlibstatic.lib")
         set(COMMONS_subproject_CMAKE_ARGS1 ${COMMONS_subproject_CMAKE_ARGS}
             -DCMAKE_STATIC_LINKER_FLAGS_INIT="/LIBPATH:\"${zlib_install_dir}/lib\"")
     else()
+        set(ZLIB_LIBRARY "${zlib_install_dir}/lib/libz$<IF:$<CONFIG:Debug>,d,>.a")
         set(COMMONS_subproject_CMAKE_ARGS1 ${COMMONS_subproject_CMAKE_ARGS})
     endif()
 
@@ -1154,15 +1141,11 @@ else()
         -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF
     )
     
-    target_link_libraries (Commons::LibZ INTERFACE ${ZLIB_LIBRARY})
+    target_link_libraries(Commons::LibZ INTERFACE "${ZLIB_LIBRARY}")
+    add_dependencies(Commons::LibZ Z_LIB)
 
-    set(ZLIB_INCLUDE_DIR ${zlib_install_dir}/include)
+    set(ZLIB_INCLUDE_DIR "${zlib_install_dir}/include")
     include_directories(${ZLIB_INCLUDE_DIR})
-    link_directories(${zlib_install_dir}/lib)
-
-    message(STATUS "zlib install dir ${zlib_install_dir}")
-    message(STATUS "ZLIB include dir ${ZLIB_INCLUDE_DIR}")
-    message(STATUS "ZLIB_LIBRARY = ${ZLIB_LIBRARY} ${ZLIB_VERSION_STRING}")
 
     if(APPLE)
         # make directories to avoid warning messages in Xcode
@@ -1175,17 +1158,23 @@ else()
 
     file(MAKE_DIRECTORY ${ZLIB_INCLUDE_DIR})
     target_include_directories(Commons::LibZ INTERFACE
-      "$<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>"
-      "$<INSTALL_INTERFACE:${zlib_install_dir}/lib>"
-    )
-    set_target_properties(Commons::LibZ PROPERTIES
-      IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
-      INTERFACE_LINK_DIRECTORIES "${zlib_install_dir}/lib"
-    )
-    
-    unset(ZLIB_LIBRARY)
-    unset(ZLIB_INCLUDE_DIR)
+        "$<BUILD_INTERFACE:${ZLIB_INCLUDE_DIR}>")
+    set(_commons_zlib_provider "custom")
+    set(_commons_zlib_version "bundled master")
+    set(_commons_zlib_path "${zlib_install_dir}")
+else()
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(Commons::LibZ INTERFACE ZLIB::ZLIB)
+    if(DEFINED ZLIB_VERSION)
+        set(_commons_zlib_version "${ZLIB_VERSION}")
+    else()
+        set(_commons_zlib_version "${ZLIB_VERSION_STRING}")
+    endif()
+    if(NOT _commons_zlib_version)
+        set(_commons_zlib_version "unknown")
+    endif()
+    set(_commons_zlib_provider "environment")
+    set(_commons_zlib_path "${ZLIB_LIBRARIES}")
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1194,18 +1183,21 @@ endif()
 add_library (Commons::LibZIP INTERFACE IMPORTED GLOBAL)
 
 if(NOT COMMONS_BUILD_ZIP)
-    find_package(Zip)
-    
-    if(NOT Zip_FOUND)
-        message(STATUS "Did not find ZIP. Trying to build it.")
-        set(COMMONS_BUILD_ZIP ON CACHE BOOL "" FORCE)
-        
+    find_package(libzip CONFIG QUIET)
+    if(TARGET libzip::zip)
+        target_link_libraries(Commons::LibZIP INTERFACE libzip::zip)
+        set(_commons_libzip_version "${libzip_VERSION}")
+        set(_commons_libzip_path "${libzip_DIR}")
     else()
-        include_directories(${ZIP_INCLUDE_DIR})
-        
-        target_link_libraries (Commons::LibZIP INTERFACE ${ZIP_LIBRARIES} Commons::LibZ)
-        message(STATUS "zip: ${ZIP_LIBRARIES} ${ZIP_INCLUDE_DIR}")
+        find_package(Zip REQUIRED)
+        target_link_libraries(Commons::LibZIP INTERFACE ZIP::ZIP)
+        set(_commons_libzip_version "${ZIP_VERSION}")
+        set(_commons_libzip_path "${ZIP_LIBRARY}")
     endif()
+    if(NOT _commons_libzip_version)
+        set(_commons_libzip_version "unknown")
+    endif()
+    set(_commons_libzip_provider "environment")
 endif()
 
 if(COMMONS_BUILD_ZLIB)
@@ -1232,7 +1224,7 @@ if(COMMONS_BUILD_ZIP)
     set(LIBZIP_LIBRARY "${libzip_install_dir}/lib/zip$<IF:$<CONFIG:Debug>,d,>.lib")
     
     if(NOT WIN32)
-        set(LIBZIP_LIBRARY "zip$<IF:$<CONFIG:Debug>,d,>")
+        set(LIBZIP_LIBRARY "${libzip_install_dir}/lib/libzip$<IF:$<CONFIG:Debug>,d,>.a")
     endif()
 
     if(EMSCRIPTEN)
@@ -1243,14 +1235,12 @@ if(COMMONS_BUILD_ZIP)
     
     ExternalProject_Add(libzip
         PREFIX ${libzip_install_dir}
-        DEPENDS Commons::LibZ
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
         GIT_TAG v1.11.4
         UPDATE_COMMAND ""
         PATCH_COMMAND "${ZIP_PATCH}"
         CMAKE_ARGS
             ${libzip_configure}
-            -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
             ${COMMONS_subproject_CMAKE_ARGS}
             -DENABLE_BZIP2=OFF
             -DBUILD_REGRESS=OFF
@@ -1273,10 +1263,7 @@ if(COMMONS_BUILD_ZIP)
     set(LIBZIP_INCLUDE_DIR "${libzip_install_dir}/include")
     
     include_directories(${LIBZIP_INCLUDE_DIR})
-    link_directories(${libzip_install_dir}/lib)
-    message(STATUS "ZIP: ${LIBZIP_LIBRARY}")
-    message(STATUS "include libzip ${LIBZIP_INCLUDE_DIR} install: ${libzip_install_dir}")
-    target_link_libraries (Commons::LibZIP INTERFACE ${LIBZIP_LIBRARY})
+    target_link_libraries(Commons::LibZIP INTERFACE "${LIBZIP_LIBRARY}" Commons::LibZ)
 
     file(MAKE_DIRECTORY ${LIBZIP_INCLUDE_DIR})
     if(APPLE)
@@ -1287,24 +1274,21 @@ if(COMMONS_BUILD_ZIP)
     endif()
 
     target_include_directories(Commons::LibZIP INTERFACE
-      "$<BUILD_INTERFACE:${LIBZIP_INCLUDE_DIR}>"
-      "$<INSTALL_INTERFACE:${libzip_install_dir}/lib>"
-    )
-    set_target_properties(Commons::LibZIP PROPERTIES
-      IMPORTED_LOCATION "${LIBZIP_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${LIBZIP_INCLUDE_DIR}"
-      INTERFACE_LINK_DIRECTORIES "${libzip_install_dir}/lib"
-    )
+        "$<BUILD_INTERFACE:${LIBZIP_INCLUDE_DIR}>")
 
-    add_dependencies(Commons::LibZIP Commons::LibZ libzip)
-    unset(LIBZIP_LIBRARY)
+    add_dependencies(Commons::LibZIP libzip)
+    set(_commons_libzip_provider "custom")
+    set(_commons_libzip_version "1.11.4")
+    set(_commons_libzip_path "${libzip_install_dir}")
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #    BUILDING      L I B P N G
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-if(${COMMONS_BUILD_PNG})
+add_library (Commons::LibPNG INTERFACE IMPORTED GLOBAL)
+
+if(COMMONS_BUILD_PNG)
     message(STATUS "Commons will build PNG.")
     set(png_install_dir "${CMAKE_BINARY_DIR}/libpng")
     set(PNG_LIBRARY "png")
@@ -1323,7 +1307,6 @@ if(${COMMONS_BUILD_PNG})
     #URL ftp://ftp.simplesystems.org/pub/libpng/png/src/history/libpng15/libpng-1.5.10.tar.gz
     #URL_MD5 9e5d864bce8f06751bbd99962ecf4aad
     EXTERNALPROJECT_ADD(libpng_custom
-        DEPENDS Commons::LibZ Commons::LibZIP
         PREFIX ${png_install_dir}
         UPDATE_COMMAND ""
         #PATCH_COMMAND ${PNG_PATCH}
@@ -1332,8 +1315,12 @@ if(${COMMONS_BUILD_PNG})
         GIT_TAG v1.6.58
 
         INSTALL_DIR ${png_install_dir}
-        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_PREFIX_PATH=${zlib_install_dir} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON -DPNG_TOOLS:BOOL=OFF
+        CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON -DPNG_TOOLS:BOOL=OFF
     )
+
+    if(COMMONS_BUILD_ZLIB)
+        add_dependencies(libpng_custom Z_LIB)
+    endif()
 
     include_directories(${png_install_dir}/include)
     link_directories(${png_install_dir}/lib)
@@ -1347,8 +1334,8 @@ if(${COMMONS_BUILD_PNG})
     endif()
     
     message(STATUS "png library ${PNG_LIBRARY}")
-    target_link_libraries (Commons::LibPNG INTERFACE ${PNG_LIBRARY} Commons::LibZ Commons::LibZIP)
-    add_dependencies(Commons::LibPNG ${PNG_LIBRARY} libpng_custom Commons::LibZ Commons::LibZIP)
+    target_link_libraries(Commons::LibPNG INTERFACE "${PNG_LIBRARY}" Commons::LibZ)
+    add_dependencies(Commons::LibPNG libpng_custom)
 
     file(MAKE_DIRECTORY "${png_install_dir}/include")
     
@@ -1361,16 +1348,11 @@ if(${COMMONS_BUILD_PNG})
     endif()
 
     target_include_directories(Commons::LibPNG INTERFACE
-      "$<BUILD_INTERFACE:${png_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${png_install_dir}/lib>"
-    )
-    set_target_properties(Commons::LibPNG PROPERTIES
-      IMPORTED_LOCATION "${PNG_LIBRARY}"
-      INTERFACE_INCLUDE_DIRECTORIES "${png_install_dir}/include"
-      INTERFACE_LINK_DIRECTORIES "${png_install_dir}/lib"
-    )
-    
-    unset(PNG_LIBRARY)
+        "$<BUILD_INTERFACE:${png_install_dir}/include>")
+
+    set(_commons_png_provider "custom")
+    set(_commons_png_version "1.6.58")
+    set(_commons_png_path "${png_install_dir}")
 
     if(WIN32)
        set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS}
@@ -1386,13 +1368,18 @@ if(${COMMONS_BUILD_PNG})
             -DPNG_PNG_INCLUDE_DIR:FILEPATH=${png_install_dir}/include
         )
    endif()
-endif()
-
-# this is circumventing some weird CMake shuffeling of dependencies. these libraries always have to go last
-# at least once, but multiple times if necessary.
-if(UNIX AND NOT APPLE)
-    target_link_libraries(Commons::LibZIP INTERFACE Commons::X11 pthread)
-    target_link_libraries(Commons::LibPNG INTERFACE Commons::X11 pthread)
+else()
+    find_package(PNG REQUIRED)
+    target_link_libraries(Commons::LibPNG INTERFACE PNG::PNG)
+    set(_commons_png_provider "environment")
+    set(_commons_png_version "${PNG_VERSION_STRING}")
+    if(NOT _commons_png_version AND DEFINED PNG_VERSION)
+        set(_commons_png_version "${PNG_VERSION}")
+    endif()
+    if(NOT _commons_png_version)
+        set(_commons_png_version "unknown")
+    endif()
+    set(_commons_png_path "${PNG_LIBRARIES}")
 endif()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1400,11 +1387,7 @@ endif()
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 add_library (Commons::OpenCV INTERFACE IMPORTED GLOBAL)
 
-if(WIN32)
-    set(OpenCV_STATIC ON)
-endif()
-
-if(UNIX)
+if(COMMONS_BUILD_OPENCV AND UNIX)
     # find libavif
     find_library(AVIF_LIBRARY avif)
     find_path(AVIF_INCLUDE_DIR avif/avif.h)
@@ -1419,29 +1402,27 @@ if(UNIX)
     endif()
 endif()
 
-if(NOT ${COMMONS_BUILD_OPENCV})
-    message(STATUS "Trying to find OpenCV...")
-    find_package( OpenCV )
-    
-    if(NOT OpenCV_FOUND)
-        set(COMMONS_BUILD_OPENCV ON CACHE BOOL "OpenCV Override" FORCE)
-        message(STATUS "Cannot find OpenCV. Trying to build it.")
-    else() 
-        include_directories( ${OpenCV_INCLUDE_DIRS} )
-        message(STATUS "Found OpenCV Version: ${OpenCV_VERSION} include: ${OpenCV_INCLUDE_DIRS} libs: ${OpenCV_LIBRARIES}")
-        set(OpenCV_LIBS ${OpenCV_LIBRARIES})
-    
-        target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS})
-        if(UNIX AND NOT APPLE)
-            find_package(TIFF)
-            message(STATUS "TIFF libraries: ${TIFF_LIBRARIES}")
-            target_link_libraries(Commons::OpenCV INTERFACE tiff cairo)
-        endif()
-        set(OpenCV_LIBS Commons::OpenCV)
+if(NOT COMMONS_BUILD_OPENCV)
+    set(_commons_opencv_components
+        core imgproc imgcodecs flann photo video videoio highgui features2d calib3d)
+    find_package(OpenCV 4 REQUIRED CONFIG COMPONENTS ${_commons_opencv_components})
+    if(OpenCV_VERSION VERSION_GREATER_EQUAL 5)
+        message(FATAL_ERROR
+            "The environment OpenCV provider must be OpenCV 4.x; found ${OpenCV_VERSION} at ${OpenCV_DIR}."
+        )
     endif()
+    target_link_libraries(Commons::OpenCV INTERFACE ${OpenCV_LIBS})
+    target_include_directories(Commons::OpenCV INTERFACE ${OpenCV_INCLUDE_DIRS})
+    set(_commons_opencv_provider "environment")
+    set(_commons_opencv_version "${OpenCV_VERSION}")
+    set(_commons_opencv_path "${OpenCV_DIR}")
+    set(OpenCV_LIBS Commons::OpenCV)
 endif()
 
-if(${COMMONS_BUILD_OPENCV})
+if(COMMONS_BUILD_OPENCV)
+    if(WIN32)
+        set(OpenCV_STATIC ON)
+    endif()
     set(trigger_build_dir "${CMAKE_BINARY_DIR}/force_opencv")
     set(BUILD_SHARED_LIBS OFF)
     message(STATUS "Building OpenCV...")
@@ -1455,7 +1436,6 @@ if(${COMMONS_BUILD_OPENCV})
         message(STATUS "PKG_CONFIG_PATH: $ENV{PKG_CONFIG_PATH}")
     endif()
     
-    set(OPENCV_PREFIX_PATH "${png_install_dir}" "${zlib_install_dir}" ${CMAKE_PREFIX_PATH} )
     message(STATUS "CMAKE_CXX_FLAGS_DEBUG: ${CMAKE_CXX_FLAGS_DEBUG}")
    
    if(COMMONS_CONDA_PACKAGE_INSTALL)
@@ -1473,6 +1453,12 @@ if(${COMMONS_BUILD_OPENCV})
         set(OPENCV_USE_PCH OFF)
     else()
         set(OPENCV_USE_PCH ON)
+    endif()
+
+    if(CMAKE_MSVC_RUNTIME_LIBRARY MATCHES "DLL")
+        set(COMMONS_OPENCV_STATIC_CRT OFF)
+    else()
+        set(COMMONS_OPENCV_STATIC_CRT ON)
     endif()
 
    if(COMMONS_FOR_JS)
@@ -1662,7 +1648,7 @@ else()
             -DWITH_JASPER:BOOL=OFF
             -DBUILD_opencv_world:BOOL=OFF
             -DBUILD_opencv_gapi=ON
-            -DBUILD_WITH_STATIC_CRT:BOOL=ON
+            -DBUILD_WITH_STATIC_CRT:BOOL=${COMMONS_OPENCV_STATIC_CRT}
             -DBUILD_FAT_JAVA_LIB=OFF
             -DBUILD_TIFF=ON
             -DWITH_OPENCL=ON
@@ -1735,6 +1721,13 @@ endif()
             ${OPENCV_CMAKE_ARGS})
     endif()
 
+    if(TARGET libpng_custom)
+        add_dependencies(CustomOpenCV libpng_custom)
+    endif()
+    if(TARGET Z_LIB)
+        add_dependencies(CustomOpenCV Z_LIB)
+    endif()
+
     if(APPLE)
         set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR}/opencv_install/lib/cmake/opencv4/ ${CMAKE_PREFIX_PATH})
         set(OpenCV_DIR ${CMAKE_BINARY_DIR}/opencv_install/)
@@ -1777,9 +1770,8 @@ endif()
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include)
         file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/opencv_install/include/opencv4)
     target_include_directories(Commons::OpenCV INTERFACE
-      "$<BUILD_INTERFACE:${png_install_dir}/include>"
-      "$<INSTALL_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}>"
-    )
+        "$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/include>"
+        "$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/opencv_install/include/opencv4>")
     
     message(STATUS "Find OpenCV ${OpenCV_DIR} ${COMMONS_OPENCV_VERSION}")
 	find_package(OpenCV ${COMMONS_OPENCV_VERSION} PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
@@ -1806,10 +1798,13 @@ endif()
         ${CMAKE_BINARY_DIR}/opencv_install/lib 
         ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
-    target_link_libraries (Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZIP Commons::LibZ)
-    add_dependencies(Commons::OpenCV CustomOpenCV Commons::LibPNG Commons::LibZIP Commons::LibZ)
+    target_link_libraries(Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZ)
+    add_dependencies(Commons::OpenCV CustomOpenCV)
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
+    set(_commons_opencv_provider "custom")
+    set(_commons_opencv_version "${COMMONS_OPENCV_VERSION}")
+    set(_commons_opencv_path "${CMAKE_BINARY_DIR}/opencv_install")
 
     if(APPLE)
         # make directories to avoid warning messages in Xcode
@@ -1823,19 +1818,6 @@ endif()
         file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty/Debug")
     endif()
 
-    if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-        set_target_properties(Commons::OpenCV PROPERTIES
-          IMPORTED_LOCATION "${OpenCV_LIBS}"
-          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
-        )
-    else()
-        set_target_properties(Commons::OpenCV PROPERTIES
-          IMPORTED_LOCATION "${OpenCV_LIBS}"
-          INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/include;${CMAKE_BINARY_DIR}/opencv_install/include/opencv4"
-          INTERFACE_LINK_DIRECTORIES "${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty;${CMAKE_BINARY_DIR}/opencv_install/lib;${OpenCV_LIB_PATH}"
-        )
-    endif()
 endif()
 
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
@@ -1912,7 +1894,25 @@ if(POLICY CMP0114)
   cmake_policy(POP)
 endif()
 
-message(STATUS "ZLIB: ${COMMONS_BUILD_ZLIB} ${COMMONS_BUILD_ZIP} ${LIBZIP_LIBRARY}")
+if(DEFINED TREX_CONFIGURE AND NOT TREX_CONFIGURE STREQUAL "")
+    set(_commons_effective_profile "${TREX_CONFIGURE} (explicit)")
+elseif(COMMONS_BUILD_OPENCV AND COMMONS_BUILD_PNG AND COMMONS_BUILD_ZIP AND COMMONS_BUILD_ZLIB)
+    set(_commons_effective_profile "buildall (default/individual switches)")
+elseif(NOT COMMONS_BUILD_OPENCV AND NOT COMMONS_BUILD_PNG AND NOT COMMONS_BUILD_ZIP AND NOT COMMONS_BUILD_ZLIB)
+    set(_commons_effective_profile "minimal (individual switches)")
+else()
+    set(_commons_effective_profile "mixed (individual switches)")
+endif()
+
+message(STATUS "[TREX DEPENDENCIES] Effective profile: ${_commons_effective_profile}")
+message(STATUS "[TREX DEPENDENCIES] OpenCV: provider=${_commons_opencv_provider}, version=${_commons_opencv_version}, path=${_commons_opencv_path}")
+message(STATUS "[TREX DEPENDENCIES] libpng: provider=${_commons_png_provider}, version=${_commons_png_version}, path=${_commons_png_path}")
+message(STATUS "[TREX DEPENDENCIES] libzip: provider=${_commons_libzip_provider}, version=${_commons_libzip_version}, path=${_commons_libzip_path}")
+message(STATUS "[TREX DEPENDENCIES] zlib: provider=${_commons_zlib_provider}, version=${_commons_zlib_version}, path=${_commons_zlib_path}")
+message(STATUS "[TREX DEPENDENCIES] FFmpeg: provider=${_commons_ffmpeg_provider}, version=${_commons_ffmpeg_version}, path=${_commons_ffmpeg_path}")
+if(MSVC)
+    message(STATUS "[TREX DEPENDENCIES] MSVC runtime: ${CMAKE_MSVC_RUNTIME_LIBRARY}")
+endif()
 
 set(COMMONS_INSTALL_BINARY_TARGETS commons)
 set(COMMONS_INSTALL_EXPORT_ONLY_TARGETS

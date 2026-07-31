@@ -82,24 +82,6 @@ cmake .. \
     ${CMAKE_PLATFORM_FLAGS[@]}
 
 if [ "$(uname)" == "Linux" ]; then
-    make -j$(( $(nproc) - 1 )) Z_LIB
-else
-    make -j$(( $(sysctl -n hw.ncpu) - 1 )) Z_LIB
-fi
-
-if [ "$(uname)" == "Linux" ]; then
-    make -j$(( $(nproc) - 1 )) libzip
-else
-    make -j$(( $(sysctl -n hw.ncpu) - 1 )) libzip
-fi  
-
-if [ "$(uname)" == "Linux" ]; then
-    make -j$(( $(nproc) - 1 )) CustomOpenCV
-else
-    make -j$(( $(sysctl -n hw.ncpu) - 1 )) CustomOpenCV
-fi
-
-if [ "$(uname)" == "Linux" ]; then
     make -j$(( $(nproc) - 1 )) gladex
 fi
 
@@ -110,11 +92,8 @@ else
     make -j$(( $(sysctl -n hw.ncpu) - 1 )) imgui
 fi
 
-cmake ..
-
 if [ "$(uname)" == "Linux" ]; then
     make -j$(( $(nproc) - 1 )) test_python && make install
 else
     make -j$(( $(sysctl -n hw.ncpu) - 1 )) test_python && make install
 fi
-

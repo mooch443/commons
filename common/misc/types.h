@@ -125,13 +125,11 @@ namespace cmn::file {
 /// IMPORTANT: every operation that touches the underlying ``FILE*`` (closing,
 /// writing, reading) is implemented out-of-line in ``types.cpp`` and therefore
 /// always runs inside ``commons``' C runtime -- the same one that ``Path::fopen``
-/// used to create the handle. Because the modules link the static CRT (``/MT``),
-/// each binary owns a *private* copy of the runtime (separate FILE tables, file
-/// descriptors and heap). Opening a ``FILE*`` in ``commons`` and then writing or
-/// closing it from another module (e.g. ``trex``) is undefined behaviour: the fd
-/// is meaningless in the other CRT and the flush at ``fclose`` aborts the process
-/// via the invalid-parameter handler. Keep all I/O behind these methods; never
-/// call ``fwrite``/``fclose`` on ``get()`` outside of ``commons``.
+/// used to create the handle. This is required by all-custom Windows builds,
+/// which use the static CRT (``/MT``) and therefore give each binary a private
+/// runtime. Environment-provider builds use ``/MD``, but retaining one owner for
+/// the handle remains the safe ABI boundary. Keep all I/O behind these methods;
+/// never call ``fwrite``/``fclose`` on ``get()`` outside of ``commons``.
 class FilePtr {
 public:
     FilePtr() : file_(nullptr) {}
