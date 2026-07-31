@@ -13,6 +13,7 @@
 #include <misc/DisplayValue.h>
 #include <misc/EnumClass.h>
 #include <misc/FormatColor.h>
+#include <misc/FrameTag.h>
 #include <misc/GlobalSettings.h>
 #include <misc/Grid.h>
 #include <misc/IllegalVector.h>

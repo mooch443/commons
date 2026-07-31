@@ -179,6 +179,7 @@ struct Range {
     constexpr bool operator<(const Range<T>& other) const {
         return start < other.start || (start == other.start && end < other.end);
     }
+    constexpr auto operator<=>(const Range<T>&) const = default;
 
     constexpr T length() const { return end - start; }
     constexpr arange<T> iterable() const { return arange<T>(start, end); }

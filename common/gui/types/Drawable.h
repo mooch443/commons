@@ -371,8 +371,9 @@ namespace cmn::gui {
         virtual void clear_parent_dont_check();
         
     public:
-        //! If clickable, the object can be clicked, hovered and selected.
-        //  Otherwise it will be skipped.
+        //! Enables click/selection and the legacy default pointer behavior.
+        //  An explicit hover-only mask can still make a non-clickable object
+        //  participate in hover hit testing.
         virtual bool clickable();
         void set_clickable(bool c);
         void set_pointer_events(pointer::Events events);
@@ -441,6 +442,7 @@ namespace cmn::gui {
         friend class Entangled;
         friend class SectionInterface;
 
+        void refresh_pointer_state();
         void set_pointer_interaction(
             bool pressed,
             std::optional<Vec2> drag_start = std::nullopt);

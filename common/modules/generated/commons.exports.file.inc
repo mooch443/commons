@@ -33,8 +33,10 @@ using ::cmn::file::to_png;
 // file/PathArray.h
 using ::cmn::file::PathArray;
 using ::cmn::file::_PathArray;
+using ::cmn::file::filename_prefix_candidates;
 using ::cmn::file::find_basename;
 using ::cmn::file::find_parent;
+using ::cmn::file::normalized_filename_key;
 using ::cmn::file::sanitize_filename;
 // file/ask_for_permission.h
 using ::cmn::file::request_access;

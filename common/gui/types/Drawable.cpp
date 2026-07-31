@@ -758,6 +758,7 @@ void* Drawable::custom_data(std::string_view key) const {
         // have to send this to _parent, too because
         // it potentially needs to update its _section_clickable
         structure_changed(false);
+        refresh_pointer_state();
     }
 
     void Drawable::set_pointer_events(pointer::Events events) {
@@ -766,11 +767,37 @@ void* Drawable::custom_data(std::string_view key) const {
 
         _pointer_events = events;
         structure_changed(false);
+        refresh_pointer_state();
     }
 
     bool Drawable::does_receive(pointer::Events events) const {
-        return _clickable
-            && bool(_pointer_events & events);
+        // Preserve legacy pass-through for non-clickable objects using the
+        // default mask, while allowing an explicit mask to opt into hover only.
+        const bool receives_explicit_hover =
+            _pointer_events != pointer::Events::All
+            && bool(_pointer_events & pointer::Events::Hover)
+            && bool(events & pointer::Events::Hover);
+
+        return bool(_pointer_events & events)
+            && (_clickable || receives_explicit_hover);
+    }
+
+    void Drawable::refresh_pointer_state() {
+        auto* graph = parent() ? parent()->stage() : nullptr;
+        if(not graph)
+            return;
+
+        if(graph->selected_object() == this
+           && not does_receive(pointer::Events::Click))
+        {
+            graph->select(nullptr);
+        }
+
+        if(graph->hovered_object() == this
+           && not does_receive(pointer::Events::Hover))
+        {
+            graph->do_hover(graph->mouse_position());
+        }
     }
 
     void Drawable::set_pointer_interaction(
@@ -1379,7 +1406,7 @@ void SectionInterface::set(CornerFlags_t flags) {
                     Print("Searching ", x,",", y, " in ", *it, " (but it is null)");
             }*/
             apply_to_object(*it, [&](auto ptr){
-                if(not ptr->clickable())
+                if(not ptr->clickable() && not ptr->does_receive(events))
                     return;
 
                 if(ptr->type() == Type::SECTION

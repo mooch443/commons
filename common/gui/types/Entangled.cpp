@@ -851,8 +851,11 @@ bool Entangled::clickable() {
         return true;
     
     return apply_to_objects(_current_children, [](auto o) -> bool {
-        if(o->clickable())
+        if(o->clickable()
+           || o->does_receive(pointer::Events::Hover))
+        {
             return true;
+        }
         return false;
     });
 }

@@ -377,7 +377,9 @@ namespace cmn::gui {
         _section_clickable = false;
         
         apply_to_objects(_children, [this](auto ptr) {
-            if(ptr->clickable()) {
+            if(ptr->clickable()
+               || ptr->does_receive(pointer::Events::Hover))
+            {
                 _section_clickable = true;
                 return true;
             }

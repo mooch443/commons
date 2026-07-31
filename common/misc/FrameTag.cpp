@@ -84,4 +84,37 @@ uint32_t FrameTag::get_identity() const {
     return std::get<IdentifiedTag>(name).fdx;
 }
 
+std::vector<int64_t> FrameTag::npz_representation_1d(const std::set<std::string_view>& unique) const {
+    std::vector<int64_t> result;
+    result.reserve(6);
+    
+    auto name = get_name();
+    auto it = std::find(unique.begin(), unique.end(), name);
+    if(it == unique.end())
+        throw InvalidArgumentException("Cannot find tag ", name, " in ", unique);
+    auto index = std::distance(unique.begin(), it);
+    result.push_back(index);
+    
+    if(has_identity())
+        result.push_back(narrow_cast<int64_t>(get_identity()));
+    else
+        result.push_back(-1);
+    
+    if(has_location()) {
+        auto bds = get_location();
+        result.insert(result.end(), {
+            narrow_cast<uint32_t>(bds.x),
+            narrow_cast<uint32_t>(bds.y),
+            narrow_cast<uint32_t>(bds.width),
+            narrow_cast<uint32_t>(bds.height)
+        });
+    } else {
+        result.insert(result.end(), {
+            -1, -1, -1, -1
+        });
+    }
+    
+    return result;
+}
+
 }

@@ -253,6 +253,8 @@ namespace cmn::gui {
     struct MouseButtonEvent {
         int button;
         bool pressed;
+        // True on mouse-down. On mouse-up, also requires release on the
+        // original target without having crossed the drag threshold.
         bool started_here;
         Float2_t x, y;
     };

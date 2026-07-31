@@ -23,6 +23,15 @@ concept StringLike = std::is_same_v<std::remove_cvref_t<Str>, std::string> ||
                       std::is_same_v<std::remove_cvref_t<Str>, std::string_view> ||
                       std::is_array_v<std::remove_cvref_t<Str>>;
 
+
+template<typename T>
+concept is_ordered_map = requires {
+    typename T::key_type;
+    typename T::mapped_type;
+    typename T::key_compare; // ordered maps expose this
+    typename T::iterator;
+} && std::bidirectional_iterator<typename T::iterator>;
+
 template<typename T>
 //requires (std::is_trivial_v<T>)
 class IllegalArray;

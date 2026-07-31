@@ -706,6 +706,16 @@ void DrawStructure::close_dialogs() {
         _mouse_position.x = x;
         _mouse_position.y = y;
 
+        for(auto& press : _pointer_presses) {
+            if(press
+               && not press->exceeded_drag_threshold
+               && (Vec2(x, y) - press->down_position).sqlength()
+                    > pointer_drag_threshold * pointer_drag_threshold)
+            {
+                press->exceeded_drag_threshold = true;
+            }
+        }
+
         if(captured_drag_target())
             return dispatch_captured_drag(x, y);
 
@@ -715,8 +725,8 @@ void DrawStructure::close_dialogs() {
             const auto gesture = *_pointer_gesture;
             // A split click/drag gesture remains provisional until this threshold.
             if(not is_system_pressed()
-               && (Vec2(x, y) - gesture.down_position).sqlength()
-               > pointer_drag_threshold * pointer_drag_threshold)
+               && _pointer_presses[0]
+               && _pointer_presses[0]->exceeded_drag_threshold)
             {
                 begin_drag_capture(gesture.drag_target, gesture.down_position);
                 return dispatch_captured_drag(x, y);
@@ -740,6 +750,11 @@ void DrawStructure::close_dialogs() {
         mouse_state[button_index] = true;
         
         Float2_t x = _mouse_position.x, y = _mouse_position.y;
+        if(first_set) {
+            _pointer_presses[button_index] = PointerPress{
+                .down_position = Vec2(x, y)
+            };
+        }
         auto d = find(x, y, pointer::Events::Click);
         
         if(not first_set
@@ -815,7 +830,13 @@ void DrawStructure::close_dialogs() {
     }
     
     Drawable* DrawStructure::mouse_up(bool left_button) {
-        mouse_state[left_button ? 0 : 1] = false;
+        const auto button_index = left_button ? 0u : 1u;
+        mouse_state[button_index] = false;
+        const auto press = std::exchange(
+            _pointer_presses[button_index],
+            std::nullopt);
+        const bool remained_click =
+            press && not press->exceeded_drag_threshold;
 
         Float2_t x = _mouse_position.x, y = _mouse_position.y;
         auto release_selected = [&](bool left) {
@@ -825,7 +846,8 @@ void DrawStructure::close_dialogs() {
             auto* release_target = find(x, y, pointer::Events::Click);
             _selected_object->mup(
                 x, y, left,
-                release_target
+                remained_click
+                && release_target
                 && _mdown_object == release_target
                 && release_target->is_child_of(_selected_object));
         };
@@ -869,7 +891,8 @@ void DrawStructure::close_dialogs() {
                     x,
                     y,
                     true,
-                    release_target == click_target);
+                    remained_click
+                    && release_target == click_target);
             }
 
             _mdown_object = nullptr;

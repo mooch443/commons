@@ -543,6 +543,15 @@ namespace detail {
     }
 }
 
+/// Returns a filename-safe copy while preserving the historical sanitization
+/// behavior used by Commons. ASCII letters, digits, `-`, `_`, and `.` are
+/// retained, internal runs of literal spaces become one space, and all other
+/// characters are removed. Leading and trailing spaces are discarded.
+///
+/// Use the two-argument overload when removed characters must act as word
+/// separators instead of disappearing.
+/// @param in Filename or filename fragment to sanitize.
+/// @return Sanitized text with legacy space-preserving behavior.
 template<cmn::StringLike Str>
 [[nodiscard]] constexpr inline std::string sanitize_filename(Str&& in)
 {
@@ -580,7 +589,78 @@ template<cmn::StringLike Str>
     return out;
 }
 
+/// Returns a filename-safe copy using `replacement` as a separator.
+///
+/// Runs containing ASCII whitespace, invalid filename/path characters, or the
+/// replacement character itself are converted to one replacement character.
+/// Leading and trailing runs are discarded, so the result never begins or
+/// ends with `replacement`. Valid characters are ASCII letters, digits, `-`,
+/// `_`, and `.`; choosing one of those as `replacement` also collapses existing
+/// occurrences of it. This overload is useful for stable slugs and suffixes,
+/// while the one-argument overload intentionally retains its legacy behavior.
+/// @param in Filename or filename fragment to sanitize.
+/// @param replacement Separator emitted for each invalid-character run.
+/// @return Sanitized text without leading, trailing, or repeated replacements.
+template<cmn::StringLike Str>
+[[nodiscard]] constexpr inline std::string sanitize_filename(Str&& in, char replacement)
+{
+    std::string_view src{ std::forward<Str>(in) };
+    std::string out;
+    out.reserve(src.size());
+
+    bool pending_replacement = false;
+    for(char c : src) {
+        const bool separator = c == ' ' || c == '\t' || c == '\n'
+                            || c == '\r' || c == '\f' || c == '\v'
+                            || !detail::is_allowed(c)
+                            || c == replacement;
+        if(separator) {
+            pending_replacement = !out.empty();
+            continue;
+        }
+
+        if(pending_replacement) {
+            out.push_back(replacement);
+            pending_replacement = false;
+        }
+        out.push_back(c);
+    }
+    return out;
+}
+
 std::string find_basename(const file::PathArray& pathArray);
 std::optional<file::Path> find_parent(const file::PathArray& pathArray);
+
+/// Builds a comparison key from a filename, independent of its directory,
+/// punctuation, case, and file encoding suffix.
+///
+/// The basename is selected first and its real extension is removed. If the
+/// remaining stem ends in one of `encoded_extensions`, preceded by `.`, `-`,
+/// or `_`, that encoded extension is removed as well. The result is lowercased
+/// and filtered to ASCII alphanumeric characters. Extension names are matched
+/// case-insensitively and may be supplied with or without a leading dot; empty
+/// extension entries are ignored.
+///
+/// `encoded_extensions` deliberately carries no media policy: callers provide
+/// the set relevant to their own file format or import workflow.
+/// @param filename Path or basename from which to build the key.
+/// @param encoded_extensions Optional extensions encoded at the end of the
+/// stem, such as `mp4` in `camera_mp4.jpg`.
+/// @return A lowercase ASCII-alphanumeric key, possibly empty.
+std::string normalized_filename_key(
+    std::string_view filename,
+    std::span<const std::string_view> encoded_extensions = {});
+
+/// Produces the lowercase source-prefix spellings commonly encoded in derived
+/// filenames.
+///
+/// The basename and stem are always candidates. When an extension exists,
+/// `stem_extension`, `stem-extension`, and `stem.extension` are included too.
+/// Empty and duplicate candidates are removed, then the result is ordered from
+/// longest to shortest (with lexical ordering as a stable tie-breaker) so a
+/// caller can strip the most specific matching prefix first.
+/// @param filename Path or basename whose source-prefix spellings are needed.
+/// @return Unique lowercase candidates ordered from most to least specific.
+std::vector<std::string> filename_prefix_candidates(std::string_view filename);
 
 }

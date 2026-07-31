@@ -4,6 +4,67 @@
 #include <cctype>
 
 namespace cmn::file {
+
+std::string normalized_filename_key(
+    std::string_view filename,
+    std::span<const std::string_view> encoded_extensions)
+{
+    auto value = file::Path(std::string(filename)).filename();
+    value = file::Path(value).remove_extension().filename();
+    value = utils::lowercase(value);
+
+    for(auto extension : encoded_extensions) {
+        auto normalized_extension = utils::lowercase(extension);
+        if(!normalized_extension.empty() && normalized_extension.front() == '.')
+            normalized_extension.erase(normalized_extension.begin());
+        if(normalized_extension.empty())
+            continue;
+
+        for(char separator : {'_', '-', '.'}) {
+            const auto suffix = std::string(1, separator) + normalized_extension;
+            if(value.size() > suffix.size()
+               && value.rfind(suffix) == value.size() - suffix.size())
+            {
+                value.erase(value.size() - suffix.size());
+            }
+        }
+    }
+
+    std::string result;
+    result.reserve(value.size());
+    for(char c : value) {
+        if(detail::is_ascii_alnum(c))
+            result.push_back(utils::lowercase_char(c));
+    }
+    return result;
+}
+
+std::vector<std::string> filename_prefix_candidates(std::string_view filename) {
+    file::Path path{filename};
+    const auto basename = path.filename();
+    if(basename.empty())
+        return {};
+
+    const std::string stem{path.remove_extension().filename()};
+    const std::string extension{path.extension()};
+    std::vector<std::string> candidates;
+    if(!stem.empty() && !extension.empty()) {
+        candidates.push_back(utils::lowercase(stem + "_" + extension));
+        candidates.push_back(utils::lowercase(stem + "-" + extension));
+        candidates.push_back(utils::lowercase(stem + "." + extension));
+    }
+    candidates.push_back(utils::lowercase(basename));
+    if(!stem.empty())
+        candidates.push_back(utils::lowercase(stem));
+
+    std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) {
+        if(lhs.size() != rhs.size())
+            return lhs.size() > rhs.size();
+        return lhs < rhs;
+    });
+    candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+    return candidates;
+}
     
 std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
     auto& paths = pathArray.get_paths();

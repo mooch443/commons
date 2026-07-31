@@ -80,6 +80,7 @@ struct FrameTag {
     uint32_t get_identity() const;
 
     explicit operator std::string_view() const;
+    std::vector<int64_t> npz_representation_1d(const std::set<std::string_view>& unique) const;
 
     auto operator<=>(const FrameTag& other) const {
         return name <=> other.name;

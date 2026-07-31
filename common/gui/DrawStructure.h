@@ -108,9 +108,9 @@ namespace cmn::gui {
             // even if drag_target ultimately captures the gesture.
             Drawable* press_target{nullptr};
 
-            // Initial press position recorded for a provisional gesture, in
-            // DrawStructure coordinates. Movement is measured from it to cross
-            // the threshold; an early release replays the click at this position.
+            // Initial press position for a provisional gesture, in DrawStructure
+            // coordinates. Capture starts from it; an early release replays the
+            // deferred click at this position.
             Vec2 down_position{0};
 
             // False while differing click and drag targets wait on the movement
@@ -121,6 +121,17 @@ namespace cmn::gui {
         // _mdown_object retains the provisional click target while this is pending.
         // Both stored targets are non-owning; removal invalidates them via erase().
         std::optional<PointerGesture> _pointer_gesture;
+
+        struct PointerPress {
+            // Press origin in DrawStructure coordinates. Every mouse button gets
+            // one, independently of whether any drawable subscribes to Drag.
+            Vec2 down_position{0};
+
+            // Set permanently once movement crosses the click/drag threshold.
+            // mouse_up() uses it when deciding whether started_here is still true.
+            bool exceeded_drag_threshold{false};
+        };
+        std::array<std::optional<PointerPress>, 2> _pointer_presses;
 
         GETTER(uint16_t, width);
         GETTER(uint16_t, height);
@@ -366,6 +377,7 @@ namespace cmn::gui {
                 _mdown_object->set_pointer_interaction(false);
             _mdown_object = nullptr;
             mouse_state = {false, false};
+            _pointer_presses = {};
             _root.clear();
         }
         
