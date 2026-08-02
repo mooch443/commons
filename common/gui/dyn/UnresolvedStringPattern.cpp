@@ -962,6 +962,21 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             parms[1] = "null";
         }
         
+    } else if(resolved.name == "&&" || resolved.name == "||") {
+        const bool is_and = resolved.name == "&&";
+        parms.clear();
+        parms.reserve(parameters.size());
+
+        // Resolve operands in order so a decisive value protects the rest.
+        for(auto& parameter : parameters) {
+            auto& value = parms.emplace_back();
+            resolve_parameter(value, pattern, parameter, context, state);
+            const bool truth_value = gui::dyn::convert_to_bool(value);
+            if((is_and && not truth_value) || (not is_and && truth_value)) {
+                break;
+            }
+        }
+
     } else if(resolved.name == "for") {
         if(not is_in(parameters.size(), 2u, 3u))
             throw InvalidArgumentException("An if statement (", parameters, ") only accepts 2 or 3 parameters.");

@@ -38,6 +38,22 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                 else
                     return "";
             }
+
+        } else if(props.name == "&&" || props.name == "||") {
+            [[maybe_unused]] CTimer ctimer("logical");
+            const bool is_and = props.name == "&&";
+            bool result = is_and;
+
+            // Resolve operands in order so a decisive value protects the rest.
+            for(const auto& parameter : props.parameters) {
+                const bool value = convert_to_bool(parse_text(parameter, context, state));
+                if((is_and && not value) || (not is_and && value)) {
+                    result = value;
+                    break;
+                }
+            }
+
+            return Meta::fromStr<Result>(result ? std::string_view("true") : std::string_view("false"));
             
         } else if(props.name == "for") {
             [[maybe_unused]] CTimer ctimer("for");
