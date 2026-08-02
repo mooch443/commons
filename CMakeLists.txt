@@ -248,7 +248,7 @@ endif()
 
 set(ORIGINAL_CXX_FLAGS ${CMAKE_CXX_FLAGS})
 
-if(WIN32 AND COMMONS_BUILD_OPENCV)
+if(WIN32)
     set(_trex_opencv_arch "x64")
     if(DEFINED CMAKE_SIZEOF_VOID_P AND CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(_trex_opencv_arch "x86")
@@ -1409,7 +1409,40 @@ endif()
 if(NOT COMMONS_BUILD_OPENCV)
     set(_commons_opencv_components
         core imgproc imgcodecs flann photo video videoio highgui features2d calib3d)
-    find_package(OpenCV 4 REQUIRED CONFIG COMPONENTS ${_commons_opencv_components})
+
+    if(WIN32)
+        # Keep the pre-profile Windows runtime hint for environment providers.
+        # OpenCV configs predating VS 2026 do not perform their own vc18 ->
+        # vc17 fallback, so probe the provider's VS 2022 binaries explicitly.
+        set(OpenCV_STATIC OFF)
+        set(_commons_opencv_runtime_candidates "${OpenCV_RUNTIME}")
+        if(OpenCV_RUNTIME STREQUAL "vc18")
+            list(APPEND _commons_opencv_runtime_candidates vc17)
+        endif()
+
+        set(OpenCV_FOUND FALSE)
+        foreach(_commons_opencv_runtime IN LISTS _commons_opencv_runtime_candidates)
+            set(OpenCV_RUNTIME "${_commons_opencv_runtime}")
+            unset(OpenCV_FOUND)
+            find_package(OpenCV 4 QUIET CONFIG COMPONENTS ${_commons_opencv_components})
+            if(OpenCV_FOUND)
+                message(STATUS "Selected environment OpenCV Windows runtime: ${OpenCV_RUNTIME}")
+                break()
+            endif()
+        endforeach()
+
+        if(NOT OpenCV_FOUND)
+            list(JOIN _commons_opencv_runtime_candidates ", " _commons_opencv_runtime_list)
+            message(FATAL_ERROR
+                "The environment OpenCV provider has no usable Windows binaries for "
+                "runtime(s) ${_commons_opencv_runtime_list}. Install an OpenCV 4.x provider "
+                "with binaries for one of those runtimes or set OpenCV_DIR to one. "
+                "MSVC_VERSION='${MSVC_VERSION}', OpenCV_DIR='${OpenCV_DIR}'."
+            )
+        endif()
+    else()
+        find_package(OpenCV 4 REQUIRED CONFIG COMPONENTS ${_commons_opencv_components})
+    endif()
     if(OpenCV_VERSION VERSION_GREATER_EQUAL 5)
         message(FATAL_ERROR
             "The environment OpenCV provider must be OpenCV 4.x; found ${OpenCV_VERSION} at ${OpenCV_DIR}."
