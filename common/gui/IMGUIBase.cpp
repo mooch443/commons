@@ -858,7 +858,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
                 return ptr;
             };
 
-            config.GlyphOffset.y = 1.8;
+            config.GlyphOffset.y = 1.5;
             _fonts[Style::Regular] = load_font(0, "", path);
             _fonts[Style::Italic] = load_font(0, "-i", path);
             _fonts[Style::Bold] = load_font(0, "-b", path);
