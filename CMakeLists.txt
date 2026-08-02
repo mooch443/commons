@@ -679,6 +679,7 @@ if(MSVC)
     # Keep ExternalProject dependencies on the same runtime selected by TRex
     # (/MT for all-custom builds, /MD when any provider is external).
     list(APPEND COMMONS_subproject_CMAKE_ARGS
+        "-DCMAKE_POLICY_DEFAULT_CMP0091:STRING=NEW"
         "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}"
     )
 endif()
