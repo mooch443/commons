@@ -1833,7 +1833,8 @@ endif()
     message(STATUS "Adding path: ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty")
     target_link_directories(Commons::OpenCV INTERFACE 
         ${CMAKE_BINARY_DIR}/opencv_install/lib 
-        ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
+        ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty
+        ${OpenCV_LIB_PATH})
     
     target_link_libraries(Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZ)
     if(APPLE)
