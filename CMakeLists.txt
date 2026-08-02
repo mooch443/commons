@@ -1802,6 +1802,21 @@ endif()
         ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty)
     
     target_link_libraries(Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZ)
+    if(APPLE)
+        find_library(COMMONS_APPLE_OPENCL_FRAMEWORK OpenCL)
+        find_library(COMMONS_APPLE_ACCELERATE_FRAMEWORK Accelerate)
+        if(NOT COMMONS_APPLE_OPENCL_FRAMEWORK OR NOT COMMONS_APPLE_ACCELERATE_FRAMEWORK)
+            message(FATAL_ERROR
+                "Custom OpenCV on macOS requires the OpenCL and Accelerate frameworks. "
+                "OpenCL='${COMMONS_APPLE_OPENCL_FRAMEWORK}', "
+                "Accelerate='${COMMONS_APPLE_ACCELERATE_FRAMEWORK}'."
+            )
+        endif()
+        target_link_libraries(Commons::OpenCV INTERFACE
+            "${COMMONS_APPLE_OPENCL_FRAMEWORK}"
+            "${COMMONS_APPLE_ACCELERATE_FRAMEWORK}"
+        )
+    endif()
     add_dependencies(Commons::OpenCV CustomOpenCV)
     message(STATUS "OpenCV: ${OpenCV_LIBS}")
     set(OpenCV_LIBS Commons::OpenCV)
