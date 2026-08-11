@@ -102,6 +102,8 @@ void LocalSettingTypes::register_type(std::string alias) {
 }
 
 struct COMMONS_EXPORT CurrentObjectHandler : std::enable_shared_from_this<CurrentObjectHandler> {
+    friend struct Context;
+
     struct VariableValue {
         enum class Kind : uint8_t {
             none,
@@ -219,6 +221,7 @@ struct COMMONS_EXPORT CurrentObjectHandler : std::enable_shared_from_this<Curren
     [[nodiscard]] ScopedVariableSnapshot capture_scoped_variable_values() const;
     /// Replace the current scoped variable stack with a previously captured snapshot.
     void restore_scoped_variable_values(const ScopedVariableSnapshot& snapshot);
+    void push_scoped_variable_values(const ScopedVariableSnapshot& snapshot);
     /// Replace the current scoped variable stack with a previously captured snapshot.
     void restore_scoped_variable_values(ScopedVariableSnapshot&& snapshot);
     /// Monotonic version for global variable mutations.
@@ -283,7 +286,8 @@ struct COMMONS_EXPORT Context {
     /// Helpers for resolving settings vars such as "local.dataset_file".
     [[nodiscard]] static bool is_local_setting_name(std::string_view) noexcept;
     [[nodiscard]] static std::string_view local_setting_key(std::string_view);
-    [[nodiscard]] sprite::Reference local_setting_ref(std::string_view) const;
+    [[nodiscard]] std::string local_setting_value_string(std::string_view) const;
+    void update_local_setting(CurrentObjectHandler*, std::string_view, std::function<void(sprite::Reference&)>) const;
     [[nodiscard]] std::optional<std::string> local_setting_alias(std::string_view) const;
 
     Context() noexcept = default;

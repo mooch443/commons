@@ -919,7 +919,7 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
         
     } catch(const std::exception& ex) {
         if(not modifiers.optional)
-            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
+            throw;//FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
         output += modifiers.optional ? "" : "null";
     }
 }
@@ -947,7 +947,16 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         parms.resize(parameters.size());
         auto& condition = parms[0];
         condition.clear();
-        resolve_parameter(condition, pattern, parameters[0], context, state);
+        if(props.optional) {
+            try {
+                resolve_parameter(condition, pattern, parameters[0], context, state);
+            } catch(...) {
+                FormatWarning("Failed to resolve optional if condition: ", props, " => ", parameters[0]);
+                condition = "null";
+            }
+        } else {
+            resolve_parameter(condition, pattern, parameters[0], context, state);
+        }
         
         if(gui::dyn::convert_to_bool(condition)) {
             parms[0] = "true";
@@ -1065,9 +1074,11 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
     {
         handle_sub_objects(output, variable, modifiers);
         
-    }, [&props](std::string&, bool optional, const std::string& ex = "") {
+    }, [&props, &str](std::string&, bool optional, const std::string& ex = "") {
         if(not optional)
             throw InvalidArgumentException("Failed to evaluate ", props, ": ", no_quotes(not ex.empty() ? ex : std::string("<null>")));
+        if(not props.optional)
+            str.append("null");
     });
     
     if(has_children) {

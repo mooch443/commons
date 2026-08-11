@@ -185,7 +185,7 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
         return ret;
     } catch(const std::exception& ex) {
         if(not modifiers.optional)
-            FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
+            throw;//FormatExcept("Exception: ", ex.what(), " in variable: ", modifiers);
         return modifiers.optional ? "" : "null";
     }
 }
@@ -268,8 +268,13 @@ std::string _parse_text(const T& _pattern, const Context& context, State& state)
                     } else {
                         resolved_word = resolve_variable(current_word, context, state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
                             return _handle_subobjects(variable, modifiers);
-                        }, [](bool optional) -> std::string {
-                            return optional ? "" : "null";
+                        }, [current_word](bool optional) -> std::string {
+                            if(not optional)
+                                throw InvalidSyntaxException("Cannot find variable or expression ", current_word,".");
+                            //if(not optional)
+                            //    FormatWarning("Cannot find variable or expression ", current_word,".");
+                            //return optional ? "" : "null";
+                            return "";
                         });
                         
                         state.set_cached_variable_value(current_word, resolved_word);

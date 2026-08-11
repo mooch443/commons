@@ -157,7 +157,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             }
             
         }
-        
+        /// if its an unknown "thing", we error in the following code
     } catch(...) {
         // catch exceptions
     }

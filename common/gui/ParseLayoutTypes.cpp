@@ -721,9 +721,14 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         sprite::Map* local_settings = nullptr;
         std::string local_alias;
         if(is_local_setting) {
-            auto local_ref = context.local_setting_ref(var);
-            if(not local_ref.valid())
-                throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+            auto handler = state._current_object_handler.lock();
+            if(not handler)
+                throw InvalidArgumentException("Cannot get current handler to create ", obj);
+            context.update_local_setting(handler.get(), var, [var](sprite::Reference& ref) {
+                if(not ref.valid())
+                    throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+            });
+
             field_var = std::string(Context::local_setting_key(var));
             local_settings = &context.local_settings;
             local_alias = context.local_setting_alias(var).value_or(std::string{});
@@ -740,9 +745,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             if(not hashed->_value_box) {
                 std::string type_name = "(null)";
                 if(is_local_setting) {
-                    auto v = context.local_setting_ref(var);
-                    if(v.valid())
-                        type_name = v.get().type_name();
+                    auto handler = state._current_object_handler.lock();
+                    if(handler) {
+                        context.update_local_setting(handler.get(), var, [&](sprite::Reference& ref) {
+                            if(ref.valid())
+                                type_name = ref.get().type_name();
+                        });
+                    }
                 } else {
                     auto v = GlobalSettings::write_value<NoType>(var);
                     if(v.valid())
@@ -761,9 +770,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             
         } else {
             if(is_local_setting) {
-                auto ref = context.local_setting_ref(var);
-                if(not ref.valid())
-                    throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+                auto handler = state._current_object_handler.lock();
+                if(not handler)
+                    throw InvalidArgumentException("Cannot get current handler to create ", obj);
+                context.update_local_setting(handler.get(), var, [var](sprite::Reference& ref) {
+                    if(not ref.valid())
+                        throw U_EXCEPTION("DynamicGUI locals have no parameter named ", var,".");
+                });
             } else {
                 auto ref = GlobalSettings::write_value<NoType>(var);
                 if(not ref.valid())

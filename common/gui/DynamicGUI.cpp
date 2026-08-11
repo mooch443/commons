@@ -502,7 +502,12 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 if(not Context::is_local_setting_name(name))
                     name = "local." + name;
 
-                context.local_setting_ref(name).get().set_value_from_string(action.last());
+                auto handler = state._current_object_handler.lock();
+                if(not handler)
+                    throw InvalidArgumentException("Cannot get current handler to set ", action);
+                context.update_local_setting(handler.get(), name, [action](sprite::Reference& ref) {
+                    ref.get().set_value_from_string(action.last());
+                });
             }));
             
             context.system_variables().emplace(VarFunc("hovered", [object_handler = tmp._current_object_handler](const VarProps& props) -> bool {

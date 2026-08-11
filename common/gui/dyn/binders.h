@@ -29,7 +29,8 @@ auto bind_with_state(
         auto _handler = handler.lock();
         if(not _handler)
             throw InvalidArgumentException("Handler has become invalid. Cannot execute action.");
-        _handler->restore_scoped_variable_values(snapshot);
+        auto scope = _handler->scope();
+        _handler->push_scoped_variable_values(snapshot);
         return fn(std::forward<Args>(args)..., context, state);
     };
 }

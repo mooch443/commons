@@ -336,7 +336,8 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
         }
         
     } catch(const std::exception& ex) {
-        FormatError(ex.what());
+        //FormatError(ex.what());
+        throw;
     }
     
     return false;

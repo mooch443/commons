@@ -686,6 +686,24 @@ void CurrentObjectHandler::restore_scoped_variable_values(const ScopedVariableSn
     invalidate_scoped_cached_variable_values();
 }
 
+void CurrentObjectHandler::push_scoped_variable_values(const ScopedVariableSnapshot& snapshot)
+{
+    /*if(_scoped_variable_values == snapshot.values) {
+        return;
+    }*/
+
+    if(snapshot.empty())
+        return;
+
+    for(auto &values : snapshot.values) {
+        for(auto &[name, val] : values) {
+            _scoped_variable_values.back()[name] = val;
+        }
+    }
+
+    invalidate_scoped_cached_variable_values();
+}
+
 void CurrentObjectHandler::restore_scoped_variable_values(ScopedVariableSnapshot&& snapshot)
 {
     if(_scoped_variable_values == snapshot.values) {
@@ -819,12 +837,30 @@ std::string_view Context::local_setting_key(std::string_view name) {
     return key;
 }
 
-sprite::Reference Context::local_setting_ref(std::string_view name) const {
+std::string Context::local_setting_value_string(std::string_view name) const {
     const auto key = local_setting_key(name);
     const auto local_name = std::string(key);
     if(!local_settings.has(local_name))
         throw InvalidArgumentException("DynamicGUI local setting '", name, "' has not been declared.");
-    return local_settings[local_name];
+    return local_settings[local_name].get().valueString();
+}
+
+void Context::update_local_setting(CurrentObjectHandler* handler, std::string_view name, std::function<void(sprite::Reference&)> fn) const {
+    if(not handler)
+        throw InvalidArgumentException("Handler is nullptr");
+
+    const auto key = local_setting_key(name);
+    const auto local_name = std::string(key);
+    if(!local_settings.has(local_name))
+        throw InvalidArgumentException("DynamicGUI local setting ", name, " has not been declared.");
+
+    sprite::Reference ref = local_settings[local_name];
+    auto previous_value = ref.get().valueString();
+    fn(ref);
+
+    if(previous_value != ref.get().valueString()) {
+        handler->invalidate_cached_variable_values();
+    }
 }
 
 std::optional<std::string> Context::local_setting_alias(std::string_view name) const {
