@@ -83,6 +83,12 @@ public:
         if(lambda)
             cmn::thread_print("Ending thread.");
     }
+
+    void prepare_for_start() {
+        std::unique_lock guard(mutex);
+        terminationProof = {};
+        terminationSignal.store(false);
+    }
     
     void loop(const ThreadGroup& group, const ManagedThreadWrapper& thread);
 

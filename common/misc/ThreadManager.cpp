@@ -98,8 +98,6 @@ void ManagedThread::loop(const ThreadGroup &group, const ManagedThreadWrapper& t
 #ifndef NDEBUG
     thread_print("Starting loop ", group.name);
 #endif
-    terminationProof = {};
-    terminationSignal = false;
     try {
         std::unique_lock guard(mutex);
         while (!terminationSignal.load()) {
@@ -206,6 +204,7 @@ void ThreadManager::startGroup(ThreadGroupId group) {
     if(g->started.compare_exchange_strong(expected, true)) {
         for(auto& wrapper : g->threads) {
             if(not wrapper.t) {
+                wrapper.m.prepare_for_start();
                 wrapper.t = std::make_unique<std::thread>([&wrapper, &g] {
                     wrapper.m.loop(*g, wrapper);
                 });
