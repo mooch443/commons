@@ -1005,7 +1005,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
         return {0_f, length()};
     }();
     const auto L = max(start, end) - min(start, end);
-    if (L < 10_f) {
+    if (L < 2_f) {
         processImage(average, average);
         return;
     }

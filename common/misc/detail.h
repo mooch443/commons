@@ -536,7 +536,7 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         output = cv::Mat::zeros(input.rows, input.cols, CV_8UC1);
     }
     assert(channels == input.channels());
-    static_assert(channels == 3 || channels == 4, "Channels must be 3 or 4");
+    static_assert(is_in(channels, 1, 3, 4), "Channels must be 3 or 4");
 
     using input_t = MathArray<uchar, channels>;
     using output_t = uchar;
@@ -546,8 +546,11 @@ void convert_to_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             auto input_row = input.ptr<input_t>(y);
             auto output_row = output.ptr<output_t>(y);
             for (int x = 0; x < input.cols; ++x) {
-                //if constexpr(channels == 3)
-                output_row[x] = vec_to_r3g3b2(input_row[x]);
+                if constexpr(channels == 1) {
+                    output_row[x] = vec_to_r3g3b2(cv::Vec3b(input_row[x][0], input_row[x][0], input_row[x][0]));
+                } else {
+                    output_row[x] = vec_to_r3g3b2(input_row[x]);
+                }
                 //output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec3b>(y, x));
             //else if(channels == 4)
                 //output.at<uchar>(y, x) = vec_to_r3g3b2(input.at<cv::Vec4b>(y, x));
