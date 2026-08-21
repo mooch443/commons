@@ -906,6 +906,12 @@ class ExtendableVector : public std::vector<std::string> {
 public:
     // Inherit constructors
     using std::vector<std::string>::vector;
+    
+    template<typename Container>
+        requires cmn::StringLike<typename Container::value_type>
+    ExtendableVector(const Container& other) : std::vector<std::string>(other.begin(), other.end()) {
+        
+    }
 
     // Overload the + operator
     ExtendableVector operator+(const ExtendableVector& other) const {
