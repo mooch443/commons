@@ -1040,6 +1040,11 @@ void IMGUIBase::process_main_queue() {
         _graph = nullptr;
         TextureCache::remove_base(this);
         
+        /// clear the fonts we have created
+        _fonts.clear();
+        if (ImGui::GetCurrentContext() != nullptr)
+            ImGui::GetIO().Fonts->Clear();
+        
         while(!_exec_main_queue.empty()) {
             (_exec_main_queue.front())();
             _exec_main_queue.pop();

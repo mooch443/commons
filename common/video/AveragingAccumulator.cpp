@@ -8,9 +8,9 @@ namespace cmn {
 
 ENUM_CLASS_DOCS(averaging_method_t,
     "Sum all samples and divide by N.",
-    "Calculate a per-pixel median of the samples to avoid noise. More computationally involved than mean, but often better results.",
-    "Use a per-pixel minimum across samples. Usually a good choice for short videos with black backgrounds and individuals that do not move much.",
-    "Use a per-pixel maximum across samples. Usually a good choice for short videos with white backgrounds and individuals that do not move much."
+    "Select the most frequent 8-bit sample value independently for each pixel and color channel (a per-channel mode).",
+    "Use the maximum sample value for each pixel and channel. Usually a good choice for short videos with white backgrounds and individuals that do not move much.",
+    "Use the minimum sample value for each pixel and channel. Usually a good choice for short videos with black backgrounds and individuals that do not move much."
 )
 
 AveragingAccumulator::AveragingAccumulator() {
