@@ -247,7 +247,7 @@ public:
     cmn::Vec2 equalized_luminance_alpha_image(const cmn::Background& background, int32_t threshold, float minimum, float maximum, cmn::Image& image, uint8_t padding = 1, cmn::OutputInfo = {.channels = 2, .encoding = cmn::meta_encoding_t::gray}) const;
     
     std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(const cmn::Background& background, int32_t threshold) const;
-    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(Float2_t padding = 1) const;
+    std::tuple<cmn::Vec2, std::unique_ptr<cmn::Image>> binary_image(cmn::Float2_t padding = 1) const;
     
     void set_pixels(cmn::blob::pixel_ptr_t&& pixels);
     void set_pixels(const cmn::blob::pixel_ptr_t::element_type& pixels);
