@@ -183,6 +183,7 @@ protected:
     
 public:
     Blob();
+    Blob(cmn::blob::Pair&& pair) : Blob(std::move(pair.lines), std::move(pair.pixels), pair.extra_flags, std::move(pair.pred)) {}
     Blob(cmn::blob::line_ptr_t&& lines, cmn::blob::pixel_ptr_t&& pixels, uint8_t flags, cmn::blob::Prediction&& pred);
     Blob(cmn::blob::line_ptr_t&& lines, uint8_t flags, cmn::blob::Prediction&& pred = {});
     //Blob(blob::line_ptr_t&& lines, blob::pixel_ptr_t&& pixels);
