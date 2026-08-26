@@ -1762,8 +1762,8 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
         return {b.pos(), std::move(image)};
     }
     
-    std::tuple<Vec2, Image::Ptr> Blob::binary_image() const {
-        Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
+    std::tuple<Vec2, Image::Ptr> Blob::binary_image(Float2_t padding) const {
+        Bounds b(bounds().pos()-Vec2(padding), bounds().size()+Vec2(padding * 2));
         if(b.x < 0) {b.x = 0;--b.width;}
         if(b.y < 0) {b.y = 0;--b.height;}
         
