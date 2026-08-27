@@ -745,7 +745,6 @@ public: \
     } \
     static inline void init() { \
         std::call_once(_init_flag, []() { \
-            std::cout << "Initializing struct '" << #NAM << "' with " << STRUCT_FOR_EACH_NARG(__VA_ARGS__) << " members." << std::endl; \
             _callback_id = cmn::GlobalSettings::register_callbacks(NAM :: names(), [](std::string_view name){ \
                     auto value = cmn::GlobalSettings::read_value<cmn::NoType>(name); \
                     if(!value.valid()) { \
