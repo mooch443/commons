@@ -52,6 +52,7 @@ namespace cmn {
         cmn::sprite::Map values, examples, defaults;
         docs_map_t docs;
         user_access_map_t access;
+        std::unordered_map<std::string, std::function<std::string(std::optional<uint8_t>)>, MultiStringHash, MultiStringEqual> doc_generators;
         
         void set_access(std::string_view name, cmn::AccessLevel w)
         {

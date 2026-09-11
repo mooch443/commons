@@ -4,12 +4,44 @@
 namespace cmn::gui {
 
 std::string TooltipData::text() const {
-    if(is_name()) {
+    if(is_name()
+       || not std::get<Both>(data).docs)
+    {
         std::string name = (std::string)title();
         
         auto str = "<h3>"+name+"</h3>\n";
-        auto access = GlobalSettings::access_level(name);
-        if(bool has_default = GlobalSettings::has_default(name);
+        
+        AccessLevel access;
+        bool has_default;
+        std::optional<std::string> doc;
+        //const Both &both = std::get<Both>(data);
+        
+        GlobalSettings::read([&](const Configuration& config){
+            auto result = config.access_level(name);
+            if(result)
+                access = result.value();
+            else
+                access = AccessLevelType::PUBLIC;
+            
+            has_default = config.get_default(name).has_value();
+            
+            if(auto it = config.doc_generators.find(name);
+               it != config.doc_generators.end())
+            {
+                if(not is_name())
+                    doc = it->second(std::get<Both>(data).enum_offset);
+                else
+                    doc = it->second(std::nullopt);//both.enum_offset);
+            } else {
+                if(auto it = config.docs.find(name);
+                   it != config.docs.end())
+                {
+                    doc = it->second;
+                }
+            }
+        });
+        //auto access = GlobalSettings::access_level(name);
+        if(//bool has_default = GlobalSettings::has_default(name);
            access > AccessLevelType::PUBLIC)
         {
             str += "access: <i>"+std::string(access.name());
@@ -32,8 +64,7 @@ std::string TooltipData::text() const {
         {
             str += "example: " +settings::htmlify(ref->valueString()) + "\n";
         }
-        if(auto doc = GlobalSettings::read_doc(name);
-           doc)
+        if(doc)
         {
             str += "\n" + settings::htmlify((std::string)*doc);
         }
@@ -42,13 +73,27 @@ std::string TooltipData::text() const {
     }
     
     auto str = std::get<Both>(data).name.empty() ? "" : "<h3>"+std::get<Both>(data).name+"</h3>\n";
-    return str + (std::string)std::get<Both>(data).docs;
+    return str + (std::string)std::get<Both>(data).docs.value();
 }
 
 std::string TooltipData::toStr() const {
     if(is_name())
         return "{"+Meta::toStr(title())+"}";
     return "{"+Meta::toStr(std::get<Both>(data).name)+","+Meta::toStr(std::get<Both>(data).docs)+"}";
+}
+
+void TooltipData::set_index(std::optional<uint8_t> index) {
+    if(not is_name()) {
+        auto& data = std::get<Both>(this->data);
+        data.enum_offset = std::move(index);
+    } else if(index.has_value()) {
+        auto _name = std::get<std::string>(this->data);
+        this->data = Both{
+            .name = std::move(_name),
+            .docs = std::nullopt,
+            .enum_offset = std::move(index)
+        };
+    }
 }
 
 }

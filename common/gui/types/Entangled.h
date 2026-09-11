@@ -206,8 +206,8 @@ namespace cmn::gui {
         
         std::vector<Drawable*>& children() override;
         virtual void on_visibility_change(bool) override;
-        virtual const Drawable* tooltip_object() const;
-        virtual std::optional<TooltipData> tooltip_data() const;
+        virtual Drawable* tooltip_object();
+        virtual std::optional<TooltipData> tooltip_data();
         
     public:
         template<typename T, class... Args, Type::data::values type = T::Class>

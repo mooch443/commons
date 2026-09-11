@@ -37,6 +37,7 @@ namespace cmn::gui {
         std::function<void()> _on_toggle;
         
         GETTER(float, row_height);
+        GETTER(Vec2, last_list_offset);
         
     public:
         List(const Bounds& size, const std::string& title, std::vector<std::shared_ptr<Item>>&& items, const std::function<void(List*, const Item&)>& on_click = [](List*, const Item&){});
@@ -81,7 +82,7 @@ namespace cmn::gui {
         
         void update() override;
         
-        const Drawable* tooltip_object() const override;
+        Drawable* tooltip_object() override;
     private:
         void draw_title();
         void update_sizes();

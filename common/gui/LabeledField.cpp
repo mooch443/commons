@@ -218,7 +218,7 @@ std::optional<std::string> LabeledCombobox::selected_parameter() const {
 }
 
 std::optional<std::string> LabeledCombobox::highlighted_parameter() const {
-    if(_combo && _combo->hovered()) {
+    if(_combo && _combo->hovered() && _combo->dropdown()->hovered()) {
         
         auto item = _combo->last_hovered_item();
         if(item.has_value()) {
@@ -1421,7 +1421,7 @@ void LabeledPathArray::update_ref_in_main_thread() {
     }
 }
 
-const Drawable* CustomDropdown::tooltip_object() const
+Drawable* CustomDropdown::tooltip_object()
 {
     return Dropdown::tooltip_object();
 }

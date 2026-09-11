@@ -49,7 +49,7 @@ public:
             _preview->set(limit);
     }
     
-    const Drawable* tooltip_object() const override;
+    Drawable* tooltip_object() override;
 };
 
 struct Dereference_t {

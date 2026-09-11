@@ -5,6 +5,20 @@
 
 namespace cmn {
     namespace settings {
+    template<typename Opt>
+    concept is_optional_enum = is_instantiation<std::optional, Opt>::value && is_enum<typename Opt::value_type>::value;
+    template<typename T>
+    concept is_optional_enum_or_enum = is_optional_enum<T> || is_enum<T>::value;
+    
+    template<typename T>
+    concept optional_has_docs = is_optional_enum<T> && T::value_type::Data::template enum_has_docs<typename T::value_type>::value;
+    
+    template<typename T>
+    concept _enum_has_docs = is_enum<T>::value && T::Data::template enum_has_docs<T>::value;
+    
+    template<typename T>
+    concept optional_or_enum_has_docs = optional_has_docs<T> || _enum_has_docs<T>;
+    
     ENUM_CLASS(ParameterCategoryType, CONVERTING, TRACKING)
     using ParameterCategory = ParameterCategoryType::Class;
     
@@ -15,23 +29,36 @@ namespace cmn {
             Adding(Configuration& config) : config(config) {}
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
+                requires (is_optional_enum_or_enum<T>
+                          && optional_or_enum_has_docs<T>)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt)
             {
-                std::string overall_doc = doc;
-                auto fdocs = T::Data::template docs<T>();
-                auto &fields = T::fields();
+                using Type = std::conditional_t<is_optional_enum<T>, T, std::optional<T>>::value_type;
                 
-                if(!fields.empty())
-                    overall_doc += "\n$options$";
-                
-                for(size_t i=0; i<fields.size(); ++i) {
-                    auto n = std::string(fields.at(i));
-                    auto d = std::string(fdocs.at(i));
-                    
-                    if(i > 0) overall_doc += "\n";
-                    overall_doc += "`"+std::string(n)+"`: "+(d.empty() ? "<no description>" : d);
-                }
-                config.docs[name] = overall_doc;
+                config.doc_generators[name] = [doc = std::move(doc)](std::optional<uint8_t> index) {
+                    std::string overall_doc = doc;
+                    auto fdocs = Type::Data::template docs<Type>();
+                    auto &fields = Type::fields();
+
+                    if(!fields.empty())
+                        overall_doc += "\n\n$options$";
+
+                    for(size_t i=0; i<fields.size(); ++i) {
+                        auto n = std::string(fields.at(i));
+                        auto d = std::string(fdocs.at(i));
+
+                        if(i > 0) overall_doc += "\n";
+                        if(index.has_value()
+                           && index.value() == i)
+                        {
+                            overall_doc += "`"+std::string(n)+"`:* "+(d.empty() ? "<no description>" : d)+"*";
+                        } else {
+                            overall_doc += "`"+std::string(n)+"`: "+(d.empty() ? "<no description>" : d);
+                        }
+                    }
+                    return overall_doc;
+                };
+                config.docs[name] = config.doc_generators[name](std::nullopt);
                 
                 if(!config.values.has(name))
                     config.values.insert(name, default_value);
@@ -54,9 +81,12 @@ namespace cmn {
             }
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<is_enum<T>::value && !T::Data::template enum_has_docs<T>::value, T>::type * = nullptr)
+                requires (is_optional_enum_or_enum<T>
+                          && not optional_or_enum_has_docs<T>)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt)
             {
-                config.docs[name] = doc;
+                config.doc_generators[name] = [doc = std::move(doc)](std::optional<uint8_t>) { return doc; };
+                config.docs[name] = config.doc_generators[name](std::nullopt);
                 
                 if(!config.values.has(name))
                     config.values.insert(name, default_value);
@@ -79,9 +109,11 @@ namespace cmn {
             }
             
             template<ParameterCategory category, typename T>
-            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt, typename std::enable_if<!is_enum<T>::value, T>::type * = nullptr)
+                requires (not is_optional_enum_or_enum<T>)
+            sprite::Property<T>& add(StringLike auto&& name, T default_value, std::string doc, AccessLevel access = AccessLevelType::PUBLIC, std::optional<T> example_value = std::nullopt)
             {
-                config.docs[name] = doc;
+                config.doc_generators[name] = [doc = std::move(doc)](std::optional<uint8_t>) { return doc; };
+                config.docs[name] = config.doc_generators[name](std::nullopt);
                 
                 if(!config.values.has(name))
                     config.values.insert(name, default_value);
@@ -177,7 +209,7 @@ namespace cmn {
                 } else if(c == '\\') {
                     emit(word, c);
                     prev = c;
-                } else if(is_in(c, '\'', '`', '"', '$')
+                } else if(is_in(c, '\'', '`', '"', '$', '*')
                           && ((in_string == 0) || (in_string == c)))
                 {
                     bool closing = (in_string == c);
@@ -196,6 +228,8 @@ namespace cmn {
                         }
                     } else if(c == '$') {
                         parsed += (in_string == c ? "<h4>" : "</h4>\n");
+                    } else if(c == '*') {
+                        parsed += (in_string == c ? "<red><b>" : "</b></red>");
                     }
                     // '`' is consumed silently; end_word handles wrapping via sep
                 } else if(in_string == 0) {

@@ -6,7 +6,6 @@
 #include <gui/types/Checkbox.h>
 #include <gui/types/Dropdown.h>
 #include <misc/GlobalSettings.h>
-#include <gui/types/SettingsTooltip.h>
 #include <common/misc/default_settings.h>
 #include <gui/ParseLayoutTypes.h>
 #include <gui/types/ErrorElement.h>

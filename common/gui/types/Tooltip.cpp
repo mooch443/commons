@@ -1,6 +1,7 @@
 #include "Tooltip.h"
 #include <gui/DrawStructure.h>
 #include <gui/types/Combobox.h>
+#include <gui/types/List.h>
 
 namespace cmn::gui {
     Tooltip::Tooltip(std::nullptr_t, float max_width) : Tooltip(std::weak_ptr<Drawable>{}, max_width) { }
@@ -95,10 +96,38 @@ namespace cmn::gui {
             if(auto ptr = dynamic_cast<Combobox*>(lock.get());
                ptr == nullptr)
             {
-                if(mp.y >= bds.y && o.y > 0.5) {
-                    mp.y = bds.y;
-                } else if(mp.y <= bds.y + bds.height) {
-                    mp.y = bds.y + bds.height;
+                if(auto ptr = dynamic_cast<List*>(lock.get());
+                   ptr != nullptr)
+                {
+                    if(ptr->foldable()
+                       && not ptr->folded())
+                    {
+                        /// could be a long list, not part of the bounding box?
+                        auto t = ptr->global_transform();
+                        //t.translate(ptr->last_list_offset());
+                        auto offset = ptr->last_list_offset();
+                        auto row_height = ptr->row_height();
+                        auto pt = t.transformPoint(offset);
+                        pt -= bds.pos();
+                        
+                        
+                        row_height = (t.transformPoint(0, row_height) - bds.pos()).y;
+                        auto row_index = int(row_height);
+                        
+                        Print("last list offset = ", ptr->last_list_offset(), " bounds = ", bds, " => ", pt, " row_height=",row_height, " => ", offset.y / row_height, " @ ", mp.y, " making it ", (mp.y - bds.pos().y) / row_height, " we use row ", row_index);
+                        
+                        auto y = round((mp.y - bds.pos().y) / row_height + 0.5) * row_height;
+                        bds << Size2(bds.x, y);
+                    }
+                    
+                }
+                
+                {
+                    if(mp.y >= bds.y && o.y > 0.5) {
+                        mp.y = bds.y;
+                    } else if(mp.y <= bds.y + bds.height) {
+                        mp.y = bds.y + bds.height;
+                    }
                 }
                 
             } else {

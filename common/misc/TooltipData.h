@@ -6,7 +6,8 @@ namespace cmn::gui {
 struct TooltipData {
     struct Both {
         std::string name;
-        std::string docs;
+        std::optional<std::string> docs;
+        std::optional<uint8_t> enum_offset{std::nullopt};
         bool operator==(const Both& other) const = default;
         auto operator<=>(const Both& other) const = default;
         bool operator!=(const Both& other) const { return !(*this == other); }
@@ -32,6 +33,7 @@ struct TooltipData {
     
     std::string toStr() const;
     static consteval std::string_view class_name() { return "TooltipData"; }
+    void set_index(std::optional<uint8_t>);
 };
 
 }

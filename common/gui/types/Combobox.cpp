@@ -400,7 +400,7 @@ void Combobox::update_value() {
     _value->set(_settings.prefix);
 }
 
-const Drawable* Combobox::tooltip_object() const
+Drawable* Combobox::tooltip_object()
 {
     if(_reset_button
        && _reset_button->hovered())
@@ -408,13 +408,13 @@ const Drawable* Combobox::tooltip_object() const
         return _reset_button.get();
     }
     if(_value) {
-        const Drawable* rep = _value->tooltip_object().get(); //_value->representative().get();
-        if(rep
+        Drawable* rep = _value->tooltip_object().get(); //_value->representative().get();
+        /*if(rep
            && rep->type() == Type::ENTANGLED
-           && static_cast<const Entangled*>(rep)->tooltip_object())
+           && static_cast< Entangled*>(rep)->tooltip_object())
         {
-            rep = static_cast<const Entangled*>(rep)->tooltip_object();
-        }
+            rep = static_cast< Entangled*>(rep)->tooltip_object();
+        }*/
         if(rep
            && rep->hovered())
         {
@@ -424,7 +424,7 @@ const Drawable* Combobox::tooltip_object() const
     return _dropdown ? _dropdown->tooltip_object(): nullptr;
 }
 
-std::optional<TooltipData> Combobox::tooltip_data() const {
+std::optional<TooltipData> Combobox::tooltip_data() {
     if(_reset_button
        && _reset_button->hovered())
     {
@@ -458,7 +458,7 @@ std::optional<TooltipData> Combobox::tooltip_data() const {
     auto ptr = tooltip_object();
     if(ptr) {
         if(ptr->type() == Type::ENTANGLED)
-            return static_cast<const Entangled*>(ptr)->tooltip_data();
+            return static_cast< Entangled*>(ptr)->tooltip_data();
     }
     return std::nullopt;
 }

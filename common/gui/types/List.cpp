@@ -297,8 +297,13 @@ void List::on_click(const Item * item) {
     }
 
 
-const Drawable* List::tooltip_object() const
+Drawable* List::tooltip_object()
 {
+    for(auto &rect : _rects) {
+        if(rect->hovered()) {
+            return rect.get();
+        }
+    }
     return &_title_background;
 }
     
@@ -474,6 +479,7 @@ const Drawable* List::tooltip_object() const
             }
         }
         
+        _last_list_offset = offset;
         draw_title();
     }
 
