@@ -186,7 +186,7 @@ void merge_lines(Source::RowRef &previous_vector,
     }
 }
 
-blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
+blobs_t run_fast(List_t* blobs, ptr_safe_t channels, bool copy_pixels = true)
 {
     blobs_t result;
     auto& source = blobs->source();
@@ -259,19 +259,21 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
             continue;
         
         result.emplace_back(std::make_unique<std::vector<HorizontalLine>>(),
-                            std::make_unique<PixelArray_t>(),
+                            copy_pixels ? std::make_unique<PixelArray_t>() : nullptr,
                             initial_flags);
         
         auto &lines = result.back().lines;
         auto &pixels = result.back().pixels;
         
-        ptr_safe_t L = 0;
-        for(auto & [l, px] : *it->obj) {
-            assert(l->x1() >= l->x0());
-            L += ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1);
+        if(pixels) {
+            ptr_safe_t L = 0;
+            for(auto & [l, px] : *it->obj) {
+                assert(l->x1() >= l->x0());
+                L += ptr_safe_t((l)->x1()) - ptr_safe_t((l)->x0()) + ptr_safe_t(1);
+            }
+            pixels->resize(L * channels);
         }
-        
-        pixels->resize(L * channels);
+
         auto LLines = it->obj->lines().size();
         lines->resize(LLines);
         
@@ -279,7 +281,7 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
         coord_t y = 0;
 #endif
         auto current = lines->data();
-        auto pixel = pixels->data();
+        auto pixel = pixels ? pixels->data() : nullptr;
         for(auto & [l, px] : *it->obj) {
             auto lx0 = l->x0();
             auto lx1 = l->x1();
@@ -343,23 +345,25 @@ blobs_t run_fast(List_t* blobs, ptr_safe_t channels)
 }
 
 // called by user
-blobs_t run(DLList& list, const cv::Mat &image, bool enable_threads) {
+blobs_t run(DLList& list, const cv::Mat &image,
+            bool copy_pixels, bool enable_threads) {
     //auto list = List_t::from_cache();
     //DLList list;
     list.clear();
     list.source().init(image, enable_threads);
     
-    blobs_t results = run_fast(&list, image.channels());
+    blobs_t results = run_fast(&list, image.channels(), copy_pixels);
     //List_t::to_cache(std::move(list));
     list.clear();
     return results;
 }
 
-blobs_t run(const cv::Mat &image, ListCache_t& cache, bool enable_threads) {
+blobs_t run(const cv::Mat &image, ListCache_t& cache,
+            bool enable_threads, bool copy_pixels) {
     //auto list = List_t::from_cache();
     //DLList list;
     cache.obj->source().init(image, enable_threads);
-    return run_fast(cache.obj, image.channels());
+    return run_fast(cache.obj, image.channels(), copy_pixels);
     //List_t::to_cache(std::move(list));
     //return results;
 }

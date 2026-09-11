@@ -197,7 +197,7 @@ public:
         //! this is locked during update cycles
         bool _round_lock{false};
 #endif
-        
+        //recognition_shapes,
         ADD_SETTINGS(smooth_window,
                      cm_per_pixel,
                      frame_rate,
@@ -226,7 +226,6 @@ public:
                      posture_direction_smoothing,
                      tags_path,
                      grid_points,
-                     recognition_shapes,
                      grid_points_scaling,
                      track_ignore,
                      track_include,

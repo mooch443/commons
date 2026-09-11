@@ -59,27 +59,35 @@ Background::Background(Size2 dimensions, meta_encoding_t::Class)
     
 }
 
-    Background::Background(Image::Ptr&& image, meta_encoding_t::Class encoding)
-        : _image(std::move(image)), /*_grid(grid),*/ _bounds(_image->bounds())
+    Background::Background(const Bounds& bounds, Image::Ptr&& image, meta_encoding_t::Class encoding)
+        : _image(std::move(image)), _bounds(bounds) /*_grid(grid),*/
     {
-        if(encoding == meta_encoding_t::r3g3b2) {
-            auto ptr = Image::Make(_image->rows, _image->cols, 3);
-            cv::Mat output = ptr->get();
-            convert_from_r3g3b2(_image->get(), output);
-            _image = std::move(ptr);
-            
-        } else if(encoding == meta_encoding_t::gray) {
-            auto ptr = Image::Make(_image->rows, _image->cols, 3);
-            cv::Mat output = ptr->get();
-            cv::cvtColor(_image->get(), output, cv::COLOR_GRAY2BGR);
-            _image = std::move(ptr);
+        if(const auto expected = required_storage_channels(encoding);
+           (expected > 0u && not _image) || (_image && _image->dims != expected))
+        {
+            throw InvalidArgumentException(encoding," expected to have ",expected," channels instead of ",_image);
         }
         
-        if(_image->channels() == 3) {
-            _grey_image = Image::Make(_image->rows, _image->cols, 1);
-            cv::cvtColor(_image->get(), _grey_image->get(), cv::COLOR_BGR2GRAY);
-        } else {
-            _grey_image = _image;
+        if(_image) {
+            if(encoding == meta_encoding_t::r3g3b2) {
+                auto ptr = Image::Make(_image->rows, _image->cols, 3);
+                cv::Mat output = ptr->get();
+                convert_from_r3g3b2(_image->get(), output);
+                _image = std::move(ptr);
+                
+            } else if(encoding == meta_encoding_t::gray) {
+                auto ptr = Image::Make(_image->rows, _image->cols, 3);
+                cv::Mat output = ptr->get();
+                cv::cvtColor(_image->get(), output, cv::COLOR_GRAY2BGR);
+                _image = std::move(ptr);
+            }
+            
+            if(_image->channels() == 3) {
+                _grey_image = Image::Make(_image->rows, _image->cols, 1);
+                cv::cvtColor(_image->get(), _grey_image->get(), cv::COLOR_BGR2GRAY);
+            } else {
+                _grey_image = _image;
+            }
         }
     }
     
@@ -95,8 +103,8 @@ Background::Background(Size2 dimensions, meta_encoding_t::Class)
 #endif
     }
     
-    const Image& Background::image() const {
-        return *_image;
+    const Image::SPtr& Background::image() const {
+        return _image;
     }
     
     const Bounds& Background::bounds() const {
@@ -104,21 +112,56 @@ Background::Background(Size2 dimensions, meta_encoding_t::Class)
     }
 
 inline void _lines_initialize_matrix(cv::Mat& mat, int w, int h, int type = CV_8UC1) {
-    if (mat.empty() || mat.type() != type || mat.rows != h || mat.cols != w)
-        mat = cv::Mat::zeros(h, w, type);
-    else
+    if(mat.empty()
+       || mat.type() != type
+       || mat.rows != h
+       || mat.cols != w
+       || not mat.isContinuous())
+    {
+        mat = cv::Mat(h, w, type, cv::Scalar::all(0));
+    } else
         mat = cv::Scalar(0);
-};
+}
 
-std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
-                                             const std::vector<HorizontalLine>& lines,
-                                             cv::Mat* output_mask,
-                                             cv::Mat* output_greyscale,
-                                             cv::Mat* output_differences,
-                                             const PixelArray_t* pixels,
-                                             const int base_threshold,
-                                             const Background* background,
-                                             int padding)
+inline void _lines_initialize_cached_matrix(cv::Mat& mat, int w, int h, int type = CV_8UC1) {
+    cv::Size capacity;
+    cv::Point offset;
+    if(not mat.empty() && mat.type() == type)
+        mat.locateROI(capacity, offset);
+
+    if(mat.empty()
+       || mat.type() != type
+       || capacity.width < w
+       || capacity.height < h
+       || capacity.width > w * 2
+       || capacity.height > h * 2)
+    {
+        const int cached_width = cvCeil(w * 1.05);
+        const int cached_height = cvCeil(h * 1.05);
+        mat = cv::Mat::zeros(cached_height, cached_width, type);
+        //Print("Need to reallocate ", capacity, " => ", w, "x", h);
+    } else {
+        mat.adjustROI(offset.y,
+                      capacity.height - mat.rows - offset.y,
+                      offset.x,
+                      capacity.width - mat.cols - offset.x);
+    }
+
+    mat = mat(cv::Rect(0, 0, w, h));
+    mat = cv::Scalar(0);
+}
+
+template<ImageFromLinesMode Mode>
+static std::pair<cv::Rect2i, size_t> imageFromLinesImpl(
+         InputInfo input,
+         const std::vector<HorizontalLine>& lines,
+         cv::Mat* output_mask,
+         cv::Mat* output_greyscale,
+         cv::Mat* output_differences,
+         const PixelArray_t* pixels,
+         const int base_threshold,
+         const Background* background,
+         int padding)
 {
 #ifndef NDEBUG
     if(not is_in(input.channels, 0, 1, 3)) {
@@ -133,19 +176,26 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     r.height += padding * 2;
     
     OutputInfo output{
-        .channels = static_cast<uint8_t>(input.encoding == meta_encoding_t::gray ? 1 : 3),
-        .encoding = input.encoding == meta_encoding_t::gray
+        .channels = static_cast<uint8_t>(is_in(input.encoding, meta_encoding_t::binary, meta_encoding_t::gray) ? 1 : 3),
+        .encoding = is_in(input.encoding, meta_encoding_t::binary, meta_encoding_t::gray)
                         ? meta_encoding_t::gray
                         : meta_encoding_t::rgb8
     };
     
+    auto initialize_matrix = [](cv::Mat& matrix, int width, int height, int type) {
+        if constexpr(Mode == ImageFromLinesMode::Cached)
+            _lines_initialize_cached_matrix(matrix, width, height, type);
+        else
+            _lines_initialize_matrix(matrix, width, height, type);
+    };
+
     // initialize matrices
     if(output_mask)
-        _lines_initialize_matrix(*output_mask, r.width, r.height);
+        initialize_matrix(*output_mask, r.width, r.height, CV_8UC1);
     if(output_greyscale)
-        _lines_initialize_matrix(*output_greyscale, r.width, r.height, CV_8UC(output.channels));
+        initialize_matrix(*output_greyscale, r.width, r.height, CV_8UC(output.channels));
     if(output_differences)
-        _lines_initialize_matrix(*output_differences, r.width, r.height, CV_8UC(output.channels));
+        initialize_matrix(*output_differences, r.width, r.height, CV_8UC(output.channels));
     
     size_t recount = 0;
     auto pixels_ptr = pixels ? pixels->data() : nullptr;
@@ -158,30 +208,23 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
         //value_t value;
         //int diff;
         value_t value, diff;
+        if constexpr(input.channels == 0) {
+            if constexpr(is_rgb_array<value_t>::value) {
+                value[0] = value[1] = value[2] = 255;
+                diff = value;
+            } else {
+                value = 255;
+                diff = 255;
+            }
+        }
         
         for (auto &l : lines) {
             for (int x=l.x0; x<=l.x1; x++, pixels_ptr += input.channels) {
-                bool pixel_is_set = base_threshold == 0;
-                
-                if constexpr(input.channels == 0) {
-                    pixel_is_set = true;
+                if constexpr(input.channels > 0
+                                && has_pixels)
+                {
+                    bool pixel_is_set = base_threshold == 0;
                     
-                    /*if constexpr(is_rgb_array<std::tuple_element_t<0, value_t>>::value) {
-                        value = value_t{ {255, 255, 255}, 255 };
-                        diff = 255;
-                    } else {
-                        value = {255, 255};
-                        diff = 255;
-                    }*/
-                    if constexpr(is_rgb_array<value_t>::value) {
-                        value = value_t{ 255, 255, 255 };
-                        diff = value;
-                    } else {
-                        value = 255;
-                        diff = 255;
-                    }
-                    
-                } else if constexpr(has_pixels) {
                     if(base_threshold > 0 || has_image || has_differences) {
                         value = diffable_pixel_value<input, output>(pixels_ptr);
                         //value = dual_diffable_pixel_value<input, output>(pixels_ptr);
@@ -191,51 +234,56 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
                         //diff = background->diff<DIFFERENCE_OUTPUT_FORMAT, method>(x, l.y, std::get<1>(value));
                     }
                     
-                    pixel_is_set = pixel_is_set || background->is_value_different<output>(x, l.y, diff, base_threshold);
+                    if(not pixel_is_set && not background->is_value_different<output>(x, l.y, diff, base_threshold)) {
+                        continue;
+                    }
                     //pixel_is_set = pixel_is_set || background->is_value_different<DIFFERENCE_OUTPUT_FORMAT>(x, l.y, diff, base_threshold);
                 }
                 
-                if(pixel_is_set) {
-                    if(output_mask)
-                        output_mask->at<uchar>(l.y - r.y, x - r.x) = 255;
-                    
-                    if constexpr(has_pixels) {
-                        if constexpr(output.channels == 3)
-                        {
-                            if constexpr(has_image) {
-                                assert(output_greyscale->channels() == 3);
-                                output_greyscale->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(value[0], value[1], value[2]);
-                                //output_greyscale->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(std::get<0>(value)[0], std::get<0>(value)[1], std::get<0>(value)[2]);
-                            }
-                            
-                            if constexpr(has_differences)
-                                output_differences->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(diff[0], diff[1], diff[2]);
-                                //output_differences->at<cv::Vec3b>(l.y - r.y, x - r.x) = cv::Vec3b(diff, diff, diff);
-                            
-                        } else if constexpr(output.channels == 1) {
-                            if constexpr(has_image) {
-                                if constexpr(input.channels == 1) {
+                if(output_mask)
+                    output_mask->at<uchar>(l.y - r.y, x - r.x) = 255;
+                
+                if constexpr(has_pixels) {
+                    if constexpr(output.channels == 3) {
+                        static_assert(sizeof(cv::Vec3b) == sizeof(value_t), "cv::Vec3b has to have 3 x uchar size");
+                        
+                        if constexpr(has_image) {
+                            assert(output_greyscale->channels() == 3);
+                            uchar* out = output_greyscale->ptr(l.y - r.y, x - r.x);
+                            std::memcpy(out, &value, sizeof(cv::Vec3b));
+                        }
+                        
+                        if constexpr(has_differences) {
+                            assert(output_differences->channels() == 3);
+                            uchar* out = output_differences->ptr(l.y - r.y, x - r.x);
+                            std::memcpy(out, &diff, sizeof(cv::Vec3b));
+                        }
+                        
+                    } else if constexpr(output.channels == 1) {
+                        if constexpr(has_image) {
+                            if constexpr(is_in(input.channels, 0u, 1u)) {
+                                output_greyscale->at<uchar>(l.y - r.y, x - r.x) = value;
+                                //output_greyscale->at<uchar>(l.y - r.y, x - r.x) = std::get<0>(value);
+                                
+                            } else if constexpr(input.channels == 3) {
+                                if constexpr(is_rgb_array<decltype(value)>::value) {
+                                    auto grey_value = bgr2gray(value);
+                                    output_greyscale->at<uchar>(l.y - r.y, x - r.x) = grey_value;
+                                } else {
                                     output_greyscale->at<uchar>(l.y - r.y, x - r.x) = value;
                                     //output_greyscale->at<uchar>(l.y - r.y, x - r.x) = std::get<0>(value);
-                                    
-                                } else if constexpr(input.channels == 3) {
-                                    if constexpr(is_rgb_array<decltype(value)>::value) {
-                                        auto grey_value = bgr2gray(value);
-                                        output_greyscale->at<uchar>(l.y - r.y, x - r.x) = grey_value;
-                                    } else {
-                                        output_greyscale->at<uchar>(l.y - r.y, x - r.x) = value;
-                                        //output_greyscale->at<uchar>(l.y - r.y, x - r.x) = std::get<0>(value);
-                                    }
                                 }
+                            } else {
+                                static_assert(is_in(input.channels, 0u, 1u, 3u), "Unknown input type in this branch");
                             }
-                            
-                            if constexpr(has_differences)
-                                output_differences->at<uchar>(l.y - r.y, x - r.x) = diff;
                         }
+                        
+                        if constexpr(has_differences)
+                            output_differences->at<uchar>(l.y - r.y, x - r.x) = diff;
                     }
-                    
-                    recount++;
                 }
+                
+                recount++;
             }
         }
     };
@@ -296,6 +344,36 @@ std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
     call_image_mode_function(input, output, work);
     
     return {r, recount};
+}
+
+std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input,
+                                             const std::vector<HorizontalLine>& lines,
+                                             cv::Mat* output_mask,
+                                             cv::Mat* output_greyscale,
+                                             cv::Mat* output_differences,
+                                             const PixelArray_t* pixels,
+                                             const int base_threshold,
+                                             const Background* background,
+                                             int padding)
+{
+    return imageFromLinesImpl<ImageFromLinesMode::Exact>(
+        input, lines, output_mask, output_greyscale, output_differences,
+        pixels, base_threshold, background, padding);
+}
+
+std::pair<cv::Rect2i, size_t> imageFromLinesCached(InputInfo input,
+                                                   const std::vector<HorizontalLine>& lines,
+                                                   cv::Mat* output_mask,
+                                                   cv::Mat* output_greyscale,
+                                                   cv::Mat* output_differences,
+                                                   const PixelArray_t* pixels,
+                                                   const int base_threshold,
+                                                   const Background* background,
+                                                   int padding)
+{
+    return imageFromLinesImpl<ImageFromLinesMode::Cached>(
+        input, lines, output_mask, output_greyscale, output_differences,
+        pixels, base_threshold, background, padding);
 }
 
 /*std::pair<cv::Rect2i, size_t> imageFromLines(InputInfo input, const std::vector<HorizontalLine>& lines, cv::Mat* output_mask, cv::Mat* output_greyscale, cv::Mat* output_differences, const PixelArray_t* input_pixels, const int threshold, const Background* average, int padding)

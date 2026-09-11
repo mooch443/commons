@@ -126,10 +126,39 @@ struct CVideo {
     uint32_t frame_rate{0};
     bool has_timestamps{false};
     bool is_greyscale{false};
+    
+    static CVideo Make(const VideoSource::File&);
 };
 
 std::mutex mutex;
 std::unordered_map<std::string, std::vector<CVideo>> storage;
+
+CVideo Make(VideoSource::File& f, std::optional<Size2> override_resolution, std::optional<bool> override_greyscale) {
+    Size2 resolution;
+    bool is_greyscale;
+    
+    if(f.type() != VideoSource::File::Type::IMAGE
+       || not override_resolution.has_value()
+       || not override_greyscale.has_value())
+    {
+        resolution = f.resolution();
+        is_greyscale = f.is_greyscale();
+        
+    } else {
+        resolution = *override_resolution;
+        is_greyscale = *override_greyscale;
+    }
+    
+    return CVideo{
+        .type = f.type(),
+        .path = f.filename(),
+        .resolution = resolution,
+        .N_frames = f.length(),
+        .frame_rate = static_cast<uint32_t>(f.framerate()),
+        .has_timestamps = f.has_timestamps(),
+        .is_greyscale = is_greyscale
+    };
+}
 
 std::expected<std::vector<CVideo>, std::string> _create_cache(const file::PathArray& source) {
     std::string prefix, suffix, extension;
@@ -175,32 +204,12 @@ std::expected<std::vector<CVideo>, std::string> _create_cache(const file::PathAr
         auto f = VideoSource::File::open(video_info.size(), basename, extension);
         if(!f)
             throw U_EXCEPTION("Cannot open file ",path.str(),".");
+        video_info.push_back(Make(*f, first_resolution, first_greyscale));
         
-        Size2 resolution;
-        bool is_greyscale;
-        
-        if(f->type() == VideoSource::File::Type::IMAGE) {
-            if(not first_resolution)
-                first_resolution = f->resolution();
-            resolution = *first_resolution;
-            if(not first_greyscale)
-                first_greyscale = f->is_greyscale();
-            is_greyscale = *first_greyscale;
-            
-        } else {
-            resolution = f->resolution();
-            is_greyscale = f->is_greyscale();
-        }
-        
-        video_info.push_back(CVideo{
-            .type = f->type(),
-            .path = f->filename(),
-            .resolution = resolution,
-            .N_frames = f->length(),
-            .frame_rate = static_cast<uint32_t>(f->framerate()),
-            .has_timestamps = f->has_timestamps(),
-            .is_greyscale = is_greyscale
-        });
+        if(not first_greyscale)
+            first_greyscale = video_info.back().is_greyscale;
+        if(not first_resolution)
+            first_resolution = video_info.back().resolution;
         
         if(not first_file)
             first_file = video_info.back();

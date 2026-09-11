@@ -196,7 +196,10 @@ std::optional<Path> Path::canonical() const {
 
     Path& Path::operator/=(const Path &other) {
         //_str += other.str();
-        *this = *this / other.str();
+        if(empty())
+            *this = other;
+        else
+            *this = *this / other.str();
         return *this;
     }
 
@@ -245,6 +248,9 @@ std::optional<Path> Path::canonical() const {
     }
 
     Path operator/(const Path& lhs, const Path& rhs) {
+        if(lhs.empty())
+            return rhs;
+        
         // Handle the case where the right-hand side is an absolute path
         std::string_view rv(rhs.str());
         // Check if rhs is an absolute path

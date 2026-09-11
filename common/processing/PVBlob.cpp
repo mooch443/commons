@@ -1131,15 +1131,17 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
         
         auto image = Image::Make(b.height, b.width, 1);
         
-        if(!background)
+        if(auto bg = background ? background->image().get() : nullptr;
+           not bg)
+        {
             std::fill(image->data(), image->data() + image->size(), uchar(0));
-        else {
-            if(background->image().channels() == 1) {
-                background->image().get()(b).copyTo(image->get());
-            } else if(background->image().channels() == 3) {
-                cv::cvtColor(background->image().get(), image->get(), cv::COLOR_BGR2GRAY);
+        } else /* if(bg) */ {
+            if(bg->channels() == 1) {
+                bg->get()(b).copyTo(image->get());
+            } else if(bg->channels() == 3) {
+                cv::cvtColor(bg->get(), image->get(), cv::COLOR_BGR2GRAY);
             } else
-                throw InvalidArgumentException("Background and blob are in incompatible combined formats: ", background->image(), " vs. ", *image);
+                throw InvalidArgumentException("Background and blob are in incompatible combined formats: ", bg, " vs. ", *image);
         }
         
         auto _x = (coord_t)b.x;
@@ -1190,25 +1192,32 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
         else
             b.restrict_to(Bounds(0, 0, infinity<Float2_t>(), infinity<Float2_t>()));
         
-        const auto channels = this->channels();
-        auto image = Image::Make(b.height, b.width, channels);
+        OutputInfo output;
+        output = input_info();
+        if(output.encoding == meta_encoding_t::binary) {
+            output.encoding = meta_encoding_t::gray;
+            output.channels = 1;
+        }
         
-        if(!background)
+        auto image = Image::Make(b.height, b.width, output.channels);
+        
+        if(auto bg = background ? background->image().get() : nullptr;
+           not bg)
+        {
             std::fill(image->data(), image->data() + image->size(), uchar(0));
-        else {
-            if(background->image().channels() == channels) {
-                background->image().get()(b).copyTo(image->get());
-            } else if(background->image().channels() == 1) {
-                cv::cvtColor(background->image().get()(b), image->get(), cv::COLOR_GRAY2BGR);
-            } else if(channels == 1) {
-                cv::cvtColor(background->image().get()(b), image->get(), cv::COLOR_BGR2GRAY);
+        } else /* if(bg) */ {
+            if(bg->channels() == output.channels) {
+                bg->get()(b).copyTo(image->get());
+            } else if(bg->channels() == 1) {
+                cv::cvtColor(bg->get()(b), image->get(), cv::COLOR_GRAY2BGR);
+            } else if(output.channels == 1) {
+                cv::cvtColor(bg->get()(b), image->get(), cv::COLOR_BGR2GRAY);
             } else
-                throw InvalidArgumentException("Background and blob are in incompatible combined formats: ", background->image(), " vs. ", *image);
+                throw InvalidArgumentException("Background and blob are in incompatible combined formats: ", bg, " vs. ", *image);
         }
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
-        assert(image->channels() == channels);
         
         auto work = [&]<InputInfo input, OutputInfo output, DifferenceMethod method>() {
             static_assert(is_in(input.channels, 0, 1, 3), "Only 0, 1 or 3 channels input is supported.");
@@ -1220,8 +1229,11 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
             }
             
 #ifndef NDEBUG
-            if(input != output)
-                throw InvalidArgumentException("This method is designed to output exactly the same encoding + channels as the input.");
+            if(input != output
+               && (input.encoding != meta_encoding_t::binary || output.encoding != meta_encoding_t::gray))
+            {
+                throw InvalidArgumentException("This method is designed to output exactly the same encoding + channels as the input, got ", input, " => ", output," instead.");
+            }
 #endif
             
             for (auto &line : hor_lines()) {
@@ -1241,9 +1253,6 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
                 }
             }
         };
-        
-        OutputInfo output;
-        output = input_info();
         
         call_image_mode_function(input_info(), output, work);
         return {b.pos(), std::move(image)};

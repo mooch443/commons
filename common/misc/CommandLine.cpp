@@ -26,7 +26,8 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
         _options.clear();
         _settings.clear();
         _settings_keys.clear();
-
+        
+        _launch_dir = file::cwd();
         _wd = Path(argv[0]).remove_filename();
         
         const size_t bufSize = PATH_MAX + 1;

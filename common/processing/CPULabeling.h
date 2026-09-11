@@ -9,11 +9,16 @@ namespace cmn::CPULabeling {
      * finds all other spatially connected POIs and combines them into Blobs.
      *
      * @param image a binary image in CV_8UC1 format
+     * @param copy_pixels when set to false, output blobs contain no pixel arrays
      * @param enable_threads when set to true, this function will use threads to extract horizontal lines (default false)
      * @return an array of the blobs found in image
      */
-    blobs_t run(DLList&, const cv::Mat &image, bool enable_threads = false);
-    blobs_t run(const cv::Mat &image, ListCache_t& list, bool enable_threads = false);
+    blobs_t run(DLList&, const cv::Mat &image,
+                bool copy_pixels = true,
+                bool enable_threads = false);
+    blobs_t run(const cv::Mat &image, ListCache_t& list,
+                bool enable_threads = false,
+                bool copy_pixels = true);
 
     /**
      * Given a set of horizontal lines, this function will extract all connected components and return them as a list of Blobs.

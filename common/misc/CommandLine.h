@@ -8,6 +8,7 @@
 namespace cmn {
     class CommandLine {
         GETTER(file::Path, wd);
+        GETTER(file::Path, launch_dir);
         
     public:
         struct Option {

@@ -314,7 +314,7 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
         Background(Size2, meta_encoding_t::Class encoding);
         
         /// create a real background with an image
-        Background(Image::Ptr&& image, meta_encoding_t::Class encoding);
+        Background(const Bounds&, Image::Ptr&& image, meta_encoding_t::Class encoding);
         ~Background();
         
         struct BackgroundInfo {
@@ -507,7 +507,7 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
             }
         }
         
-        const Image& image() const;
+        const Image::SPtr& image() const;
         const Bounds& bounds() const;
         /*const LuminanceGrid* grid() const {
             return _grid;
@@ -517,9 +517,26 @@ constexpr void push_pixel_value(PixelArray_t& image_ptr, Pixel value) {
         void update_callback();
     };
 
-    //! Converts a lines array to a mask or greyscale (or both).
+    enum class ImageFromLinesMode {
+        Exact,
+        Cached
+    };
+
+    //! Converts a lines array to exact-size, continuous output matrices.
     //  requires pixels to contain actual greyscale values
     std::pair<cv::Rect2i, size_t> imageFromLines(
+         InputInfo input,
+         const std::vector<HorizontalLine>& lines,
+         cv::Mat* output_mask,
+         cv::Mat* output_greyscale = NULL,
+         cv::Mat* output_differences = NULL,
+         const PixelArray_t* pixels = NULL,
+         const int threshold = 0,
+         const Background* average = NULL,
+         int padding = 0);
+
+    //! Retains extra backing storage; exact-size output views may be non-contiguous.
+    std::pair<cv::Rect2i, size_t> imageFromLinesCached(
          InputInfo input,
          const std::vector<HorizontalLine>& lines,
          cv::Mat* output_mask,
@@ -642,7 +659,7 @@ constexpr auto call_single_image_info(Info info, const auto& fn) {
             return determine_encoding.template operator()<3>();
         else
             throw InvalidArgumentException("Invalid number of output channels: ", info);
-    } else {
+    } else /* if constexpr(std::same_as<OutputInfo, Info>) */ {
         if(info.channels == 1)
             return determine_encoding.template operator()<1>();
         else if(info.channels == 3)
