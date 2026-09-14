@@ -992,6 +992,14 @@ bool SectionInterface::is_animating() noexcept {
             clear_cache();
 
             auto old = _parent;
+
+            if(auto* graph = old->stage();
+               graph && graph->hovered_object()
+               && graph->hovered_object()->is_child_of(this))
+            {
+                graph->do_hover(graph->mouse_position());
+            }
+
             _parent = parent;
             
             if(old->stage() 
