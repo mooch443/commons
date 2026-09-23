@@ -3,6 +3,7 @@
 namespace cmn::gui {
 
 #ifndef NDEBUG
+IMPLEMENT(DebugPointers::pointer_mutex);
 IMPLEMENT(DebugPointers::allocated_pointers);
 IMPLEMENT(DebugPointers::zones);
 IMPLEMENT(DebugPointers::current_zone);
@@ -28,6 +29,9 @@ void DebugPointers::register_named(const std::string& key, void* ptr) {
     if (not ptr) {
         return;
     }
+    
+    std::unique_lock g{pointer_mutex};
+    
 	/// A pointer that is still registered anywhere is still owned by a live
 	/// derived_ptr - registering it again means a second owner was created
 	/// for the same object, which will double-delete it later.
@@ -52,6 +56,9 @@ void DebugPointers::unregister_named([[maybe_unused]] const std::string& key, vo
     if (not ptr) {
         return;
     }
+    
+    std::unique_lock g{pointer_mutex};
+    
 	if (current_zone.has_value()) {
 		if (zones[current_zone.value()].pointers.find(ptr) != zones[current_zone.value()].pointers.end()) {
 			zones[current_zone.value()].pointers.erase(ptr);
@@ -80,10 +87,12 @@ void DebugPointers::unregister_named([[maybe_unused]] const std::string& key, vo
 }
 
 void DebugPointers::clear() {
+    std::unique_lock g{pointer_mutex};
 	allocated_pointers.clear();
 }
 
 void DebugPointers::start_zone(const std::string& name) {
+    std::unique_lock g{pointer_mutex};
 	zones[name];
 	current_zone = name;
 	zones[name].count_at_start = zones[name].pointers.size();
@@ -95,6 +104,7 @@ void DebugPointers::start_zone(const std::string& name) {
 }
 
 void DebugPointers::end_zone(const std::string& name) {
+    std::unique_lock g{pointer_mutex};
 	if(not current_zone.has_value()
 		|| current_zone.value() != name)
 	{

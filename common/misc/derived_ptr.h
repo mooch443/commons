@@ -12,6 +12,7 @@ struct DebugPointers {
 		std::unordered_map<void*, std::string> pointers;
     };
 
+    static std::mutex pointer_mutex;
     static std::unordered_map<std::string, std::unordered_set<void*>> allocated_pointers;
     static std::unordered_map<std::string, Zone> zones;
     static std::optional<std::string> current_zone;
