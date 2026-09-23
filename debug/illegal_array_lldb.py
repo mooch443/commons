@@ -7,6 +7,8 @@ synthetic children for:
 - robin_hood hash maps / sets
 - ska flat_hash_map / bytell_hash_map style tables
 - std::expected
+- std::optional / cmn::TrivialOptional / cmn::BFrame_t and scalar optional wrappers
+- cmn::gui::Color
 - std/libc++ mutexes and lock wrappers
 - cmn::LoggedMutex / cmn::LoggedLock
 """
@@ -59,6 +61,18 @@ _OPTIONAL_REGEXES = (
     r"^cmn::TrivialOptional<.+>$",
 )
 _OPTIONAL_CATEGORY = "trex_optional"
+
+_OPTIONAL_WRAPPER_TYPES = {
+    "track::Idx_t": ("_identity", "max"),
+    "pv::bid": ("_id", "max"),
+    "cmn::ThreadGroupId": ("index", "zero"),
+    "track::Match::fish_index_t": ("index", "negative"),
+    "track::Match::blob_index_t": ("index", "negative"),
+    "cmn::timestamp_t": ("value", "wrapped"),
+    "track::FOI::fdx_t": ("id", "wrapped"),
+}
+
+_COLOR_CATEGORY = "trex_color"
 
 _MUTEX_REGEXES = (
     r"^pthread_mutex_t$",
@@ -205,7 +219,7 @@ def _hex_or_null(address):
     return "null" if not address else hex(address)
 
 
-def _value_text(value):
+def _value_text(value, depth=0):
     if not value.IsValid():
         return None
     summary = value.GetSummary()
@@ -214,6 +228,18 @@ def _value_text(value):
     text = value.GetValue()
     if text is not None and text != "":
         return text
+    if depth > 0 and value.GetNumChildren():
+        parts = []
+        count = value.GetNumChildren()
+        for index in range(min(count, 4)):
+            child = value.GetChildAtIndex(index)
+            if child.IsValid():
+                text = _value_text(child, depth - 1) or "{...}"
+                parts.append(f"{child.GetName()}={text}")
+        if count > 4:
+            parts.append("...")
+        if parts:
+            return "{" + ", ".join(parts) + "}"
     return None
 
 
@@ -224,7 +250,7 @@ def _summary_join(parts):
 def _type_name(value):
     if not value.IsValid():
         return ""
-    sbtype = value.GetType()
+    sbtype = value.GetType().GetCanonicalType().GetUnqualifiedType()
     if not sbtype.IsValid():
         return ""
     return sbtype.GetName() or ""
@@ -264,65 +290,42 @@ def _trivial_optional_has_value(value):
     if not payload_type.IsValid():
         return False
 
-    if hasattr(payload_type, "IsUnsignedIntegerType") and payload_type.IsUnsignedIntegerType():
+    flags = payload_type.GetTypeFlags()
+    invalid = lldb.SBValue()
+    optional_type = value.GetType().GetCanonicalType()
+    if hasattr(optional_type, "GetStaticFieldWithName"):
+        field = optional_type.GetStaticFieldWithName("InvalidValue")
+        if field.IsValid():
+            invalid = field.GetConstantValue(value.GetTarget())
+
+    if invalid.IsValid():
+        if flags & lldb.eTypeIsInteger:
+            return payload.GetValueAsUnsigned(0) != invalid.GetValueAsUnsigned(0)
+        return payload.GetValue() != invalid.GetValue()
+
+    if flags & lldb.eTypeIsInteger and not flags & lldb.eTypeIsSigned:
         bits = max(payload_type.GetByteSize() * 8, 1)
         invalid = (1 << bits) - 1
         return payload.GetValueAsUnsigned(0) != invalid
 
-    if hasattr(payload_type, "IsSignedIntegerType") and payload_type.IsSignedIntegerType():
+    if flags & lldb.eTypeIsInteger and flags & lldb.eTypeIsSigned:
         bits = max(payload_type.GetByteSize() * 8, 1)
         invalid = -(1 << (bits - 1))
         return payload.GetValueAsSigned(0) != invalid
 
-    summary = payload.GetSummary()
-    if summary:
-        return True
-    return payload.GetValue() not in (None, "")
-
-
-def _extract_visible_child_value(value, names):
-    for source in (value, value.GetNonSyntheticValue()):
-        if not source.IsValid():
-            continue
-        for name in names:
-            child = source.GetChildMemberWithName(name)
-            if child.IsValid():
-                text = _value_text(child)
-                if text and text.lower() not in {"has value=true", "has_value=true"}:
-                    return text
-        if source.GetNumChildren() == 1:
-            child = source.GetChildAtIndex(0)
-            if child.IsValid():
-                text = _value_text(child)
-                if text and text.lower() not in {"has value=true", "has_value=true"}:
-                    return text
-    return None
+    try:
+        return float(payload.GetValue()) != float("inf")
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_optional_payload(raw):
-    payload_names = (
-        "__val_",
-        "_M_value",
-        "value_",
-        "Value",
-        "value",
-    )
-    for name in payload_names:
-        payload = _find_member(raw, name, depth=8)
-        if not payload.IsValid():
-            continue
-        text = _value_text(payload)
-        if text and text.lower() not in {"has value=true", "has_value=true"}:
-            return text
-    return None
+    payload = _optional_payload_value(raw)
+    payload = _first_valid(payload.GetSyntheticValue(), payload)
+    return _value_text(payload, depth=2)
 
 
-def _optional_has_value(raw, summary_lower):
-    if "nullopt" in summary_lower or "has value=false" in summary_lower or "has_value=false" in summary_lower:
-        return False
-    if "has value=true" in summary_lower or "has_value=true" in summary_lower:
-        return True
-
+def _optional_has_value(raw):
     engaged_names = (
         "__engaged_",
         "_M_engaged",
@@ -339,7 +342,7 @@ def _optional_has_value(raw, summary_lower):
 def _optional_payload_value(raw):
     type_name = _type_name(raw)
 
-    if "TrivialOptional<" in type_name:
+    if type_name.startswith("cmn::TrivialOptional<"):
         payload = raw.GetChildMemberWithName("value_")
         return payload if payload.IsValid() else lldb.SBValue()
 
@@ -363,46 +366,14 @@ def _squash_optional_like(value):
     if not value.IsValid():
         return "null"
 
-    type_name = _type_name(value)
-    summary = value.GetSummary() or ""
-    summary_lower = summary.lower()
-
-    if "trivialoptional<" in type_name:
-        if not _trivial_optional_has_value(value):
-            return "null"
-        payload = value.GetChildMemberWithName("value_")
-        text = _value_text(payload)
-        return text if text else "null"
-
-    payload_names = (
-        "Value",
-        "_frame",
-        "value",
-        "__val_",
-        "__value_",
-        "_M_value",
-        "value_",
-    )
-    text = _extract_visible_child_value(value, payload_names)
-    if text:
-        return text
-
     raw = value.GetNonSyntheticValue()
-    if raw.IsValid():
-        has_value = _optional_has_value(raw, summary_lower)
-        if has_value is False:
-            return "null"
-        text = _extract_optional_payload(raw)
-        if text:
-            return text
-        if has_value is True:
-            return "value"
-
-    text = _value_text(value)
-    if text and text.lower() not in {"has value=true", "has_value=true"}:
-        return text
-
-    return "null"
+    if _type_name(raw).startswith("cmn::TrivialOptional<"):
+        has_value = _trivial_optional_has_value(raw)
+    else:
+        has_value = _optional_has_value(raw)
+    if has_value is False:
+        return "null"
+    return _extract_optional_payload(raw) or "<unavailable>"
 
 
 class IllegalArraySyntheticProvider:
@@ -461,15 +432,14 @@ class OptionalSyntheticProvider:
 
     def update(self):
         raw = self.valobj.GetNonSyntheticValue()
-        summary_lower = (self.valobj.GetSummary() or "").lower()
         self._children = []
 
         type_name = _type_name(raw)
-        if "TrivialOptional<" in type_name:
+        if type_name.startswith("cmn::TrivialOptional<"):
             if not _trivial_optional_has_value(raw):
                 return
         else:
-            has_value = _optional_has_value(raw, summary_lower)
+            has_value = _optional_has_value(raw)
             if has_value is False:
                 return
 
@@ -477,7 +447,7 @@ class OptionalSyntheticProvider:
         if not payload.IsValid():
             return
 
-        child = _create_named_value(self.valobj, "value", payload)
+        child = payload.Clone("value")
         if child is not None and child.IsValid():
             self._children.append(child)
 
@@ -528,6 +498,52 @@ def bframe_summary(valobj, _dict):
     raw = valobj.GetNonSyntheticValue()
     frame = raw.GetChildMemberWithName("_frame")
     return _squash_optional_like(frame)
+
+
+def optional_wrapper_summary(valobj, _dict):
+    raw = valobj.GetNonSyntheticValue()
+    if _is_pointer_type(raw.GetType()) or _is_reference_type(raw.GetType()):
+        raw = raw.Dereference()
+    wrapper = _OPTIONAL_WRAPPER_TYPES.get(_type_name(raw))
+    if wrapper is None:
+        return "<unavailable>"
+    member, invalid_kind = wrapper
+    payload = raw.GetChildMemberWithName(member)
+    if not payload.IsValid():
+        return "<unavailable>"
+    if invalid_kind == "wrapped":
+        return _value_text(payload) or "<unavailable>"
+
+    error = lldb.SBError()
+    if invalid_kind == "negative":
+        number = payload.GetValueAsSigned(error)
+        empty = number < 0
+    else:
+        number = payload.GetValueAsUnsigned(error)
+        invalid = 0 if invalid_kind == "zero" else (1 << (payload.GetType().GetByteSize() * 8)) - 1
+        empty = number == invalid
+    if error.Fail():
+        return "<unavailable>"
+    return "null" if empty else str(number)
+
+
+def color_summary(valobj, _dict):
+    raw = valobj.GetNonSyntheticValue()
+    channels = []
+    for name in ("r", "g", "b", "a"):
+        channel = raw.GetChildMemberWithName(name)
+        if not channel.IsValid():
+            return "<unavailable>"
+        error = lldb.SBError()
+        number = channel.GetValueAsUnsigned(error)
+        if error.Fail():
+            return "<unavailable>"
+        channels.append(number)
+    r, g, b, a = channels
+    hex_color = f"#{r:02X}{g:02X}{b:02X}"
+    if a != 255:
+        hex_color += f"{a:02X}"
+    return f"{hex_color} (r={r}, g={g}, b={b}, a={a})"
 
 
 def illegal_array_summary(valobj, _dict):
@@ -1124,6 +1140,7 @@ def __lldb_init_module(debugger, _dict):
         _SHERWOOD_CATEGORY,
         _STD_EXPECTED_CATEGORY,
         _OPTIONAL_CATEGORY,
+        _COLOR_CATEGORY,
         _MUTEX_CATEGORY,
         _LOCK_CATEGORY,
     ):
@@ -1203,7 +1220,22 @@ def __lldb_init_module(debugger, _dict):
             f"--python-class {__name__}.OptionalSyntheticProvider "
             f"--regex {regex}"
         )
+    for type_name in _OPTIONAL_WRAPPER_TYPES:
+        debugger.HandleCommand(
+            f"type summary add --category {_OPTIONAL_CATEGORY} "
+            f"--python-function {__name__}.optional_wrapper_summary {type_name}"
+        )
+        debugger.HandleCommand(
+            f"type synthetic add --category {_OPTIONAL_CATEGORY} "
+            f"--python-class {__name__}.EmptySyntheticProvider {type_name}"
+        )
     debugger.HandleCommand(f"type category enable {_OPTIONAL_CATEGORY}")
+
+    debugger.HandleCommand(
+        f"type summary add --expand --category {_COLOR_CATEGORY} "
+        f"--python-function {__name__}.color_summary cmn::gui::Color"
+    )
+    debugger.HandleCommand(f"type category enable {_COLOR_CATEGORY}")
 
     for regex in _MUTEX_REGEXES:
         debugger.HandleCommand(
@@ -1226,4 +1258,4 @@ def __lldb_init_module(debugger, _dict):
         )
     debugger.HandleCommand(f"type category enable {_LOCK_CATEGORY}")
 
-    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional, and mutex pretty-printers loaded.")
+    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional wrappers, Color, and mutex pretty-printers loaded.")
