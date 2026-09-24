@@ -939,6 +939,30 @@ public:
         return result;
     }
     
+    // Templated + operator to handle StringLike types
+    template<typename Container>
+        requires cmn::StringLike<typename Container::value_type>
+    ExtendableVector operator-(const Container& other) const {
+        ExtendableVector result(*this);
+        for (const auto& element : other) {
+            std::string_view key;
+            if constexpr (std::is_array_v<std::remove_cvref_t<typename Container::value_type>>) {
+                // Handle C-style strings (char arrays) specifically
+                key = std::string_view(element, std::size(element) - 1);  // -1 to ignore null terminator
+            } else {
+                // Handle other string-like types
+                key = std::string_view(element);  // Convert to string and add
+            }
+            if(auto it = std::find(result.begin(), result.end(), key);
+               it != result.end())
+            {
+                result.erase(it);
+            }
+        }
+        result.clean();
+        return result;
+    }
+    
     // Templated += operator to handle StringLike types
     template<typename Container>
         requires cmn::StringLike<typename Container::value_type>

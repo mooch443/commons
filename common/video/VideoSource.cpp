@@ -1,5 +1,6 @@
 #include "VideoSource.h"
 #include "Video.h"
+#include <locale>
 #include <file/PathArray.h>
 #include <misc/Path.h>
 #include <misc/GlobalSettings.h>
@@ -655,7 +656,8 @@ VideoSource::VideoSource(const file::PathArray& source)
     } else {
         //! TODO: Frame rate not being set for image sequences...
         //! needs check!
-        FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
     }
     
     for(auto f : _files_in_seq) {
@@ -671,8 +673,10 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     {
         File *f = File::open(0, prefix + suffix, extension);
 
-        if(f && f->type() != File::VIDEO)
-            FormatWarning("Just loading one image because seq_end/seq_start were not specified.");
+        if(f && f->type() != File::VIDEO) {
+            if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+                FormatWarning("Just loading one image because seq_end/seq_start were not specified.");
+        }
 
         if(f) {
             _files_in_seq.push_back(f);
@@ -683,7 +687,8 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         
     } else if(seq_end == VIDEO_SEQUENCE_UNSPECIFIED_VALUE) {
         std::string base(file::Path(prefix).is_folder() ? "" : file::Path(prefix).filename());
-        Print("Trying to find the last file (starting at ", seq_start,") pattern ", base+"%"+Meta::toStr(padding)+"d"+suffix+"."+extension, "...");
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            Print("Trying to find the last file (starting at ", seq_start,") pattern ", base+"%"+Meta::toStr(padding)+"d"+suffix+"."+extension, "...");
         
         _files_in_seq.reserve(10000);
         
@@ -708,8 +713,10 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
                 break;
             }
             
-            if(i%10000 == 0)
-                Print("Finding file ", i," (",_files_in_seq.size()," found)...");
+            if(i%10000 == 0) {
+                if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+                    Print("Finding file ", i," (",_files_in_seq.size()," found)...");
+            }
             if(BOOL_SETTING(terminate))
             {
                 break;
@@ -717,11 +724,13 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             
         } while (true);
         
-        Print("Last number was ", i-1);
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            Print("Last number was ", i-1);
         _files_in_seq.shrink_to_fit();
         
     } else {
-        Print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            Print("Finding all relevant files in sequence with base name ", prefix + (suffix.empty() ? "" : "."+suffix), "...");
         for (int i=seq_start; i<=seq_end; i++) {
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
@@ -775,7 +784,8 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         }
     }
     
-    Print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
+    if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+        Print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
     _base = prefix+(suffix.empty() ? "" : "."+suffix);
     
     if(type() == File::VIDEO) {
@@ -783,7 +793,8 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     } else {
         //! TODO: Frame rate not being set for image sequences...
         //! needs check!
-        FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            FormatWarning("No frame rate can be set automatically for a sequence of images. Defaulting to ", framerate(),".");
     }
 }
 
@@ -948,8 +959,6 @@ timestamp_t VideoSource::timestamp(Frame_t globalIndex, cmn::source_location loc
     throw U_EXCEPTION("Could not find frame ",globalIndex,"/",index," in VideoSource.");
 }
 
-#include <locale>
-
 timestamp_t VideoSource::start_timestamp() const {
     return _files_in_seq.front()->timestamp(0_f);
 }
@@ -966,7 +975,8 @@ short VideoSource::framerate() const {
         {
             if(*frame_rate > 0)
                 return *frame_rate;
-            FormatWarning("frame_rate not set properly for an image sequence. Assuming a default value of 25.");
+            if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+                FormatWarning("frame_rate not set properly for an image sequence. Assuming a default value of 25.");
             return 25;
         }
         throw U_EXCEPTION("Frame rate not set properly in ", *this, " nor in GlobalSettings.");

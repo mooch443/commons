@@ -9,10 +9,13 @@ synthetic children for:
 - std::expected
 - std::optional / cmn::TrivialOptional / cmn::BFrame_t and scalar optional wrappers
 - cmn::gui::Color
+- cmn::file::Path / PathArray
+- cmn::sprite::Map
 - std/libc++ mutexes and lock wrappers
 - cmn::LoggedMutex / cmn::LoggedLock
 """
 
+import ast
 import lldb
 
 _MAX_SYNTHETIC_CHILDREN = 4096
@@ -73,6 +76,16 @@ _OPTIONAL_WRAPPER_TYPES = {
 }
 
 _COLOR_CATEGORY = "trex_color"
+
+_PATH_REGEXES = (
+    r"^cmn::file::Path$",
+    r"^cmn::file::PathArray$",
+    r"^cmn::file::_PathArray<.+>$",
+)
+_PATH_CATEGORY = "trex_path"
+_EVALUATING_PATH_SUMMARY = False
+
+_SPRITE_MAP_CATEGORY = "trex_sprite_map"
 
 _MUTEX_REGEXES = (
     r"^pthread_mutex_t$",
@@ -562,11 +575,77 @@ def illegal_array_summary(valobj, _dict):
     return f"size={size}, capacity={capacity}"
 
 
+def _string_text(value):
+    if not value.IsValid() or value.GetError().Fail():
+        return None
+    options = lldb.SBTypeSummaryOptions()
+    options.SetCapping(lldb.eTypeSummaryUncapped)
+    stream = lldb.SBStream()
+    value.GetSummary(stream, options)
+    try:
+        text = ast.literal_eval(stream.GetData() or "")
+        return text if isinstance(text, str) else None
+    except (SyntaxError, ValueError):
+        return None
+
+
+def path_summary(valobj, _dict):
+    global _EVALUATING_PATH_SUMMARY
+    raw = valobj.GetNonSyntheticValue()
+    process = raw.GetProcess()
+    if (
+        not _EVALUATING_PATH_SUMMARY
+        and process.IsValid()
+        and process.GetState() == lldb.eStateStopped
+        and raw.GetLoadAddress() not in (0, lldb.LLDB_INVALID_ADDRESS)
+    ):
+        options = lldb.SBExpressionOptions()
+        options.SetIgnoreBreakpoints(True)
+        options.SetUnwindOnError(True)
+        options.SetTryAllThreads(False)
+        options.SetTimeoutInMicroSeconds(100000)
+        options.SetSuppressPersistentResult(True)
+        _EVALUATING_PATH_SUMMARY = True
+        try:
+            text = _string_text(raw.EvaluateExpression("this->toStr()", options))
+            if text is not None:
+                return text
+        finally:
+            _EVALUATING_PATH_SUMMARY = False
+
+    # Core files and optimized builds may not support calling toStr().
+    path = raw.GetChildMemberWithName("_str")
+    if path.IsValid():
+        return path.GetSummary() or "unavailable"
+
+    source = raw.GetChildMemberWithName("_source")
+    pending = raw.GetChildMemberWithName("_to_be_resolved")
+    if _optional_has_value(pending.GetNonSyntheticValue()):
+        return f"PathArray<to be resolved:{_string_text(source) or ''}>"
+
+    paths = raw.GetChildMemberWithName("_paths").GetSyntheticValue()
+    if not paths.IsValid() or paths.GetError().Fail():
+        return "unavailable"
+    count = paths.GetNumChildren()
+    if not count:
+        if _get_uint(raw.GetChildMemberWithName("_matched_patterns")):
+            return _string_text(source)
+        return '""'
+    parts = []
+    for index in range(min(count, _MAX_SYNTHETIC_CHILDREN)):
+        path = paths.GetChildAtIndex(index).GetNonSyntheticValue()
+        parts.append(path.GetChildMemberWithName("_str").GetSummary() or "unavailable")
+    if count > _MAX_SYNTHETIC_CHILDREN:
+        parts.append("...")
+    return parts[0] if count == 1 else "[" + ",".join(parts) + "]"
+
+
 class RobinHoodSyntheticProvider:
     """Expose robin_hood::Table entries as synthetic children."""
 
-    def __init__(self, valobj, _dict):
+    def __init__(self, valobj, _dict, max_children=_MAX_SYNTHETIC_CHILDREN):
         self.valobj = valobj
+        self._max_children = max_children
         self.update()
 
     def update(self):
@@ -596,7 +675,7 @@ class RobinHoodSyntheticProvider:
             not _is_nonnull_pointer(self._keyvals)
             or not _is_nonnull_pointer(self._info)
             or not _is_reasonable_bucket_count(buckets)
-            or not _is_reasonable_count(self._size, _MAX_SYNTHETIC_CHILDREN)
+            or not _is_reasonable_count(self._size, self._max_children)
             or self._size > buckets + _MAX_ROBIN_HOOD_EXTRA_INFO
         ):
             return
@@ -655,6 +734,49 @@ class RobinHoodSyntheticProvider:
             return _dereference_pointer(self.valobj, f"[{index}]", data)
 
         return _create_named_value(self.valobj, f"[{index}]", data)
+
+
+class SpriteMapSyntheticProvider:
+    """Expose properties by key without taking the stopped process's map lock."""
+
+    def __init__(self, valobj, _dict):
+        self.valobj = valobj
+        self.update()
+
+    def update(self):
+        props = self.valobj.GetNonSyntheticValue().GetChildMemberWithName("_props")
+        entries = RobinHoodSyntheticProvider(props, {}, max_children=_MAX_BUCKETS)
+        self._children = []
+        for index in range(entries.num_children()):
+            entry = entries.get_child_at_index(index)
+            if entry is None or not entry.IsValid():
+                continue
+            key = _string_text(entry.GetChildMemberWithName("first"))
+            value = entry.GetChildMemberWithName("second")
+            if key is not None and value.IsValid():
+                self._children.append(value.Clone(key))
+        self._children.sort(key=lambda child: child.GetName())
+        self._indexes = {child.GetName(): i for i, child in enumerate(self._children)}
+
+    def has_children(self):
+        return bool(self._children)
+
+    def num_children(self):
+        return len(self._children)
+
+    def get_child_index(self, name):
+        return self._indexes.get(name, -1)
+
+    def get_child_at_index(self, index):
+        if index < 0 or index >= len(self._children):
+            return None
+        return self._children[index]
+
+
+def sprite_map_summary(valobj, _dict):
+    props = valobj.GetNonSyntheticValue().GetChildMemberWithName("_props")
+    size = _find_member(props.GetNonSyntheticValue(), "mNumElements")
+    return f"size={size.GetValueAsUnsigned()}" if size.IsValid() else "unavailable"
 
 
 def robin_hood_summary(valobj, _dict):
@@ -1141,6 +1263,8 @@ def __lldb_init_module(debugger, _dict):
         _STD_EXPECTED_CATEGORY,
         _OPTIONAL_CATEGORY,
         _COLOR_CATEGORY,
+        _PATH_CATEGORY,
+        _SPRITE_MAP_CATEGORY,
         _MUTEX_CATEGORY,
         _LOCK_CATEGORY,
     ):
@@ -1237,6 +1361,23 @@ def __lldb_init_module(debugger, _dict):
     )
     debugger.HandleCommand(f"type category enable {_COLOR_CATEGORY}")
 
+    for regex in _PATH_REGEXES:
+        debugger.HandleCommand(
+            f"type summary add --category {_PATH_CATEGORY} "
+            f"--python-function {__name__}.path_summary --regex {regex}"
+        )
+    debugger.HandleCommand(f"type category enable {_PATH_CATEGORY}")
+
+    debugger.HandleCommand(
+        f"type summary add --expand --hide-empty --category {_SPRITE_MAP_CATEGORY} "
+        f"--python-function {__name__}.sprite_map_summary cmn::sprite::Map"
+    )
+    debugger.HandleCommand(
+        f"type synthetic add --category {_SPRITE_MAP_CATEGORY} "
+        f"--python-class {__name__}.SpriteMapSyntheticProvider cmn::sprite::Map"
+    )
+    debugger.HandleCommand(f"type category enable {_SPRITE_MAP_CATEGORY}")
+
     for regex in _MUTEX_REGEXES:
         debugger.HandleCommand(
             f"type summary add --category {_MUTEX_CATEGORY} "
@@ -1258,4 +1399,4 @@ def __lldb_init_module(debugger, _dict):
         )
     debugger.HandleCommand(f"type category enable {_LOCK_CATEGORY}")
 
-    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional wrappers, Color, and mutex pretty-printers loaded.")
+    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional wrappers, Color, paths, sprite::Map, and mutex pretty-printers loaded.")

@@ -2,6 +2,7 @@
 #include <misc/Path.h>
 #include <misc/Timer.h>
 #include <file/ask_for_permission.h>
+#include <misc/GlobalSettings.h>
 
 //#undef NDEBUG
 //#define DEBUG_FFMPEG_PACKETS
@@ -98,7 +99,8 @@ bool FfmpegVideoCapture::open(const std::string& filePath) {
 #ifndef NDEBUG
     AVHWDeviceType hw_type = AV_HWDEVICE_TYPE_NONE;
     while ((hw_type = av_hwdevice_iterate_types(hw_type)) != AV_HWDEVICE_TYPE_NONE) {
-        Print("[FFMPEG] HW type: ", hw_type);
+        if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+            Print("[FFMPEG] HW type: ", hw_type);
     }
 #endif
 
@@ -239,7 +241,8 @@ retry_codec:
         _is_greyscale = false;
     }
     
-    cmn::Print("[FFMPEG] Opened video file: ", filePath, " with estimated frame count: ", estimated_frame_count(), ". Greyscale: ", is_greyscale(), " and hardware acceleration: ", chosenHWType != AV_HWDEVICE_TYPE_NONE ? Meta::toStr((int)chosenHWType) : "none");
+    if(not READ_SETTING_WITH_DEFAULT(quiet, false))
+        cmn::Print("[FFMPEG] Opened video file: ", filePath, " with estimated frame count: ", estimated_frame_count(), ". Greyscale: ", is_greyscale(), " and hardware acceleration: ", chosenHWType != AV_HWDEVICE_TYPE_NONE ? Meta::toStr((int)chosenHWType) : "none");
     return true;
 }
 
