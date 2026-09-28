@@ -36,15 +36,15 @@ namespace cmn::gui {
     }
 
     auto& text_bounds_fn() {
-        static std::function<Bounds(const std::string&, Drawable*, const Font&)> fn = [](const std::string& text, Drawable*, const Font& font) -> Bounds {
+        static std::function<Bounds(std::string_view, Drawable*, const Font&)> fn = [](std::string_view text, Drawable*, const Font& font) -> Bounds {
             return Bounds(0, 0, text.length() * 11.3_F * font.size, line_spacing_fn()(font));
         };
         return fn;
     }
-    Bounds Base::default_text_bounds(const std::string &text, Drawable* obj, const Font& font) {
+    Bounds Base::default_text_bounds(std::string_view text, Drawable* obj, const Font& font) {
         return text_bounds_fn()(text, obj, font);
     }
-    void Base::set_default_text_bounds(std::function<Bounds (const std::string &, Drawable *, const Font &)> fn) {
+    void Base::set_default_text_bounds(std::function<Bounds (std::string_view, Drawable *, const Font &)> fn) {
         text_bounds_fn() = fn;
     }
 
@@ -57,7 +57,7 @@ namespace cmn::gui {
     Float2_t Base::text_height(const Text &text) const {
         return 18_F * text.font().size;
     }
-    Bounds Base::text_bounds(const std::string& text, Drawable*, const Font& font) {
+    Bounds Base::text_bounds(std::string_view text, Drawable*, const Font& font) {
         return Bounds(0_F, 0_F, text.length() * 11.3_F * font.size, 26_F * font.size);
     }
 
@@ -74,7 +74,7 @@ namespace cmn::gui {
         set_default_line_spacing([this](const Font& font) -> Float2_t {
             return this->line_spacing(font);
         });
-        set_default_text_bounds([this](const std::string & text, Drawable *obj, const Font &font) -> Bounds {
+        set_default_text_bounds([this](std::string_view text, Drawable *obj, const Font &font) -> Bounds {
             return this->text_bounds(text, obj, font);
         });
     }

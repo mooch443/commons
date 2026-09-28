@@ -671,15 +671,17 @@ void DrawStructure::close_dialogs() {
                          .transformPoint(Vec2(x, y));
         auto delta = pos - target->relative_drag_start();
 
-        if(target->draggable())
+        if(target->draggable()) {
             target->set_pos(target->pos() + delta);
+            pos = target->pos();
+        }
 
         // DRAG also represents non-moving "drag-on" actions.
         auto handlers = target->_event_handlers.find(EventType::DRAG);
         if(handlers != target->_event_handlers.end()) {
             Event drag(EventType::DRAG);
-            drag.drag.x = target->pos().x;
-            drag.drag.y = target->pos().y;
+            drag.drag.x = pos.x;//target->pos().x;
+            drag.drag.y = pos.y;//target->pos().y;
             drag.drag.rx = delta.x;
             drag.drag.ry = delta.y;
             for(auto& handler : handlers->second)

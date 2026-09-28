@@ -134,8 +134,19 @@ void Textfield::init() {
     set_scroll_enabled(true);
     set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
     
+    add_event_handler(DRAG, [this](Event e) {
+        if(_clear_button
+           && _clear_button->hovered())
+        {
+            return false;
+        }
+        
+        this->move_cursor(e.drag.x);
+        return true;
+    });
     add_event_handler(HOVER, [this](Event e) {
-        if(pressed())
+        if(pressed()
+           && e.hover.hovered)
             this->move_cursor(e.hover.x);
         else
             this->set_dirty();
@@ -684,7 +695,7 @@ void Textfield::set_postfix(const std::string &p) {
     }
     
     void Textfield::move_cursor(Float2_t mx) {
-        std::string display = text().substr(_text_offset, _display_text_len - _text_offset);
+        std::string_view display = std::string_view(text()).substr(_text_offset, _display_text_len - _text_offset);
         Float2_t x = 0;
         long idx = 0;
         

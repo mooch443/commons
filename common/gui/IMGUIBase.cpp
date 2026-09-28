@@ -2143,14 +2143,18 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
     }
 
-    Bounds IMGUIBase::text_bounds(const std::string& text, Drawable* obj, const Font& font) {
+    Bounds IMGUIBase::text_bounds(std::string_view text, Drawable* obj, const Font& font) {
         if(_fonts.empty()) {
             FormatWarning("Trying to retrieve text_bounds before fonts are available.");
             return gui::Base::text_bounds(text, obj, font);
         }
         
+        /// an empty text will have empty dimensions
+        if(text.empty())
+            return Bounds();
+        
         auto imfont = _fonts.at(font.style);
-        Vec2 size = imfont->CalcTextSizeA(imfont->LegacySize * font.size / im_font_scale, FLT_MAX, -1_F, text.c_str(), text.c_str() + text.length(), NULL);
+        Vec2 size = imfont->CalcTextSizeA(imfont->LegacySize * font.size / im_font_scale, FLT_MAX, -1_F, text.data(), text.data() + text.length(), NULL);
         // Round
         //size.x = max(0, (float)(int)(size.x - 0.95_F));
         //size.y = line_spacing(font);
