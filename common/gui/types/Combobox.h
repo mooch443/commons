@@ -45,6 +45,8 @@ protected:
     derived_ptr<Button> _reset_button;
     std::unique_ptr<dyn::LabeledField> _value;
     
+    std::deque<std::function<void()>> _after_update;
+    
 public:
     template<typename... Args>
     Combobox(GUITaskQueue_t* gui, Args... args) : _gui(gui)

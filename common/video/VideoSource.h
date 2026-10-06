@@ -16,75 +16,92 @@ namespace cmn {
     class VideoSource;
 }
 
-class cmn::VideoSource : public cmn::GenericVideo {
+namespace cmn::video {
+
+class File {
 public:
-    
-public:
-    class File {
-    public:
-        enum Type {
-            UNKNOWN,
-            VIDEO,
-            IMAGE
-        };
-        
-        static File *open(size_t index, const std::string& basename, const std::string& ext, bool no_check = false);
-        static std::string complete_name(const std::string& basename, const std::string& ext);
-        
-        File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale);
-        
-    private:
-        static std::vector<std::pair<std::string, Type>> _extensions;
-        
-        GETTER(size_t, index);
-        GETTER(std::string, filename);
-        Frame_t _length;
-        //Video *_video;
-        FfmpegVideoCapture *_video{nullptr};
-        Type _type;
-        std::optional<uint32_t> _frame_rate;
-        std::optional<bool> _is_greyscale;
-        
-        GETTER(std::string, format);
-        
-        std::vector<double> _timestamps;
-        cv::Size _size;
-        
-    private:
-        File(size_t index, const std::string& basename, const std::string& extension);
-        File(const File&) = delete;
-    public:
-        File(File&&);
-        
-        std::set<std::string_view> recovered_errors() const {
-            return not _video ? std::set<std::string_view>{} : _video->recovered_errors();
-        }
-        
-    public:
-        ~File();
-        auto length() const { return _length; }
-        const cv::Size& resolution();
-        bool is_greyscale();
-        
-        void frame(cmn::ImageMode color, Frame_t frameIndex, gpuMat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
-        bool frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) const;
-        bool frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) const;
-        void close() const;
-        Type type() const { return _type; }
-        bool has_timestamps() const;
-        timestamp_t timestamp(Frame_t frameIndex, cmn::source_location loc = cmn::source_location::current()) const;
-        short framerate();
+    enum Type {
+        UNKNOWN,
+        VIDEO,
+        IMAGE
     };
     
+    static File *open(size_t index, const std::string& basename, const std::string& ext, bool no_check = false);
+    static std::string complete_name(const std::string& basename, const std::string& ext);
+    
+    File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale);
+    
+private:
+    static std::vector<std::pair<std::string, Type>> _extensions;
+    
+    GETTER(size_t, index);
+    GETTER(std::string, filename);
+    Frame_t _length;
+    //Video *_video;
+    FfmpegVideoCapture *_video{nullptr};
+    Type _type;
+    std::optional<uint32_t> _frame_rate;
+    std::optional<bool> _is_greyscale;
+    
+    GETTER(std::string, format);
+    
+    std::vector<double> _timestamps;
+    cv::Size _size;
+    
+private:
+    File(size_t index, const std::string& basename, const std::string& extension);
+    File(const File&) = delete;
+public:
+    File(File&&);
+    
+    std::set<std::string_view> recovered_errors() const {
+        return not _video ? std::set<std::string_view>{} : _video->recovered_errors();
+    }
+    
+public:
+    ~File();
+    auto length() const { return _length; }
+    const cv::Size& resolution();
+    bool is_greyscale();
+    
+    void frame(cmn::ImageMode color, Frame_t frameIndex, gpuMat& output, bool lazy_video = false, cmn::source_location loc = cmn::source_location::current()) const;
+    bool frame(cmn::ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location loc = cmn::source_location::current()) const;
+    bool frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location loc = cmn::source_location::current()) const;
+    void close() const;
+    Type type() const { return _type; }
+    bool has_timestamps() const;
+    timestamp_t timestamp(Frame_t frameIndex, cmn::source_location loc = cmn::source_location::current()) const;
+    short framerate();
+};
+
+}
+
+namespace cmn::video_cache {
+
+struct CVideo {
+    video::File::Type type{video::File::Type::UNKNOWN};
+    file::Path path;
+    Size2 resolution;
+    Frame_t N_frames;
+    uint32_t frame_rate{0};
+    bool has_timestamps{false};
+    bool is_greyscale{false};
+    
+    static CVideo Make(const video::File&);
+};
+
+}
+
+class cmn::VideoSource : public cmn::GenericVideo {
 private:
     /**
      * (Video) files
      */
-    std::vector<File*> _files_in_seq;
+    std::vector<video::File*> _files_in_seq;
     
     GETTER(std::string, source);
     GETTER(file::Path, base);
-    File* _last_file = nullptr;
+    video::File* _last_file = nullptr;
     cv::Size _size;
     Frame_t _length = 0_f;
     cv::Mat _average;
@@ -127,9 +144,9 @@ public:
     Frame_t length() const override { return _length; }
     const cv::Mat& average() const override { return _average; }
     cv::Mat& average() { return _average; }
-    bool supports_multithreads() const override { return type() == File::Type::IMAGE; }
+    bool supports_multithreads() const override { return type() == video::File::Type::IMAGE; }
     
-    File::Type type() const { if(_files_in_seq.empty()) return File::Type::UNKNOWN; return _files_in_seq.at(0)->type(); }
+    video::File::Type type() const { if(_files_in_seq.empty()) return video::File::Type::UNKNOWN; return _files_in_seq.at(0)->type(); }
     
     virtual bool has_timestamps() const override;
     virtual timestamp_t timestamp(Frame_t, cmn::source_location loc = cmn::source_location::current()) const override;
@@ -146,12 +163,14 @@ public:
     
     std::set<std::string_view> recovered_errors() const {
         for(auto file : _files_in_seq) {
-            if(file && file->type() == File::Type::VIDEO) {
+            if(file && file->type() == video::File::Type::VIDEO) {
                 return file->recovered_errors();
             }
         }
         return {};
     }
+    
+    static std::expected<std::vector<video_cache::CVideo>, std::string> TestVideoSource(const file::PathArray& path) noexcept;
 };
 
 #endif

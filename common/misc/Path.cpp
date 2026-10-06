@@ -608,9 +608,9 @@ std::optional<Path> Path::canonical() const {
         //std::this_thread::sleep_for(std::chrono::milliseconds(size_t(float(rand()) / float(RAND_MAX) * 500 + 500)));
 
         if (not is_folder())
-            throw U_EXCEPTION("The path " + str() + " is not a folder and cannot be iterated on.");
+            throw U_EXCEPTION("We tried to list files at ", *this, ", but either this does not exist, it is not a folder, or we do not have access to it.");
         if (not empty() && not exists())
-            throw U_EXCEPTION("The path " + str() + " does not exist.");
+            throw U_EXCEPTION("We tried to list files at ", *this, ", but it does not exist.");
 
         std::set<Path> result;
 

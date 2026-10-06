@@ -10,6 +10,7 @@
 #include <misc/Path.h>
 #include <misc/default_settings.h>
 #include <gui/dyn/binders.h>
+#include <gui/types/ErrorElement.h>
 
 namespace cmn::gui::dyn {
 
@@ -202,10 +203,18 @@ bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, La
         auto& objects = layout->objects();
         for(size_t i=0, N = objects.size(); i<N; ++i) {
             auto& child = objects[i];
-            auto r = DynamicGUI::update_objects(gui, g, child, context, state);
-            if(r) {
-                // objects changed
-                layout->replace_child(i, child);
+            try {
+                auto r = DynamicGUI::update_objects(gui, g, child, context, state);
+                if(r) {
+                    // objects changed
+                    layout->replace_child(i, child);
+                }
+            } catch(const std::exception& ex) {
+                std::string text = ex.what();
+                if(child) {
+                    layout->replace_child(i, Layout::Make<ErrorElement>{attr::Str{text}, Loc{child->pos()}, Size{child->size()}});
+                } else
+                    throw;
             }
         }
     }

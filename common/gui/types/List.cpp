@@ -44,45 +44,58 @@ namespace cmn::gui {
         add_event_handler(EventType::KEY, (event_handler_t)[this](Event e) -> bool {
             if(e.key.pressed) {
                 if(e.key.code == Codes::Return) {
-                    Rect *rect = nullptr;
-                    size_t i;
-                    
-                    for(i=0; i<_rects.size(); ++i) {
-                        if(_rects.at(i)->hovered()) {
-                            if(e.key.code == Codes::Down)
-                                rect = _rects.at(i ? (i-1) : (_rects.size()-1)).get();
-                            else
-                                rect = _rects.at(i < _rects.size()-1 ? (i+1) : 0).get();
-                            
-                            break;
+                    if(foldable()
+                       && folded())
+                    {
+                        set_folded(false);
+                        
+                    } else {
+                        Rect *rect = nullptr;
+                        size_t i;
+                        
+                        for(i=0; i<_rects.size(); ++i) {
+                            if(_rects.at(i)->hovered()) {
+                                if(e.key.code == Codes::Down)
+                                    rect = _rects.at(i ? (i-1) : (_rects.size()-1)).get();
+                                else
+                                    rect = _rects.at(i < _rects.size()-1 ? (i+1) : 0).get();
+                                
+                                break;
+                            }
                         }
-                    }
-                    
-                    if(rect) {
-                        this->_on_click(this, *_items.at(i));
-                        this->toggle_item(i);
+                        
+                        if(rect) {
+                            this->_on_click(this, *_items.at(i));
+                            this->toggle_item(i);
+                        }
                     }
                     
                     return true;
                 }
                 else if(e.key.code == Codes::Up || e.key.code == Codes::Down) {
-                    Rect *rect = nullptr;
-                    for(size_t i=0; i<_rects.size(); ++i) {
-                        if(_rects.at(i)->hovered()) {
-                            if(e.key.code == Codes::Down)
-                                rect = _rects.at(i ? (i-1) : (_rects.size()-1)).get();
-                            else
-                                rect = _rects.at(i < _rects.size()-1 ? (i+1) : 0).get();
-                            
-                            break;
+                    if(foldable()
+                       && folded())
+                    {
+                        set_folded(false);
+                    } else {
+                        Rect *rect = nullptr;
+                        for(size_t i=0; i<_rects.size(); ++i) {
+                            if(_rects.at(i)->hovered()) {
+                                if(e.key.code == Codes::Down)
+                                    rect = _rects.at(i ? (i-1) : (_rects.size()-1)).get();
+                                else
+                                    rect = _rects.at(i < _rects.size()-1 ? (i+1) : 0).get();
+                                
+                                break;
+                            }
                         }
+                        
+                        if(!rect && !_rects.empty())
+                            rect = _rects.front().get();
+                        
+                        stage()->do_hover(rect);
+                        this->set_content_changed(true);
                     }
-                    
-                    if(!rect && !_rects.empty())
-                        rect = _rects.front().get();
-                    
-                    stage()->do_hover(rect);
-                    this->set_content_changed(true);
                     
                     return true;
                 }

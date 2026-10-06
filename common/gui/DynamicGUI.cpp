@@ -779,6 +779,8 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
 #endif
     
     static Timing timing("dyn::update", 10);
+    std::exception_ptr eptr;
+    
     if(TakeTiming take(timing);
        parent)
     {
@@ -810,8 +812,20 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         } else if(do_update_objects) {
             auto copy = objects;
             for(auto &obj : copy) {
-                if(update_objects(gui, graph, obj, context, state)) {
-                    //Print("* object ", hex(obj.get()), " changed.");
+                try {
+                    if(update_objects(gui, graph, obj, context, state)) {
+                        //Print("* object ", hex(obj.get()), " changed.");
+                    }
+                } catch(const std::exception& ex) {
+                    std::string text = ex.what();
+                    
+                    if(obj) {
+                        obj = Layout::Make<ErrorElement>{attr::Str{text}, Loc{obj->pos()}, Size{obj->size()}};
+                    }
+                    else if(not eptr)
+                        eptr = std::current_exception();
+                    else
+                        FormatWarning("Not storing exception because we already have one.");
                 }
                 graph.wrap_object(*obj);
             }
@@ -878,6 +892,10 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     
     if (do_update_objects)
         last_update.reset();
+    
+    if(eptr) {
+        std::rethrow_exception( eptr );
+    }
 }
 
 DynamicGUI::operator bool() const {

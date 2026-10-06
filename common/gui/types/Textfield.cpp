@@ -135,18 +135,17 @@ void Textfield::init() {
     set_scroll_limits(Rangef(0, 0), Rangef(0, 0));
     
     add_event_handler(DRAG, [this](Event e) {
-        if(_clear_button
-           && _clear_button->hovered())
-        {
+        if(not stage() || stage()->mdown_object() != this)
             return false;
-        }
         
         this->move_cursor(e.drag.x);
         return true;
     });
     add_event_handler(HOVER, [this](Event e) {
         if(pressed()
-           && e.hover.hovered)
+           && e.hover.hovered
+           && stage()
+           && stage()->mdown_object() == this)
             this->move_cursor(e.hover.x);
         else
             this->set_dirty();

@@ -6,7 +6,7 @@
 namespace cmn::gui {
 
 void ErrorElement::init() {
-    _text = std::make_shared<StaticText>(Str{"ERROR: element "+name()+" cannot be loaded."});
+    _text = std::make_shared<StaticText>(Str{"ERROR: element "+name()+" cannot be loaded."}, TextClr{_settings.text_clr}, FillClr{_settings.fill_clr}, LineClr{_settings.line_clr}, _settings.font);
     set_bounds(_settings.bounds);
 }
 
@@ -22,6 +22,7 @@ void ErrorElement::update() {
     
     set(FillClr{_settings.fill_clr});
     set(LineClr{_settings.line_clr});
+    set(TextClr{_settings.text_clr});
     //set_background(_settings.fill_clr, _settings.line_clr);
     _text->set_txt(_settings.content);
     _text->set_default_font(_settings.font);

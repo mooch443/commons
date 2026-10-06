@@ -44,9 +44,11 @@ void Combobox::init() {
         }
         _dropdown->set_opened(false);
         if(_value) {
-            auto ptr = _value->representative().get();
-            if(ptr->parent() && ptr->parent()->stage())
-                ptr->parent()->stage()->select(ptr);
+            _after_update.push_back([ptr = std::weak_ptr(_value->representative().get_smart())](){
+                auto lock = ptr.lock();
+                if(lock && lock->parent() && lock->parent()->stage())
+                    lock->parent()->stage()->select(lock.get());
+            });
         }
     });
     
@@ -139,6 +141,13 @@ void Combobox::update() {
     _layout.update_layout();
     _layout.auto_size();
     //Entangled::set_size({_layout.width(), height()});
+    
+    while(not _after_update.empty()) {
+        auto front = std::move(_after_update.front());
+        _after_update.pop_front();
+        
+        front();
+    }
 }
 
 void Combobox::set(ListDims_t dims) {

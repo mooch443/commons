@@ -127,8 +127,7 @@ void Dropdown::init() {
         
         _textfield->set(Textfield::OnClearText_t([this]{
             _set_open(true);
-            if(stage())
-                stage()->select(_textfield.get());
+            select_textfield();
             if(_on_clear)
                 _on_clear();
         }));
@@ -139,11 +138,12 @@ void Dropdown::init() {
                 return;
             }
             
+            if(_closes_after_select) {
+                if (stage())
+                    stage()->select(NULL);
+            }
+            
             if(not _list.items().empty()) {
-                if(_closes_after_select) {
-                    if (stage())
-                        stage()->select(NULL);
-                }
                 /// prefer the explicit arrow-key selection over the
                 /// hover-based highlight: hover state can be reset by the
                 /// deselect above (which closes the list), or clobbered by
@@ -157,10 +157,6 @@ void Dropdown::init() {
                     _list.select_highlighted_item();
                 }
             } else {
-                if(_closes_after_select) {
-                    if(stage())
-                        stage()->select(NULL);
-                }
                 //_selected_item = -1;
                 if(_on_select)
                     _on_select(RawIndex{}, TextItem::invalid_item());
@@ -376,7 +372,7 @@ void Dropdown::set(Placeholder_t placeholder) {
            && stage() && _textfield && _textfield->parent())
         {
             _pending_select_textfield = false;
-            stage()->select(_textfield.get());
+            select_textfield();
         }
     }
 

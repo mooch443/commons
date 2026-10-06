@@ -758,6 +758,7 @@ void DrawStructure::close_dialogs() {
             };
         }
         auto d = find(x, y, pointer::Events::Click);
+        assert(not d || d->is_child_of(&_root));
         
         if(not first_set
            && d != _mdown_object)
@@ -1002,7 +1003,13 @@ void DrawStructure::close_dialogs() {
         if(_selected_object) {
             Event e(KEY);
             e.key = {code, true, shift};
-            return _selected_object->kdown(e);
+            auto o = _selected_object;
+            while(o != nullptr) {
+                if(o->kdown(e)) {
+                    return true;
+                }
+                o = o->parent();
+            }
         }
         
         return false;
@@ -1015,7 +1022,14 @@ void DrawStructure::close_dialogs() {
         if(_selected_object) {
             Event e(KEY);
             e.key = {code, false, shift};
-            return _selected_object->kup(e);
+            auto o = _selected_object;
+            while(o != nullptr) {
+                if(o->kup(e)) {
+                    return true;
+                }
+                o = o->parent();
+            }
+            //return _selected_object->kup(e);
         }
         
         return false;

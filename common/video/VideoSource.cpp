@@ -98,7 +98,7 @@ std::string load_string(const file::Path& npz, const std::string fname) {
     return std::string();
 }
 
-std::vector<std::pair<std::string, VideoSource::File::Type>> VideoSource::File::_extensions = {
+std::vector<std::pair<std::string, video::File::Type>> video::File::_extensions = {
     { "mov", VIDEO },
     { "mp4", VIDEO },
     { "h264", VIDEO },
@@ -119,26 +119,14 @@ std::vector<std::pair<std::string, VideoSource::File::Type>> VideoSource::File::
 
 namespace video_cache {
 
-struct CVideo {
-    VideoSource::File::Type type{VideoSource::File::Type::UNKNOWN};
-    file::Path path;
-    Size2 resolution;
-    Frame_t N_frames;
-    uint32_t frame_rate{0};
-    bool has_timestamps{false};
-    bool is_greyscale{false};
-    
-    static CVideo Make(const VideoSource::File&);
-};
-
 std::mutex mutex;
 std::unordered_map<std::string, std::vector<CVideo>> storage;
 
-CVideo Make(VideoSource::File& f, std::optional<Size2> override_resolution, std::optional<bool> override_greyscale) {
+CVideo Make(video::File& f, std::optional<Size2> override_resolution, std::optional<bool> override_greyscale) {
     Size2 resolution;
     bool is_greyscale;
     
-    if(f.type() != VideoSource::File::Type::IMAGE
+    if(f.type() != video::File::Type::IMAGE
        || not override_resolution.has_value()
        || not override_greyscale.has_value())
     {
@@ -193,18 +181,18 @@ std::expected<std::vector<CVideo>, std::string> _create_cache(const file::PathAr
         auto basename = path.remove_extension().str();
         
         if(first_file
-           && first_file->type == VideoSource::File::Type::IMAGE)
+           && first_file->type == video::File::Type::IMAGE)
         {
             auto copy = *first_file;
-            copy.path = VideoSource::File::complete_name(basename, extension);
+            copy.path = video::File::complete_name(basename, extension);
             video_info.push_back(std::move(copy));
             continue;
         }
         
         file::request_access(file::Path(basename).remove_filename().str());
-        auto f = VideoSource::File::open(video_info.size(), basename, extension);
-        if(!f)
-            throw U_EXCEPTION("Cannot open file ",path.str(),".");
+        auto f = video::File::open(video_info.size(), basename, extension);
+        if(not f)
+            return std::unexpected("Cannot open file "+path.toStr()+".");
         video_info.push_back(Make(*f, first_resolution, first_greyscale));
         
         if(not first_greyscale)
@@ -230,10 +218,7 @@ std::expected<std::vector<CVideo>, std::string> load_cache(const file::PathArray
             return info;
             
         } catch(const std::exception& ex) {
-#ifndef NDEBUG
-            FormatExcept("Cannot create cache for ", utils::ShortenText(source.toStr(), 1000),": ", ex.what());
-#endif
-            throw;
+            return std::unexpected("Cannot create cache for "+ utils::ShortenText(source.toStr(), 1000)+": "+ ex.what());
         }
     }
     return it->second;
@@ -241,11 +226,11 @@ std::expected<std::vector<CVideo>, std::string> load_cache(const file::PathArray
 
 }
 
-std::string VideoSource::File::complete_name(const std::string &basename, const std::string &ext) {
+std::string video::File::complete_name(const std::string &basename, const std::string &ext) {
     return basename + "." + ext;
 }
 
-VideoSource::File * VideoSource::File::open(size_t index, const std::string& basename, const std::string& ext, bool no_check) {
+video::File * video::File::open(size_t index, const std::string& basename, const std::string& ext, bool no_check) {
     if(no_check) {
         return new File(index, basename, ext);
     }
@@ -259,7 +244,7 @@ VideoSource::File * VideoSource::File::open(size_t index, const std::string& bas
     return NULL;
 }
 
-VideoSource::File::File(File&& other)
+video::File::File(File&& other)
 : _index(other._index),
   _filename(other._filename),
   _length(other._length),
@@ -275,14 +260,14 @@ VideoSource::File::File(File&& other)
     other._video = nullptr;
 }
 
-VideoSource::File::File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale)
+video::File::File(size_t index, file::Path path, Frame_t length, Size2 size, uint32_t frame_rate, Type type, bool is_greyscale)
 : _index(index), _filename(path), _length(length), _video(), _type(type), _frame_rate(frame_rate), _is_greyscale(is_greyscale), _size(size)
 {
     if(type == Type::VIDEO)
         _video = new FfmpegVideoCapture{""};
 }
 
-VideoSource::File::File(size_t index, const std::string& basename, const std::string& extension) : _index(index), _video(NULL), _size(0, 0) {
+video::File::File(size_t index, const std::string& basename, const std::string& extension) : _index(index), _video(NULL), _size(0, 0) {
     _filename = complete_name(basename, extension);
     if(not file::Path(_filename).is_absolute())
         _filename = file::Path(_filename).absolute().str();
@@ -383,7 +368,7 @@ VideoSource::File::File(size_t index, const std::string& basename, const std::st
     }
 }
 
-bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location) const
+bool video::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& output, cmn::source_location) const
 {
     switch (_type) {
         case VIDEO: {
@@ -417,7 +402,7 @@ bool VideoSource::File::frame(cmn::ImageMode color, Frame_t frameIndex, Image& o
     }
 }
 
-bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location) const {
+bool video::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& output, cmn::source_location) const {
     switch (_type) {
     case VIDEO: {
         if (!_video->is_open()) {
@@ -441,7 +426,7 @@ bool VideoSource::File::frame(ImageMode color, Frame_t frameIndex, cv::Mat& outp
     }
 }
 
-void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& output, bool, cmn::source_location) const {
+void video::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& output, bool, cmn::source_location) const {
     switch (_type) {
         case VIDEO: {
             if (!_video->is_open()) {
@@ -472,7 +457,7 @@ void VideoSource::File::frame(ImageMode color, Frame_t frameIndex, gpuMat& outpu
     }
 }
 
-bool VideoSource::File::has_timestamps() const {
+bool video::File::has_timestamps() const {
     switch (_type) {
         case VIDEO:
             /*if (!_video->isOpened())
@@ -491,7 +476,7 @@ bool VideoSource::File::has_timestamps() const {
     throw U_EXCEPTION("Retrieving timestamp for ",_filename," failed because the type was unknown.");
 }
 
-short VideoSource::File::framerate() {
+short video::File::framerate() {
     if(type() != VIDEO)
         return -1;
     
@@ -524,7 +509,7 @@ short VideoSource::File::framerate() {
     }
 }
 
-timestamp_t VideoSource::File::timestamp(Frame_t frameIndex, cmn::source_location loc) const {
+timestamp_t video::File::timestamp(Frame_t frameIndex, cmn::source_location loc) const {
     if(_type != VIDEO)
         throw _U_EXCEPTION(loc, "Cannot retrieve timestamps from anything else other than videos.");
     
@@ -543,13 +528,13 @@ timestamp_t VideoSource::File::timestamp(Frame_t frameIndex, cmn::source_locatio
     return timestamp_t(duration);
 }
 
-bool VideoSource::File::is_greyscale() {
+bool video::File::is_greyscale() {
     /// ensure that we loaded this property
     (void)resolution();
     return *_is_greyscale;
 }
 
-const cv::Size& VideoSource::File::resolution() {
+const cv::Size& video::File::resolution() {
     if((_size.width == 0 && _size.height == 0)
        || not _is_greyscale.has_value())
     {
@@ -580,13 +565,13 @@ const cv::Size& VideoSource::File::resolution() {
     return _size;
 }
 
-void VideoSource::File::close() const {
+void video::File::close() const {
     if (_type == VIDEO) {
         _video->close();
     }
 }
 
-VideoSource::File::~File() {
+video::File::~File() {
     if (_video) {
         delete _video;
     }
@@ -615,11 +600,24 @@ VideoSource::VideoSource(VideoSource&& other)
         _colors(other._colors)
 {
     for(auto& f : other._files_in_seq) {
-        _files_in_seq.push_back(new File(std::move(*f)));
+        _files_in_seq.push_back(new video::File(std::move(*f)));
         if(other._last_file == f)
             _last_file = _files_in_seq.back();
     }
     
+}
+
+std::expected<std::vector<video_cache::CVideo>, std::string> VideoSource::TestVideoSource(const file::PathArray& path) noexcept {
+    try {
+        auto cache = video_cache::load_cache(path);
+        if(cache && cache->empty()) {
+            return std::unexpected("Returned cache was empty for " + path.toStr());
+        }
+        return cache;
+        
+    } catch(const std::exception& ex) {
+        return std::unexpected(ex.what());
+    }
 }
 
 VideoSource::VideoSource(const file::PathArray& source)
@@ -634,7 +632,7 @@ VideoSource::VideoSource(const file::PathArray& source)
     size_t index = 0;
     _is_greyscale = false;
     for(auto &c : *cache) {
-        auto file = new File(index++, c.path, c.N_frames, c.resolution, c.frame_rate, c.type, c.is_greyscale);
+        auto file = new video::File(index++, c.path, c.N_frames, c.resolution, c.frame_rate, c.type, c.is_greyscale);
         if(c.is_greyscale)
             _is_greyscale = true;
         
@@ -651,7 +649,7 @@ VideoSource::VideoSource(const file::PathArray& source)
     _size = _files_in_seq.front()->resolution();
     _has_timestamps = _files_in_seq.front()->has_timestamps();
     
-    if(type() == File::VIDEO) {
+    if(type() == video::File::VIDEO) {
         _framerate = _files_in_seq.front()->framerate();
     } else {
         //! TODO: Frame rate not being set for image sequences...
@@ -671,9 +669,9 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
     if (   seq_start == VIDEO_SEQUENCE_INVALID_VALUE
         || seq_end   == VIDEO_SEQUENCE_INVALID_VALUE)
     {
-        File *f = File::open(0, prefix + suffix, extension);
+        video::File *f = video::File::open(0, prefix + suffix, extension);
 
-        if(f && f->type() != File::VIDEO) {
+        if(f && f->type() != video::File::VIDEO) {
             if(not READ_SETTING_WITH_DEFAULT(quiet, false))
                 FormatWarning("Just loading one image because seq_end/seq_start were not specified.");
         }
@@ -698,7 +696,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             
             try {
                 ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
-                File *file = File::open(sign_cast<size_t>(i - seq_start), ss.str(), extension);
+                video::File *file = video::File::open(sign_cast<size_t>(i - seq_start), ss.str(), extension);
                 if(!file) {
                     break;
                 }
@@ -735,14 +733,14 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
             std::stringstream ss;
             ss << prefix << std::setfill('0') << std::setw(padding) << i << suffix;
             
-            File *f = File::open(i-seq_start, ss.str(), extension, i != seq_start);
+            video::File *f = video::File::open(i-seq_start, ss.str(), extension, i != seq_start);
             if(!f)
                 throw U_EXCEPTION("Cannot find file ", ss.str() + "." + extension, " in sequence ", seq_start,"-", seq_end, ".");
             _files_in_seq.push_back(f);
             
             _length += f->length();
             
-            if(type() != File::Type::IMAGE && i % 50 == 0)
+            if(type() != video::File::Type::IMAGE && i % 50 == 0)
                 Print(i, "/", seq_end);
             
             if(BOOL_SETTING(terminate))
@@ -788,7 +786,7 @@ void VideoSource::open(const std::string& prefix, const std::string& suffix, con
         Print("Resolution of VideoSource ", prefix+(suffix.empty() ? "" : "."+suffix), " is ", _size);
     _base = prefix+(suffix.empty() ? "" : "."+suffix);
     
-    if(type() == File::VIDEO) {
+    if(type() == video::File::VIDEO) {
         _framerate = _files_in_seq.at(0)->framerate();
     } else {
         //! TODO: Frame rate not being set for image sequences...
@@ -812,7 +810,7 @@ void VideoSource::frame(Frame_t globalIndex, gpuMat& output, cmn::source_locatio
         output.create(size.height, size.width, CV_8UC(required_image_channels(_colors)));
     }
     
-    if (type() == File::Type::IMAGE) {
+    if (type() == video::File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
         if (_last_file && _last_file != f)
             _last_file->close();
@@ -872,7 +870,7 @@ bool VideoSource::frame(Frame_t globalIndex, cv::Mat& output, cmn::source_locati
         output.create(size.height, size.width, CV_8UC(required_image_channels(_colors)));
     }
     
-    if (type() == File::Type::IMAGE) {
+    if (type() == video::File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
         if (_last_file && _last_file != f)
             _last_file->close();
@@ -914,7 +912,7 @@ bool VideoSource::frame(Frame_t globalIndex, Image& output, cmn::source_location
         output.create(size.height, size.width, required_image_channels(_colors));
     }
     
-    if(type() == File::Type::IMAGE) {
+    if(type() == video::File::Type::IMAGE) {
         auto f = _files_in_seq.at(globalIndex.get());
         if(_last_file && _last_file != f)
             _last_file->close();
@@ -1072,7 +1070,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");
-    std::map<File*, std::set<Frame_t>> file_indexes;
+    std::map<video::File*, std::set<Frame_t>> file_indexes;
     
     Print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
     
@@ -1121,7 +1119,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     std::atomic<size_t> count = 0;
     
     for(auto && [file, indexes] : file_indexes) {
-        auto fn = [this, &count, &acc, &callback, samples, &terminate, output](File* file, const std::set<Frame_t>& indexes)
+        auto fn = [this, &count, &acc, &callback, samples, &terminate, output](video::File* file, const std::set<Frame_t>& indexes)
         {
             Image f(size().height, size().width, output.channels);
             
