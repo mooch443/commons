@@ -188,10 +188,10 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
 {
     LayoutContext layout(gui, obj, state, context, defaults, hash);
     hash = layout.hash;
+    Layout::Ptr ptr;
+    std::optional<std::string> update_error;
 
     try {
-        Layout::Ptr ptr;
-
         switch (layout.type) {
             case LayoutType::each:
                 ptr = layout.create_object<LayoutType::each>();
@@ -265,7 +265,13 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                         auto &obj = *sit->second;
                         auto &body = std::get<CustomBody>(obj.object);
                         ptr = body._customs_cache;
-                        context.custom_elements.at(body.name)->update(ptr, context, state, obj.patterns);
+                        try {
+                            context.custom_elements.at(body.name)->update(ptr, context, state, obj.patterns);
+                        } catch(const std::exception& e) {
+                            if(not ptr)
+                                throw;
+                            update_error = e.what();
+                        }
                         obj.timer.reset();
                         
                     } else {
@@ -276,7 +282,13 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                         });
                         auto &body = std::get<CustomBody>(obj->object);
                         body._customs_cache = ptr;
-                        it->second->update(ptr, context, state, obj->patterns);
+                        try {
+                            it->second->update(ptr, context, state, obj->patterns);
+                        } catch(const std::exception& e) {
+                            if(not ptr)
+                                throw;
+                            update_error = e.what();
+                        }
                         obj->timer.reset();
                     }
                 } else
@@ -284,18 +296,29 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
                 break;
         }
         
-        if(not ptr) {
-            FormatExcept("Cannot create object ",obj.at("type").get_string());
-            return nullptr;
-        }
+        if(ptr)
+            layout.finalize(ptr);
         
-        layout.finalize(ptr);
-        return ptr;
     } catch(const std::exception& e) {
-        std::string text = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj).value_or("null")+"</c>";
-        FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj).value_or("null"));
-        return Layout::Make<ErrorElement>{attr::Str{text}, Loc{layout.pos}, Size{layout.size}};
+        update_error = "<b><red>Failed to make object with '"+std::string(e.what())+"' for</red></b>: <c>"+ glz::write_json(obj).value_or("null")+"</c>";
+        //FormatExcept("Failed to make object here ",e.what(), " for ",glz::write_json(obj).value_or("null"));
+        //ptr = Layout::Make<ErrorElement>{attr::Str{text}, Loc{layout.pos}, SizeLimit{max(layout.size, Size2(150,0))}};
     }
+    
+    /*if(not ptr) {
+        if(update_error) {
+            FormatExcept(update_error->c_str());
+        } else
+            FormatExcept("Cannot create object ",obj.at("type").get_string());
+        return nullptr;
+    }*/
+    
+    if(update_error) {
+        Layout::Ptr error = Layout::Make<ErrorElement>{attr::Str{*update_error}, Loc{ptr ? ptr->pos() : Vec2()}, SizeLimit{max(ptr ? ptr->size() : Size2(0), Size2(250,0))}};
+        error.to<ErrorElement>()->set_failed_object(ptr);
+        return error;
+    }
+    return ptr;
 }
 
 std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const std::string& text){
@@ -387,7 +410,13 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
     }
 }
 
-bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& o, const Context& context, State& state) {
+bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::Ptr& object, const Context& context, State& state) {
+    const Layout::Ptr displayed = object;
+    auto* error = dynamic_cast<ErrorElement*>(displayed.get());
+    if(error && not error->failed_object())
+        return false;
+
+    Layout::Ptr o = error ? error->failed_object() : displayed;
     auto hash = (std::size_t)o->custom_data("object_index");
     if(not hash) {
         //! if this is a Layout type, need to iterate all children as well:
@@ -440,7 +469,28 @@ bool DynamicGUI::update_objects(GUITaskQueue_t* gui, DrawStructure& g, Layout::P
     /// get the hashed object and ensure
     /// it stays alive during execution
     auto ptr = it->second;
-    return ptr->update(gui, hash, g, o, context, state);
+    try {
+        auto changed = ptr->update(gui, hash, g, o, context, state);
+        object = o;
+        if(error)
+            return true;
+        return changed;
+    } catch(const std::exception& e) {
+        if(not o)
+            throw;
+
+        if(not error) {
+            Layout::Ptr replacement = Layout::Make<ErrorElement>{attr::Str{e.what()}, Loc{o->pos()}, Size{o->size()}};
+            replacement.to<ErrorElement>()->set_failed_object(o);
+            object = std::move(replacement);
+            return true;
+        } else {
+            error->set_failed_object(o);
+            error->set(attr::Str{e.what()});
+        }
+
+        return false;
+    }
 }
 
 void DynamicGUI::reload(DrawStructure& graph) {
@@ -779,7 +829,6 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
 #endif
     
     static Timing timing("dyn::update", 10);
-    std::exception_ptr eptr;
     
     if(TakeTiming take(timing);
        parent)
@@ -812,21 +861,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
         } else if(do_update_objects) {
             auto copy = objects;
             for(auto &obj : copy) {
-                try {
-                    if(update_objects(gui, graph, obj, context, state)) {
-                        //Print("* object ", hex(obj.get()), " changed.");
-                    }
-                } catch(const std::exception& ex) {
-                    std::string text = ex.what();
-                    
-                    if(obj) {
-                        obj = Layout::Make<ErrorElement>{attr::Str{text}, Loc{obj->pos()}, Size{obj->size()}};
-                    }
-                    else if(not eptr)
-                        eptr = std::current_exception();
-                    else
-                        FormatWarning("Not storing exception because we already have one.");
-                }
+                update_objects(gui, graph, obj, context, state);
                 graph.wrap_object(*obj);
             }
             objects = std::move(copy);
@@ -893,9 +928,6 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     if (do_update_objects)
         last_update.reset();
     
-    if(eptr) {
-        std::rethrow_exception( eptr );
-    }
 }
 
 DynamicGUI::operator bool() const {

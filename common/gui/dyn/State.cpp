@@ -10,7 +10,6 @@
 #include <misc/Path.h>
 #include <misc/default_settings.h>
 #include <gui/dyn/binders.h>
-#include <gui/types/ErrorElement.h>
 
 namespace cmn::gui::dyn {
 
@@ -203,18 +202,10 @@ bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, La
         auto& objects = layout->objects();
         for(size_t i=0, N = objects.size(); i<N; ++i) {
             auto& child = objects[i];
-            try {
-                auto r = DynamicGUI::update_objects(gui, g, child, context, state);
-                if(r) {
-                    // objects changed
-                    layout->replace_child(i, child);
-                }
-            } catch(const std::exception& ex) {
-                std::string text = ex.what();
-                if(child) {
-                    layout->replace_child(i, Layout::Make<ErrorElement>{attr::Str{text}, Loc{child->pos()}, Size{child->size()}});
-                } else
-                    throw;
+            auto r = DynamicGUI::update_objects(gui, g, child, context, state);
+            if(r) {
+                // objects changed
+                layout->replace_child(i, child);
             }
         }
     }
@@ -243,6 +234,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
         const bool res = convert_to_bool(obj.variable.realize(context, state));
         auto last_condition = (uint64_t)o->custom_data("last_condition");
         auto pass = o.to<Fallthrough>();
+        bool changed = false;
         
         //IndexScopeHandler handler{state._current_index};
         if(not res) {
@@ -272,19 +264,14 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                     //state._current_index.inc();
                 
                 if(last_condition != 1) {
-                    auto ref = obj._else;
-                    
-                    ref->set_bounds_changed();
+                    obj._else->set_bounds_changed();
                     pass->set_object(obj._else);
-                    
-                    if(ref != obj._else) {
-                        FormatWarning("Differs! ", *ref, " vs. ", *obj._else);
-                        return true;
-                    }
                 }
                 
                 if(DynamicGUI::update_objects(gui, g, obj._else, context, _state)) {
                     //FormatWarning("Object changed after update");
+                    pass->set_object(obj._else);
+                    changed = true;
                 }
                 
             } else {
@@ -301,7 +288,7 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
             }
             
             timer.reset();
-            return last_condition != 1;
+            return last_condition != 1 || changed;
             
         } else {
             if(obj._else) {
@@ -333,15 +320,14 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 pass->set_object(obj._if);
             }
             
-            auto ref = obj._if;
             if(DynamicGUI::update_objects(gui, g, obj._if, context, _state)) {
                 //FormatWarning("Object changed after update.");
+                pass->set_object(obj._if);
+                changed = true;
             }
-            if(ref != obj._if)
-                FormatWarning("Differs! ", *ref, " vs. ", *obj._if);
             
             timer.reset();
-            return last_condition != 2;
+            return last_condition != 2 || changed;
         }
         
     } catch(const std::exception& ex) {
@@ -1050,6 +1036,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                         if(DynamicGUI::update_objects(gui, g, p, context, state)) {
                             //Print("Changed content");
                             dirty = true;
+                            o.to<Layout>()->replace_child(i, p);
                         }
                     }
                 }

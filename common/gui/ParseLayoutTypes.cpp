@@ -5,6 +5,7 @@
 #include <gui/dyn/binders.h>
 #include <gui/types/TagList.h>
 #include <misc/Path.h>
+#include <gui/types/ErrorElement.h>
 
 namespace cmn::gui::dyn {
 

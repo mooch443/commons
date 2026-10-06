@@ -1,6 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 #include <gui/types/Entangled.h>
+#include <gui/types/Layout.h>
 
 namespace cmn::gui {
 
@@ -15,11 +16,13 @@ public:
         Color text_clr = White;
         Font font = Font(0.35, Align::Left);
         std::string content;
+        SizeLimit size_limit = SizeLimit(150,0);
     };
     
 protected:
     Settings _settings;
     std::shared_ptr<StaticText> _text;
+    Layout::Ptr _failed_object;
     
 public:
     template<typename... Args>
@@ -38,6 +41,9 @@ public:
     
 public:
     using Entangled::set;
+
+    const Layout::Ptr& failed_object() const { return _failed_object; }
+    void set_failed_object(Layout::Ptr object) { _failed_object = std::move(object); }
     
     void set(attr::Font font);
     void set(attr::FillClr clr) override;
