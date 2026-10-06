@@ -699,8 +699,8 @@ namespace cmn::gui {
                                 }
                                 return;
                             } else {
-                                if(not _last_hovered_item
-                                   || _last_hovered_item != idx)
+                                if(not _currently_highlighted_item
+                                   || _currently_highlighted_item != idx)
                                 {
                                     _last_hovered_item = idx;
                                     _currently_highlighted_item = idx;
