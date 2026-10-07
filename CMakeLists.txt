@@ -1023,32 +1023,30 @@ if(WITH_FFMPEG)
     find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h)
     find_library(AVUTIL_LIBRARY avutil)
 
-    find_path(AVDEVICE_INCLUDE_DIR libavdevice/avdevice.h)
-    find_library(AVDEVICE_LIBRARY avdevice)
-
     #find_path(LIBSWSSCALE_INCLUDE_DIR libswscale/swsscale.h)
     find_library(LIBSWSSCALE_LIBRARY swscale)
 
-    get_filename_component(FFMPEG_DIR "${AVDEVICE_LIBRARY}" DIRECTORY)
-    message(STATUS "AVDEVICE_INCLUDE_DIR = ${AVDEVICE_INCLUDE_DIR}/ vs. ${FFMPEG_DIR}")
+    get_filename_component(FFMPEG_DIR "${AVCODEC_LIBRARY}" DIRECTORY)
+    message(STATUS "AVCODEC_INCLUDE_DIR = ${AVCODEC_INCLUDE_DIR}/ vs. ${FFMPEG_DIR}")
 
+    # File video I/O uses codecs and formats; webcam indices use OpenCV's camera backends.
     set(OPENCV_EXTRA_FLAGS ${OPENCV_EXTRA_FLAGS} 
         -DFFMPEG_DIR:PATH=${FFMPEG_DIR}
         -DFFMPEG_LIB_DIR:PATH=${FFMPEG_DIR}
-        -DFFMPEG_INCLUDE_DIRS=${AVDEVICE_INCLUDE_DIR}
+        -DFFMPEG_INCLUDE_DIRS=${AVCODEC_INCLUDE_DIR}
         -DOPENCV_FFMPEG_USE_FIND_PACKAGE=ON
-        -DOPENCV_FFMPEG_ENABLE_LIBAVDEVICE=ON
+        -DOPENCV_FFMPEG_ENABLE_LIBAVDEVICE=OFF
     )
 
-    if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT AVDEVICE_LIBRARY OR NOT LIBSWSSCALE_LIBRARY)
+    if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT LIBSWSSCALE_LIBRARY)
         message(FATAL_ERROR
             "WITH_FFMPEG=ON requires environment-provided shared FFmpeg libraries. "
             "Detected avcodec='${AVCODEC_LIBRARY}', avformat='${AVFORMAT_LIBRARY}', avutil='${AVUTIL_LIBRARY}', "
-            "avdevice='${AVDEVICE_LIBRARY}', swscale='${LIBSWSSCALE_LIBRARY}'. Install FFmpeg and add its prefix to CMAKE_PREFIX_PATH."
+            "swscale='${LIBSWSSCALE_LIBRARY}'. Install FFmpeg and add its prefix to CMAKE_PREFIX_PATH."
         )
     else()
-        set(FFMPEG_INCLUDE_DIRS ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${AVDEVICE_INCLUDE_DIR})
-        set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY} ${LIBSWSSCALE_LIBRARY})
+        set(FFMPEG_INCLUDE_DIRS ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR})
+        set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${LIBSWSSCALE_LIBRARY})
         message(STATUS "Found ffmpeg: ${FFMPEG_LIBRARIES}")
         target_link_libraries(Commons::FFMPEG INTERFACE ${FFMPEG_LIBRARIES})
         include_directories(${FFMPEG_INCLUDE_DIRS})
@@ -1466,7 +1464,7 @@ if(COMMONS_BUILD_OPENCV)
     message(STATUS "Current NASM = ${CMAKE_ASM_NASM_COMPILER}")
     
     if(UNIX)
-        get_filename_component(PKG_CONFIG_PATH ${AVDEVICE_LIBRARY} DIRECTORY)
+        get_filename_component(PKG_CONFIG_PATH ${AVCODEC_LIBRARY} DIRECTORY)
         
         set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} $ENV{PKG_CONFIG_PATH})
         set(ENV{PKG_CONFIG_PATH} "${PKG_CONFIG_PATH}/pkgconfig:$ENV{PKG_CONFIG_PATH}")
