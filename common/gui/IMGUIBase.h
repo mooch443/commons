@@ -74,6 +74,7 @@ namespace cmn::gui {
         GETTER(Bounds, work_area);
         GETTER_I(bool, focussed, true);
         std::function<void(DrawStructure&, const gui::Event&)> _event_fn;
+        std::unordered_map<int, Codes> _pressed_key_codes;
         size_t _objects_drawn, _skipped;
 #ifdef COMMONS_COUNT_OBJECTS
         std::unordered_map<Type::Class, size_t> _type_counts;

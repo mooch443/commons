@@ -209,8 +209,8 @@ namespace cmn::gui {
         Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Unknown,  Codes::Unknown,
         Codes::Unknown,  Codes::Escape,   Codes::Unknown, Codes::Unknown,  Codes::Unknown,
         Codes::Unknown,  Codes::Space,    Codes::Unknown, Codes::Quote,    Codes::Unknown,
-        Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Unknown,  Codes::LBracket,
-        Codes::RBracket, Codes::Multiply, Codes::Add,     Codes::Comma,    Codes::Subtract,
+        Codes::Unknown,  Codes::Unknown,  Codes::Unknown, Codes::Quote,    Codes::Unknown,
+        Codes::Unknown,  Codes::Multiply, Codes::Add,     Codes::Comma,    Codes::Subtract,
         Codes::Period,   Codes::Slash,    Codes::Num0,    Codes::Num1,     Codes::Num2,
         Codes::Num3,     Codes::Num4,     Codes::Num5,    Codes::Num6,     Codes::Num7,
         Codes::Num8,     Codes::Num9,     Codes::Unknown, Codes::SemiColon,Codes::Unknown,
@@ -220,14 +220,14 @@ namespace cmn::gui {
         Codes::L,        Codes::M,        Codes::N,       Codes::O,        Codes::P,
         Codes::Q,        Codes::R,        Codes::S,       Codes::T,        Codes::U,
         Codes::V,        Codes::W,        Codes::X,       Codes::Y,        Codes::Z,
-        Codes::Unknown,  Codes::BackSlash,Codes::Unknown, Codes::Unknown,  Codes::Unknown,
-        Codes::Unknown,  Codes::A,        Codes::B,       Codes::C,        Codes::D,
+        Codes::LBracket, Codes::BackSlash,Codes::RBracket,Codes::Unknown,  Codes::Unknown,
+        Codes::Tilde,    Codes::A,        Codes::B,       Codes::C,        Codes::D,
         Codes::E,        Codes::F,        Codes::G,       Codes::H,        Codes::I,
         Codes::J,        Codes::K,        Codes::L,       Codes::M,        Codes::N,
         Codes::O,        Codes::P,        Codes::Q,       Codes::R,        Codes::S,
         Codes::T,        Codes::U,        Codes::V,       Codes::W,        Codes::X,
         Codes::Y,        Codes::Z,        Codes::Unknown, Codes::Unknown,  Codes::Unknown,
-        Codes::Unknown,  Codes::Delete
+        Codes::Tilde,    Codes::Delete
     };
     
     enum EventType {

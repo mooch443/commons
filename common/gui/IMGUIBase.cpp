@@ -1,5 +1,6 @@
 #include "IMGUIBase.h"
 #include <gui/DrawStructure.h>
+#include <gui/GLFWKeyEvent.h>
 #include <misc/Path.h>
 
 #include <algorithm>
@@ -244,7 +245,7 @@ class PolyCache : public CacheObject {
         
         Codes::Space,
         Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
-        Codes::Unknown, // apostroph (39)
+        Codes::Quote, // apostroph (39)
         Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
         Codes::Comma, // 44
         Codes::Subtract,
@@ -256,12 +257,12 @@ class PolyCache : public CacheObject {
         Codes::Unknown,
         Codes::Equal, // (61)
         Codes::Unknown, Codes::Unknown, Codes::Unknown,
-        Codes::A, Codes::B, Codes::C, Codes::D, Codes::E, Codes::F, Codes::G, Codes::H, Codes::I, Codes::J, Codes::K, Codes::L, Codes::M, Codes::N, Codes::O, Codes::P, Codes::Q, Codes::R, Codes::S, Codes::T, Codes::U, Codes::V, Codes::W, Codes::X, Codes::Z, Codes::Y,
+        Codes::A, Codes::B, Codes::C, Codes::D, Codes::E, Codes::F, Codes::G, Codes::H, Codes::I, Codes::J, Codes::K, Codes::L, Codes::M, Codes::N, Codes::O, Codes::P, Codes::Q, Codes::R, Codes::S, Codes::T, Codes::U, Codes::V, Codes::W, Codes::X, Codes::Y, Codes::Z,
         Codes::LBracket,
         Codes::BackSlash,
         Codes::RBracket, // (93)
         Codes::Unknown, Codes::Unknown,
-        Codes::Unknown, // (grave accent, 96)
+        Codes::Tilde, // (grave accent, 96)
         
         Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
         Codes::Unknown, Codes::Unknown, Codes::Unknown, Codes::Unknown,
@@ -353,6 +354,37 @@ class PolyCache : public CacheObject {
         Codes::RSystem,
         Codes::Menu // 348
     };
+
+    KeyEvent detail::translate_glfw_key_event(
+        int key, int scancode, int action, int mods, const char* name,
+        std::unordered_map<int, Codes>& pressed_key_codes)
+    {
+        KeyEvent e;
+        e.pressed = action == GLFW_PRESS || action == GLFW_REPEAT;
+        assert(key <= GLFW_KEY_LAST);
+        if(auto it = pressed_key_codes.find(scancode);
+           it != pressed_key_codes.end() && action != GLFW_PRESS)
+        {
+            // Repeats and releases must match the press even if the layout changes.
+            e.code = it->second;
+            if(action == GLFW_RELEASE)
+                pressed_key_codes.erase(it);
+        } else {
+            e.code = key < 0 ? Codes::Unknown : glfw_key_map[key];
+            // Keep keypad and non-printable codes distinct from printable shortcuts.
+            if(key < GLFW_KEY_ESCAPE) {
+                if(name) {
+                    const auto c = static_cast<unsigned char>(name[0]);
+                    e.code = c > 0 && c < 128 && name[1] == '\0'
+                        ? code_map[c] : Codes::Unknown;
+                }
+            }
+            if(e.pressed)
+                pressed_key_codes[scancode] = e.code;
+        }
+        e.shift = (mods & GLFW_MOD_SHIFT) != 0;
+        return e;
+    }
 
     /*struct CachedFont {
         ImFont *ptr;
@@ -901,16 +933,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             auto base = base_pointers.at(window);
             base->_focussed = focus == GLFW_TRUE;
         });
-        glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int , int action, int) {
+        glfwSetKeyCallback(_platform->window_handle(), [](GLFWwindow* window, int key, int scancode, int action, int mods) {
             auto base = base_pointers.at(window);
             
             Event e(EventType::KEY);
-            e.key.pressed = action == GLFW_PRESS || action == GLFW_REPEAT;
-            assert(key <= GLFW_KEY_LAST);
-            if(key < 0)
-                return;
-            e.key.code = glfw_key_map[key];
-            e.key.shift = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+            const char* name = key < GLFW_KEY_ESCAPE ? glfwGetKeyName(key, scancode) : nullptr;
+            e.key = detail::translate_glfw_key_event(
+                key, scancode, action, mods, name, base->_pressed_key_codes);
             
             base->event(e);
             base->_graph->set_dirty(NULL);
