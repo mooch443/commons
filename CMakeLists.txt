@@ -1836,6 +1836,10 @@ endif()
         ${CMAKE_BINARY_DIR}/opencv_install/lib 
         ${CMAKE_BINARY_DIR}/opencv_install/lib/opencv4/3rdparty
         ${OpenCV_LIB_PATH})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CONDA_PREFIX)
+        # Static OpenCV exports bare dependency names such as va and va-drm.
+        target_link_directories(Commons::OpenCV INTERFACE "${CONDA_PREFIX}/lib")
+    endif()
     
     target_link_libraries(Commons::OpenCV INTERFACE ${OpenCV_LIBS} Commons::LibPNG Commons::LibZ)
     if(APPLE)
