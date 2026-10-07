@@ -258,6 +258,8 @@ concept Iterable = requires(T obj) {
             cmn::CallbackCollection addition;
         };
         std::shared_mutex pending_mutex;
+        std::vector<std::function<void(std::string_view)>> _general_callbacks;
+        std::vector<std::pair<std::string, std::size_t>> _registered_general_callbacks;
         std::unordered_map<std::string, std::vector<PendingCallback>, MultiStringHash, MultiStringEqual> _pending_callbacks;
         
         mutable LOGGED_MUTEX_VAR(_mutex, "sprite::Lock");
@@ -409,12 +411,12 @@ concept Iterable = requires(T obj) {
             auto remaining = std::make_shared<std::atomic<int>>(0);
             auto prom      = std::make_shared<std::promise<cmn::CallbackCollection>>();
             
+            std::unique_lock g{pending_mutex};
             for(const auto& name : names) {
                 if(has(name)) {
                     future.collection._ids[std::string(name)] = operator[](name).get().registerCallback(callback);
                     
                 } else {
-                    std::unique_lock g{pending_mutex};
                     _pending_callbacks[std::string(name)].emplace_back(
                         callback, init_type, prom, remaining, cmn::CallbackCollection{}
                     );
@@ -430,11 +432,25 @@ concept Iterable = requires(T obj) {
             else
                 future.ready = prom->get_future();
             
+            g.unlock();
             if constexpr(init_type == RegisterInit::DO_TRIGGER) {
                 trigger_callbacks(future.collection);
             }
             
             return future;
+        }
+        
+        void register_general_callback(std::function<void(std::string_view)>&& fn) {
+            std::unique_lock g{pending_mutex};
+            
+            {
+                auto guard = LOGGED_LOCK(mutex());
+                for(auto& [name, prop] : _props) {
+                    _registered_general_callbacks.emplace_back(name,  prop->registerBeforeWriteCallback(fn));
+                }
+            }
+            
+            _general_callbacks.push_back(std::move(fn));
         }
         
         void unregister_callbacks(CallbackFuture&& future) {
@@ -554,6 +570,7 @@ concept Iterable = requires(T obj) {
         
         template<typename T>
         Property<T>& insert(const std::string_view& name, const T& value) {
+            std::unique_lock g{pending_mutex};
             if(has(name)) {
                 std::string e = "Property already "+(std::string)name+" already exists.";
                 FormatError(e.c_str());
@@ -561,8 +578,8 @@ concept Iterable = requires(T obj) {
             }
             
             auto property_ = new Property<T>(name, value);
+            auto ptr = Store(property_);
             {
-                auto ptr = Store(property_);
                 if (print_by_default()) {
                     ptr->set_do_print(true);
                     if constexpr(ParserAvailable<T>)
@@ -571,40 +588,48 @@ concept Iterable = requires(T obj) {
                     } else
                         Print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
                 }
-                
-                auto guard = LOGGED_LOCK(mutex());
-                _props[ptr->name()] = std::move(ptr);
             }
             
             /// collect the callbacks that need to be called
             std::vector<std::size_t> indexes;
             
-            std::unique_lock g{pending_mutex};
-            if(auto it = _pending_callbacks.find(name);
-               it != _pending_callbacks.end())
             {
-                const auto str = std::string(name);
-#ifndef NDEBUG
-                Print("Attaching callbacks for ", name, " now that it has been inserted.");
-#endif
-                
-                for(auto &future : it->second) {
-                    auto cb = property_->registerCallback(future.fn);
-                    future.addition._ids[str] = cb;
-                    
-                    --(*future.remaining);
-                    if(*future.remaining == 0)  { // no pending callbacks
-                        future.prom->set_value(std::move(future.addition));
-                    }
-                    
-                    if (future.init_type == RegisterInit::DO_TRIGGER) {
-                        indexes.push_back(cb);
+                auto guard = LOGGED_LOCK(mutex());
+                _props[ptr->name()] = std::move(ptr);
+
+                if(not _general_callbacks.empty()) {
+                    for(auto &fn : _general_callbacks) {
+                        _registered_general_callbacks.emplace_back(name, property_->registerBeforeWriteCallback(fn));
                     }
                 }
-                
-                _pending_callbacks.erase(it);
+
+                if(auto it = _pending_callbacks.find(name);
+                   it != _pending_callbacks.end())
+                {
+                    const auto str = std::string(name);
+#ifndef NDEBUG
+                    Print("Attaching callbacks for ", name, " now that it has been inserted.");
+#endif
+
+                    for(auto &future : it->second) {
+                        auto cb = property_->registerCallback(future.fn);
+                        future.addition._ids[str] = cb;
+
+                        --(*future.remaining);
+                        if(*future.remaining == 0)  { // no pending callbacks
+                            future.prom->set_value(std::move(future.addition));
+                        }
+
+                        if (future.init_type == RegisterInit::DO_TRIGGER) {
+                            indexes.push_back(cb);
+                        }
+                    }
+
+                    _pending_callbacks.erase(it);
+                }
             }
             
+            g.unlock();
             for(auto cb : indexes)
                 property_->triggerCallback(cb);
             

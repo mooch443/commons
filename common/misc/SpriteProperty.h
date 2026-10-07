@@ -71,6 +71,7 @@ namespace cmn {
             
         protected:
             CallbackManager _callbacks; ///< Manages callbacks associated with this property.
+            CallbackManager _before_write_callbacks;
             GETTER_SETTER_I(bool, do_print, false);
             
             friend class sprite::Map;
@@ -132,6 +133,17 @@ namespace cmn {
             std::size_t registerCallback(const std::function<void(std::string_view)>& callback) {
                 return _callbacks.registerCallback(callback);
             }
+            
+            /**
+             * Registers a new callback function and returns its unique ID.
+             * The callback will be invoked when certain events or changes occur.
+             *
+             * @param callback The callback function to register.
+             * @return A unique identifier for the registered callback.
+             */
+            std::size_t registerBeforeWriteCallback(const std::function<void(std::string_view)>& callback) {
+                return _before_write_callbacks.registerCallback(callback);
+            }
 
             /**
              * Unregisters (removes) a previously registered callback using its unique ID.
@@ -142,8 +154,21 @@ namespace cmn {
                 _callbacks.unregisterCallback(id);
             }
             
+            /**
+             * Unregisters (removes) a previously registered callback using its unique ID.
+             *
+             * @param id The unique identifier of the callback to unregister.
+             */
+            void unregisterBeforeWriteCallback(std::size_t id) {
+                _before_write_callbacks.unregisterCallback(id);
+            }
+            
             void triggerCallbacks() {
                 _callbacks.callAll(_name);
+            }
+            
+            void triggerBeforeWriteCallbacks() {
+                _before_write_callbacks.callAll(_name);
             }
             
             void triggerCallback(std::size_t id) {
@@ -569,6 +594,8 @@ namespace cmn {
                     if constexpr(_has_blocking_tostr_method<ValueType>) {
                         next.blocking_toStr();
                     }
+                    triggerBeforeWriteCallbacks();
+                    
                     _value.store(std::move(next));
                     reset_cache();
                     return true;
@@ -580,19 +607,31 @@ namespace cmn {
             template<typename K = ValueType>
                 requires (HasNotEqualOperator<K> && not trivial)
             bool assign_if(const ValueType& next) {
-                std::unique_lock guard(_property_mutex);
-                if(not _value.has_value()
+                bool condition{false};
+                if(std::unique_lock guard(_property_mutex);
+                   not _value.has_value()
                    || _value.value() != next)
                 {
-                    _value = std::move(next);
-                    if constexpr(_has_blocking_tostr_method<ValueType>) {
-                        if(_value)
-                            _value->blocking_toStr();
-                    }
+                    condition = true;
+                }
+                
+                if(condition) {
+                    triggerBeforeWriteCallbacks();
                     
-                    guard.unlock();
-                    reset_cache();
-                    return true;
+                    std::unique_lock guard(_property_mutex);
+                    if(not _value.has_value()
+                       || _value.value() != next)
+                    {
+                        _value = std::move(next);
+                        if constexpr(_has_blocking_tostr_method<ValueType>) {
+                            if(_value)
+                                _value->blocking_toStr();
+                        }
+                        
+                        guard.unlock();
+                        reset_cache();
+                        return true;
+                    }
                 }
                 
                 return false;
@@ -604,6 +643,8 @@ namespace cmn {
                 if constexpr(_has_blocking_tostr_method<ValueType>) {
                     next.blocking_toStr();
                 }
+                
+                triggerBeforeWriteCallbacks();
                 _value.store(BaseStoreType(std::move(next)));
             
                 reset_cache();
@@ -613,6 +654,8 @@ namespace cmn {
             template<typename K = ValueType>
                 requires (not HasNotEqualOperator<K> && not trivial)
             bool assign_if(const ValueType& next) {
+                triggerBeforeWriteCallbacks();
+                
                 std::unique_lock guard(_property_mutex);
                 _value = next;
                 if constexpr(_has_blocking_tostr_method<ValueType>) {

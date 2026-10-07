@@ -307,8 +307,14 @@ public:
                 }
             }
 #endif
-
-            _buffers.emplace_back(std::move(image));
+            if(_image_size.empty()
+               || (image->cols == _image_size.width
+                   && image->rows == _image_size.height))
+            {
+                _buffers.emplace_back(std::move(image));
+            } else {
+                image = nullptr;
+            }
         }
     }
 

@@ -114,7 +114,7 @@ namespace cmn::gui {
                         row_height = (t.transformPoint(0, row_height) - bds.pos()).y;
                         auto row_index = int(row_height);
                         
-                        Print("last list offset = ", ptr->last_list_offset(), " bounds = ", bds, " => ", pt, " row_height=",row_height, " => ", offset.y / row_height, " @ ", mp.y, " making it ", (mp.y - bds.pos().y) / row_height, " we use row ", row_index);
+                        //Print("last list offset = ", ptr->last_list_offset(), " bounds = ", bds, " => ", pt, " row_height=",row_height, " => ", offset.y / row_height, " @ ", mp.y, " making it ", (mp.y - bds.pos().y) / row_height, " we use row ", row_index);
                         
                         auto y = round((mp.y - bds.pos().y) / row_height + 0.5) * row_height;
                         bds << Size2(bds.x, y);
