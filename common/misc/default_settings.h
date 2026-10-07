@@ -3,8 +3,9 @@
 #include <commons.pc.h>
 #include <misc/GlobalSettings.h>
 
-namespace cmn {
-    namespace settings {
+ENUM_CLASS(cmn::settings::, ParameterCategoryType, CONVERTING, TRACKING)
+
+namespace cmn::settings {
     template<typename Opt>
     concept is_optional_enum = is_instantiation<std::optional, Opt>::value && is_enum<typename Opt::value_type>::value;
     template<typename T>
@@ -19,7 +20,6 @@ namespace cmn {
     template<typename T>
     concept optional_or_enum_has_docs = optional_has_docs<T> || _enum_has_docs<T>;
     
-    ENUM_CLASS(ParameterCategoryType, CONVERTING, TRACKING)
     using ParameterCategory = ParameterCategoryType::Class;
     
         class Adding {
@@ -249,4 +249,3 @@ namespace cmn {
             return parsed;
         }
     }
-}

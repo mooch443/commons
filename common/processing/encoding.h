@@ -1,9 +1,10 @@
 #pragma once
 #include <commons.pc.h>
 
+ENUM_CLASS(cmn::, DifferenceMethod_t, absolute, sign, none);
+ENUM_CLASS(cmn::, meta_encoding_t, gray, r3g3b2, rgb8, binary);
 namespace cmn {
 
-ENUM_CLASS(DifferenceMethod_t, absolute, sign, none);
 /*enum class DifferenceMethod {
     absolute,
     sign,
@@ -11,7 +12,6 @@ ENUM_CLASS(DifferenceMethod_t, absolute, sign, none);
 };*/
 using DifferenceMethod = DifferenceMethod_t::Class;
 
-ENUM_CLASS(meta_encoding_t, gray, r3g3b2, rgb8, binary);
 
 template<cmn::meta_encoding_t::Class mode>
 consteval inline uint8_t required_storage_channels() noexcept {

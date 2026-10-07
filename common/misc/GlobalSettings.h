@@ -16,31 +16,33 @@
 #define READ_SETTING(NAME, ...) (cmn::read_setting_config< __VA_ARGS__ >( #NAME ))
 #define READ_SETTING_WITH_DEFAULT(NAME, ...) (cmn::read_setting_with_default_config( #NAME , __VA_ARGS__ ))
 
+ENUM_CLASS(cmn::,
+    AccessLevelType,
+    PUBLIC,
+    INIT,
+    LOAD,
+    STARTUP,
+    SYSTEM
+)
+
+ENUM_CLASS(cmn::,       
+    SeasonType,
+    SPRING,
+    SUMMER,
+    AUTUMN,
+    WINTER,
+    EASTER,
+    CHRISTMAS,
+    HALLOWEEN,
+    STAR_WARS_DAY,
+    PRIDE_MONTH,
+    NEW_YEAR
+)
+
 namespace cmn {
     /*namespace detail {
         struct g_GSettingsSingletonStruct;
     }*/
-    
-    ENUM_CLASS(AccessLevelType,
-        PUBLIC,
-        INIT,
-        LOAD,
-        STARTUP,
-        SYSTEM
-    )
-    
-    ENUM_CLASS(SeasonType,
-        SPRING,
-        SUMMER,
-        AUTUMN,
-        WINTER,
-        EASTER,
-        CHRISTMAS,
-        HALLOWEEN,
-        STAR_WARS_DAY,
-        PRIDE_MONTH,
-        NEW_YEAR
-    )
     
     using AccessLevel = AccessLevelType::Class;
     using docs_map_t = std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual>;

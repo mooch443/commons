@@ -121,56 +121,42 @@ struct HasCustomParser : std::false_type {};
 }
 
 template <typename ValueType, size_t N, typename _names>
-class Enum {
+class EnumBase {
 public:
     constexpr static const size_t num_values = N;
-    typedef Enum<ValueType, N, _names> self_type;
-    typedef _names Data;
+    using value_type = ValueType;
+    using self_type = EnumBase<ValueType, N, _names>;
+    using Data = _names;
     
 public:
     ValueType _value;
     
 public:
-    constexpr Enum() noexcept = default;
-    constexpr Enum(const ValueType& value) noexcept
+    constexpr EnumBase() noexcept = default;
+    constexpr EnumBase(const ValueType& value) noexcept
         : _value(value)
     {}
     
-    constexpr std::string_view name() const noexcept { return _names::str()[(size_t)_value]; }
     constexpr std::string str() const noexcept { return (std::string)_names::str()[(size_t)_value]; }
-    explicit constexpr operator const char*() const noexcept { return name(); }
     //operator std::string() const { return std::string(name()); }
     //constexpr uint32_t toInt() const { return (uint32_t)_value; }
     constexpr explicit operator uint32_t() const noexcept { return (uint32_t)_value; }
     constexpr operator ValueType() const noexcept { return _value; }
-    constexpr const ValueType& value() const noexcept { return _value; }
     
     // comparison operators
-    constexpr bool operator==(const Enum& other) const noexcept { return other._value == _value; }
+    constexpr bool operator==(const EnumBase& other) const noexcept { return other._value == _value; }
     constexpr bool operator==(const ValueType& other) const noexcept { return other == _value; }
-    constexpr bool operator!=(const Enum& other) const noexcept { return other._value != _value; }
+    constexpr bool operator!=(const EnumBase& other) const noexcept { return other._value != _value; }
     constexpr bool operator!=(const ValueType& other) const noexcept { return other != _value; }
-    static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN };
-    std::string toStr() const noexcept { return (std::string)name(); }
-    static self_type fromStr(cmn::StringLike auto&& str)
-    {
-        return self_type::get(std::forward<decltype(str)>(str));
-    }
-    glz::json_t to_json() const {
-        return name();
-    }
-    static consteval std::string_view class_name() noexcept { return _names::class_name(); }
     
-    static const self_type& get(cmn::StringLike auto&& name) {
-        if constexpr (EnumMeta::HasCustomParser<self_type>::value) {
-            return EnumMeta::HasCustomParser<self_type>::fromStr(std::forward<decltype(name)>(name));
-        } else
-            return _names::get(name);
-    }
     static const auto& fields() noexcept { return _names::str(); }
     
     constexpr bool operator==(const std::string& other) const noexcept { return other == _names::str()[(size_t)_value]; }
 };
+
+/// empty base specialization that will get populated within the macro below
+template <typename ValueType, std::size_t N, typename Names>
+class Enum;
 
 /*namespace cmn {
     template<typename T>
@@ -184,8 +170,8 @@ public:
  */
 
 #undef ENUM_CLASS
-#define ENUM_CLASS(NAME, ...) \
-namespace NAME { \
+#define ENUM_CLASS(NAMESPACE, NAME, ...) \
+namespace NAMESPACE NAME { \
     namespace data { \
         enum class values : uint8_t { \
             __VA_ARGS__ \
@@ -213,8 +199,40 @@ namespace NAME { \
             template<typename T = std::string> static inline const Enum<NAME :: data::values, NAME :: data::num_elements, NAME :: data::names>& get(T name); \
         }; \
     } \
+} \
+\
+template <std::size_t N, typename Names> \
+class Enum<NAMESPACE NAME :: data::values, N, Names> \
+    : public EnumBase<NAMESPACE NAME :: data::values, N, Names> \
+{ \
+public: \
+    using ValueType = NAMESPACE NAME :: data::values; \
+    using self_type = Enum<NAMESPACE NAME :: data::values, N, Names>; \
+    using Base = EnumBase<NAMESPACE NAME :: data::values, N, Names>; \
     \
-    typedef Enum<data::values, data::num_elements, data::names> Class; \
+    using Base::Base; \
+    using Base::fields; \
+    using enum NAMESPACE NAME :: data::values; \
+    \
+    constexpr std::string_view name() const noexcept { return Names::str()[(size_t)this->_value]; } \
+    explicit constexpr operator const char*() const noexcept { return name(); } \
+    static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN }; \
+    std::string toStr() const noexcept { return (std::string)name(); } \
+    static self_type fromStr(cmn::StringLike auto&& str) { return self_type::get(std::forward<decltype(str)>(str)); } \
+    glz::json_t to_json() const { return name(); } \
+    static consteval std::string_view class_name() noexcept { return Names::class_name(); } \
+    \
+    static const self_type& get(cmn::StringLike auto&& name) { \
+        if constexpr (EnumMeta::HasCustomParser<self_type>::value) { \
+            return EnumMeta::HasCustomParser<self_type>::fromStr(std::forward<decltype(name)>(name)); \
+        } else \
+            return Names::get(name); \
+    } \
+}; \
+\
+namespace NAMESPACE NAME { \
+    using Class = Enum<data::values, data::num_elements, data::names>; \
+    static_assert(enum_like_storage<Class>); \
     \
     constexpr const Class _APPLYXn(NAME, __VA_ARGS__); \
     constexpr std::array<Class, data::num_elements> values = {{ __VA_ARGS__ }}; \
@@ -235,13 +253,37 @@ namespace NAME { \
         throw std::invalid_argument(std::string("Cannot find value ") + std::string(name) + " in enum '" + NAME :: data :: name + "' with options "+cmn::Meta::toStr(values)+"." ); \
     } \
     \
-template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\
+    template<typename T> const Class& data::names::get(T name) { return NAME :: get(name); }\
 }
+
+template<typename T>
+concept enum_like_storage =
+    std::is_trivial_v<T> &&
+    std::is_trivially_copyable_v<T> &&
+    std::is_standard_layout_v<T> &&
+    std::is_trivially_destructible_v<T>;
 
 #define ENUM_CLASS_HAS_DOCS(NAME) \
 namespace NAME { \
     namespace data { \
         template<> struct names::enum_has_docs<Enum<data::values, data::num_elements, data::names>> : public std::true_type {}; \
+    } \
+}
+#define ENUM_CLASS_HAS_DOCS_NAMESPACE(NAMESPACE, NAME) \
+namespace NAMESPACE NAME { \
+    namespace data { \
+        template<> struct names::enum_has_docs<Enum<data::values, data::num_elements, data::names>> : public std::true_type {}; \
+    } \
+}
+
+#define ENUM_CLASS_DOCS_NAMESPACE(NAMESPACE, NAME, ...) \
+namespace NAMESPACE NAME { \
+    namespace data { \
+        std::array<const char*, num_elements> docs_exist( ) noexcept { \
+            return std::array<const char*, num_elements> { \
+                __VA_ARGS__ \
+            }; \
+        } \
     } \
 }
 

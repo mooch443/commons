@@ -23,6 +23,9 @@
 #endif
 #endif
 
+ENUM_CLASS(cmn::cmap::,
+           CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow, blacktowhite, blacktocyan, bluetocyan, blacktogreen);
+
 namespace cmn::gui {
 namespace const_funcs {
     //! computes ⌊val⌋, the largest integer value not greater than val
@@ -647,8 +650,6 @@ private:
 public:
     static gui::Color value(double percent);
 };
-
-ENUM_CLASS(CMaps, viridis, wheel, blacktopink, pinkfoam, bluetored, bluetoyellow, blacktowhite, blacktocyan, bluetocyan, blacktogreen);
 
 class ColorMap {
 public:

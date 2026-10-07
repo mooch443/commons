@@ -1,9 +1,10 @@
 #include <commons.pc.h>
 #include <misc/Image.h>
 
+ENUM_CLASS(cmn::, averaging_method_t, mean, mode, max, min)
+
 namespace cmn {
 
-ENUM_CLASS(averaging_method_t, mean, mode, max, min)
 ENUM_CLASS_HAS_DOCS(averaging_method_t)
 
 class AveragingAccumulator {

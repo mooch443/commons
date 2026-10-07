@@ -4,7 +4,7 @@
 namespace cmn {
     static std::atomic<bool> track_threshold_is_absolute = true,
         track_background_subtraction = true;
-    static std::atomic<meta_encoding_t::data::values> meta_encoding = cmn::meta_encoding_t::gray.value();
+    static std::atomic<meta_encoding_t::data::values> meta_encoding = (meta_encoding_t::data::values)cmn::meta_encoding_t::gray;
 
     static auto check_callbacks = []() {
         static std::once_flag _check_callbacks;
@@ -22,7 +22,7 @@ namespace cmn {
                     cmn::track_background_subtraction = BOOL_SETTING(track_background_subtraction);
                 }
                 else if (name == "meta_encoding") {
-                    cmn::meta_encoding = READ_SETTING(meta_encoding, meta_encoding_t::Class).value();
+                    cmn::meta_encoding = READ_SETTING(meta_encoding, meta_encoding_t::Class);
 
                     //Print("updated meta_encoding to ", meta_encoding_t::Class(cmn::meta_encoding.load()));
                 }

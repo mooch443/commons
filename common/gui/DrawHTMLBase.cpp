@@ -125,7 +125,7 @@ namespace cmn::gui {
             << MATRIX(3, 0) << ","  << MATRIX(3, 1);
             std::string trans = matrix.str();
             
-            ss  << "\"" << size_t(o) << "\":[" << (int)o->type().value()
+            ss  << "\"" << size_t(o) << "\":[" << (uint32_t)o->type()
                 << ",[" << trans << "]"
                 //<< "," << o->origin().x << "," << o->origin().y
                 << ",";

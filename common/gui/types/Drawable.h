@@ -9,6 +9,17 @@
 #include <gui/ControlsAttributes.h>
 #include <gui/CornerFlags.h>
 
+#ifdef PASSTHROUGH
+#undef PASSTHROUGH
+#endif
+
+ENUM_CLASS (cmn::gui::, Type,
+    NONE,    VERTICES,  CIRCLE,
+    RECT,    TEXT,      IMAGE,
+    SECTION, SINGLETON, ENTANGLED,
+    POLYGON, LINE,      PASSTHROUGH
+)
+
 namespace cmn::gui {
     class Base;
     class SectionInterface;
@@ -34,16 +45,6 @@ namespace cmn::gui {
         }
     };
 
-#ifdef PASSTHROUGH
-#undef PASSTHROUGH
-#endif
-    
-    ENUM_CLASS (Type,
-        NONE,    VERTICES,  CIRCLE,
-        RECT,    TEXT,      IMAGE,
-        SECTION, SINGLETON, ENTANGLED,
-        POLYGON, LINE,      PASSTHROUGH
-    )
     
     Float2_t interface_scale();
     

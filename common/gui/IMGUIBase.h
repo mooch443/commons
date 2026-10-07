@@ -35,16 +35,16 @@ using default_impl_t = cmn::gui::MetalImpl;
 using default_impl_t = cmn::gui::GLImpl;
 #endif
 
-namespace cmn::gui {
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
 #endif
-    ENUM_CLASS(Effects, blur)
+    ENUM_CLASS(cmn::gui::, Effects, blur)
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
 
+namespace cmn::gui {
 #define GUIPrint(...) prefixed_print<FormatColor::GRAY>("GUI", __VA_ARGS__ )
 
     class IMGUIBase : public Base {

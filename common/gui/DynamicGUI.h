@@ -17,15 +17,8 @@
 #include <gui/dyn/Context.h>
 #include <gui/dyn/State.h>
 
-namespace cmn::gui {
-namespace dyn {
-
-class LabeledField;
-struct Context;
-struct State;
-struct Action;
-
-ENUM_CLASS(LayoutType,
+ENUM_CLASS(cmn::gui::dyn::,
+           LayoutType,
            each,
            condition,
            vlayout,
@@ -47,6 +40,14 @@ ENUM_CLASS(LayoutType,
            list,
            taglist,
            unknown);
+
+namespace cmn::gui {
+namespace dyn {
+
+class LabeledField;
+struct Context;
+struct State;
+struct Action;
 
 template<typename Fn>
 //std::pair<std::string, std::function<void(Action)>>
