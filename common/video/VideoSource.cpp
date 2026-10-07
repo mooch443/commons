@@ -1056,23 +1056,13 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
         auto v = GlobalSettings::read_value<uint32_t>("average_samples");
         return v ? (float)READ_SETTING(average_samples, uint32_t) : (L.get() * 0.01f);
     }();
-    uint64_t step = max(1u, N_indexes < samples
-                                ? 1u
-                                : (uint64_t)ceil(N_indexes / samples));
-    auto frames_per_file =
-        max(1_f,
-            N_indexes < samples
-                ? (L / Frame_t(N_indexes)
-                    / (L / Frame_t{samples}))
-                : 1_f);
-    
-    Print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " frames_per_file=",frames_per_file, " step=",step, " start,end=", std::make_tuple(start, end), " L=", L);
+    Print("all files=",_files_in_seq.size(), " start_index=",start_index, " end_index=",end_index, " N_indexes=",N_indexes, " samples=",samples, " start,end=", std::make_tuple(start, end), " L=", L);
     
     if(samples > 255 && method == averaging_method_t::mode)
         throw U_EXCEPTION("Cannot take more than 255 samples with 'averaging_method' = 'mode'. Choose fewer samples or a different averaging method.");
     std::map<video::File*, std::set<Frame_t>> file_indexes;
     
-    Print("generating average in threads step ", step," for ", _files_in_seq.size()," files (", frames_per_file," per file)");
+    Print("generating average in threads for ", _files_in_seq.size()," files");
     
     std::mutex mutex;
     GenericThreadPool pool(cmn::hardware_concurrency(), "AverageImage");
