@@ -7,7 +7,7 @@
 namespace cmn {
 
 CropOffsets GenericVideo::crop_offsets() const {
-    return SETTING(crop_offsets);
+    return SETTING(crop_offsets).value<CropOffsets>();
 }
 
 void GenericVideo::undistort(const cv::Mat &input, cv::Mat &output)

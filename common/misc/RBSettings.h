@@ -309,8 +309,12 @@ public:
                 }
                 
             } else {
-                std::lock_guard guard{this->_update_settings_mutex};
-                for (auto name : this->_updated_settings) {
+                decltype(this->_updated_settings) updated;
+                {
+                    std::lock_guard guard{this->_update_settings_mutex};
+                    updated = this->_updated_settings;
+                }
+                for (auto name : updated) {
                     auto it = std::find(setting_names.begin(), setting_names.end(), name);
                     if (it != setting_names.end()) {
                         auto index = std::distance(setting_names.begin(), it);

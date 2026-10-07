@@ -633,10 +633,60 @@ namespace cmn {
 }
 
 namespace cmn {
-    inline sprite::Reference setting_config(std::string_view name) {
-        return GlobalSettings::write([name](Configuration& config) {
-            return config.values[name];
-        });
+    template<typename T>
+    inline auto read_setting_config(std::string_view name);
+
+    struct SafeWriteWrapper {
+        std::string_view _name;
+        
+        template<typename T>
+        void operator=(const T& value) {
+            GlobalSettings::write([&](Configuration& config) {
+                config.values[_name] = value;
+            });
+        }
+        
+        template<typename T>
+        auto value() const {
+            return read_setting_config<T>(_name);
+        }
+        
+        auto to_json() const {
+            return GlobalSettings::read([name = _name](const Configuration& config){
+                auto value = config.values.at(name);
+                if(!value.valid()) {
+                    throw InvalidArgumentException("Cannot find variable ", name, " in map with keys ", config.values.keys());
+                }
+                return value.get().to_json();
+            });
+        }
+        
+        auto valueString() const {
+            return GlobalSettings::read([name = _name](const Configuration& config){
+                auto value = config.values.at(name);
+                if(!value.valid()) {
+                    throw InvalidArgumentException("Cannot find variable ", name, " in map with keys ", config.values.keys());
+                }
+                return value.get().valueString();
+            });
+        }
+        
+        void copy_to(sprite::Map& target) const {
+            return GlobalSettings::read([name = _name, target = &target](const Configuration& config){
+                auto value = config.values.at(name);
+                if(!value.valid()) {
+                    throw InvalidArgumentException("Cannot find variable ", name, " in map with keys ", config.values.keys());
+                }
+                return value.get().copy_to(*target);
+            });
+        }
+        
+        std::string toStr() const { return "Ref<"+std::string(_name)+">("+valueString()+")"; }
+        consteval static std::string_view class_name() { return "SafeWriteWrapper"; }
+    };
+
+    inline SafeWriteWrapper setting_config(std::string_view name) {
+        return SafeWriteWrapper{ name };
     }
 
     inline bool bool_setting_config(std::string_view name) {
@@ -718,7 +768,7 @@ namespace cmn {
         });
     };
 
-    inline sprite::Reference setting(std::string_view name) {
+    inline SafeWriteWrapper setting(std::string_view name) {
         return setting_config(name);
     }
 
