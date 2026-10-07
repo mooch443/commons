@@ -1791,13 +1791,14 @@ endif()
             opencv_features2d${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_flann${COMMONS_OPENCV_VERSION_NO_DOTS} opencv_calib3d${COMMONS_OPENCV_VERSION_NO_DOTS} 
             libjpeg-turbo ittnotify ade libtiff ${FFMPEG_LIBRARIES})
     else()
-        set(OpenCV_LIBS opencv_core opencv_imgproc opencv_imgcodecs opencv_flann opencv_photo opencv_video opencv_videoio opencv_highgui opencv_features2d opencv_calib3d)
-		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_core libjpeg-turbo ittnotify ade ${FFMPEG_LIBRARIES})
+        # Raw static archives must precede their OpenCV and codec dependencies.
+        set(OpenCV_LIBS opencv_highgui opencv_videoio opencv_imgcodecs opencv_video opencv_photo opencv_calib3d opencv_features2d opencv_flann opencv_imgproc opencv_core)
+		set(OpenCV_LIBS ${OpenCV_LIBS} ittnotify ade ${FFMPEG_LIBRARIES})
 		if(APPLE)
-			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff)
+			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff libjpeg-turbo)
 		else()
 			# Raw OpenCV archives need their dependencies in the same list for link-order inference.
-			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${CMAKE_DL_LIBS}) #raw1394 usb-1.0 udev glib-2.0)
+			set(OpenCV_LIBS ${OpenCV_LIBS} libtiff libjpeg-turbo ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${CMAKE_DL_LIBS}) #raw1394 usb-1.0 udev glib-2.0)
 	#		set(OpenCV_LIBS ${OpenCV_LIBS} opencv_stitching opencv_photo)
 		endif()
         message(STATUS "OpencvLIBS = ${OpenCV_LIBS}")
