@@ -187,7 +187,7 @@ public:
 #define ENUM_CLASS(NAME, ...) \
 namespace NAME { \
     namespace data { \
-        enum class values { \
+        enum class values : uint8_t { \
             __VA_ARGS__ \
         }; \
         \
