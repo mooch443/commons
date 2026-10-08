@@ -136,6 +136,8 @@ protected:
     std::string vertex_sub_type() const override { return "Vertices"; }
 };
     
+NUMBER_ALIAS(LineClosed, bool)
+
     class Line final : public VertexArray {
     public:
         static constexpr auto Class = Type::data::values::LINE;
@@ -148,6 +150,7 @@ protected:
         Color _line_clr{White};
         Float2_t _process_scale;
         GETTER(Float2_t, max_scale);
+        GETTER(LineClosed, closed);
         
     public:
         template<typename... Args> Line(Args... args)
@@ -169,6 +172,12 @@ protected:
 
     public:
         using Drawable::set;
+        void set(LineClosed A) {
+            if(_closed != A) {
+                _closed = A;
+                set_dirty();
+            }
+        }
         void set(const Vertices_t& A) {
             VertexArray::create(A, PrimitiveType::LineStrip);
         }

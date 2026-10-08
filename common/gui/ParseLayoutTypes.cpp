@@ -458,6 +458,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::line>()
         ? get(Color{White}, "color")
         : get(Color{White}, "line");
     auto thickness = get(Float2_t{1}, "thickness");
+    auto closed = get(false, "closed");
 
     if(obj.count("from") && obj.count("to")) {
         auto from = get(Vec2{}, "from");
@@ -467,7 +468,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::line>()
 
     } else if(obj.count("points")) {
         auto points = get(std::vector<Vec2>{}, "points");
-        ptr = Layout::Make<Line>{Line::Points_t{points}, LineClr{line_color}, Line::Thickness_t{thickness}};
+        ptr = Layout::Make<Line>{Line::Points_t{points}, LineClr{line_color}, Line::Thickness_t{thickness}, LineClosed{closed}};
     } else
         throw InvalidArgumentException("Need to specify points somehow.");
 

@@ -498,6 +498,9 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
             return true;
         };
 
+        check_line_field.operator()<bool>("closed", [&](const auto& value) {
+            line_ptr->set(LineClosed{value});
+        });
         check_line_field.operator()<Color>("color", [&](const auto& value) {
             line_ptr->set(LineClr{value});
         });

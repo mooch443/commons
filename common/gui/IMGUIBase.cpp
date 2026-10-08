@@ -1900,7 +1900,17 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             break;
         }
             
-        case Type::LINE:
+        case Type::LINE: {
+            auto ptr = static_cast<Line*>(o);
+            if(ptr->closed()) {
+                auto points = ptr->VertexArray::points();
+                if(points.size() > 2) {
+                    points.emplace_back(points.front());
+                    RenderNonAntialiasedStroke(points, order, list, ptr->thickness());
+                    break;
+                }
+            }
+        }
         case Type::VERTICES: {
             auto ptr = static_cast<VertexArray*>(o);
             

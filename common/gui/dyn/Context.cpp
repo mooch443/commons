@@ -1130,6 +1130,14 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
                 }
             }),
+            VarFunc("in", [](const VarProps& props) -> bool {
+                REQUIRE_EXACTLY(2, props);
+                
+                std::string_view p0(props.parameters.front());
+                auto array = Meta::fromStr<std::vector<std::string>>(props.parameters.back());
+                
+                return std::find(array.begin(), array.end(), p0) != array.end();
+            }),
             VarFunc("nequal", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(2, props);
                 

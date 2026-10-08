@@ -609,115 +609,89 @@ public:
         return c;
     }
         
-    inline std::shared_ptr<std::vector<Vec2>> poly_convex_hull(const std::vector<Vec2>* _vertices)
-    {
-        /**
-            SOURCE: https://github.com/RandyGaul/ImpulseEngine
-         
-             Copyright (c) 2013 Randy Gaul http://RandyGaul.net
+inline std::shared_ptr<std::vector<Vec2>> poly_convex_hull(const std::vector<Vec2>* _vertices)
+{
+    /**
+     * Andrew's Monotone Chain Convex Hull Algorithm
+     *
+     * Computes the convex hull of an arbitrary set of 2D points in O(n log n) time.
+     *
+     * The algorithm first sorts all points by their x and y coordinates, then
+     * constructs the lower and upper halves of the convex hull independently.
+     * During construction, the cross product of consecutive edges determines
+     * whether a point introduces a clockwise turn. Such points are removed,
+     * ensuring that only vertices on the convex boundary remain.
+     *
+     * Collinear intermediate points and duplicate vertices are discarded.
+     * The resulting polygon is ordered counterclockwise (in Cartesian coordinates).
+     *
+     * Returns nullptr if fewer than 3 distinct, non-collinear points exist.
+     */
 
-               This software is provided 'as-is', without any express or implied
-               warranty. In no event will the authors be held liable for any damages
-               arising from the use of this software.
-
-               Permission is granted to anyone to use this software for any purpose,
-               including commercial applications, and to alter it and redistribute it
-               freely, subject to the following restrictions:
-                 1. The origin of this software must not be misrepresented; you must not
-                    claim that you wrote the original software. If you use this software
-                    in a product, an acknowledgment in the product documentation would be
-                    appreciated but is not required.
-                 2. Altered source versions must be plainly marked as such, and must not be
-                    misrepresented as being the original software.
-                 3. This notice may not be removed or altered from any source distribution.
-         */
-        assert(_vertices);
-        
-        uint32_t count = (uint32_t)_vertices->size();
-        if(count > 2 && count <= 64) {
-            // No hulls with less than 3 vertices (ensure actual polygon)
-            assert( count > 2 && count <= 64 );
-            count = std::min( count, 64u );
-            auto _points = std::make_shared<std::vector<Vec2>>();
-            _points->resize(count);
-            
-            // Find the right most point on the hull
-            uint32_t rightMost = 0;
-            double highestXCoord = (*_vertices)[0].x;
-            for(uint32_t i = 1; i < count; ++i)
-            {
-                double x = (*_vertices)[i].x;
-                if(x > highestXCoord)
-                {
-                    highestXCoord = x;
-                    rightMost = i;
-                }
-                
-                // If matching x then take farthest negative y
-                else if(x == highestXCoord)
-                    if((*_vertices)[i].y < (*_vertices)[rightMost].y)
-                        rightMost = i;
-            }
-            
-            uint32_t hull[64];
-            uint32_t outCount = 0;
-            uint32_t indexHull = rightMost;
-            
-            for (;;)
-            {
-                hull[outCount] = indexHull;
-                
-                // Search for next index that wraps around the hull
-                // by computing cross products to find the most counter-clockwise
-                // vertex in the set, given the previos hull index
-                uint32_t nextHullIndex = 0;
-                for(uint32_t i = 1; i < count; ++i)
-                {
-                    // Skip if same coordinate as we need three unique
-                    // points in the set to perform a cross product
-                    if(nextHullIndex == indexHull)
-                    {
-                        nextHullIndex = i;
-                        continue;
-                    }
-                    
-                    // Cross every set of three unique vertices
-                    // Record each counter clockwise third vertex and add
-                    // to the output hull
-                    // See : http://www.oocities.org/pcgpe/math2d.html
-                    Vec2 e1 = (*_vertices)[nextHullIndex] - (*_vertices)[hull[outCount]];
-                    Vec2 e2 = (*_vertices)[i] - (*_vertices)[hull[outCount]];
-                    double c = cross( e1, e2 );
-                    if(c < 0.0f)
-                        nextHullIndex = i;
-                    
-                    // Cross product is zero then e vectors are on same line
-                    // therefor want to record vertex farthest along that line
-                    if(c == 0.0f && e2.sqlength() > e1.sqlength())
-                        nextHullIndex = i;
-                }
-                
-                ++outCount;
-                indexHull = nextHullIndex;
-                
-                // Conclude algorithm upon wrap-around
-                if(nextHullIndex == rightMost)
-                {
-                    _points->resize(outCount);
-                    //m_vertexCount = outCount;
-                    break;
-                }
-            }
-            
-            // Copy vertices into shape's vertices
-            for(uint32_t i = 0; i < _points->size(); ++i)
-                (*_points)[i] = (*_vertices)[hull[i]];
-            
-            return _points;
-        }
-        
+    if (!_vertices || _vertices->size() < 3)
         return nullptr;
+
+    // Sort vertices lexicographically (first by x, then by y)
+    auto points = *_vertices;
+    std::sort(points.begin(), points.end(), [](const Vec2& a, const Vec2& b) {
+        return a.x < b.x || (a.x == b.x && a.y < b.y);
+    });
+
+    // Remove duplicate points, which are now adjacent after sorting
+    points.erase(std::unique(points.begin(), points.end(),
+        [](const Vec2& a, const Vec2& b) {
+            return a.x == b.x && a.y == b.y;
+        }), points.end());
+
+    if (points.size() < 3)
+        return nullptr;
+
+    auto hull = std::make_shared<std::vector<Vec2>>();
+    hull->reserve(points.size() * 2);
+
+    // Construct the lower hull from left to right.
+    // Remove the previous vertex whenever the last three points produce
+    // a clockwise turn (cross < 0) or are collinear (cross == 0).
+    // This ensures that only the outermost vertices remain.
+    for (const auto& p : points)
+    {
+        while (hull->size() >= 2 &&
+               cross((*hull)[hull->size() - 1] - (*hull)[hull->size() - 2],
+                     p - hull->back()) <= 0.0)
+        {
+            hull->pop_back();
+        }
+
+        hull->push_back(p);
     }
+
+    // Construct the upper hull from right to left.
+    // Apply the same cross-product test, but preserve the completed lower
+    // hull while removing vertices that violate convexity.
+    const size_t lowerSize = hull->size();
+
+    for (auto it = points.rbegin() + 1; it != points.rend(); ++it)
+    {
+        while (hull->size() > lowerSize &&
+               cross((*hull)[hull->size() - 1] - (*hull)[hull->size() - 2],
+                     *it - hull->back()) <= 0.0)
+        {
+            hull->pop_back();
+        }
+
+        hull->push_back(*it);
+    }
+
+    // The last vertex duplicates the first vertex of the lower hull.
+    // Remove it so the resulting polygon contains each vertex exactly once.
+    hull->pop_back();
+
+    // Reject degenerate hulls (e.g. all input points are collinear)
+    if (hull->size() < 3)
+        return nullptr;
+
+    return hull;
+}
 
 //! LineSegementsIntersect (modified a bunch) from https://www.codeproject.com/Tips/862988/Find-the-Intersection-Point-of-Two-Line-Segments under CPOL (https://www.codeproject.com/info/cpol10.aspx)
 template<typename VecType>
