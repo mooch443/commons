@@ -1477,7 +1477,7 @@ Q fromStr(cmn::StringLike auto&& str)
         sv = sv.substr(1,sv.length()-2);
 
     Q value;
-    std::from_chars_result result = std::from_chars(sv.data(), sv.data() + sv.size(), value, std::chars_format::fixed);
+    std::from_chars_result result = std::from_chars(sv.data(), sv.data() + sv.size(), value, std::chars_format::general);
     if (result.ec != std::errc{})
         throw std::runtime_error("Cannot convert value: " + (std::string)sv + " to " + (std::string)Meta::name<Q>());
     return value;
