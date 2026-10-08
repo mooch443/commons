@@ -150,7 +150,7 @@ NUMBER_ALIAS(LineClosed, bool)
         Color _line_clr{White};
         Float2_t _process_scale;
         GETTER(Float2_t, max_scale);
-        GETTER(LineClosed, closed);
+        GETTER(LineClosed, closed){false};
         
     public:
         template<typename... Args> Line(Args... args)
@@ -160,7 +160,12 @@ NUMBER_ALIAS(LineClosed, bool)
         }
 
         template<typename... Args> void create(Args... args) {
-            set(Thickness_t{ 1 });
+            if constexpr(not contains_type<Thickness_t, Args...>())
+                set(Thickness_t{ 1 });
+            if constexpr(not contains_type<LineClosed, Args...>())
+                set(LineClosed{ false });
+            if constexpr(not contains_type<LineClr, Args...>())
+                set(LineClr{ White });
 
             if constexpr (requires { { set(std::forward<Args>(args)...) }->std::same_as<void>; }) {
                 set(std::forward<Args>(args)...);
