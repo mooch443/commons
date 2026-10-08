@@ -178,7 +178,7 @@ void Source::extract_lines(const cv::Mat& image, Source* source, const Range<int
     const int64_t step_px = image.step.p[1];
     
     start = image.ptr(rstart);
-    end_ptr = image.ptr(rstart + 1);
+    end_ptr = image.ptr(rstart) + step;
     
     assert(end_ptr == start + ptr_safe_t(image.cols) * step_px);
     //end_ptr = start + image.cols;
