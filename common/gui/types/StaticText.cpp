@@ -7,7 +7,7 @@
 namespace cmn::utils {
 using namespace cmn::gui;
 
-Bounds calculate_bounds(const std::string& text, Drawable* reference, const Font& font) {
+Bounds calculate_bounds(std::string_view text, Drawable* reference, const Font& font) {
     return Base::default_text_bounds(text, reference, font);
 }
 
@@ -23,7 +23,7 @@ inline bool is_extended_whitespace(char c) {
            c == '/' || c == '\\' || c == '.' || c == '_';
 }
 
-size_t find_splitting_point(const std::string& str, const Float2_t w,
+size_t find_splitting_point(std::string_view str, const Float2_t w,
                               const Float2_t max_w, Drawable* reference,
                               const Font& font)
 {
@@ -45,7 +45,8 @@ size_t find_splitting_point(const std::string& str, const Float2_t w,
         
         // Test splitting at idx:
         Bounds bounds = calculate_bounds(
-            StaticText::RichString::parse(std::string_view(str.data(), idx)),
+                                         std::string_view(str.data(), idx),
+            //StaticText::RichString::parse(std::string_view(str.data(), idx)),
             reference, font
         );
         cw = utils::calculate_width(bounds);
@@ -66,7 +67,8 @@ size_t find_splitting_point(const std::string& str, const Float2_t w,
                     break;
                 
                 Bounds bounds = calculate_bounds(
-                    StaticText::RichString::parse(std::string_view(str.data(), middle)),
+                     std::string_view(str.data(), middle),
+                    //StaticText::RichString::parse(std::string_view(str.data(), middle)),
                     reference, font
                 );
                 cw = utils::calculate_width(bounds);
@@ -262,13 +264,13 @@ void StaticText::set(FillClr fill) {
     Entangled::set_background(color, line);
 }*/
 
-StaticText::RichString::RichString(const std::string& str, const Font& font, const Vec2& pos, const Color& clr)
+StaticText::RichString::RichString(std::string_view str, const Font& font, const Vec2& pos, const Color& clr)
     : str(str), font(font), pos(pos), clr(clr)
 {
-    parsed = parse(str);
+    //parsed = parse(str);
 }
 
-std::string StaticText::RichString::parse(const std::string_view &txt) {
+std::string StaticText::RichString::parse(std::string_view txt) {
     return utils::find_replace(txt, {
         {"&quot;", "\""},
         {"&apos;", "'"},
@@ -281,7 +283,9 @@ std::string StaticText::RichString::parse(const std::string_view &txt) {
 void StaticText::RichString::convert(const std::unique_ptr<Text>& text) const {
     text->set_color(clr);
     text->set_font(font);
-    text->set_txt(parsed);
+    if(text->txt() != str) {
+        text->set_txt(std::string(str));
+    }
 }
 
 void StaticText::add_shadow() {
@@ -323,58 +327,65 @@ void StaticText::add_shadow() {
 void StaticText::add_string(
         Drawable* reference,
         const Settings& _settings,
-        std::unique_ptr<RichString>&& ptr,
-        std::vector<std::unique_ptr<RichString>>& strings,
+        RichString&& ptr,
+        std::vector<RichString>& strings,
         Vec2& offset)
 {
-    if (_settings.max_size.x > 0 && not ptr->str.empty()) {
-        Bounds bounds = utils::calculate_bounds(ptr->parsed, reference, ptr->font);
+    if (_settings.max_size.x > 0 && not ptr.str.empty()) {
+        Bounds bounds = utils::calculate_bounds(ptr.str, reference, ptr.font);
         const auto w = utils::calculate_width(bounds);
         const Float2_t max_w = _settings.max_size.x - _settings.margins.x - _settings.margins.x - offset.x;
         
         //Print("** ", utils::ShortenText(ptr->parsed, 15)," w=", w, " max=",max_w, " font=",ptr->font);
 
         if (w > max_w) {
-            size_t idx = utils::find_splitting_point(ptr->str, w, max_w, reference, ptr->font);
+            size_t idx = utils::find_splitting_point(ptr.str, w, max_w, reference, ptr.font);
             
             offset.y++;
             offset.x = 0;
 
             if (idx) {
-                auto& obj = *ptr;
-                strings.emplace_back(std::move(ptr));
-
-                std::string copy = obj.str;
-                obj.str = copy.substr(0, idx);
-                obj.parsed = RichString::parse(obj.str);
-
-                copy = utils::ltrim(copy.substr(idx));
-
-                // if there is some remaining non-whitespace
-                // string, add it recursively
-                if (not copy.empty()) {
-                    auto tmp = std::make_unique<RichString>();
-                    tmp->str = std::move(copy);
-                    tmp->font = obj.font;
-                    tmp->parsed = RichString::parse(tmp->str);
-                    tmp->pos.x = obj.pos.x;
-                    tmp->pos.y = obj.pos.y + 1;
-                    tmp->clr = obj.clr;
-                    add_string(reference, _settings, std::move(tmp), strings, offset);
+                /// in case we need to add a next line
+                std::optional<RichString> add_after;
+                
+                if(ptr.str.length() > idx) {
+                    auto trimmed = utils::ltrim(ptr.str.substr(idx));
+                    if(trimmed.length() > 0) {
+                        // if there is some remaining non-whitespace
+                        // string, add it recursively
+                        RichString tmp;
+                        tmp.str = trimmed;
+                        tmp.font = ptr.font;
+                        tmp.pos.x = ptr.pos.x;
+                        tmp.pos.y = ptr.pos.y + 1;
+                        tmp.clr = ptr.clr;
+                        
+                        add_after = std::move(tmp);
+                    }
                 }
-
+                
+                /// shorten the current line segment
+                ptr.str = ptr.str.substr(0, idx);
+                strings.push_back(std::move(ptr));
+                
+                /// ensure the order remains correct here, add
+                /// the next line after the current line
+                if(add_after) {
+                    add_string(reference, _settings, std::move(add_after.value()), strings, offset);
+                }
+                
                 return;
 
             } else {
                 // put the whole text in the next line
-                ptr->pos.y++;
+                ptr.pos.y++;
             }
         }
         
         offset.x += w;
     }
 
-    strings.emplace_back(std::move(ptr));
+    strings.push_back(std::move(ptr));
 }
 
 std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
@@ -480,6 +491,39 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     return global_tags;
 }
     
+template<typename T, typename K = T, typename V, class... D, template <typename, class...> class PtrType, class... DV>
+    requires (not std::is_pointer_v<V> && not _is_smart_pointer<V>)
+inline void update_vector_elements(
+   std::vector<PtrType<T, D...>>& vector,
+   const std::vector<V>& compare,
+   const std::function<void(const PtrType<T, D...>&,
+   const V&)>& prepare = nullptr)
+{
+    // Resize vector to match compare, default-constructing new elements as needed
+    if (vector.size() > compare.size()) {
+        vector.resize(compare.size());
+    }
+
+    // Prepare and convert existing elements
+    for (size_t i = 0; i < vector.size(); ++i) {
+        if (prepare) {
+            prepare(vector[i], compare[i]);
+        }
+        compare[i].convert(vector[i]);
+    }
+
+    // Add and prepare missing elements
+    for (size_t i = vector.size(); i < compare.size(); ++i) {
+        PtrType<T, D...> ptr = std::make_unique<K>();
+        vector.emplace_back(std::move(ptr));
+
+        if (prepare) {
+            prepare(vector.back(), compare[i]);
+        }
+        compare[i].convert(vector.back());
+    }
+}
+
     void StaticText::update_text() {
         if(!nowindow_updated) {
             nowindow_updated = true;
@@ -497,7 +541,8 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
         // parse lines individually
         Vec2 offset(0, 0);
         
-        std::vector<std::unique_ptr<RichString>> strings;
+        _rich_strings.clear();
+        _string_owner.clear();
         
         auto global_tags = to_tranges(text());
         
@@ -605,7 +650,14 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(this, _settings, std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    
+                    _string_owner.push_back(std::make_unique<std::string>(RichString::parse(array[k])));
+                    add_string(this, _settings, RichString{
+                        std::string_view(*_string_owner.back()),
+                        tag.font,
+                        offset,
+                        tag.color
+                    }, _rich_strings, offset);
                 }
                 
                 tag.text = tag.text.substr(sub.after - tag.range.start);
@@ -635,7 +687,14 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                         ++offset.y;
                         offset.x = 0;
                     }
-                    add_string(this, _settings, std::make_unique<RichString>( (std::string)array[k], tag.font, offset, tag.color ), strings, offset);
+                    
+                    _string_owner.push_back(std::make_unique<std::string>(RichString::parse(array[k])));
+                    add_string(this, _settings, RichString{
+                        std::string_view(*_string_owner.back()),
+                        tag.font,
+                        offset,
+                        tag.color
+                    }, _rich_strings, offset);
                 }
                 if(breaks_line) {
                     ++offset.y;
@@ -644,19 +703,21 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
             }
         }
         
-        update_vector_elements(texts, strings);
+        update_vector_elements(texts, _rich_strings);
         
         offset = _settings.margins.pos();
         Float2_t y = 0;
         //float height = Base::default_line_spacing(_default_font);
-        Font prev_font = strings.empty() ? _settings.default_font : strings.front()->font;
+        Font prev_font = _rich_strings.empty()
+            ? _settings.default_font
+            : _rich_strings.front().font;
         
         //begin();
         
         size_t row_start = 0;
         for(size_t i=0; i<texts.size(); i++) {
             auto &text = texts[i];
-            auto &s = strings[i];
+            auto &s = _rich_strings[i];
             
             text->set_origin(Vec2(0, 0.5));
             
@@ -664,7 +725,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 positions.push_back(Vec2());
             auto target = positions[i];
             
-            if(s->pos.y > y) {
+            if(s.pos.y > y) {
                 offset.x = _settings.margins.x;
                 
                 auto current_height = (Base::default_line_spacing(prev_font) * 0.5);
@@ -675,11 +736,11 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
                 offset.y += Base::default_line_spacing(prev_font);//sf_line_spacing(s->font);
                 y++;
                 
-                prev_font = s->font;
+                prev_font = s.font;
                 row_start = i;
                 
-            } else if(s->font.size > prev_font.size)
-                prev_font = s->font;
+            } else if(s.font.size > prev_font.size)
+                prev_font = s.font;
             
             target = Vec2(offset.x, offset.y);
             text->set_pos(target);

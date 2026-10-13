@@ -17,7 +17,7 @@ namespace utils {
  * @param font The font used for rendering the text.
  * @return A Bounds object representing the dimensions of the text.
  */
-Bounds calculate_bounds(const std::string& text, gui::Drawable* reference, const gui::Font& font);
+Bounds calculate_bounds(std::string_view text, gui::Drawable* reference, const gui::Font& font);
 
 /**
  * @brief Calculates the width of a bounding box.
@@ -38,7 +38,7 @@ constexpr Float2_t calculate_width(const Bounds& bounds) {
  * @param font The font used for rendering the text.
  * @return The index in the string where it should be split.
  */
-size_t find_splitting_point(const std::string& str, const Float2_t w, const Float2_t max_w, gui::Drawable* reference, const gui::Font& font);
+size_t find_splitting_point(std::string_view str, const Float2_t w, const Float2_t max_w, gui::Drawable* reference, const gui::Font& font);
 
 } // namespace utils
 } // namespace cmn
@@ -90,22 +90,24 @@ namespace cmn::gui {
             
         };
         
-    private:
-        Settings _settings;
-        
     public:
         struct RichString {
-            std::string str, parsed;
+            std::string_view str;//, parsed;
             Font font;
             Vec2 pos;
             Color clr;
             
-            RichString(const std::string& str = "", const Font& font = Font(), const Vec2& pos = Vec2(), const Color& clr = Color());
+            RichString(std::string_view str = {}, const Font& font = Font(), const Vec2& pos = Vec2(), const Color& clr = Color());
             
-            static std::string parse(const std::string_view& txt);
+            static std::string parse(std::string_view txt);
             
             void convert(const std::unique_ptr<Text>& text) const;
         };
+        
+    private:
+        Settings _settings;
+        std::vector<RichString> _rich_strings;
+        std::vector<std::unique_ptr<std::string>> _string_owner;
         
     public:
         template<typename... Args>
@@ -219,7 +221,7 @@ namespace cmn::gui {
         void set_margins(const Margins& margin);
         
         void update() override;
-        static void add_string(Drawable* reference, const Settings&, std::unique_ptr<RichString>&& ptr, std::vector<std::unique_ptr<RichString>>& output, Vec2& offset);
+        static void add_string(Drawable* reference, const Settings&, RichString&& ptr, std::vector<RichString>& output, Vec2& offset);
         void structure_changed(bool downwards) override;
         virtual void set_size(const Size2& size) override;
         
