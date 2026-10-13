@@ -50,11 +50,107 @@ namespace cmn {
 
     using NoType = std::nullopt_t;
 
+struct HistoryItem {
+    timestamp_t timestamp;
+    sprite::Map values;
+};
+
+class ParameterHistory {
+    AccessLevel _monitor_level{AccessLevelType::PUBLIC};
+    std::set<std::string_view> _ignored_prefixes, _ignored_names;
+    
+    std::atomic<bool> _locked{false};
+    std::vector<HistoryItem> _items;
+    size_t _index{0u};
+    
+public:
+    static constexpr auto merge_time_threshold = std::chrono::milliseconds(500);
+    
+public:
+    std::optional<sprite::ConstReference> last_value_of(std::string_view) const;
+    std::optional<sprite::ConstReference> historic_value_of(std::string_view) const;
+    bool empty() const noexcept;
+    bool can_redo() const noexcept;
+    size_t size() const;
+    
+    std::vector<HistoryItem>::const_iterator begin() const;
+    std::vector<HistoryItem>::const_iterator end() const;
+    std::vector<HistoryItem>::const_reverse_iterator rbegin() const;
+    std::vector<HistoryItem>::const_reverse_iterator rend() const;
+    
+    HistoryItem& push();
+    const HistoryItem& pop();
+    
+    void clear();
+    void reset(AccessLevel = AccessLevelType::PUBLIC);
+    void before_value_changed(AccessLevel, sprite::Map& source, std::string_view key);
+    void value_changed(AccessLevel, sprite::Map& source, std::string_view key);
+    void ignore_prefix(std::string_view);
+    void ignore(std::initializer_list<std::string_view>);
+    bool matches_ignored_prefix(std::string_view) const;
+    bool matches_ignored_name(std::string_view) const;
+    void set_monitor_level(AccessLevel);
+    
+    ParameterHistory() = default;
+    ParameterHistory(ParameterHistory&& other)
+        : _locked(other.locked()),
+          _items(std::move(other._items)),
+          _index(other._index)
+    {}
+    ParameterHistory(const ParameterHistory& other)
+        : _locked(false),
+          _items(other._items),
+          _index(other._index)
+    {}
+    ParameterHistory& operator=(ParameterHistory&& other) {
+        _locked = other.locked();
+        _items = std::move(other._items);
+        _index = other._index;
+        return *this;
+    }
+    ParameterHistory& operator=(const ParameterHistory& other) {
+        _locked = false;
+        _items = other._items;
+        _index = other._index;
+        return *this;
+    }
+    
+    void print() const;
+    
+    void run_locked(auto&& fn) {
+        lock();
+        try {
+            fn();
+        } catch(...) {
+            unlock();
+            throw;
+        }
+        unlock();
+    }
+    
+    std::optional<std::tuple<std::chrono::microseconds, size_t>> time_since(std::optional<std::string_view>) const;
+    const HistoryItem& last() const;
+    std::optional<size_t> last_changed(std::string_view) const;
+    std::optional<std::set<std::string>> redo(sprite::Map&);
+    std::optional<std::set<std::string>> undo(sprite::Map&);
+    
+protected:
+    void lock();
+    void unlock();
+    bool locked() const;
+    HistoryItem& last();
+};
+
     struct Configuration {
         cmn::sprite::Map values, examples, defaults;
         docs_map_t docs;
         user_access_map_t access;
         std::unordered_map<std::string, std::function<std::string(std::optional<uint8_t>)>, MultiStringHash, MultiStringEqual> doc_generators;
+        
+        ParameterHistory history;
+        
+        std::optional<std::set<std::string>> undo();
+        std::optional<std::set<std::string>> redo();
         
         void set_access(std::string_view name, cmn::AccessLevel w)
         {
@@ -343,6 +439,8 @@ namespace cmn {
         //static sprite::Map get_current_defaults();
         //static sprite::Map& current_defaults_with_config();
         //static docs_map_t& docs();
+        
+        static void reset();
         
         template<typename T>
         static std::optional<T> get_with_type(const sprite::Map& map, std::string_view name) {

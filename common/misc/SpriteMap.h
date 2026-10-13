@@ -258,8 +258,8 @@ concept Iterable = requires(T obj) {
             cmn::CallbackCollection addition;
         };
         std::shared_mutex pending_mutex;
-        std::vector<std::function<void(std::string_view)>> _general_callbacks;
-        std::vector<std::pair<std::string, std::size_t>> _registered_general_callbacks;
+        std::vector<std::function<void(std::string_view)>> _general_callbacks, _before_write_callbacks;
+        std::vector<std::pair<std::string, std::size_t>> _registered_general_callbacks, _registered_before_write_callbacks;
         std::unordered_map<std::string, std::vector<PendingCallback>, MultiStringHash, MultiStringEqual> _pending_callbacks;
         
         mutable LOGGED_MUTEX_VAR(_mutex, "sprite::Lock");
@@ -440,17 +440,34 @@ concept Iterable = requires(T obj) {
             return future;
         }
         
-        void register_general_callback(std::function<void(std::string_view)>&& fn) {
+        void register_before_write_callback(std::function<void(std::string_view)>&& fn) {
             std::unique_lock g{pending_mutex};
-            
             {
                 auto guard = LOGGED_LOCK(mutex());
                 for(auto& [name, prop] : _props) {
-                    _registered_general_callbacks.emplace_back(name,  prop->registerBeforeWriteCallback(fn));
+                    auto id = prop->registerBeforeWriteCallback(fn);
+                    _registered_before_write_callbacks.emplace_back(name,  id);
                 }
             }
-            
+            _before_write_callbacks.push_back(std::move(fn));
+        }
+        
+        void register_general_callback(std::function<void(std::string_view)>&& fn) {
+            std::unique_lock g{pending_mutex};
+            std::set<std::tuple<PropertyType*, std::size_t>> callbacks;
+            {
+                auto guard = LOGGED_LOCK(mutex());
+                for(auto& [name, prop] : _props) {
+                    auto id = prop->registerCallback(fn);
+                    callbacks.emplace(&(*prop), id);
+                    _registered_general_callbacks.emplace_back(name,  id);
+                }
+            }
             _general_callbacks.push_back(std::move(fn));
+            
+            g.unlock();
+            for(auto &&[ptr, cb] : callbacks)
+                ptr->triggerCallback(cb);
         }
         
         void unregister_callbacks(CallbackFuture&& future) {
@@ -599,7 +616,16 @@ concept Iterable = requires(T obj) {
 
                 if(not _general_callbacks.empty()) {
                     for(auto &fn : _general_callbacks) {
-                        _registered_general_callbacks.emplace_back(name, property_->registerBeforeWriteCallback(fn));
+                        auto id = property_->registerCallback(fn);
+                        indexes.push_back(id);
+                        _registered_general_callbacks.emplace_back(name, id);
+                    }
+                }
+                
+                if(not _before_write_callbacks.empty()) {
+                    for(auto &fn : _before_write_callbacks) {
+                        auto id = property_->registerBeforeWriteCallback(fn);
+                        _registered_before_write_callbacks.emplace_back(name, id);
                     }
                 }
 

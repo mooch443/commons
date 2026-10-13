@@ -11,10 +11,7 @@ namespace cmn {
 namespace sprite {
 
 Map::Map(const Map& other) {
-    for(auto &[name, ptr] : other._props) {
-        ptr->copy_to(*this);
-    }
-    _print_by_default = other._print_by_default;
+    *this = other;
 }
 
 Map::Map(Map&& other) 
@@ -22,7 +19,9 @@ Map::Map(Map&& other)
     _id_counter(other._id_counter.load()),
     _shutdown_callbacks(std::move(other._shutdown_callbacks)),
     _general_callbacks(std::move(other._general_callbacks)),
+    _before_write_callbacks(std::move(other._before_write_callbacks)),
     _registered_general_callbacks(std::move(other._registered_general_callbacks)),
+    _registered_before_write_callbacks(std::move(other._registered_before_write_callbacks)),
     _pending_callbacks(std::move(other._pending_callbacks)),
     _print_by_default(std::move(other._print_by_default))
 { }
@@ -50,15 +49,18 @@ Map& Map::operator=(const Map& other) {
 }
 
 Map& Map::operator=(Map&& other) {
-    if(this == &other)
+    if(this == &other) {
         return *this;
+    }
 
 	_props = std::move(other._props);
     _print_by_default = std::move(other._print_by_default);
     _shutdown_callbacks = std::move(other._shutdown_callbacks);
     _id_counter = other._id_counter.load();
     _general_callbacks = std::move(other._general_callbacks);
+    _before_write_callbacks = std::move(other._before_write_callbacks);
     _registered_general_callbacks = std::move(other._registered_general_callbacks);
+    _registered_before_write_callbacks = std::move(other._registered_before_write_callbacks);
     _pending_callbacks = std::move(other._pending_callbacks);
 	return *this;
 }
