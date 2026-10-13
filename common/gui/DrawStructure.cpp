@@ -921,7 +921,37 @@ void DrawStructure::close_dialogs() {
         throw InvalidArgumentException("This is an invalid button.");
     }
 
-    bool DrawStructure::event(Event e) {
+bool DrawStructure::event(Event e) {
+    try {
+        return _event(e);
+    } catch(...) {
+        if(_event_exception_handler) {
+            return _event_exception_handler(e, std::current_exception());
+        } else {
+            throw;
+        }
+    }
+    return false;
+}
+
+std::optional<std::source_location> DrawStructure::has_event_exception_handler() const {
+    if(_event_exception_handler)
+        return _event_exception_source;
+    return std::nullopt;
+}
+
+void DrawStructure::clear_event_exception_handler(std::source_location source) {
+    if(not _event_exception_source) {
+        throw InvalidArgumentException("No source registered when trying to unregister ", source.file_name(),":",source.line());
+    }
+    if(::operator!=(_event_exception_source.value(), source)) {
+        throw InvalidArgumentException("Source ", source.file_name(), ":",source.line()," is not the registered source (", _event_exception_source->file_name(),":", _event_exception_source->line(),").");
+    }
+    _event_exception_source.reset();
+    _event_exception_handler = nullptr;
+}
+
+    bool DrawStructure::_event(Event e) {
         //auto lock = GUI_LOCK(_lock);
         Drawable* d = NULL;
 

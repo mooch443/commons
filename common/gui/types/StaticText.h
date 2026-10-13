@@ -118,6 +118,23 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
+            if constexpr(not contains_type<Str, Args...>())
+                set(Str{Settings{}.txt});
+            if constexpr(not contains_type<TextClr, Args...>())
+                set(TextClr{Settings{}.text_color});
+            if constexpr(not contains_type<Font, Args...>())
+                set(Settings{}.default_font);
+            if constexpr(not contains_type<SizeLimit, Args...>())
+                set(SizeLimit{Size2{Settings{}.max_size}});
+            if constexpr(not contains_type<Margins, Args...>())
+                set(Settings{}.margins);
+            if constexpr(not contains_type<Alpha, Args...>())
+                set(Settings{}.alpha);
+            if constexpr(not contains_type<FadeOut_t, Args...>())
+                set(Settings{}.fade_out);
+            if constexpr(not contains_type<Shadow_t, Args...>())
+                set(Settings{}.shadow);
+
             (set(std::forward<Args>(args)), ...);
         }
         

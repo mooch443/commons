@@ -37,6 +37,19 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
+        if constexpr(not contains_type<Str, Args...>())
+            set(Str{Settings{}.text});
+        if constexpr(not contains_type<Font, Args...>())
+            set(Settings{}.font);
+        if constexpr(not contains_type<FillClr, Args...>())
+            set(FillClr{Settings{}.fill_clr});
+        if constexpr(not contains_type<LineClr, Args...>())
+            set(LineClr{Settings{}.line_clr});
+        if constexpr(not contains_type<TextClr, Args...>())
+            set(TextClr{Settings{}.text_clr});
+        if constexpr(not contains_type<Checked, Args...>())
+            set(Checked{Settings{}.checked});
+
         (set(std::forward<Args>(args)), ...);
         init();
     }

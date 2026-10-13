@@ -1430,6 +1430,29 @@ void Context::init() const {
 
                 throw InvalidArgumentException("Needs to be an indexable type.");
             }),
+            VarFunc("keys", [](const VarProps& props) -> std::vector<std::string> {
+                REQUIRE_EXACTLY(1, props);
+
+                auto trunc = utils::trim(props.parameters.front());
+                if(is_in(trunc.front(), '{')) {
+                    std::vector<std::string> result;
+                    auto parts = util::parse_array_parts(util::truncate(trunc));
+                    result.reserve(parts.size());
+
+                    for(auto &part : parts) {
+                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        if(key_value.size() != 2) {
+                            throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
+                        }
+
+                        result.push_back(Meta::fromStr<std::string>(key_value.front()));
+                    }
+
+                    return result;
+                }
+
+                throw InvalidArgumentException("Needs to be a map.");
+            }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 

@@ -178,7 +178,7 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
-            init();
+            init<Args...>();
             
             (set(std::forward<Args>(args)), ...);
             
@@ -187,17 +187,26 @@ namespace cmn::gui {
             update_items();
         }
         
+        template<typename... Args>
         void init() {
-            set(ItemPadding_t{5,5});
-            set(ItemFillClr_t(50,50,50,220));
-            set(ItemLineColor_t(Transparent));
-            set(ItemFont_t{ Font(0.75) });
+            if constexpr(not contains_type<ItemPadding_t, Args...>())
+                set(ItemPadding_t{5,5});
+            if constexpr(not contains_type<ItemFillClr_t, Args...>())
+                set(ItemFillClr_t(50,50,50,220));
+            if constexpr(not contains_type<ItemLineColor_t, Args...>())
+                set(ItemLineColor_t(Transparent));
+            if constexpr(not contains_type<ItemFont_t, Args...>())
+                set(ItemFont_t{ Font(0.75) });
             set(ListDims_t{ 100, 200 });
             set(TextClr{_text_color});
-            set(ListFillClr_t{100,100,100,200});
-            set(ListLineClr_t{200,200,200,200});
-            set(LabelFillClr_t{100,100,100,200});
-            set(LabelLineColor_t{200,200,200,200});
+            if constexpr(not contains_type<ListFillClr_t, Args...>())
+                set(ListFillClr_t{100,100,100,200});
+            if constexpr(not contains_type<ListLineClr_t, Args...>())
+                set(ListLineClr_t{200,200,200,200});
+            if constexpr(not contains_type<LabelFillClr_t, Args...>())
+                set(LabelFillClr_t{100,100,100,200});
+            if constexpr(not contains_type<LabelLineColor_t, Args...>())
+                set(LabelLineColor_t{200,200,200,200});
             update_line_height();
             
             set_clickable(true);
@@ -988,10 +997,10 @@ namespace cmn::gui {
                 }
                 
                 if(e->scroll_enabled()) {
-                    const float last_y = item_height * (_items.size()-1);
+                    const float last_y = item_height * (_items.size());
                     e->set_scroll_limits(Rangef(),
                                          Rangef(0,
-                                                (e->height() < last_y ? last_y + item_height - e->height() : 0.f)));
+                                                (e->height() < last_y ? last_y - e->height() : 0.f)));
                     auto scroll = e->scroll_offset();
                     e->set_scroll_offset(Vec2());
                     e->set_scroll_offset(scroll);

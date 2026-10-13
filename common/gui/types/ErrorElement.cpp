@@ -42,6 +42,14 @@ void ErrorElement::set(attr::Str content) {
         set_content_changed(true);
     }
 }
+void ErrorElement::set(attr::Font font) {
+    if(_settings.font != font) {
+        _settings.font = font;
+        if(_text)
+            _text->set(font);
+        set_content_changed(true);
+    }
+}
 void ErrorElement::set(attr::FillClr clr) {
     if(_settings.fill_clr != clr) {
         _settings.fill_clr = clr;

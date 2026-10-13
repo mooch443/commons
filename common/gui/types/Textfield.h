@@ -78,7 +78,32 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
-        _settings = {};
+        if constexpr(not contains_type<CheckText_t, Args...>())
+            set(Settings{}.check_text);
+        if constexpr(not contains_type<OnEnter_t, Args...>())
+            set(Settings{}.on_enter);
+        if constexpr(not contains_type<OnTab_t, Args...>())
+            set(Settings{}.on_tab);
+        if constexpr(not contains_type<OnTextChanged_t, Args...>())
+            set(Settings{}.on_text_changed);
+        if constexpr(not contains_type<OnClearText_t, Args...>())
+            set(Settings{}.on_clear);
+        if constexpr(not contains_type<Str, Args...>())
+            set(Str{Settings{}.text});
+        if constexpr(not contains_type<Postfix, Args...>())
+            set(Postfix{Settings{}.postfix});
+        if constexpr(not contains_type<Font, Args...>())
+            set(Settings{}.font);
+        if constexpr(not contains_type<TextClr, Args...>())
+            set(TextClr{Settings{}.text_color});
+        if constexpr(not contains_type<FillClr, Args...>())
+            set(FillClr{Settings{}.fill_color});
+        if constexpr(not contains_type<LineClr, Args...>())
+            set(LineClr{Settings{}.line_color});
+        if constexpr(not contains_type<ClearText_t, Args...>())
+            set(Settings{}.clear_text);
+        if constexpr(not contains_type<ReadOnly, Args...>())
+            set(ReadOnly{Settings{}.read_only});
         
         (set(std::forward<Args>(args)), ...);
         init();

@@ -304,5 +304,7 @@ namespace cmn::gui {
         };
         
         Event(EventType t) : type(t) {}
+        std::string toStr() const;
+        static consteval std::string_view class_name() { return "Event"; }
     };
 }

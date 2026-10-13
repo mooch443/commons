@@ -354,7 +354,12 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
-        _settings = {};
+        if constexpr(not contains_type<LineClr, Args...>())
+            set(LineClr{Settings{}.lineclr});
+        if constexpr(not contains_type<FillClr, Args...>())
+            set(FillClr{Settings{}.fillclr});
+        if constexpr(not contains_type<CornerFlags_t, Args...>())
+            set(Settings{}.corners);
         
         (set(std::forward<Args>(args)), ...);
     }
@@ -415,11 +420,14 @@ protected:
         
         template<typename... Args>
         void create(Args... args) {
+            if constexpr(not contains_type<FillClr, Args...>())
+                set(FillClr{Settings{}.fill_clr});
+            if constexpr(not contains_type<LineClr, Args...>())
+                set(LineClr{Settings{}.line_clr});
+            if constexpr(not contains_type<Origin, Args...>())
+                set(Origin{0.5});
+
             (set(std::forward<Args>(args)), ...);
-            
-            if constexpr(!pack_contains<Origin, Args...>()) {
-                set_origin(Vec2(0.5));
-            }
         }
         
     public:
@@ -495,9 +503,27 @@ protected:
         }
         
         template<typename... Args> void create(Args... args) {
-            _settings = {};
+            if constexpr(not contains_type<Str, Args...>())
+                set(Str{Settings{}.txt});
+            if constexpr(not contains_type<TextClr, Args...>())
+                set(TextClr{Settings{}.color});
+            if constexpr(not contains_type<Font, Args...>())
+                set(Settings{}.font);
+            if constexpr(not contains_type<Shadow_t, Args...>())
+                set(Settings{}.shadow);
 
-            if constexpr(not contains_type<Origin, Args...>()) {
+            ([&] {
+                if constexpr(not std::same_as<std::remove_cvref_t<Args>, Origin>)
+                    set(std::forward<Args>(args));
+            }(), ...);
+
+            // Explicit origins take precedence over font alignment in either argument order.
+            if constexpr(contains_type<Origin, Args...>()) {
+                ([&] {
+                    if constexpr(std::same_as<std::remove_cvref_t<Args>, Origin>)
+                        set(std::forward<Args>(args));
+                }(), ...);
+            } else {
                 switch(_settings.font.align) {
                     case Align::Center:
                         set(Origin(0.5));
@@ -514,10 +540,6 @@ protected:
                         break;
                 }
             }
-            
-            (set(std::forward<Args>(args)), ...);
-            
-            
         }
         
         virtual ~Text() {}
@@ -540,11 +562,11 @@ protected:
         const auto& txt() const { return _settings.txt; }
         const auto& shadow() const { return _settings.shadow; }
         
-        void set_txt(const std::string& txt) {
+        void set_txt(std::string_view txt) {
             if(txt == _settings.txt)
                 return;
             
-            _settings.txt = txt;
+            _settings.txt.assign(txt);
             _bounds_calculated = false;
             set_bounds_changed();
         }

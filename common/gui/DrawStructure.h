@@ -150,8 +150,18 @@ namespace cmn::gui {
         std::array<bool, 2> mouse_state{ false, false };
         
         std::vector<Drawable*> results;
+        std::function<bool(Event e, std::exception_ptr)> _event_exception_handler;
+        std::optional<std::source_location> _event_exception_source;
         
     public:
+        std::source_location set_event_exception_handler(std::function<bool(Event e, std::exception_ptr)>&& cb, std::source_location source) {
+            _event_exception_handler = std::move(cb);
+            _event_exception_source = source;
+            return _event_exception_source.value();
+        }
+        std::optional<std::source_location> has_event_exception_handler() const;
+        void clear_event_exception_handler(std::source_location);
+        
         DrawStructure(uint16_t width = 0, uint16_t height = 0, Vec2 scale = Vec2(1, 1))
             : _root(this, NULL, "root"),
               _active_section(NULL),
@@ -362,6 +372,8 @@ namespace cmn::gui {
         friend class Entangled;
         friend class SectionInterface;
         
+        bool _event(Event);
+        
         void update_hover();
         void all_changed();
         void clear_hover();
@@ -455,6 +467,21 @@ namespace cmn::gui {
     public:
         void set_dirty(const Base* base);
     };
+}
+
+inline bool operator==(const std::source_location& a,
+                const std::source_location& b)
+{
+    return a.line() == b.line()
+        && a.column() == b.column()
+        && std::string_view(a.file_name()) == b.file_name()
+        && std::string_view(a.function_name()) == b.function_name();
+}
+
+inline bool operator!=(const std::source_location& a,
+                const std::source_location& b)
+{
+    return not (a == b);
 }
 
 #endif

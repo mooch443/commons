@@ -35,6 +35,19 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
+        if constexpr(not contains_type<attr::Str, Args...>())
+            set(attr::Str{Settings{}.content});
+        if constexpr(not contains_type<attr::Font, Args...>())
+            set(Settings{}.font);
+        if constexpr(not contains_type<attr::FillClr, Args...>())
+            set(attr::FillClr{Settings{}.fill_clr});
+        if constexpr(not contains_type<attr::LineClr, Args...>())
+            set(attr::LineClr{Settings{}.line_clr});
+        if constexpr(not contains_type<attr::TextClr, Args...>())
+            set(attr::TextClr{Settings{}.text_clr});
+        if constexpr(not contains_type<attr::SizeLimit, Args...>())
+            set(Settings{}.size_limit);
+
         (set(std::forward<Args>(args)), ...);
         init();
     }

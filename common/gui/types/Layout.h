@@ -99,9 +99,12 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
-            _minSize = MinSize{};
-            _margins = Margins{};
-            _outer_padding = OuterPadding{};
+            if constexpr(not contains_type<MinSize, Args...>())
+                set(MinSize{});
+            if constexpr(not contains_type<Margins, Args...>())
+                set(Margins{});
+            if constexpr(not contains_type<OuterPadding, Args...>())
+                set(OuterPadding{});
             
             (set(std::forward<Args>(args)), ...);
             init();
@@ -212,7 +215,8 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
-            _policy = Policy::CENTER;
+            if constexpr(not contains_type<Policy, Args...>())
+                set(Policy::CENTER);
             (set(std::forward<Args>(args)), ...);
             init();
         }
@@ -252,7 +256,8 @@ namespace cmn::gui {
         
         template<typename... Args>
         void create(Args... args) {
-            _policy = Policy::LEFT;
+            if constexpr(not contains_type<Policy, Args...>())
+                set(Policy::LEFT);
             (set(std::forward<Args>(args)), ...);
             init();
         }
@@ -293,8 +298,10 @@ namespace cmn::gui {
 
         template<typename... Args>
         void create(Args... args) {
-            _policy = Policy::HorizontalFirst;
-            _max_size = attr::SizeLimit{};
+            if constexpr(not contains_type<Policy, Args...>())
+                set(Policy::HorizontalFirst);
+            if constexpr(not contains_type<attr::SizeLimit, Args...>())
+                set(attr::SizeLimit{});
             _content_size = {};
             (set(std::forward<Args>(args)), ...);
             init();
@@ -403,7 +410,24 @@ public:
     
     template<typename... Args>
     void create(Args... args) {
-        _settings = {};
+        if constexpr(not contains_type<HPolicy, Args...>())
+            set(Settings{}.hpolicy);
+        if constexpr(not contains_type<VPolicy, Args...>())
+            set(Settings{}.vpolicy);
+        if constexpr(not contains_type<attr::VerticalClr, Args...>())
+            set(Settings{}.verticalClr);
+        if constexpr(not contains_type<attr::HorizontalClr, Args...>())
+            set(Settings{}.horizontalClr);
+        if constexpr(not contains_type<attr::CellFillClr, Args...>())
+            set(Settings{}.cellFillClr);
+        if constexpr(not contains_type<attr::CellLineClr, Args...>())
+            set(Settings{}.cellLineClr);
+        if constexpr(not contains_type<CellFillInterval, Args...>())
+            set(Settings{}.cellFillInterval);
+        if constexpr(not contains_type<MinCellSize, Args...>())
+            set(Settings{}.minCellSize);
+        if constexpr(not contains_type<CornerFlags_t, Args...>())
+            set(Settings{}.corners);
         
         (set(std::forward<Args>(args)), ...);
         init();

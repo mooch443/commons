@@ -56,6 +56,11 @@ inline auto no_quotes(T&& str) noexcept {
     return no_quotes_t<T>{ str };
 }
 
+template<cmn::StringLike T>
+inline auto no_quotes(const std::optional<T>& str) noexcept {
+    return str.has_value() ? no_quotes_t<T>{ *str } : no_quotes_t<T>( "null" );
+}
+
 template <std::size_t V, std::size_t N, class I = std::make_integer_sequence<std::size_t, N>>
 struct power;
 
