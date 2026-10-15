@@ -491,7 +491,7 @@ std::vector<TRange> StaticText::to_tranges(const std::string& _txt) {
     return global_tags;
 }
     
-template<typename T, typename K = T, typename V, class... D, template <typename, class...> class PtrType, class... DV>
+template<typename T, typename K = T, typename V, class... D, template <typename, class...> class PtrType>
     requires (not std::is_pointer_v<V> && not _is_smart_pointer<V>)
 inline void update_vector_elements(
    std::vector<PtrType<T, D...>>& vector,

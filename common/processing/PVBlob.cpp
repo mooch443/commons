@@ -1129,13 +1129,15 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
         else
             b.restrict_to(Bounds(0, 0, infinity<Float2_t>(), infinity<Float2_t>()));
         
-        auto image = Image::Make(b.height, b.width, 1);
+        Image::Ptr image;
         
         if(auto bg = background ? background->image().get() : nullptr;
            not bg)
         {
-            std::fill(image->data(), image->data() + image->size(), uchar(0));
+            image = Image::Zeros(b.height, b.width, 1);
         } else /* if(bg) */ {
+            image = Image::Make(b.height, b.width, 1);
+            
             if(bg->channels() == 1) {
                 bg->get()(b).copyTo(image->get());
             } else if(bg->channels() == 3) {
@@ -1199,13 +1201,16 @@ std::unique_ptr<PixelArray_t> Blob::calculate_pixels(cmn::InputInfo input, cmn::
             output.channels = 1;
         }
         
-        auto image = Image::Make(b.height, b.width, output.channels);
+        Image::Ptr image;
         
         if(auto bg = background ? background->image().get() : nullptr;
            not bg)
         {
-            std::fill(image->data(), image->data() + image->size(), uchar(0));
+            image = Image::Zeros(b.height, b.width, output.channels);
+            
         } else /* if(bg) */ {
+            image = Image::Make(b.height, b.width, output.channels);
+            
             if(bg->channels() == output.channels) {
                 bg->get()(b).copyTo(image->get());
             } else if(bg->channels() == 1) {
@@ -1573,8 +1578,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
             output.encoding = meta_encoding_t::gray;
         }
         
-        auto image = Image::Make(b.height, b.width, output.channels);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        auto image = Image::Zeros(b.height, b.width, output.channels);
         
         call_image_mode_function(input, output,
             [&]<InputInfo input, OutputInfo output, DifferenceMethod method>()
@@ -1672,8 +1676,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
-        auto image = Image::Make(b.height, b.width, channels());
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        auto image = Image::Zeros(b.height, b.width, channels());
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
@@ -1724,8 +1727,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
         Bounds b(bounds().pos()-Vec2(1), bounds().size()+Vec2(2));
         b.restrict_to(background.bounds());
         
-        auto image = Image::Make(b.height, b.width);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        auto image = Image::Zeros(b.height, b.width);
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;
@@ -1776,8 +1778,7 @@ Vec2 Blob::rgba_image(const cmn::Background& background, int32_t threshold, Imag
         if(b.x < 0) {b.x = 0;--b.width;}
         if(b.y < 0) {b.y = 0;--b.height;}
         
-        auto image = Image::Make(b.height, b.width);
-        std::fill(image->data(), image->data() + image->size(), uchar(0));
+        auto image = Image::Zeros(b.height, b.width);
         
         auto _x = (coord_t)b.x;
         auto _y = (coord_t)b.y;

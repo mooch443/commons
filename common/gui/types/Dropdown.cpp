@@ -322,7 +322,7 @@ void Dropdown::set(Placeholder_t placeholder) {
         _opened = opened;
         //_selected_item = RawIndex{};
         if(_opened) {
-            set_z_index(2);
+            set_z_index(5);
         } else {
             set_z_index(0);
             if(selected())

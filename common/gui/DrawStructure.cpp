@@ -175,6 +175,7 @@ void Dialog::set_closed() {
     {
         set_name("Dialog");
         _layout.set(Margins(5, 5, 5, 5));
+        set(ZIndex{100});
         
         const Float2_t margin = 20;
         _okay->set_size(Size2(_okay->text_dims().width + margin, 40));
@@ -379,7 +380,7 @@ void Dialog::set_closed() {
             if(!dialog_window_size().empty())
                 size = dialog_window_size();
             
-            rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red}, Origin{0.5}, Clickable{true}, CornerFlags_t{false, false, true, true});
+            rect(Box(Vec2(size) * 0.5, size), FillClr{Black.alpha(200)}, LineClr{Red}, Origin{0.5}, Clickable{true}, CornerFlags_t{false, false, true, true}, ZIndex{100});
             wrap_object(*_dialogs.front());
         }
         
@@ -397,22 +398,41 @@ void DrawStructure::close_dialogs() {
     update_dialogs();
     set_dirty(nullptr);
 }
-    
-    Dialog* DrawStructure::_dialog(std::function<bool(Dialog::Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
-    {
-        //auto guard = GUI_LOCK(_lock);
-        auto d = new Dialog(*this, std::move(callback), text, title, okay, abort, second, third, fourth);
-        d->set_scale(scale().reciprocal());
-        _dialogs.emplace_back(d);
-        set_dirty(nullptr);
-        return d;
-    }
 
-    Dialog* DrawStructure::dialog(const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
-    {
-        std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
-        return _dialog(std::move(fn), text, title, okay, abort, second, third, fourth);
-    }
+bool DrawStructure::has_open_dialogs() const {
+    return std::ranges::any_of(_dialogs, [](const auto& dialog) {
+        return not dialog->is_closed();
+    });
+}
+    
+std::optional<std::shared_ptr<Dialog>> DrawStructure::_dialog(std::function<bool(Dialog::Result)>&& callback, const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
+{
+    if(has_open_dialogs())
+        return std::nullopt;
+    //auto guard = GUI_LOCK(_lock);
+    auto d = std::shared_ptr<Dialog>(new Dialog{
+        *this,
+        std::move(callback),
+        text,
+        title,
+        okay,
+        abort,
+        second,
+        third,
+        fourth
+    });
+    
+    d->set_scale(scale().reciprocal());
+    _dialogs.emplace_back(d);
+    set_dirty(nullptr);
+    return d;
+}
+
+std::optional<std::shared_ptr<Dialog>> DrawStructure::dialog(const std::string &text, const std::string& title, const std::string& okay, const std::string& abort, const std::string& second, const std::string& third, const std::string& fourth)
+{
+    std::function<bool(Dialog::Result)> fn = [](Dialog::Result)->bool{return true;};
+    return _dialog(std::move(fn), text, title, okay, abort, second, third, fourth);
+}
     
     Vertices* DrawStructure::vertices(const std::vector<Vec2> &points, const gui::Color &color, PrimitiveType type) {
         std::vector<Vertex> array;

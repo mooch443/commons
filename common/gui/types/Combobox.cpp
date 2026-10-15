@@ -268,12 +268,14 @@ void Combobox::set(LabelCornerFlags flags) {
 }
 
 void Combobox::set(ListLineClr_t clr) {
+    _settings.list_line_clr = clr;
     if(_dropdown)
         _dropdown->set(clr);
     if(_value)
         _value->set(clr);
 }
 void Combobox::set(ListFillClr_t clr) {
+    _settings.list_fill_clr = clr;
     if(_dropdown)
         _dropdown->set(clr);
     if(_value)
@@ -399,10 +401,8 @@ void Combobox::update_value() {
     _value->set(_settings.font);
     _value->set(_settings.highlight);
     _value->set(_settings.sizeLimit);
-    if(_dropdown) {
-        _value->set(ListLineClr_t{_dropdown->list().list_line_clr()});
-        _value->set(ListFillClr_t{_dropdown->list().list_fill_clr()});
-    }
+    _value->set(_settings.list_line_clr);
+    _value->set(_settings.list_fill_clr);
     _value->set(LabelFillClr_t{(Color)_settings.fill_clr});
     _value->set(LabelLineColor_t{(Color)_settings.line_clr});
     _value->set(_settings.postfix);

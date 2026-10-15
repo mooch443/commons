@@ -56,7 +56,7 @@ struct HistoryItem {
 };
 
 class ParameterHistory {
-    AccessLevel _monitor_level{AccessLevelType::PUBLIC};
+    std::optional<AccessLevel> _monitor_level;
     std::set<std::string_view> _ignored_prefixes, _ignored_names;
     
     std::atomic<bool> _locked{false};
@@ -82,14 +82,14 @@ public:
     const HistoryItem& pop();
     
     void clear();
-    void reset(AccessLevel = AccessLevelType::PUBLIC);
+    void reset(std::optional<AccessLevel> = std::nullopt);
     void before_value_changed(AccessLevel, sprite::Map& source, std::string_view key);
     void value_changed(AccessLevel, sprite::Map& source, std::string_view key);
     void ignore_prefix(std::string_view);
     void ignore(std::initializer_list<std::string_view>);
     bool matches_ignored_prefix(std::string_view) const;
     bool matches_ignored_name(std::string_view) const;
-    void set_monitor_level(AccessLevel);
+    void set_monitor_level(std::optional<AccessLevel>);
     
     ParameterHistory() = default;
     ParameterHistory(ParameterHistory&& other)

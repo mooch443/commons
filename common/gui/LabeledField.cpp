@@ -674,8 +674,8 @@ void LabeledTextField::update_ref_in_main_thread() {
 LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert, sprite::Map* local_settings)
 : LabeledField(gui, name, local_settings),
 _list(new gui::List(
-    Bounds(0, 0, settings_scene::video_chooser_column_width, 28),
-  std::string(), std::vector<std::shared_ptr<gui::Item>>{}, [this, ptr = std::weak_ptr(_ref_mutex)](List* list, const gui::Item& item){
+    Box(0, 0, settings_scene::video_chooser_column_width, 28),
+  Str{}, std::vector<std::shared_ptr<gui::Item>>{}, [this, ptr = std::weak_ptr(_ref_mutex)](List* list, const gui::Item& item){
       auto index = item.ID();
       if(index < 0)
           return;

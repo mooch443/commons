@@ -153,13 +153,13 @@ std::optional<size_t> ParameterHistory::last_changed(std::string_view key) const
     return std::nullopt;
 }
 
-void ParameterHistory::set_monitor_level(AccessLevel level) {
+void ParameterHistory::set_monitor_level(std::optional<AccessLevel> level) {
     _monitor_level = level;
 }
 
 void ParameterHistory::before_value_changed(AccessLevel level, sprite::Map& source, std::string_view name) {
     if(locked()
-       || level > _monitor_level
+       || (not _monitor_level || level > *_monitor_level)
        || matches_ignored_prefix(name)
        || matches_ignored_name(name))
     {
@@ -182,7 +182,9 @@ void ParameterHistory::before_value_changed(AccessLevel level, sprite::Map& sour
     if(not found) {
         /// apparently there was a settings reset at some point
         /// and we will have to preserve the previous value.
+#ifndef NDEBUG
         prefixed_print("history", "Uninitialized value found for ", name);
+#endif
         
         if(_items.empty()) {
             auto& item = push();
@@ -196,7 +198,7 @@ void ParameterHistory::before_value_changed(AccessLevel level, sprite::Map& sour
 
 void ParameterHistory::value_changed(AccessLevel level, sprite::Map& source, std::string_view name) {
     if(locked()
-       || level > _monitor_level
+       || (not _monitor_level || level > *_monitor_level)
        || matches_ignored_prefix(name)
        || matches_ignored_name(name))
     {
@@ -230,12 +232,15 @@ void ParameterHistory::value_changed(AccessLevel level, sprite::Map& source, std
         
         /// if 25ms have passed, add a new history item - otherwise, just replace the existing one. this deals with recursion as well as combining packages of combined changed parameters.
         if(diff >= merge_time_threshold) {
+#ifndef NDEBUG
             Print("Pushing new item for ", name, " with diff ", DurationUS(timestamp_t{diff}), " to ", result ? std::get<1>(*result) : 0u);
+#endif
             item = &push(); /// update pointer to next item
         }
         /// otherwise we can just reuse the current item
-        
+#ifndef NDEBUG
         Print("Difference ", DurationUS(timestamp_t{diff}), " since last history vs. threshold = ", DurationUS(timestamp_t{merge_time_threshold}), " ", diff >= merge_time_threshold);
+#endif
     } else {
         /// we're empty so just push a new one
         item = &push();
@@ -258,7 +263,7 @@ void ParameterHistory::print() const {
     }
 }
 
-void ParameterHistory::reset(AccessLevel level) {
+void ParameterHistory::reset(std::optional<AccessLevel> level) {
     clear();
     _ignored_prefixes.clear();
     _ignored_names.clear();
@@ -367,12 +372,14 @@ std::optional<std::set<std::string>> ParameterHistory::redo(sprite::Map &target)
     auto keys = item.values.keys();
     
     run_locked([&](){
+#ifndef NDEBUG
         std::map<std::string, std::string> current_values, next_values;
         for(auto key : keys) {
             next_values[key] = Meta::fromStr<std::string>(item.values.at(key).get().valueString());
             current_values[key] = Meta::fromStr<std::string>(target.at(key).get().valueString());
         }
         prefixed_print("history", "redoing ", current_values," -> ", next_values);
+#endif
         
         for(auto key : keys) {
             item.values.at(key).get().copy_to(target);
@@ -397,49 +404,31 @@ std::optional<std::set<std::string>> ParameterHistory::undo(sprite::Map &target)
     auto keys = item.values.keys();
     
     sprite::Map next_map;
+#ifndef NDEBUG
     std::map<std::string, std::string> current_values, next_values;
+#endif
     for(auto key : keys) {
         auto historic = historic_value_of(key);
         if(historic) {
             historic->get().copy_to(next_map);
+#ifndef NDEBUG
             next_values[key] = Meta::fromStr<std::string>(historic->get().valueString());
-        } else {
+#endif
+        }
+#ifndef NDEBUG
+        else {
             prefixed_print("history", "Have no historic value for ", key);
         }
         
         current_values[key] = Meta::fromStr<std::string>(target.at(key).get().valueString());
+#endif
     }
-    
+#ifndef NDEBUG
     prefixed_print("history", "undoing ", current_values," -> ", next_values);
+#endif
     (void)pop();
 
     run_locked([&](){
-        /*if(_index == _items.size())
-        {
-            std::map<std::string_view, std::string> changed_keys;
-            /// we are at the end of the histories
-            /// so we need to insert an item for current values
-            auto &item = push();
-            for(auto key : keys) {
-                changed_keys[key] = Meta::fromStr<std::string>(target.at(key).get().valueString());
-                target.at(key).get().copy_to(item.values);
-            }
-            /// we go back to where we started...
-            (void)pop();
-            
-            prefixed_print("history", "Inserting history for current elements: ", changed_keys);
-        } else {
-            /// make sure we are saving current values
-            /// of the keys we are about to change...
-            auto& item = last();
-            for(auto key : keys) {
-                if(item.values.has(key)) {
-                    prefixed_print("history", "Already have value for ", item.values.at(key), " when trying to save ", target.at(key), " from current state.");
-                }
-                target.at(key).get().copy_to(item.values);
-            }
-        }*/
-        
         /// pop one item and paste its values
         /// into the current target...
         for(auto key : next_map.keys()) {

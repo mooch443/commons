@@ -31,6 +31,7 @@ struct AttributeAlias : T {
     using T::T;
     static constexpr std::string_view alias_name{ Tag::alias_name };
     
+    constexpr AttributeAlias() = default;
     explicit constexpr AttributeAlias(const T& copy) : T(copy) {}
     explicit constexpr AttributeAlias(T&& copy) : T(std::move(copy)) {}
     constexpr AttributeAlias& operator=(const T& copy) {

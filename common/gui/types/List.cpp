@@ -9,30 +9,9 @@ namespace cmn::gui {
 
     }
     
-    List::List(const Bounds& size, const std::string& title, std::vector<std::shared_ptr<Item>>&& items, const std::function<void(List*, const Item&)>& on_click)
-    : //gui::DrawableCollection("List"+std::to_string((long)this)),
-        _title(Str{title}, TextClr(White), _label_font),
-        _title_background(),
-        _accent_color(Drawable::accent_color),
-        _on_click(on_click),
-        _toggle(false),
-        _selected_rect(NULL),
-        _foldable(true),
-        _folded(true),
-        _selected_item(-1),
-        _multi_select(false),
-        _display_selection(false),
-        _on_toggle([](){}),
-        _row_height(size.height)
+    void List::init()
     {
-        //set_bounds({size.pos(), Size2(size.width, (_folded ?  0 : _row_height * _items.size()) + margin*2 + (title_height+title_margin*3))});
-        set_bounds(Bounds(size.pos(), Size2(size.width, _row_height)));
         set(LineClr{Black.alpha(255)});
-        //set_background(Transparent, Black.alpha(255));
-        set_items(std::move(items));
-        set_clickable(true);
-        //set_scroll_enabled(true);
-        
         _title_background.set_clickable(true);
         _title_background.on_click([this](auto) {
             // toggle folded state by clicking on title
@@ -398,7 +377,7 @@ Drawable* List::tooltip_object()
         _title_background.set(label_corners);
         Entangled::set(label_corners);
         
-        const Color bg = _accent_color.saturation(0.25);
+        const Color bg = _list_fill_clr;//_accent_color.saturation(0.25);
         const Color highlight = bg.exposure(1.5);
         
         for(size_t i=0; i<_items.size(); i++) {
@@ -442,6 +421,9 @@ Drawable* List::tooltip_object()
             advance_wrap(*r);
         }
         
+        const Vec2 list_start_offset = offset;
+        std::optional<CornerFlags_t> top_corners, bottom_corners;
+        
         for(size_t i=0; i<_items.size(); i++) {
             auto &item = _items.at(i);
             auto r = _rects.at(i);
@@ -455,21 +437,26 @@ Drawable* List::tooltip_object()
                     |       |
                     \______ /
                  */
-                r->set(CornerFlags_t{
+                top_corners = CornerFlags_t{
                     last_element && inverted && _corners.top_left(),
                     last_element && inverted && _corners.top_right(),
                     last_element && (not inverted) && _corners.bottom_right(),
                     last_element && (not inverted) && _corners.bottom_left(),
                     _corners.radius
-                });
+                };
+                if(last_element)
+                    bottom_corners = top_corners;
+                r->set(*top_corners);
+                
             } else if(last_element) {
-                r->set(CornerFlags_t{
+                bottom_corners = CornerFlags_t{
                     inverted && _corners.top_left(),
                     inverted && _corners.top_right(),
                     (not inverted) && _corners.bottom_right(),
                     (not inverted) && _corners.bottom_left(),
                     _corners.radius
-                });
+                };
+                r->set(*bottom_corners);
             } else {
                 r->set(CornerFlags_t(false, false, false, false, _corners.radius));
             }
@@ -490,6 +477,27 @@ Drawable* List::tooltip_object()
                           Loc(size.size() * 0.5),
                           f, TextClr{LightGray.alpha(200)});
             }
+        }
+        
+        if(_list_line_clr != Transparent) {
+            LabelCornerFlags flags;
+            auto tflags = LabelCornerFlags{top_corners ? (CornerFlags)*top_corners : (CornerFlags)_corners};
+            auto bflags = LabelCornerFlags{bottom_corners ? (CornerFlags)*bottom_corners : (CornerFlags)_corners};
+            if(inverted)
+                std::swap(tflags, bflags);
+            
+            flags = tflags;
+            flags.set(CornerFlags::Corner::BottomLeft, bflags.bottom_left());
+            flags.set(CornerFlags::Corner::BottomRight, bflags.bottom_right());
+            
+            Box box;
+            if(inverted) {
+                box = Box{offset - Vec2(0, inversion_correct_height), Size2(size.width, max(0_F, list_start_offset.y - offset.y + 1_F))};
+            } else {
+                box = Box{list_start_offset, Size2(size.width, max(0_F, offset.y - list_start_offset.y + 1_F))};
+            }
+            
+            add<Rect>(box, LineClr{(Color)_list_line_clr}, CornerFlags_t{(CornerFlags)flags}, FillClr{Transparent});
         }
         
         _last_list_offset = offset;
@@ -560,7 +568,7 @@ void List::set_foldable(bool f) {
     _foldable = f;
     set_content_changed(true);
     if(_foldable && not _folded)
-        set_z_index(2);
+        set_z_index(6);
     else
         set_z_index(0);
 }
@@ -571,7 +579,7 @@ void List::set_folded(bool f) {
     _folded = f;
     set_content_changed(true);
     if(_foldable && not _folded) {
-        set_z_index(2);
+        set_z_index(6);
         
         if(foldable() && hovered()) {
             if(stage())
@@ -610,6 +618,18 @@ void List::set(LabelColor_t clr) {
 }
 void List::set(LabelLineColor_t clr) {
     set(LineClr{(Color)clr});
+}
+void List::set(ListLineClr_t clr) {
+    if(clr == _list_line_clr)
+        return;
+    _list_line_clr = clr;
+    set_content_changed(true);
+}
+void List::set(ListFillClr_t clr) {
+    if(clr == _list_fill_clr)
+        return;
+    _list_fill_clr = clr;
+    set_dirty();
 }
 
 void List::set(attr::HighlightClr clr) {

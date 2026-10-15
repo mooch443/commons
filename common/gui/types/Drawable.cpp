@@ -984,8 +984,8 @@ bool SectionInterface::is_animating() noexcept {
         if(parent) {
             set_bounds_changed();
             parent->structure_changed(false);
-            if(parent->z_index() > z_index())
-                set_z_index(parent->z_index());
+            //if(parent->z_index() > z_index())
+            //    set_z_index(parent->z_index());
         }
         
         if(_parent) {

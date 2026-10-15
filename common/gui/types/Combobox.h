@@ -34,6 +34,8 @@ public:
         OnSelect_t on_select;
         CornerFlags_t corners{};
         LabelCornerFlags label_corners{};
+        ListLineClr_t list_line_clr;
+        ListFillClr_t list_fill_clr{Drawable::accent_color.saturation(0.25)};
     };
     
 protected:

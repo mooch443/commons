@@ -838,7 +838,7 @@ namespace cmn::gui {
             } else {
                 Entangled * e = _foldable ? &_list : this;
                 if(_foldable)
-                    _list.set_z_index(2);
+                    _list.set_z_index(5);
                 else
                     _list.set_z_index(0);
                 

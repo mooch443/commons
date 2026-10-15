@@ -1,0 +1,33 @@
+diff --git a/src/cocoa_platform.h b/src/cocoa_platform.h
+--- a/src/cocoa_platform.h
++++ b/src/cocoa_platform.h
+@@ -172,4 +172,5 @@
+     id                  keyUpMonitor;
+     id                  nibObjects;
++    uint64_t            lastMonitorPoll;
+ 
+     char                keynames[GLFW_KEY_LAST + 1][17];
+diff --git a/src/cocoa_window.m b/src/cocoa_window.m
+--- a/src/cocoa_window.m
++++ b/src/cocoa_window.m
+@@ -1529,7 +1529,20 @@
+         [NSApp sendEvent:event];
+     }
+ 
++    // Display wake may not emit a screen-parameters notification.
++    // Retry empty monitor lists at most once per second.
++    if (_glfw.monitorCount == 0)
++    {
++        const uint64_t now = _glfwPlatformGetTimerValue();
++        if (_glfw.ns.lastMonitorPoll == 0 ||
++            now - _glfw.ns.lastMonitorPoll >= _glfwPlatformGetTimerFrequency())
++        {
++            _glfw.ns.lastMonitorPoll = now;
++            _glfwPollMonitorsCocoa();
++        }
++    }
++
+     } // autoreleasepool
+ }
+ 
+ void _glfwWaitEventsCocoa(void)

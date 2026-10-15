@@ -144,7 +144,7 @@ namespace cmn::gui {
         std::mutex _end_object_mutex;
         
         std::deque<Section*> _sections;
-        std::deque<std::unique_ptr<Dialog>> _dialogs;
+        std::deque<std::shared_ptr<Dialog>> _dialogs;
         
         std::set<Codes> pressed_keys;
         std::array<bool, 2> mouse_state{ false, false };
@@ -180,11 +180,11 @@ namespace cmn::gui {
         ~DrawStructure();
         
     private:
-        Dialog* _dialog(std::function<bool(Dialog::Result)>&& callback, const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
+        std::optional<std::shared_ptr<Dialog>> _dialog(std::function<bool(Dialog::Result)>&& callback, const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
         
     public:
         template<typename F, typename R = typename std::invoke_result_t<F, Dialog::Result>>
-        Dialog* dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, void>::value, void> *  = nullptr)
+        std::optional<std::shared_ptr<Dialog>> dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, void>::value, void> *  = nullptr)
         {
             std::function<bool(Dialog::Result)> fn = [callback = std::move(callback)](Dialog::Result r) mutable {
                 callback(r);
@@ -194,14 +194,15 @@ namespace cmn::gui {
         }
         
         template<typename F, typename R = typename std::invoke_result_t<F, Dialog::Result>>
-        Dialog* dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, bool>::value, void> *  = nullptr)
+        std::optional<std::shared_ptr<Dialog>> dialog(F&& callback, const std::string &text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "", std::enable_if_t<std::is_same<R, bool>::value, void> *  = nullptr)
         {
             return _dialog(std::forward<F>(callback), text, title, okay, abort, second, third, fourth);
         }
         
-        Dialog* dialog(const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
+        std::optional<std::shared_ptr<Dialog>> dialog(const std::string& text, const std::string& title = "Dialog", const std::string& okay = "Okay", const std::string& abort = "", const std::string& second = "", const std::string& third = "", const std::string& fourth = "");
         
         void close_dialogs();
+        bool has_open_dialogs() const;
         
         inline void section(const std::string& name, const std::function<void(DrawStructure&, Section*)>& fn) {
             try {

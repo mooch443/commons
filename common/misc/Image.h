@@ -33,6 +33,10 @@ concept CallableWithNArgs = requires (F&& f) {
         static void* malloc(std::size_t size) {
             return std::malloc(size);
         }
+        
+        static void* calloc(std::size_t size) {
+            return std::calloc(size, sizeof(uchar));
+        }
     };
 
     template<typename T>
@@ -63,6 +67,13 @@ concept CallableWithNArgs = requires (F&& f) {
 
         void malloc(std::size_t size) {
             T* new_ptr = static_cast<T*>(ReallocDeleter::malloc(size));
+            if (new_ptr) {
+                ptr_.reset(new_ptr);
+            }
+        }
+        
+        void calloc(std::size_t size) {
+            T* new_ptr = static_cast<T*>(ReallocDeleter::calloc(size));
             if (new_ptr) {
                 ptr_.reset(new_ptr);
             }
@@ -117,11 +128,7 @@ concept CallableWithNArgs = requires (F&& f) {
          * @param index Optional image index (default -1).
          * @return Ptr to the newly created zero-filled Image.
          */
-        static Ptr Zeros(uint rows, uint cols, uint dims = 1, long_t index = -1) {
-            auto img = Make(rows, cols, dims, index);
-            img->set_to(static_cast<uchar>(0));
-            return img;
-        }
+        static Ptr Zeros(uint rows, uint cols, uint dims = 1, long_t index = -1);
         
         class CustomData {
         public:
@@ -170,6 +177,9 @@ concept CallableWithNArgs = requires (F&& f) {
         explicit Image(const cv::Mat& mat, int index, timestamp_t timestamp);
         explicit Image(const gpuMat& mat, int index, timestamp_t timestamp);
         
+    private:
+        void zero_initialize(uint rows, uint cols, uint dims);
+        
     public:
         void create(uint rows, uint cols, uint dims, long_t index = -1);
         void create(uint rows, uint cols, uint dims, long_t index, timestamp_t stamp);
@@ -186,7 +196,8 @@ concept CallableWithNArgs = requires (F&& f) {
         void create(const Image& other, long_t index = -1);
         void create(const Image& other, long_t index, timestamp_t stamp);
         
-        Image::Ptr to_greyscale() const;
+        static Image::Ptr to_greyscale(Image::Ptr&&);
+        //Image::Ptr to_greyscale() const;
 
         void clear();
         

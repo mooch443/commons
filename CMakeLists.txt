@@ -872,7 +872,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
 
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
-        GIT_TAG 3.4
+        GIT_TAG 3.5.1
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"
@@ -884,10 +884,23 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
             "-DGLFW_BUILD_WAYLAND=OFF"
             "-DGLFW_LIBRARY_TYPE=STATIC"
             ${GLFW_add_flags}
-        UPDATE_COMMAND ""
         SOURCE_DIR ${COMMONS_GLFW_SOURCE_PATH}
         PATCH_COMMAND ${COMMONS_GLFW_PATCH}
     )
+    if(APPLE)
+        ExternalProject_Add_Step(glfw cocoa_monitor_patch
+            COMMAND "${CMAKE_COMMAND}"
+                "-DGLFW_SOURCE_DIR=<SOURCE_DIR>"
+                "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+                "-DGLFW_PATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/glfw_cocoa_monitor_patch.diff"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/glfw_patch.cmake"
+            DEPENDEES patch
+            DEPENDERS configure
+            DEPENDS
+                "${CMAKE_CURRENT_SOURCE_DIR}/glfw_cocoa_monitor_patch.diff"
+                "${CMAKE_CURRENT_SOURCE_DIR}/glfw_patch.cmake"
+        )
+    endif()
     #PATCH_COMMAND git apply "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff" || echo 1
     
     set(GLFW_INCLUDE_DIR ${GLFW_INSTALL_DIR}/include)

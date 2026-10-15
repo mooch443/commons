@@ -367,13 +367,56 @@ namespace cmn {
         return image;
     }
 
-    Image::Ptr Image::to_greyscale() const {
-        if(dims == 1)
-            return Image::Make(*this);
+void Image::zero_initialize(uint rows, uint cols, uint dims) {
+    size_t N = size_t(cols) * size_t(rows) * size_t(dims);
+    
+#ifndef NDEBUG
+    if(cols >= 20000) {
+        FormatWarning("This image might be a bit too large: ", *this);
+    }
+#endif
+
+    if(N > 0) {
+        _array_size = N;
+        _data.calloc(_array_size); //* sizeof(uchar));
+#ifdef IMAGE_DEBUG_MEMORY_ALLOC
+        Print("New calloc for ",cols,"x",rows," of size ",N," at ",_data," (",_array_size," >= ",N,")");
+        //print_stacktrace(stdout);
+#endif
+    }
+
+    if(not _data) {
+        this->cols = this->rows = this->dims = 0;
+        this->_size = 0;
+        _array_size = 0;
+        return;
+    }
+    
+    //! set data
+    this->cols = cols;
+    this->rows = rows;
+    this->dims = dims;
+    this->_timestamp = now();
+    this->_size = N;
+}
+
+    Image::Ptr Image::Zeros(uint rows, uint cols, uint dims, long_t index) {
+        auto img = Make(0,0); // make an empty image
+        img->set_index(index);
+        img->zero_initialize(rows, cols, dims);
+        return img;
+    }
+
+    Image::Ptr Image::to_greyscale(Image::Ptr&& ptr) {
+        if(not ptr)
+            throw InvalidArgumentException("Null object given to to_greyscale.");
         
-        auto image = Image::Make(rows, cols, 1);
+        if(ptr->dims == 1)
+            return ptr;
+        
+        auto image = Image::Make(ptr->rows, ptr->cols, 1);
         auto mat = image->get();
-        load_image_to_format(ImageMode::GRAY, get(), *image);
+        load_image_to_format(ImageMode::GRAY, ptr->get(), *image);
         return image;
     }
 

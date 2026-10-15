@@ -40,11 +40,11 @@ private:
     CornerFlags_t _item_corners{CornerFlags::Rounded(8)};
     std::optional<Color> _item_fill_color;
 
+    Font _input_font{0.65f};
     Size2 _input_size{150, 28};
     attr::SizeLimit _size_limit;
     Size2 _input_list_size{220, 180};
     std::string _input_placeholder_text{"Add tag..."};
-    Font _input_font{0.65f};
     Color _input_fill_color{White.alpha(210)};
     Color _input_line_color{White.alpha(50)};
     Color _input_text_color{Black};
