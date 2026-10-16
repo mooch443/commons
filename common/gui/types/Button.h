@@ -20,6 +20,7 @@ namespace cmn::gui {
             bool toggleable = false;
             Font font = Font(0.75, Align::Center);
             Margins margins{0,0,0,0};
+            Disabled_t disabled{false};
         };
         
     protected:
@@ -51,6 +52,8 @@ namespace cmn::gui {
                 set(TextClr{Settings{}.text_clr});
             if constexpr(not contains_type<Margins, Args...>())
                 set(Settings{}.margins);
+            if constexpr(not contains_type<Disabled_t, Args...>())
+                set(Settings{}.disabled);
 
             (set(std::forward<Args>(args)), ...);
             init();
@@ -70,6 +73,12 @@ namespace cmn::gui {
             if(_settings.margins == margins)
                 return;
             _settings.margins = margins;
+            set_dirty();
+        }
+        void set(Disabled_t disabled) {
+            if(disabled == _settings.disabled)
+                return;
+            _settings.disabled = disabled;
             set_dirty();
         }
         void set(attr::Size size) override   {

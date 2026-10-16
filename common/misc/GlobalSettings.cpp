@@ -164,7 +164,7 @@ void ParameterHistory::before_value_changed(AccessLevel level, sprite::Map& sour
        || matches_ignored_name(name))
     {
         /// we are probably inside an undo operation
-#ifndef NDEBUG
+#if !defined(NDEBUG) && false
         if(matches_ignored_prefix(name)) {
             Print(name, " matches an ignored prefix (", _ignored_prefixes, ")");
         }
@@ -203,7 +203,7 @@ void ParameterHistory::value_changed(AccessLevel level, sprite::Map& source, std
        || matches_ignored_name(name))
     {
         /// we are probably inside an undo operation
-#ifndef NDEBUG
+#if !defined(NDEBUG) && false
         if(matches_ignored_prefix(name)) {
             Print(name, " matches an ignored prefix (", _ignored_prefixes, ")");
         }

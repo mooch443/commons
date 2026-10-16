@@ -46,9 +46,9 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
 		WCHAR path[MAX_PATH];
 		auto ret = GetModuleFileNameW(hModule, path, MAX_PATH);
 
-		if(ret == ERROR_SUCCESS) {
-			std::wstring w(path);
-			auto str = std::string(w.begin(), w.end());
+		if(ret > 0 && ret < MAX_PATH) {
+			std::wstring w(path, ret);
+			auto str = WStringToString(w);
 
 #else // not ARCH_darwin_14_i86
         const char *linkName = "/proc/self/exe";

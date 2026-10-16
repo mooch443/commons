@@ -250,6 +250,7 @@ NUMBER_ALIAS(Checked, bool)
 NUMBER_ALIAS(Folded_t, bool)
 NUMBER_ALIAS(Clickable, bool)
 NUMBER_ALIAS(ZIndex, int)
+NUMBER_ALIAS(Disabled_t, bool)
 using Font = gui::Font;
 
 }

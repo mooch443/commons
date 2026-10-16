@@ -637,8 +637,8 @@ void IMGUIBase::center(const Size2 &size) {
     bounds.restrict_to(Bounds(work_area.size()));
 #ifndef NDEBUG
     GUIPrint("Restricting bounds to work area: ", work_area, " -> ", bounds);
-#endif
     GUIPrint("Bounds", bounds, " from window size", window_size, " and work area", work_area, " with offset: ", offset, " and dpi: ", _dpi_scale);
+#endif
     //window()->set_window_size(window_size);
     set_window_bounds(bounds);
 }

@@ -207,7 +207,15 @@ using lines_t = std::vector<HorizontalLine>;
 using line_ptr_t = std::unique_ptr<lines_t>;
 using pixel_ptr_t = std::unique_ptr<PixelArray_t>;
 
-using ObjectClass_t = std::map<uint16_t, std::string>;
+//using ObjectClass_t = std::map<uint16_t, std::string>;
+class ObjectClass_t : public std::map<uint16_t, std::string> {
+public:
+    using std::map<uint16_t, std::string>::map;
+    std::string toStr() const;
+    static ObjectClass_t fromStr(const std::string& str);
+    static consteval std::string_view class_name() { return "map<uint16,string>"; }
+    glz::json_t to_json() const;
+};
 using MaybeObjectClass_t = std::optional<ObjectClass_t>;
 
 enum class Focus {

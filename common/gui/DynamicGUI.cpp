@@ -683,8 +683,9 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 }
                 return false;
             }));
-            
+#ifndef NDEBUG
             Print(" * initialized system variables with ", extract_keys(context.system_variables()));
+#endif
             
             std::vector<Layout::Ptr> objs;
             objects.clear();

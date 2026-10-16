@@ -917,8 +917,8 @@ template <>
 Layout::Ptr LayoutContext::create_object<LayoutType::button>()
 {
     std::string text = get(std::string(), "text");
-    auto ptr = Layout::Make<Button>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font}();
-    bool disabled = get(false, "disabled");
+    Disabled_t disabled = get(Disabled_t{false}, "disabled");
+    auto ptr = Layout::Make<Button>{attr::Str(text), attr::Scale(scale), attr::Origin(origin), font, disabled}();
     
     if(obj.count("action"))
     {

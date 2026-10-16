@@ -973,8 +973,10 @@ short VideoSource::framerate() const {
         {
             if(*frame_rate > 0)
                 return *frame_rate;
+#ifndef NDEBUG
             if(not READ_SETTING_WITH_DEFAULT(quiet, false))
                 FormatWarning("frame_rate not set properly for an image sequence. Assuming a default value of 25.");
+#endif
             return 25;
         }
         throw U_EXCEPTION("Frame rate not set properly in ", *this, " nor in GlobalSettings.");

@@ -453,11 +453,6 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
         } else
             return false;
     }
-    if(_reset_button
-       && name == ALIAS<LabelCornerFlags>)
-    {
-        Print("Applying ", name, " to ", _ref);
-    }
     return true;
 }
 
@@ -776,8 +771,6 @@ void LabeledList::update_ref_in_main_thread() {
                 items.push_back(std::make_shared<TextItem>(name, i++));
             }
             index = narrow_cast<long>(enum_index);
-            
-            Print("items = ", enum_items);
         };
         
         if(r.get().is_optional()) {

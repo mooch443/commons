@@ -44,6 +44,58 @@ size_t FilePtr::read(void* data, size_t bytes) {
 }
 }
 
+namespace cmn::blob {
+    std::string ObjectClass_t::toStr() const {
+        return Meta::toStr((const std::map<uint16_t, std::string>&)*this);
+    }
+
+    ObjectClass_t ObjectClass_t::fromStr(const std::string& str) {
+        ObjectClass_t result;
+        auto parts = util::parse_array_parts(util::truncate(str));
+        util::enforce_no_empty_elements(parts, class_name());
+        
+        std::vector<std::string> collected_array_values;
+        std::optional<uint16_t> max_element;
+        for(auto &part : parts) {
+            auto map_parts = util::parse_array_parts(part, ':');
+            if(map_parts.size() == 2u) {
+                /// we were given a map
+                auto key_str = Meta::fromStr<std::string>(map_parts.front());
+                auto value_str = Meta::fromStr<std::string>(map_parts.back());
+                uint16_t index = Meta::fromStr<uint16_t>(key_str);
+                if(not max_element
+                   || index > *max_element)
+                {
+                    max_element = index;
+                }
+                result[index] = std::move(value_str);
+            } else {
+                /// its just an array i guess
+                collected_array_values.push_back(part);
+            }
+        }
+        if(not collected_array_values.empty()) {
+            if(not max_element)
+                max_element = 0u;
+            else
+                max_element = *max_element + 1u;
+            
+            for(size_t i = 0; i < collected_array_values.size(); ++i) {
+                result[i + *max_element] = Meta::fromStr<std::string>(collected_array_values[i]);
+            }
+        }
+        return result;
+    }
+
+    glz::json_t ObjectClass_t::to_json() const {
+        glz::json_t result = glz::json_t::object_t{};
+        for (const auto& [key, value] : *this) {
+            result[Meta::toStr(key)] = value;
+        }
+        return result;
+    }
+}
+
 namespace cmn {
 IMPLEMENT(blob::Pose::Skeleton::_mutex);
 IMPLEMENT(blob::Pose::Skeleton::_registered);

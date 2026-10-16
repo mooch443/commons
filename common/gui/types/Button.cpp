@@ -16,6 +16,8 @@ void Button::init() {
     _text.set(_settings.font);//Font(0.75, Style::Regular, Align::Center));
     
     add_event_handler(MBUTTON, [this](Event e) {
+        if(_settings.disabled)
+            return;
         if(!e.mbutton.pressed && _settings.toggleable) {
             _toggled = !_toggled;
             this->set_dirty();
@@ -35,7 +37,11 @@ void Button::init() {
         Color clr(_settings.fill_clr);
         Color text_clr(_settings.text_clr);
 
-        if(pressed()) {
+        if(_settings.disabled) {
+            clr = clr.exposure(0.3);
+            text_clr = text_clr.exposure(0.3);
+            
+        } else if(pressed()) {
             clr = clr.exposure(0.5);
             text_clr = text_clr.exposure(0.5);
             
