@@ -693,6 +693,35 @@ inline std::shared_ptr<std::vector<Vec2>> poly_convex_hull(const std::vector<Vec
     return hull;
 }
 
+
+template<typename T, typename Point = std::ranges::range_value_t<T>>
+    requires requires (const T t) {
+        { t.begin() } -> _clean_same<typename T::const_iterator>;
+        { cross(Point{},Point{}) } -> is_numeric;
+        { Point{} - Point{} } -> _clean_same<Point>;
+    }
+inline bool valid_polygon(const T& iterable) {
+    const Point *A{nullptr}, *B{nullptr};
+    Point line;
+    
+    for(auto &pt : iterable) {
+        if(not A)
+            A = &pt;
+        else if(B == nullptr) {
+            if(pt != *A) {
+                B = &pt;
+                line = *B - *A;
+            }
+        } else {
+            Point lineC = pt - *A;
+            if(cross(line, lineC) != 0)
+                return true;
+        }
+    }
+    
+    return false;
+}
+
 //! LineSegementsIntersect (modified a bunch) from https://www.codeproject.com/Tips/862988/Find-the-Intersection-Point-of-Two-Line-Segments under CPOL (https://www.codeproject.com/info/cpol10.aspx)
 template<typename VecType>
 inline std::optional<VecType> LineSegmentsIntersect(const VecType& p1, const VecType& p2, const VecType& q1, const VecType& q2)

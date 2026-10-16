@@ -741,18 +741,18 @@ protected:
     };
 
 template<typename T>
-void reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Float2_t threshold)
+bool reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Float2_t threshold, size_t abort_after_elements = 0)
 {
     array.clear();
     
     if(points.empty())
-        return;
+        return true;
     
     T last_added_point(points.front());
     array.push_back(last_added_point);
     
     if(points.size() == 1)
-        return;
+        return true;
     
     Vec2 previous_vec;
     if constexpr(std::same_as<Vec2, T>)
@@ -824,12 +824,24 @@ void reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Flo
         last_added_point = p1;
         previous_vec = line;
         array.push_back(last_added_point);
+        
+        if(abort_after_elements > 0
+           && array.size() >= abort_after_elements)
+        {
+            return false; /// we have to abort if we have too many elements
+        }
     }
     
-    array.push_back(points.back());
+    if(abort_after_elements == 0
+       || array.size() < abort_after_elements)
+    {
+        array.push_back(points.back());
+    } else {
+        return false;
+    }
     
+    return true;
 }
-
 
 }
 
