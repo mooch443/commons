@@ -24,6 +24,22 @@ void Button::init() {
         }
     });
 }
+
+void Button::mdown(Float2_t x, Float2_t y, bool left_button) {
+    if(_settings.disabled)
+        return;
+    Entangled::mdown(x, y, left_button);
+    if(_settings.disabled)
+        set_pointer_interaction(false);
+}
+
+void Button::mup(Float2_t x, Float2_t y, bool left_button, bool started_here) {
+    if(_settings.disabled || not pressed()) {
+        set_pointer_interaction(false);
+        return;
+    }
+    Entangled::mup(x, y, left_button, started_here);
+}
     
     void Button::set_font(Font font) {
         _text.set(font);

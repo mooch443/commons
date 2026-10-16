@@ -79,6 +79,8 @@ namespace cmn::gui {
             if(disabled == _settings.disabled)
                 return;
             _settings.disabled = disabled;
+            if(disabled)
+                set_pointer_interaction(false);
             set_dirty();
         }
         void set(attr::Size size) override   {
@@ -128,6 +130,8 @@ namespace cmn::gui {
         void set_line_clr(const Color& line_clr);
         
         void update() override;
+        void mdown(Float2_t x, Float2_t y, bool left_button) override;
+        void mup(Float2_t x, Float2_t y, bool left_button, bool started_here) override;
         void set_toggleable(bool v);
         void set_toggle(bool v);
         
