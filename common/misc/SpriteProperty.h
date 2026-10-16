@@ -486,29 +486,29 @@ namespace cmn {
 				if constexpr (trivial) {
                     auto v = _value.load();
 
-                    if (v.has_value() != other.has_value())
+                    if (v.value().has_value() != other.has_value())
                         return false;
 
-                    if (not v.has_value())
+                    if (not v.value().has_value())
                         return true;
 
                     if constexpr (not has_equals<typename K::value_type>)
                         return false;
                     else
-                        return v.value() == other.value();
+                        return v.value().value() == other.value();
                 }
                 else {
                     std::shared_lock guard(_property_mutex);
-                    if (_value.has_value() != other.has_value())
+                    if (_value.value().has_value() != other.has_value())
                         return false;
 
-                    if (not _value.has_value())
+                    if (not _value.value().has_value())
                         return true;
 
                     if constexpr (not has_equals<typename K::value_type>)
                         return false;
                     else {
-                        return _value.value() == other.value();
+                        return _value.value().value() == other.value();
                     }
                 }
             }
