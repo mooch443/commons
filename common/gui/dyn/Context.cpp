@@ -50,6 +50,7 @@ void LocalSettingTypes::ensure_defaults() {
             map[name] = values;
         };
         register_type<std::vector<int>>("int_array");
+        register_type<std::vector<Vec2>>("vec2_array");
         register_type<std::vector<uint64_t>>("uint_array");
         register_type<std::vector<float>>("float_array");
         register_type<std::vector<double>>("double_array");

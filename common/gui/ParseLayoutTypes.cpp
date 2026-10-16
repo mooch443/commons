@@ -306,8 +306,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         Print("Unknown Action: ", hover_action);
                     }
                     
-                } catch(...) {
-                    FormatExcept("error using action ", hover_action);
+                } catch(const std::exception& ex) {
+                    FormatExcept("error using action ", hover_action, ": ", ex.what());
                 }
             } else if(not e.hover.hovered
                       && not unhover_action.name.empty())
@@ -328,8 +328,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                         Print("Unknown Action: ", unhover_action);
                     }
                     
-                } catch(...) {
-                    FormatExcept("error using action ", unhover_action);
+                } catch(const std::exception& ex) {
+                    FormatExcept("error using action ", unhover_action, ": ", ex.what());
                 }
             }
             
@@ -415,8 +415,8 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             auto h = bind_event_with_state(ptr, EventType::DRAG, state._current_object_handler, context, [action, run_action](Event, const Context& context, State& state) {
                 try {
                     run_action(action, context, state);
-                } catch(...) {
-                    FormatExcept("error using action ", action);
+                } catch(const std::exception& ex) {
+                    FormatExcept("error using action ", action, ": ", ex.what());
                 }
             }, handle);
 
@@ -429,11 +429,11 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
             auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action, run_action](Event event, const Context& context, State& state)
             {
-                if(event.mbutton.pressed && event.mbutton.started_here) {
+                if(not event.mbutton.pressed && event.mbutton.started_here) {
                     try {
                         run_action(action, context, state);
-                    } catch(...) {
-                        FormatExcept("error using action ", action);
+                    } catch(const std::exception& ex) {
+                        FormatExcept("error using action ", action, ": ", ex.what());
                     }
                 }
             }, handle);
@@ -1239,6 +1239,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                      it != context.actions.end())
                   {
                       it->second(action.parse(context, state));
+                  } else {
+                      Print("Unknown action ", action);
                   }
               }
           )

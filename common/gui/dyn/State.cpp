@@ -704,6 +704,8 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                         } catch(const std::exception& ex) {
                             // pass
                         }
+                    } else {
+                        throw RuntimeError("Unknown action ", action,".");
                     }
                 });
                 
