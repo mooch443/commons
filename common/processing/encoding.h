@@ -49,7 +49,7 @@ constexpr inline uint8_t required_storage_channels(cmn::meta_encoding_t::Class m
             return required_storage_channels<cmn::meta_encoding_t::binary>();
             
         default:
-            throw U_EXCEPTION("Unknown mode: ", mode.name());
+            throw U_EXCEPTION("Unknown mode: ", static_cast<uint32_t>(mode));
     }
 }
 
@@ -65,7 +65,7 @@ constexpr inline uint8_t required_image_channels(cmn::meta_encoding_t::Class mod
             return required_image_channels<cmn::meta_encoding_t::binary>();
             
         default:
-            throw U_EXCEPTION("Unknown mode: ", mode.name());
+            throw U_EXCEPTION("Unknown mode: ", static_cast<uint32_t>(mode));
     }
 }
 
