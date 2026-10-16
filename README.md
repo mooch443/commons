@@ -216,13 +216,18 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
           {"type":"settings","var": "app_name","fill": [50,50,50,125],"size":[300,40]},
           { "type":"settings","var": "patharray", 
             "fill": [50,50,50,125], 
+            "list":{
+              "fill":[100,100,100,200],
+              "line":[200,200,200,200],
+              "font":{"size":0.75}
+            },
             "size":[800,40],
             "preview":{
               "max_size":[800,100],
               "font": { "size": 0.5 }
             }
           },
-          {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40]},
+          {"type":"settings","var":"region_model","fill":[50,50,50,125],"size":[300,40],"list":{"fill":[100,100,100,200],"line":[200,200,200,200],"font":{"size":0.75}}},
           {"type":"settings","var":"track_size_filter","fill":[50,50,50,125],"size":[300,40]}
       ]},
       { "type": "gridlayout", 
@@ -259,6 +264,10 @@ For the JSON configuration (\`test_gui.json\`) that accompanies this example, yo
       },
       { "type":"list",
         "var":"list_var",
+        "list":{
+          "fill":[100,100,100,200],
+          "line":[200,200,200,200]
+        },
         "size":[300,300],
         "line":[255,0,0,125],
         "foldable":true,
