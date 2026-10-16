@@ -793,6 +793,14 @@ void reduce_vertex_line(const std::vector<T>& points, std::vector<T>& array, Flo
         }
         
         auto len = line.length();
+        if(len <= dim * threshold * 0.0025_F) {
+            if constexpr(std::same_as<Vertex, T>) {
+                auto color_diff = p1.clr().diff(last_added_point.clr()) / 4_F / 255_F;
+                if(color_diff < threshold * 0.01_F)
+                    continue;
+            } else
+                continue;
+        }
         line = line / len;
         
         if(abs(line.x) < 127 && abs(line.y) < 127) {
