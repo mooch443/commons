@@ -16,6 +16,11 @@ endif()
 
 project(commons LANGUAGES CXX C ASM_NASM)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja"
+        AND CMAKE_VERSION VERSION_LESS 3.26)
+    message(FATAL_ERROR "Linux Ninja builds require CMake 3.26 or newer for ExternalProject install byproducts.")
+endif()
+
 include(ExternalProject)
 include(FetchContent)
 find_package(Git REQUIRED)
@@ -1165,6 +1170,11 @@ if(COMMONS_BUILD_ZLIB)
     else()
         set(ZLIB_PATCH "")
     endif()
+
+    set(_zlib_install_byproducts)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+        set(_zlib_install_byproducts INSTALL_BYPRODUCTS "${ZLIB_LIBRARY}")
+    endif()
     
     EXTERNALPROJECT_ADD(Z_LIB
         PREFIX ${zlib_install_dir}
@@ -1174,6 +1184,7 @@ if(COMMONS_BUILD_ZLIB)
         PATCH_COMMAND "${ZLIB_PATCH}"
 
         INSTALL_DIR ${zlib_install_dir}
+        ${_zlib_install_byproducts}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS1} -DCMAKE_DEBUG_POSTFIX=d -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=${zlib_install_dir}
         -DBUILD_STATIC_AND_SHARED=OFF -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF
     )
@@ -1269,6 +1280,11 @@ if(COMMONS_BUILD_ZIP)
     else()
         set(ZIP_PATCH "")
     endif()
+
+    set(_libzip_install_byproducts)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+        set(_libzip_install_byproducts INSTALL_BYPRODUCTS "${LIBZIP_LIBRARY}")
+    endif()
     
     ExternalProject_Add(libzip
         PREFIX ${libzip_install_dir}
@@ -1276,6 +1292,7 @@ if(COMMONS_BUILD_ZIP)
         GIT_TAG v1.11.4
         UPDATE_COMMAND ""
         PATCH_COMMAND "${ZIP_PATCH}"
+        ${_libzip_install_byproducts}
         CMAKE_ARGS
             ${libzip_configure}
             ${COMMONS_subproject_CMAKE_ARGS}
@@ -1295,6 +1312,9 @@ if(COMMONS_BUILD_ZIP)
     
     if(COMMONS_BUILD_ZLIB)
         add_dependencies(libzip Z_LIB)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+            ExternalProject_Add_StepDependencies(libzip configure Z_LIB)
+        endif()
     endif()
 
     set(LIBZIP_INCLUDE_DIR "${libzip_install_dir}/include")
@@ -1341,6 +1361,12 @@ if(COMMONS_BUILD_PNG)
         set(PNG_PATCH "")
     endif()
 
+    set(_libpng_install_byproducts)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+        set(_libpng_install_byproducts INSTALL_BYPRODUCTS
+            "${png_install_dir}/lib/libpng16$<IF:$<CONFIG:Debug>,d,>.a")
+    endif()
+
     #URL ftp://ftp.simplesystems.org/pub/libpng/png/src/history/libpng15/libpng-1.5.10.tar.gz
     #URL_MD5 9e5d864bce8f06751bbd99962ecf4aad
     EXTERNALPROJECT_ADD(libpng_custom
@@ -1352,11 +1378,15 @@ if(COMMONS_BUILD_PNG)
         GIT_TAG v1.6.58
 
         INSTALL_DIR ${png_install_dir}
+        ${_libpng_install_byproducts}
         CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DPNG_TESTS:BOOL=OFF -DPNG_SHARED:BOOL=OFF -DPNG_STATIC:BOOL=ON -DPNG_TOOLS:BOOL=OFF
     )
 
     if(COMMONS_BUILD_ZLIB)
         add_dependencies(libpng_custom Z_LIB)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+            ExternalProject_Add_StepDependencies(libpng_custom configure Z_LIB)
+        endif()
     endif()
 
     include_directories(${png_install_dir}/include)
@@ -1793,9 +1823,15 @@ endif()
 
     if(TARGET libpng_custom)
         add_dependencies(CustomOpenCV libpng_custom)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+            ExternalProject_Add_StepDependencies(CustomOpenCV configure libpng_custom)
+        endif()
     endif()
     if(TARGET Z_LIB)
         add_dependencies(CustomOpenCV Z_LIB)
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_GENERATOR MATCHES "^Ninja")
+            ExternalProject_Add_StepDependencies(CustomOpenCV configure Z_LIB)
+        endif()
     endif()
 
     if(APPLE)
