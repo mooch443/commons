@@ -145,6 +145,10 @@ public:
     static consteval uint32_t size() noexcept { return static_cast<uint32_t>(num_values); }
     constexpr operator ValueType() const noexcept { return _value; }
     
+    constexpr ValueType operator+(uint32_t add) const {
+        return ValueType((index() + add) % size());
+    }
+    
     // comparison operators
     constexpr bool operator==(const EnumBase& other) const noexcept { return other._value == _value; }
     constexpr bool operator==(const ValueType& other) const noexcept { return other == _value; }
