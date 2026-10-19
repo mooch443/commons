@@ -61,7 +61,6 @@ public:
 
     static bool has(std::string_view alias);
     static std::vector<std::string> available_names();
-    static std::string available_names_string();
     static void make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value);
     static void ensure_defaults();
 
@@ -289,6 +288,7 @@ struct COMMONS_EXPORT Context {
     [[nodiscard]] std::string local_setting_value_string(std::string_view) const;
     void update_local_setting(CurrentObjectHandler*, std::string_view, std::function<void(sprite::Reference&)>) const;
     [[nodiscard]] std::optional<std::string> local_setting_alias(std::string_view) const;
+    [[nodiscard]] bool has_local_setting(std::string_view) const;
 
     Context() noexcept = default;
     Context(std::initializer_list<std::variant<ActionPair, VariablePair>> init_list);

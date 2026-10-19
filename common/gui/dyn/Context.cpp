@@ -59,6 +59,7 @@ void LocalSettingTypes::ensure_defaults() {
         register_type<Vec2>("vec2");
         register_type<Size2>("size");
         register_type<Color>("color");
+        register_type<glz::json_t>("json");
     });
 }
 
@@ -77,24 +78,12 @@ std::vector<std::string> LocalSettingTypes::available_names() {
     return names;
 }
 
-std::string LocalSettingTypes::available_names_string() {
-    auto names = available_names();
-    std::string text;
-    for(const auto& name : names) {
-        if(!text.empty())
-            text += ", ";
-        text += name;
-    }
-    return text;
-}
-
 void LocalSettingTypes::make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value) {
     ensure_defaults();
     auto it = registry().find(std::string(alias));
     if(it == registry().end()) {
         throw InvalidArgumentException(
-            "Unknown DynamicGUI local setting type '", alias, "'. Available types: ",
-            available_names_string(), "."
+            "Unknown DynamicGUI local setting type ", alias, ". Available types: ", available_names(), "."
         );
     }
     it->second(map, local_name, value, has_value);
@@ -847,6 +836,12 @@ std::string Context::local_setting_value_string(std::string_view name) const {
     return local_settings[local_name].get().valueString();
 }
 
+bool Context::has_local_setting(std::string_view name) const {
+    const auto key = local_setting_key(name);
+    const auto local_name = std::string(key);
+    return local_settings.has(local_name);
+}
+
 void Context::update_local_setting(CurrentObjectHandler* handler, std::string_view name, std::function<void(sprite::Reference&)> fn) const {
     if(not handler)
         throw InvalidArgumentException("Handler is nullptr");
@@ -1484,7 +1479,7 @@ void Context::init() const {
                         }
                     }
                     
-                    throw InvalidArgumentException("Cannot find key ", key," in ", trunc);
+                    throw InvalidArgumentException("Cannot find key ", no_quotes(key)," in ", trunc);
                     
                 } else {
                     auto index = Meta::fromStr<size_t>(props.parameters.front());
@@ -1615,13 +1610,14 @@ void Context::init() const {
                 auto v = GlobalSettings::read_value<NoType>(props.subs.front());
                 return sprite::display_property(v);
             }),
-            VarFunc("local", [this](const VarProps& props) -> std::string {
-                if(props.subs.empty())
+            VarFunc("local", [this](const VarProps& props) -> const sprite::Map& {
+                /*if(props.subs.empty())
                     return "null";
                 const auto& key = props.subs.front();
                 if(!local_settings.has(key))
                     throw InvalidArgumentException("DynamicGUI local setting 'local.", key, "' has not been declared.");
-                return sprite::display_property(local_settings[key]);
+                return sprite::display_property(local_settings[key]);*/
+                return local_settings;
             }),
             VarFunc("clrAlpha", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(2, props);

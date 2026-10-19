@@ -15,33 +15,35 @@ namespace cmn::gui::dyn {
 
 static constexpr uint64_t max_displayed_objects = 10000u;
 
-static std::optional<glz::json_t> access_loop_json_subfields(glz::json_t value, const std::vector<std::string>& subs) {
+template<typename Json>
+static Json* access_loop_json_subfields(Json& value, const std::vector<std::string>& subs) {
+    auto* object = &value;
     for(const auto& sub : subs) {
-        if(value.is_object()) {
-            if(not value.contains(sub)) {
-                return std::nullopt;
+        if(object->is_object()) {
+            if(not object->contains(sub)) {
+                return nullptr;
             }
-            value = value[sub];
+            object = &(*object)[sub];
             
-        } else if(value.is_array()) {
+        } else if(object->is_array()) {
             uint16_t index{};
             try {
                 index = Meta::fromStr<uint16_t>(sub);
             } catch(...) {
-                return std::nullopt;
+                return nullptr;
             }
-            auto& array = value.get_array();
+            auto& array = object->get_array();
             if(index >= array.size()) {
-                return std::nullopt;
+                return nullptr;
             }
-            value = array[index];
+            object = &array[index];
             
         } else {
-            return std::nullopt;
+            return nullptr;
         }
     }
     
-    return value;
+    return object;
 }
 
 static std::shared_ptr<CurrentObjectHandler> ensure_current_object_handler(State& state) {
@@ -73,7 +75,7 @@ static bool can_parse_as_simple_loop_variable(std::string_view variable) noexcep
 
     bool has_name_character = false;
     for(const char c : variable) {
-        if(c == ':' || c == '{' || c == '}' || c == '[' || c == ']' || c == '\'' || c == '"')
+        if(/*c == ':' || */c == '{' || c == '}' || c == '[' || c == ']' || c == '\'' || c == '"')
             return false;
         if(!std::isspace(static_cast<unsigned char>(c)) && c != '#' && c != '.')
             has_name_character = true;
@@ -89,17 +91,22 @@ static std::optional<std::vector<glz::json_t>> json_array_from_variable(
     const VarProps& props)
 {
     if(variable->is<glz::json_t>()) {
-        auto object = variable->access_value<glz::json_t>([&props](auto&& value) {
-            return access_loop_json_subfields(value, props.subs);
+        return variable->access_value<glz::json_t>([&props](auto&& value) -> std::vector<glz::json_t> {
+            auto* object = access_loop_json_subfields(value, props.subs);
+            if(object && object->is_array()) {
+                // Borrowed data needs a snapshot; temporary results can transfer ownership.
+                if constexpr(std::is_lvalue_reference_v<decltype(value)>)
+                    return object->get_array();
+                else
+                    return std::move(object->get_array());
+            }
+            return {};
         }, props);
-        if(object && object->is_array())
-            return object->get_array();
-        return std::vector<glz::json_t>{};
     }
 
     if(variable->is<std::vector<glz::json_t>>()) {
-        return variable->access_value<std::vector<glz::json_t>>([](auto&& value) {
-            return std::vector<glz::json_t>(value.begin(), value.end());
+        return variable->access_value<std::vector<glz::json_t>>([](auto&& value) -> std::vector<glz::json_t> {
+            return std::forward<decltype(value)>(value);
         }, props);
     }
 
@@ -922,9 +929,17 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                 return i;
             }).second);
-            scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> std::string {
-                return v;
-            }).second);
+            if(utils::beginsWith(v, '{')) {
+                /// another map?
+                scope.set(item_name, VarFunc(item_name, [v = Meta::fromStr<glz::json_t>(v)](const VarProps&) -> const glz::json_t& {
+                    return v;
+                }).second);
+                
+            } else {
+                scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> const std::string& {
+                    return v;
+                }).second);
+            }
             if(have_index)
                 scope.set("pindex", VarFunc("pindex", [index = Meta::fromStr<size_t>(*have_index)](const VarProps&) -> size_t {
                     return index;
@@ -1063,7 +1078,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             for(auto &v : *vector) {
                 auto scope = scoped_handler->scope();
-                scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> const glz::json_t& {
+                scope.set(item_name, VarFunc(item_name, [v = std::move(v)](const VarProps&) -> const glz::json_t& {
                     return v;
                 }).second);
                 scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
@@ -1179,8 +1194,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             }
         }
         else if(loop_variable->is<std::string>()) {
-            auto str = loop_variable->value<std::string>(props);
-            if(not generate_objects_from_string(str))
+            if(not loop_variable->access_value<std::string>(generate_objects_from_string, props))
                 error = true;
         }
         else {

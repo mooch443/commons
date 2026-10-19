@@ -374,7 +374,7 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                         const auto& local_object = value.get_object();
                         auto type_it = local_object.find("type");
                         if(type_it == local_object.end() || !type_it->second.is_string())
-                            throw InvalidSyntaxException("DynamicGUI local setting '", name, "' must specify a string 'type'.");
+                            throw InvalidSyntaxException("DynamicGUI local setting ", name, " must specify a string 'type'.");
                         local.type = type_it->second.get<std::string>();
 
                         if(auto value_it = local_object.find("value");
@@ -385,13 +385,13 @@ std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const 
                         }
 
                     } else {
-                        throw InvalidSyntaxException("DynamicGUI local setting '", name, "' must be an object or type alias string.");
+                        throw InvalidSyntaxException("DynamicGUI local setting ", name, " must be an object or type alias string.");
                     }
 
                     if(!LocalSettingTypes::has(local.type)) {
                         throw InvalidSyntaxException(
-                            "Unknown DynamicGUI local setting type '", local.type, "' for local '", name,
-                            "'. Available types: ", LocalSettingTypes::available_names_string(), "."
+                            "Unknown DynamicGUI local setting type ", local.type, " for local ", name,
+                            ". Available types: ", LocalSettingTypes::available_names(), "."
                         );
                     }
                     defaults.locals[name] = std::move(local);
