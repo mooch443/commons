@@ -55,6 +55,7 @@ function(commons_log_selected_options)
     foreach(option_name IN ITEMS
         COMMONS_WITH_OPENGL
         COMMONS_BUILD_GLFW
+        COMMONS_GLFW_UPDATE_DISCONNECTED
         COMMONS_BUILD_PNG
         COMMONS_BUILD_ZIP
         COMMONS_BUILD_EXAMPLES
@@ -91,6 +92,11 @@ else()
     option(COMMONS_WITH_OPENGL ON)
 endif()
 option(COMMONS_BUILD_GLFW "Build the bundled GLFW" ON)
+set(_commons_glfw_update_disconnected_default OFF)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.27")
+    set(_commons_glfw_update_disconnected_default ON)
+endif()
+option(COMMONS_GLFW_UPDATE_DISCONNECTED "Skip routine GLFW updates; disable to fetch a new GLFW tag" ${_commons_glfw_update_disconnected_default})
 option(COMMONS_BUILD_PNG "Build the bundled libpng instead of using the environment provider" ON)
 option(COMMONS_BUILD_ZIP "Build the bundled libzip instead of using the environment provider" ON)
 option(COMMONS_BUILD_EXAMPLES "Build commons examples" OFF)
@@ -690,6 +696,13 @@ if(APPLE)
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_THREAD_LIBS_INIT="-lpthread"
+        -DCMAKE_HAVE_THREADS_LIBRARY=1
+        -DCMAKE_USE_WIN32_THREADS_INIT=0
+        -DCMAKE_USE_PTHREADS_INIT=1
+        -DTHREADS_PREFER_PTHREAD_FLAG=ON
+        -DHAVE_FSEEKO=1
+        -DHAVE_FTELLO=1
         )
 else()
     set(COMMONS_subproject_CMAKE_ARGS ${COMMONS_subproject_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE})
@@ -873,6 +886,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
         GIT_TAG 3.5.1
+        UPDATE_DISCONNECTED ${COMMONS_GLFW_UPDATE_DISCONNECTED}
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             "-DCMAKE_CXX_FLAGS:STRING=${GLFW_CXX_FLAGS}"
@@ -887,6 +901,14 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
         SOURCE_DIR ${COMMONS_GLFW_SOURCE_PATH}
         PATCH_COMMAND ${COMMONS_GLFW_PATCH}
     )
+    set(_commons_glfw_patch_step patch)
+    if(COMMONS_GLFW_UPDATE_DISCONNECTED AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.27")
+        set(_commons_glfw_patch_step patch_disconnected)
+    endif()
+    if(NOT WIN32)
+        ExternalProject_Add_StepDependencies(glfw ${_commons_glfw_patch_step}
+            "${CMAKE_CURRENT_SOURCE_DIR}/glfw_linux_patch.diff")
+    endif()
     if(APPLE)
         ExternalProject_Add_Step(glfw cocoa_monitor_patch
             COMMAND "${CMAKE_COMMAND}"
@@ -894,7 +916,7 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
                 "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
                 "-DGLFW_PATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/glfw_cocoa_monitor_patch.diff"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/glfw_patch.cmake"
-            DEPENDEES patch
+            DEPENDEES ${_commons_glfw_patch_step}
             DEPENDERS configure
             DEPENDS
                 "${CMAKE_CURRENT_SOURCE_DIR}/glfw_cocoa_monitor_patch.diff"

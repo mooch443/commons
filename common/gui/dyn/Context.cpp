@@ -40,7 +40,8 @@ void LocalSettingTypes::ensure_defaults() {
                             throw InvalidArgumentException("bool_array values must be booleans, numbers, or strings.");
                     }
                 } else if(value->is_string()) {
-                    for(const auto& part : util::parse_array_parts(util::truncate(value->get<std::string>())))
+                    const auto& v = value->get<std::string>();
+                    for(const auto& part : util::parse_array_parts(util::truncate(std::string_view(v))))
                         values.push_back(convert_to_bool(part) ? 1 : 0);
                 } else {
                     throw InvalidArgumentException("bool_array local settings must use a JSON array or string array.");
@@ -1065,6 +1066,16 @@ void Context::init() const {
             VarFunc("max", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return max(A, B);});
             }),
+            VarFunc("maxVector", [](const VarProps& props) -> Vec2 {
+                REQUIRE_EXACTLY(2, props);
+                auto front = std::string_view(props.parameters.front());
+                auto back = std::string_view(props.parameters.back());
+                
+                auto A = Meta::fromStr<Vec2>(front);
+                auto B = Meta::fromStr<Vec2>(back);
+                
+                return max(A, B);
+            }),
             
             VarFunc("saturate", [](const VarProps& props) {
                 REQUIRE_EXACTLY(3, props);
@@ -1229,7 +1240,7 @@ void Context::init() const {
             VarFunc("join", [](const VarProps& props) -> std::string {
                 REQUIRE_AT_LEAST(1, props);
                 
-                auto& array = props.parameters.back();
+                auto array = std::string_view(props.parameters.back());
                 auto parts = util::parse_array_parts(util::truncate(utils::trim(array)));
                 
                 if(props.parameters.size() == 2) {
@@ -1258,7 +1269,7 @@ void Context::init() const {
             VarFunc("merge", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(1, props);
                 
-                auto parts = util::parse_array_parts(util::truncate(props.parameters.front()));
+                auto parts = util::parse_array_parts(util::truncate(std::string_view(props.parameters.front())));
                 std::string combination = "[";
                 for(size_t i = 0; i < parts.size(); ++i) {
                     if(i > 0)
@@ -1410,13 +1421,13 @@ void Context::init() const {
             VarFunc("contains", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(2, props);
 
-                auto trunc = props.parameters.at(1);
+                auto trunc = std::string_view(props.parameters.at(1));
                 if(is_in(utils::trim(trunc).front(), '{')) {
                     auto key = Meta::fromStr<std::string>(props.parameters.front());
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
 
                     for(auto &part : parts) {
-                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        auto key_value = util::parse_array_parts(utils::trim(std::string_view(part)), ':');
                         if(key_value.size() != 2) {
                             throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
                         }
@@ -1457,7 +1468,7 @@ void Context::init() const {
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 
-                auto trunc = props.parameters.at(1);
+                auto trunc = std::string_view(props.parameters.at(1));
                 if(is_in(utils::trim(trunc).front(), '{')) {
                     auto key = Meta::fromStr<std::string>(props.parameters.front());
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
@@ -1469,7 +1480,7 @@ void Context::init() const {
                         }
                         
                         if(key == Meta::fromStr<std::string>(key_value.front())) {
-                            return key_value.back();
+                            return std::string(key_value.back());
                         }
                     }
                     
@@ -1479,7 +1490,7 @@ void Context::init() const {
                     auto index = Meta::fromStr<size_t>(props.parameters.front());
                     if(is_in(utils::trim(trunc).front(), '[', '{')) {
                         auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
-                        return parts.at(index);
+                        return std::string(parts.at(index));
                     } else if(is_in(trunc.front(), '\'', '"')) {
                         return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
                     }
@@ -1491,8 +1502,8 @@ void Context::init() const {
                 REQUIRE_EXACTLY(1, props);
                 
                 std::vector<std::string> result;
-                std::deque<std::string> q;
-                auto parts = util::parse_array_parts(util::truncate(utils::trim(props.parameters.front())));
+                std::deque<std::string_view> q;
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(std::string_view(props.parameters.front()))));
                 for(auto &&part : parts) {
                     if(part.empty())
                         continue;
@@ -1516,7 +1527,7 @@ void Context::init() const {
             VarFunc("array_length", [](const VarProps& props) -> size_t {
                 REQUIRE_EXACTLY(1, props);
                 
-                auto trunc = props.parameters.at(0);
+                auto trunc = std::string_view(props.parameters.at(0));
                 if(is_in(utils::trim(trunc).front(), '[', '{')) {
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
                     return parts.size();

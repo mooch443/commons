@@ -1063,7 +1063,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             for(auto &v : *vector) {
                 auto scope = scoped_handler->scope();
-                scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> glz::json_t {
+                scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> const glz::json_t& {
                     return v;
                 }).second);
                 scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
@@ -1137,7 +1137,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
                     scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {
                         return i;
                     }).second);
-                    scope.set(item_name, VarFunc(item_name, [v](const VarProps&) -> std::string {
+                    scope.set(item_name, VarFunc(item_name, [v = std::string(v)](const VarProps&) -> const std::string& {
                         return v;
                     }).second);
                     if(have_index)

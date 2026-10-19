@@ -6,53 +6,6 @@
 namespace cmn::sprite {
 static_assert(has_to_json_method<bool> == false);
 
-template<typename T, typename K = std::remove_cvref_t<T>>
-inline std::string display_object(T&& object, std::string_view null_optional = "null") {
-    if constexpr(_is_instance<std::optional, K>) {
-        if(!object.has_value())
-             return std::string(null_optional);
-        return display_object(object.value(), null_optional);
-
-    } else if constexpr(_clean_same<std::string, T>) {
-        return object;
-
-    } else if constexpr(_clean_same<file::Path, T>) {
-        return object.str();
-
-    } else if constexpr(_clean_same<sprite::ConstReference, T> 
-                        || _clean_same<sprite::Reference, T>)
-    {
-        if(not object.valid())
-            return std::string(null_optional);
-
-        if(object.is_optional()) {
-            if (not object.optional_has_value()) {
-                return std::string(null_optional);
-            }
-
-            auto dereferenced = object.dereference_optional();
-            if (not dereferenced) {
-                return std::string(null_optional);
-            }
-
-            return display_object(*dereferenced, null_optional);
-            
-        } else if(object.get().template is_type<file::Path>()) {
-            return object.get().template value<file::Path>().str();
-        } else if(object.get().template is_type<std::string>()) {
-            return object.get().template value<std::string>();
-        }
-        return object.get().valueString();
-
-    } else if constexpr(has_to_json_method<K> && not _has_tostr_method<K>) {
-        /// we can support this through the json method alone if we want to
-        return Meta::toStr(object.to_json());
-    } else {
-        static_assert(_has_tostr_method<K> || not has_to_json_method<K>);
-        return Meta::toStr(std::forward<T>(object));
-    }
-}
-
 inline std::string display_property(const PropertyType& property,
                                     std::string_view null_optional = "null") {
     if (property.is_optional()) {
@@ -77,6 +30,35 @@ inline std::string display_property(const PropertyType& property,
     }
 
     return property.valueString();
+}
+
+template<typename T, typename K = std::remove_cvref_t<T>>
+inline std::string display_object(T&& object, std::string_view null_optional = "null") {
+    if constexpr(_is_instance<std::optional, K>) {
+        if(!object.has_value())
+             return std::string(null_optional);
+        return display_object(object.value(), null_optional);
+
+    } else if constexpr(_clean_same<std::string, K>) {
+        return object;
+
+    } else if constexpr(_clean_same<file::Path, K>) {
+        return object.str();
+
+    } else if constexpr(_clean_same<sprite::ConstReference, K>
+                        || _clean_same<sprite::Reference, K>)
+    {
+        if(not object.valid())
+            return std::string(null_optional);
+        return display_property(object.get(), null_optional);
+
+    } else if constexpr(has_to_json_method<K> && not _has_tostr_method<K>) {
+        /// we can support this through the json method alone if we want to
+        return Meta::toStr(object.to_json());
+    } else {
+        static_assert(_has_tostr_method<K> || not has_to_json_method<K>);
+        return Meta::toStr(std::forward<T>(object));
+    }
 }
 
 inline std::string display_property(const Reference& reference,

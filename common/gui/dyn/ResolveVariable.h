@@ -16,7 +16,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
     
     try {
         if(props.name == "if") {
-            [[maybe_unused]] CTimer ctimer("if");
+            //[[maybe_unused]] CTimer ctimer("if");
             VarProps p{
                 .name = std::string(props.name),
                 .optional = props.optional,
@@ -39,9 +39,10 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                     return "";
             }
 
-        } else if(props.name == "&&" || props.name == "||") {
-            [[maybe_unused]] CTimer ctimer("logical");
-            const bool is_and = props.name == "&&";
+        } else if(const bool is_and = props.name == "&&";
+                  is_and || props.name == "||")
+        {
+            //[[maybe_unused]] CTimer ctimer("logical");
             bool result = is_and;
 
             // Resolve operands in order so a decisive value protects the rest.
@@ -53,10 +54,13 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                 }
             }
 
-            return Meta::fromStr<Result>(result ? std::string_view("true") : std::string_view("false"));
+            if constexpr(StringLike<Result>)
+                return Result(result ? "true" : "false");
+            else
+                return Meta::fromStr<Result>(result ? std::string_view("true") : std::string_view("false"));
             
         } else if(props.name == "for") {
-            [[maybe_unused]] CTimer ctimer("for");
+            //[[maybe_unused]] CTimer ctimer("for");
             VarProps p{
                 .name = std::string(props.name),
                 .optional = props.optional,
@@ -97,7 +101,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             size_t index = 0;
             std::string idx_str;
             if(not trunc.empty() && is_in(utils::trim(trunc).front(), '[', '{')) {
-                auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                auto parts = util::parse_array_parts(util::truncate(utils::trim(std::string_view(trunc))));
                 for(auto& item : parts) {
                     auto scope = handler->scope();
                     idx_str = Meta::toStr(index);
@@ -132,7 +136,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             return Meta::fromStr<Result>(ss.str());
             
         } else if(context.has(props.name, state)) {
-            [[maybe_unused]] CTimer ctimer("normal");
+            //[[maybe_unused]] CTimer ctimer("normal");
             
             auto variable = context.variable(props.name, state);
             if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
@@ -141,7 +145,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                 static_assert(std::invocable<ApplyF, VarBase_t&, const VarProps&>);
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
-            [[maybe_unused]] CTimer ctimer("custom var");
+            //[[maybe_unused]] CTimer ctimer("custom var");
             return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
             
         } else if(auto lock = state._current_object_handler.lock();

@@ -224,7 +224,8 @@ struct Range {
 
     static Range<T> fromStr(cmn::StringLike auto&& str)
     {
-        auto parts = util::parse_array_parts(util::truncate(str));
+        auto sv = utils::string_like_view(std::forward<decltype(str)>(str));
+        auto parts = util::parse_array_parts(util::truncate(sv));
         if(parts.empty())
             return Range();
         

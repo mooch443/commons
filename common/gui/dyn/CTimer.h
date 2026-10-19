@@ -1,7 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 
-#if !defined(NDEBUG) && false
+#if !defined(NDEBUG) || true
 #define CTIMER_ENABLED true
 #else
 #define CTIMER_ENABLED false
@@ -23,9 +23,11 @@ struct CTimer {
     };
     
     static inline std::unordered_map<std::string, Timing> timings;
+    std::string_view _name;
     Timer timer;
+#else
+    constexpr CTimer(std::string_view) {}
 #endif
-    [[maybe_unused]] std::string_view _unused;
 #if CTIMER_ENABLED
     ~CTimer() {
         auto elapsed = timer.elapsed();

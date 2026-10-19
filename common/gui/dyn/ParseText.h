@@ -109,16 +109,17 @@ PreVarProps extractControls(const std::string_view& variable);
 
 template<cmn::StringLike Str>
 bool convert_to_bool(Str&& p) noexcept {
-    if (   p == "false"
-        || p == "[]"
-        || p == "{}"
-        || p == "0"
-        || p == "null"
-        || p == "''"
-        || p == "\"\""
-        || p == "0.0"
-        || p == ""
-        || p == "Map<size:0>"
+    auto sv = utils::string_like_view(std::forward<Str>(p));
+    if (   sv == "false"
+        || sv == "[]"
+        || sv == "{}"
+        || sv == "0"
+        || sv == "null"
+        || sv == "''"
+        || sv == "\"\""
+        || sv == "0.0"
+        || sv == ""
+        || sv == "Map<size:0>"
         )
       return false;
 

@@ -37,13 +37,11 @@ template<StringLike Str>
         static_assert(std::is_same_v<std::remove_cv_t<std::remove_extent_t<StrDecayed>>, char>,
                       "StringLike arrays must be char arrays.");
         constexpr auto extent = std::extent_v<StrDecayed>;
-        if constexpr(extent == 0u) {
-            return std::string_view{};
-        } else {
-            const size_t len = str[extent - 1u] == '\0' ? extent - 1u : extent;
-            return std::string_view(str, len);
-        }
+        size_t len = 0u;
+        for(; len < extent && str[len] != '\0'; ++len);
+        return std::string_view(str, len);
     } else {
+        static_assert(_clean_same<StrDecayed, std::string> || _clean_same<StrDecayed, std::string_view>);
         return std::string_view{str};
     }
 }

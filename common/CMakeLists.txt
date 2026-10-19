@@ -166,6 +166,8 @@ function(commons_configure_target target)
             CXX_VISIBILITY_PRESET default
             C_VISIBILITY_PRESET default
             VISIBILITY_INLINES_HIDDEN OFF
+            # Post-build dylib aliases and fonts do not produce compilation inputs for consumers.
+            XCODE_ATTRIBUTE_EAGER_COMPILATION_ALLOW_SCRIPTS YES
         )
         target_compile_options(${target} PRIVATE -fvisibility=default)
         # Keep Apple defaults for undefined symbols so unresolved references

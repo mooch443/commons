@@ -663,10 +663,10 @@ std::string to_string(const T& t) {
     return std::to_string (t);
 }
 
-template<typename Str>
-auto truncate(const Str& str) {
+template<StringLike Str>
+auto truncate(Str&& str) {
     using StrDecayed = std::remove_cvref_t<Str>;
-    std::string_view sv(str);
+    std::string_view sv = utils::string_like_view(std::forward<Str>(str));
 
     if ((utils::beginsWith(sv, '{') && utils::endsWith(sv, '}'))
         || (utils::beginsWith(sv, '[') && utils::endsWith(sv, ']'))) {

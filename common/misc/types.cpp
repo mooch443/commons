@@ -51,7 +51,7 @@ namespace cmn::blob {
 
     ObjectClass_t ObjectClass_t::fromStr(const std::string& str) {
         ObjectClass_t result;
-        auto parts = util::parse_array_parts(util::truncate(str));
+        auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
         util::enforce_no_empty_elements(parts, class_name());
         
         std::vector<std::string> collected_array_values;
@@ -71,7 +71,7 @@ namespace cmn::blob {
                 result[index] = std::move(value_str);
             } else {
                 /// its just an array i guess
-                collected_array_values.push_back(part);
+                collected_array_values.push_back(std::string(part));
             }
         }
         if(not collected_array_values.empty()) {

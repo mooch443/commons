@@ -928,6 +928,23 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
 {
     auto& props = resolved;
     auto& parms = props.parameters;
+    size_t index = str.length();
+    
+    auto update_cache = [&](){
+        if(has_children) {
+            _cached_value = std::string_view(str).substr(index);
+            if(auto handler = state._current_object_handler.lock();
+               handler)
+            {
+                _cached_variable_versions = CachedVariableVersions{
+                    .global = handler->variable_values_version(),
+                    .scoped = handler->scoped_variable_values_version()
+                };
+            } else {
+                _cached_variable_versions.reset();
+            }
+        }
+    };
     
     props.subs.resize(subs.size());
     
@@ -973,18 +990,34 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         
     } else if(resolved.name == "&&" || resolved.name == "||") {
         const bool is_and = resolved.name == "&&";
-        parms.clear();
-        parms.reserve(parameters.size());
+        //bool condition = is_and ? true : false;
+        //parms.clear();
+        //parms.reserve(parameters.size());
+        std::string value;
 
         // Resolve operands in order so a decisive value protects the rest.
         for(auto& parameter : parameters) {
-            auto& value = parms.emplace_back();
+            value.clear();
             resolve_parameter(value, pattern, parameter, context, state);
             const bool truth_value = gui::dyn::convert_to_bool(value);
+            /*if(is_and)
+                condition = condition && truth_value;
+            else
+                condition = condition || truth_value;*/
+            
             if((is_and && not truth_value) || (not is_and && truth_value)) {
-                break;
+                str.append(truth_value ? "true" : "false");
+                update_cache();
+                return;
             }
         }
+        
+        if(is_and)
+            str.append("true");
+        else
+            str.append("false");
+        update_cache();
+        return;
 
     } else if(resolved.name == "for") {
         if(not is_in(parameters.size(), 2u, 3u))
@@ -1069,7 +1102,7 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         }
     }
     
-    size_t index = str.length();
+
     resolve_variable(str, props, context, state, [](std::string& output, cmn::gui::dyn::VarBase_t& variable, const gui::dyn::VarProps& modifiers)
     {
         handle_sub_objects(output, variable, modifiers);
@@ -1081,22 +1114,11 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             str.append("null");
     });
     
-    if(has_children) {
-        _cached_value = std::string_view(str).substr(index);
-        if(auto handler = state._current_object_handler.lock();
-           handler)
-        {
-            _cached_variable_versions = CachedVariableVersions{
-                .global = handler->variable_values_version(),
-                .scoped = handler->scoped_variable_values_version()
-            };
-        } else {
-            _cached_variable_versions.reset();
-        }
-    }
+    update_cache();
 }
 
 std::string UnresolvedStringPattern::realize(const gui::dyn::Context& context, gui::dyn::State& state) {
+    [[maybe_unused]] CTimer ctimer(*original);
     std::string str;
     bool has_length = typical_length.has_value();
     if(has_length)

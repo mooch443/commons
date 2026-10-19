@@ -141,6 +141,8 @@ public:
     //operator std::string() const { return std::string(name()); }
     //constexpr uint32_t toInt() const { return (uint32_t)_value; }
     constexpr explicit operator uint32_t() const noexcept { return (uint32_t)_value; }
+    constexpr uint32_t index() const noexcept { return (uint32_t)_value; }
+    static consteval uint32_t size() noexcept { return static_cast<uint32_t>(num_values); }
     constexpr operator ValueType() const noexcept { return _value; }
     
     // comparison operators
