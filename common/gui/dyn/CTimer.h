@@ -1,7 +1,7 @@
 #pragma once
 #include <commons.pc.h>
 
-#if !defined(NDEBUG) || true
+#if !defined(NDEBUG) && false
 #define CTIMER_ENABLED true
 #else
 #define CTIMER_ENABLED false
