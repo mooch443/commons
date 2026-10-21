@@ -153,7 +153,13 @@ namespace cmn::gui {
         std::function<bool(Event e, std::exception_ptr)> _event_exception_handler;
         std::optional<std::source_location> _event_exception_source;
         
+        std::queue<std::function<void(DrawStructure&)>> _next_cycle;
+        
     public:
+        void enqueue(std::function<void(DrawStructure&)>&& fn) {
+            _next_cycle.push(std::move(fn));
+        }
+        
         std::source_location set_event_exception_handler(std::function<bool(Event e, std::exception_ptr)>&& cb, std::source_location source) {
             _event_exception_handler = std::move(cb);
             _event_exception_source = source;

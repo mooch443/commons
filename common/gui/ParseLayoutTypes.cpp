@@ -372,7 +372,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         }
     }
     
-    if(obj.count("drag") || obj.count("click")) {
+    if(obj.count("drag") || obj.count("click") || obj.count("deselect")) {
         auto run_action = [](const PreAction& action, const Context& context, State& state) {
             std::string_view name = action.name;
             std::string pattern;
@@ -430,6 +430,24 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             auto h = bind_event_with_state(ptr, EventType::MBUTTON, state._current_object_handler, context, [action, run_action](Event event, const Context& context, State& state)
             {
                 if(not event.mbutton.pressed && event.mbutton.started_here) {
+                    try {
+                        run_action(action, context, state);
+                    } catch(const std::exception& ex) {
+                        FormatExcept("error using action ", action, ": ", ex.what());
+                    }
+                }
+            }, handle);
+            ptr->add_custom_data(handle_name, (void*)h.get());
+        }
+        
+        if(obj.count("deselect")) {
+            auto action = PreAction::fromStr(obj.at("deselect").get<std::string>());
+            static constexpr auto handle_name = "_deselect_handle";
+            auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
+            auto h = bind_event_with_state(ptr, EventType::SELECT, state._current_object_handler, context, [action, run_action](Event event, const Context& context, State& state)
+            {
+                Print("Caught deselect event ", event.select.selected);
+                if(not event.select.selected) {
                     try {
                         run_action(action, context, state);
                     } catch(const std::exception& ex) {

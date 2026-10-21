@@ -273,6 +273,19 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 if(last_condition != 1) {
                     obj._else->set_bounds_changed();
                     pass->set_object(obj._else);
+                    
+                    if(obj.__else.get_object().contains("select_on_show")
+                       && obj.__else.get_object().at("select_on_show").is_boolean()
+                       && obj.__else.get_object().at("select_on_show").get_boolean())
+                    {
+                        g.enqueue([w = std::weak_ptr(obj._else.get_smart())](DrawStructure& g) {
+                            auto lock = w.lock();
+                            if(not lock)
+                                return;
+                            
+                            g.select(lock.get());
+                        });
+                    }
                 }
                 
                 if(DynamicGUI::update_objects(gui, g, obj._else, context, _state)) {
@@ -325,6 +338,19 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 o->set_is_displayed(true);
                 o->add_custom_data("last_condition", (void*)2);
                 pass->set_object(obj._if);
+                
+                if(obj.__if.get_object().contains("select_on_show")
+                   && obj.__if.get_object().at("select_on_show").is_boolean()
+                   && obj.__if.get_object().at("select_on_show").get_boolean())
+                {
+                    g.enqueue([w = std::weak_ptr(obj._if.get_smart())](DrawStructure& g) {
+                        auto lock = w.lock();
+                        if(not lock)
+                            return;
+                        
+                        g.select(lock.get());
+                    });
+                }
             }
             
             if(DynamicGUI::update_objects(gui, g, obj._if, context, _state)) {

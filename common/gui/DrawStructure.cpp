@@ -533,6 +533,13 @@ std::optional<std::shared_ptr<Dialog>> DrawStructure::dialog(const std::string &
     }
     
     std::vector<Drawable*> DrawStructure::collect() {
+        while(not _next_cycle.empty()) {
+            auto front = std::move(_next_cycle.front());
+            _next_cycle.pop();
+            
+            front(*this);
+        }
+        
         _root.update_bounds();
         //update_hover();
         return _root.collect();
@@ -1026,20 +1033,13 @@ void DrawStructure::clear_event_exception_handler(std::source_location source) {
         //cmn::Print(" * instead of ", hex(previous), " now selecting ", hex(d));
         _selected_object = d;
         
-        if(previous) {
-            parent = previous->parent();
-            if(previous->pressed())
-                previous->mup(0, 0, true, false);
-            previous->deselect();
-            
-            if(d && d->is_child_of(parent)) {
-                // dont deselect
-            } else {
-                while(parent) {
-                    parent->deselect();
-                    parent = parent->parent();
-                }
-            }
+        for(auto* p = previous;
+            p && (!d || !d->is_child_of(p));
+            p = p->parent())
+        {
+            if(p->pressed())
+                p->mup(0, 0, true, false);
+            p->deselect();
         }
         
         if(d) {
