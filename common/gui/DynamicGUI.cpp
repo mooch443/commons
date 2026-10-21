@@ -157,19 +157,22 @@ void validate_variable_cycles(const robin_hood::unordered_map<std::string, std::
 }
 
 namespace Modules {
-std::unordered_map<std::string, Module> mods;
+std::unordered_map<std::string, Module, MultiStringHash, MultiStringEqual> mods;
 
 void add(Module&& m) {
     auto name = m._name;
     mods.emplace(name, std::move(m));
 }
 
-void remove(const std::string& name) {
-    if(mods.contains(name))
-        mods.erase(name);
+void remove(std::string_view name) {
+    if(auto it = mods.find(name);
+       it != mods.end())
+    {
+        mods.erase(it);
+    }
 }
 
-Module* exists(const std::string& name) {
+Module* exists(std::string_view name) {
     auto it = mods.find(name);
     if(it != mods.end()) {
         return &it->second;
@@ -716,7 +719,7 @@ void DynamicGUI::reload(DrawStructure& graph) {
         first_load = false;
 }
 
-void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add)
+bool DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add)
 {
     reload(graph);
     
@@ -928,7 +931,7 @@ void DynamicGUI::update(DrawStructure& graph, Layout* parent, const std::functio
     
     if (do_update_objects)
         last_update.reset();
-    
+    return do_update_objects;
 }
 
 DynamicGUI::operator bool() const {

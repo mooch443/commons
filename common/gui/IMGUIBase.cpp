@@ -1145,6 +1145,7 @@ void IMGUIBase::process_main_queue() {
     }
 
     LoopStatus IMGUIBase::update_loop() {
+        const auto update_started = std::chrono::steady_clock::now();
         {
             std::unique_lock<std::mutex> guard(_mutex);
             while (!_exec_main_queue.empty()) {
@@ -1157,7 +1158,33 @@ void IMGUIBase::process_main_queue() {
             }
         }
         
-        return _platform->update_loop(_custom_loop);
+        const auto status = _platform->update_loop(_custom_loop);
+        record_update_time(status, update_started);
+        return status;
+    }
+
+    void IMGUIBase::record_update_time(
+        LoopStatus status,
+        std::chrono::steady_clock::time_point started)
+    {
+        if(status != LoopStatus::UPDATED)
+            return;
+
+        const auto finished = std::chrono::steady_clock::now();
+
+        if(_update_time_samples == 0)
+            _update_time_window_start = started;
+
+        _update_time_sum_ms += std::chrono::duration<double, std::milli>(
+            finished - started).count();
+        ++_update_time_samples;
+
+        if(finished - _update_time_window_start >= std::chrono::seconds(1)) {
+            _average_update_time_ms =
+                _update_time_sum_ms / double(_update_time_samples);
+            _update_time_sum_ms = 0.0;
+            _update_time_samples = 0;
+        }
     }
 
     void IMGUIBase::set_frame_recording(bool v) {

@@ -138,9 +138,9 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
     
 #ifndef NDEBUG
     Float2_t prev = 0;
-    for(auto &[_, _, cum] : word_breaks) {
-        assert(prev <= cum);
-        prev = cum;
+    for(auto &[i, lw, cumw] : word_breaks) {
+        assert(prev <= cumw);
+        prev = cumw;
     }
 #endif
 

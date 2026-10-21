@@ -215,6 +215,7 @@ struct HashedObject {
     size_t hash;
     Timer timer;
     VariantType object;
+    std::unordered_set<std::string> active_modules;
     
     std::optional<std::function<void(DrawStructure&)>> display_fn;
     std::optional<std::string> chosen_image;

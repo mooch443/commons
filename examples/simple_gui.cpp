@@ -63,7 +63,7 @@ int main(int argc, char**argv) {
     // (since this is not a native ability of the json)
     dyn::Modules::add(Modules::Module{
         ._name = "draggable",
-        ._apply = [](size_t, State&, const Layout::Ptr& o) {
+        ._apply = [](size_t, const glz::json_t&, const Context&, State&, const Layout::Ptr& o) {
             o->set_draggable();
         }
     });

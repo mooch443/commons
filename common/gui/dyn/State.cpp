@@ -174,6 +174,14 @@ bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, La
     if(display_fn.has_value()) {
         display_fn.value()(g);
     }
+    
+    if(not active_modules.empty()) {
+        for(const auto& mod : active_modules) {
+            auto m = Modules::exists(mod);
+            if(m && m->_update)
+                m->_update(*this, context, state, o);
+        }
+    }
 
     if (std::holds_alternative<CustomBody>(object)) {
         if(not context.custom_elements.at(std::get<CustomBody>(object).name)->update(o, context, state, patterns))
@@ -1329,6 +1337,7 @@ const Pattern& PatternStore::set(size_t hash, const std::string& name, Pattern &
     auto it = _collectors->objects.find(hash);
     if(it == _collectors->objects.end()) {
         _collectors->objects[hash] = std::make_shared<HashedObject>();
+        _collectors->objects[hash]->hash = hash;
     }
     
     auto& obj = _collectors->objects.at(hash)->patterns[name];

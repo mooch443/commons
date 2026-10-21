@@ -22,6 +22,10 @@ namespace cmn::gui {
     class Base {
     protected:
         GETTER(bool, frame_recording);
+        GETTER_I(double, average_update_time_ms, 0.0);
+        double _update_time_sum_ms{0.0};
+        uint64_t _update_time_samples{0};
+        std::chrono::steady_clock::time_point _update_time_window_start{};
         std::function<Bounds(std::string_view, Drawable*, const Font&)> _previous_line_bounds;
         std::function<Float2_t(const Font&)> _previous_line_spacing;
         Base *_previous_base;

@@ -209,6 +209,9 @@ namespace cmn::gui {
         Event toggle_fullscreen(DrawStructure& g) override;
         
     private:
+        void record_update_time(
+            LoopStatus status,
+            std::chrono::steady_clock::time_point started);
         void redraw(Drawable* o, std::vector<DrawOrder>& draw_order, std::vector<DrawOrder>& above_z, bool is_background = false, ImVec4 clip_rect = ImVec4());
         void draw_element(const DrawOrder& order);
         void event(const gui::Event& e);

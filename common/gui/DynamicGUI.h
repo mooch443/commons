@@ -68,12 +68,13 @@ class LayoutContext;
 namespace Modules {
 struct Module {
     std::string _name;
-    std::function<void(size_t, State&, const Layout::Ptr&)> _apply;
+    std::function<void(size_t, const glz::json_t&, const Context&, State&, const Layout::Ptr&)> _apply;
+    std::function<void(HashedObject&, const Context&, State&, const Layout::Ptr&)> _update;
 };
 
 void add(Module&&);
-void remove(const std::string& name);
-Module* exists(const std::string& name);
+void remove(std::string_view name);
+Module* exists(std::string_view name);
 }
 
 Layout::Ptr parse_object(GUITaskQueue_t*,
@@ -104,7 +105,7 @@ struct DynamicGUI {
     Timer _debug_timer{};
 #endif
     
-    void update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
+    bool update(DrawStructure& graph, Layout* parent, const std::function<void(std::vector<Layout::Ptr>&)>& before_add = nullptr);
     
     operator bool() const;
     void clear();

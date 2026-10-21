@@ -237,9 +237,13 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         if(obj.at("modules").is_array()) {
             for(auto mod : obj.at("modules").get_array()) {
                 //Print("module ", mod.get<std::string>());
-                auto m = Modules::exists(mod.get<std::string>());
-                if(m)
-                    m->_apply(hash, state, ptr);
+                auto name = mod.get<std::string>();
+                auto m = Modules::exists(name);
+                if(m) {
+                    m->_apply(hash, obj, context, state, ptr);
+                    auto mono = state.get_monostate(hash, ptr);
+                    mono->active_modules.insert(name);
+                }
             }
         }
     }
