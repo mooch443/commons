@@ -742,6 +742,8 @@ FetchContent_Declare(
     dialogs
     GIT_REPOSITORY https://github.com/mooch443/portable-file-dialogs.git
     GIT_TAG main
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
     #GIT_TAG 0.1.0
     PATCH_COMMAND ${dialogs_PATCH_COMMAND}
     UPDATE_DISCONNECTED 1
@@ -769,6 +771,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
   GIT_TAG v5.0.0
   GIT_SHALLOW TRUE
+  GIT_PROGRESS TRUE
   SOURCE_DIR ${glaze_PATH}
   #PATCH_COMMAND ${glaze_PATCH_COMMAND}
   UPDATE_DISCONNECTED 1
@@ -798,6 +801,8 @@ if(COMMONS_WITH_OPENGL AND NOT COMMONS_FOR_JS)
     ExternalProject_Add(gladex PREFIX gladex
         GIT_REPOSITORY https://github.com/mooch443/glad.git
         GIT_TAG v0.1.36
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
@@ -891,6 +896,8 @@ if(COMMONS_BUILD_GLFW  AND NOT COMMONS_FOR_JS)
     ExternalProject_Add(glfw PREFIX glfw
         GIT_REPOSITORY https://github.com/glfw/glfw.git
         GIT_TAG 3.5.1
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         UPDATE_DISCONNECTED ${COMMONS_GLFW_UPDATE_DISCONNECTED}
         CMAKE_ARGS
             ${COMMONS_subproject_CMAKE_ARGS}
@@ -986,6 +993,8 @@ FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
     GIT_TAG ${imgui_version}
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
     SOURCE_DIR ${imgui_path}
     PATCH_COMMAND ${imgui_patch_command}
     UPDATE_DISCONNECTED 1
@@ -1125,6 +1134,8 @@ if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
 
         GIT_REPOSITORY https://github.com/pybind/pybind11
         GIT_TAG        ${pybind11_version_tag}
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         UPDATE_COMMAND ""
     )
     ExternalProject_Get_Property(pybind11 INSTALL_DIR)
@@ -1141,6 +1152,8 @@ elseif(NOT COMMONS_NO_PYTHON)
         pybind11
         GIT_REPOSITORY https://github.com/pybind/pybind11
         GIT_TAG        ${pybind11_version_tag}
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
     )
 
     FetchContent_MakeAvailable(pybind11)
@@ -1180,6 +1193,8 @@ if(COMMONS_BUILD_ZLIB)
         PREFIX ${zlib_install_dir}
         GIT_REPOSITORY https://github.com/mooch443/zlib.git
         GIT_TAG master
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         UPDATE_COMMAND ""
         PATCH_COMMAND "${ZLIB_PATCH}"
 
@@ -1290,6 +1305,8 @@ if(COMMONS_BUILD_ZIP)
         PREFIX ${libzip_install_dir}
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
         GIT_TAG v1.11.4
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
         UPDATE_COMMAND ""
         PATCH_COMMAND "${ZIP_PATCH}"
         ${_libzip_install_byproducts}
@@ -1376,6 +1393,8 @@ if(COMMONS_BUILD_PNG)
 
         GIT_REPOSITORY  https://github.com/pnggroup/libpng.git
         GIT_TAG v1.6.58
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
 
         INSTALL_DIR ${png_install_dir}
         ${_libpng_install_byproducts}
@@ -1804,6 +1823,8 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             GIT_CONFIG core.longpaths=true
+            GIT_SHALLOW TRUE
+            GIT_PROGRESS TRUE
             UPDATE_COMMAND ""
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
             BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
@@ -1816,6 +1837,8 @@ endif()
             GIT_REPOSITORY  https://github.com/opencv/opencv.git
             GIT_TAG ${COMMONS_OPENCV_VERSION}
             GIT_CONFIG core.longpaths=true
+            GIT_SHALLOW TRUE
+            GIT_PROGRESS TRUE
             UPDATE_COMMAND ""
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
