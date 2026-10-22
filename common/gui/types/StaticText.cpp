@@ -14,9 +14,9 @@ Bounds calculate_bounds(std::string_view text, Drawable* reference, const Font& 
     return Base::default_text_bounds(text, reference, font);
 }
 
-inline bool is_whitespace(char c) {
+inline bool is_whitespace(UChar32 c) {
     // Characters allowed when close to the end of the segment.
-    return std::isspace(static_cast<unsigned char>(c));
+    return c >= 0 && isWhitespaceOrAdditional(c);
     return c == ' ' ;
 }
 
@@ -30,31 +30,43 @@ inline bool is_extended_whitespace(char c) {
 
 word_break_cache_t word_breaks_cache(std::string_view str, Drawable* reference, const Font& font) {
     word_break_cache_t result;
-    bool in_whitespace{false};
+    bool in_whitespace{false}, not_whitespace{false};
     const size_t N = str.length();
     Float2_t total_width = 0;
     
-    for(size_t i = 0; i < N; ++i) {
-        if(const bool ws = is_whitespace(str[i]);
-           ws || is_extended_whitespace(str[i]))
+    for(size_t i = 0; i < N; ) {
+        const size_t start = i;
+        UChar32 c;
+        U8_NEXT(str.data(), i, N, c);
+        const bool ws = is_whitespace(c);
+        if(ws && not not_whitespace)
+            continue;
+
+        const auto line_break = ws ? u_getIntPropertyValue(c, UCHAR_LINE_BREAK) : U_LB_UNKNOWN;
+        const bool breakable_space = ws && line_break != U_LB_GLUE && line_break != U_LB_WORD_JOINER;
+        if(breakable_space || (c >= 0 && c <= 0x7F && is_extended_whitespace(static_cast<char>(c))))
         {
             if(not in_whitespace) {
-                if(i > 0) {
+                if(not_whitespace) {
                     size_t previous = result.empty() ? 0 : std::get<0>(result.back());
-                    size_t current = i;
+                    size_t current = start;
                     
                     if(not ws)
-                        ++current;
+                        current = i;
                     
                     Bounds bounds = calculate_bounds(str.substr(previous, current - previous), reference, font);
-                    //Print(bounds, " => ",(std::string)str.substr(previous, i - previous));
+                    Print(bounds, " => ",(std::string)str.substr(previous, start - previous));
                     total_width += bounds.width;
                     result.emplace_back(current, bounds.width, total_width);
+                    in_whitespace = true;
                 }
-                in_whitespace = true;
             }
-        } else if(in_whitespace) {
-            in_whitespace = false;
+        } else {
+            if(not not_whitespace)
+                not_whitespace = true;
+            if(in_whitespace) {
+                in_whitespace = false;
+            }
         }
     }
     if(N > 0
@@ -66,7 +78,7 @@ word_break_cache_t word_breaks_cache(std::string_view str, Drawable* reference, 
         if(not sub.empty()) {
             Bounds bounds = calculate_bounds(sub, reference, font);
             total_width += bounds.width;
-            //Print(bounds, " => ",(std::string)str.substr(previous, N - previous));
+            Print(bounds, " => ",(std::string)str.substr(previous, N - previous));
             result.emplace_back(N, bounds.width, total_width);
         }
     }
@@ -134,6 +146,7 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
         
         new_index = std::get<0>(word_breaks[*index]);
         //Print("Would go for idx ", word_breaks[*index], " with max_w=", max_w);
+        
     }
     
 #ifndef NDEBUG
@@ -508,7 +521,7 @@ void StaticText::add_string(
         auto ptr = add_after.value();
         add_after.reset();
         
-        const Float2_t max_w = _max_w - offset.x;
+        Float2_t max_w = _max_w - offset.x;
         
         if(w <= max_w) {
             offset.x += w;
@@ -520,12 +533,64 @@ void StaticText::add_string(
             org_cache = utils::word_breaks_cache(ptr.str, reference, ptr.font);
             cache = std::span(*org_cache);
         }
-            
+        
+        if(not cache->empty()) {
+            /*if(w <= _max_w) {
+               ptr.str = utils::ltrim(ptr.str);
+               offset.x = utils::calculate_bounds(ptr.str, reference, ptr.font).width;
+               ++offset.y;
+               ptr.pos.y++;
+               strings.push_back(std::move(ptr));
+                org_cache.reset();
+                cache.reset();
+               break;
+           }*/
+            if(offset.x > 0) {
+                if(std::get<1>(cache->front()) > max_w) {
+                    size_t p = ptr.str.length();
+                    auto trimmed = utils::ltrim(ptr.str);
+                    size_t byte_diff = p - trimmed.length();
+                    
+                    Float2_t updated_width = std::get<1>(cache->front());
+                    Float2_t diff = 0;
+                    
+                    if(byte_diff > 0) {
+                        auto spaces = ptr.str.substr(0, byte_diff);
+                        diff = utils::calculate_bounds(spaces, reference, ptr.font).width;
+                        updated_width -= diff;
+                    }
+                    
+                    if(updated_width <= _max_w) {
+                        ptr.str = trimmed;
+                        w -= diff;
+                        
+                        std::get<1>(cache->front()) -= diff;
+                        for(auto &f : *cache) {
+                            std::get<0>(f) -= byte_diff;
+                            std::get<2>(f) -= diff;
+                        }
+                        
+                        /// putting ourselves in the next line
+                        ptr.pos.y++;
+                        ptr.pos.x = 0;
+                        
+                        /// update the positions for the next line
+                        offset.x = 0;
+                        ++offset.y;
+                        
+                        /// update `max_w`
+                        max_w = _max_w;
+                    }
+                }
+                
+            } else {
+                /// we are at the start of the line, so we'll have to brute-force split it
+                /// since it doesnt fit
+            }
+        }
+        
         size_t idx = utils::find_splitting_point(*cache, ptr.str, w, max_w, reference, ptr.font);
         
-        offset.y++;
-        offset.x = 0;
-
         if (idx) {
             if(ptr.str.length() > idx) {
                 auto sub = ptr.str.substr(idx);
@@ -543,9 +608,9 @@ void StaticText::add_string(
                     
 #ifndef NDEBUG
                     assert(cache.has_value());
-                    Print("Cache: ", *cache);
+                    //Print("Cache: ", *cache);
                     auto alt_cache = utils::word_breaks_cache(tmp.str, reference, tmp.font);
-                    Print("Expected: ", alt_cache);
+                    //Print("Expected: ", alt_cache);
 #endif
                     
                     size_t d = 0;
@@ -606,9 +671,9 @@ void StaticText::add_string(
                     }
                     
 #ifndef NDEBUG
-                    if(not std::ranges::equal(alt_cache, *cache)) {
+                    /*if(not std::ranges::equal(alt_cache, *cache)) {
                         Print("DIfference: ", *cache);
-                    }
+                    }*/
                     if(auto new_w = utils::calculate_bounds(tmp.str, reference, ptr.font).width;
                        abs(w - new_w) >= 1)
                     {
@@ -617,21 +682,26 @@ void StaticText::add_string(
 #endif
                     add_after = std::move(tmp);
                 }
+                
+                /// shorten the current line segment
+                ptr.str = ptr.str.substr(0, idx);
+                
+                // move on to the next line
+                offset.y++;
+                offset.x = 0;
+            } else {
+                offset.x += w;
             }
             
-            /// shorten the current line segment
-            ptr.str = ptr.str.substr(0, idx);
             strings.push_back(std::move(ptr));
-            
-            continue;
 
         } else {
-            // put the whole text in the next line
+            // put the whole text in this line
             ptr.pos.y++;
+            
+            offset.x += w;
+            strings.push_back(std::move(ptr));
         }
-        
-        offset.x += w;
-        strings.push_back(std::move(ptr));
     }
 }
 

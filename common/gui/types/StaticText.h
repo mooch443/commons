@@ -106,7 +106,8 @@ namespace cmn::gui {
         
     private:
         Settings _settings;
-        std::vector<RichString> _rich_strings;
+        GETTER(std::vector<RichString>, rich_strings);
+    private:
         std::vector<std::unique_ptr<std::string>> _string_owner;
         
     public:
