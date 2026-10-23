@@ -26,7 +26,7 @@ namespace cmn::gui {
         double _update_time_sum_ms{0.0};
         uint64_t _update_time_samples{0};
         std::chrono::steady_clock::time_point _update_time_window_start{};
-        std::function<Bounds(std::string_view, Drawable*, const Font&)> _previous_line_bounds;
+        std::function<Bounds(std::string_view, Drawable*, const Font&, Float2_t, const char**)> _previous_line_bounds;
         std::function<Float2_t(const Font&)> _previous_line_spacing;
         Base *_previous_base;
         
@@ -55,9 +55,10 @@ namespace cmn::gui {
         
         static Size2 text_dimensions(const std::string& text, Drawable* obj = NULL, const Font& font = {});
         
-        virtual Bounds text_bounds(std::string_view text, Drawable*, const Font& font);
-        static Bounds default_text_bounds(std::string_view text, Drawable* obj = NULL, const Font& font = {});
-        static void set_default_text_bounds(std::function<Bounds(std::string_view, Drawable*, const Font&)>);
+        // max_width is exclusive; remaining points to the first unmeasured UTF-8 character.
+        virtual Bounds text_bounds(std::string_view text, Drawable*, const Font& font, Float2_t max_width = FLT_MAX, const char** remaining = nullptr);
+        static Bounds default_text_bounds(std::string_view text, Drawable* obj = NULL, const Font& font = {}, Float2_t max_width = FLT_MAX, const char** remaining = nullptr);
+        static void set_default_text_bounds(std::function<Bounds(std::string_view, Drawable*, const Font&, Float2_t, const char**)>);
         
         virtual Float2_t line_spacing(const Font& font);
         

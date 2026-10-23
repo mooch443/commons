@@ -184,7 +184,7 @@ namespace cmn::gui {
         void set_title(std::string) override;
         const std::string& title() const override { return _title; }
         
-        Bounds text_bounds(std::string_view text, Drawable*, const Font& font) override;
+        Bounds text_bounds(std::string_view text, Drawable*, const Font& font, Float2_t max_width = FLT_MAX, const char** remaining = nullptr) override;
         Float2_t line_spacing(const Font& font) override;
 
         Size2 window_dimensions() const override;

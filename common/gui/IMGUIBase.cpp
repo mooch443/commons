@@ -2209,10 +2209,12 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
         }
     }
 
-    Bounds IMGUIBase::text_bounds(std::string_view text, Drawable* obj, const Font& font) {
+    Bounds IMGUIBase::text_bounds(std::string_view text, Drawable* obj, const Font& font, Float2_t max_width, const char** remaining) {
+        if(remaining)
+            *remaining = text.data();
         if(_fonts.empty()) {
             FormatWarning("Trying to retrieve text_bounds before fonts are available.");
-            return gui::Base::text_bounds(text, obj, font);
+            return gui::Base::text_bounds(text, obj, font, max_width, remaining);
         }
         
         /// an empty text will have empty dimensions
@@ -2220,7 +2222,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             return Bounds();
         
         auto imfont = _fonts.at(font.style);
-        Vec2 size = imfont->CalcTextSizeA(imfont->LegacySize * font.size / im_font_scale, FLT_MAX, -1_F, text.data(), text.data() + text.length(), NULL);
+        Vec2 size = imfont->CalcTextSizeA(imfont->LegacySize * font.size / im_font_scale, max_width, -1_F, text.data(), text.data() + text.length(), remaining);
         // Round
         //size.x = max(0, (float)(int)(size.x - 0.95_F));
         //size.y = line_spacing(font);

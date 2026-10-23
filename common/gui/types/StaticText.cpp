@@ -7,57 +7,66 @@
 namespace cmn::utils {
 using namespace cmn::gui;
 
-using word_break_t = std::tuple<size_t, Float2_t, Float2_t>;
+struct word_break_t {
+size_t idx;
+Float2_t width;
+Float2_t cum_width;
+}; // = std::tuple<size_t, Float2_t, Float2_t>;
 using word_break_cache_t = std::vector<word_break_t>;
 
-Bounds calculate_bounds(std::string_view text, Drawable* reference, const Font& font) {
-    return Base::default_text_bounds(text, reference, font);
+Bounds calculate_bounds(std::string_view text, Drawable* reference, const Font& font, Float2_t max_width, const char** remaining) {
+    return Base::default_text_bounds(text, reference, font, max_width, remaining);
 }
 
 inline bool is_whitespace(UChar32 c) {
+    if(c < 0x80)
+        return c == ' ' || (c >= '\t' && c <= '\r');
+    return isWhitespaceOrAdditional(c);
     // Characters allowed when close to the end of the segment.
-    return c >= 0 && isWhitespaceOrAdditional(c);
-    return c == ' ' ;
+    //return c >= 0 && isWhitespaceOrAdditional(c);
 }
 
-inline bool is_extended_whitespace(char c) {
-    // Characters allowed when further away from the end.
-    return is_in(c, '/', '\\', '-', '_', '.', ',', ':');
-    //c == '/' || c == '\\' || c == ',' || c == '-' || c == '_';
-    //c == ':' || || c == ' ' || c == ',' || c == '-' || c == ':' || c == ',' ||
-           //c == '/' || c == '\\' || c == '.' || c == '_';
+inline bool is_extended_whitespace(UChar32 c) {
+    return c == '/' || c == '\\' || c == '-' || c == '_' || c == '.' || c == ',' || c == ':';
 }
 
 word_break_cache_t word_breaks_cache(std::string_view str, Drawable* reference, const Font& font) {
     word_break_cache_t result;
+    result.reserve(str.length() / 6 + 1);
     bool in_whitespace{false}, not_whitespace{false};
     const size_t N = str.length();
+    const auto data = str.data();
     Float2_t total_width = 0;
+    size_t previous = 0;
     
     for(size_t i = 0; i < N; ) {
         const size_t start = i;
         UChar32 c;
-        U8_NEXT(str.data(), i, N, c);
+        U8_NEXT(data, i, N, c);
         const bool ws = is_whitespace(c);
         if(ws && not not_whitespace)
             continue;
 
         const auto line_break = ws ? u_getIntPropertyValue(c, UCHAR_LINE_BREAK) : U_LB_UNKNOWN;
         const bool breakable_space = ws && line_break != U_LB_GLUE && line_break != U_LB_WORD_JOINER;
-        if(breakable_space || (c >= 0 && c <= 0x7F && is_extended_whitespace(static_cast<char>(c))))
+        if(breakable_space || is_extended_whitespace(c))
         {
             if(not in_whitespace) {
                 if(not_whitespace) {
-                    size_t previous = result.empty() ? 0 : std::get<0>(result.back());
+                    //size_t previous = result.empty() ? 0 : std::get<0>(result.back());
                     size_t current = start;
                     
                     if(not ws)
                         current = i;
                     
-                    Bounds bounds = calculate_bounds(str.substr(previous, current - previous), reference, font);
-                    Print(bounds, " => ",(std::string)str.substr(previous, start - previous));
-                    total_width += bounds.width;
-                    result.emplace_back(current, bounds.width, total_width);
+                    std::string_view view(data + previous, current - previous);
+                    //auto view = str.substr(previous, current - previous);
+                    Bounds bounds = calculate_bounds(view, reference, font);
+                    //Print(bounds, " => ",(std::string)str.substr(previous, start - previous));
+                    const auto width = calculate_width(bounds);
+                    total_width += width;
+                    previous = current;
+                    result.emplace_back(current, width, total_width);
                     in_whitespace = true;
                 }
             }
@@ -71,15 +80,16 @@ word_break_cache_t word_breaks_cache(std::string_view str, Drawable* reference, 
     }
     if(N > 0
        && (result.empty()
-           || std::get<0>(result.back()) != N))
+           || result.back().idx != N))
     {
-        size_t previous = result.empty() ? 0 : std::get<0>(result.back());
+        //size_t previous = result.empty() ? 0 : std::get<0>(result.back());
         auto sub = str.substr(previous, N - previous);
         if(not sub.empty()) {
             Bounds bounds = calculate_bounds(sub, reference, font);
-            total_width += bounds.width;
-            Print(bounds, " => ",(std::string)str.substr(previous, N - previous));
-            result.emplace_back(N, bounds.width, total_width);
+            const auto width = calculate_width(bounds);
+            total_width += width;
+            //Print(bounds, " => ",(std::string)str.substr(previous, N - previous));
+            result.emplace_back(N, width, total_width);
         }
     }
     return result;
@@ -109,7 +119,7 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
     //size_t new_iterations = 1;
     
     if(not word_breaks.empty()
-       && std::get<2>(word_breaks.front()) <= max_w)
+       && word_breaks.front().cum_width <= max_w)
     {
         size_t low = 0;
         size_t high = word_breaks.size() - 1;
@@ -117,7 +127,7 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
         
         while (low <= high) {
             const size_t middle = low + (high - low) / 2;
-            auto tw = std::get<2>(word_breaks[middle]);
+            auto tw = word_breaks[middle].cum_width;
             //++new_iterations;
             if(tw == max_w) {
                 index = middle;
@@ -136,7 +146,7 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
             
             //++new_iterations;
             if(ma < word_breaks.size()
-               && std::get<2>(word_breaks[ma]) <= max_w)
+               && word_breaks[ma].cum_width <= max_w)
             {
                 index = ma;
             } else {
@@ -144,7 +154,7 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
             }
         }
         
-        new_index = std::get<0>(word_breaks[*index]);
+        new_index = word_breaks[*index].idx;
         //Print("Would go for idx ", word_breaks[*index], " with max_w=", max_w);
         
     }
@@ -212,51 +222,17 @@ size_t find_splitting_point(std::span<word_break_t> word_breaks,
         return *new_index;
     
     
-    Float2_t cw = w;
-    if(not word_breaks.empty()) {
-        str = str.substr(0, std::get<0>(word_breaks.front()));
-        cw = std::get<2>(word_breaks.front());
-    }
+    if(not word_breaks.empty())
+        str = str.substr(0, word_breaks.front().idx);
+    if(str.empty())
+        return 0;
 
-    // If no acceptable break was found, try to subdivide the segment.
-    //cw = w;
-
-    size_t idx = 0;
-    if(cw > max_w) {
-        // we have to break it up.
-        size_t len = str.length();
-        size_t middle = len * 0.5;
-        idx = middle;
-
-        while (true) {
-            if(len <= 1)
-                break;
-
-            Bounds bounds = calculate_bounds(
-                 std::string_view(str.data(), middle),
-                //StaticText::RichString::parse(std::string_view(str.data(), middle)),
-                reference, font
-            );
-            cw = utils::calculate_width(bounds);
-
-            if(cw <= max_w) {
-                middle = middle + len * 0.25;
-                len = len * 0.5;
-            } else { // cw > max_w
-                middle = middle - len * 0.25;
-                len = len * 0.5;
-            }
-        }
-
-        if (middle == 0 && not str.empty())
-            idx = 1;
-        else
-            idx = middle;
-    }
-    else
-        return str.length();
-    // Otherwise, the entire segment fits on a new line.
-
+    // Measurement stops at an exclusive limit; an exact fit belongs on this line.
+    const char* remaining = str.data();
+    calculate_bounds(str, reference, font, std::nextafter(max_w, std::numeric_limits<Float2_t>::infinity()), &remaining);
+    size_t idx = remaining - str.data();
+    if(idx == 0)
+        U8_FWD_1(str.data(), idx, str.length());
     return idx;
 }
 
@@ -546,17 +522,18 @@ void StaticText::add_string(
                break;
            }*/
             if(offset.x > 0) {
-                if(std::get<1>(cache->front()) > max_w) {
+                if(auto updated_width = cache->front().width;
+                   updated_width > max_w)
+                {
                     size_t p = ptr.str.length();
                     auto trimmed = utils::ltrim(ptr.str);
                     size_t byte_diff = p - trimmed.length();
                     
-                    Float2_t updated_width = std::get<1>(cache->front());
                     Float2_t diff = 0;
                     
                     if(byte_diff > 0) {
                         auto spaces = ptr.str.substr(0, byte_diff);
-                        diff = utils::calculate_bounds(spaces, reference, ptr.font).width;
+                        diff = utils::calculate_width(utils::calculate_bounds(spaces, reference, ptr.font));
                         updated_width -= diff;
                     }
                     
@@ -564,10 +541,10 @@ void StaticText::add_string(
                         ptr.str = trimmed;
                         w -= diff;
                         
-                        std::get<1>(cache->front()) -= diff;
+                        cache->front().width -= diff;
                         for(auto &f : *cache) {
-                            std::get<0>(f) -= byte_diff;
-                            std::get<2>(f) -= diff;
+                            f.idx -= byte_diff;
+                            f.cum_width -= diff;
                         }
                         
                         /// putting ourselves in the next line
@@ -613,68 +590,56 @@ void StaticText::add_string(
                     //Print("Expected: ", alt_cache);
 #endif
                     
-                    size_t d = 0;
+                    //size_t d = 0;
                     size_t span_offset = 0;
                     Float2_t removed_w = 0;//trim_d > 0 ? utils::calculate_bounds(sub.substr(0, trim_d), reference, ptr.font).width : 0;
+                    const size_t index_shift = idx + trim_d;
+                    size_t removed_end = 0;
+                    
                     for(auto it = cache.value().begin(); it != cache.value().end(); ) {
-                        if(std::get<0>(*it) <= idx + trim_d) {
-                            d = idx + trim_d;
-                            removed_w += std::get<1>(*it);
+                        if(it->idx <= index_shift) {
+                            //d = index_shift;
+                            removed_w += it->width;
+                            removed_end = it->idx;
                             //it = cache.value().erase(it);
-                            w -= std::get<1>(*it);
+                            //w -= it->width;
                             ++span_offset;
                             ++it;
                         } else {
-                            std::get<0>(*it) -= d;
-                            std::get<2>(*it) -= removed_w;
+                            it->idx -= index_shift;
+                            it->cum_width -= removed_w;
                             ++it;
                         }
                     }
+                    
+                    /// remove the removed width in one go
+                    w -= removed_w;
                     
                     cache = std::span(cache.value().begin() + span_offset, cache.value().end());
                     
                     /// we did not find anything beyond the first word
                     /// so we will have to cut into it (remove part of it).
                     /// this is most likely because we only have one
-                    if(idx > 0
-                       && d == 0)
-                    {
-                        if(not cache->empty()) {
-                            for(auto &f : *cache)
-                                std::get<0>(f) -= idx + trim_d;
-                            
-                            auto& f = cache->front();
-                            auto p = std::get<1>(f);
-                            std::get<1>(f) = utils::calculate_bounds(tmp.str.substr(0, std::get<0>(f)), reference, ptr.font).width;
-                            
-                            auto diff = p - std::get<1>(f);
-                            w -= diff;
-                            
-                            for(auto &f : *cache)
-                                std::get<2>(f) -= diff;
-                        }
-                    }
-                    
-                    /// we trimmed some whitespace off, so we need to subtract from all the widths
-                    /// that have been cached:
-                    if(trim_d > 0
+                    if((trim_d > 0 || span_offset == 0)
                        && not cache->empty())
                     {
                         auto& f = cache->front();
-                        auto p = std::get<1>(f);
-                        std::get<1>(f) = utils::calculate_bounds(tmp.str.substr(0, std::get<0>(f)), reference, ptr.font).width;
-                        auto diff = p - std::get<1>(f);
-                        w -= diff;
+                        auto diff = utils::calculate_width(utils::calculate_bounds(ptr.str.substr(removed_end, index_shift - removed_end), reference, ptr.font));
+                        f.width -= diff;
                         
-                        for(auto &f : *cache)
-                            std::get<2>(f) -= diff;
+                        if(diff != 0) {
+                            w -= diff;
+                            
+                            for(auto &f : *cache)
+                                f.cum_width -= diff;
+                        }
                     }
                     
 #ifndef NDEBUG
                     /*if(not std::ranges::equal(alt_cache, *cache)) {
                         Print("DIfference: ", *cache);
                     }*/
-                    if(auto new_w = utils::calculate_bounds(tmp.str, reference, ptr.font).width;
+                    if(auto new_w = utils::calculate_width(utils::calculate_bounds(tmp.str, reference, ptr.font));
                        abs(w - new_w) >= 1)
                     {
                         Print("Width difference: ", w, " != ", new_w);

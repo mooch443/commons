@@ -15,9 +15,11 @@ namespace utils {
  * @param text The text string to calculate bounds for.
  * @param reference A pointer to a Drawable object for context.
  * @param font The font used for rendering the text.
+ * @param max_width Exclusive width limit; FLT_MAX measures the entire string.
+ * @param remaining Optional pointer to the first unmeasured UTF-8 character.
  * @return A Bounds object representing the dimensions of the text.
  */
-Bounds calculate_bounds(std::string_view text, gui::Drawable* reference, const gui::Font& font);
+Bounds calculate_bounds(std::string_view text, gui::Drawable* reference, const gui::Font& font, Float2_t max_width = FLT_MAX, const char** remaining = nullptr);
 
 /**
  * @brief Calculates the width of a bounding box.
