@@ -791,7 +791,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         } else if constexpr (_clean_same<VT, bool>) {
             return glz::json_t((bool)v);
         } else if constexpr (is_map<VT>::value) {
-            auto a = glz::json_t();
+            auto a = glz::json_t::object_t();
             for (auto& [key, i] : v) {
                 if constexpr(std::is_same_v<decltype(key), std::string>)
                     a[key] = cvt2json(i);
@@ -803,7 +803,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             return a;
         }
         else if constexpr (is_container<VT>::value || is_set<VT>::value) {
-            auto a = std::vector<glz::json_t>{};
+            auto a = glz::json_t::array_t{};
             for (const auto& i : v) {
                 a.push_back(cvt2json(i));
             }
