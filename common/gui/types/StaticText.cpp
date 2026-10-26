@@ -96,7 +96,7 @@ word_break_cache_t word_breaks_cache(std::string_view str, Drawable* reference, 
 }
 
 size_t find_splitting_point(std::span<word_break_t> word_breaks,
-                            std::string_view str, const Float2_t w,
+                            std::string_view str,
                               const Float2_t max_w, Drawable* reference,
                             const Font& font);
 
@@ -107,11 +107,11 @@ size_t find_splitting_point(std::string_view str, const Float2_t w,
     if(w <= max_w)
         return str.length();
     auto cache = word_breaks_cache(str, reference, font);
-    return find_splitting_point(cache, str, w, max_w, reference, font);
+    return find_splitting_point(cache, str, max_w, reference, font);
 }
 
 size_t find_splitting_point(std::span<word_break_t> word_breaks,
-                            std::string_view str, const Float2_t w,
+                            std::string_view str,
                               const Float2_t max_w, Drawable* reference,
                               const Font& font)
 {
@@ -566,7 +566,7 @@ void StaticText::add_string(
             }
         }
         
-        size_t idx = utils::find_splitting_point(*cache, ptr.str, w, max_w, reference, ptr.font);
+        size_t idx = utils::find_splitting_point(*cache, ptr.str, max_w, reference, ptr.font);
         
         if (idx) {
             if(ptr.str.length() > idx) {
