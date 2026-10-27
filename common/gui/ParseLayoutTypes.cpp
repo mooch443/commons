@@ -450,7 +450,7 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
             auto handle = (Drawable::callback_handle_t::element_type*)ptr->custom_data(handle_name);
             auto h = bind_event_with_state(ptr, EventType::SELECT, state._current_object_handler, context, [action, run_action](Event event, const Context& context, State& state)
             {
-                Print("Caught deselect event ", event.select.selected);
+                //Print("Caught deselect event ", event.select.selected);
                 if(not event.select.selected) {
                     try {
                         run_action(action, context, state);

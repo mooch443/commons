@@ -259,19 +259,19 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
             }
             
             if(not obj.__else.is_null()) {
-                if(not obj._state)
-                    obj._state = std::make_unique<State>();
-                State& _state = *obj._state;
-                _state._current_object_handler = state._current_object_handler;
+                //if(not obj._state)
+                //    obj._state = std::make_unique<State>();
+                State& _state = state;//*obj._state;
+                //_state._current_object_handler = state._current_object_handler;
                 
                 if(not obj._else) {
-                    for(auto &[n, p] : patterns) {
+                    /*for(auto &[n, p] : patterns) {
                         //obj._state->_collectors->objects[hash][n] = Pattern{p};
                         _state.pattern().set(1, n, Pattern{p});
-                    }
+                    }*/
                     
-                    _state._collectors->objects.clear();
-                    _state._current_index = {};
+                    //_state._collectors->objects.clear();
+                    //_state._current_index = {};
                     //obj._state->_variable_values.clear();
                     
                     obj._else = parse_object(gui, obj.__else.get_object(), context, _state, context.defaults);
@@ -324,19 +324,19 @@ bool HashedObject::update_if(GUITaskQueue_t *gui, uint64_t, DrawStructure& g, La
                 pass->set_object(nullptr);
             }
             
-            if(not obj._state)
-                obj._state = std::make_unique<State>();
-            State& _state = *obj._state;
-            _state._current_object_handler = state._current_object_handler;
+            //if(not obj._state)
+            //    obj._state = std::make_unique<State>();
+            State& _state = state;//*obj._state;
+            //_state._current_object_handler = state._current_object_handler;
             
             if(not obj._if) {
-                for(auto &[n, p] : patterns) {
+                /*for(auto &[n, p] : patterns) {
                     //obj._state->_collectors->objects[hash][n] = Pattern{p};
                     _state.pattern().set(1, n, Pattern{p});
-                }
+                }*/
                 
-                _state._collectors->objects.clear();
-                _state._current_index = {};
+                //_state._collectors->objects.clear();
+                //_state._current_index = {};
                 
                 obj._if = parse_object(gui, obj.__if.get_object(), context, _state, context.defaults);
             } //else
@@ -715,6 +715,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
         DetailTooltipItem item;
         if(item_template.text) {
             item.set_name(item_template.text.value().pat.realize(context, state));
+            //Print("* rendered ", item_template.text.value().pat, " => ", item.name());
         }
         if(item_template.detail) {
             item.set_detail(item_template.detail.value().pat.realize(context, state));
@@ -723,6 +724,8 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             item.set_tooltip(item_template.tooltip.value().pat.realize(context, state));
         }
         if(item_template.disabled) {
+            //Print("local change_class of ", context.local_setting_value_string("local.change_class_of"));
+            //Print("* setting item ", item_template.text.value().pat, " => disabled ", item_template.disabled.value().pat, " => ", item_template.disabled.value().pat.realize(context, state));
             item.set_disabled(item_template.disabled.value().pat.realize(context, state) == "true");
         } else
             item.set_disabled(false);
@@ -734,7 +737,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
                || std::get<0>(obj.on_select_actions.at(index)) != action.name)
             {
                 auto fn = bind_with_state(state._current_object_handler, context, [action, index](const Context& context, State& state) {
-                    Print("Clicked item at ", index, " with action ", action);
+                    //Print("Clicked item at ", index, " with action ", action);
                     
                     Action _action = action.parse(context, state);
                     if(_action.parameters.empty())

@@ -658,6 +658,56 @@ void DynamicGUI::reload(DrawStructure& graph) {
                 return false;
             }));
             
+            context.system_variables().emplace(VarFunc("width_of", [object_handler = tmp._current_object_handler](const VarProps& props) -> Float2_t {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->size().width;
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->size().width;
+                        }
+                    }
+                }
+                return false;
+            }));
+            
+            context.system_variables().emplace(VarFunc("height_of", [object_handler = tmp._current_object_handler](const VarProps& props) -> Float2_t {
+                if(props.parameters.empty()) {
+                    auto lock = object_handler.lock();
+                    if(lock) {
+                        if(auto ptr = lock->get();
+                           ptr != nullptr)
+                        {
+                            return ptr->size().height;
+                        }
+                    }
+                    
+                } else if(props.parameters.size() == 1) {
+                    if(auto lock = object_handler.lock();
+                       lock != nullptr)
+                    {
+                        if(auto ptr = lock->retrieve_named(props.first());
+                           ptr != nullptr)
+                        {
+                            return ptr->size().height;
+                        }
+                    }
+                }
+                return false;
+            }));
+            
             context.actions.emplace(ActionFunc("print", [object_handler = tmp._current_object_handler](const Action& props) {
                 Print(props);
             }));

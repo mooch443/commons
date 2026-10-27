@@ -212,8 +212,47 @@ class ObjectClass_t : public std::map<uint16_t, std::string> {
 public:
     using std::map<uint16_t, std::string>::map;
     std::string toStr() const;
-    static ObjectClass_t fromStr(const std::string& str);
     static consteval std::string_view class_name() { return "map<uint16,string>"; }
+    
+    static ObjectClass_t fromStr(cmn::StringLike auto&& str) {
+        std::string_view sv = utils::string_like_view(std::forward<decltype(str)>(str));
+        
+        ObjectClass_t result;
+        auto parts = util::parse_array_parts(util::truncate(sv));
+        util::enforce_no_empty_elements(parts, ObjectClass_t::class_name());
+        
+        std::vector<std::string> collected_array_values;
+        std::optional<uint16_t> max_element;
+        for(auto &part : parts) {
+            auto map_parts = util::parse_array_parts(part, ':');
+            if(map_parts.size() == 2u) {
+                /// we were given a map
+                auto key_str = Meta::fromStr<std::string>(map_parts.front());
+                auto value_str = Meta::fromStr<std::string>(map_parts.back());
+                uint16_t index = Meta::fromStr<uint16_t>(key_str);
+                if(not max_element
+                   || index > *max_element)
+                {
+                    max_element = index;
+                }
+                result[index] = std::move(value_str);
+            } else {
+                /// its just an array i guess
+                collected_array_values.push_back(std::string(part));
+            }
+        }
+        if(not collected_array_values.empty()) {
+            if(not max_element)
+                max_element = 0u;
+            else
+                max_element = *max_element + 1u;
+            
+            for(size_t i = 0; i < collected_array_values.size(); ++i) {
+                result[i + *max_element] = Meta::fromStr<std::string>(collected_array_values[i]);
+            }
+        }
+        return result;
+    }
     glz::json_t to_json() const;
 };
 using MaybeObjectClass_t = std::optional<ObjectClass_t>;

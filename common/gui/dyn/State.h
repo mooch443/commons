@@ -98,7 +98,7 @@ struct IfBody {
     Layout::Ptr _else{};
     
     size_t _assigned_hash{0};
-    std::unique_ptr<State> _state{};
+    //std::unique_ptr<State> _state{};
     //State _state;
 //#ifndef NDEBUG
     //std::unique_ptr<State> _state;
