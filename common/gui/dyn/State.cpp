@@ -86,12 +86,12 @@ static bool can_parse_as_simple_loop_variable(std::string_view variable) noexcep
 
 // Shared by `list` and `each`: accepts raw JSON arrays, vectors of JSON
 // values, and variables that expose a to_json() array through VarBase.
-static std::optional<std::vector<glz::json_t>> json_array_from_variable(
+static std::optional<std::vector<glz::generic>> json_array_from_variable(
     const std::shared_ptr<VarBase_t>& variable,
     const VarProps& props)
 {
-    if(variable->is<glz::json_t>()) {
-        return variable->access_value<glz::json_t>([&props](auto&& value) -> std::vector<glz::json_t> {
+    if(variable->is<glz::generic>()) {
+        return variable->access_value<glz::generic>([&props](auto&& value) -> std::vector<glz::generic> {
             auto* object = access_loop_json_subfields(value, props.subs);
             if(object && object->is_array()) {
                 // Borrowed data needs a snapshot; temporary results can transfer ownership.
@@ -104,8 +104,8 @@ static std::optional<std::vector<glz::json_t>> json_array_from_variable(
         }, props);
     }
 
-    if(variable->is<std::vector<glz::json_t>>()) {
-        return variable->access_value<std::vector<glz::json_t>>([](auto&& value) -> std::vector<glz::json_t> {
+    if(variable->is<std::vector<glz::generic>>()) {
+        return variable->access_value<std::vector<glz::generic>>([](auto&& value) -> std::vector<glz::generic> {
             return std::forward<decltype(value)>(value);
         }, props);
     }
@@ -114,11 +114,11 @@ static std::optional<std::vector<glz::json_t>> json_array_from_variable(
 }
 
 static std::vector<std::string> string_values_from_source(
-    const glz::json_t& source,
+    const glz::generic& source,
     const Context& context,
     State& state)
 {
-    glz::json_t resolved = source;
+    glz::generic resolved = source;
     if(source.is_string()) {
         const auto spec = source.get<std::string>();
         try {
@@ -127,24 +127,24 @@ static std::vector<std::string> string_values_from_source(
             if(context.has(props.name, state)) {
                 auto variable = context.variable(props.name, state);
                 if(auto values = json_array_from_variable(variable, props); values.has_value()) {
-                    glz::json_t::array_t array;
+                    glz::generic::array_t array;
                     array.assign(values->begin(), values->end());
                     resolved = std::move(array);
                 } else if(variable->value_string) {
-                    glz::json_t::array_t array;
+                    glz::generic::array_t array;
                     for(auto& value : Meta::fromStr<std::vector<std::string>>(variable->value_string(props)))
                         array.emplace_back(std::move(value));
                     resolved = std::move(array);
                 } else {
-                    resolved = glz::json_t::array_t{};
+                    resolved = glz::generic::array_t{};
                 }
             } else {
                 const auto text = parse_text(spec, context, state);
-                glz::json_t parsed;
+                glz::generic parsed;
                 if(glz::read_json(parsed, text) == glz::error_code::none) {
                     resolved = std::move(parsed);
                 } else {
-                    glz::json_t::array_t array;
+                    glz::generic::array_t array;
                     for(auto& value : Meta::fromStr<std::vector<std::string>>(text))
                         array.emplace_back(std::move(value));
                     resolved = std::move(array);
@@ -152,7 +152,7 @@ static std::vector<std::string> string_values_from_source(
             }
         } catch(const std::exception& e) {
             FormatWarning("Cannot resolve string-list source ", spec, ": ", e.what());
-            resolved = glz::json_t::array_t{};
+            resolved = glz::generic::array_t{};
         }
     }
 
@@ -815,7 +815,7 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
 
             for(auto& v : *vector) {
                 auto scope = scoped_handler->scope();
-                scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::json_t {
+                scope.set("i", VarFunc("i", [v](const VarProps&) -> glz::generic {
                     return v;
                 }).second);
                 scope.set("index", VarFunc("index", [index](const VarProps&) -> size_t {
@@ -968,7 +968,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             }).second);
             if(utils::beginsWith(v, '{')) {
                 /// another map?
-                scope.set(item_name, VarFunc(item_name, [v = Meta::fromStr<glz::json_t>(v)](const VarProps&) -> const glz::json_t& {
+                scope.set(item_name, VarFunc(item_name, [v = Meta::fromStr<glz::generic>(v)](const VarProps&) -> const glz::generic& {
                     return v;
                 }).second);
                 
@@ -1115,7 +1115,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
             
             for(auto &v : *vector) {
                 auto scope = scoped_handler->scope();
-                scope.set(item_name, VarFunc(item_name, [v = std::move(v)](const VarProps&) -> const glz::json_t& {
+                scope.set(item_name, VarFunc(item_name, [v = std::move(v)](const VarProps&) -> const glz::generic& {
                     return v;
                 }).second);
                 scope.set("index", VarFunc("index", [i](const VarProps&) -> size_t {

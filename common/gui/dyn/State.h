@@ -57,7 +57,7 @@ struct PatternStore {
 struct LoopBody {
     std::string variable;
     std::string item_name{"i"};
-    glz::json_t::object_t child;
+    glz::generic::object_t child;
 #ifndef NDEBUG
     //std::unique_ptr<State> _state;
 #endif
@@ -93,7 +93,7 @@ public:
 
 struct IfBody {
     pattern::UnresolvedStringPattern variable;
-    glz::json_t __if, __else;
+    glz::generic __if, __else;
     Layout::Ptr _if{};
     Layout::Ptr _else{};
     
@@ -150,7 +150,7 @@ struct VarCache {
     std::string _var, _value{};
     std::string _local_alias{};
     bool _invert{false};
-    glz::json_t::object_t _obj;
+    glz::generic::object_t _obj;
     std::weak_ptr<Drawable> _cached_ptr{};
 };
 
@@ -182,8 +182,8 @@ struct ManualListContents {
 };
 
 struct TagListContents {
-    glz::json_t values;
-    glz::json_t catalog;
+    glz::generic values;
+    glz::generic catalog;
 };
 
 

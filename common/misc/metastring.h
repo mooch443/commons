@@ -905,7 +905,7 @@ template<class Q>
 consteval std::string_view name() { return "int"; }
 
 template<class Q>
-    requires std::same_as<std::remove_cv_t<Q>, glz::json_t>
+    requires std::same_as<std::remove_cv_t<Q>, glz::generic>
 consteval std::string_view name() { return "json"; }
 
 template<class Q>
@@ -1234,7 +1234,7 @@ std::string toStr(const Q& obj) {
 }
 
 template<class Q>
-    requires (std::same_as<glz::json_t, Q>)
+    requires (std::same_as<glz::generic, Q>)
 std::string toStr(const Q& obj) {
     return glz::write_json(obj).value_or("null");
 }
@@ -1429,9 +1429,9 @@ Q fromStr(cmn::StringLike auto&& str) {
 }
 
 template<class Q>
-    requires _clean_same<Q, glz::json_t>
+    requires _clean_same<Q, glz::generic>
 inline Q fromStr(cmn::StringLike auto&& str) {
-    glz::json_t json{};
+    glz::generic json{};
     glz::read_json(json, std::forward<decltype(str)>(str));
     return json;
 }

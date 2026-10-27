@@ -19,7 +19,7 @@ struct CustomElement;
 struct DefaultSettings {
     struct LocalSetting {
         std::string type;
-        glz::json_t value{};
+        glz::generic value{};
         bool has_value{false};
     };
 
@@ -53,7 +53,7 @@ struct DefaultSettings {
 
 class COMMONS_EXPORT LocalSettingTypes {
 public:
-    using Factory = std::function<void(sprite::Map&, std::string_view, const glz::json_t*, bool)>;
+    using Factory = std::function<void(sprite::Map&, std::string_view, const glz::generic*, bool)>;
 
     /// Register a C++ type under a JSON-facing alias for DynamicGUI local settings.
     template<typename T>
@@ -61,7 +61,7 @@ public:
 
     static bool has(std::string_view alias);
     static std::vector<std::string> available_names();
-    static void make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value);
+    static void make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::generic* value, bool has_value);
     static void ensure_defaults();
 
 private:
@@ -70,7 +70,7 @@ private:
 
 namespace detail {
     template<typename T>
-    T local_setting_from_json(const glz::json_t* value, bool has_value) {
+    T local_setting_from_json(const glz::generic* value, bool has_value) {
         if(!has_value || value == nullptr)
             return T{};
 
@@ -94,7 +94,7 @@ namespace detail {
 
 template<typename T>
 void LocalSettingTypes::register_type(std::string alias) {
-    registry()[std::move(alias)] = [](sprite::Map& map, std::string_view local_name, const glz::json_t* value, bool has_value) {
+    registry()[std::move(alias)] = [](sprite::Map& map, std::string_view local_name, const glz::generic* value, bool has_value) {
         const auto name = std::string(local_name);
         map[name] = detail::local_setting_from_json<T>(value, has_value);
     };

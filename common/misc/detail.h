@@ -783,15 +783,15 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
     std::string get_thread_name();
 
     template<typename VT>
-    auto cvt2json(const VT & v) -> glz::json_t {
-        if constexpr(_clean_same<VT, glz::json_t>) {
+    auto cvt2json(const VT & v) -> glz::generic {
+        if constexpr(_clean_same<VT, glz::generic>) {
             return v;
         } else if constexpr (is_numeric<VT>) {
-            return glz::json_t(v);
+            return glz::generic(v);
         } else if constexpr (_clean_same<VT, bool>) {
-            return glz::json_t((bool)v);
+            return glz::generic((bool)v);
         } else if constexpr (is_map<VT>::value) {
-            auto a = glz::json_t::object_t();
+            auto a = glz::generic::object_t();
             for (auto& [key, i] : v) {
                 if constexpr(std::is_same_v<decltype(key), std::string>)
                     a[key] = cvt2json(i);
@@ -803,7 +803,7 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             return a;
         }
         else if constexpr (is_container<VT>::value || is_set<VT>::value) {
-            auto a = glz::json_t::array_t{};
+            auto a = glz::generic::array_t{};
             for (const auto& i : v) {
                 a.push_back(cvt2json(i));
             }
@@ -811,20 +811,20 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
         }
         else if constexpr (std::is_same_v<VT, std::string>) {
             std::string str = v;
-            return glz::json_t(v.c_str());
+            return glz::generic(v.c_str());
         }
         else if constexpr (std::is_same_v<VT, std::string_view>) {
-            return glz::json_t(v);
+            return glz::generic(v);
         }
         else if constexpr (std::is_convertible_v<VT, std::string>) {
             std::string str = v;
-            return glz::json_t(v.c_str());
+            return glz::generic(v.c_str());
         }
         else if constexpr (is_pair<VT>::value) {
-            return glz::json_t{cvt2json(v.first), cvt2json(v.second)};
+            return glz::generic{cvt2json(v.first), cvt2json(v.second)};
         }
         else if constexpr (is_tuple_v<VT>) {
-            return std::apply([](auto&&... args) { return glz::json_t{cvt2json(args)...}; }, v);
+            return std::apply([](auto&&... args) { return glz::generic{cvt2json(args)...}; }, v);
         }
         else if constexpr(has_to_json_method<VT>) {
             return v.to_json();

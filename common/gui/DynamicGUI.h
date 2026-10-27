@@ -68,7 +68,7 @@ class LayoutContext;
 namespace Modules {
 struct Module {
     std::string _name;
-    std::function<void(size_t, const glz::json_t&, const Context&, State&, const Layout::Ptr&)> _apply;
+    std::function<void(size_t, const glz::generic&, const Context&, State&, const Layout::Ptr&)> _apply;
     std::function<void(HashedObject&, const Context&, State&, const Layout::Ptr&)> _update;
 };
 
@@ -78,13 +78,13 @@ Module* exists(std::string_view name);
 }
 
 Layout::Ptr parse_object(GUITaskQueue_t*,
-                         const glz::json_t::object_t& obj,
+                         const glz::generic::object_t& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
                          uint64_t hash = 0);
 
-std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const std::string& text);
+std::expected<std::tuple<DefaultSettings, glz::generic>, std::string> load(const std::string& text);
 
 //! A simple struct that manages properties like the path to where the dyn gui is loaded from,
 //! the current context and state, and the current layout as well as which DrawStructure it is rendered to.
@@ -99,7 +99,7 @@ struct DynamicGUI {
     Timer last_load{}, last_update{};
     bool first_load{true}, first_update{true};
     std::string previous{};
-    std::future<std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>> read_file_future{};
+    std::future<std::expected<std::tuple<DefaultSettings, glz::generic>, std::string>> read_file_future{};
     std::shared_ptr<CurrentObjectHandler> current_object_handler = std::make_shared<CurrentObjectHandler>();
 #ifndef NDEBUG
     Timer _debug_timer{};

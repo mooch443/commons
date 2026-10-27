@@ -113,7 +113,7 @@ public:
         return Meta::fromStr<std::array<T, N>>(std::forward<Str>(str));
     }
     
-    glz::json_t to_json() const {
+    glz::generic to_json() const {
         return cvt2json((const std::array<T, N>&)*this);
     }
     

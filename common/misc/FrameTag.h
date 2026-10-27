@@ -10,7 +10,7 @@ struct IdentifiedTag {
     std::string name;
     
     auto operator<=>(const IdentifiedTag&) const = default;
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     std::string toStr() const;
     static IdentifiedTag fromStr(StringLike auto && str) {
         auto tmp = Meta::fromStr<std::tuple<uint32_t, Bounds, std::string>>(std::forward<decltype(str)>(str));
@@ -29,7 +29,7 @@ struct SpatialTag {
     std::string name;
     
     auto operator<=>(const SpatialTag&) const = default;
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     std::string toStr() const;
     static SpatialTag fromStr(StringLike auto && str) {
         auto tmp = Meta::fromStr<std::tuple<Bounds, std::string>>(std::forward<decltype(str)>(str));
@@ -49,7 +49,7 @@ using SimpleTag = std::string;
 struct FrameTag {
     std::variant<IdentifiedTag, SpatialTag, SimpleTag> name;
     std::string toStr() const;
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     static FrameTag fromStr(StringLike auto && str) {
         const auto value = utils::string_like_view(
             std::forward<decltype(str)>(str));

@@ -320,7 +320,7 @@ public:
 
 struct LabeledCombobox : public LabeledField {
     gui::derived_ptr<Combobox> _combo;
-    LabeledCombobox(GUITaskQueue_t*, const std::string& name, State&, const glz::json_t& obj);
+    LabeledCombobox(GUITaskQueue_t*, const std::string& name, State&, const glz::generic& obj);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_combo);
@@ -334,7 +334,7 @@ struct LabeledCombobox : public LabeledField {
 };
 struct LabeledTextField : public LabeledField {
     gui::derived_ptr<gui::Textfield> _text_field;
-    LabeledTextField(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj, sprite::Map* local_settings = nullptr);
+    LabeledTextField(GUITaskQueue_t*, const std::string& name, const glz::generic& obj, sprite::Map* local_settings = nullptr);
     ~LabeledTextField();
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
@@ -346,7 +346,7 @@ struct LabeledTextField : public LabeledField {
 };
 struct LabeledDropDown : public LabeledField {
     gui::derived_ptr<gui::Dropdown> _dropdown;
-    LabeledDropDown(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj, sprite::Map* local_settings = nullptr);
+    LabeledDropDown(GUITaskQueue_t*, const std::string& name, const glz::generic& obj, sprite::Map* local_settings = nullptr);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
@@ -357,7 +357,7 @@ struct LabeledDropDown : public LabeledField {
 struct LabeledList : public LabeledField {
     gui::derived_ptr<gui::List> _list;
     bool _invert{false};
-    LabeledList(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj, bool invert = false, sprite::Map* local_settings = nullptr);
+    LabeledList(GUITaskQueue_t*, const std::string& name, const glz::generic& obj, bool invert = false, sprite::Map* local_settings = nullptr);
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_list);
@@ -371,7 +371,7 @@ struct LabeledOptional : public LabeledField {
     gui::derived_ptr<Button> _reset_button;
     gui::derived_ptr<Entangled> _null_value;
     
-    LabeledOptional(GUITaskQueue_t*, const std::string& name, const glz::json_t& obj, sprite::Map* local_settings = nullptr);
+    LabeledOptional(GUITaskQueue_t*, const std::string& name, const glz::generic& obj, sprite::Map* local_settings = nullptr);
     void add_to(std::vector<Layout::Ptr>& v) override {
         if(ref().get().optional_has_value()) {
             _value->add_to(v);
@@ -473,7 +473,7 @@ public:
 struct LabeledCheckbox : public LabeledField {
     gui::derived_ptr<gui::Checkbox> _checkbox;
     bool _invert{false};
-    LabeledCheckbox(GUITaskQueue_t*, const std::string& name, const std::string& desc, const glz::json_t&, bool invert = false, sprite::Map* local_settings = nullptr);
+    LabeledCheckbox(GUITaskQueue_t*, const std::string& name, const std::string& desc, const glz::generic&, bool invert = false, sprite::Map* local_settings = nullptr);
     ~LabeledCheckbox();
     void add_to(std::vector<Layout::Ptr>& v) override {
         //LabeledField::add_to(v);

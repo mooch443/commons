@@ -6,7 +6,7 @@ std::string CropOffsets::toStr() const {
     return Meta::toStr(std::array<float, 4>{left,top,right,bottom});
 }
 
-glz::json_t CropOffsets::to_json() const {
+glz::generic CropOffsets::to_json() const {
     return cvt2json(std::array<float, 4>{left,top,right,bottom});
 }
 

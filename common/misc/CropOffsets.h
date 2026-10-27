@@ -21,7 +21,7 @@ public:
     void apply_copy(const cv::Mat& input, cv::Mat& output) const;
     
     std::string toStr() const;
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     static CropOffsets fromStr(const std::string&);
     static consteval std::string_view class_name() { return "offsets"; }
     bool operator==(const CropOffsets&) const;

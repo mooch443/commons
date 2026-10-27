@@ -680,7 +680,7 @@ void apply_html(std::string& output, const VarProps& modifiers, StringLike auto&
         output += str;
 };
 
-template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::span<String> subs);
+template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const glz::generic& json, std::span<String> subs);
 template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const Size2& json, std::span<String> subs);
 template<typename String> void access_sub_field(std::string& output, const VarProps& modifiers, const Vec2& json, std::span<String> subs);
 
@@ -742,10 +742,10 @@ void access_map_subfield(std::string& output, const VarProps& modifiers, std::sp
         
         /// just output the value then...
 
-    } else if(field.template is_type<glz::json_t>()) {
+    } else if(field.template is_type<glz::generic>()) {
         // need another key
         if(not subs.empty()) {
-            access_sub_field(output, modifiers, field.template value<glz::json_t>(), subs);
+            access_sub_field(output, modifiers, field.template value<glz::generic>(), subs);
             return;
         }
         
@@ -777,7 +777,7 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const spri
 }
 
 template<typename String>
-void access_sub_field(std::string& output, const VarProps& modifiers, const glz::json_t& json, std::span<String> subs)
+void access_sub_field(std::string& output, const VarProps& modifiers, const glz::generic& json, std::span<String> subs)
 {
     if(subs.empty()) {
         if(json.is_string()) {
@@ -822,7 +822,7 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
         if(it == obj.end())
             throw InvalidArgumentException("Object ", json, " does not contain field ", name, " contains: ", extract_keys(obj));
         
-        if(const glz::json_t& field = it->second;
+        if(const glz::generic& field = it->second;
            not subs.empty())
         {
             access_sub_field(output, modifiers, field, subs);
@@ -867,8 +867,8 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
                 throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
             
             
-        } else if(variable.is<glz::json_t>()) {
-            variable.access_value<glz::json_t>([&](auto&& value){
+        } else if(variable.is<glz::generic>()) {
+            variable.access_value<glz::generic>([&](auto&& value){
                 std::span subs{ modifiers.subs };
                 access_sub_field(output, modifiers, value, subs);
             }, modifiers);

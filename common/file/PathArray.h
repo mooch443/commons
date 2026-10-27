@@ -366,8 +366,8 @@ public:
             return Meta::toStr(_paths.front().str());
         return Meta::toStr(_paths);
     }
-    glz::json_t to_json() const {
-        return glz::json_t(source());
+    glz::generic to_json() const {
+        return glz::generic(source());
     }
     static consteval std::string_view class_name() {
         return "PathArray";

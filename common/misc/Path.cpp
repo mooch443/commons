@@ -784,8 +784,8 @@ std::optional<Path> Path::canonical() const {
         }
     }
         
-        glz::json_t Path::to_json() const {
-            return glz::json_t(c_str());
+        glz::generic Path::to_json() const {
+            return glz::generic(c_str());
         }
 }
 

@@ -110,7 +110,7 @@ public:
         
         if constexpr(has_to_json_method<std::remove_cvref_t<return_type>>)
         {
-            value_json = [this]<typename... Args>(Args&&... args) -> glz::json_t
+            value_json = [this]<typename... Args>(Args&&... args) -> glz::generic
             {
                 return function(std::forward<Args>(args)...).to_json();
             };
@@ -146,7 +146,7 @@ protected:
 public:
     /// Function that converts the stored value to a string, given arguments of type _Args...
     std::function<std::string(_Args...)> value_string;
-    std::function<glz::json_t(_Args...)> value_json;
+    std::function<glz::generic(_Args...)> value_json;
     
 public:
     VarBase(std::string_view type, type_info_t type_info, bool is_ref, bool is_const_ref)
@@ -166,7 +166,7 @@ public:
         static const auto other = get_runtime_type<T>();
         static_assert(not reference<T> && not const_reference<T>, "Always pass a plain type.");
         
-        if constexpr(std::same_as<glz::json_t, T>) {
+        if constexpr(std::same_as<glz::generic, T>) {
             return _type_info == other
                     || value_json != nullptr;
         } else
@@ -205,13 +205,13 @@ public:
     constexpr auto access_value(auto&& fn, _Args&&... args) const {
         static_assert(std::same_as<const VarBase<_Args...>*, decltype(this)>);
         
-        if constexpr(std::same_as<BaseT, glz::json_t>)
+        if constexpr(std::same_as<BaseT, glz::generic>)
         {
             /// we are trying to access this value as glz::json
-            if(not is_strict<glz::json_t>()
+            if(not is_strict<glz::generic>()
                && value_json != nullptr)
             {
-                /// but we aren't a *json_t* directly, instead
+                /// but we aren't a *generic* directly, instead
                 /// we have to use the *value_json* method here
                 static_assert(not reference<BaseT> && not const_reference<BaseT>);
                 return fn(value_json(std::forward<_Args>(args)...));

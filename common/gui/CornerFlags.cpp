@@ -40,7 +40,7 @@ std::string CornerFlags::toStr() const
 }
 
 
-glz::json_t CornerFlags::to_json() const
+glz::generic CornerFlags::to_json() const
 {
     using namespace glz;
 
@@ -50,7 +50,7 @@ glz::json_t CornerFlags::to_json() const
     }
 
     // Build array of tokens + radius
-    std::vector<json_t> arr;
+    std::vector<generic> arr;
 
     const auto add = [&](const char* t){ arr.emplace_back(std::string(t)); };
 

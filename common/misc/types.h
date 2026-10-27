@@ -253,7 +253,7 @@ public:
         }
         return result;
     }
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
 };
 using MaybeObjectClass_t = std::optional<ObjectClass_t>;
 
@@ -335,7 +335,7 @@ struct Pose {
         std::string toStr() const {
             return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
         }
-        glz::json_t to_json() const {
+        glz::generic to_json() const {
             // output as [x, y]
             return {x, y};
         }
@@ -365,7 +365,7 @@ struct Pose {
 
             static consteval std::string_view class_name() noexcept { return "Connection"; }
             static Connection fromStr(std::string_view);
-            glz::json_t to_json() const;
+            glz::generic to_json() const;
         };
         
     protected:
@@ -413,7 +413,7 @@ struct Pose {
         std::set<uint8_t> keypoint_indexes() const;
         bool empty() const;
         std::string toStr() const;
-        glz::json_t to_json() const;
+        glz::generic to_json() const;
         static consteval std::string_view class_name() noexcept { return "Skeleton"; }
         //static void add(Skeleton&&);
         static Skeleton get(const std::string&);
@@ -426,7 +426,7 @@ struct Pose {
         std::optional<Skeleton> get(const std::string& name) const;
         
         std::string toStr() const;
-        glz::json_t to_json() const;
+        glz::generic to_json() const;
         static consteval std::string_view class_name() noexcept { return "Skeletons"; }
         static Skeletons fromStr(cmn::StringLike auto&& str) {
             try {
@@ -548,7 +548,7 @@ struct Pose {
     constexpr bool operator==(const Pose& other) const noexcept {
         return points == other.points;
     }
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     
     /**
      * Serializes the Pose object to a byte array.

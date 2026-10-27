@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.31)
 cmake_policy(SET CMP0091 NEW)
 set(_commons_msvc_runtime_inherited OFF)
 if(DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
@@ -735,7 +735,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/src/comm
 if(WIN32)
     set(dialogs_PATCH_COMMAND "${GIT_EXECUTABLE}" apply --ignore-whitespace "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff")
 else()
-    set(dialogs_PATCH_COMMAND patch -N -s -p1 -i "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff" || echo 1)
+    set(dialogs_PATCH_COMMAND /bin/sh -c "patch -N -s -p1 -i \"$1\" || echo 1" dialogs-patch "${CMAKE_CURRENT_SOURCE_DIR}/dialogs_patch.diff")
 endif()
 
 FetchContent_Declare(
@@ -769,7 +769,7 @@ set(glaze_PATH ${CMAKE_BINARY_DIR}/_deps/glaze)
 FetchContent_Declare(
   glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.0.0
+  GIT_TAG v9.0.0
   GIT_SHALLOW TRUE
   GIT_PROGRESS TRUE
   SOURCE_DIR ${glaze_PATH}
@@ -777,6 +777,8 @@ FetchContent_Declare(
   UPDATE_DISCONNECTED 1
 )
 
+# commons exports Glaze as a public dependency.
+set(glaze_INSTALL ON)
 FetchContent_MakeAvailable(glaze)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -979,7 +981,7 @@ endif()
 #    BUILDING      I M G U I
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-set(imgui_version v1.92.9)
+set(imgui_version v1.93.0)
 set(imgui_path "${CMAKE_BINARY_DIR}/_deps/imgui-${imgui_version}")
 set(imgui_patch_command
     ${CMAKE_COMMAND}
@@ -1120,7 +1122,7 @@ endif()
 #    BUILDING      P Y B I N D 1 1
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 set(pybind11_external OFF)
-set(pybind11_version_tag "v3.0.4")
+set(pybind11_version_tag "v3.1.0")
 
 if(${CMAKE_VERSION} VERSION_LESS "3.11.0" AND NOT COMMONS_NO_PYTHON)
     set(pybind11_install_dir ${CMAKE_BINARY_DIR}/pybind11)
@@ -1304,10 +1306,9 @@ if(COMMONS_BUILD_ZIP)
     ExternalProject_Add(libzip
         PREFIX ${libzip_install_dir}
         GIT_REPOSITORY https://github.com/nih-at/libzip.git
-        GIT_TAG v1.11.4
+        GIT_TAG v1.12.1
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
-        UPDATE_COMMAND ""
         PATCH_COMMAND "${ZIP_PATCH}"
         ${_libzip_install_byproducts}
         CMAKE_ARGS
@@ -1321,7 +1322,6 @@ if(COMMONS_BUILD_ZIP)
             -DENABLE_GNUTLS:BOOL=OFF
             -DENABLE_OPENSSL:BOOL=OFF
             -DENABLE_LZMA:BOOL=OFF
-            -DENABLE_MBEDTLS:BOOL=OFF
             -DENABLE_COMMONCRYPTO:BOOL=OFF
             -DENABLE_ZSTD:BOOL=OFF
             -DCMAKE_DEBUG_POSTFIX=d
@@ -1352,7 +1352,7 @@ if(COMMONS_BUILD_ZIP)
 
     add_dependencies(Commons::LibZIP libzip)
     set(_commons_libzip_provider "custom")
-    set(_commons_libzip_version "1.11.4")
+    set(_commons_libzip_version "1.12.1")
     set(_commons_libzip_path "${libzip_install_dir}")
 endif()
 
@@ -1388,11 +1388,10 @@ if(COMMONS_BUILD_PNG)
     #URL_MD5 9e5d864bce8f06751bbd99962ecf4aad
     EXTERNALPROJECT_ADD(libpng_custom
         PREFIX ${png_install_dir}
-        UPDATE_COMMAND ""
         #PATCH_COMMAND ${PNG_PATCH}
 
         GIT_REPOSITORY  https://github.com/pnggroup/libpng.git
-        GIT_TAG v1.6.58
+        GIT_TAG v1.6.59
         GIT_SHALLOW TRUE
         GIT_PROGRESS TRUE
 
@@ -1437,7 +1436,7 @@ if(COMMONS_BUILD_PNG)
         "$<BUILD_INTERFACE:${png_install_dir}/include>")
 
     set(_commons_png_provider "custom")
-    set(_commons_png_version "1.6.58")
+    set(_commons_png_version "1.6.59")
     set(_commons_png_path "${png_install_dir}")
 
     if(WIN32)
@@ -1802,7 +1801,7 @@ endif()
             -DOpenCV_RUNTIME:STRING=${OpenCV_RUNTIME})
     endif()
 
-    set(COMMONS_OPENCV_VERSION "4.12.0")
+    set(COMMONS_OPENCV_VERSION "4.14.0")
     if(APPLE)
         message(STATUS "CMAKE_SYSTEM_PROCESSOR = ${CMAKE_SYSTEM_PROCESSOR}")
         if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
@@ -1825,7 +1824,6 @@ endif()
             GIT_CONFIG core.longpaths=true
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
-            UPDATE_COMMAND ""
             CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${OCV_CMAKE_BUILD_TYPE} -G ${CMAKE_GENERATOR} ${OPENCV_CMAKE_ARGS} ${CMAKE_BINARY_DIR}/opencv/src/CustomOpenCV
             BUILD_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE}
             INSTALL_COMMAND ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${PKG_CONFIG_PATH}/pkgconfig LD_LIBRARY_PATH=$CONDA_PREFIX/lib PKG_CONFIG_LIBDIR=$CONDA_PREFIX/lib ${CMAKE_COMMAND} --build . --config ${OCV_CMAKE_BUILD_TYPE} --target install
@@ -1839,7 +1837,6 @@ endif()
             GIT_CONFIG core.longpaths=true
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
-            UPDATE_COMMAND ""
             CMAKE_ARGS
             ${OPENCV_CMAKE_ARGS})
     endif()

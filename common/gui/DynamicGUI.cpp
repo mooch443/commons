@@ -24,7 +24,7 @@ namespace dyn {
 
 namespace {
 
-std::string variable_expression_from_json(const glz::json_t& value) {
+std::string variable_expression_from_json(const glz::generic& value) {
     return Meta::fromStr<std::string>(glz::write_json(value).value());
 }
 
@@ -183,7 +183,7 @@ Module* exists(std::string_view name) {
 }
 
 Layout::Ptr parse_object(GUITaskQueue_t* gui,
-                         const glz::json_t::object_t& obj,
+                         const glz::generic::object_t& obj,
                          const Context& context,
                          State& state,
                          const DefaultSettings& defaults,
@@ -324,10 +324,10 @@ Layout::Ptr parse_object(GUITaskQueue_t* gui,
     return ptr;
 }
 
-std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string> load(const std::string& text){
+std::expected<std::tuple<DefaultSettings, glz::generic>, std::string> load(const std::string& text){
     DefaultSettings defaults;
     try {
-        glz::json_t obj{};
+        glz::generic obj{};
         auto error = glz::read_jsonc(obj, text);
         if(error != glz::error_code::none)
             return std::unexpected(glz::format_error(error, text));
@@ -505,7 +505,7 @@ void DynamicGUI::reload(DrawStructure& graph) {
     
     if(not read_file_future.valid()) {
         read_file_future = std::async(std::launch::async,
-             [this]() -> std::expected<std::tuple<DefaultSettings, glz::json_t>, std::string>
+             [this]() -> std::expected<std::tuple<DefaultSettings, glz::generic>, std::string>
              {
                 try {
                     auto p = file::DataLocation::parse("app", path).absolute();

@@ -337,7 +337,7 @@ public:
     }
     
     template<typename T, typename K = cmn::remove_cvref_t<T>>
-        requires are_the_same<glz::json_t, K>
+        requires are_the_same<glz::generic, K>
     static std::string parse_value(const T& opt) {
         auto result = glz::write_json(opt);
         if (not result)

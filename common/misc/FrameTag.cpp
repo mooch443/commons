@@ -6,7 +6,7 @@ std::string IdentifiedTag::toStr() const {
     return "["+Meta::toStr(fdx)+","+Meta::toStr(bds)+","+Meta::toStr(name)+"]";
 }
 
-glz::json_t IdentifiedTag::to_json() const {
+glz::generic IdentifiedTag::to_json() const {
     return cvt2json(std::make_tuple(fdx, bds, name));
 }
 
@@ -14,7 +14,7 @@ std::string SpatialTag::toStr() const {
     return "["+Meta::toStr(bds)+","+Meta::toStr(name)+"]";
 }
 
-glz::json_t SpatialTag::to_json() const {
+glz::generic SpatialTag::to_json() const {
     return cvt2json(std::make_tuple(bds, name));
 }
 
@@ -43,7 +43,7 @@ std::string FrameTag::toStr() const {
     return Meta::toStr(std::get<SpatialTag>(name));
 }
 
-glz::json_t FrameTag::to_json() const {
+glz::generic FrameTag::to_json() const {
     if(std::holds_alternative<SimpleTag>(name))
         return cvt2json(std::get<SimpleTag>(name));
     if(has_identity())

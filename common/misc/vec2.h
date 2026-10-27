@@ -217,7 +217,7 @@ namespace cmn {
     std::string toStr() const { \
         return "[" + Meta::toStr(A()) + "," + Meta::toStr(B()) + "]"; \
     } \
-    glz::json_t to_json() const { \
+    glz::generic to_json() const { \
         return { A(), B() }; \
     } \
     \
@@ -227,7 +227,7 @@ namespace cmn {
             throw std::invalid_argument("The string is empty, cannot create a vector from it."); \
         if(str.front() == '{') { \
             /* we have an object and not an array */ \
-            glz::json_t json; \
+            glz::generic json; \
             auto error = glz::read_json(json, str); \
             if(error != glz::error_code::none) { \
                 std::string descriptive_error = glz::format_error(error, str); \
@@ -568,8 +568,8 @@ public:
     std::string toStr() const {
         return "[" + Meta::toStr(x) + "," + Meta::toStr(y) + "," + Meta::toStr(width) + "," + Meta::toStr(height) + "]";
     }
-    glz::json_t to_json() const {
-        return glz::json_t{ x, y, width, height };
+    glz::generic to_json() const {
+        return glz::generic{ x, y, width, height };
     }
     static Bounds fromStr(cmn::StringLike auto&& str)
     {

@@ -1,12 +1,11 @@
 diff --git a/backends/imgui_impl_opengl3.cpp b/backends/imgui_impl_opengl3.cpp
-index ff99800..5dfb2da 100644
 --- a/backends/imgui_impl_opengl3.cpp
 +++ b/backends/imgui_impl_opengl3.cpp
-@@ -248,0 +249 @@ struct ImGui_ImplOpenGL3_Data
+@@ -258,0 +259 @@
 +    GLint           AttribLocationTexChannels;
-@@ -385,0 +387 @@ static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, ImGui_Impl
+@@ -389,0 +391 @@
 +    glUniform1i(bd->AttribLocationTexChannels, 0);
-@@ -591,2 +593,9 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
+@@ -617,2 +619,9 @@
 -                // Bind texture, Draw
 -                GL_CALL(glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)pcmd->GetTexID()));
 +                // Bind texture, select the TRex channel conversion, Draw
@@ -18,9 +17,9 @@ index ff99800..5dfb2da 100644
 +#endif
 +                GL_CALL(glUniform1i(bd->AttribLocationTexChannels, (GLint)texture_channels));
 +                GL_CALL(glBindTexture(GL_TEXTURE_2D, (GLuint)IMGUI_TREX_OPENGL_TEXTURE_NAME(tex_id)));
-@@ -878,0 +888 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -903,0 +913 @@
 +        "uniform int TextureChannels;\n"
-@@ -883 +893,6 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -908 +918,6 @@
 -        "    gl_FragColor = Frag_Color * texture2D(Texture, Frag_UV.st);\n"
 +        "    vec4 Tex_Color = texture2D(Texture, Frag_UV.st);\n"
 +        "    if (TextureChannels == 1)\n"
@@ -28,9 +27,9 @@ index ff99800..5dfb2da 100644
 +        "    else if (TextureChannels == 2)\n"
 +        "        Tex_Color = Tex_Color.rrrg;\n"
 +        "    gl_FragColor = Frag_Color * Tex_Color;\n"
-@@ -887,0 +903 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -912,0 +928 @@
 +        "uniform int TextureChannels;\n"
-@@ -893 +909,6 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -918 +934,6 @@
 -        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
 +        "    vec4 Tex_Color = texture(Texture, Frag_UV.st);\n"
 +        "    if (TextureChannels == 1)\n"
@@ -38,9 +37,9 @@ index ff99800..5dfb2da 100644
 +        "    else if (TextureChannels == 2)\n"
 +        "        Tex_Color = Tex_Color.rrrg;\n"
 +        "    Out_Color = Frag_Color * Tex_Color;\n"
-@@ -898,0 +920 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -923,0 +945 @@
 +        "uniform int TextureChannels;\n"
-@@ -904 +926,6 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -929 +951,6 @@
 -        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
 +        "    vec4 Tex_Color = texture(Texture, Frag_UV.st);\n"
 +        "    if (TextureChannels == 1)\n"
@@ -48,9 +47,9 @@ index ff99800..5dfb2da 100644
 +        "    else if (TextureChannels == 2)\n"
 +        "        Tex_Color = Tex_Color.rrrg;\n"
 +        "    Out_Color = Frag_Color * Tex_Color;\n"
-@@ -910,0 +938 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -935,0 +963 @@
 +        "uniform int TextureChannels;\n"
-@@ -914 +942,6 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -939 +967,6 @@
 -        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
 +        "    vec4 Tex_Color = texture(Texture, Frag_UV.st);\n"
 +        "    if (TextureChannels == 1)\n"
@@ -58,10 +57,9 @@ index ff99800..5dfb2da 100644
 +        "    else if (TextureChannels == 2)\n"
 +        "        Tex_Color = Tex_Color.rrrg;\n"
 +        "    Out_Color = Frag_Color * Tex_Color;\n"
-@@ -971,0 +1005 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+@@ -996,0 +1030 @@
 +    bd->AttribLocationTexChannels = glGetUniformLocation(bd->ShaderHandle, "TextureChannels");
 diff --git a/imconfig.h b/imconfig.h
-index b40db38..8cc70fd 100644
 --- a/imconfig.h
 +++ b/imconfig.h
 @@ -16,0 +17,7 @@
@@ -75,6 +73,6 @@ index b40db38..8cc70fd 100644
 diff --git a/imgui.cpp b/imgui.cpp
 --- a/imgui.cpp
 +++ b/imgui.cpp
-@@ -5179 +5179 @@ static void SetupDrawListSharedData()
--    g.DrawListSharedData.InitialFlags = ImDrawListFlags_None;
-+    g.DrawListSharedData.InitialFlags = ImDrawListFlags_TextNoPixelSnap;
+@@ -5661 +5661 @@
+-    g.DrawListSharedData.InitialDrawFlags = ImDrawFlags_None;
++    g.DrawListSharedData.InitialDrawFlags = ImDrawFlags_TextNoPixelSnap;

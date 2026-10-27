@@ -5,7 +5,7 @@
 
 namespace cmn::gui::dyn {
 
-Font parse_font(const glz::json_t::object_t& obj, Font font = Font(0.75), std::string_view name = "font");
+Font parse_font(const glz::generic::object_t& obj, Font font = Font(0.75), std::string_view name = "font");
 
 struct NumberParser {
     template<typename T>
@@ -32,7 +32,7 @@ inline Color parse_color(const auto& obj) {
 }
 
 template<typename T, bool assume_exists = false>
-auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64_t hash, std::string name_prefix="")
+auto get(State& state, const glz::generic::object_t& obj, T de, auto name, uint64_t hash, std::string name_prefix="")
 {
     auto it = obj.find(name);
     
@@ -79,7 +79,7 @@ auto get(State& state, const glz::json_t::object_t& obj, T de, auto name, uint64
 class LayoutContext {
 public:
     GUITaskQueue_t *gui{nullptr};
-    glz::json_t::object_t obj;
+    glz::generic::object_t obj;
     State& state;
     const Context& context;
     
@@ -119,7 +119,7 @@ public:
     }
     
     // Initialize from a JSON object
-    LayoutContext(GUITaskQueue_t*, const glz::json_t::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
+    LayoutContext(GUITaskQueue_t*, const glz::generic::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash = 0);
     
     template <LayoutType::Class T>
     Layout::Ptr create_object() {

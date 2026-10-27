@@ -1303,8 +1303,8 @@ public:
     /// _Meta::name<> overload in misc/metastring.h, because util::ConstString_t
     /// and Meta:: are not yet declared at this point in commons.pc.h.
 
-    glz::json_t to_json() const {
-        return has_value() ? glz::json_t{ value() } : glz::json_t{};
+    glz::generic to_json() const {
+        return has_value() ? glz::generic{ value() } : glz::generic{};
     }
     
     /// we do not have Meta:: available here yet, so we have to go with our manual
@@ -1407,7 +1407,7 @@ struct timestamp_t {
     std::string toStr() const { return valid() ? std::to_string(get()) : "invalid_time"; }
     static consteval std::string_view class_name() { return "timestamp"; }
     static timestamp_t fromStr(cmn::StringLike auto&& str) { return timestamp_t(std::atoll(str.c_str())); }
-    glz::json_t to_json() const { return valid() ? glz::json_t{ get() } : glz::json_t{}; }
+    glz::generic to_json() const { return valid() ? glz::generic{ get() } : glz::generic{}; }
     
     static timestamp_t now() {
         std::chrono::system_clock::time_point now = std::chrono::system_clock::now();

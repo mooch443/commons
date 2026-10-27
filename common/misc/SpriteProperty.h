@@ -1,6 +1,7 @@
 #pragma once
 
 #include <commons.pc.h>
+#include <glaze/json/patch.hpp>
 #include <misc/CallbackManager.h>
 
 namespace cmn {
@@ -227,7 +228,7 @@ namespace cmn {
              * Serializes the property to a JSON object.
              * @return A JSON representation of the property.
              */
-            virtual glz::json_t to_json() const = 0;
+            virtual glz::generic to_json() const = 0;
 
             template<typename T, typename K = std::remove_cvref_t<T>>
             Property<K>& toProperty() {
@@ -306,7 +307,7 @@ namespace cmn {
                 using RawT = std::remove_cvref_t<T>;
                 static const auto raw_type_hash = typeid(RawT).hash_code();
                 static const auto canonical_name_hash = []() -> std::size_t {
-                    if constexpr(std::same_as<RawT, glz::json_t> || std::same_as<RawT, std::string>) {
+                    if constexpr(std::same_as<RawT, glz::generic> || std::same_as<RawT, std::string>) {
                         return std::hash<std::string_view>{}(Meta::name<RawT>());
                     } else {
                         return 0;
@@ -333,7 +334,7 @@ namespace cmn {
         template<typename T, typename Arg = T>
         concept has_equals =
                not is_instantiation<std::function, T>::value 
-            && not _clean_same<glz::json_t, T>
+            && not _clean_same<glz::generic, T>
 			&& not is_instantiation<std::optional, T>::value
             && requires(const T& t, const Arg& a) {
                 { t == a } -> std::convertible_to<bool>;
@@ -356,7 +357,7 @@ namespace cmn {
             StoreType _value;
             
         public:
-            Property() : PropertyType(Meta::name<ValueType>())
+            Property() : PropertyType(Meta::name<ValueType>(), &typeid(ValueType))
             {
                 init();
             }
@@ -447,7 +448,7 @@ namespace cmn {
             template<typename K>
                 requires (
                     !is_instantiation<std::function, K>::value &&
-                    !_clean_same<glz::json_t, K> &&
+                    !_clean_same<glz::generic, K> &&
                     !std::is_same_v<cv::Mat, K>&&
                     has_equals<K>
                 )
@@ -465,7 +466,7 @@ namespace cmn {
             template<typename K>
                 requires (
                     !is_instantiation<std::function, K>::value &&
-                    !_clean_same<glz::json_t, K>&&
+                    !_clean_same<glz::generic, K>&&
                     std::is_same_v<cv::Mat, K>
                 )
             bool equals(const K& other) const {
@@ -514,7 +515,7 @@ namespace cmn {
             }
 
             template<typename K>
-                requires (_clean_same<glz::json_t, K>)
+                requires (_clean_same<glz::generic, K>)
             bool equals(const K& other) const {
                 if constexpr (trivial) {
                     static_assert(!trivial, "a json-t object cannot be trivial");
@@ -524,9 +525,7 @@ namespace cmn {
                     if (!_value.has_value())
                         return false;
 
-                    auto sa = glz::write_json(other).value_or(std::string{});
-                    auto sb = glz::write_json(_value.value()).value_or(std::string{});
-                    return sa == sb;
+                    return glz::equal(other, _value.value());
                 }
             }
 
@@ -570,7 +569,7 @@ namespace cmn {
                 }
             }
             
-            glz::json_t to_json() const override {
+            glz::generic to_json() const override {
                 if constexpr(trivial) {
                     auto v = _value.load();
                     if(not v.has_value())

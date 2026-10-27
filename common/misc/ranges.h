@@ -211,7 +211,7 @@ struct Range {
     std::string toStr() const {
         return "[" + Meta::toStr(start) + "," + Meta::toStr(end) + "]";
     }
-    glz::json_t to_json() const {
+    glz::generic to_json() const {
         return {
             cvt2json(start),
             cvt2json(end)
@@ -329,7 +329,7 @@ struct FrameRange {
     std::string toStr() const {
         return "[" + Meta::toStr(start()) + "," + Meta::toStr(end()) + "]";
     }
-    glz::json_t to_json() const {
+    glz::generic to_json() const {
         return {
             cvt2json(start()),
             cvt2json(end())

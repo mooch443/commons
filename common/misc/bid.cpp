@@ -30,9 +30,9 @@ std::string bid::toStr() const {
     return Meta::toStr<uint32_t>(_id);
 }
 
-glz::json_t bid::to_json() const {
+glz::generic bid::to_json() const {
     if (!valid()) {
-        return glz::json_t::null_t{};
+        return glz::generic::null_t{};
     }
     return _id;
 }

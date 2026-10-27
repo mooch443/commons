@@ -139,7 +139,7 @@ public:
     [[nodiscard]] std::string toStr() const {
         return valid() ? Meta::toStr<number_t>(get()) : "null";
     }
-    [[nodiscard]] glz::json_t to_json() const {
+    [[nodiscard]] glz::generic to_json() const {
         if(valid())
             return get();
         return nullptr;

@@ -76,6 +76,8 @@ template<class T, class... Args>
 struct is_map<std::map<T, Args...>> : public std::true_type {};
 template<class T, class... Args>
 struct is_map<std::unordered_map<T, Args...>> : public std::true_type {};
+template<class T>
+struct is_map<glz::ordered_small_map<T>> : public std::true_type {};
 template<class T, class Compare, class Alloc>
 struct is_map<ska::bytell_hash_map<T, Compare, Alloc>> : public std::true_type {};
 //template<class T, class Compare, class Alloc>
@@ -152,7 +154,7 @@ concept _has_blocking_tostr_method = requires(const T* t) {
 };
 template<typename T>
 concept has_to_json_method = requires(const T* t) {
-    { t->to_json() } -> convertible_to<glz::json_t>;
+    { t->to_json() } -> convertible_to<glz::generic>;
 };
 template<typename T>
 concept _has_fromstr_method = (requires() {

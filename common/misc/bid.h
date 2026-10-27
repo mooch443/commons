@@ -58,7 +58,7 @@ struct bid {
     }
 
     std::string toStr() const;
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
     static consteval std::string_view class_name() { return "blob"; }
     static bid fromStr(cmn::StringLike auto&& str) {
         if (str == "null") {

@@ -49,7 +49,7 @@ bool apply_modifier_to_object(std::string_view, const Layout::Ptr& object, const
     return false;
 }
 
-std::string access_sub_field(const glz::json_t& json, std::queue<std::string_view> subs) {
+std::string access_sub_field(const glz::generic& json, std::queue<std::string_view> subs) {
     if(not subs.empty()) {
         const auto& name = subs.front();
         subs.pop();
@@ -107,8 +107,8 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
             else
                 throw InvalidArgumentException("Sub ",modifiers," of Range<Frame_t> is not valid.");
                 
-        } else if(variable.is<glz::json_t>()) {
-            return variable.access_value<glz::json_t>([&](auto&& value){
+        } else if(variable.is<glz::generic>()) {
+            return variable.access_value<glz::generic>([&](auto&& value){
                 return access_sub_field(value, *subs);
             }, modifiers);
         }
@@ -121,8 +121,8 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                     
                     auto prop = value.at(key);
                     assert(prop.valid());
-                    if(prop->template is_type<glz::json_t>()) {
-                        return access_sub_field(prop->template value<glz::json_t>(), *subs);
+                    if(prop->template is_type<glz::generic>()) {
+                        return access_sub_field(prop->template value<glz::generic>(), *subs);
                     } else if(prop->is_array()
                               && not subs->empty())
                     {

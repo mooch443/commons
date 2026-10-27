@@ -148,7 +148,7 @@ std::string LabeledField::toStr() const {
     return "Field<"+_ref+">";
 }
 
-LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, State& state, const glz::json_t&)
+LabeledCombobox::LabeledCombobox(GUITaskQueue_t* gui, const std::string& name, State& state, const glz::generic&)
     : LabeledField(gui, name)
 {
     if(state._last_settings_box != nullptr
@@ -389,7 +389,7 @@ std::unique_ptr<LabeledField> LabeledField::Make(Dereference_t d, GUITaskQueue_t
     return create_element(TypeInfo_ref{(const sprite::Reference&)ref});
 }
 
-LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, const glz::generic&, sprite::Map* local_settings)
     : LabeledField(gui, name, local_settings),
       _create_button(new Button(Str{"+"}, Size{30,30})),
       _null_value(new Entangled(Clickable{true}))
@@ -564,7 +564,7 @@ void LabeledOptional::update_ref_in_main_thread() {
     }
 }
 
-LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::json_t&, bool invert, sprite::Map* local_settings)
+LabeledCheckbox::LabeledCheckbox(GUITaskQueue_t* gui, const std::string& name, const std::string& desc, const glz::generic&, bool invert, sprite::Map* local_settings)
 : LabeledField(gui, name, local_settings),
 _checkbox(new gui::Checkbox(attr::Str(desc))),
 _invert(invert)
@@ -602,7 +602,7 @@ void LabeledCheckbox::set_description(std::string desc) {
 LabeledCheckbox::~LabeledCheckbox() {
 }
 
-LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+LabeledTextField::LabeledTextField(GUITaskQueue_t* gui, const std::string& name, const glz::generic&, sprite::Map* local_settings)
     : LabeledField(gui, name, local_settings),
     _text_field(new gui::Textfield(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {
@@ -666,7 +666,7 @@ void LabeledTextField::update_ref_in_main_thread() {
     }
 }
 
-LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, bool invert, sprite::Map* local_settings)
+LabeledList::LabeledList(GUITaskQueue_t* gui, const std::string& name, const glz::generic&, bool invert, sprite::Map* local_settings)
 : LabeledField(gui, name, local_settings),
 _list(new gui::List(
     Box(0, 0, settings_scene::video_chooser_column_width, 28),
@@ -817,7 +817,7 @@ void LabeledList::update_ref_in_main_thread() {
     
 }
 
-LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::json_t&, sprite::Map* local_settings)
+LabeledDropDown::LabeledDropDown(GUITaskQueue_t* gui, const std::string& name, const glz::generic&, sprite::Map* local_settings)
 : LabeledField(gui, name, local_settings),
 _dropdown(new gui::Dropdown(Box(0, 0, settings_scene::video_chooser_column_width, 28)))
 {

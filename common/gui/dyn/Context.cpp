@@ -25,7 +25,7 @@ void LocalSettingTypes::ensure_defaults() {
         register_type<std::string>("string");
         register_type<file::Path>("path");
         register_type<file::PathArray>("path_array");
-        registry()["bool_array"] = [](sprite::Map& map, std::string_view local_name, const glz::json_t* value, bool has_value) {
+        registry()["bool_array"] = [](sprite::Map& map, std::string_view local_name, const glz::generic* value, bool has_value) {
             std::vector<uint8_t> values;
             if(has_value && value != nullptr) {
                 if(value->is_array()) {
@@ -59,7 +59,7 @@ void LocalSettingTypes::ensure_defaults() {
         register_type<Vec2>("vec2");
         register_type<Size2>("size");
         register_type<Color>("color");
-        register_type<glz::json_t>("json");
+        register_type<glz::generic>("json");
     });
 }
 
@@ -78,7 +78,7 @@ std::vector<std::string> LocalSettingTypes::available_names() {
     return names;
 }
 
-void LocalSettingTypes::make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::json_t* value, bool has_value) {
+void LocalSettingTypes::make(sprite::Map& map, std::string_view alias, std::string_view local_name, const glz::generic* value, bool has_value) {
     ensure_defaults();
     auto it = registry().find(std::string(alias));
     if(it == registry().end()) {

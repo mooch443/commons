@@ -90,11 +90,11 @@ struct CornerFlags {
     [[nodiscard]] constexpr ImDrawFlags to_imdraw_flags() const
     {
         ImDrawFlags f = 0;
-        if (top_left())      f |= ImDrawFlags_RoundCornersTopLeft;
-        if (top_right())     f |= ImDrawFlags_RoundCornersTopRight;
-        if (bottom_right())  f |= ImDrawFlags_RoundCornersBottomRight;
-        if (bottom_left())   f |= ImDrawFlags_RoundCornersBottomLeft;
-        if (f == 0)          f = ImDrawFlags_RoundCornersNone;
+        if (top_left())      f |= ImDrawFlags_RoundTopLeft;
+        if (top_right())     f |= ImDrawFlags_RoundTopRight;
+        if (bottom_right())  f |= ImDrawFlags_RoundBottomRight;
+        if (bottom_left())   f |= ImDrawFlags_RoundBottomLeft;
+        if (f == 0)          f = ImDrawFlags_RoundNone;
         return f;
     }
     
@@ -203,7 +203,7 @@ struct CornerFlags {
     std::string toStr() const;
     
     
-    glz::json_t to_json() const;
+    glz::generic to_json() const;
 };
 
 }

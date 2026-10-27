@@ -9,7 +9,7 @@
 
 namespace cmn::gui::dyn {
 
-Font parse_font(const glz::json_t::object_t& obj, Font font, std::string_view name) {
+Font parse_font(const glz::generic::object_t& obj, Font font, std::string_view name) {
     if(auto it = obj.find(name);
        it != obj.end())
     {
@@ -58,7 +58,7 @@ Image::Ptr load_image(const file::Path& path) {
 }
 
 // Initialize from a JSON object
-LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::json_t::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
+LayoutContext::LayoutContext(GUITaskQueue_t* gui, const glz::generic::object_t& obj, State& state, const Context& context, DefaultSettings defaults, uint64_t hash)
  : gui(gui), obj(obj), state(state), context(context), _defaults(defaults)
 {
     if(not obj.contains("type")) {
@@ -1148,7 +1148,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
 #endif
             
             ptr = Layout::Make<ScrollableList<DetailTooltipItem>>{Box{pos, size}};
-            auto exp = glz::read_json<ListContents::ItemTemplate>(child.get_object());
+            auto exp = glz::read_json<ListContents::ItemTemplate>(child);
             
             auto body = state.register_variant(hash, ptr, ListContents{
                 .variable = obj.at("var").get<std::string>(),
@@ -1448,7 +1448,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
         });
     }
 
-    glz::json_t catalog_source = glz::json_t::array_t{};
+    glz::generic catalog_source = glz::generic::array_t{};
     if(obj.contains("catalog"))
         catalog_source = obj.at("catalog");
     state.register_variant(hash, ptr, TagListContents{

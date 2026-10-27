@@ -463,7 +463,7 @@ std::ostream & Text::operator <<(std::ostream &os) {
     auto t = txt();
     //t = utils::find_replace(t, "/", "");
     
-    json_t j = t;
+    generic j = t;
     
     os <<
     write_json(j).value() << ","

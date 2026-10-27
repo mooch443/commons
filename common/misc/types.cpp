@@ -49,8 +49,8 @@ namespace cmn::blob {
         return Meta::toStr((const std::map<uint16_t, std::string>&)*this);
     }
 
-    glz::json_t ObjectClass_t::to_json() const {
-        glz::json_t result = glz::json_t::object_t{};
+    glz::generic ObjectClass_t::to_json() const {
+        glz::generic result = glz::generic::object_t{};
         for (const auto& [key, value] : *this) {
             result[Meta::toStr(key)] = value;
         }
@@ -96,7 +96,7 @@ std::string blob::Pose::Skeleton::toStr() const {
     return Meta::toStr(_connections);
 }
 
-glz::json_t blob::Pose::Skeleton::to_json() const {
+glz::generic blob::Pose::Skeleton::to_json() const {
     return cvt2json(connections());
 }
 
@@ -104,8 +104,8 @@ std::string blob::Pose::Skeleton::Connection::toStr() const {
     return "["+Meta::toStr(from) + "," + Meta::toStr(to)+"]";
 }
 
-glz::json_t blob::Pose::Skeleton::Connection::to_json() const {
-    return glz::json_t{from, to};
+glz::generic blob::Pose::Skeleton::Connection::to_json() const {
+    return glz::generic{from, to};
 }
 
 blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(std::string_view str) {
@@ -123,7 +123,7 @@ blob::Pose::Skeleton::Connection blob::Pose::Skeleton::Connection::fromStr(std::
     };
 }
 
-glz::json_t blob::Pose::Skeletons::to_json() const {
+glz::generic blob::Pose::Skeletons::to_json() const {
     return cvt2json(_skeletons);
 }
 
@@ -184,8 +184,8 @@ std::string blob::Pose::toStr() const {
     return str + "]";
 }
 
-glz::json_t blob::Pose::to_json() const {
-    std::vector<glz::json_t> j;
+glz::generic blob::Pose::to_json() const {
+    std::vector<glz::generic> j;
     for(size_t i = 0; i < points.size(); ++i) {
         j.push_back(points[i].to_json());
     }

@@ -225,7 +225,7 @@ public: \
     static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN }; \
     std::string toStr() const noexcept { return (std::string)name(); } \
     static self_type fromStr(cmn::StringLike auto&& str) { return self_type::get(std::forward<decltype(str)>(str)); } \
-    glz::json_t to_json() const { return name(); } \
+    glz::generic to_json() const { return name(); } \
     static consteval std::string_view class_name() noexcept { return Names::class_name(); } \
     \
     static const self_type& get(cmn::StringLike auto&& name) { \
