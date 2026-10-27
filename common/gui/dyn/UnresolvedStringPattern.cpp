@@ -822,7 +822,7 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
         if(it == obj.end())
             throw InvalidArgumentException("Object ", json, " does not contain field ", name, " contains: ", extract_keys(obj));
         
-        if(const glz::json_t& field = *it->second;
+        if(const glz::json_t& field = it->second;
            not subs.empty())
         {
             access_sub_field(output, modifiers, field, subs);
