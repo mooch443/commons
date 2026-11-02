@@ -118,7 +118,7 @@ static std::vector<std::string> string_values_from_source(
     const Context& context,
     State& state)
 {
-    glz::generic resolved = source;
+    std::optional<glz::generic> resolved;
     if(source.is_string()) {
         const auto spec = source.get<std::string>();
         try {
@@ -155,13 +155,14 @@ static std::vector<std::string> string_values_from_source(
             resolved = glz::generic::array_t{};
         }
     }
-
+    
+    const auto& use = resolved ? resolved.value() : source;
     std::vector<std::string> values;
-    if(not resolved.is_array())
+    if(not use.is_array())
         return values;
 
-    values.reserve(resolved.size());
-    for(const auto& item : resolved.get_array()) {
+    values.reserve(use.size());
+    for(const auto& item : use.get_array()) {
         if(item.is_string())
             values.emplace_back(item.get<std::string>());
     }

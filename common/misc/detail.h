@@ -810,15 +810,13 @@ void convert_from_r3g3b2(const cv::Mat& input, cv::Mat& output) {
             return a;
         }
         else if constexpr (std::is_same_v<VT, std::string>) {
-            std::string str = v;
-            return glz::generic(v.c_str());
+            return glz::generic(v);
         }
         else if constexpr (std::is_same_v<VT, std::string_view>) {
             return glz::generic(v);
         }
         else if constexpr (std::is_convertible_v<VT, std::string>) {
-            std::string str = v;
-            return glz::generic(v.c_str());
+            return glz::generic(std::string(v));
         }
         else if constexpr (is_pair<VT>::value) {
             return glz::generic{cvt2json(v.first), cvt2json(v.second)};

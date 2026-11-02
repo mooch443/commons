@@ -1092,7 +1092,8 @@ namespace cmn::gui {
 
             if (stage()) {
                 if(not tooltip.text().text().empty()
-                   && hovered())
+                   && hovered()
+                   && (not foldable() || not folded()))
                 {
                     stage()->register_end_object(tooltip);
                     
