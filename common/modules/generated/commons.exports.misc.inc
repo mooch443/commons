@@ -35,9 +35,13 @@ using ::cmn::IdentifiedTag;
 using ::cmn::SimpleTag;
 using ::cmn::SpatialTag;
 // misc/GlobalSettings.h
+using ::cmn::AccessLevel;
 using ::cmn::Configuration;
 using ::cmn::GlobalSettings;
+using ::cmn::HistoryItem;
 using ::cmn::NoType;
+using ::cmn::ParameterHistory;
+using ::cmn::SafeWriteWrapper;
 using ::cmn::bool_setting_config;
 using ::cmn::docs_map_t;
 using ::cmn::optional_setting_config;
@@ -303,6 +307,7 @@ using ::cmn::periodic::scalar_t;
 export namespace cmn::settings {
 // misc/default_settings.h
 using ::cmn::settings::Adding;
+using ::cmn::settings::ParameterCategory;
 using ::cmn::settings::help_html;
 using ::cmn::settings::help_restructured_text;
 using ::cmn::settings::htmlify;
@@ -315,6 +320,8 @@ using ::cmn::settings::ParameterCategoryType::Class;
 }
 
 export namespace cmn::sprite {
+// misc/DisplayValue.h
+using ::cmn::sprite::display_property;
 // misc/SpriteMap.h
 using ::cmn::sprite::Map;
 using ::cmn::sprite::RegisterInit;

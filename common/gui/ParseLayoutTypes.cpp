@@ -9,6 +9,9 @@
 
 namespace cmn::gui::dyn {
 
+/// this will be used as a shorthand for something empty
+static inline glz::generic::object_t empty;
+
 Font parse_font(const glz::generic::object_t& obj, Font font, std::string_view name) {
     if(auto it = obj.find(name);
        it != obj.end())
@@ -295,16 +298,16 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                && not hover_action.name.empty())
             {
                 try {
-                    auto name = parse_text(hover_action.name, context, state);
-                    if(auto it = context.actions.find(name);
+                    auto parsed = hover_action.parse(context, state);
+                    if(auto it = context.actions.find(parsed.name);
                        it != context.actions.end())
                     {
-                        it->second(hover_action.parse(context, state));
+                        it->second(std::move(parsed));
                         
-                    } else if(auto ptr = state.named_entity(name);
+                    } else if(auto ptr = state.named_entity(parsed.name);
                               ptr != nullptr)
                     {
-                        apply_modifier_to_object(name, Layout::Ptr(ptr), hover_action.parse(context, state));
+                        apply_modifier_to_object(parsed.name, Layout::Ptr(ptr), parsed);
                         
                     } else {
                         Print("Unknown Action: ", hover_action);
@@ -317,16 +320,16 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
                       && not unhover_action.name.empty())
             {
                 try {
-                    auto name = parse_text(unhover_action.name, context, state);
-                    if(auto it = context.actions.find(name);
+                    auto parsed = unhover_action.parse(context, state);
+                    if(auto it = context.actions.find(parsed.name);
                        it != context.actions.end())
                     {
-                        it->second(unhover_action.parse(context, state));
+                        it->second(std::move(parsed));
                         
-                    } else if(auto ptr = state.named_entity(name);
+                    } else if(auto ptr = state.named_entity(parsed.name);
                               ptr != nullptr)
                     {
-                        apply_modifier_to_object(name, Layout::Ptr(ptr), unhover_action.parse(context, state));
+                        apply_modifier_to_object(parsed.name, Layout::Ptr(ptr), parsed);
                         
                     } else {
                         Print("Unknown Action: ", unhover_action);
@@ -378,27 +381,13 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
     
     if(obj.count("drag") || obj.count("click") || obj.count("deselect")) {
         auto run_action = [](const PreAction& action, const Context& context, State& state) {
-            std::string_view name = action.name;
-            std::string pattern;
-            if(utils::contains(name, '{')) {
-                pattern = parse_text(name, context, state);
-                auto a = PreAction::fromStr(pattern);
-                if(auto it = context.actions.find(a.name);
-                   it != context.actions.end())
-                {
-                    it->second(a.parse(context, state));
-                } else
-                    Print("Unknown Action [", name, "]: ", action);
-
-                return;
-            }
-
-            if(auto it = context.actions.find(name);
+            auto parsed = action.parse(context, state);
+            if(auto it = context.actions.find(parsed.name);
                it != context.actions.end())
             {
-                it->second(action.parse(context, state));
+                it->second(std::move(parsed));
             } else
-                Print("Unknown Action [", name, "]: ", action);
+                Print("Unknown Action [", parsed.name, "]: ", action);
         };
         
         if(obj.count("drag")) {
@@ -867,46 +856,44 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
         ref->set(attr::HighlightClr{highlight_clr});
         ref->set(corners);
         
-        if (obj.contains("label")) {
-            auto &o = obj.at("label");
-            if (o.is_object()) {
-                auto &p = o.get_object();
-                LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
-                ref->set(line_clr);
-                LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
-                ref->set(fill_clr);
-                LabelColor_t color{ dyn::get(state, p, Color(225,225,225,200), "color", hash, "label_")};
-                ref->set(color);
-                
-                LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
-                ref->set(label_font);
-                
+        {
+            auto &p = obj.contains("label") && obj.at("label").is_object()
+                        ? obj.at("label").get_object()
+                        : empty;
+            
+            LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
+            ref->set(line_clr);
+            LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
+            ref->set(fill_clr);
+            LabelColor_t color{ dyn::get(state, p, Color(225,225,225,200), "color", hash, "label_")};
+            ref->set(color);
+            
+            LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
+            ref->set(label_font);
+            
+            if(p.contains("corners")) {
                 CornerFlags corners{ dyn::get(state, p, CornerFlags{}, "corners", hash, "label_") };
                 ref->set(LabelCornerFlags{corners});
-                
-                LabelDims_t label_dims{ dyn::get(state, p, Size2(), "size", hash, "label_")};
-                if(not label_dims.empty())
-                    ref->set(label_dims);
             }
+            
+            LabelDims_t label_dims{ dyn::get(state, p, Size2(), "size", hash, "label_")};
+            if(not label_dims.empty())
+                ref->set(label_dims);
         }
         
-        if (obj.contains("list")) {
-            //ref->set(LabelFillClr_t{fill});
-            //ref->set(LabelLineColor_t{line});
+        {
+            auto &p = obj.contains("list") && obj.at("list").is_object()
+                        ? obj.at("list").get_object()
+                        : empty;
             
-            auto &o = obj.at("list");
-            if (o.is_object()) {
-                auto &p = o.get_object();
-                
-                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
-                ref->set(line_clr);
-                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
-                ref->set(fill_clr);
-                ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
-                ref->set(list_dims);
-                ItemFont_t item_font{parse_font(p, Font(0.6), "font")};
-                ref->set(item_font);
-            }
+            ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
+            ref->set(line_clr);
+            ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
+            ref->set(fill_clr);
+            ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
+            ref->set(list_dims);
+            ItemFont_t item_font{parse_font(p, Font(0.6), "font")};
+            ref->set(item_font);
         }
         
         std::vector<Layout::Ptr> objs;
@@ -949,20 +936,13 @@ Layout::Ptr LayoutContext::create_object<LayoutType::button>()
         ptr->on_click(
           bind_with_state<Event>(state._current_object_handler, context, [action](Event, const Context& context, State& state) {
               try {
-                  auto name = parse_text(action.name, context, state);
-                  if(auto it = context.actions.find(name);
+                  auto parsed = action.parse(context, state);
+                  if(auto it = context.actions.find(parsed.name);
                      it != context.actions.end())
                   {
-                      it->second(action.parse(context, state));
-                  } else {
-                      auto _action = PreAction::fromStr(name);
-                      if(it = context.actions.find(_action.name);
-                         it != context.actions.end())
-                      {
-                          it->second(_action.parse(context, state));
-                      } else
-                          Print("Unknown Action ",name," from ", action,".");
-                  }
+                      it->second(std::move(parsed));
+                  } else
+                      Print("Unknown Action ",parsed.name," from ", action,".");
                   
               } catch(const std::exception& ex) {
                   FormatWarning(ex.what()); /// we cannot abort here since this is the main thread with no protections applied
@@ -990,10 +970,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::checkbox>()
                 [action](const Context& context, State& state)
                 {
                     try {
-                        if(auto it = context.actions.find(action.name);
+                        auto parsed = action.parse(context, state);
+                        if(auto it = context.actions.find(parsed.name);
                            it != context.actions.end())
                         {
-                            it->second(action.parse(context, state));
+                            it->second(std::move(parsed));
                         } else
                             Print("Unknown Action: ", action);
                     } catch(const std::exception& ex) {
@@ -1257,10 +1238,11 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
                   }
                   
                   auto& action = actions.at(index);
-                  if(auto it = context.actions.find(action.name);
+                  auto parsed = action.parse(context, state);
+                  if(auto it = context.actions.find(parsed.name);
                      it != context.actions.end())
                   {
-                      it->second(action.parse(context, state));
+                      it->second(std::move(parsed));
                   } else {
                       Print("Unknown action ", action);
                   }
@@ -1284,63 +1266,62 @@ Layout::Ptr LayoutContext::create_object<LayoutType::list>()
         list->set(alternate);
         list->set(LineClr{Red});
         
-        if (obj.contains("label")) {
-            auto &o = obj.at("label");
-            if (o.is_object()) {
-                auto &p = o.get_object();
-                
-                LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
-                list->set(line_clr);
-                LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
-                list->set(fill_clr);
-                LabelColor_t color{ dyn::get(state, p, Color(50,50,50,200), "color", hash, "label_")};
-                list->set(color);
-                
-                LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
-                list->set(label_font);
-                
-                Str folded_label{dyn::get(state, p, std::string(), "text", hash, "label_")};
-                if(not folded_label.empty())
-                    list->set(folded_label);
-                
-                LabelCornerFlags corners{dyn::get(state, p, LabelCornerFlags(), "corners", hash, "label_")};
-                list->set(corners);
-            }
+        {
+            auto &p = obj.contains("label") && obj.at("label").is_object()
+                        ? obj.at("label").get_object()
+                        : empty;
+            
+            LabelLineColor_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "label_")};
+            list->set(line_clr);
+            LabelFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "label_")};
+            list->set(fill_clr);
+            LabelColor_t color{ dyn::get(state, p, Color(50,50,50,200), "color", hash, "label_")};
+            list->set(color);
+            
+            LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
+            list->set(label_font);
+            
+            Str folded_label{dyn::get(state, p, std::string(), "text", hash, "label_")};
+            if(not folded_label.empty())
+                list->set(folded_label);
+            
+            LabelCornerFlags corners{dyn::get(state, p, LabelCornerFlags(), "corners", hash, "label_")};
+            list->set(corners);
         }
 
-        if (obj.contains("list")) {
-            auto &o = obj.at("list");
-            if (o.is_object()) {
-                auto &p = o.get_object();
-                ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
-                list->set(line_clr);
-                ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
-                list->set(fill_clr);
-                ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
-                list->set(list_dims);
-            }
+        {
+            auto &p = obj.contains("list") && obj.at("list").is_object()
+                        ? obj.at("list").get_object()
+                        : empty;
+            
+            ListLineClr_t line_clr{ dyn::get(state, p, Color(200,200,200,200), "line", hash, "list_")};
+            list->set(line_clr);
+            ListFillClr_t fill_clr{ dyn::get(state, p, Color(50,50,50,200), "fill", hash, "list_")};
+            list->set(fill_clr);
+            ListDims_t list_dims{ dyn::get(state, p, Size2(100,200), "size", hash, "list_") };
+            list->set(list_dims);
         }
         
-        if (obj.contains("item")) {
-            auto &o = obj.at("item");
-            if(o.is_object()) {
-                auto &p = o.get_object();
-                
-                list->set(ItemPadding_t{ dyn::get(state, p, Vec2(5), "pad", hash, "item_") });
-                list->set(ItemFont_t{parse_font(p, Font(0.75), "font")});
-                list->set(ItemFillClr_t{ dyn::get(state, p, Transparent, "fill", hash, "item_") });
-                list->set(ItemLineColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
-                list->set(ItemTextClr_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
-            }
+        {
+            auto &p = obj.contains("item") && obj.at("item").is_object()
+                        ? obj.at("item").get_object()
+                        : empty;
+            
+            list->set(ItemPadding_t{ dyn::get(state, p, Vec2(15), "pad", hash, "item_") });
+            list->set(ItemFont_t{parse_font(p, Font(0.75), "font")});
+            list->set(ItemFillClr_t{ dyn::get(state, p, Transparent, "fill", hash, "item_") });
+            list->set(ItemLineColor_t{ dyn::get(state, p, Transparent, "line", hash, "item_") });
+            list->set(ItemTextClr_t{ dyn::get(state, p, Color(50,50,50,220), "color", hash, "item_") });
+            list->set(ItemCornerFlags{ dyn::get(state, p, CornerFlags::Rounded(CornerFlags::DefaultRadius), "corners", hash, "item_") });
         }
         
-        if (obj.contains("detail")) {
-            auto &o = obj.at("detail");
-            if(o.is_object()) {
-                auto &p = o.get_object();
-                list->set(DetailColor_t{ dyn::get(state, p, Gray, "color", hash, "detail_") });
-                list->set(DetailFont_t{parse_font(p, Font(0.55, Align::Center), "font")});
-            }
+        {
+            auto &p = obj.contains("detail") && obj.at("detail").is_object()
+                        ? obj.at("detail").get_object()
+                        : empty;
+            
+            list->set(DetailColor_t{ dyn::get(state, p, Gray, "color", hash, "detail_") });
+            list->set(DetailFont_t{parse_font(p, Font(0.55, Align::Center), "font")});
         }
         
         Foldable_t foldable{get(false, "foldable")};
@@ -1378,7 +1359,8 @@ Layout::Ptr LayoutContext::create_object<LayoutType::taglist>()
         tag_list->set(ItemPadding_t{dyn::get(state, item, Vec2{8, 4}, "pad", hash, "item_")});
         tag_list->set(ItemLineColor_t{dyn::get(state, item, Transparent, "line", hash, "item_")});
         tag_list->set(ItemTextClr_t{dyn::get(state, item, White, "color", hash, "item_")});
-        tag_list->set(dyn::get(state, item, CornerFlags_t{CornerFlags::Rounded(8)}, "corners", hash, "item_"));
+        //tag_list->set(dyn::get(state, item, CornerFlags_t{CornerFlags::Rounded(8)}, "corners", hash, "item_"));
+        tag_list->set(ItemCornerFlags{ dyn::get(state, item, CornerFlags::Rounded(CornerFlags::DefaultRadius), "corners", hash, "item_") });
         if(item.contains("fill")) {
             const auto fill = dyn::get(state, item, Transparent, "fill", hash, "item_");
             if(not state.pattern().get(hash, "item_fill").has_value())

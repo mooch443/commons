@@ -2000,7 +2000,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             else
                 text = Meta::toStr(*(Drawable*)o->parent());
         } else*/
-            text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds());
+            text = Meta::toStr(*o) + " "+ Meta::toStr(o->bounds().map(std::roundf));
         auto font = _fonts.at(Style::Regular);
         auto _font = Font(0.3, Style::Regular);
         

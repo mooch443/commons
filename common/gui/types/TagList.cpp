@@ -210,7 +210,14 @@ void TagList::set(ItemTextClr_t value) {
     mark_structure_dirty();
 }
 
-void TagList::set(CornerFlags_t value) {
+/*void TagList::set(CornerFlags_t value) {
+    if(_item_corners == value)
+        return;
+    _item_corners = value;
+    mark_structure_dirty();
+}*/
+
+void TagList::set(ItemCornerFlags value) {
     if(_item_corners == value)
         return;
     _item_corners = value;
@@ -402,7 +409,7 @@ void TagList::rebuild_structure() {
         chip->set(attr::Margins{0,0, _item_padding.x, _item_padding.y});
         chip->set(FillClr{_item_fill_color.value_or(tag_color(tag))});
         chip->set(LineClr{_item_line_color});
-        chip->set(_item_corners);
+        chip->set(CornerFlags_t{(CornerFlags)_item_corners});
         chip->set_policy(HorizontalLayout::Policy::CENTER);
     }
 

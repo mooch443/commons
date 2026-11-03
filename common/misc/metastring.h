@@ -1177,12 +1177,20 @@ std::string toStr(const Q& obj) {
 }
         
 template<class Q>
-    requires (std::convertible_to<Q, std::string> || (std::is_constructible_v<std::string, Q>))
+    requires (std::convertible_to<Q, std::string>
+              || (std::is_constructible_v<std::string, Q>))
         && (!(is_instantiation<std::tuple, Q>::value))
         && (!_has_tostr_method<Q>)
         && (!_is_number<Q>)
+        && (!_clean_same<std::string_view, Q>)
 std::string toStr(const Q& obj) {
     return "\"" + util::escape(std::string(obj)) + "\"";
+}
+
+template<class Q>
+    requires _clean_same<std::string_view, Q>
+std::string toStr(const Q& obj) {
+    return std::string(obj);
 }
         
 template<class Q>
@@ -1511,6 +1519,13 @@ Q fromStr(cmn::StringLike auto&& str)
         return util::unescape(/*utils::trim(*/str.substr(1, str.length()-2)/*)*/);
     return util::unescape(/*utils::trim(*/str/*)*/);
 }
+
+template<class Q>
+    requires _clean_same<std::string_view, Q>
+Q fromStr(cmn::StringLike auto&& str)
+{
+    return str;
+}
     
 template<class Q>
     requires _clean_same<std::wstring, Q>
@@ -1597,7 +1612,7 @@ Q fromStr(cmn::StringLike auto&& str)
             
     auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
     util::enforce_no_empty_elements(parts, Meta::name<Q>());
-    std::conditional_t<cmn::StringLike<typename Q::key_type>, std::string, typename Q::key_type> key;
+    std::conditional_t<cmn::StringLike<typename Q::key_type>, std::conditional_t<_clean_same<typename Q::key_type, std::string_view>, std::string_view, std::string>, typename Q::key_type> key;
 
     for(std::string_view p : parts) {
         std::vector<std::string_view> value_key = util::parse_array_parts(p, ':');

@@ -400,4 +400,9 @@ concept HasNotEqualOperator = requires(T a, T b) {
 { a != b } -> std::same_as<bool>;
 };
 
+template<typename T, typename U>
+concept is_explicitly_convertible =
+           std::is_constructible<U, T>::value
+        && (!std::is_convertible<T, U>::value);
+
 } /// end of cmn

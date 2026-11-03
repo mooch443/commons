@@ -37,7 +37,7 @@ private:
     Vec2 _item_padding{8, 4};
     Color _item_text_color{White};
     Color _item_line_color{Transparent};
-    CornerFlags_t _item_corners{CornerFlags::Rounded(8)};
+    ItemCornerFlags _item_corners{CornerFlags::Rounded(CornerFlags::DefaultRadius)};
     std::optional<Color> _item_fill_color;
 
     Font _input_font{0.65f};
@@ -88,7 +88,8 @@ public:
     void set(std::optional<ItemFillClr_t> value);
     void set(ItemLineColor_t value);
     void set(ItemTextClr_t value);
-    void set(CornerFlags_t value) override;
+    //void set(CornerFlags_t value) override;
+    void set(ItemCornerFlags value);
     void set(LabelCornerFlags value);
 
     void set(LabelDims_t value);

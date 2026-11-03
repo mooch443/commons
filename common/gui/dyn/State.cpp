@@ -653,7 +653,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     check_field.operator()<Color, ItemFillClr_t>("item_fill");
     check_field.operator()<Color, ItemLineColor_t>("item_line");
     check_field.operator()<Color, ItemTextClr_t>("item_color");
-    check_field.operator()<CornerFlags_t, CornerFlags_t>("item_corners");
+    check_field.operator()<CornerFlags, ItemCornerFlags>("item_corners");
     check_field.operator()<Size2, LabelDims_t>("input_size");
     check_field.operator()<Size2, ListDims_t>("input_list_size");
     check_field.operator()<std::string, Placeholder_t>("input_placeholder");
@@ -737,15 +737,16 @@ bool HashedObject::update_lists(GUITaskQueue_t*, uint64_t, DrawStructure &, cons
             if(not obj.on_select_actions.contains(index)
                || std::get<0>(obj.on_select_actions.at(index)) != action.name)
             {
-                auto fn = bind_with_state(state._current_object_handler, context, [action, index](const Context& context, State& state) {
+                auto fn = bind_with_state(state._current_object_handler, context, [name = (std::string)action.name, action_string = *item_template.action.value().pat.original, index](const Context& context, State& state) {
                     //Print("Clicked item at ", index, " with action ", action);
                     
-                    Action _action = action.parse(context, state);
-                    if(_action.parameters.empty())
-                        _action.parameters = { Meta::toStr(index) };
+                    Action action = PreAction::fromStr(action_string).parse(context, state);
+                    
+                    if(action.parameters.empty())
+                        action.parameters = { Meta::toStr(index) };
                     if(auto it = context.actions.find(action.name); it != context.actions.end()) {
                         try {
-                            it->second(_action);
+                            it->second(action);
                         } catch(const std::exception& ex) {
                             // pass
                         }

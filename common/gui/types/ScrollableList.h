@@ -66,6 +66,7 @@ namespace cmn::gui {
         LabelColor_t _label_color{225,225,225,200};
         LabelLineColor_t _label_line_clr{200,200,200,200};
         LabelCornerFlags _label_corner_flags{};
+        ItemCornerFlags _item_corner_flags{};
         
         template <typename Q = T>
         class Item {
@@ -92,7 +93,7 @@ namespace cmn::gui {
         GETTER(Color, item_color);
         GETTER(ItemLineColor_t, item_line_color);
         GETTER_I(Color, text_color, White);
-        float _line_spacing, _previous_width{-1};
+        float _line_spacing, _previous_width{-1}, _text_height{-1}, _detail_height{-1};
         GETTER_SETTER(std::optional<uint64_t>, last_hovered_item);
         GETTER_SETTER_I(bool, foldable, false);
         GETTER_I(bool, folded, false);
@@ -168,10 +169,10 @@ namespace cmn::gui {
                 }
             });
             add_event_handler(SCROLL, [this](auto) {
-                this->update_items();
+                this->set_content_changed(true);
             });
             _list.add_event_handler(SCROLL, [this](auto) {
-                this->update_items();
+                this->set_content_changed(true);
             });
             //_list.set_z_index(1);
         }
@@ -184,7 +185,7 @@ namespace cmn::gui {
             
             update_line_height();
             //set_background(_item_color.exposure(0.5));
-            update_items();
+            set_content_changed(true);
         }
         
         template<typename... Args>
@@ -213,13 +214,14 @@ namespace cmn::gui {
         }
         
         void update_line_height() {
-            _line_spacing = [this] (){
-                if constexpr(has_detail<T>) {
-                    return Base::default_line_spacing(_item_font) * 2 + _item_padding.y * 2;
-                }
-                return Base::default_line_spacing(_item_font) + _item_padding.y * 2;
-            }();
+            _line_spacing = _text_height = Base::default_line_spacing(_item_font);
             
+            if constexpr(has_detail<T>) {
+                _detail_height = Base::default_line_spacing(detail_font({}));
+                _line_spacing += _detail_height;
+            }
+            
+            _line_spacing += _item_padding.y * 2;
         }
         
         ~ScrollableList() {
@@ -244,7 +246,7 @@ namespace cmn::gui {
                 return;
             
             _stays_toggled = v;
-            update_items();
+            set_content_changed(true);
         }
         
         float line_height() const {
@@ -314,6 +316,7 @@ namespace cmn::gui {
             }
             
             update_line_height();
+            set_content_changed(true);
         }
         void set(ItemFont_t font) {
             if(_item_font == font)
@@ -331,6 +334,7 @@ namespace cmn::gui {
             
             _placeholder_text.set_default_font(font);
             update_line_height();
+            set_content_changed(true);
         }
         void set(Alternating_t alternating) {
             set_alternating(alternating);
@@ -399,7 +403,6 @@ namespace cmn::gui {
                 _items.push_back(Item<T>(item));
             }
             
-            update_items();
             set_content_changed(true);
             return _items.size();
         }
@@ -473,6 +476,15 @@ namespace cmn::gui {
             _label_corner_flags = flags;
             set_content_changed(true);
         }
+        void set(ItemCornerFlags flags) {
+            if(flags == _item_corner_flags)
+                return;
+            
+            _item_corner_flags = flags;
+            for(auto& rect : _rects)
+                rect->set(CornerFlags_t{(CornerFlags)_item_corner_flags});
+            set_content_changed(true);
+        }
         void set(const LabelFont_t& font) {
             set_label_font(font);
         }
@@ -513,7 +525,7 @@ namespace cmn::gui {
                 set_bounds_changed();
             }
             
-            update_items();
+            set_content_changed(true);
         }
         
         void set(const ItemPadding_t& padding) {
@@ -526,7 +538,7 @@ namespace cmn::gui {
             
             _item_padding = padding;
             update_line_height();
-            update_items();
+            set_content_changed(true);
         }
         
         /**
@@ -548,6 +560,7 @@ namespace cmn::gui {
         }
         
         void highlight_item(long index) {
+            update();
             Entangled * o = _foldable ? &_list : this;
             float first_visible = o->scroll_offset().y / _line_spacing;
             float last_visible = (o->scroll_offset().y + height()) / _line_spacing;
@@ -572,9 +585,11 @@ namespace cmn::gui {
                 }
                 else if(index < first_visible)
                     o->set_scroll_offset(Vec2(0, _line_spacing * index));
+                else
+                    Print("Unknown state with ", index, " and  first_visible=", first_visible, " last_visible=", last_visible);
             }
             
-            update_items();
+            set_content_changed(true);
             update();
             
             first_visible = floorf(o->scroll_offset().y / _line_spacing);
@@ -684,6 +699,7 @@ namespace cmn::gui {
                 
                 for(size_t i=0; i<_rects.size(); i++) {
                     _rects.at(i)->set_size(Size2(_list_dims.width - 2, item_height - 1));
+                    _rects.at(i)->set(CornerFlags_t{(CornerFlags)_item_corner_flags});
                     _texts.at(i)->set_default_font(item_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
@@ -692,7 +708,7 @@ namespace cmn::gui {
                 }
                 
                 for(size_t i=_rects.size(); i<N; i++) {
-                    _rects.push_back(std::make_shared<Rect>(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}));
+                    _rects.push_back(std::make_shared<Rect>(Box(0, 0, width(), item_height), i%2 == 0 ? FillClr{Transparent} : FillClr{Blue.alpha(150)}, CornerFlags_t{(CornerFlags)_item_corner_flags}));
                     _rects.back()->on_hover([_r = std::weak_ptr(_rects.back()), this](Event e)
                     {
                         if(auto r = _r.lock();
@@ -787,9 +803,8 @@ namespace cmn::gui {
                 _previous_width = width();
                 if(_foldable && _list.scroll_enabled())
                     _list.set_scroll_offset(Vec2());
-                
-                update_items();
             }
+            update_items();
             
             if(_foldable) {
                 _list.set(FillClr{(Color)_list_fill_clr});
@@ -891,8 +906,11 @@ namespace cmn::gui {
                                     _details.at(idx)->set(detail_font(item.value().font()));
                                 }
                             }
-                        } else if constexpr(has_detail<T>) {
-                            _details.at(idx)->set(detail_font(_item_font));
+                        } else {
+                            if constexpr(has_detail<T>) {
+                                _details.at(idx)->set(detail_font(_item_font));
+                            }
+                            _texts.at(idx)->set((Font)_item_font);
                         }
                         
                         rect_to_idx[_rects.at(idx).get()] = i;
@@ -900,18 +918,21 @@ namespace cmn::gui {
                         e->advance_wrap(*_rects.at(idx));
                         e->advance_wrap(*_texts.at(idx));
                         if constexpr(has_detail<T>) {
-                            e->advance_wrap(*_details.at(idx));
+                            if(not item.value().detail().empty())
+                                e->advance_wrap(*_details.at(idx));
                         }
                         
                         if constexpr(has_detail<T>) {
                             // Set max sizes
-                            _texts.at(idx)->set_max_size(Size2(-1, item_height * 0.5f));
-                            _details.at(idx)->set_max_size(Size2(-1, item_height * 0.5f));
-
+                            _texts.at(idx)->set_max_size(Size2(-1, -1));//_text_height + 1));
+                            _details.at(idx)->set_max_size(Size2(-1, _detail_height + 1));
+                            
                             // Compute heights
                             float text_height = _texts.at(idx)->height();
                             float detail_height = _details.at(idx)->height();
                             float total_content_height = text_height + detail_height;
+                            
+                            //Print("text_height=", _text_height, " height=",text_height, " font=", _item_font, " textfont=", _texts.at(idx)->font());
 
                             // Compute vertical start position
                             float ystart = y + (item_height - total_content_height) * 0.5f;

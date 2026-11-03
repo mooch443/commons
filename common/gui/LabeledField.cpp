@@ -395,7 +395,7 @@ LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, c
       _null_value(new Entangled(Clickable{true}))
 {
     _value = LabeledField::Make({true}, gui, (std::string)ref().name(), local_settings);
-    _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28});
+    _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28}, Font{0.5}, CornerFlags_t::Square());
     
     _reset_button->on_click([this](auto){
         if(not ref().get().optional_has_value())
@@ -495,31 +495,20 @@ void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view n
             auto clr = Meta::fromStr<Color>(value_string());
             _reset_button->set(TextClr{clr});
             
-        } else if(name == ALIAS<LabelCornerFlags>) {
-            auto flags = Meta::fromStr<LabelCornerFlags>(value_string());
-            if(_reset_button) {
-                flags.set(LabelCornerFlags::TopRight, false);
-                flags.set(LabelCornerFlags::BottomRight, false);
-                _value->set(flags);
-            }
-            
-        } else if(name == ALIAS<CornerFlags_t>) {
+        } else if(is_in(name, ALIAS<LabelCornerFlags>, ALIAS<CornerFlags_t>)) {
             auto flags = Meta::fromStr<CornerFlags>(value_string());
-            auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false);
-            auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left());
-            
-            _value->set(LabelCornerFlags{left_box});
-            
-            bool _does_not_equal_default = true;
+            _null_value->set(CornerFlags_t{flags});
+            auto right_box = CornerFlags(false, flags.top_right(), flags.bottom_right(), false, flags.radius);
+            auto left_box = CornerFlags(flags.top_left(), false, false, flags.bottom_left(), flags.radius);
 
-            if(_reset_button && _does_not_equal_default) {
-                if(not _value->set(LabelCornerFlags::Square())) {
-                    _value->set(CornerFlags_t::Square());
+            if(_reset_button) {
+                if(not _value->set(LabelCornerFlags{left_box})) {
+                    _value->set(CornerFlags_t{left_box});
                 }
                 _reset_button->set(CornerFlags_t{right_box});
                 
-            } else if(not _value->set(LabelCornerFlags{right_box})) {
-                _value->set(CornerFlags_t{right_box});
+            } else if(not _value->set(LabelCornerFlags{flags})) {
+                _value->set(CornerFlags_t{flags});
             }
         }
     }
@@ -784,7 +773,9 @@ void LabeledList::update_ref_in_main_thread() {
                     apply_enum(obj->enum_values()(), obj->enum_index()());
                 }
             } else {
-                throw InvalidArgumentException("The optional for which we are creating an interface element, does not have a value (", r, ").");
+#ifndef NDEBUG
+                FormatWarning("The optional for which we are creating an interface element, does not have a value (", r, ").");
+#endif
             }
             
         } else if(r.is_type<bool>()) {
@@ -881,7 +872,14 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
     _dropdown->add_event_handler(EventType::SELECT, [&](Event e) {
         auto r = ref();
         if(not e.select.selected && r.valid()) {
-            _dropdown->textfield()->set_text(r.value<file::Path>().str());
+            if(r.get().is_optional()) {
+                auto value = r.value<std::optional<file::Path>>();
+                if(value)
+                    _dropdown->textfield()->set_text(value->str());
+                else
+                    _dropdown->textfield()->set_text("");
+            } else
+                _dropdown->textfield()->set_text(r.value<file::Path>().str());
         }
     });
     _dropdown->on_select([this](auto, const Dropdown::TextItem &item) {
@@ -933,8 +931,12 @@ LabeledPath::LabeledPath(GUITaskQueue_t* gui, std::string name, const std::strin
         
         _path = path;
         if(auto r = ref();
-           r.get().value<file::Path>() != path)
+           r.get().is_optional())
         {
+            if(r.get().value<std::optional<file::Path>>() != path)
+                r.get() = std::optional<file::Path>(path);
+            
+        } else if(r.get().value<file::Path>() != path) {
             r.get() = path;
         }
     });
@@ -1091,7 +1093,17 @@ void LabeledPath::update_ref_in_main_thread() {
         return;
     
     auto r = ref();
-    if(r.value<file::Path>() != file::Path(_dropdown->textfield()->text())) {
+    auto target = file::Path(_dropdown->textfield()->text());
+    if(r.get().is_optional())
+    {
+        auto value = r.value<std::optional<file::Path>>();
+        if(not value.has_value()
+           || *value != target)
+        {
+            _dropdown->textfield()->set_text(value ? value->str() : "");
+        }
+        
+    } else if(r.value<file::Path>() != target) {
         //Print("Value of ", _ref.get().name(), " changed -> ", _ref.value<file::Path>(), " vs. ", _dropdown->textfield()->text());
         _dropdown->textfield()->set_text(r.value<file::Path>().str());
     }
@@ -1211,7 +1223,16 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
     }
     
     _dropdown->set_update_callback([this]() { asyncUpdateItems(); });
-    _dropdown->textfield()->set(Str{ ref().value<file::PathArray>().source() });
+    if(ref().get().is_optional()) {
+        auto value = ref().value<std::optional<file::PathArray>>();
+        if(value)
+            _dropdown->textfield()->set(Str{ value->source() });
+        else
+            _dropdown->textfield()->set(Str{ "" });
+        
+    } else {
+        _dropdown->textfield()->set(Str{ ref().value<file::PathArray>().source() });
+    }
     updateDropdownItems();
 }
 

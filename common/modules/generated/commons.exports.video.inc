@@ -2,6 +2,8 @@
 // Do not edit by hand.
 
 export namespace cmn {
+// video/AveragingAccumulator.h
+using ::cmn::AveragingAccumulator;
 // video/FFmpegVideoCapture.h
 using ::cmn::FfmpegVideoCapture;
 // video/GenericVideo.h
@@ -14,4 +16,14 @@ using ::cmn::VideoSource;
 export namespace cmn::averaging_method_t {
 // video/AveragingAccumulator.h
 using ::cmn::averaging_method_t::Class;
+}
+
+export namespace cmn::video {
+// video/VideoSource.h
+using ::cmn::video::File;
+}
+
+export namespace cmn::video_cache {
+// video/VideoSource.h
+using ::cmn::video_cache::CVideo;
 }

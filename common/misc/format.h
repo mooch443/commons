@@ -264,11 +264,6 @@ auto console_color(StringLike auto&& str) noexcept {
     return Formatter_t::tint(std::forward<decltype(str)>(str));
 }
 
-template<typename T, typename U>
-concept is_explicitly_convertible =
-           std::is_constructible<U, T>::value
-        && (!std::is_convertible<T, U>::value);
-
 template<typename T>
 concept _has_fmt_color = requires {
     requires std::same_as<cmn::remove_cvref_t<decltype(T::color)>, cmn::FormatColor_t>;

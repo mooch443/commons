@@ -18,6 +18,18 @@ std::string Action::toStr() const {
 }
 
 Action PreAction::parse(const Context& context, State& state) const {
+    if(not original.empty()
+       && original.front() == '{'
+       && original.back() == '}')
+    {
+        // Generated commands already contain resolved parameters.
+        auto preaction = PreAction::fromStr(parse_text(original, context, state));
+        return Action {
+            .name = (std::string)preaction.name,
+            .parameters = std::vector<std::string>{ preaction.parameters.begin(), preaction.parameters.end() }
+        };
+    }
+
     Action action{
         .name = std::string(parse_text(name, context, state))
     };

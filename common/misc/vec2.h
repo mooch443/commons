@@ -480,6 +480,15 @@ public:
     }
     
     constexpr auto operator<=>(const Bounds&) const = default;
+    
+    template<Float2_t (*F)(Float2_t)>
+    constexpr Bounds map() const {
+        return Bounds(F(x), F(y), F(width), F(height));
+    }
+    
+    constexpr Bounds map(std::function<Float2_t(Float2_t)>&& fn) const {
+        return Bounds(fn(x), fn(y), fn(width), fn(height));
+    }
         
     constexpr bool Equals(const Bounds& other) const {
         return pos().Equals(other.pos()) && size().Equals(other.size());

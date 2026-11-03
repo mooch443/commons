@@ -1061,6 +1061,22 @@ void Context::init() const {
             VarFunc("max", [](const VarProps& props) {
                 return map_vectors<double>(props, [](auto&A, auto&B){return max(A, B);});
             }),
+            VarFunc("max_element", [](const VarProps& props) -> Float2_t {
+                REQUIRE_EXACTLY(1, props);
+                auto parts = util::parse_array_parts(util::truncate(std::string_view(props.first())));
+                std::optional<Float2_t> largest;
+                std::string tmp;
+                for(auto part : parts) {
+                    tmp.clear();
+                    utils::fast_fromstr(tmp, part);
+                    
+                    auto number = Meta::fromStr<Float2_t>(tmp);
+                    if(not largest || number > *largest)
+                        largest = number;
+                }
+                /// throws if not available
+                return largest.value();
+            }),
             VarFunc("maxVector", [](const VarProps& props) -> Vec2 {
                 REQUIRE_EXACTLY(2, props);
                 auto front = std::string_view(props.parameters.front());
@@ -1247,6 +1263,50 @@ void Context::init() const {
                     ss << p;
                 }
                 return ss.str();
+            }),
+            VarFunc("insert", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(3, props);
+                
+                if(not is_in(props.last().front(), '{')) {
+                    throw InvalidArgumentException("Invalid argument for inserting with ", props);
+                } else {
+                    auto index = Meta::fromStr<std::string>(props.first());
+                    auto value = Meta::toStr(Meta::fromStr<std::string>(props.parameters.at(1)));
+                    auto map = Meta::fromStr<std::map<std::string, std::string_view>>(props.last());
+                    map[index] = std::move(value);
+                    return Meta::toStr(map);
+                }
+            }),
+            VarFunc("erase", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(2, props);
+                
+                if(not is_in(props.last().front(), '{', '[')) {
+                    throw InvalidArgumentException("Invalid argument for erasing with ", props);
+                }
+                
+                if(props.last().front() == '{') {
+                    /// its a map
+                    auto index = Meta::fromStr<std::string>(props.first());
+                    auto map = Meta::fromStr<std::map<std::string, std::string_view>>(props.last());
+                    
+                    for(auto& [key, value] : map) {
+                        if(key == index) {
+                            map.erase(key);
+                            return Meta::toStr(map);
+                        }
+                    }
+                    throw InvalidArgumentException("Key ", index, " not found in ", props);
+                    
+                } else {
+                    /// some vector, expect integer
+                    auto index = Meta::fromStr<size_t>(props.first());
+                    auto vector = Meta::fromStr<std::vector<std::string_view>>(props.last());
+                    if(index >= vector.size()) {
+                        throw InvalidArgumentException("Index out of bounds ", props);
+                    }
+                    vector.erase(vector.begin() + index);
+                    return Meta::toStr(vector);
+                }
             }),
             VarFunc("concat", [](const VarProps& props) -> std::vector<std::string> {
                 REQUIRE_AT_LEAST(2, props);
@@ -1458,7 +1518,7 @@ void Context::init() const {
                     return result;
                 }
 
-                throw InvalidArgumentException("Needs to be a map.");
+                throw InvalidArgumentException("Needs to be a map, got ", props, " instead.");
             }),
             VarFunc("at", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
@@ -1491,7 +1551,7 @@ void Context::init() const {
                     }
                 }
                 
-                throw InvalidArgumentException("Needs to be an indexable type.");
+                throw InvalidArgumentException("Needs to be an indexable type, got ", props, " instead.");
             }),
             VarFunc("flatten", [](const VarProps& props) -> std::vector<std::string> {
                 REQUIRE_EXACTLY(1, props);
