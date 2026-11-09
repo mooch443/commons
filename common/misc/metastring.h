@@ -27,7 +27,7 @@ template<template <typename ...> class T, typename Rt, typename... Args>
 std::string get_name(const T<Rt(Args...)>&);
 
 void fast_fromstr(std::string& output, std::string_view sv);
-
+void fast_fromstr_N(std::string& output, std::string_view sv, size_t max_output);
 
 }
 
@@ -668,8 +668,12 @@ auto truncate(Str&& str) {
     using StrDecayed = std::remove_cvref_t<Str>;
     std::string_view sv = utils::string_like_view(std::forward<Str>(str));
 
-    if ((utils::beginsWith(sv, '{') && utils::endsWith(sv, '}'))
-        || (utils::beginsWith(sv, '[') && utils::endsWith(sv, ']'))) {
+    if (sv.length() > 1
+        && ((utils::beginsWith(sv, '{') && utils::endsWith(sv, '}'))
+            || (utils::beginsWith(sv, '[') && utils::endsWith(sv, ']'))
+            || (utils::beginsWith(sv, '\'') && utils::endsWith(sv, '\''))
+            || (utils::beginsWith(sv, '"') && utils::endsWith(sv, '"'))))
+    {
 
         std::string_view trimmed = utils::trim(sv.substr(1, sv.size() - 2));
 
@@ -687,15 +691,8 @@ auto truncate(Str&& str) {
     throw illegal_syntax("Cannot parse array " + std::string(sv) + ".");
 }
 
-inline std::string escape(std::string_view str) {
-    auto _str = utils::find_replace(str, "\\", "\\\\");
-    return utils::find_replace(_str, "\"", "\\\"");
-}
-
-inline std::string unescape(std::string_view str) {
-    auto _str = utils::find_replace(str, "\\\"", "\"");
-    return utils::find_replace(_str, "\\\\", "\\");
-}
+std::string escape(std::string_view str);
+std::string unescape(std::string_view str);
 
 template<typename Str>
 concept is_viewable = std::is_array_v<std::remove_cvref_t<Str>>
@@ -704,8 +701,103 @@ concept is_viewable = std::is_array_v<std::remove_cvref_t<Str>>
         || (std::is_lvalue_reference_v<Str> &&
             _clean_same<std::remove_reference_t<Str>, std::string>);
 
-auto parse_array_parts(cmn::StringLike auto&& str,
-                       const char delimiter = ',')
+constexpr std::string_view flush_token(const char* token_start, const char* end_index) {
+    return utils::trim(std::string_view(token_start, end_index - token_start));
+}
+
+template<const char delimiter = ','>
+    /// we are assuming this delimiter is not one of the bracket or quote characters,
+    /// otherwise future optimizations might break, and its also weird
+    requires (not is_in(delimiter, '{', '}', '(', ')', '[', ']', '\'', '"'))
+constexpr auto access_array_part(cmn::StringLike auto&& str, size_t index)
+{
+    using Str = decltype(str);
+
+    // ---- choose element type ------------------------------------------------
+    // We can safely hand out string_views only when the caller guarantees
+    // that the underlying buffer will out‑live the views.  That is true for
+    //   * character arrays / literals
+    //   * raw C‑strings
+    //   * std::string_view itself
+    //   * *l‑value* std::string objects
+    // Everything else (temporary std::string, std::string&& …) requires copies.
+    static constexpr bool _safe_to_view =
+        is_viewable<Str>;
+
+    using Return_t = std::conditional_t<_safe_to_view, std::string_view, std::string>;
+
+    // ---- split implementation ----------------------------------------------
+    std::string brackets;
+    char last_bracket = 0;
+    char   prev        = 0;
+    size_t current_index = 0;
+    std::string_view sv = utils::string_like_view(std::forward<Str>(str));
+    const size_t N = sv.size();
+    const char* token_start = sv.data();
+
+    if(N == 0)
+        throw std::invalid_argument("Trying to access index into an empty string.");
+
+    const char* end_ptr = sv.data() + N;
+    for (auto ptr = sv.data(); ptr < end_ptr; ++ptr) {
+    //for (size_t i = 0; i < N; ++i) {
+        //char c = sv[i];
+        char c = *ptr;
+        /*bool in_string = !brackets.empty() &&
+                         (brackets.back() == '\'' || brackets.back() == '"');*/
+        bool in_string = last_bracket
+                            && is_in(last_bracket, '\'', '"');
+
+        if (in_string) {
+            if (prev != '\\'
+                && c == last_bracket)
+            {
+                brackets.pop_back();
+                last_bracket = brackets.empty() ? 0 : brackets.back();
+            }
+            
+        } else if (c == delimiter) {
+            if(last_bracket == 0) {
+                if(index == current_index) {
+                    return Return_t( flush_token(token_start, ptr) );
+                } else {
+                    ++current_index;
+                }
+                token_start = ptr + 1;
+            }
+            
+        } else if(is_in(c, '(', '[', '{', '"', '\'')) {
+            char opposite = c;
+            if(c == '[') { opposite = ']'; }
+            else if(c == '{') { opposite = '}'; }
+            else if(c == '(') { opposite = ')'; }
+            
+            brackets.push_back(opposite);
+            last_bracket = opposite;
+            
+        } else if(c && c == last_bracket) {
+            brackets.pop_back();
+            last_bracket = brackets.empty() ? 0 : brackets.back();
+        }
+
+        prev = (prev == '\\' && c == '\\') ? 0 : c;
+    }
+
+    // final token (handles trailing‑delimiter case, too)
+    if(current_index == index) {
+        return Return_t( flush_token(token_start, end_ptr) );
+    } else {
+        ++current_index;
+    }
+
+    throw std::invalid_argument("Array index out of bounds in access_array_part");
+}
+
+template<const char delimiter = ','>
+    /// we are assuming this delimiter is not one of the bracket or quote characters,
+    /// otherwise future optimizations might break, and its also weird
+    requires (not is_in(delimiter, '{', '}', '(', ')', '[', ']', '\'', '"'))
+constexpr auto parse_array_parts(cmn::StringLike auto&& str)
 {
     using Str = decltype(str);
 
@@ -724,57 +816,67 @@ auto parse_array_parts(cmn::StringLike auto&& str,
 
     // ---- split implementation ----------------------------------------------
     std::vector<Return_t> ret;
-    std::stack<char> brackets;
+    std::string brackets;
+    char last_bracket = 0;
     char   prev        = 0;
-    size_t token_start = 0;
-
     std::string_view sv = utils::string_like_view(std::forward<Str>(str));
+    const size_t N = sv.size();
+    const char* token_start = sv.data();
+
     if(sv.empty())
         return ret;
 
-    const auto flush_token = [&](size_t end_index) {
-        auto token_view = utils::trim(
-            std::string_view(sv.data() + token_start, end_index - token_start));
+    static constexpr auto flush_token = [](std::vector<Return_t>& ret, const char* token_start, const char* end_index) {
+        auto token_view = utils::trim( std::string_view(token_start, end_index - token_start) );
         if constexpr (_safe_to_view)
             ret.emplace_back(token_view);
         else
             ret.emplace_back(std::string(token_view));
     };
 
-    for (size_t i = 0; i < sv.size(); ++i) {
-        char c = sv[i];
-        bool in_string = !brackets.empty() &&
-                         (brackets.top() == '\'' || brackets.top() == '"');
+    const char* end_ptr = sv.data() + N;
+    for (auto ptr = sv.data(); ptr < end_ptr; ++ptr) {
+    //for (size_t i = 0; i < N; ++i) {
+        //char c = sv[i];
+        char c = *ptr;
+        /*bool in_string = !brackets.empty() &&
+                         (brackets.back() == '\'' || brackets.back() == '"');*/
+        bool in_string = last_bracket
+                            && is_in(last_bracket, '\'', '"');
 
         if (in_string) {
-            if (prev != '\\' && c == brackets.top())
-                brackets.pop();
-        } else {
-            switch (c) {
-                case '(': case '[': case '{': case '"': case '\'':
-                    brackets.push(c); break;
-                case ']':
-                    if (!brackets.empty() && brackets.top() == '[') brackets.pop();
-                    break;
-                case '}':
-                    if (!brackets.empty() && brackets.top() == '{') brackets.pop();
-                    break;
-                case ')':
-                    if (!brackets.empty() && brackets.top() == '(') brackets.pop();
-                    break;
+            if (prev != '\\'
+                && c == last_bracket)
+            {
+                brackets.pop_back();
+                last_bracket = brackets.empty() ? 0 : brackets.back();
             }
-
-            if (brackets.empty() && c == delimiter) {
-                flush_token(i);
-                token_start = i + 1;
+            
+        } else if (c == delimiter) {
+            if(last_bracket == 0) {
+                flush_token(ret, token_start, ptr);
+                token_start = ptr + 1;
             }
+            
+        } else if(is_in(c, '(', '[', '{', '"', '\'')) {
+            char opposite = c;
+            if(c == '[') { opposite = ']'; }
+            else if(c == '{') { opposite = '}'; }
+            else if(c == '(') { opposite = ')'; }
+            
+            brackets.push_back(opposite);
+            last_bracket = opposite;
+            
+        } else if(c && c == last_bracket) {
+            brackets.pop_back();
+            last_bracket = brackets.empty() ? 0 : brackets.back();
         }
 
         prev = (prev == '\\' && c == '\\') ? 0 : c;
     }
 
     // final token (handles trailing‑delimiter case, too)
-    flush_token(sv.size());
+    flush_token(ret, token_start, end_ptr);
 
     return ret;
 }
@@ -1452,6 +1554,9 @@ Q fromStr(cmn::StringLike auto&& str)
     std::string_view sv(str);
     if (!sv.empty() && sv.front() == '\'' && sv.back() == '\'')
         sv = sv.substr(1, sv.size() - 2);
+    
+    if(sv.empty())
+        throw std::invalid_argument("Cannot convert empty string to number.");
 
     const char* begin = sv.data();
     char* endPtr = nullptr;
@@ -1514,10 +1619,11 @@ template<class Q>
     requires _clean_same<std::string, Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
-    if((utils::beginsWith(str, '"') && utils::endsWith(str, '"'))
-        || (utils::beginsWith(str, '\'') && utils::endsWith(str, '\'')))
-        return util::unescape(/*utils::trim(*/str.substr(1, str.length()-2)/*)*/);
-    return util::unescape(/*utils::trim(*/str/*)*/);
+    const std::string_view sv = utils::string_like_view(str);
+    Q output;
+    output.reserve(sv.length());
+    utils::fast_fromstr(output, sv);
+    return output;
 }
 
 template<class Q>
@@ -1615,7 +1721,7 @@ Q fromStr(cmn::StringLike auto&& str)
     std::conditional_t<cmn::StringLike<typename Q::key_type>, std::conditional_t<_clean_same<typename Q::key_type, std::string_view>, std::string_view, std::string>, typename Q::key_type> key;
 
     for(std::string_view p : parts) {
-        std::vector<std::string_view> value_key = util::parse_array_parts(p, ':');
+        std::vector<std::string_view> value_key = util::parse_array_parts<':'>(p);
         if(value_key.size() != 2)
             throw std::invalid_argument("Illegal value/key pair: "+(std::string)p);
         
@@ -1635,14 +1741,14 @@ Q fromStr(cmn::StringLike auto&& str)
         
         try {
             if constexpr(not cmn::StringLike<typename Q::mapped_type>) {
-                if(value_key[1].size() > 1
+                /*if(value_key[1].size() > 1
                    && is_in(value_key[1].front(), '"', '\'')
                    && value_key[1].front() == value_key[1].back())
                 {
                     r[key] = Meta::fromStr<typename Q::mapped_type>(Meta::fromStr<std::string>(value_key[1]));
-                } else {
+                } else {*/
                     r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
-                }
+                //}
             } else {
                 r[key] = Meta::fromStr<typename Q::mapped_type>(value_key[1]);
             }
@@ -1874,7 +1980,13 @@ template<typename Q, typename T>
         && !is_instantiation<std::function, Q>::value
         && !is_instantiation<std::optional, Q>::value)
 inline T fromStr(cmn::StringLike auto&& str) {
-    return _Meta::fromStr<T>(std::forward<decltype(str)>(str));
+    if constexpr(std::is_arithmetic_v<T>) {
+        /// decode first. since this is a number we dont really care whether it actually
+        /// IS passed as a string or not.
+        return _Meta::fromStr<T>(_Meta::fromStr<std::string>(str));
+    } else {
+        return _Meta::fromStr<T>(std::forward<decltype(str)>(str));
+    }
 }
 
 template<typename Q, typename T>
@@ -1882,7 +1994,7 @@ template<typename Q, typename T>
 inline T fromStr(cmn::StringLike auto&& str) {
     if(str == "null")
         return std::nullopt;
-    return _Meta::fromStr<typename T::value_type>(std::forward<decltype(str)>(str));
+    return Meta::fromStr<typename T::value_type>(std::forward<decltype(str)>(str));
 }
 
 template<typename Q, typename T>

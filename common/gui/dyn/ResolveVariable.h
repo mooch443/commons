@@ -11,7 +11,7 @@ namespace cmn::gui::dyn {
 std::optional<std::string> get_modifier_from_object(Drawable* object, const VarProps& value);
 
 template<typename ApplyF, typename ErrorF, typename Result = typename cmn::detail::return_type<ApplyF>::type>
-inline auto resolve_variable(const std::string_view& word, const Context& context, State& state, ApplyF&& apply, ErrorF&& error) -> Result {
+inline auto resolve_variable(const std::string_view& word, const std::shared_ptr<CurrentObjectHandler>& handler, const Context& context, State& state, ApplyF&& apply, ErrorF&& error) -> Result {
     auto props = extractControls(word);
     
     try {
@@ -29,12 +29,13 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             }
             
             if(p.parameters.size() >= 2) {
-                bool condition = convert_to_bool(parse_text(p.parameters.at(0), context, state));
+                bool condition = convert_to_bool(parse_text(p.parameters.at(0), handler, context, state));
                 //Print("Condition ", props.parameters.at(0)," => ", condition);
+                static_assert(_clean_same<std::string, Result>);
                 if(condition)
-                    return Meta::fromStr<Result>(parse_text(p.parameters.at(1), context, state));
+                    return parse_text(p.parameters.at(1), handler, context, state);
                 else if(p.parameters.size() == 3)
-                    return Meta::fromStr<Result>(parse_text(p.parameters.at(2), context, state));
+                    return parse_text(p.parameters.at(2), handler, context, state);
                 else
                     return "";
             }
@@ -47,7 +48,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
 
             // Resolve operands in order so a decisive value protects the rest.
             for(const auto& parameter : props.parameters) {
-                const bool value = convert_to_bool(parse_text(parameter, context, state));
+                const bool value = convert_to_bool(parse_text(parameter, handler, context, state));
                 if((is_and && not value) || (not is_and && value)) {
                     result = value;
                     break;
@@ -57,7 +58,7 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             if constexpr(StringLike<Result>)
                 return Result(result ? "true" : "false");
             else
-                return Meta::fromStr<Result>(result ? std::string_view("true") : std::string_view("false"));
+                return result ? std::string_view("true") : std::string_view("false");
             
         } else if(props.name == "for") {
             //[[maybe_unused]] CTimer ctimer("for");
@@ -77,15 +78,18 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             }
             
             std::string variable = "i";
-            std::string list_expr = p.parameters.at(0);
-            std::string fn_expr = p.parameters.at(1);
+            std::string_view list_expr;
+            std::string_view fn_expr;
             if(p.parameters.size() >= 3) {
-                variable = parse_text(p.parameters.at(0), context, state);
+                variable = parse_text(Meta::fromStr<std::string>(p.parameters.at(0)), handler, context, state);
                 if(variable.empty()) {
                     variable = "i";
                 }
                 list_expr = p.parameters.at(1);
                 fn_expr = p.parameters.at(2);
+            } else {
+                list_expr = p.parameters.at(0);
+                fn_expr = p.parameters.at(1);
             }
             
             auto handler = state._current_object_handler.lock();
@@ -97,11 +101,11 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             std::stringstream ss;
             ss << "[";
             
-            auto trunc = parse_text(list_expr, context, state);
+            auto trunc = parse_text(list_expr, handler, context, state);
             size_t index = 0;
             std::string idx_str;
-            if(not trunc.empty() && is_in(utils::trim(trunc).front(), '[', '{')) {
-                auto parts = util::parse_array_parts(util::truncate(utils::trim(std::string_view(trunc))));
+            if(not trunc.empty() && is_in(trunc.front(), '[', '{')) {
+                auto parts = util::parse_array_parts(util::truncate(std::string_view(trunc)));
                 for(auto& item : parts) {
                     auto scope = handler->scope();
                     idx_str = Meta::toStr(index);
@@ -110,13 +114,13 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                     if(index > 0) {
                         ss << ",";
                     }
-                    ss << parse_text(fn_expr, context, state);
+                    ss << parse_text(fn_expr, handler, context, state);
                     ++index;
                 }
                 
-            } else if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
-                auto text = Meta::fromStr<std::string>(trunc);
-                for(char c : text) {
+            } else /*if(not trunc.empty() && is_in(trunc.front(), '\'', '"'))*/ {
+                //auto text = Meta::fromStr<std::string>(trunc);
+                for(char c : trunc) {
                     auto scope = handler->scope();
                     idx_str = Meta::toStr(index);
                     scope.set(variable, std::string_view(&c, 1));
@@ -124,21 +128,20 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
                     if(index > 0) {
                         ss << ",";
                     }
-                    ss << parse_text(fn_expr, context, state);
+                    ss << parse_text(fn_expr, handler, context, state);
                     ++index;
                 }
                 
-            } else {
-                throw InvalidArgumentException("For loop list must evaluate to an array or string, received ", no_quotes(trunc), ".");
             }
             
             ss << "]";
-            return Meta::fromStr<Result>(ss.str());
+            return ss.str();
+            //return Meta::fromStr<Result>(ss.str());
             
-        } else if(context.has(props.name, state)) {
+        } else if(auto variable = context.find_variable(props.name, handler);
+                  variable)
+        {
             //[[maybe_unused]] CTimer ctimer("normal");
-            
-            auto variable = context.variable(props.name, state);
             if constexpr(std::invocable<ApplyF, VarBase_t&, const VarProps&>)
                 return apply(*variable, props.parse(context, state));
             else
@@ -146,7 +149,11 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             
         } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
             //[[maybe_unused]] CTimer ctimer("custom var");
-            return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
+            if constexpr(_clean_same<std::string, Result>)
+                return it->second->value<std::string>(context, state);
+            else
+                static_assert(_clean_same<std::string, Result>, "Expecting a string here");
+                //return Meta::fromStr<Result>(it->second->value<std::string>(context, state));
             
         } else if(auto lock = state._current_object_handler.lock();
                   lock != nullptr)
@@ -156,7 +163,8 @@ inline auto resolve_variable(const std::string_view& word, const Context& contex
             {
                 auto v = get_modifier_from_object(ptr.get(), props.parse(context, state));
                 if(v.has_value()) {
-                    return Meta::fromStr<Result>(v.value());
+                    return v.value();
+                    //return Meta::fromStr<Result>(v.value());
                 }
             }
             

@@ -1267,12 +1267,16 @@ void Context::init() const {
             VarFunc("insert", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(3, props);
                 
-                if(not is_in(props.last().front(), '{')) {
+                auto sv = std::string_view(props.last());
+                
+                if(sv.length() < 2
+                   || not is_in(sv.front(), '{'))
+                {
                     throw InvalidArgumentException("Invalid argument for inserting with ", props);
                 } else {
                     auto index = Meta::fromStr<std::string>(props.first());
                     auto value = Meta::toStr(Meta::fromStr<std::string>(props.parameters.at(1)));
-                    auto map = Meta::fromStr<std::map<std::string, std::string_view>>(props.last());
+                    auto map = Meta::fromStr<std::map<std::string, std::string_view>>(sv);
                     map[index] = std::move(value);
                     return Meta::toStr(map);
                 }
@@ -1481,8 +1485,8 @@ void Context::init() const {
                     auto key = Meta::fromStr<std::string>(props.parameters.front());
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
 
-                    for(auto &part : parts) {
-                        auto key_value = util::parse_array_parts(utils::trim(std::string_view(part)), ':');
+                    for(std::string_view part : parts) {
+                        auto key_value = util::parse_array_parts<':'>(utils::trim(part));
                         if(key_value.size() != 2) {
                             throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
                         }
@@ -1507,7 +1511,7 @@ void Context::init() const {
                     result.reserve(parts.size());
 
                     for(auto &part : parts) {
-                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        auto key_value = util::parse_array_parts<':'>(utils::trim(part));
                         if(key_value.size() != 2) {
                             throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
                         }
@@ -1524,12 +1528,26 @@ void Context::init() const {
                 REQUIRE_EXACTLY(2, props);
                 
                 auto trunc = std::string_view(props.parameters.at(1));
-                if(is_in(utils::trim(trunc).front(), '{')) {
+                auto trimmed = utils::trim(trunc);
+                
+                if(trimmed.empty())
+                {
+                    if(not trunc.empty()) {
+                        auto index = Meta::fromStr<size_t>(props.parameters.front());
+                        return std::string(1, trunc.at(index));
+                    } else
+                        throw InvalidArgumentException("Got an empty array in ", props);
+                }
+                
+                if(trimmed.length() > 1
+                    && is_in(trimmed.front(), '{')
+                    && is_in(trimmed.back(),  '}'))
+                {
                     auto key = Meta::fromStr<std::string>(props.parameters.front());
-                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
+                    auto parts = util::parse_array_parts(util::truncate(trimmed));
                     
                     for(auto &part : parts) {
-                        auto key_value = util::parse_array_parts(utils::trim(part), ':');
+                        auto key_value = util::parse_array_parts<':'>(utils::trim(part));
                         if(key_value.size() != 2) {
                             throw InvalidArgumentException("Map component ", part, " does not consist of key:value pair. Instead we have ", key_value,".");
                         }
@@ -1543,11 +1561,23 @@ void Context::init() const {
                     
                 } else {
                     auto index = Meta::fromStr<size_t>(props.parameters.front());
-                    if(is_in(utils::trim(trunc).front(), '[', '{')) {
-                        auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
-                        return std::string(parts.at(index));
-                    } else if(is_in(trunc.front(), '\'', '"')) {
-                        return std::string(1, Meta::fromStr<std::string>(trunc).at(index));
+                    
+                    if(trimmed.length() > 1
+                       && is_in(trimmed.front(), '[', '{')
+                       && is_in(trimmed.back(),  '}', ']'))
+                    {
+                        return std::string(util::access_array_part(util::truncate(trimmed), index));
+                        
+                    } else if(trimmed.length() > 1
+                              && is_in(trimmed.front(), '\'', '"')
+                              && is_in(trimmed.back(), '\'', '"'))
+                    {
+                        std::string result;
+                        utils::fast_fromstr_N(result, trunc, index + 1);
+                        return std::string(1, result.at(index));
+                        
+                    } else {
+                        return std::string(1, trunc.at(index));
                     }
                 }
                 
@@ -1583,11 +1613,25 @@ void Context::init() const {
                 REQUIRE_EXACTLY(1, props);
                 
                 auto trunc = std::string_view(props.parameters.at(0));
-                if(is_in(utils::trim(trunc).front(), '[', '{')) {
-                    auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
-                    return parts.size();
-                } else if(is_in(trunc.front(), '\'', '"')) {
-                    return Meta::fromStr<std::string>(trunc).length();
+                if(auto trimmed = utils::trim(trunc);
+                   trimmed.empty())
+                {
+                    return trunc.length();
+                    
+                } else if(trimmed.length() > 1
+                          && is_in(trimmed.front(), '[', '{')
+                          && is_in(trimmed.back(), ']', '}'))
+                {
+                    return util::parse_array_parts(util::truncate(trimmed)).size();
+                    
+                } else if(trimmed.length() > 1
+                          && is_in(trimmed.front(), '\'', '"')
+                          && is_in(trimmed.back(), '\'', '"'))
+                {
+                    return Meta::fromStr<std::string>(trimmed).length();
+                    
+                } else {
+                    return trunc.length();
                 }
                 
                 throw InvalidArgumentException("Needs to be an indexable type.");
@@ -1724,14 +1768,17 @@ void Context::init() const {
 }
 
 std::shared_ptr<VarBase_t> Context::variable(std::string_view name, const State& state) const {
-    if(auto handler = state._current_object_handler.lock();
-       handler)
-    {
+    return variable(name, state._current_object_handler.lock());
+}
+
+std::shared_ptr<VarBase_t> Context::variable(std::string_view name, const std::shared_ptr<CurrentObjectHandler>& handler) const {
+    if(handler) {
         if(auto variable = handler->get_dynamic_variable(name);
            variable != nullptr)
         {
             return variable;
         }
+        
         if(handler->get_variable_value(name).has_value()) {
             throw InvalidArgumentException("Cannot find key ", name, " in variables.");
         }
@@ -1748,6 +1795,32 @@ std::shared_ptr<VarBase_t> Context::variable(std::string_view name, const State&
         return sit->second;
     
     throw InvalidArgumentException("Cannot find key ", name, " in variables.");
+}
+
+VarBase_t* Context::find_variable(std::string_view name, const std::shared_ptr<CurrentObjectHandler>& handler) const {
+    if(handler) {
+        if(auto variable = handler->get_dynamic_variable(name);
+           variable != nullptr)
+        {
+            return variable.get();
+        }
+        
+        if(handler->get_variable_value(name).has_value()) {
+            return nullptr;
+        }
+    }
+    
+    auto it = variables.find(name);
+    if(it != variables.end())
+        return it->second.get();
+    
+    init();
+    
+    auto sit = system_variables().find(name);
+    if(sit != system_variables().end())
+        return sit->second.get();
+    
+    return nullptr;
 }
 
 }

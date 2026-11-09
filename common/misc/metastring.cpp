@@ -1,54 +1,180 @@
 #include <commons.pc.h>
 #include <cerrno>   // for ENODATA, ENOSR, ENOSTR, ETIME
 
-namespace cmn::utils {
+namespace {
 
-void fast_fromstr(std::string& output, std::string_view sv) {
-    const std::size_t N = sv.size();
-    if (N < 2) {                               // too short to be quoted
-        output.append(sv);
-        return;
+// The payload is already unquoted. Limits count appended bytes, not code points.
+template<bool limit_output>
+void unescape_string(std::string& output, std::string_view sv, size_t max_output = 0) {
+    if constexpr(limit_output) {
+        output.reserve(output.size() + std::min(sv.size(), max_output));
+    } else {
+        output.reserve(output.size() + sv.size());
+    }
+    size_t pos = 0;
+    [[maybe_unused]] std::conditional_t<limit_output, size_t, const void *> remaining;
+    if constexpr(limit_output) {
+        remaining = max_output;
     }
 
-    const char quote = sv[0];
-    const bool quoted = ((quote == '"' || quote == '\'') && sv[N-1] == quote);
-    size_t current_size = output.size();
+    const auto read_hex = [&](size_t offset) -> uint32_t {
+        if(sv.size() - offset < 4)
+            throw std::invalid_argument("Incomplete Unicode escape");
+        uint32_t value = 0;
+        for(size_t i = 0; i < 4; ++i) {
+            const char c = sv[offset + i];
+            uint32_t digit;
+            if(c >= '0' && c <= '9') digit = c - '0';
+            else if(c >= 'a' && c <= 'f') digit = c - 'a' + 10;
+            else if(c >= 'A' && c <= 'F') digit = c - 'A' + 10;
+            else throw std::invalid_argument("Invalid Unicode escape");
+            value = (value << 4) | digit;
+        }
+        return value;
+    };
 
-    if (!quoted) {                             // no outer quotes → verbatim
-        output.resize(current_size + N);
-        std::memcpy(output.data() + current_size, sv.data(), N);
-        return;
-    }
-
-    // Payload lies strictly between the two quotes
-    output.reserve(current_size + N - 2);     // worst‑case growth (every '\' drops)
-
-    const char* chunk = sv.data() + 1;         // first byte inside the quotes
-    const char* end   = sv.data() + N - 1;     // one‑past‑last payload byte
-
-    while (chunk < end) {
-        // Find the next backslash in the remaining payload
-        const char* bs = static_cast<const char*>(std::memchr(chunk, '\\', end - chunk));
-        if (!bs || bs + 1 >= end) {
-            // No more escape sequences (or stray trailing '\') – copy the rest verbatim
-            size_t L = end - chunk;
-            output.resize(current_size + L);
-            std::memcpy(output.data() + current_size, chunk, L);
+    while(pos < sv.size()) {
+        if constexpr(limit_output) {
+            if(remaining == 0)
+                break;
+        }
+        
+        size_t available;
+        if constexpr(limit_output) {
+            available = std::min(sv.size() - pos, remaining);
+        } else {
+            available = sv.size() - pos;
+        }
+        
+        const auto bs = static_cast<const char*>(std::memchr(sv.data() + pos, '\\', available));
+        if(not bs) {
+            output.append(sv.data() + pos, available);
             break;
         }
 
-        // Copy slice before the backslash
-        size_t L = bs - chunk;
-        output.resize(current_size + L);
-        std::memcpy(output.data() + current_size, chunk, L);
-        current_size += L;
+        const size_t length = static_cast<size_t>(bs - (sv.data() + pos));
+        output.append(sv.data() + pos, length);
+        if constexpr(limit_output) {
+            remaining -= length;
+        }
+        pos += length + 1;
+        if(pos == sv.size()) {
+            output.push_back('\\');
+            break;
+        }
 
-        // Copy the character after the backslash, effectively un‑escaping it
-        output.push_back(*(bs + 1));
-        ++current_size;
+        char decoded = sv[pos++];
+        switch(decoded) {
+            case 'b': decoded = '\b'; break;
+            case 'f': decoded = '\f'; break;
+            case 'n': decoded = '\n'; break;
+            case 'r': decoded = '\r'; break;
+            case 't': decoded = '\t'; break;
+            case 'u': {
+                uint32_t codepoint = read_hex(pos);
+                pos += 4;
+                if(codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+                    if(sv.size() - pos < 6 || sv[pos] != '\\' || sv[pos + 1] != 'u')
+                        throw std::invalid_argument("Missing low Unicode surrogate");
+                    const uint32_t low = read_hex(pos + 2);
+                    if(low < 0xDC00 || low > 0xDFFF)
+                        throw std::invalid_argument("Invalid low Unicode surrogate");
+                    codepoint = 0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00);
+                    pos += 6;
+                } else if(codepoint >= 0xDC00 && codepoint <= 0xDFFF) {
+                    throw std::invalid_argument("Unexpected low Unicode surrogate");
+                }
 
-        // Advance past the escape sequence
-        chunk = bs + 2;
+                char bytes[4];
+                size_t count;
+                if(codepoint < 0x80) {
+                    bytes[0] = static_cast<char>(codepoint);
+                    count = 1;
+                } else if(codepoint < 0x800) {
+                    bytes[0] = static_cast<char>(0xC0 | (codepoint >> 6));
+                    bytes[1] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                    count = 2;
+                } else if(codepoint < 0x10000) {
+                    bytes[0] = static_cast<char>(0xE0 | (codepoint >> 12));
+                    bytes[1] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+                    bytes[2] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                    count = 3;
+                } else {
+                    bytes[0] = static_cast<char>(0xF0 | (codepoint >> 18));
+                    bytes[1] = static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+                    bytes[2] = static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+                    bytes[3] = static_cast<char>(0x80 | (codepoint & 0x3F));
+                    count = 4;
+                }
+                if constexpr(limit_output) {
+                    count = std::min(count, remaining);
+                    remaining -= count;
+                }
+                output.append(bytes, count);
+                continue;
+            }
+            default: break; // Unknown escapes quote the following character literally.
+        }
+        output.push_back(decoded);
+        if constexpr(limit_output) {
+            --remaining;
+        }
+    }
+}
+
+}
+
+namespace cmn::util {
+
+std::string escape(std::string_view str) {
+    std::string output;
+    output.reserve(str.size());
+    constexpr char hex[] = "0123456789abcdef";
+    for(unsigned char c : str) {
+        switch(c) {
+            case '"': output += "\\\""; break;
+            case '\\': output += "\\\\"; break;
+            case '\b': output += "\\b"; break;
+            case '\f': output += "\\f"; break;
+            case '\n': output += "\\n"; break;
+            case '\r': output += "\\r"; break;
+            case '\t': output += "\\t"; break;
+            default:
+                if(c < 0x20) {
+                    output += "\\u00";
+                    output += hex[c >> 4];
+                    output += hex[c & 0x0F];
+                } else {
+                    output += static_cast<char>(c);
+                }
+        }
+    }
+    return output;
+}
+
+std::string unescape(std::string_view str) {
+    std::string output;
+    unescape_string<false>(output, str);
+    return output;
+}
+
+}
+
+namespace cmn::utils {
+
+void fast_fromstr_N(std::string& output, std::string_view sv, size_t max_output) {
+    if(sv.size() >= 2 && is_in(sv.front(), '\'', '"') && sv.front() == sv.back()) {
+        unescape_string<true>(output, sv.substr(1, sv.size() - 2), max_output);
+    } else {
+        output.append(sv.substr(0, max_output));
+    }
+}
+
+void fast_fromstr(std::string& output, std::string_view sv) {
+    if(sv.size() >= 2 && is_in(sv.front(), '\'', '"') && sv.front() == sv.back()) {
+        unescape_string<false>(output, sv.substr(1, sv.size() - 2));
+    } else {
+        output.append(sv);
     }
 }
 

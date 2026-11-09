@@ -224,7 +224,7 @@ public: \
     explicit constexpr operator const char*() const noexcept { return name(); } \
     static inline constexpr cmn::FormatColor_t color{ cmn::FormatColor_t::CYAN }; \
     std::string toStr() const noexcept { return (std::string)name(); } \
-    static self_type fromStr(cmn::StringLike auto&& str) { return self_type::get(std::forward<decltype(str)>(str)); } \
+    static self_type fromStr(cmn::StringLike auto&& str) { return self_type::get(cmn::Meta::fromStr<std::string>(std::forward<decltype(str)>(str))); } \
     glz::generic to_json() const { return name(); } \
     static consteval std::string_view class_name() noexcept { return Names::class_name(); } \
     \

@@ -25,7 +25,7 @@ bool is_valid_number(std::string_view str) {
 }
 
 using namespace cmn::gui::dyn;
-UnpreparedPatterns parse_words(std::string_view pattern);
+void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable, const VarProps& modifiers);
 
 UnresolvedStringPattern::UnresolvedStringPattern(UnresolvedStringPattern&& other)
     : original(std::move(other.original)),
@@ -182,7 +182,7 @@ Unprepared create_parse_result(std::string_view trimmedStr) {
     }
 
     action.name = trimmedStr.substr(0, pos);
-    bool inQuote = false;
+    bool inQuote = false, comment_out = false;
     char quoteChar = '\0';
     int braceLevel = 0;  // Keep track of nested braces
     std::size_t token_start = ++pos;  // Skip the first ':'
@@ -190,27 +190,42 @@ Unprepared create_parse_result(std::string_view trimmedStr) {
     for (; pos < trimmedStr.size(); ++pos) {
         char c = trimmedStr[pos];
 
-        if (c == ':' and not inQuote and braceLevel == 0) {
-            action.parameters.emplace_back(trimmedStr.substr(token_start, pos - token_start));
-            token_start = pos + 1;
-        } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
-            inQuote = not inQuote;
-            if (inQuote) {
-                quoteChar = c;
+        if(not comment_out) {
+            if(c == '\\') {
+                comment_out = true;
+            } else if (c == ':' and not inQuote and braceLevel == 0) {
+                action.parameters.emplace_back(trimmedStr.substr(token_start, pos - token_start));
+                token_start = pos + 1;
+            } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
+                inQuote = not inQuote;
+                if (inQuote) {
+                    quoteChar = c;
+                }
+            } else if (c == '{') {
+                if constexpr(not expand_expressions_in_quotes) {
+                    if(inQuote)
+                        continue;
+                }
+                // Assuming skipNested advances 'pos'
+                gui::dyn::skipNested(trimmedStr, pos, '{', '}');
+                --pos;
+            } else if (c == '[' and not inQuote) {
+                ++braceLevel;
+            } else if (c == ']' and not inQuote) {
+                --braceLevel;
             }
-        } else if (c == '{' and not inQuote) {
-            // Assuming skipNested advances 'pos'
-            gui::dyn::skipNested(trimmedStr, pos, '{', '}');
-            --pos;
-        } else if (c == '[' and not inQuote) {
-            ++braceLevel;
-        } else if (c == ']' and not inQuote) {
-            --braceLevel;
+            
+        } else {
+            comment_out = false;
         }
     }
 
     if (inQuote) {
         throw std::invalid_argument("Invalid format: Missing closing quote");
+    }
+    
+    if(comment_out) {
+        throw std::invalid_argument("Invalid format: Ended on an escape character");
     }
     
     if (token_start < pos) {
@@ -219,6 +234,303 @@ Unprepared create_parse_result(std::string_view trimmedStr) {
     
     return action;
 }
+
+Unprepared extract_unprepared(std::string_view variable);
+
+/// if `resolve_directly` is enabled, we essentially have the old "parse_text" behavior
+/// where all expressions within the string are resolved immediately and the result is written to
+/// an output string.
+/// otherwise the expressions are parsed and saved within an UnpreparedPatterns object.
+template<bool resolve_directly,
+         typename Return_t>
+Return_t parse_words(
+    std::string_view pattern,
+    [[maybe_unused]] std::conditional_t<resolve_directly, ResolveContext&&, bool> ctx)
+{
+    [[maybe_unused]] std::conditional_t<resolve_directly, bool, UnpreparedPatterns> result;
+    std::stack<std::size_t> nesting_start_positions;
+    bool comment_out = false;
+    std::optional<std::size_t> in_string;
+    std::optional<std::size_t> last_start;
+    size_t collection_depth = 0;
+
+    for(std::size_t i = 0; i < pattern.size(); ++i) {
+        char ch = pattern[i];
+        if (not is_in(ch, '\'', '"', '[', ']', '{', '}', ':', '\\')) {
+            if(nesting_start_positions.empty()) {
+                if(not last_start
+                   && not comment_out
+                   && ch != '{'
+                   && ch != '\'')
+                {
+                    last_start = i;
+                    
+                }
+            }
+            
+            if(comment_out)
+                comment_out = false;
+            continue;
+        }
+        
+        if constexpr(expand_expressions_in_quotes) {
+            if(ch == '\''
+               && not nesting_start_positions.empty())
+            {
+                comment_out = false;
+                continue;
+            }
+        }
+
+        if(nesting_start_positions.empty()
+           && not in_string)
+        {
+            if(ch == '['
+               || (comment_out && ch == '{'))
+            {
+                ++collection_depth;
+                
+            } else if(collection_depth > 0
+                      && (ch == ']' || (comment_out && ch == '}')))
+            {
+                --collection_depth;
+            }
+        }
+        
+        if(ch == '\'') {
+            if(not comment_out) {
+                bool keep_quotes = collection_depth > 0;
+                
+                if(in_string) {
+                    if(not keep_quotes
+                       && nesting_start_positions.empty())
+                    {
+                        auto current_word = pattern.substr(*in_string + 1, i - *in_string - 1);
+                        if(current_word.find('\\') == std::string_view::npos) {
+                            if constexpr(resolve_directly) {
+                                ctx.output.append(current_word);
+                            } else {
+                                result.emplace_back(current_word);
+                            }
+                        } else {
+                            if constexpr(resolve_directly) {
+                                ctx.output.append(util::unescape(current_word));
+                            } else {
+                                result.emplace_back(util::unescape(current_word));
+                            }
+                        }
+                        last_start = i + 1;
+                    }
+                    in_string.reset();
+                    
+                } else {
+                    if(not keep_quotes
+                       && nesting_start_positions.empty())
+                    {
+                        if(last_start && *last_start < i) {
+                            std::string_view sv = pattern.substr(*last_start, i - *last_start);
+                            if constexpr(resolve_directly) {
+                                ctx.output.append(sv);
+                            } else {
+                                result.emplace_back(sv);
+                            }
+                        }
+                        last_start.reset();
+                    }
+                    in_string = i;
+                }
+                
+                continue;
+                
+            } else {
+                comment_out = false;
+            }
+            
+        } else if constexpr(expand_expressions_in_quotes) {
+            const bool parse_quoted_brace = is_in(ch, '{', '}')
+                || (ch == '\\'
+                    && not comment_out
+                    && i + 1 < pattern.size()
+                    && is_in(pattern[i + 1], '{', '}'));
+            
+            if(in_string
+               && nesting_start_positions.empty()
+               && not parse_quoted_brace)
+            {
+                if(ch == '\\') {
+                    comment_out = not comment_out;
+                } else if(comment_out)
+                    comment_out = false;
+                continue;
+            }
+            
+        } else if(in_string) {
+            if(ch == '\\') {
+                comment_out = not comment_out;
+            } else if(comment_out)
+                comment_out = false;
+            continue;
+        }
+        
+        if(nesting_start_positions.empty()) {
+            if(not last_start
+               && not comment_out
+               && ch != '{'
+               && ch != '\'')
+            {
+                last_start = i;
+            }
+            
+            switch(ch) {
+                    /*case '\\':
+                    if(not comment_out) {
+                        comment_out = true;
+                        if(last_start && *last_start < i)
+                            result.push_back(pattern.substr(*last_start, i - *last_start));
+                        last_start = i + 1;
+                        
+                    } else {
+                        comment_out = false;
+                    }
+                    break;
+                case ':':
+                    if(comment_out) {
+                        comment_out = false;
+                    }
+                    break;*/
+                case '{':
+                    if(not comment_out){
+                        nesting_start_positions.push(i + 1);
+                        if(last_start) {
+                            std::string_view sub = pattern.substr(*last_start, i - *last_start);
+                            if constexpr(resolve_directly) {
+                                ctx.output.append(sub);
+                            } else {
+                                result.push_back(sub);
+                            }
+                        }
+                        last_start.reset();
+                    }
+                    comment_out = false;
+                    break;
+                case '}':
+                    if(!comment_out)
+                        throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                    comment_out = false;
+                    break;
+                default:
+                    if(comment_out) {
+                        //FormatWarning("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
+                        comment_out = false;
+                    }
+            }
+        } else {
+            if(comment_out) {
+                comment_out = false;
+                
+            } else if(ch == '\\') {
+                comment_out = true;
+                /*if(last_start && *last_start < i)
+                     result.push_back(pattern.substr(*last_start, i - *last_start));
+                last_start = i + 1;*/
+                
+            } else if(ch == '}') {
+                if(nesting_start_positions.empty()) {
+                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
+                }
+                
+                std::size_t start_pos = nesting_start_positions.top();
+                nesting_start_positions.pop();
+
+                if(nesting_start_positions.empty()) {
+                    std::string_view current_word = pattern.substr(start_pos, i - start_pos);
+                    if(current_word.empty()) {
+                        throw InvalidSyntaxException("Empty braces at position ", i);
+                    }
+                    
+                    if constexpr(resolve_directly) {
+                        //Print("Need to resolve: ", current_word);
+                        
+                        [[maybe_unused]] CTimer timer(current_word);
+                        std::string resolved_word;
+                        if(auto value = ctx.state.cached_variable_value(current_word, ctx.handler);
+                           value.has_value())
+                        {
+                            resolved_word = value.value();
+                            
+                        } else {
+                            resolved_word = resolve_variable(current_word, ctx.handler, ctx.context, ctx.state, [](const VarBase_t& variable, const VarProps& modifiers) -> std::string {
+                                return _handle_subobjects(variable, modifiers);
+                            }, [current_word](bool optional) -> std::string {
+                                if(not optional)
+                                    throw InvalidArgumentException("Cannot find variable or expression ", current_word,".");
+                                //if(not optional)
+                                //    FormatWarning("Cannot find variable or expression ", current_word,".");
+                                //return optional ? "" : "null";
+                                return "";
+                            });
+                            
+                            ctx.state.set_cached_variable_value(ctx.handler, current_word, resolved_word);
+                        }
+                        ctx.output.append(resolved_word);
+                        
+                    } else {
+                        result.push_back(extract_unprepared(current_word));
+                    }
+                    last_start = i + 1;
+                }
+                
+            } else if(ch == '{') {
+                nesting_start_positions.push(i + 1);
+                if(last_start) {
+                    std::string_view sv = pattern.substr(*last_start, i - *last_start);
+                    if constexpr(resolve_directly) {
+                        ctx.output.append(sv);
+                    } else {
+                        result.push_back(sv);
+                    }
+                }
+                last_start.reset();
+            } else {
+                if(nesting_start_positions.empty()) {
+                    throw InvalidSyntaxException("Mismatched opening brace at position ", i);
+                }
+                //nesting.top() += ch;
+            }
+        }
+    }
+
+    if(in_string)
+        throw InvalidSyntaxException("Unterminated quoted string");
+
+    if(not nesting_start_positions.empty()) {
+        throw InvalidSyntaxException("Mismatched opening brace");
+    }
+    
+    if(comment_out) {
+        // Trailing backslash without a following character
+        //throw InvalidSyntaxException("Trailing backslash");
+    }
+
+    if(last_start
+       && *last_start < pattern.length())
+    {
+        std::string_view sv = pattern.substr(*last_start, pattern.length() - *last_start);
+        if constexpr(resolve_directly) {
+            ctx.output.append(sv);
+        } else {
+            result.push_back(sv);
+        }
+    }
+    
+    if constexpr(not resolve_directly) {
+        return result;
+    }
+}
+
+// Explicit instantiation definitions
+template void parse_words<true>(std::string_view, [[maybe_unused]] ResolveContext&&);
+template UnpreparedPatterns parse_words<false>(std::string_view, [[maybe_unused]] bool);
 
 Unprepared extract_unprepared(std::string_view variable) {
     Unprepared props = create_parse_result(variable);
@@ -254,7 +566,7 @@ Unprepared extract_unprepared(std::string_view variable) {
     const size_t N = r.size();
     props.subs.resize(N - 1);
     for (size_t i=1, N = r.size(); i<N; ++i) {
-        props.subs[i - 1] = parse_words(r[i]);
+        props.subs[i - 1] = parse_words<false>(r[i]);
         //props.subs[i - 1] = r[i];
     }
 
@@ -263,115 +575,7 @@ Unprepared extract_unprepared(std::string_view variable) {
     return props;
 }
 
-UnpreparedPatterns parse_words(std::string_view pattern) {
-    UnpreparedPatterns result;
-    std::stack<std::size_t> nesting_start_positions;
-    bool comment_out = false;
-    std::optional<std::size_t> last_start;
-
-    for(std::size_t i = 0; i < pattern.size(); ++i) {
-        char ch = pattern[i];
-        if(nesting_start_positions.empty()) {
-            if(not last_start
-               && not comment_out
-               && ch != '{')
-            {
-                last_start = i;
-            }
-            
-            switch(ch) {
-                case '\\':
-                    if(not comment_out) {
-                        comment_out = true;
-                        if(last_start && *last_start < i)
-                            result.push_back(pattern.substr(*last_start, i - *last_start));
-                        last_start = i + 1;
-                        
-                    } else {
-                        comment_out = false;
-                    }
-                    break;
-                case '{':
-                    if(not comment_out){
-                        nesting_start_positions.push(i + 1);
-                        if(last_start)
-                            result.push_back(pattern.substr(*last_start, i - *last_start));
-                        last_start.reset();
-                    }
-                    comment_out = false;
-                    break;
-                case '}':
-                    if(!comment_out)
-                        throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                    comment_out = false;
-                    break;
-                default:
-                    if(comment_out) {
-                        FormatWarning("Invalid escape sequence at position ", i, ": ", ch, ". Only braces need to be escaped.");
-                        comment_out = false;
-                    }
-            }
-        } else {
-            if(comment_out) {
-                comment_out = false;
-                
-            } else if(ch == '\\') {
-                comment_out = true;
-                /*if(last_start && *last_start < i)
-                     result.push_back(pattern.substr(*last_start, i - *last_start));
-                last_start = i + 1;*/
-                
-            } else if(ch == '}') {
-                if(nesting_start_positions.empty()) {
-                    throw InvalidSyntaxException("Mismatched closing brace at position ", i);
-                }
-                
-                std::size_t start_pos = nesting_start_positions.top();
-                nesting_start_positions.pop();
-
-                if(nesting_start_positions.empty()) {
-                    std::string_view current_word = pattern.substr(start_pos, i - start_pos);
-                    if(current_word.empty()) {
-                        throw InvalidSyntaxException("Empty braces at position ", i);
-                    }
-                    
-                    result.push_back(extract_unprepared(current_word));
-                    last_start = i + 1;
-                }
-                
-            } else if(ch == '{') {
-                nesting_start_positions.push(i + 1);
-                if(last_start)
-                    result.push_back(pattern.substr(*last_start, i - *last_start));
-                last_start.reset();
-            } else {
-                if(nesting_start_positions.empty()) {
-                    throw InvalidSyntaxException("Mismatched opening brace at position ", i);
-                }
-                //nesting.top() += ch;
-            }
-        }
-    }
-
-    if(not nesting_start_positions.empty()) {
-        throw InvalidSyntaxException("Mismatched opening brace");
-    }
-    
-    if(comment_out) {
-        // Trailing backslash without a following character
-        throw InvalidSyntaxException("Trailing backslash");
-    }
-
-    if(last_start
-       && *last_start < pattern.length())
-    {
-        result.push_back(pattern.substr(*last_start, pattern.length() - *last_start));
-    }
-    
-    return result;
-}
-
-Prepared* Prepared::get(const Unprepared& unprepared) {
+Prepared* Prepared::get(Unprepared& unprepared) {
     Prepared *prepared = new Prepared{
         .original = unprepared.original
     };
@@ -385,6 +589,8 @@ Prepared* Prepared::get(const Unprepared& unprepared) {
                 using T = std::decay_t<decltype(obj)>;
                 if constexpr(std::same_as<T, std::string_view>) {
                     r.push_back(PreparedPattern::make_sv(obj));
+                } else if constexpr(std::same_as<T, std::string>) {
+                    r.push_back(PreparedPattern::make_string(std::move(obj)));
                 } else if constexpr(std::same_as<T, Unprepared>) {
                     r.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
                     
@@ -405,6 +611,8 @@ Prepared* Prepared::get(const Unprepared& unprepared) {
                 using T = std::decay_t<decltype(obj)>;
                 if constexpr(std::same_as<T, std::string_view>) {
                     r.push_back(PreparedPattern::make_sv(obj));
+                } else if constexpr(std::same_as<T, std::string>) {
+                    r.push_back(PreparedPattern::make_string(std::move(obj)));
                 } else if constexpr(std::same_as<T, Unprepared>) {
                     r.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
                     
@@ -458,35 +666,42 @@ UnresolvedStringPattern::~UnresolvedStringPattern() {
         delete prepared;
 }
 
-void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, const gui::dyn::Context& context, gui::dyn::State& state)
+void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, const std::shared_ptr<CurrentObjectHandler>& handler, const gui::dyn::Context& context, gui::dyn::State& state)
 {
-    auto is_cache_valid = [&state](const Prepared& prepared) -> bool {
-        if(not prepared.cached().has_value()) {
+    auto is_cache_valid = [&handler](const Prepared& prepared) -> bool {
+        if(not prepared.cached().has_value()
+           || not prepared._cached_variable_versions.has_value())
+        {
             return false;
         }
         
-        auto handler = state._current_object_handler.lock();
+        //auto handler = state._current_object_handler.lock();
         if(not handler) {
             return true;
         }
         
-        return prepared._cached_variable_versions.has_value()
-            && prepared._cached_variable_versions->global == handler->variable_values_version()
+        return prepared._cached_variable_versions->global == handler->variable_values_version()
             && prepared._cached_variable_versions->scoped == handler->scoped_variable_values_version();
     };
     
     switch(type) {
+        case CHAR:
+            c.push_back(value.ch);
+            break;
+        case STRING:
+            c.append(*value.str);
+            break;
         case SV:
             c.append(value.sv.data(), value.sv.size());
             break;
         case PREPARED:
-            if(auto& o = value.prepared;
-               is_cache_valid(*o))
+            if(auto& o = *value.prepared;
+               is_cache_valid(o))
             {
-                auto& sv = o->cached().value();
+                auto& sv = o.cached().value();
                 c.append(sv.data(), sv.size());
             } else {
-                o->resolve(pattern, c, context, state);
+                o.resolve(pattern, c, handler, context, state);
             }
             break;
         case POINTER:
@@ -496,7 +711,7 @@ void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, 
                 auto& sv = o.cached().value();
                 c.append(sv.data(), sv.size());
             } else {
-                o.resolve(pattern, c, context, state);
+                o.resolve(pattern, c, handler, context, state);
             }
             break;
         default:
@@ -510,6 +725,10 @@ void PreparedPattern::resolve(std::string& c, UnresolvedStringPattern& pattern, 
 bool PreparedPattern::operator==(const PreparedPattern& other) const noexcept {
     if(type == other.type) {
         switch (type) {
+            case CHAR:
+                return value.ch == other.value.ch;
+            case STRING:
+                return *value.str == *other.value.str;
             case SV:
                 return value.sv == other.value.sv;
             case PREPARED:
@@ -527,6 +746,10 @@ bool PreparedPattern::operator<(const PreparedPattern& other) const noexcept {
     if(type != other.type)
         return type < other.type;
     switch (type) {
+        case CHAR:
+            return static_cast<unsigned char>(value.ch) < static_cast<unsigned char>(other.value.ch);
+        case STRING:
+            return *value.str < *other.value.str;
         case SV:
             return value.sv < other.value.sv;
         case PREPARED:
@@ -543,6 +766,12 @@ bool PreparedPattern::operator<(const PreparedPattern& other) const noexcept {
 std::string PreparedPattern::toStr() const {
     std::string str = "<";
     switch (type) {
+        case CHAR:
+            str.push_back(value.ch);
+            break;
+        case STRING:
+            str.append(*value.str);
+            break;
         case SV:
             str.append(value.sv);
             break;
@@ -562,20 +791,20 @@ std::string PreparedPattern::toStr() const {
 
 template<typename ApplyF, typename ErrorF>
     requires std::invocable<ApplyF, std::string&, VarBase_t&, const VarProps&>
-inline auto resolve_variable(std::string& output, const VarProps& props, const Context& context, State& state, ApplyF&& apply, ErrorF&& error)
+inline auto resolve_variable(std::string& output, const VarProps& props, const std::shared_ptr<CurrentObjectHandler>& handler, const Context& context, State& state, ApplyF&& apply, ErrorF&& error)
 {
     try {
         auto cached = props.subs.empty()
-                        ? state.cached_variable_value(props.name)
-                        : state.cached_variable_value(utils::concat_views(props.name, props.subs));
+                        ? state.cached_variable_value(props.name, handler)
+                        : state.cached_variable_value(utils::concat_views(props.name, props.subs), handler);
         if(cached)
         {
             output.append(cached.value());
             return;
             
-        } else if(context.has(props.name, state))
+        } else if(auto variable = context.find_variable(props.name, handler);
+                  variable)
         {
-            auto variable = context.variable(props.name, state);
             apply(output, *variable, props);
             return;
             
@@ -585,10 +814,12 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
             bool condition = props.parameters.front() == "true";
             //Print("* condition ", props.parameters.front()," => ", condition);
             if(condition)
-                utils::fast_fromstr(output, props.parameters[1]);
+                output.append(props.parameters[1]);
+                //utils::fast_fromstr(output, props.parameters[1]);
             //output += Meta::fromStr<std::string>(props.parameters[1]);
             else if(props.parameters.size() == 3)
-                utils::fast_fromstr(output, props.parameters[2]);
+                output.append(props.parameters[2]);
+                //utils::fast_fromstr(output, props.parameters[2]);
             //output += Meta::fromStr<std::string>(props.parameters[2]);
             return;
         } else if(props.name == "for") {
@@ -627,14 +858,14 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
                 }
             }
             
-            utils::fast_fromstr(output, it->second->value<std::string>(context, state));
+            //utils::fast_fromstr(output, it->second->value<std::string>(context, state));
+            output.append(it->second->value<std::string>(context, state));
             return;
             
-        } else if(auto lock = state._current_object_handler.lock();
-                  lock != nullptr)
+        } else if(handler)
         {
             //Print("* ", props, " testing current handler");
-            if(auto ptr = lock->retrieve_named(props.name);
+            if(auto ptr = handler->retrieve_named(props.name);
                ptr != nullptr)
             {
                 auto v = get_modifier_from_object(ptr.get(), props);
@@ -666,9 +897,9 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const C
 }
 
 
-void resolve_parameter(std::string& c, UnresolvedStringPattern& pattern, PreparedPatterns& patterns, const cmn::gui::dyn::Context& context, cmn::gui::dyn::State& state) {
+void resolve_parameter(std::string& c, UnresolvedStringPattern& pattern, PreparedPatterns& patterns, const std::shared_ptr<CurrentObjectHandler>& handler, const cmn::gui::dyn::Context& context, cmn::gui::dyn::State& state) {
     for(auto& o : patterns) {
-        o.resolve(c, pattern, context, state);
+        o.resolve(c, pattern, handler, context, state);
     }
 }
 
@@ -924,7 +1155,7 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
     }
 }
 
-void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const gui::dyn::Context& context, gui::dyn::State& state)
+void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const std::shared_ptr<CurrentObjectHandler>& handler, const gui::dyn::Context& context, gui::dyn::State& state)
 {
     auto& props = resolved;
     auto& parms = props.parameters;
@@ -933,8 +1164,7 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
     auto update_cache = [&](){
         if(has_children) {
             _cached_value = std::string_view(str).substr(index);
-            if(auto handler = state._current_object_handler.lock();
-               handler)
+            if(handler)
             {
                 _cached_variable_versions = CachedVariableVersions{
                     .global = handler->variable_values_version(),
@@ -951,7 +1181,7 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
     for(size_t i = 0; i < subs.size(); ++i) {
         props.subs[i].clear();
         for(auto &p : subs[i]) {
-            p.resolve(props.subs[i], pattern, context, state);
+            p.resolve(props.subs[i], pattern, handler, context, state);
         }
     }
     
@@ -966,25 +1196,25 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         condition.clear();
         if(props.optional) {
             try {
-                resolve_parameter(condition, pattern, parameters[0], context, state);
+                resolve_parameter(condition, pattern, parameters[0], handler, context, state);
             } catch(...) {
                 FormatWarning("Failed to resolve optional if condition: ", props, " => ", parameters[0]);
                 condition = "null";
             }
         } else {
-            resolve_parameter(condition, pattern, parameters[0], context, state);
+            resolve_parameter(condition, pattern, parameters[0], handler, context, state);
         }
         
         if(gui::dyn::convert_to_bool(condition)) {
             parms[0] = "true";
             parms[1].clear();
-            resolve_parameter(parms[1], pattern, parameters[1], context, state);
+            resolve_parameter(parms[1], pattern, parameters[1], handler, context, state);
             if(parms.size() == 3)
                 parms[2] = "null";
         } else if(parms.size() == 3) {
             parms[0] = "false";
             parms[2].clear();
-            resolve_parameter(parms[2], pattern, parameters[2], context, state);
+            resolve_parameter(parms[2], pattern, parameters[2], handler, context, state);
             parms[1] = "null";
         }
         
@@ -998,7 +1228,7 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         // Resolve operands in order so a decisive value protects the rest.
         for(auto& parameter : parameters) {
             value.clear();
-            resolve_parameter(value, pattern, parameter, context, state);
+            resolve_parameter(value, pattern, parameter, handler, context, state);
             const bool truth_value = gui::dyn::convert_to_bool(value);
             /*if(is_and)
                 condition = condition && truth_value;
@@ -1031,54 +1261,65 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
             items_index = 1u;
             fn_index = 2u;
             variable_name.clear();
-            resolve_parameter(variable_name, pattern, parameters[0u], context, state);
+            resolve_parameter(variable_name, pattern, parameters[0u], handler, context, state);
         }
         
         parms.resize(1u);
         parms[0].clear();
-        resolve_parameter(parms[0], pattern, parameters[items_index], context, state);
+        resolve_parameter(parms[0], pattern, parameters[items_index], handler, context, state);
         
+        bool is_string = false;
         if(not utils::beginsWith(parms[0], '[')
             || not utils::endsWith(parms[0], ']'))
         {
-            throw InvalidArgumentException("An if statement (", parameters, ") requires an array-like second parameter, received ", parms[0]);
+            /*if(not utils::beginsWith(parms[0], '\'')
+               || not utils::endsWith(parms[0], '\''))
+            {
+                throw InvalidArgumentException("An if statement (", parameters, ") requires an array-like second parameter, received ", parms[0]);
+            } else {*/
+                /// fall back to string parsing
+                is_string = true;
+            //}
         }
         
-        size_t index = str.length();
-        auto items = util::truncate(parms[0]);
-        
+        const size_t start_index = str.length();
         str.append("[");
         
-        State _state;
-        _state._collectors = state._collectors;
-        _state._current_object_handler = state._current_object_handler;
-        //auto handler = std::make_shared<CurrentObjectHandler>();
-        //state._current_object_handler = handler;
-        auto handler = _state._current_object_handler.lock();
-        if(not handler) {
-            handler = std::make_shared<CurrentObjectHandler>();
-            _state._current_object_handler = std::weak_ptr(handler);
-        }
-        
+        auto items = std::string_view(parms[0]);
         size_t idx = 0;
-        for(auto item : util::parse_array_parts(items)) {
-            if(idx > 0)
-                str.append(",");
-            
-            auto scope = handler->scope();
-            auto idx_str = Meta::toStr(idx);
-            scope.set(variable_name, item);
-            scope.set("index", idx_str);
-            resolve_parameter(str, pattern, parameters[fn_index], context, _state);
-            
-            ++idx;
+        if(is_string) {
+            for(char c : items) {
+                if(idx > 0)
+                    str.append(",");
+                
+                auto scope = handler->scope();
+                auto idx_str = Meta::toStr(idx);
+                scope.set(variable_name, std::string(1, c));
+                scope.set("index", idx_str);
+                resolve_parameter(str, pattern, parameters[fn_index], handler, context, state);
+                
+                ++idx;
+            }
+        } else {
+            for(auto item : util::parse_array_parts(util::truncate(items))) {
+                if(idx > 0)
+                    str.append(",");
+                
+                auto scope = handler->scope();
+                auto idx_str = Meta::toStr(idx);
+                scope.set(variable_name, item);
+                scope.set("index", idx_str);
+                resolve_parameter(str, pattern, parameters[fn_index], handler, context, state);
+                
+                ++idx;
+            }
         }
         
         str.append("]");
         
         if(has_children) {
-            _cached_value = std::string_view(str).substr(index);
-            if(auto handler = state._current_object_handler.lock();
+            _cached_value = std::string_view(str).substr(start_index);
+            if(/*auto handler = state._current_object_handler.lock();*/
                handler)
             {
                 _cached_variable_versions = CachedVariableVersions{
@@ -1098,12 +1339,12 @@ void Prepared::resolve(UnresolvedStringPattern& pattern, std::string& str, const
         for(size_t i = 0; i < N; ++i) {
             auto &p = parameters[i];
             parms[i].clear();
-            resolve_parameter(parms[i], pattern, p, context, state);
+            resolve_parameter(parms[i], pattern, p, handler, context, state);
         }
     }
     
 
-    resolve_variable(str, props, context, state, [](std::string& output, cmn::gui::dyn::VarBase_t& variable, const gui::dyn::VarProps& modifiers)
+    resolve_variable(str, props, handler, context, state, [](std::string& output, cmn::gui::dyn::VarBase_t& variable, const gui::dyn::VarProps& modifiers)
     {
         handle_sub_objects(output, variable, modifiers);
         
@@ -1128,8 +1369,14 @@ std::string UnresolvedStringPattern::realize(const gui::dyn::Context& context, g
         ptr->reset();
     }
     
+    auto handler = state._current_object_handler.lock();
+    if(not handler) {
+        handler = std::make_shared<CurrentObjectHandler>();
+        state._current_object_handler = std::weak_ptr(handler);
+    }
+    
     for(auto& object : objects) {
-        object.resolve(str, *this, context, state);
+        object.resolve(str, *this, handler, context, state);
     }
     
     if(not has_length)
@@ -1170,7 +1417,7 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) 
     result.original = std::make_unique<std::string>(_str);
     std::string_view str{*result.original};
     
-    auto unprepared = parse_words(str);
+    auto unprepared = parse_words<false>(str);
     std::queue<Unprepared*> patterns;
     for(auto& r : unprepared) {
         std::visit([&](auto& arg) {
@@ -1178,7 +1425,7 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) 
             if constexpr(std::same_as<T, Unprepared>) {
                 patterns.push(&arg);
                 
-            } else if constexpr(std::same_as<T, std::string_view>) {
+            } else if constexpr(std::same_as<T, std::string_view> || std::same_as<T, std::string>) {
                 //result.objects.push_back(arg);
             } else {
                 static_assert(std::same_as<T, void>, "Unknown Type.");
@@ -1193,7 +1440,7 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) 
         
         for(size_t i = 0; i < unprep->parameters.size(); ++i) {
             assert(std::holds_alternative<std::string_view>(unprep->parameters[i]));
-            unprep->parameters[i] = parse_words(std::get<std::string_view>(unprep->parameters[i]));
+            unprep->parameters[i] = parse_words<false>(std::get<std::string_view>(unprep->parameters[i]));
         }
         
         for(auto &v : unprep->parameters) {
@@ -1216,6 +1463,8 @@ UnresolvedStringPattern UnresolvedStringPattern::prepare(std::string_view _str) 
             using T = std::decay_t<decltype(obj)>;
             if constexpr(std::same_as<T, std::string_view>) {
                 result.objects.push_back(PreparedPattern::make_sv(obj));
+            } else if constexpr(std::same_as<T, std::string>) {
+                result.objects.push_back(PreparedPattern::make_string(std::move(obj)));
             } else if constexpr(std::same_as<T, Unprepared>) {
                 result.objects.push_back(PreparedPattern::make_prepared(Prepared::get(obj)));
                 

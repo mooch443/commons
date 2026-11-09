@@ -372,7 +372,9 @@ void DataFormat::stop_modifying() {
 }
 
 uint64_t DataFormat::read_data(uint64_t num_bytes, char *buffer) {
-    if(buffer == nullptr)
+    if(num_bytes == 0)
+        return 0;
+    else if(buffer == nullptr)
         throw InvalidArgumentException("Passed a nullptr buffer.");
     
     if(!_mmapped) {

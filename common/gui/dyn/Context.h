@@ -278,6 +278,10 @@ struct COMMONS_EXPORT Context {
     }
 
     [[nodiscard]] std::shared_ptr<VarBase_t> variable(std::string_view, const State&) const;
+    [[nodiscard]] std::shared_ptr<VarBase_t> variable(std::string_view, const std::shared_ptr<CurrentObjectHandler>&) const;
+    
+    [[nodiscard]] VarBase_t* find_variable(std::string_view, const std::shared_ptr<CurrentObjectHandler>&) const;
+    
     [[nodiscard]] bool has(std::string_view, const State&) const noexcept;
     [[nodiscard]] std::optional<decltype(variables)::const_iterator> find(std::string_view) const noexcept;
     /// Reconcile the per-DynamicGUI local settings map with the latest layout declarations.

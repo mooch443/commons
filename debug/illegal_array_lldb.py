@@ -13,6 +13,7 @@ synthetic children for:
 - cmn::sprite::Map
 - std/libc++ mutexes and lock wrappers
 - cmn::LoggedMutex / cmn::LoggedLock
+- character-array references
 """
 
 import ast
@@ -111,6 +112,15 @@ _LOCK_REGEXES = (
     r"^cmn::LoggedLock<.+>$",
 )
 _LOCK_CATEGORY = "trex_lock"
+
+_CHAR_ARRAY_REFERENCE_REGEX = r"^(const )?char *\(&\)\[[0-9]+\]$"
+_CHAR_ARRAY_REFERENCE_CATEGORY = "trex_char_array_reference"
+
+
+def char_array_reference_summary(valobj, _dict):
+    # The array formatter needs the referent's bytes, not the reference address.
+    array = valobj.GetNonSyntheticValue().Dereference()
+    return array.GetSummary() if array.IsValid() else None
 
 
 def _get_uint(child, default=0):
@@ -1267,6 +1277,7 @@ def __lldb_init_module(debugger, _dict):
         _SPRITE_MAP_CATEGORY,
         _MUTEX_CATEGORY,
         _LOCK_CATEGORY,
+        _CHAR_ARRAY_REFERENCE_CATEGORY,
     ):
         _run_lldb_command(debugger, f"type category delete {category}")
 
@@ -1399,4 +1410,11 @@ def __lldb_init_module(debugger, _dict):
         )
     debugger.HandleCommand(f"type category enable {_LOCK_CATEGORY}")
 
-    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional wrappers, Color, paths, sprite::Map, and mutex pretty-printers loaded.")
+    debugger.HandleCommand(
+        f"type summary add --expand --skip-pointers --category {_CHAR_ARRAY_REFERENCE_CATEGORY} "
+        f"--python-function {__name__}.char_array_reference_summary "
+        f"--regex '{_CHAR_ARRAY_REFERENCE_REGEX}'"
+    )
+    debugger.HandleCommand(f"type category enable {_CHAR_ARRAY_REFERENCE_CATEGORY}")
+
+    print("[LLDB] IllegalArray, robin_hood, sherwood, std::expected, optional wrappers, Color, paths, sprite::Map, mutex, and character-array reference pretty-printers loaded.")

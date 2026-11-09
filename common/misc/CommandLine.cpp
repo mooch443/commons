@@ -236,9 +236,9 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
             }
             
             // If the property is a string-like type and the value is not quoted, quote it for parsing
-            if(prop)
-				prop->set_value_from_string(value);
-            else {
+            if(prop) {
+                prop->set_value_from_string(value);
+            } else {
 				/// in theory this case should barely ever be of use, but it is here for completeness
                 if (is_quoted(value)) {
                     sprite::parse_values(sprite::MapSource::CMD, *map, "{'" + s.name + "':" + value + "}", additional, exclude, {});

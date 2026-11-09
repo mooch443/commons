@@ -519,17 +519,19 @@ namespace cmn {
             
             auto parts = util::parse_array_parts(str);
             for (auto &p : parts) {
-                auto key_value = util::parse_array_parts(p, ':');
+                auto key_value = util::parse_array_parts<':'>(p);
                 if(key_value.empty())
 					continue;
-                auto &key = key_value[0];
+                
+                auto key = Meta::fromStr<std::string>(key_value[0]);
 
                 std::string value;
-                if(key_value.size() > 1) value = key_value[1];
+                if(key_value.size() > 1)
+                    value = key_value[1];
                 
-                if(!key.empty() && (key[0] == '\'' || key[0] == '"') && key[0] == key[key.length()-1])
-                    key = key.substr(1, key.length()-2);
-                if(value.size()>=4
+                //if(!key.empty() && (key[0] == '\'' || key[0] == '"') && key[0] == key[key.length()-1])
+                //    key = key.substr(1, key.length()-2);
+                /*if(value.size()>=4
                    && value[0] == '\\'
                    && is_in(value[1], '"', '\'')
                    && value.back() == value[1])
@@ -539,7 +541,7 @@ namespace cmn {
                 if(not value.empty()
                     && ((value.front() == '\"' && value.back() == '\"') 
                         || (value.front() == '\'' && value.back() == '\'')))
-                    value = util::unescape(value.substr(1, value.length()-2u));
+                    value = util::unescape(value.substr(1, value.length()-2u));*/
 
                 /// check if the key is deprecated, and if yes, if the new value
                 /// is part of the exclusions:
@@ -570,11 +572,11 @@ namespace cmn {
                     
                     switch (type) {
                         case STRING: {
-                            if(value.length() && (value.at(0) == '"' || value.at(0) == '\''))
+                            /*if(value.length() && (value.at(0) == '"' || value.at(0) == '\''))
                                 value = value.substr(1, value.length()-1);
                             if(value.length() && (value.at(value.length()-1) == '"' || value.at(value.length()-1) == '\''))
-                                value = value.substr(0, value.length()-1);
-                            map[key] = value;
+                                value = value.substr(0, value.length()-1);*/
+                            map[key] = Meta::fromStr<std::string>(value);
                             
                             break;
                         }

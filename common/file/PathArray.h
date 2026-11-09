@@ -202,34 +202,13 @@ public:
         return *this;
     }
     
-    template<cmn::StringLike T>
-    _PathArray(T&& input)
+    _PathArray(StringLike auto&& input)
         : _source(input)
     {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
         Print("Constructing PathArray from input: ", input);
 #endif
-        std::string_view sv;
-        
-        if constexpr(std::is_same_v<std::remove_cvref_t<T>, const char*>) {
-            if(not input || *input == 0)
-                return;
-            
-            sv = { input };
-            
-        } else if constexpr(std::is_array_v<std::remove_cvref_t<T>>) {
-            if constexpr(sizeof(T) == 0u) {
-                return;
-            }
-            
-            sv = { reinterpret_cast<const char*>(input), sizeof(T) - 1 };
-            
-        } else {
-            if (input.empty())
-                return;
-            
-            sv = { input };
-        }
+        std::string_view sv = utils::string_like_view(std::forward<decltype(input)>(input));
         
         if(utils::beginsWith(sv, "PathArray<")
            && sv.back() == '>')
@@ -237,27 +216,29 @@ public:
             throw InvalidArgumentException("Cannot instantiate with an unresolved PathArray: ", sv);
         }
         
+        auto decoded = Meta::fromStr<std::string>(sv);
+        
         // Check if input is an array of paths
-        if (sv.front() == '[' && sv.back() == ']') {
+        if (decoded.size() > 1
+            && decoded.front() == '['
+            && decoded.back() == ']')
+        {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
             Print("Input appears to be a JSON-like array of paths.");
 #endif
-            std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>((std::string)sv);
+            std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>(decoded);
             for (const auto& path_str : temp_paths) {
-                if(not path_str.empty()
-                   && path_str.front() == '"'
-                   && path_str.back() == '"')
-                {
-                    add_path(Meta::fromStr<std::string>((std::string)sv));
-                } else
-                    add_path(path_str);
+                    add_path(Meta::fromStr<std::string>(path_str));
             }
-        } else if(sv.front() == '"' && sv.back() == '"') {
+        } else if(sv.size() > 1
+                  && sv.front() == sv.back()
+                  && is_in(sv.front(), '"', '\''))
+        {
             /// we are dealing with a single string
-            add_path(Meta::fromStr<std::string>((std::string)sv));
+            add_path(Meta::fromStr<std::string>(sv));
         } else {
-            add_path((std::string)sv);
-            assert(not _paths.empty() || sv.empty() || _matched_patterns);
+            add_path(decoded);
+            assert(not _paths.empty() || decoded.empty() || _matched_patterns);
         }
         
         if(_paths.size() <= 1 && not matched_patterns()) {

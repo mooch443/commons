@@ -224,7 +224,7 @@ public:
         std::vector<std::string> collected_array_values;
         std::optional<uint16_t> max_element;
         for(auto &part : parts) {
-            auto map_parts = util::parse_array_parts(part, ':');
+            auto map_parts = util::parse_array_parts<':'>(part);
             if(map_parts.size() == 2u) {
                 /// we were given a map
                 auto key_str = Meta::fromStr<std::string>(map_parts.front());

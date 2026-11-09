@@ -5,6 +5,7 @@
 namespace cmn::gui::dyn {
 struct Context;
 struct State;
+class CurrentObjectHandler;
 }
 
 namespace cmn::pattern {
@@ -16,7 +17,7 @@ struct PreparedPattern;
 //using PreparedPattern = std::variant<std::string_view, Prepared, Prepared*>;
 using PreparedPatterns = std::vector<PreparedPattern>;
 
-using UnpreparedPattern = std::variant<std::string_view, Unprepared>;
+using UnpreparedPattern = std::variant<std::string_view, Unprepared, std::string>;
 using UnpreparedPatterns = std::vector<UnpreparedPattern>;
 
 struct UnresolvedStringPattern {
@@ -40,10 +41,27 @@ struct UnresolvedStringPattern {
     std::string toStr() const;
 };
 
+struct ResolveContext {
+    const gui::dyn::Context& context;
+    gui::dyn::State& state;
+    const std::shared_ptr<gui::dyn::CurrentObjectHandler>& handler;
+    std::string& output;
+};
+
+template<bool B> constexpr bool no_context_required() requires (not B) { return false; }
+
+template<bool resolve_directly,
+         typename Return_t = std::conditional_t<resolve_directly, void, UnpreparedPatterns>>
+Return_t parse_words(
+   std::string_view pattern,
+   [[maybe_unused]] std::conditional_t<resolve_directly, ResolveContext&&, bool> ctx = no_context_required<resolve_directly>());
+
 struct PreparedPattern {
     union {
         void*empty;
+        char ch;
         std::string_view sv;
+        std::string* str;
         Prepared* prepared;
         Prepared* ptr;
     } value{nullptr};
@@ -52,10 +70,44 @@ struct PreparedPattern {
         NONE,
         SV,
         PREPARED,
-        POINTER
-    } type;
+        POINTER,
+        STRING,
+        CHAR
+    } type = NONE;
+
+    PreparedPattern() = default;
+    ~PreparedPattern() {
+        if(type == STRING)
+            delete value.str;
+    }
+    PreparedPattern(const PreparedPattern& other)
+        : value(other.value), type(other.type)
+    {
+        if(type == STRING)
+            value.str = new std::string(*other.value.str);
+    }
+    PreparedPattern(PreparedPattern&& other) noexcept
+        : value(other.value), type(std::exchange(other.type, NONE))
+    {}
+    PreparedPattern& operator=(const PreparedPattern& other) {
+        if(this != &other) {
+            PreparedPattern copy(other);
+            std::swap(value, copy.value);
+            std::swap(type, copy.type);
+        }
+        return *this;
+    }
+    PreparedPattern& operator=(PreparedPattern&& other) noexcept {
+        if(this != &other) {
+            if(type == STRING)
+                delete value.str;
+            value = other.value;
+            type = std::exchange(other.type, NONE);
+        }
+        return *this;
+    }
     
-    void resolve(std::string& c, UnresolvedStringPattern& pattern, const gui::dyn::Context& context, gui::dyn::State& state);
+    void resolve(std::string& c, UnresolvedStringPattern& pattern, const std::shared_ptr<gui::dyn::CurrentObjectHandler>&, const gui::dyn::Context& context, gui::dyn::State& state);
     
     bool operator==(const PreparedPattern& other) const noexcept;
     
@@ -63,8 +115,24 @@ struct PreparedPattern {
     
     std::string toStr() const;
     
-    /// alternative constructors to maintain aggregate type
+    /// Only STRING owns its payload; Prepared nodes belong to all_patterns.
+    static PreparedPattern make_char(char ch) {
+        PreparedPattern p;
+        p.value.ch = ch;
+        p.type = CHAR;
+        return p;
+    }
+    static PreparedPattern make_string(std::string str) {
+        if(str.size() == 1)
+            return make_char(str.front());
+        PreparedPattern p;
+        p.value.str = new std::string(std::move(str));
+        p.type = STRING;
+        return p;
+    }
     static PreparedPattern make_sv(std::string_view s) {
+        if(s.size() == 1)
+            return make_char(s.front());
         PreparedPattern p;
         p.value.sv = s;
         p.type = SV;
@@ -118,7 +186,7 @@ struct Prepared {
     std::string toStr() const;
     static consteval std::string_view class_name() { return "Prepared"; }
     
-    void resolve(UnresolvedStringPattern&, std::string&, const gui::dyn::Context& context, gui::dyn::State& state);
+    void resolve(UnresolvedStringPattern&, std::string&, const std::shared_ptr<gui::dyn::CurrentObjectHandler>&,  const gui::dyn::Context& context, gui::dyn::State& state);
     const std::optional<std::string>& cached() const {
         return _cached_value;
     }
@@ -129,7 +197,7 @@ struct Prepared {
     
     bool operator==(const Prepared&) const = default;
     
-    static Prepared* get(const Unprepared& unprepared);
+    static Prepared* get(Unprepared& unprepared);
 };
 
 }

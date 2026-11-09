@@ -14,6 +14,10 @@ struct UnresolvedStringPattern;
 
 namespace cmn::gui::dyn {
 
+// Only single quotes delimit expression literals; double quotes remain data.
+// Controls brace expansion inside single-quoted strings in both parsers.
+inline constexpr bool expand_expressions_in_quotes = false;
+
 struct Context;
 struct State;
 struct PreVarProps;
@@ -22,6 +26,7 @@ using Pattern = pattern::UnresolvedStringPattern;
 struct Action;
 
 std::string parse_text(const std::string_view& pattern, const Context&, State&);
+std::string parse_text(const std::string_view& pattern, const std::shared_ptr<CurrentObjectHandler>&, const Context&, State&);
 
 //std::string parse_text(const Pattern& pattern, const Context&, State&);
 
@@ -30,11 +35,28 @@ bool apply_modifier_to_object(std::string_view name, const derived_ptr<Drawable>
 // Function to skip over nested structures so they don't interfere with our parsing
 auto skipNested(const auto& trimmedStr, std::size_t& pos, char openChar, char closeChar) {
     int balance = 1;
+    bool escaped = false, in_quotes = false;
     pos++; // Skip the opening char
     while (pos < trimmedStr.size() and balance > 0) {
-        if (trimmedStr[pos] == openChar) {
+        auto ch = trimmedStr[pos];
+        if(ch == '\\') {
+            escaped = not escaped;
+        } else if(escaped) {
+            /// pass
+            escaped = false;
+        } else if constexpr(not expand_expressions_in_quotes) {
+            if(openChar != '\'' && ch == '\'') {
+                in_quotes = not in_quotes;
+            } else if(in_quotes) {
+                /// pass
+            } else if (ch == openChar) {
+                balance++;
+            } else if (ch == closeChar) {
+                balance--;
+            }
+        } else if (ch == openChar) {
             balance++;
-        } else if (trimmedStr[pos] == closeChar) {
+        } else if (ch == closeChar) {
             balance--;
         }
         pos++;
@@ -66,36 +88,52 @@ R create_parse_result(std::string_view trimmedStr) {
     }
 
     action.name = trimmedStr.substr(0, pos);
-    bool inQuote = false;
+    bool inQuote = false, commented_out = false;
     char quoteChar = '\0';
     int braceLevel = 0;  // Keep track of nested braces
     std::size_t token_start = ++pos;  // Skip the first ':'
 
     for (; pos < trimmedStr.size(); ++pos) {
         char c = trimmedStr[pos];
-
-        if (c == ':' and not inQuote and braceLevel == 0) {
-            assert(pos >= token_start);
-            action.parameters.emplace_back(trimmedStr.substr(token_start, pos - token_start));
-            token_start = pos + 1;
-        } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
-            inQuote = not inQuote;
-            if (inQuote) {
-                quoteChar = c;
+            
+        if(not commented_out) {
+            if(c == '\\') {
+                commented_out = true;
+                
+            } else if (c == ':' and not inQuote and braceLevel == 0) {
+                assert(pos >= token_start);
+                action.parameters.emplace_back(trimmedStr.substr(token_start, pos - token_start));
+                token_start = pos + 1;
+            } else if ((c == '\'' or c == '\"') and (not inQuote or c == quoteChar)) {
+                inQuote = not inQuote;
+                if (inQuote) {
+                    quoteChar = c;
+                }
+            } else if (c == '{') {
+                if constexpr(not expand_expressions_in_quotes) {
+                    if(inQuote)
+                        continue;
+                }
+                // Assuming skipNested advances 'pos'
+                skipNested(trimmedStr, pos, '{', '}');
+                --pos;
+            } else if (c == '[' and not inQuote) {
+                ++braceLevel;
+            } else if (c == ']' and not inQuote) {
+                --braceLevel;
             }
-        } else if (c == '{' and not inQuote) {
-            // Assuming skipNested advances 'pos'
-            skipNested(trimmedStr, pos, '{', '}');
-            --pos;
-        } else if (c == '[' and not inQuote) {
-            ++braceLevel;
-        } else if (c == ']' and not inQuote) {
-            --braceLevel;
+                
+        } else {
+            commented_out = false;
         }
     }
 
     if (inQuote) {
         throw std::invalid_argument("Invalid format: Missing closing quote");
+    }
+    
+    if(commented_out) {
+        throw std::invalid_argument("Invalid format: Ended on an escape character");
     }
     
     if (token_start < pos) {
@@ -125,6 +163,8 @@ bool convert_to_bool(Str&& p) noexcept {
 
     return true;
 }
+
+std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifiers, std::optional<std::queue<std::string_view>> subs = std::nullopt);
 
 template<typename ValueType, typename PatternMapType>
 inline std::optional<ValueType> parse_value(std::string_view name, PatternMapType& patterns, const Context& context, State& state)

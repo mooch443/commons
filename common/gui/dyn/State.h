@@ -295,8 +295,8 @@ struct State {
     //std::optional<Pattern*> get_pattern(size_t hash, const std::string&);
     
     std::shared_ptr<Drawable> named_entity(std::string_view);
-    std::optional<std::string_view> cached_variable_value(std::string_view name) const;
-    void set_cached_variable_value(std::string_view name, std::string_view value);
+    std::optional<std::string_view> cached_variable_value(std::string_view name, const std::shared_ptr<CurrentObjectHandler>&) const;
+    void set_cached_variable_value(const std::shared_ptr<CurrentObjectHandler>&, std::string_view name, std::string_view value);
     
 private:
     std::shared_ptr<HashedObject> register_variant(size_t hash, const Layout::Ptr& o);

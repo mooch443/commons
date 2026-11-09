@@ -67,8 +67,9 @@ struct FrameTag {
             return FrameTag{.name = std::move(localized)};
         }
 
-        validate_name(value);
-        return FrameTag{.name = SimpleTag(value)};
+        std::string name = Meta::fromStr<std::string>(value);
+        validate_name(name);
+        return FrameTag{.name = SimpleTag(name)};
     }
     bool operator==(const FrameTag& other) const = default;
     consteval static std::string_view class_name() { return "Tag"; }

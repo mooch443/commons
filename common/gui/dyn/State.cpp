@@ -579,6 +579,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         }
     }
     
+    check_field.operator()<bool, Disabled_t>("disabled");
     check_field.operator()<Color, FillClr>("fill");
     check_field.operator()<Color, TextClr>("color");
     check_field.operator()<Color, LineClr>("line");
@@ -957,7 +958,7 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
         size_t i = 0;
         for(auto v : vector) {
             if(is_map) {
-                auto parts = util::parse_array_parts(v, ':');
+                auto parts = util::parse_array_parts<':'>(v);
                 if(parts.size() != 2) {
                     throw InvalidArgumentException("Cannot parse map item ", v, " because it does not split into 2 parts.");
                 }
@@ -1372,9 +1373,9 @@ std::shared_ptr<Drawable> State::named_entity(std::string_view name) {
     return lock->retrieve_named(name);
 }
 
-std::optional<std::string_view> State::cached_variable_value(std::string_view name) const
+std::optional<std::string_view> State::cached_variable_value(std::string_view name, const std::shared_ptr<CurrentObjectHandler>& lock) const
 {
-    auto lock = _current_object_handler.lock();
+    //auto lock = _current_object_handler.lock();
     if(not lock)
         return std::nullopt;
     
@@ -1392,12 +1393,11 @@ std::optional<std::string_view> State::cached_variable_value(std::string_view na
     return lock->get_variable_value(name);
 }
 
-void State::set_cached_variable_value(std::string_view name, std::string_view value) {
-    auto lock = _current_object_handler.lock();
-    if(not lock)
+void State::set_cached_variable_value(const std::shared_ptr<CurrentObjectHandler>& handler, std::string_view name, std::string_view value) {
+    if(not handler)
         return;
     
-    lock->set_cached_variable_value(name, value);
+    handler->set_cached_variable_value(name, value);
 }
 
 /*State::State(const State& other)

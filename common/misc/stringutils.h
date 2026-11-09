@@ -170,6 +170,9 @@ inline std::string find_replace(
 }
 
 inline bool isWhitespaceOrAdditional(UChar32 c) {
+    if (static_cast<uint32_t>(c) < 0x80)
+        return c == ' ' || (c >= '\t' && c <= '\r');
+    
     return u_hasBinaryProperty(c, UCHAR_WHITE_SPACE) ||
         c == 0x200B || // ZERO WIDTH SPACE
         c == 0x2060 || // WORD JOINER
