@@ -1112,7 +1112,9 @@ namespace cmn::gui {
             }
 
             if (stage()) {
-                if(not tooltip.text().text().empty()
+                if(auto other = tooltip.other().lock();
+                   other && other->is_staged() && other->hovered()
+                   && not tooltip.text().text().empty()
                    && hovered()
                    && (not foldable() || not folded()))
                 {
