@@ -1173,6 +1173,11 @@ void Context::init() const {
                     throw InvalidArgumentException("Cannot parse boolean ", p0, " == ",p1,": ", ex.what());
                 }
             }),
+            VarFunc("absolute_path", [](const VarProps& props) -> file::Path {
+                REQUIRE_EXACTLY(1, props);
+                auto A = Meta::fromStr<file::Path>(props.first());
+                return A.absolute();
+            }),
             VarFunc("sqr", [](const VarProps& props) -> double {
                 REQUIRE_EXACTLY(1, props);
                 auto A = Meta::fromStr<double>(props.first());

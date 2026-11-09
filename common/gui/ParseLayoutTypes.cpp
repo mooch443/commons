@@ -349,9 +349,17 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
        && ptr
        && ptr.is<Entangled>())
     {
-        auto tooltip = obj.at("tooltip").get<std::string>();
-        if(not tooltip.empty()) {
-            tooltip = parse_text(tooltip, context, state);
+        //auto tooltip = obj.at("tooltip").get<std::string>();
+        auto tooltip = get(std::string(), "tooltip");
+        
+        if(auto pattern = state.pattern().get(hash, "tooltip");
+           pattern.has_value()
+           || not tooltip.empty())
+        {
+            if(pattern.has_value())
+                tooltip = pattern.value()->realize(context, state);
+            else
+                tooltip = parse_text(tooltip, context, state);
             
             auto entangled = ptr.get_smart();
             //auto entangled = derived_ptr<Entangled>(ptr).get_smart();

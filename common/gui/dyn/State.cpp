@@ -184,6 +184,23 @@ bool HashedObject::update(GUITaskQueue_t *gui, size_t hash, DrawStructure& g, La
         }
     }
 
+    if(auto it = patterns.find("tooltip");
+       it != patterns.end())
+    {
+        auto entangled = o.get_smart();
+        auto tooltip = it->second.realize(context, state);
+        if(not entangled->custom_data("tooltip")) {
+            entangled->add_custom_data("tooltip", (void*)new std::string(tooltip), [](void*p) {
+                delete (std::string*)p;
+            });
+        } else {
+            auto existing_tooltip = (std::string*)entangled->custom_data("tooltip");
+            if(existing_tooltip) {
+                *existing_tooltip = std::move(tooltip);
+            }
+        }
+    }
+
     if (std::holds_alternative<CustomBody>(object)) {
         if(not context.custom_elements.at(std::get<CustomBody>(object).name)->update(o, context, state, patterns))
         {
@@ -614,7 +631,7 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
     }
     check_field.operator()<Vec2, Scale>("scale");
     check_field.operator()<Vec2, Origin>("origin");
-    
+
     if(auto it = patterns.find("size");
        it != patterns_end)
     {
