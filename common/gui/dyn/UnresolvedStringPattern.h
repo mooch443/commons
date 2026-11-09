@@ -5,7 +5,7 @@
 namespace cmn::gui::dyn {
 struct Context;
 struct State;
-class CurrentObjectHandler;
+struct CurrentObjectHandler;
 }
 
 namespace cmn::pattern {
