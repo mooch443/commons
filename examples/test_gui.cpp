@@ -534,7 +534,7 @@ int main(int argc, char**argv) {
             ( action<Is>( graph ), ...);
         }(owl_indexes);
         
-        graph.text(Str("BBC MicroOwl"), Loc(10, 10), TextClr(White.alpha(el / 5 * 205 + 50)), Font(1));
+        graph.text(Str("BBC MicroOwl"), Loc(10, 10), TextClr(White.alpha(el / 5 * 205 + 50)), Font_t(1));
         graph.wrap_object(button);
         
         dynGUI.update(graph, nullptr);

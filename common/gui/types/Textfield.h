@@ -92,8 +92,8 @@ public:
             set(Str{Settings{}.text});
         if constexpr(not contains_type<Postfix, Args...>())
             set(Postfix{Settings{}.postfix});
-        if constexpr(not contains_type<Font, Args...>())
-            set(Settings{}.font);
+        if constexpr(not contains_type<Font_t, Args...>())
+            set(Font_t{Settings{}.font});
         if constexpr(not contains_type<TextClr, Args...>())
             set(TextClr{Settings{}.text_color});
         if constexpr(not contains_type<FillClr, Args...>())
@@ -121,7 +121,7 @@ public:
     void set(LineClr line) override { set_line_color(line); }
     void set(TextClr clr) { set_text_color(clr); }
     void set(ReadOnly ro) { set_read_only(ro); }
-    void set(Font font) { set_font(font); }
+    void set(Font_t font) { set_font(font); }
     void set(CheckText_t check) { _settings.check_text = check; }
     void set(OnEnter_t enter) { on_enter(enter); }
     void set(OnTab_t tab) { on_tab(tab); }

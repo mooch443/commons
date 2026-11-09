@@ -190,7 +190,7 @@ namespace cmn::gui {
             if(!_slices[i].name.empty())
                 add<Text>(Str{_slices[i].name},
                           Loc(_centers[i]),
-                          Font(0.8, Align::Center),
+                          Font_t(0.8, Align::Center),
                           Scale(_slices[i].scale * max(0.1,_radius / 250.f)));
         }
     }

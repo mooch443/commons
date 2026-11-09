@@ -168,6 +168,8 @@ ATTRIBUTE_ALIAS(CornerFlags_t, CornerFlags)
 ATTRIBUTE_ALIAS(Placeholder_t, std::string)
 ATTRIBUTE_ALIAS(PointerEvents, pointer::Events)
 
+ATTRIBUTE_ALIAS(Font_t, gui::Font)
+
 // Macro for defining a NumberAlias
 #define NUMBER_ALIAS(ALIAS_NAME, BASE_TYPE)                   \
 struct ALIAS_NAME##Tag { using base_type = BASE_TYPE; static constexpr std::string_view alias_name{ #ALIAS_NAME }; };   \
@@ -251,7 +253,6 @@ NUMBER_ALIAS(Folded_t, bool)
 NUMBER_ALIAS(Clickable, bool)
 NUMBER_ALIAS(ZIndex, int)
 NUMBER_ALIAS(Disabled_t, bool)
-using Font = gui::Font;
 
 }
 

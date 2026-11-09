@@ -18,7 +18,7 @@ namespace cmn::gui {
             Color line_clr = Black.alpha(200);
             Color text_clr = White;
             bool toggleable = false;
-            Font font = Font(0.75, Align::Center);
+            Font_t font = Font_t(0.75, Align::Center);
             Margins margins{0,0,0,0};
             Disabled_t disabled{false};
         };
@@ -42,7 +42,7 @@ namespace cmn::gui {
         void create(Args... args) {
             if constexpr(not contains_type<Str, Args...>())
                 set(Str{Settings{}.text});
-            if constexpr(not contains_type<Font, Args...>())
+            if constexpr(not contains_type<attr::Font_t, Args...>())
                 set(Settings{}.font);
             if constexpr(not contains_type<FillClr, Args...>())
                 set(FillClr{Settings{}.fill_clr});
@@ -64,7 +64,7 @@ namespace cmn::gui {
         
     public:
         using Entangled::set;
-        void set(attr::Font font)   { _settings.font = font; }
+        void set(attr::Font_t font)   { _settings.font = font; }
         void set(attr::Loc loc) override    { _settings.bounds << loc; Entangled::set(loc); }
         void set(attr::FillClr clr) override;
         void set(attr::LineClr clr) override;

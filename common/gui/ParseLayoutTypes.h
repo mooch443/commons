@@ -105,7 +105,7 @@ public:
     TextClr textClr;
     bool clickable;
     pointer::Events pointer_events{pointer::Events::All};
-    Font font;
+    Font_t font;
     uint64_t hash;
     LayoutType::Class type;
     ZIndex zindex;

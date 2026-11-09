@@ -194,7 +194,7 @@ void Graph::update() {
             
             view.add<Vertices>(pt - Vec2(0, 2), pt + Vec2(0, 2), fg);
             //advance(new Vertices(pt - Vec2(0, 2), pt + Vec2(0, 2), fg));
-            return view.add<Text>(Str{str}, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), TextClr{fg}, x_label_font);
+            return view.add<Text>(Str{str}, Loc(pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5)), TextClr{fg}, Font_t{x_label_font});
             //return advance(new Text(str, pt + Vec2(0, Base::default_line_spacing(x_label_font)*0.5f+5), fg, x_label_font));
         };
         
@@ -211,7 +211,7 @@ void Graph::update() {
             std::string str = ss.str();
             
             view.add<Vertices>(pt - Vec2(2, 0), pt + Vec2(2, 0), fg);
-            view.add<Text>(Str{str}, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), TextClr{fg}, y_label_font);
+            view.add<Text>(Str{str}, Loc(pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f)), TextClr{fg}, Font_t{y_label_font});
             //advance(new Vertices(pt - Vec2(2, 0), pt + Vec2(2, 0), fg));
             //advance(new Text(str, pt - Vec2(5, Base::default_line_spacing(y_label_font)*0.5f), fg, y_label_font));
         };
@@ -603,7 +603,7 @@ Graph::Graph(const Bounds& bounds,
              const std::string& name,
              const Rangef& x_range,
              const Rangef& y_range)
-    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(Str{name}, title_font)
+    : _name(name), _margin(10, 10), _zero(0.0), _xyaxis((char)Axis::X | (char)Axis::Y), _title(Str{name}, Font_t{title_font})
 {
     _graphs_view = new Entangled;
     

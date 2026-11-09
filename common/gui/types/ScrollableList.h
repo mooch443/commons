@@ -311,7 +311,7 @@ namespace cmn::gui {
                 font = detail_font({});
                 for(auto d : _details) {
                     if(d)
-                        d->set(font);
+                        d->set(Font_t{static_cast<const Font&>(font)});
                 }
             }
             
@@ -328,7 +328,7 @@ namespace cmn::gui {
             if constexpr(has_detail<T>) {
                 for(auto d : _details) {
                     if(d)
-                        d->set(detail_font(font));
+                        d->set(Font_t{detail_font(font)});
                 }
             }
             
@@ -703,7 +703,7 @@ namespace cmn::gui {
                     _texts.at(i)->set_default_font(item_font);
                     if constexpr(has_detail<T>) {
                         if(_details.size() > i)
-                            _details.at(i)->set(detail_font);
+                            _details.at(i)->set(Font_t{detail_font});
                     }
                 }
                 
@@ -737,9 +737,9 @@ namespace cmn::gui {
                         }
                     });
                     
-                    _texts.push_back(new StaticText(attr::Font(item_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
+                    _texts.push_back(new StaticText(attr::Font_t((Font)item_font), attr::Margins(0,0,0,0), attr::TextClr{_text_color}));
                     if constexpr(has_detail<T>) {
-                        _details.push_back(new StaticText(detail_font, attr::TextClr{ (Color)_detail_color }, attr::Margins{0}));
+                        _details.push_back(new StaticText(Font_t{detail_font}, attr::TextClr{ (Color)_detail_color }, attr::Margins{0}));
                     }
                 }
             }
@@ -838,7 +838,7 @@ namespace cmn::gui {
                     ? 0.0_F
                     : (_label_font.align == Align::Center ? 0.5_F : 1.0_F)),
                 _label_dims.height * 0.5_F
-            }, Str{_folded_label}, Font(_label_font.size), Origin{
+            }, Str{_folded_label}, Font_t(_label_font.size), Origin{
                 _label_font.align == Align::Left
                     ? 0.0_F
                     : (_label_font.align == Align::Center ? 0.5_F : 1.0_F),
@@ -903,14 +903,14 @@ namespace cmn::gui {
                             if (item.value().font().size > 0) {
                                 _texts.at(idx)->set_default_font(item.value().font());
                                 if constexpr(has_detail<T>) {
-                                    _details.at(idx)->set(detail_font(item.value().font()));
+                                    _details.at(idx)->set(Font_t{detail_font(item.value().font())});
                                 }
                             }
                         } else {
                             if constexpr(has_detail<T>) {
-                                _details.at(idx)->set(detail_font(_item_font));
+                                _details.at(idx)->set(Font_t{detail_font(_item_font)});
                             }
-                            _texts.at(idx)->set((Font)_item_font);
+                            _texts.at(idx)->set(Font_t{(Font)_item_font});
                         }
                         
                         rect_to_idx[_rects.at(idx).get()] = i;

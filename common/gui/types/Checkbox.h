@@ -15,7 +15,7 @@ public:
         Color line_clr = Black.alpha(200);
         Color text_clr = White;
         bool checked = false;
-        Font font = Font(0.5);
+        Font_t font = Font_t(0.5);
         std::function<void()> callback = [](){};
     };
     
@@ -39,7 +39,7 @@ public:
     void create(Args... args) {
         if constexpr(not contains_type<Str, Args...>())
             set(Str{Settings{}.text});
-        if constexpr(not contains_type<Font, Args...>())
+        if constexpr(not contains_type<Font_t, Args...>())
             set(Settings{}.font);
         if constexpr(not contains_type<FillClr, Args...>())
             set(FillClr{Settings{}.fill_clr});
@@ -59,7 +59,7 @@ private:
     
 public:
     using Entangled::set;
-    void set(attr::Font font)   { set_font(font); }
+    void set(attr::Font_t font)   { set_font(font); }
     void set(attr::FillClr clr) override {
         if(clr != _settings.fill_clr) {
             _settings.fill_clr = clr;

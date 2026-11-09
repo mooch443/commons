@@ -14,7 +14,7 @@ FileChooser::FileChooser(const file::Path& start, const std::string& extension,
                          std::function<void(const file::Path&, std::string)> callback,
                          std::function<void(const file::Path&, std::string)> on_select_callback)
 :
-    _description(new Text(Str("Please choose a file in order to continue."), Loc(10, 10), Font(0.75))),
+    _description(new Text(Str("Please choose a file in order to continue."), Loc(10, 10), Font_t(0.75))),
     _columns(new HorizontalLayout),
     _overall(new VerticalLayout),
     _base("Choose file", {1200,640}, [this](DrawStructure& graph){
@@ -442,7 +442,7 @@ void FileChooser::file_selected(size_t, file::Path p) {
             
         } else {
             if(!_selected_text)
-                _selected_text = new StaticText(Str{"Selected: "+_selected_file.str()}, SizeLimit(700, 0), Font(0.6f));
+                _selected_text = new StaticText(Str{"Selected: "+_selected_file.str()}, SizeLimit(700, 0), Font_t(0.6f));
             else
                 _selected_text->set_txt("Selected: "+_selected_file.str());
             

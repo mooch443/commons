@@ -868,7 +868,7 @@ Layout::Ptr LayoutContext::create_object<LayoutType::settings>()
             LabelColor_t color{ dyn::get(state, p, Color(225,225,225,200), "color", hash, "label_")};
             ref->set(color);
             
-            LabelFont_t label_font{parse_font(p, Font(0.75), "font")};
+            LabelFont_t label_font{parse_font(p, Font(0.6), "font")};
             ref->set(label_font);
             
             if(p.contains("corners")) {

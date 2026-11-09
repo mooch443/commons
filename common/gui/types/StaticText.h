@@ -127,8 +127,8 @@ namespace cmn::gui {
                 set(Str{Settings{}.txt});
             if constexpr(not contains_type<TextClr, Args...>())
                 set(TextClr{Settings{}.text_color});
-            if constexpr(not contains_type<Font, Args...>())
-                set(Settings{}.default_font);
+            if constexpr(not contains_type<Font_t, Args...>())
+                set(Font_t{Settings{}.default_font});
             if constexpr(not contains_type<SizeLimit, Args...>())
                 set(SizeLimit{Size2{Settings{}.max_size}});
             if constexpr(not contains_type<Margins, Args...>())
@@ -157,7 +157,7 @@ namespace cmn::gui {
         void set(const Str& str) { set_txt(str); }
         void set(TextClr clr) { set_text_color(clr); }
         //void set(LineClr clr) override { set_line_color(clr); }
-        void set(Font font) { set_default_font(font); }
+        void set(Font_t font) { set_default_font(font); }
         void set(SizeLimit limit) { set_max_size(limit); }
         void set(Margins margins) { set_margins(margins); }
         void set(Alpha alpha) { set_alpha(alpha); }

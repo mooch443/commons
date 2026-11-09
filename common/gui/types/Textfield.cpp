@@ -128,7 +128,7 @@ void Textfield::init() {
     
     _selection_rect.set_fillclr(DarkCyan.alpha(100));
     _cursor_position = narrow_cast<long_t>(text().length());
-    _text_display.create(Str{text()}, TextClr{Black}, _settings.font);
+    _text_display.create(Str{text()}, TextClr{Black}, Font_t{_settings.font});
     
     set_clickable(true);
     set_scroll_enabled(true);
@@ -457,7 +457,7 @@ void Textfield::set_font(Font font) {
     _settings.font = font;
     _text_display.set_font(font);
     if(_placeholder)
-        _placeholder->set(font);
+        _placeholder->set(Font_t{font});
     
     set_content_changed(true);
 }
@@ -645,7 +645,7 @@ void Textfield::set_postfix(const std::string &p) {
             add<Text>(Str{postfix()},
                       Loc(width() - 5, height() * 0.5),
                       TextClr{text_color().exposure(0.5)},
-                      Font(max(0.1, _text_display.font().size * 0.9)),
+                      Font_t(max(0.1, _text_display.font().size * 0.9)),
                       Origin(1, 0.5));
             //advance(tmp);
         }
@@ -655,7 +655,7 @@ void Textfield::set_postfix(const std::string &p) {
             //tmp->set_origin(Vec2(1, 0.5));
             //advance(tmp);
             
-            add<Text>(Str("(read-only)"), Loc(width() - 5 - (_settings.clear_text ? 15 : 0), height() * 0.5), TextClr(Gray), Font(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
+            add<Text>(Str("(read-only)"), Loc(width() - 5 - (_settings.clear_text ? 15 : 0), height() * 0.5), TextClr(Gray), Font_t(max(0.1, _text_display.font().size * 0.9)), Origin(1, 0.5));
         }
         
         if(!_selection.empty()) {
@@ -667,7 +667,7 @@ void Textfield::set_postfix(const std::string &p) {
         
         if(_settings.clear_text && not _settings.text.empty()) {
             if(not _clear_button) {
-                _clear_button = std::make_unique<StaticText>(Str{_settings.clear_text.value()}, attr::Clickable{true}, TextClr{White}, Alpha{0.5}, Font(_settings.font.size * 1.1), attr::Origin{1,0.5});
+                _clear_button = std::make_unique<StaticText>(Str{_settings.clear_text.value()}, attr::Clickable{true}, TextClr{White}, Alpha{0.5}, Font_t(_settings.font.size * 1.1), attr::Origin{1,0.5});
                 _clear_button->on_click([this](auto) {
                     set_text("");
                     if(stage())
@@ -724,7 +724,7 @@ void Textfield::set_postfix(const std::string &p) {
                 return;
             
             if(!_placeholder)
-                _placeholder = new StaticText(Str{text}, TextClr{Gray}, _settings.font, Margins{0,0,0,0});
+                _placeholder = new StaticText(Str{text}, TextClr{Gray}, Font_t{_settings.font}, Margins{0,0,0,0});
             else
                 _placeholder->set_txt(text);
             

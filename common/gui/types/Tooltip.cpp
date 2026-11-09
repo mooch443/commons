@@ -15,7 +15,7 @@ namespace cmn::gui {
             SizeLimit(max_width > 0 || !lock
                 ? max_width
                 : lock->width(), -1),
-            Font(0.6),
+            Font_t(0.6),
             FillClr{Black.alpha(220)},
             LineClr{100,175,250,200},
             Margins{10,10,10,10}

@@ -311,7 +311,7 @@ Drawable* List::tooltip_object()
                     break;
                 }
             }
-            add<Text>(Str{item_name}, Loc(_title.pos()), TextClr{_title.color()}, _label_font);
+            add<Text>(Str{item_name}, Loc(_title.pos()), TextClr{_title.color()}, Font_t{_label_font});
         }
     }
     
@@ -464,7 +464,7 @@ Drawable* List::tooltip_object()
             r->set_bounds(Bounds(offset, Vec2(size.width, _row_height)));
             add<Text>(Str(*item),
                       Loc(offset + Vec2(size.width, _row_height)*0.5f),
-                      _item_font);
+                      Font_t{_item_font});
             offset.y += inversion_correct_height;
         }
         
@@ -475,7 +475,7 @@ Drawable* List::tooltip_object()
                 //Print("size = ", size);
                 add<Text>(Str((std::string)_placeholder),
                           Loc(size.size() * 0.5),
-                          f, TextClr{LightGray.alpha(200)});
+                          Font_t{f}, TextClr{LightGray.alpha(200)});
             }
         }
         
@@ -651,7 +651,7 @@ void List::set(LabelFont_t font) {
         font.align = Align::VerticalCenter;
     if(font != _label_font) {
         _label_font = font;
-        _title.set(_label_font);
+        _title.set(Font_t{_label_font});
         update_sizes();
     }
 }

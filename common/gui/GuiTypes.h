@@ -487,7 +487,7 @@ protected:
         struct Settings {
             std::string txt;
             Color color = White;
-            Font font;
+            attr::Font_t font;
             Shadow_t shadow{0};
             
         } _settings;
@@ -507,8 +507,8 @@ protected:
                 set(Str{Settings{}.txt});
             if constexpr(not contains_type<TextClr, Args...>())
                 set(TextClr{Settings{}.color});
-            if constexpr(not contains_type<Font, Args...>())
-                set(Settings{}.font);
+            if constexpr(not contains_type<Font_t, Args...>())
+                set(Font_t{Settings{}.font});
             if constexpr(not contains_type<Shadow_t, Args...>())
                 set(Settings{}.shadow);
 
@@ -548,7 +548,7 @@ protected:
         using Drawable::set;
         void set(const Str& txt) { set_txt(txt); }
         void set(const TextClr& color) { set_color(color); }
-        void set(const Font& font) { set_font(font); }
+        void set(const Font_t& font) { set_font(font); }
         void set(const Shadow_t& shadow) {
             if(_settings.shadow == shadow)
                 return;

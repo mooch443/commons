@@ -17,7 +17,7 @@ void TagList::init() {
 
     _dropdown->set(attr::Box{0, 0, _input_size.width, _input_size.height});
     _dropdown->set(ListDims_t{_input_list_size});
-    _dropdown->set(Font{_input_font});
+    _dropdown->set(Font_t{_input_font});
     _dropdown->list().set(ItemFont_t{_input_font});
     _dropdown->set(FillClr{_input_fill_color});
     _dropdown->set(ListFillClr_t{_input_fill_color});
@@ -257,8 +257,8 @@ void TagList::set(LabelFont_t value) {
     if(_input_font == value)
         return;
     _input_font = value;
-    const Font font = value;
-    _dropdown->set(font);
+    const Font font{(Font)value};
+    _dropdown->set(Font_t{font});
     _dropdown->list().set(ItemFont_t{font});
 }
 
@@ -326,7 +326,7 @@ void TagList::rebuild_structure() {
             auto remove = Layout::Make<StaticText>{
                 Str{"<sym>✕</sym>"},
                 TextClr{_item_text_color.alpha(190)},
-                _item_font,
+                Font_t{_item_font},
                 attr::Margins{
                     0,
                     _item_padding.y,
@@ -359,7 +359,7 @@ void TagList::rebuild_structure() {
                             _on_remove ? 1 : _item_padding.x,
                             _item_padding.y
                         },
-                        _item_font
+                        Font_t{_item_font}
                     }
                 }
             }();
@@ -375,7 +375,7 @@ void TagList::rebuild_structure() {
             
             auto front = chip->child<StaticText*>(0);
             front->set(TextClr{_item_text_color});
-            front->set(_item_font);
+            front->set(Font_t{_item_font});
             front->set(SizeLimit{_flow->max_size().width - _item_padding.x * 2 - (_on_remove ? 30 : 0), 0});
             front->set(attr::Margins{
                 _item_padding.x,
@@ -396,7 +396,7 @@ void TagList::rebuild_structure() {
             } else if(_on_remove) {
                 StaticText* remove = chip->child<StaticText*>(1);
                 remove->set(TextClr{_item_text_color.alpha(190)});
-                remove->set(_item_font);
+                remove->set(Font_t{_item_font});
                 remove->set(attr::Margins{
                     0,
                     _item_padding.y,

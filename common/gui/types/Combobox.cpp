@@ -11,6 +11,8 @@ auto default_value_of(std::string_view name) {
 
 void Combobox::init() {
     _dropdown = new Dropdown(Box(0, 0, 800, 28));
+    if(_settings.label_font) _dropdown->set(*_settings.label_font);
+    if(_settings.item_font) _dropdown->set(*_settings.item_font);
     auto keys = GlobalSettings::keys();
     
     std::vector<Dropdown::TextItem> items(keys.begin(), keys.end());
@@ -194,19 +196,29 @@ void Combobox::set(ParmName name) {
     }
 }
 
-void Combobox::set(attr::Font font)   {
+void Combobox::set(attr::Font_t font)   {
     if(_settings.font != font) {
         _settings.font = font;
         if(_value)
             _value->set(font);
         _dropdown->set(font);
         {
-            Font center{font};
+            Font_t center{font};
             center.align = Align::Center;
             _reset_button->set(center);
         }
         set_content_changed(true);
     }
+}
+void Combobox::set(LabelFont_t font) {
+    _settings.label_font = font;
+    if(_dropdown) _dropdown->set(font);
+    if(_value) _value->set(font);
+}
+void Combobox::set(ItemFont_t font) {
+    _settings.item_font = font;
+    if(_dropdown) _dropdown->set(font);
+    if(_value) _value->set(font);
 }
 void Combobox::set(attr::FillClr clr) {
     if(_settings.fill_clr != clr) {
@@ -398,7 +410,9 @@ void Combobox::update_value() {
     _value->set(_settings.fill_clr);
     _value->set(_settings.line_clr);
     _value->set(_settings.text_clr);
-    _value->set(_settings.font);
+    _value->set(Font_t{_settings.font});
+    if(_settings.label_font) _value->set(*_settings.label_font);
+    if(_settings.item_font) _value->set(*_settings.item_font);
     _value->set(_settings.highlight);
     _value->set(_settings.sizeLimit);
     _value->set(_settings.list_line_clr);

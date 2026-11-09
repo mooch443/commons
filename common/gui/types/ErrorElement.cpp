@@ -42,7 +42,7 @@ void ErrorElement::set(attr::Str content) {
         set_content_changed(true);
     }
 }
-void ErrorElement::set(attr::Font font) {
+void ErrorElement::set(attr::Font_t font) {
     if(_settings.font != font) {
         _settings.font = font;
         if(_text)

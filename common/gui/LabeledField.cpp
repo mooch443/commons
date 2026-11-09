@@ -395,7 +395,7 @@ LabeledOptional::LabeledOptional(GUITaskQueue_t* gui, const std::string& name, c
       _null_value(new Entangled(Clickable{true}))
 {
     _value = LabeledField::Make({true}, gui, (std::string)ref().name(), local_settings);
-    _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28}, Font{0.5}, CornerFlags_t::Square());
+    _reset_button = new Button(Str{"<sym>✕</sym>"}, Size{25,28}, attr::Font_t{0.5}, CornerFlags_t::Square());
     
     _reset_button->on_click([this](auto){
         if(not ref().get().optional_has_value())
@@ -448,7 +448,7 @@ std::shared_ptr<Drawable> LabeledOptional::tooltip_object() const
 bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_view name) const {
     if(ptr.get() == _create_button.get())
     {
-        if(is_in(name, ALIAS<LineClr>, ALIAS<FillClr>, ALIAS<TextClr>, ALIAS<Font>, ALIAS<Size>)) {
+        if(is_in(name, ALIAS<LineClr>, ALIAS<FillClr>, ALIAS<TextClr>, ALIAS<Font_t>, ALIAS<Size>)) {
             return true;
         } else
             return false;
@@ -459,11 +459,11 @@ bool LabeledOptional::is_property_allowed(const Layout::Ptr& ptr, std::string_vi
 void LabeledOptional::after_set_property(const Layout::Ptr& , std::string_view name, std::function<std::string()> value_string) const {
     //if(ptr.get() == _create_button.get())
     {
-        if(name == ALIAS<Font>) {
-            auto font = Meta::fromStr<Font>(value_string());
+        if(name == ALIAS<Font_t>) {
+            auto font = Meta::fromStr<Font_t>(value_string());
             
             {
-                Font center{font};
+                Font_t center{font};
                 center.align = Align::Center;
                 _reset_button->set(center);
             }
@@ -546,7 +546,7 @@ void LabeledOptional::update_ref_in_main_thread() {
         //_value = nullptr;
         _null_value->update([this](Entangled& base) {
             //auto text = base.add<Text>(Str{"Initialize value for "+(std::string)ref().name()}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5}, TextClr{Green.saturation(0.05)}, Origin{0, 0.5});
-            auto text = base.add<Text>(Str{"no value"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
+            auto text = base.add<Text>(Str{"no value"}, Loc{5,5 + _create_button->height() * 0.5_F}, Font_t{0.5, Style::Monospace}, TextClr{DarkCyan.saturation(0.05)}, Origin{0, 0.5});
             _create_button->set(Loc(text->pos().x + text->width() + 5_F, 5_F));
             base.advance_wrap(*_create_button);
         });
@@ -1198,7 +1198,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
         auto &text = context->obj.at("preview").get_object();
         if(text.contains("font")) {
             Font font = parse_font(text);
-            _dropdown->preview()->set(font);
+            _dropdown->preview()->set(Font_t{font});
         }
         if(text.contains("fade_out")) {
             StaticText::FadeOut_t fade{dyn::get(context->state, text, float(0), "fade_out", context->hash, "preview_")};

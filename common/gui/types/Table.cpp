@@ -17,7 +17,7 @@ namespace cmn::gui {
         
         std::map<column_t, Bounds> title_bounds;
         for(const auto & [index, title] : _columns) {
-            title_bounds[index] = add<Text>(Str{title}, TextClr{White}, Font(_default_font.size * 1.25, Style::Bold))->bounds();
+            title_bounds[index] = add<Text>(Str{title}, TextClr{White}, Font_t(_default_font.size * 1.25, Style::Bold))->bounds();
         }
     }
     

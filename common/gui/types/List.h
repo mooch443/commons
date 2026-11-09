@@ -12,7 +12,7 @@ namespace cmn::gui {
     protected:
         Font _item_font{0.6, Align::Center};
         Font _label_font{0.6, Align::VerticalCenter};
-        gui::Text _title{_label_font};
+        gui::Text _title{Font_t{_label_font}};
         gui::Rect _title_background;
         Placeholder_t _placeholder;
         CornerFlags_t _corners;

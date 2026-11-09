@@ -42,7 +42,7 @@ void Button::mup(Float2_t x, Float2_t y, bool left_button, bool started_here) {
 }
     
     void Button::set_font(Font font) {
-        _text.set(font);
+        _text.set(Font_t{font});
     }
 
     const Font& Button::font() const {

@@ -122,14 +122,14 @@ namespace cmn::gui {
                         }
                         
                         auto sub = e.msg.substr(i, min(e.msg.length() - i, next - i));
-                        auto t = text(Str{sub}, Loc(pos), TextClr{e.clr}, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
+                        auto t = text(Str{sub}, Loc(pos), TextClr{e.clr}, Font_t(0.5f, Align::Right), Scale(scale().reciprocal()));
                         pos.y += t->global_bounds().height;
                         
                         i = next;
                     }
                     
                 } else {
-                    auto t = text(Str{e.msg}, Loc(pos), TextClr{e.clr}, Font(0.5f, Align::Right), Scale(scale().reciprocal()));
+                    auto t = text(Str{e.msg}, Loc(pos), TextClr{e.clr}, Font_t(0.5f, Align::Right), Scale(scale().reciprocal()));
                     pos.y += t->global_bounds().height;
                 }
                 
@@ -162,8 +162,8 @@ void Dialog::set_closed() {
       : _closed(false),
         _graph(d),
         _title_bg(FillClr{White.alpha(100)}),
-        _text(new StaticText(attr::Str(text), Loc(250, 140), SizeLimit(700, 500), Font(0.8f))),
-        _title(new StaticText(attr::Str(title), SizeLimit(700, 0), Font(0.9f, Style::Bold), Margins{0, -5, 0, 5})),
+        _text(new StaticText(attr::Str(text), Loc(250, 140), SizeLimit(700, 500), Font_t(0.8f))),
+        _title(new StaticText(attr::Str(title), SizeLimit(700, 0), Font_t(0.9f, Style::Bold), Margins{0, -5, 0, 5})),
         _okay(Button::MakePtr(attr::Str(okay))),
         _abort(abort.empty() ? nullptr : Button::MakePtr(attr::Str(abort))),
         _second(second.empty() ? nullptr : Button::MakePtr(attr::Str(second))),

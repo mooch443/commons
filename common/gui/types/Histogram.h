@@ -57,7 +57,7 @@ namespace cmn::gui {
               _filter(filter),
               _display(display),
               _needs_update(true),
-              _title_obj(Str(title), Loc(margin, margin), Font(0.7f, Style::Bold))
+              _title_obj(Str(title), Loc(margin, margin), Font_t(0.7f, Style::Bold))
         {
             //set_background(Black.alpha(125));
             set_bounds(size);
@@ -234,7 +234,7 @@ namespace cmn::gui {
                         y = roundf(y);
                     
                     auto text = new Text(Str(Meta::toStr(y)),
-                                         Font(0.5, Align::Center));
+                                         Font_t(0.5, Align::Center));
                     
                     _y_label_width = max(_y_label_width, text->width());
                     _y_labels.push_back(text);
@@ -413,7 +413,7 @@ namespace cmn::gui {
                         Str("N: "+Meta::toStr(_data[i].size())+" median: "+Meta::toStr(median)),
                         legend_pos,
                         TextClr(clr),
-                        Font(0.5, Align::Right));
+                        Font_t(0.5, Align::Right));
 
                     legend_pos.y += text->height();
                     
@@ -441,7 +441,7 @@ namespace cmn::gui {
                                 add<Text>(Str(Meta::toStr(v)),
                                     Loc(bar_pos.x + element.x * 0.5f,
                                         bar_pos.y + element.y + axes_width + text_height * 0.5f),
-                                    Font(0.5, Align::Center));
+                                    Font_t(0.5, Align::Center));
                                 last_text.x = text_x;
                                 
                                 // tick on x-axis

@@ -23,6 +23,8 @@ public:
         LineClr line_clr{Black.alpha(200)};
         TextClr text_clr{White};
         Font font = Font(0.75, Align::Center);
+        std::optional<LabelFont_t> label_font;
+        std::optional<ItemFont_t> item_font;
         std::string param;
         
         attr::HighlightClr highlight{DarkCyan};
@@ -66,7 +68,9 @@ public:
     using Entangled::set;
     
     void set(OnSelect_t);
-    void set(attr::Font font);
+    void set(attr::Font_t font);
+    void set(LabelFont_t font);
+    void set(ItemFont_t font);
     void set(attr::FillClr clr) override;
     void set(attr::LineClr clr) override;
     void set(attr::TextClr clr);

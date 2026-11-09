@@ -122,7 +122,7 @@ namespace cmn::gui {
             }
             
             if(!ptext)
-                ptext = new Text(Str{name()}, Loc(gbounds.pos() - Vec2(0, 20)), TextClr{White}, Font(0.5));
+                ptext = new Text(Str{name()}, Loc(gbounds.pos() - Vec2(0, 20)), TextClr{White}, Font_t(0.5));
             else {
                 ptext->set_pos(gbounds.pos() - Vec2(0, 20));
             }

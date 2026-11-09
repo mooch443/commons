@@ -14,7 +14,7 @@ public:
         Color fill_clr = Red.alpha(50);
         Color line_clr = Red.exposureHSL(0.5).alpha(50);
         Color text_clr = White;
-        Font font = Font(0.35, Align::Left);
+        Font_t font = Font_t(0.35, Align::Left);
         std::string content;
         SizeLimit size_limit = SizeLimit(150,0);
     };
@@ -37,7 +37,7 @@ public:
     void create(Args... args) {
         if constexpr(not contains_type<attr::Str, Args...>())
             set(attr::Str{Settings{}.content});
-        if constexpr(not contains_type<attr::Font, Args...>())
+        if constexpr(not contains_type<attr::Font_t, Args...>())
             set(Settings{}.font);
         if constexpr(not contains_type<attr::FillClr, Args...>())
             set(attr::FillClr{Settings{}.fill_clr});
@@ -58,7 +58,7 @@ public:
     const Layout::Ptr& failed_object() const { return _failed_object; }
     void set_failed_object(Layout::Ptr object) { _failed_object = std::move(object); }
     
-    void set(attr::Font font);
+    void set(attr::Font_t font);
     void set(attr::FillClr clr) override;
     void set(attr::LineClr clr) override;
     void set(attr::TextClr clr);
