@@ -127,7 +127,8 @@ public:
     std::vector<char> retrieve_data() const;
     std::string read_file() const;
     
-    std::string_view extension() const;
+    std::string_view extension() const &;
+    std::string_view extension() const && = delete;
     
     [[nodiscard]] file::Path absolute() const;
     [[nodiscard]] std::optional<file::Path> canonical() const;

@@ -7,11 +7,21 @@
 namespace cmn {
     namespace sprite {
         
-        class PropertyException : public virtual UtilsException {
+    template<typename... Args>
+    struct PropertyException : CustomException<UtilsException, Args...> {
+        PropertyException(const Args&... args, cmn::source_location info = cmn::source_location::current()) noexcept(false)
+            : CustomException<UtilsException, Args...>(type_t<UtilsException>{}, args..., info)
+        { }
+    };
+
+    template<typename... Args>
+    PropertyException(Args... args) -> PropertyException<Args...>;
+    
+        /*class PropertyException : public virtual UtilsException {
         public:
             PropertyException(const std::string& str) : UtilsException(str) { }
             ~PropertyException() throw() {}
-        };
+        };*/
         
         template<typename ValueType = double>
         class Property;
@@ -184,7 +194,7 @@ namespace cmn {
                 try {
                     _set_value_from_string(str);
                 } catch(const std::invalid_argument& e) {
-                    throw U_EXCEPTION("Cannot set ", this->name().c_str()," to (",no_quotes(utils::ShortenText(str.c_str(), 100)),"): ", e.what());
+                    throw U_EXCEPTION("Cannot set ", this->name()," to (",no_quotes(utils::ShortenText(str.c_str(), 100)),"): ", e.what());
                 }
             }
             
@@ -216,7 +226,8 @@ namespace cmn {
              * Retrieves the name of the property.
              * @return The property's name.
              */
-            const std::string& name() const { return _name; }
+            std::string_view name() const && = delete;
+            std::string_view name() const & { return _name; }
 
             /**
              * Checks the validity state of the property.
@@ -278,7 +289,8 @@ namespace cmn {
              * Retrieves the type name of the property.
              * @return The type name.
              */
-            virtual std::string_view type_name() const {
+            std::string_view type_name() const && = delete;
+            std::string_view type_name() const & {
                 return _type_name;
             }
             
@@ -573,12 +585,12 @@ namespace cmn {
                 if constexpr(trivial) {
                     auto v = _value.load();
                     if(not v.has_value())
-                        throw PropertyException("No value stored in "+name()+".");
+                        throw PropertyException("No value stored in ", name(),".");
                     return cvt2json(v.value());
                 } else {
                     std::shared_lock guard(_property_mutex);
                     if(not _value.has_value())
-                        throw PropertyException("No value stored in "+name()+".");
+                        throw PropertyException("No value stored in ", name(), ".");
                     return cvt2json(_value.value());
                 }
             }

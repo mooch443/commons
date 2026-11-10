@@ -373,7 +373,7 @@ std::optional<std::set<std::string>> ParameterHistory::redo(sprite::Map &target)
     
     run_locked([&](){
 #ifndef NDEBUG
-        std::map<std::string, std::string> current_values, next_values;
+        std::map<std::string_view, std::string> current_values, next_values;
         for(auto key : keys) {
             next_values[key] = Meta::fromStr<std::string>(item.values.at(key).get().valueString());
             current_values[key] = Meta::fromStr<std::string>(target.at(key).get().valueString());
@@ -405,7 +405,7 @@ std::optional<std::set<std::string>> ParameterHistory::undo(sprite::Map &target)
     
     sprite::Map next_map;
 #ifndef NDEBUG
-    std::map<std::string, std::string> current_values, next_values;
+    std::map<std::string_view, std::string> current_values, next_values;
 #endif
     for(auto key : keys) {
         auto historic = historic_value_of(key);

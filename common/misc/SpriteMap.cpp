@@ -31,7 +31,7 @@ Map& Map::operator=(const Map& other) {
     
     std::unordered_map<std::string, CallbackManager> callbacks;
     for(auto &&[key, value] : _props) {
-        callbacks[key] = value->_callbacks;
+        callbacks[(std::string)key] = value->_callbacks;
     }
     _props.clear();
     
@@ -140,6 +140,20 @@ std::string_view ConstReference::type_name() const {
     bool ConstReference::operator!=(const PropertyType& other) const {
         return get().operator!=(other);
     }
+
+Reference::Reference(Map& container, std::weak_ptr<PropertyType> type)
+    : _type(type), _container(&container)
+{ }
+
+std::string Reference::name() const {
+    if(_name)
+        return _name.value();
+    
+    auto lock = _type.lock();
+    if(not lock)
+        throw std::runtime_error("Property we are referencing in name() does not exist anymore.");
+    return std::string(lock->name());
+}
 
 }
 }

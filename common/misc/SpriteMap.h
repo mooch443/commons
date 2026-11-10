@@ -94,37 +94,16 @@ namespace sprite {
     private:
         std::weak_ptr<PropertyType> _type;
         Map* _container;
-        std::unique_ptr<std::string> _name_storage;
-        GETTER(std::string_view, name);
+        std::optional<std::string> _name;
+        
     public:
-        template <typename T>
-            requires std::is_array_v<std::remove_reference_t<T>>
-        Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
-            : _type(type), _container(&container), _name(name, std::size(name) - 1)
-        { }
+        std::string name() const;
         
-        template <typename T>
-            requires (std::is_same_v<T, const char*>
-                     || std::is_same_v<std::remove_reference_t<T>, std::string_view>)
-                     && (not std::is_array_v<std::remove_reference_t<T>>)
-        Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
-            : _type(type), _container(&container), _name(name)
-        { }
+        Reference(Map& container, std::weak_ptr<PropertyType> type);
         
-        template <typename T>
-            requires std::is_lvalue_reference_v<T>
-                     && (not std::is_same_v<std::remove_reference_t<T>, std::string_view>)
-                     && (not std::is_array_v<std::remove_reference_t<T>>)
-        Reference(Map& container, std::weak_ptr<PropertyType> type, T&& name)
-            : _type(type), _container(&container), _name_storage(std::make_unique<std::string>(name)), _name(*_name_storage)
+        Reference(Map& container, StringLike auto&& name)
+            : _container(&container), _name(std::forward<decltype(name)>(name))
         { }
-        
-        template <typename T>
-            requires (not std::same_as<T, std::weak_ptr<PropertyType>>)
-        Reference(Map& container, T&& name) : Reference(container, std::weak_ptr<PropertyType>{}, std::forward<T>(name)) { }
-
-        // Delete the constructor for r-value std::string
-        Reference(Map&, std::weak_ptr<PropertyType>, std::string&&) = delete;
         
         bool operator==(const PropertyType& other) const;
         bool operator==(const Reference& other) const { return operator==(other.get()); }
@@ -165,7 +144,10 @@ namespace sprite {
             {
                 return *ptr;
             }
-            throw std::runtime_error("Property "+std::string(_name)+" does not exist.");
+            
+            if(_name)
+                throw std::runtime_error("Property '"+_name.value()+"' does not exist.");
+            throw std::runtime_error("Property does not exist.");
         }
         std::string_view type_name() const;
         
@@ -244,7 +226,7 @@ concept Iterable = requires(T obj) {
         typedef std::shared_ptr<PropertyType> Store;
         
     protected:
-        robin_hood::unordered_flat_map<std::string, Store, MultiStringHash, MultiStringEqual> _props;
+        robin_hood::unordered_flat_map<std::string_view, Store, MultiStringHash, MultiStringEqual> _props;
 
         std::atomic<std::size_t> _id_counter{0u};
         robin_hood::unordered_flat_map<std::size_t, std::function<void(Map*)>> _shutdown_callbacks;
@@ -498,95 +480,62 @@ concept Iterable = requires(T obj) {
             }
         }
         
-        template<typename T>
-            requires std::is_same_v<T, const char*>
-                    || std::is_lvalue_reference_v<T&&>
-                    || std::is_array_v<std::remove_reference_t<T>>
-        ConstReference at(T&& name) const {
-            return operator[](std::forward<T>(name));
+        ConstReference at(StringLike auto&& name) const && = delete;
+        ConstReference at(StringLike auto&& name) const & {
+            return operator[](std::forward<decltype(name)>(name));
         }
         
-        template<typename T>
-            requires std::is_same_v<T, const char*>
-                    || std::is_lvalue_reference_v<T&&>
-                    || std::is_same_v<std::remove_reference_t<T>, std::string_view>
-                    || std::is_array_v<std::remove_reference_t<T>>
-        Reference operator[](T&& name) {
+        Reference operator[](StringLike auto&& name) && = delete;
+        Reference operator[](StringLike auto&& name) & {
+            auto sv = utils::string_like_view(std::forward<decltype(name)>(name));
             auto guard = LOGGED_LOCK(mutex());
-            decltype(_props)::const_iterator it;
-
-            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>
-                         || std::is_array_v<std::remove_reference_t<T>>
-                         || std::same_as<std::remove_reference_t<T>, std::string_view>)
+            
+            /// we have to make a copy of name here...
+            /// we cant be sure this exists later still
+            if(decltype(_props)::const_iterator it = _props.find(sv);
+               it != _props.end())
             {
-                if constexpr(std::same_as<std::remove_reference_t<T>, std::string_view>)
-                    it = _props.find(name);
-                else if constexpr(std::is_array_v<std::remove_reference_t<T>>)
-                    it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
-                else
-                    it = _props.find(std::string_view(name));
-                
-                /// we can keep this here as a string reference, because we
-                /// are using const char[35] which do not get deallocated
-                if(it != _props.end())
-                    return Reference(*this, it->second, name);
-                
-            } else {
-                it = _props.find(name);
-                
-                /// we have to make a copy of name here...
-                /// we cant be sure this exists later still
-                if(it != _props.end())
-                    return Reference(*this, it->second, it->first);
+                return Reference(*this, std::weak_ptr(it->second));
             }
-
-            return Reference(*this, name);
+            return Reference(*this, std::forward<decltype(name)>(name));
         }
         
-        template<typename T>
-            requires std::is_same_v<T, const char*>
-                    || std::is_lvalue_reference_v<T&&>
-                    || std::is_array_v<std::remove_reference_t<T>>
-        ConstReference operator[](T&& name) const {
+        ConstReference operator[](StringLike auto&& name) const && = delete;
+        ConstReference operator[](StringLike auto&& name) const & {
+            auto sv = utils::string_like_view(std::forward<decltype(name)>(name));
             auto guard = LOGGED_LOCK(mutex());
-            decltype(_props)::const_iterator it;
 
-            if constexpr(std::is_same_v<std::remove_reference_t<T>, const char*>) {
-                it = _props.find(std::string_view(name));
-            } else if constexpr(std::is_array_v<std::remove_reference_t<T>>) {
-                it = _props.find(std::string_view(name, std::size(name) - 1));  // -1 to remove null terminator
-            } else {
-                it = _props.find(name);
-            }
-
-            if(it != _props.end())
+            if(decltype(_props)::const_iterator it = _props.find(sv);
+               it != _props.end())
+            {
                 return ConstReference(*this, it->second);
+            }
 
             return ConstReference(*this);
         }
         
-        bool has(std::string_view name) const {
+        bool has(StringLike auto&& name) const {
             auto guard = LOGGED_LOCK(mutex());
-            return _props.contains(name);
+            return _props.contains(utils::string_like_view(std::forward<decltype(name)>(name)));
         }
         
         template<typename T>
-        bool is_type(const std::string_view& name, const T&) const {
+        bool is_type(std::string_view name, const T&) const {
             return is_type<T>(name);
         }
         
         template<typename T>
-        bool is_type(const std::string_view& name) const {
+        bool is_type(std::string_view name) const {
             return has(name) && operator[](name).is_type<T>();
         }
         
         template<typename T>
-        Property<T>& set(const std::string_view& name, const T& value) {
+        Property<T>& set(std::string_view name, const T& value) {
             operator[](name) = value;
         }
         
         template<typename T>
-        Property<T>& insert(const std::string_view& name, const T& value) {
+        Property<T>& insert(std::string_view name, const T& value) {
             std::unique_lock g{pending_mutex};
             if(has(name)) {
                 std::string e = "Property already "+(std::string)name+" already exists.";
@@ -674,13 +623,27 @@ concept Iterable = requires(T obj) {
             }
         }
         
-        std::vector<std::string> keys() const {
+        /// dont allow temporary instantiation to return views into keys. return an owning vector instead
+        std::vector<std::string> keys() const && {
             auto guard = LOGGED_LOCK(mutex());
             std::vector<std::string> result;
             result.reserve(_props.size());
 
             for (auto &p: _props)
-                result.push_back(p.first);
+                result.emplace_back(p.first);
+
+            std::sort(result.begin(), result.end());
+            return result;
+        }
+        
+        /// we can use views here since we have instantiated the map before
+        std::vector<std::string_view> keys() const & {
+            auto guard = LOGGED_LOCK(mutex());
+            std::vector<std::string_view> result;
+            result.reserve(_props.size());
+
+            for (auto &p: _props)
+                result.emplace_back(p.first);
 
             std::sort(result.begin(), result.end());
             return result;
@@ -698,7 +661,10 @@ concept Iterable = requires(T obj) {
         if(auto ptr = _type.lock();
            not ptr)
         {
-            throw U_EXCEPTION("Property ",name()," is invalid.");
+            if(_name)
+                throw U_EXCEPTION("Property ",_name.value()," is invalid.");
+            else
+                throw U_EXCEPTION("Calling toProperty() on an invalidated property.");
         } else
             return ptr->toProperty<T>();
     }
@@ -711,9 +677,18 @@ concept Iterable = requires(T obj) {
             return static_cast<Property<T>*>(ptr.get())->value();
         }
         
-        std::string e = not ptr || not ptr->valid()
-            ? "Cannot find variable '" + (std::string)_name + "' of type " + (std::string)Meta::name<T>() + " in map."
-            : "Cannot cast '" + (std::string)_name + "' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ (std::string)Meta::name<T>() +".";
+        std::string e;
+        if(not ptr || not ptr->valid()) {
+            if(ptr) {
+                e = "Cannot find variable '"+name()+"' of type " + (std::string)Meta::name<T>() + " in map.";
+            } else if(_name) {
+                e = "Cannot find variable '"+_name.value()+"' of type " + (std::string)Meta::name<T>() + " in map.";
+            } else {
+                e = "Cannot find variable of type " + (std::string)Meta::name<T>() + " in map.";
+            }
+        } else {
+            e = "Cannot cast '" + name() + "' of type " + (ptr->valid() ? (std::string)ptr->type_name() : "<variable not found>") + " to "+ (std::string)Meta::name<T>() +".";
+        }
         FormatError(e.c_str());
         throw PropertyException(e);
     }
@@ -737,7 +712,7 @@ void Reference::operator=(const T& value) {
         ptr->operator=(value);
     }
     else {
-        _container->insert(_name, value);
+        _container->insert(name(), value);
     }
 }
 
@@ -750,7 +725,7 @@ void Reference::operator=(const T& value) {
         ptr->operator=(std::string(value));
     }
     else {
-        _container->insert(_name, std::string(value));
+        _container->insert(name(), std::string(value));
     }
 }
 

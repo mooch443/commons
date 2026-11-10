@@ -430,7 +430,7 @@ std::optional<Path> Path::canonical() const {
     #endif
         }
 
-    std::string_view Path::extension() const {
+    std::string_view Path::extension() const & {
         if(empty())
             return std::string_view();
         

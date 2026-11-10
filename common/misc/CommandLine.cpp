@@ -195,7 +195,8 @@ void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const s
                     (v.front() == '"' && v.back() == '"'));
             };
         
-        auto keys = additional ? additional->keys() : (map ? map->keys() : std::vector<std::string>{});
+        auto _keys = additional ? additional->keys() : (map ? map->keys() : std::vector<std::string_view>{});
+        std::vector<std::string> keys{_keys.begin(), _keys.end()};
         if(map) {
             auto map_keys = map->keys();
             keys.insert(keys.end(), map_keys.begin(), map_keys.end());

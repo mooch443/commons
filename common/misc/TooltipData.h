@@ -20,7 +20,9 @@ struct TooltipData {
     bool is_name() const {
         return std::holds_alternative<std::string>(data);
     }
-    std::string_view title() const {
+    
+    std::string_view title() const && = delete;
+    std::string_view title() const & {
         if(is_name()) {
             return std::get<std::string>(data);
         } else {

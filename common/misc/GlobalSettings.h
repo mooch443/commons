@@ -647,7 +647,8 @@ protected:
         
         static auto keys() {
             return read([](const Configuration& c) {
-                return c.values.keys();
+                auto keys = c.values.keys();
+                return std::vector<std::string>{keys.begin(), keys.end()};
             });
         }
         

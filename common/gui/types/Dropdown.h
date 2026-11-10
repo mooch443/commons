@@ -68,12 +68,13 @@ namespace cmn::gui {
         };
         
         class Item {
-        protected:
-            GETTER(long, ID);
-            
         public:
             static constexpr long INVALID_ID = -1;
+        protected:
+            GETTER(long, ID){INVALID_ID};
             
+        public:
+            Item() = default;
             Item(long ID);
             virtual ~Item() {}
             
@@ -98,8 +99,9 @@ namespace cmn::gui {
             GETTER_SETTER_I(Color, color, Transparent);
             
         public:
-            TextItem(const std::string& name = "", long ID = Item::INVALID_ID, std::optional<std::string> search = std::nullopt, void *custom = NULL, std::optional<std::string> docs = std::nullopt)
-            : Item(ID), _name(name), _search(std::move(search)), _docs(std::move(docs)), _custom(custom)
+            TextItem() = default;
+            TextItem(StringLike auto&& name, long ID = Item::INVALID_ID, std::optional<std::string> search = std::nullopt, void *custom = NULL, std::optional<std::string> docs = std::nullopt)
+            : Item(ID), _name((std::string)utils::string_like_view(name)), _search(std::move(search)), _docs(std::move(docs)), _custom(custom)
             {
                 _index = narrow_cast<int>(this->ID());
             }
