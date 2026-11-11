@@ -40,6 +40,7 @@ ENUM_CLASS(cmn::,
 )
 
 namespace cmn {
+    class CommandLine;
     /*namespace detail {
         struct g_GSettingsSingletonStruct;
     }*/
@@ -206,6 +207,10 @@ protected:
      */
     class GlobalSettings {
     public:
+        enum class Access {
+            CONFIGURATION,
+            CURRENT
+        };
         
         /**
          * Configuration options for loading settings.
@@ -235,6 +240,7 @@ protected:
         static GlobalSettings*& instance_storage();
         static bool& is_reading_config_flag();
         static bool& is_writing_config_flag();
+        static Access& current_access();
         
     public:
         GlobalSettings();
@@ -323,23 +329,43 @@ protected:
 
         static void set_instance(GlobalSettings*);
         
-        enum class Access {
-            CONFIGURATION,
-            CURRENT
+        class Snapshot {
+            Configuration config;
+            sprite::Map current_defaults, current_defaults_with_config;
+            std::unique_ptr<CommandLine> command_line;
+            std::atomic<bool> pending{true};
+
+        public:
+            // Requires the configuration supplied by read() or write().
+            explicit Snapshot(const Configuration&);
+            // Rolls back under write(); release the last owner outside read() callbacks.
+            ~Snapshot();
+            void commit() { pending = false; }
+            // Requires the configuration supplied by write().
+            void rollback(Configuration&);
         };
+
+        static std::shared_ptr<Snapshot> snapshot(const Configuration& config) {
+            return std::make_shared<Snapshot>(config);
+        }
+
         
+        template<Access access>
         struct ReadG {
             ReadG() {
                 is_reading_config_flag() = true;
+                current_access() = access;
             }
             ~ReadG() {
                 is_reading_config_flag() = false;
             }
         };
+        template<Access access>
         struct WriteG {
             WriteG() {
                 is_reading_config_flag() = true;
                 is_writing_config_flag() = true;
+                current_access() = access;
             }
             ~WriteG() {
                 is_writing_config_flag() = false;
@@ -370,7 +396,7 @@ protected:
             }
             
             /// set reading flag
-            WriteG g;
+            WriteG<access> g;
             
             if constexpr(access == Access::CONFIGURATION) {
                 std::unique_lock guard{mutex()};
@@ -409,7 +435,7 @@ protected:
             }
             
             /// set reading flag
-            ReadG g;
+            ReadG<access> g;
             
             if constexpr(access == Access::CONFIGURATION) {
                 std::shared_lock guard{mutex()};

@@ -3,6 +3,7 @@
  */
 
 #include "GlobalSettings.h"
+#include <misc/CommandLine.h>
 #include <misc/Path.h>
 
 namespace cmn {
@@ -33,6 +34,11 @@ bool& GlobalSettings::is_writing_config_flag() {
     return flag;
 }
 
+GlobalSettings::Access& GlobalSettings::current_access() {
+    static thread_local Access access{Access::CONFIGURATION};
+    return access;
+}
+
 void GlobalSettings::set_instance(GlobalSettings* ptr) {
     instance(ptr);
 }
@@ -45,6 +51,39 @@ std::shared_mutex& GlobalSettings::mutex() {
 std::shared_mutex& GlobalSettings::defaults_mutex() {
     static std::shared_mutex _mutex;
     return _mutex;
+}
+
+GlobalSettings::Snapshot::Snapshot(const Configuration& source) {
+    if(not is_reading_config_flag() || current_access() != Access::CONFIGURATION || &source != &instance()->_config)
+        throw std::logic_error("GlobalSettings::snapshot requires a secure configuration read context.");
+
+    std::shared_lock guard(defaults_mutex());
+    auto* settings = instance();
+    config = source;
+    current_defaults = settings->_current_defaults;
+    current_defaults_with_config = settings->_current_defaults_with_config;
+    command_line = std::make_unique<CommandLine>(CommandLine::instance());
+}
+
+GlobalSettings::Snapshot::~Snapshot() {
+    if(pending)
+        GlobalSettings::write([this](Configuration& target) { rollback(target); });
+}
+
+void GlobalSettings::Snapshot::rollback(Configuration& target) {
+    if(not is_writing_config_flag() || current_access() != Access::CONFIGURATION || &target != &instance()->_config)
+        throw std::logic_error("GlobalSettings::Snapshot::rollback requires a secure configuration write context.");
+    if(not pending)
+        return;
+
+    std::unique_lock guard(defaults_mutex());
+    auto* settings = instance();
+    // Copy assignment retains the live maps' callback registrations.
+    target = config;
+    settings->_current_defaults = current_defaults;
+    settings->_current_defaults_with_config = current_defaults_with_config;
+    CommandLine::instance() = *command_line;
+    pending = false;
 }
 
 /**

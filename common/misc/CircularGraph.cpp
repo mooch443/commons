@@ -481,7 +481,7 @@ namespace cmn {
                     throw U_EXCEPTION("[periodic::EFT] Cannot work on empty (or null) dxy array.");
                 
                 auto dt = std::make_unique<scalars_t::element_type>();
-                dt->resize(dxy->size() - 1); // -1 because dxy is same size as array
+                dt->resize(dxy->size()); // Includes the closing edge from differentiate().
                 
                 auto cumsum = std::make_unique<scalars_t::element_type>();
                 cumsum->resize(dt->size() + 1); // prepend a zero
@@ -494,7 +494,7 @@ namespace cmn {
                 
                 scalar_t sum = 0;
                 
-                for(size_t i = 0; i<dxy->size() - 1; ++i) {
+                for(size_t i = 0; i<dxy->size(); ++i) {
                     const auto &pt = (*dxy)[i];
                     (*dt)[i] = sqrt(SQR(pt.x) + SQR(pt.y)) + 1e-10;
                     
