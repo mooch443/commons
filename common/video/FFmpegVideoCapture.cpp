@@ -290,10 +290,12 @@ FfmpegVideoCapture::VideoTestResults FfmpegVideoCapture::get_actual_frame_count(
     
     auto estimate = cap.estimated_frame_count();
     auto results = calculate_actual_frame_count(cap, path);
+#ifndef NDEBUG
     if(estimate != results.length)
         FormatWarning(" * ", path, " actual frame count = ", results.length, " (instead of ", estimate,"). remembering this.");
     else
         Print(" * ", path, " is giving true length information (",results.length," frames).");
+#endif
     tested_video_lengths[path.str()] = results;
     return results;
 }

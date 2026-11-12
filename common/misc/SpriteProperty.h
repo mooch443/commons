@@ -551,7 +551,7 @@ namespace cmn {
                 if(not valid() && not other.valid())
                     return true;
                 
-                if(other.type_name() != type_name())
+                if(not other.is_type<ValueType>())
                     return false;
                 
 				const Property& other_ = (const Property<ValueType>&) other;

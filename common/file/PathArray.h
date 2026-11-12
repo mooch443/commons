@@ -48,8 +48,10 @@ private:
 #ifdef COMMON_DEBUG_PATH_RESOLVE
             Print("Added path to _paths: ", path.str());
 #endif
-        } else
-            FormatWarning("Not adding empty path: ", path);
+        }
+#ifndef NDEBUG
+        else FormatWarning("Not adding empty path: ", path);
+#endif
     }
 
 public:

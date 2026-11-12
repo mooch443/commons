@@ -611,6 +611,17 @@ concept Iterable = requires(T obj) {
             return *property_;
         }
         
+        bool erase_if(std::string_view key) {
+            auto guard = LOGGED_LOCK(mutex());
+            auto it = _props.find(key);
+            if(it != _props.end()) {
+                _props.erase(it);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        
         void erase(std::string_view key) {
             auto guard = LOGGED_LOCK(mutex());
             auto it = _props.find(key);
@@ -647,6 +658,13 @@ concept Iterable = requires(T obj) {
 
             std::sort(result.begin(), result.end());
             return result;
+        }
+        
+        void apply(auto&& Fn) {
+            auto guard = LOGGED_LOCK(mutex());
+            for(auto &[key, value] : _props) {
+                Fn(key, value);
+            }
         }
         
         std::string toStr() const {

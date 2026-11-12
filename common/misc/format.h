@@ -847,6 +847,8 @@ namespace fmt {
     template<typename T> auto green(const T& obj) -> _clr<FormatColor::GREEN, T> { return { obj }; }
     template<typename T> auto yellow(const T& obj) -> _clr<FormatColor::YELLOW, T> { return { obj }; }
     template<typename T> auto cyan(const T& obj) -> _clr<FormatColor::CYAN, T> { return { obj }; }
+    template<typename T> auto gray(const T& obj) -> _clr<FormatColor::GRAY, T> { return { obj }; }
+    template<typename T> auto dark_gray(const T& obj) -> _clr<FormatColor::DARK_GRAY, T> { return { obj }; }
     template<typename T> auto black(const T& obj) -> _clr<FormatColor::BLACK, T> { return { obj }; }
 }
 
@@ -940,10 +942,10 @@ void NoNLPrint(const Args & ... args) {
     static constexpr auto bracket_color = ParseValue<FormatterType::UNIX>::bracket_color;
     
     auto str =
-        console_color<bracket_color, FormatterType::UNIX>( "[" )
-        + console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
-        + console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
-        + format<FormatterType::UNIX>(args...);
+        //console_color<bracket_color, FormatterType::UNIX>( "[" )
+        //+ console_color<FormatColor::CYAN, FormatterType::UNIX>( current_time_string() )
+        //+ console_color<bracket_color, FormatterType::UNIX>( "]" ) + " "
+        format<FormatterType::UNIX>(args...);
     
     log_to_terminal(str, false, false);
 
