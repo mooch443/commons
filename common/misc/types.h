@@ -395,13 +395,13 @@ struct Pose {
             if(not visible()) {
                 return "["+cmn::Meta::toStr(x())+","+cmn::Meta::toStr(y())+",0]";
             }
-            return "["+cmn::Meta::toStr(x())+","+cmn::Meta::toStr(y())+"]";
+            return "["+cmn::Meta::toStr(x())+","+cmn::Meta::toStr(y())+",1]";
         }
         glz::generic to_json() const {
-            // output as [x, y]
+            // output as [x, y, visibility]
             if(not visible())
                 return {x(), y(), uint8_t(0)};
-            return {x(), y()};
+            return {x(), y(), uint8_t(1)};
         }
         
         constexpr static Point invalid() noexcept { return Point{}; }

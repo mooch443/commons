@@ -157,16 +157,21 @@ std::string _handle_subobjects(const VarBase_t& variable, const VarProps& modifi
                 if(ret.front() == '['
                    && ret.back() == ']')
                 {
-                    if(is_in(subs->front(), "x", "y")) {
-                        /// we specifically allow x/y subtypes if the array has two elements
+                    if(is_in(subs->front(), "x", "y", "z")) {
+                        /// we specifically allow x/y/z subtypes if the array has three elements
                         auto parts = util::parse_array_parts(util::truncate(ret));
-                        if(parts.size() != 2)
-                            throw InvalidArgumentException("Expected exactly 2 array elements for string 'array' ", ret, ". Got ", parts, " instead.");
+                        if(parts.size() < 2)
+                            throw InvalidArgumentException("Expected at least 2 array elements for string 'array' ", ret, ". Got ", parts, " instead.");
                         if(subs->front() == "x") {
                             ret = parts[0];
-                        } else
+                        } else if(subs->front() == "y") {
                             ret = parts[1];
-                        
+                        } else if(subs->front() == "z") {
+                            if(parts.size() < 3)
+                                throw InvalidArgumentException("Expected at least 3 array elements for string 'array' ", ret, ". Got ", parts, " instead.");
+                            ret = parts[2];
+                        }
+
                     } else if(is_valid_number<uint16_t>(subs->front())) {
                         /// must be resolved to an integer!
                         auto index = Meta::fromStr<uint16_t>(subs->front());

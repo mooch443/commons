@@ -829,21 +829,27 @@ inline auto resolve_variable(std::string& output, const VarProps& props, const s
             throw InvalidArgumentException("Not expecting a for loop here: ", props);
             return;
             
-        } else if(auto it = context.defaults.variables.find(props.name); it != context.defaults.variables.end()) {
+        } else if(auto it = context.defaults.variables.find(props.name);
+                  it != context.defaults.variables.end())
+        {
             //Print("* defaults contain ", props);
             //Print("* => ", it->second->value<std::string>(context, state));
             //[[maybe_unused]] CTimer ctimer("custom var");
             if(not props.subs.empty()) {
                 /// here we might need to check for x,y / array accessors
                 auto &key = props.subs.front();
-                if(auto index = is_in_index(key, "x", "y", "w", "h");
-                   index < 4u) {
+                if(size_t index = is_in_index(key, "x", "y", "w", "h", "z");
+                   index < 5)
+                {
+                    if(index == 4)
+                        index = 2;
+                    
                     /// treated special
                     std::string tmp = it->second->value<std::string>(context, state);
                     
                     auto parts = util::parse_array_parts(util::truncate(tmp));
                     if(index >= parts.size()) {
-                        throw InvalidArgumentException("String 'array' ", tmp, " does not have ",index," elements and cant be accessed using .x/.y/.w/.h");
+                        throw InvalidArgumentException("String 'array' ", tmp, " does not have ",index," elements and cant be accessed using .x/.y/.w/.h/.z");
                     }
                     utils::fast_fromstr(output, parts[index]);
                     return;
@@ -1025,9 +1031,15 @@ void access_sub_field(std::string& output, const VarProps& modifiers, const glz:
     
     if(json.is_array()) {
         const auto& array = json.get_array();
-        if(size_t index = is_in_index(name, "x", "y", "w", "h");
-           index < 4)
+        if(size_t index = is_in_index(name, "x", "y", "w", "h", "z");
+           index < 5)
         {
+            if(index == 4)
+                index = 2;
+            if(index >= array.size()) {
+                throw InvalidArgumentException("Cannot access index ",name," in array ", json);
+            }
+            
             const auto &obj = array[index];
             if(obj.is_string()) {
                 apply_html(output, modifiers, obj.get_string());
@@ -1115,9 +1127,12 @@ void handle_sub_objects(std::string& output, cmn::gui::dyn::VarBase_t& variable,
             if(not modifiers.subs.empty()) {
                 /// need to check for special subs
                 auto& key = modifiers.subs.front();
-                if(auto index = is_in_index(key, "x", "y", "w", "h");
-                   index < 4)
+                if(size_t index = is_in_index(key, "x", "y", "w", "h", "z");
+                   index < 5)
                 {
+                    if(index == 4)
+                        index = 2;
+                    
                     std::string tmp = variable.value_string(modifiers);
                     auto parts = util::parse_array_parts(util::truncate(tmp));
                     if(index >= parts.size()) {
