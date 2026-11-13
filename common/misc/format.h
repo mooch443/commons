@@ -369,14 +369,18 @@ public:
 
         auto is_keyword = [](std::string_view word) {
             auto trimmed = utils::lowercase(utils::trim(word));
-            static constexpr std::array<std::string_view, 20> keywords{
+            static constexpr auto keywords = std::to_array<std::string_view>({
                 //"string", "pv",
                 //"path",
-                //"array", "map", "set", "pair",
+                "array", "map",
+                //"set", "pair",
                 "int", "float", "double", "bool", "byte", "char", "unsigned", "int64_t", "uint64_t", "int32_t", "uint32_t", "int16_t", "uint16_t", "int8_t", "uint8_t", "uint",
                 "true", "false",
-                "if", "def"
-            };
+                "if", "def",
+                "string",
+                //"size",
+                "uint64", "int16", "int8", "int32", "uint16", "uint32"
+            });
             return contains(keywords, trimmed);
         };
 
@@ -850,6 +854,7 @@ namespace fmt {
     template<typename T> auto gray(const T& obj) -> _clr<FormatColor::GRAY, T> { return { obj }; }
     template<typename T> auto dark_gray(const T& obj) -> _clr<FormatColor::DARK_GRAY, T> { return { obj }; }
     template<typename T> auto black(const T& obj) -> _clr<FormatColor::BLACK, T> { return { obj }; }
+    template<typename T> auto purple(const T& obj) -> _clr<FormatColor::PURPLE, T> { return { obj }; }
 }
 
 template<typename T>

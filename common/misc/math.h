@@ -265,9 +265,19 @@ inline float fast_atan2(float y, float x)
     auto sqdistance(const T0& point0, const T1& point1) -> typename std::remove_reference<decltype(point1.x)>::type {
         return SQR(point1.x - point0.x) + SQR(point1.y - point0.y);
     }
+
+    template <typename T0, typename T1>
+    auto sqdistance(const T0& point0, const T1& point1) -> typename std::remove_reference<decltype(point1.x())>::type {
+        return SQR(point1.x() - point0.x()) + SQR(point1.y() - point0.y());
+    }
     
     template <typename T0, typename T1>
     auto euclidean_distance(const T0& point0, const T1& point1) -> typename std::remove_reference<decltype(point1.x)>::type {
+        return cmn::sqrt(sqdistance(point0, point1));
+    }
+
+    template <typename T0, typename T1>
+    auto euclidean_distance(const T0& point0, const T1& point1) -> typename std::remove_reference<decltype(point1.x())>::type {
         return cmn::sqrt(sqdistance(point0, point1));
     }
     

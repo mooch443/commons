@@ -243,8 +243,8 @@ namespace cmn {
         auto vec = Meta::fromStr<std::vector<Scalar>>(str); \
         if(vec.empty()) \
             return Vector2D(); \
-        if(vec.size() != 2) \
-            throw std::invalid_argument("Can only initialize Vector2D with two or no elements. ('"+(std::string)str+"')"); \
+        if(not is_in(vec.size(), 2,3)) \
+            throw std::invalid_argument("Can only initialize Vector2D with two, three, or no elements. ('"+(std::string)str+"')"); \
         return Vector2D(vec[0], vec[1]); \
     }
 

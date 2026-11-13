@@ -678,9 +678,6 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     im_font_scale = max(1, dpi_scale) * 0.75_F;
     base->_dpi_scale = dpi_scale;
 
-    const Float2_t interface_scale = gui::interface_scale();
-    base->_graph->set_scale(1.0_F / interface_scale);
-
     int fw, fh;
 #if __APPLE__
     auto fb = frame_buffer_scale(window, 1);
@@ -713,6 +710,10 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
 
         base->event(e);
     }
+
+    // Resize handlers may update the interface scale for the new dimensions.
+    const Float2_t interface_scale = gui::interface_scale();
+    base->_graph->set_scale(1.0_F / interface_scale);
     
     base->_graph->set_dirty(NULL);
 

@@ -300,15 +300,31 @@ struct GaussianTemporalWeighting {
 
 struct Pose {
     struct Point {
-        uint16_t x, y;
+        /// x now encodes visibility. if it is visible normmally, the top bit
+        /// will be zero. for invisible it will be 1.
+        uint16_t _x{0}, _y{0};
         
-        constexpr Point(const cmn::Vec2& v)
-            : x(cmn::narrow_cast<uint16_t>(v.x)),
-              y(cmn::narrow_cast<uint16_t>(v.y))
+        constexpr Point(const cmn::Vec2& v, bool visible = true)
+            : _x(cmn::narrow_cast<uint16_t>(v.x)),
+              _y(cmn::narrow_cast<uint16_t>(v.y))
         {
             assert(v.x >= 0 && v.y >= 0);
+            if(not visible) {
+                _x |= 1 << 15;
+            }
         }
-        constexpr Point(uint16_t x, uint16_t y) noexcept : x(x), y(y) {}
+        constexpr Point(uint16_t x, uint16_t y, bool visible) noexcept
+            : _x(x | (visible ? 0 : 1) << 15),
+              _y(y)
+        {}
+        
+        static constexpr Point from_raw(uint16_t x, uint16_t y) noexcept {
+            Point p;
+            p._x = x;
+            p._y = y;
+            return p;
+        }
+        
         constexpr Point() noexcept = default;
         constexpr Point(const Point&) noexcept = default;
         constexpr Point& operator= (const Point&) noexcept = default;
@@ -318,29 +334,77 @@ struct Pose {
         constexpr bool operator!=(const Point&) const noexcept = default;
         constexpr auto operator<=>(const Point&) const = default;
         
-        bool valid() const noexcept {
-            return x > 0 || y > 0;
+        constexpr Point& operator=(const Vec2& v) noexcept {
+            move_to(v);
+            return *this;
+        }
+        
+        constexpr bool valid() const noexcept {
+            return x() > 0 || y() > 0;
+        }
+        constexpr bool visible() const noexcept {
+            return ((_x >> 15) & 0x1) == 0;
+        }
+        constexpr void set_visible(bool visible) noexcept {
+            _x = (_x & 0x7FFF) | ((visible ? 0 : 1) << 15);
+        }
+        
+        constexpr uint16_t x() const noexcept {
+            return _x & 0x7FFF;
+        }
+        constexpr uint16_t y() const noexcept {
+            return _y;
         }
 
         constexpr operator Vec2() const noexcept {
-            return Vec2(x, y);
+            return Vec2(x(), y());
+        }
+        
+        constexpr void move_to(Vec2 target) {
+            assert(target.x >= 0 && target.x <= 0x7FFF);
+            assert(target.y >= 0 && target.y <= 0xFFFF);
+            _x = cmn::narrow_cast<uint16_t>(target.x) | (_x & 0x8000);
+            _y = cmn::narrow_cast<uint16_t>(target.y);
         }
         
         static Point fromStr(cmn::StringLike auto&& str) {
-            return Point(cmn::Meta::fromStr<Vec2>(str));
+            auto sv = utils::string_like_view(std::forward<decltype(str)>(str));
+            auto parts = util::parse_array_parts(util::truncate(sv));
+            
+            if(parts.size() == 2) {
+                return Point{
+                    cmn::narrow_cast<uint16_t>(Meta::fromStr<Float2_t>(parts.front())),
+                    cmn::narrow_cast<uint16_t>(Meta::fromStr<Float2_t>(parts.back())),
+                    true
+                };
+            } else if(parts.size() == 3) {
+                return Point{
+                    cmn::narrow_cast<uint16_t>(Meta::fromStr<Float2_t>(parts.at(0))),
+                    cmn::narrow_cast<uint16_t>(Meta::fromStr<Float2_t>(parts.at(1))),
+                    Meta::fromStr<uint8_t>(parts.at(2)) ? true : false
+                };
+            }
+            
+            throw InvalidArgumentException("Invalid format for Pose::Point: ", sv);
+            //return Point(cmn::Meta::fromStr<Vec2>(std::forward<decltype(str)>(str)));
         }
         static consteval std::string_view class_name() {
             return "Pose::Point";
         }
         std::string toStr() const {
-            return "["+cmn::Meta::toStr(x)+","+cmn::Meta::toStr(y)+"]";
+            if(not visible()) {
+                return "["+cmn::Meta::toStr(x())+","+cmn::Meta::toStr(y())+",0]";
+            }
+            return "["+cmn::Meta::toStr(x())+","+cmn::Meta::toStr(y())+"]";
         }
         glz::generic to_json() const {
             // output as [x, y]
-            return {x, y};
+            if(not visible())
+                return {x(), y(), uint8_t(0)};
+            return {x(), y()};
         }
         
-        constexpr static Point invalid() noexcept { return Point{0, 0}; }
+        constexpr static Point invalid() noexcept { return Point{}; }
     };
     
     struct Bone {
@@ -495,7 +559,9 @@ struct Pose {
             double samples = 0;
             Vec2 referencePoint;// = pose.points[referenceJointIndex];
             for(auto &pt : pose.points) {
-                if(pt.valid()) {
+                if(pt.valid()
+                   && pt.visible())
+                {
                     referencePoint += Vec2(pt);
                     samples++;
                 }
@@ -508,7 +574,9 @@ struct Pose {
             float weight = WeightPolicy::calculate_weight(i, num);
 
             for(size_t j = 0; j < pose.points.size(); ++j) {
-                if(pose.points[j].valid()) {
+                if(pose.points[j].valid()
+                   && pose.points[j].visible())
+                {
                     Vec2 relativePos = Vec2(pose.points[j]) - referencePoint;
                     relativePoints[j] += relativePos * weight;
                     weights[j] += weight;
@@ -534,7 +602,7 @@ struct Pose {
                 pose.points[i] = Point::invalid();
             } else {
                 Vec2 meanRelativePos = relativePoints[i] / weights[i];
-                pose.points[i] = Point((averageReferencePoint + meanRelativePos).clip(0));
+                pose.points[i] = Point((averageReferencePoint + meanRelativePos).clip(0), true);
             }
         }
         
@@ -549,19 +617,6 @@ struct Pose {
         return points == other.points;
     }
     glz::generic to_json() const;
-    
-    /**
-     * Serializes the Pose object to a byte array.
-     * @return A vector containing the serialized byte data.
-     */
-    std::vector<uint8_t> serialize() const;
-
-    /**
-     * Deserializes a Pose object from a byte array.
-     * @param buffer A vector containing the serialized byte data.
-     * @throws std::invalid_argument if the buffer is malformed.
-     */
-    static Pose deserialize(const std::vector<uint8_t>& buffer);
 };
 
 struct SegmentedOutlines {

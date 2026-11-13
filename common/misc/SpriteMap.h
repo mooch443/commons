@@ -550,9 +550,9 @@ concept Iterable = requires(T obj) {
                     ptr->set_do_print(true);
                     if constexpr(ParserAvailable<T>)
                     {
-                        Print(no_quotes(ptr->name()), "<", no_quotes(Meta::name<T>()), "> = ", value);
+                        prefixed_print("parm", no_quotes(ptr->name()), "<", fmt::purple(Meta::name<T>()), "> = ", value);
                     } else
-                        Print(no_quotes(ptr->name()), "<", no_quotes(type_name<T>()), "> added.");
+                        prefixed_print("parm", no_quotes(ptr->name()), "<", fmt::purple(type_name<T>()), "> added.");
                 }
             }
             
@@ -833,9 +833,9 @@ void Reference::operator=(const T& value) {
         if(_do_print) {
             if constexpr(ParserAvailable<T>)
             {
-                Print(no_quotes(name()), "<", no_quotes(Meta::name<T>()), "> = ", no_quotes(utils::ShortenText(Meta::toStr(v), 1000)));
+                prefixed_print("parm", no_quotes(name()), "<", fmt::purple(Meta::name<T>()), "> = ", no_quotes(utils::ShortenText(Meta::toStr(v), 1000)));
             } else {
-                Print(no_quotes(name()), "<", no_quotes(cmn::type_name<T>()), "> updated.");
+                prefixed_print("parm", no_quotes(name()), "<", fmt::purple(cmn::type_name<T>()), "> updated.");
             }
         }
         
