@@ -126,6 +126,14 @@ namespace cmn::gui {
         }
         
         using SectionInterface::set;
+
+        void set(attr::Scrollable_t value) {
+            set_scroll_enabled(value);
+        }
+        void set(attr::ScrollOffset value) {
+            if(scroll_enabled())
+                set_scroll_offset(value);
+        }
         
         void set(std::function<void(Entangled&)>&&);
         

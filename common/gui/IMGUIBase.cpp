@@ -1239,6 +1239,8 @@ void IMGUIBase::process_main_queue() {
         _draw_order.clear();
         _above_z.clear();
         _rotation_starts.clear();
+        _rounded_clips.clear();
+        _rounded_clip_depth = 0;
         
         apply_to_objects(objects, [this](Drawable* o) {
             redraw(o, _draw_order, _above_z);
@@ -1248,12 +1250,16 @@ void IMGUIBase::process_main_queue() {
             return A.ptr->z_index() < B.ptr->z_index() || (A.ptr->z_index() == B.ptr->z_index() && A.index < B.index);
         });
         
-        for(auto & order : _draw_order) {
-            draw_element(order);
-        }
+        if(_rounded_clips.empty()) {
+            for(auto & order : _draw_order) {
+                draw_element(order);
+            }
 
-        for (auto& order : _above_z) {
-            draw_element(order);
+            for (auto& order : _above_z) {
+                draw_element(order);
+            }
+        } else {
+            draw_rounded_clipped();
         }
         
 #ifdef COMMONS_COUNT_OBJECTS
@@ -1264,6 +1270,257 @@ void IMGUIBase::process_main_queue() {
         }
 #endif
     }
+
+void ImRotateEnd(int rotation_start_index, ImDrawList* list, Float2_t rad, ImVec2 center);
+
+void IMGUIBase::draw_rounded_clipped() {
+    auto list = ImGui::GetForegroundDrawList();
+    struct DrawSpan { unsigned int begin, end; size_t index; };
+    std::vector<bool> clipped_orders(_draw_order.size() + _above_z.size(), false);
+    for(const auto& clip : _rounded_clips)
+        std::fill(clipped_orders.begin() + clip.begin, clipped_orders.begin() + clip.end, true);
+    std::vector<DrawSpan> spans;
+    spans.reserve(std::count(clipped_orders.begin(), clipped_orders.end(), true));
+    auto render = [&](const DrawOrder& order) {
+        if(order.type == DrawOrder::ROUNDED_CLIP) {
+            auto& clip = _rounded_clips[order.index];
+            const auto corners = static_cast<Entangled*>(order.ptr)->bg().flags;
+            list->PathRect(order.bounds.pos(), order.bounds.pos() + order.bounds.size(),
+                           corners.radius, corners.to_imdraw_flags());
+            clip.vertex_begin = list->VtxBuffer.Size;
+            // Unindexed outline vertices follow the same deferred rotations as the children.
+            list->PrimReserve(0, list->_Path.Size);
+            for(const auto& point : list->_Path)
+                list->PrimWriteVtx(point, ImVec2(), 0);
+            clip.vertex_end = list->VtxBuffer.Size;
+            list->PathClear();
+        } else if(not clipped_orders[order.index]) {
+            draw_element(order);
+        } else {
+            const auto begin = static_cast<unsigned int>(list->IdxBuffer.Size);
+            auto unclipped = order;
+            // The CPU masks replace the unrotated rectangular scissor for this subtree.
+            unclipped._clip_rect = ImVec4();
+            draw_element(unclipped);
+            if(begin != static_cast<unsigned int>(list->IdxBuffer.Size))
+                spans.push_back({begin, static_cast<unsigned int>(list->IdxBuffer.Size), order.index});
+        }
+    };
+    for(const auto& order : _draw_order)
+        render(order);
+    for(const auto& order : _above_z) {
+        const auto vertex_begin = list->VtxBuffer.Size;
+        render(order);
+        if(clipped_orders[order.index] && order.ptr->has_global_rotation()) {
+            // These draws run after the container rotation markers.
+            for(auto parent = order.ptr->type() == Type::ENTANGLED
+                    ? static_cast<SectionInterface*>(order.ptr) : order.ptr->parent();
+                parent; parent = parent->parent())
+            {
+                if(auto it = _rotation_starts.find(parent); it != _rotation_starts.end())
+                    ImRotateEnd(vertex_begin, list, parent->rotation(), std::get<1>(it->second));
+            }
+        }
+    }
+
+    size_t edge_count = 0;
+    for(auto& clip : _rounded_clips) {
+        auto add_edges = [&](size_t count, auto point, float fringe) {
+            for(size_t j = 0; j < count; ++j) {
+                const auto a = point(j), b = point((j + 1) % count);
+                const float dx = b.x - a.x, dy = b.y - a.y;
+                const float length = std::sqrt(dx * dx + dy * dy);
+                if(length > 0)
+                    clip.edges.emplace_back(-dy / length, dx / length, (dy * a.x - dx * a.y) / length, fringe);
+            }
+        };
+        add_edges(clip.vertex_end - clip.vertex_begin,
+                  [&](size_t j) { return list->VtxBuffer[clip.vertex_begin + j].pos; },
+                  clip.rounded ? list->_FringeScale : 0);
+        // Rectangular ancestors outside this rounded subtree still constrain its contents.
+        for(auto parent = clip.outer_parent; parent; parent = parent->parent()) {
+            if(parent->type() != Type::ENTANGLED
+               || not static_cast<Entangled*>(parent)->scroll_enabled()
+               || parent->size().max() <= 0)
+                continue;
+            const auto& io = ImGui::GetIO();
+            Transform transform;
+            transform.scale((_graph->scale() / gui::interface_scale() / _dpi_scale)
+                .div(Vec2(io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y)));
+            transform.combine(parent->global_transform_no_rotation());
+            const auto bounds = transform.transformRect(Bounds(Vec2(), parent->size()));
+            std::array<ImVec2, 4> points{bounds.pos(), Vec2(bounds.x + bounds.width, bounds.y),
+                bounds.pos() + bounds.size(), Vec2(bounds.x, bounds.y + bounds.height)};
+            for(auto ancestor = parent; ancestor; ancestor = ancestor->parent()) {
+                if(auto it = _rotation_starts.find(ancestor); it != _rotation_starts.end()) {
+                    const ImVec2 center = std::get<1>(it->second);
+                    const float c = std::cos(ancestor->rotation()), s = std::sin(ancestor->rotation());
+                    for(auto& point : points) {
+                        const float x = point.x - center.x, y = point.y - center.y;
+                        point = ImVec2(center.x + c * x - s * y, center.y + s * x + c * y);
+                    }
+                }
+            }
+            add_edges(points.size(), [&](size_t j) { return points[j]; }, 0);
+        }
+        edge_count += clip.edges.size();
+    }
+
+    struct ClipVertex { ImVec2 pos, uv; ImVec4 color; };
+    std::vector<ClipVertex> polygon, temporary, fringe;
+    polygon.reserve(edge_count + 3);
+    temporary.reserve(edge_count + 3);
+    fringe.reserve(edge_count + 3);
+    std::vector<ImVec4> clipping_edges;
+    clipping_edges.reserve(edge_count);
+    size_t event = 0;
+    auto distance = [](const ImVec2& point, const ImVec4& edge) {
+        return edge.x * point.x + edge.y * point.y + edge.z;
+    };
+    auto clip = [&](const std::vector<ClipVertex>& input, const ImVec4& edge,
+                    float inset, bool inside, std::vector<ClipVertex>& output) {
+        output.clear();
+        if(input.empty())
+            return;
+        auto previous = input.back();
+        float previous_distance = (distance(previous.pos, edge) - inset) * (inside ? 1 : -1);
+        for(const auto& vertex : input) {
+            const float current_distance = (distance(vertex.pos, edge) - inset) * (inside ? 1 : -1);
+            if((previous_distance >= 0) != (current_distance >= 0)) {
+                const float t = previous_distance / (previous_distance - current_distance);
+                output.push_back({ImLerp(previous.pos, vertex.pos, t),
+                                  ImLerp(previous.uv, vertex.uv, t),
+                                  ImLerp(previous.color, vertex.color, t)});
+            }
+            if(current_distance >= 0)
+                output.push_back(vertex);
+            previous = vertex;
+            previous_distance = current_distance;
+        }
+    };
+    // Unchanged draws reference their original indices; clipped polygons append new ranges.
+    ImVector<ImDrawCmd> commands;
+    commands.reserve(list->CmdBuffer.Size);
+    unsigned int appended_base = list->VtxBuffer.Size;
+    for(const auto& command : list->CmdBuffer) {
+        bool continuing = false;
+        auto reserve = [&](unsigned int count, unsigned int index_offset, unsigned int vertex_offset) {
+            if(not continuing || commands.back().VtxOffset != vertex_offset
+               || commands.back().IdxOffset + commands.back().ElemCount != index_offset)
+            {
+                auto next = command;
+                next.IdxOffset = index_offset;
+                next.VtxOffset = vertex_offset;
+                next.ElemCount = 0;
+                commands.push_back(next);
+                continuing = true;
+            }
+            commands.back().ElemCount += count;
+        };
+        auto emit = [&](const std::vector<ClipVertex>& vertices, bool feather) {
+            if(vertices.size() < 3)
+                return;
+            const unsigned int start = list->VtxBuffer.Size;
+            auto base = command.VtxOffset;
+            if(sizeof(ImDrawIdx) == 2 && start + vertices.size() - base >= (1u << 16)) {
+                IM_ASSERT(list->Flags & ImDrawFlags_UseVtxOffset);
+                if(start + vertices.size() - appended_base >= (1u << 16))
+                    appended_base = start;
+                base = appended_base;
+            }
+            const auto count = static_cast<unsigned int>((vertices.size() - 2) * 3);
+            const auto index = list->IdxBuffer.Size;
+            reserve(count, index, base);
+            list->IdxBuffer.resize(index + count);
+            auto output = list->IdxBuffer.Data + index;
+            for(size_t i = 2; i < vertices.size(); ++i) {
+                *output++ = static_cast<ImDrawIdx>(start - base);
+                *output++ = static_cast<ImDrawIdx>(start + i - 1 - base);
+                *output++ = static_cast<ImDrawIdx>(start + i - base);
+            }
+            for(auto vertex : vertices) {
+                if(feather) {
+                    float coverage = 1;
+                    for(const auto& edge : clipping_edges) {
+                        if(edge.w > 0)
+                            coverage = std::min(coverage, std::max(0.f, distance(vertex.pos, edge) / edge.w));
+                    }
+                    vertex.color.w *= coverage;
+                }
+                list->VtxBuffer.push_back({vertex.pos, vertex.uv, ImGui::ColorConvertFloat4ToU32(vertex.color)});
+            }
+        };
+        if(command.UserCallback || command.ElemCount == 0) {
+            commands.push_back(command);
+            continue;
+        }
+        const auto end = command.IdxOffset + command.ElemCount;
+        for(auto i = command.IdxOffset; i < end;) {
+            while(event < spans.size() && spans[event].end <= i)
+                ++event;
+            if(event == spans.size() || i < spans[event].begin) {
+                const auto count = (event < spans.size() ? std::min(end, spans[event].begin) : end) - i;
+                reserve(count, i, command.VtxOffset);
+                i += count;
+                continue;
+            }
+            if(i == spans[event].begin) {
+                clipping_edges.clear();
+                for(const auto& clip : _rounded_clips) {
+                    if(clip.begin <= spans[event].index && spans[event].index < clip.end)
+                        clipping_edges.insert(clipping_edges.end(), clip.edges.begin(), clip.edges.end());
+                }
+            }
+            const bool interior = std::all_of(clipping_edges.begin(), clipping_edges.end(), [&](const auto& edge) {
+                for(unsigned int j = 0; j < 3; ++j) {
+                    const auto& vertex = list->VtxBuffer[command.VtxOffset + list->IdxBuffer[i + j]];
+                    if(distance(vertex.pos, edge) < edge.w)
+                        return false;
+                }
+                return true;
+            });
+            if(interior) {
+                const auto index = list->IdxBuffer.Size;
+                reserve(3, index, command.VtxOffset);
+                list->IdxBuffer.resize(index + 3);
+                std::copy_n(list->IdxBuffer.Data + i, 3, list->IdxBuffer.Data + index);
+            } else {
+                polygon.clear();
+                for(unsigned int j = 0; j < 3; ++j) {
+                    const auto& vertex = list->VtxBuffer[command.VtxOffset + list->IdxBuffer[i + j]];
+                    polygon.push_back({vertex.pos, vertex.uv, ImGui::ColorConvertU32ToFloat4(vertex.col)});
+                }
+                for(const auto& edge : clipping_edges) {
+                    clip(polygon, edge, 0, true, temporary);
+                    polygon.swap(temporary);
+                    if(polygon.size() < 3)
+                        break;
+                }
+                // Partition the fringe only after all container rotations and intersections.
+                for(const auto& edge : clipping_edges) {
+                    if(polygon.size() < 3)
+                        break;
+                    if(edge.w == 0)
+                        continue;
+                    clip(polygon, edge, edge.w, false, fringe);
+                    emit(fringe, true);
+                    clip(polygon, edge, edge.w, true, temporary);
+                    polygon.swap(temporary);
+                }
+                emit(polygon, false);
+            }
+            i += 3;
+        }
+    }
+    list->CmdBuffer.swap(commands);
+    list->_IdxWritePtr = list->IdxBuffer.Data + list->IdxBuffer.Size;
+    list->_VtxWritePtr = list->VtxBuffer.Data + list->VtxBuffer.Size;
+    if(sizeof(ImDrawIdx) == 2 && (list->Flags & ImDrawFlags_UseVtxOffset)
+       && list->VtxBuffer.Size - list->_CmdHeader.VtxOffset >= (1u << 16))
+        list->_CmdHeader.VtxOffset = appended_base;
+    list->_VtxCurrentIdx = list->VtxBuffer.Size - list->_CmdHeader.VtxOffset;
+    list->AddDrawCmd();
+}
 
 void CalculateBoundingBox(const std::vector<ImVec2>& poly, ImVec2& min, ImVec2& max) {
     min.x = min.y = FLT_MAX;
@@ -1891,7 +2148,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             } else {*/
                 list->AddImage(*static_cast<ImTextureID*>(tex_cache->texture()->ptr),
                                ImVec2(0, 0),
-                               ImVec2(o->width() - 0.5, o->height() - 0.5),
+                               ImVec2(o->width(), o->height()),
                                ImVec2(0, 0),
                                ImVec2((o->width() - 0.5) / Float2_t(tex_cache->texture()->width),
                                       (o->height() - 0.5) / Float2_t(tex_cache->texture()->height)),
@@ -2014,7 +2271,7 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
     //    draw_debug_rectangle(o);
 #endif
     
-    if(o->type() != Type::ENTANGLED && o->has_global_rotation()) {
+    if(o->type() != Type::ENTANGLED && o->rotation() != 0) {
         ImRotateEnd(rotation_start, list, o->rotation(), center);
     }
     
@@ -2150,6 +2407,18 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                 if(entangled_will_texture(ptr)) {
                     clip_rect = bounds;
                     
+                    size_t rounded_clip = _rounded_clips.size();
+                    const auto corners = ptr->bg().flags;
+                    const bool rounded = corners.mask != CornerFlags::None && corners.radius > 0
+                        && corners.radius >= 0.25f * ImGui::GetForegroundDrawList()->_FringeScale;
+                    const bool clipping = rounded || _rounded_clip_depth > 0;
+                    if(clipping) {
+                        draw_order.emplace_back(DrawOrder::ROUNDED_CLIP, rounded_clip, o, transform, bounds, clip_rect);
+                        _rounded_clips.push_back({draw_order.size() + above_z.size(), 0, rounded,
+                                                  _rounded_clip_depth == 0 ? ptr->parent() : nullptr});
+                        ++_rounded_clip_depth;
+                    }
+
                     //draw_order.emplace_back(DrawOrder::DEFAULT, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                     for(auto c : ptr->children()) {
@@ -2173,6 +2442,15 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
                         });
                     }
                     
+                    if(clipping) {
+                        _rounded_clips[rounded_clip].end = draw_order.size() + above_z.size();
+                        --_rounded_clip_depth;
+                        if(_rounded_clips[rounded_clip].begin == _rounded_clips[rounded_clip].end) {
+                            draw_order.pop_back();
+                            _rounded_clips.pop_back();
+                        }
+                    }
+
                     //draw_order.emplace_back(DrawOrder::POP, draw_order.size(), ptr, transform, bounds, clip_rect);
                     
                 } else {

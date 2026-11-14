@@ -47,6 +47,8 @@ using default_impl_t = cmn::gui::GLImpl;
 namespace cmn::gui {
 #define GUIPrint(...) prefixed_print<FormatColor::GRAY>("GUI", __VA_ARGS__ )
 
+    class SectionInterface;
+
     class IMGUIBase : public Base {
     protected:
         struct baseFunctor {
@@ -94,7 +96,8 @@ namespace cmn::gui {
                 BACKGROUND_LINE,
                 //POP,
                 END_ROTATION,
-                START_ROTATION
+                START_ROTATION,
+                ROUNDED_CLIP
             };
             Type type = DEFAULT;
             size_t index;
@@ -112,6 +115,15 @@ namespace cmn::gui {
     protected:
         std::unordered_map<Drawable*, std::tuple<int, Vec2>> _rotation_starts;
         std::vector<DrawOrder> _draw_order, _above_z;
+        struct RoundedClip {
+            size_t begin, end;
+            bool rounded;
+            SectionInterface* outer_parent{nullptr};
+            unsigned int vertex_begin{0}, vertex_end{0};
+            std::vector<ImVec4> edges;
+        };
+        std::vector<RoundedClip> _rounded_clips;
+        size_t _rounded_clip_depth{0};
         
         std::mutex _mutex;
         std::queue<std::function<void()>> _exec_main_queue;
@@ -214,6 +226,7 @@ namespace cmn::gui {
             std::chrono::steady_clock::time_point started);
         void redraw(Drawable* o, std::vector<DrawOrder>& draw_order, std::vector<DrawOrder>& above_z, bool is_background = false, ImVec4 clip_rect = ImVec4());
         void draw_element(const DrawOrder& order);
+        void draw_rounded_clipped();
         void event(const gui::Event& e);
         static void update_size_scale(GLFWwindow*);
         void set_last_framebuffer(Size2);

@@ -282,6 +282,22 @@ void LayoutContext::finalize(const Layout::Ptr& ptr) {
         ptr->set_size(size);
     }
 
+    if(ptr.is<Entangled>()) {
+        auto entangled = ptr.to<Entangled>();
+        if(has("scrollable")) {
+            auto scrollable = get(entangled->scroll_enabled(), "scrollable");
+            apply_field("scrollable", scrollable, [&](bool value) {
+                entangled->set(Scrollable_t{value});
+            });
+        }
+        if(has("scroll_offset")) {
+            auto scroll_offset = get(entangled->scroll_offset(), "scroll_offset");
+            apply_field("scroll_offset", scroll_offset, [&](const Vec2& value) {
+                entangled->set(ScrollOffset{value});
+            });
+        }
+    }
+
     apply_field_if("origin", origin, Vec2(0), [&](const auto& value) {
         ptr->set_origin(value);
     });

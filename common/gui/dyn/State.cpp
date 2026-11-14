@@ -662,6 +662,9 @@ bool HashedObject::update_patterns(GUITaskQueue_t* gui, uint64_t hash, Layout::P
         }
     }
     
+    check_field.operator()<bool, Scrollable_t>("scrollable");
+    check_field.operator()<Vec2, ScrollOffset>("scroll_offset");
+
     check_field.operator()<Size2, SizeLimit>("max_size");
     check_field.operator()<Size2, MinSize>("min_size");
     check_field.operator()<Size2, SizeLimit>("preview_max_size");
