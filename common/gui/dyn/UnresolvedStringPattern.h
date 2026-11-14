@@ -191,7 +191,7 @@ struct Prepared {
         return _cached_value;
     }
     void reset() {
-        _cached_value.reset();
+        //_cached_value.reset();
         _cached_variable_versions.reset();
     }
     

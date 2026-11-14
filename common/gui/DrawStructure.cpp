@@ -358,7 +358,7 @@ void Dialog::set_closed() {
         _buttons->set_policy(gui::HorizontalLayout::Policy::CENTER);
         
         //set_size(Size2(width(), _layout.height() + _layout.pos().y + 10));
-        set_scale(_graph.scale().reciprocal() / gui::interface_scale());
+        //set_scale(_graph.scale().reciprocal() / gui::interface_scale());
                 //d.wrap_object(*_okay);
         //if(_abort)
         //    d.wrap_object(*_abort);
@@ -422,7 +422,7 @@ std::optional<std::shared_ptr<Dialog>> DrawStructure::_dialog(std::function<bool
         fourth
     });
     
-    d->set_scale(scale().reciprocal());
+    //d->set_scale(scale().reciprocal());
     _dialogs.emplace_back(d);
     set_dirty(nullptr);
     return d;

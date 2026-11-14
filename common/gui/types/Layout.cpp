@@ -183,34 +183,14 @@ void Layout::set_stage(gui::DrawStructure *s) {
         }
 #endif
         
-        std::vector<Layout::Ptr> next;
-        bool dirty = false;
-        
-        for(auto&& obj : objects) {
-            assert(obj != nullptr);
-            
-            auto it = std::find(_objects.begin(), _objects.end(), obj);
-            next.emplace_back(std::move(obj));
-            
-            if(it != _objects.end()) {
-                continue;
+        /// check if we need to update something
+        if(objects != _objects) {
+    #ifndef NDEBUG
+            for(auto &obj : objects) {
+                assert(obj != nullptr);
             }
-            
-            dirty = true;
-        }
-        
-        if(!dirty) {
-            for(auto& obj : _objects) {
-                auto it = std::find(next.begin(), next.end(), obj);
-                if(it == next.end()) {
-                    dirty = true;
-                    break;
-                }
-            }
-        }
-        
-        if(dirty) {
-            _objects = std::move(next);
+    #endif
+            _objects = std::move(objects);
             set_content_changed(true);
             set_layout_dirty();
             update();

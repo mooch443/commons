@@ -144,6 +144,10 @@ public:
         assert(index < 4);
         return *((&r) + index);
     }
+    constexpr uint8_t& operator[] (size_t index) {
+        assert(index < 4);
+        return *((&r) + index);
+    }
     
     constexpr gui::Color& operator=(const gui::Color&) = default;
     
@@ -360,7 +364,7 @@ public:
         return {r,g,b,a};
     }
 
-    static Color fromStr(cmn::StringLike auto&& str);
+    static constexpr Color fromStr(cmn::StringLike auto&& str);
     static consteval std::string_view class_name() { return "color"; }
 };
 
@@ -703,18 +707,42 @@ public:
 
 namespace cmn::gui {
 
-Color Color::fromStr(cmn::StringLike auto&& str) {
-    for(auto& c : AllColors) {
-        if(c == str)
-            return c.color;
+constexpr Color Color::fromStr(cmn::StringLike auto&& str) {
+    std::string_view sv = utils::string_like_view(std::forward<decltype(str)>(str));
+    if(not sv.empty()
+       && sv.front() != '[')
+    {
+        auto it = std::find(AllColors.begin(), AllColors.end(), sv);
+        if(it != AllColors.end())
+            return it->color;
     }
     
-    auto vec = Meta::fromStr<std::vector<uchar>>(str);
-    if (vec.empty())
+    if(sv.size() < 2
+       || sv.front() != '['
+       || sv.back() != ']')
+    {
+        throw CustomException(type_v<std::invalid_argument>, "Cannot parse color from string ", str,".");
+    }
+    
+    if(sv.size() == 2)
         return Color();
-    if (vec.size() != 4 && vec.size() != 3)
+    
+    Color result;
+    size_t n_parsed = util::loop_array_parts(util::truncate(sv), [&](size_t index, std::string_view part){
+        if(index >= 4)
+            throw CustomException(type_v<std::invalid_argument>, "Can only initialize Color with three or four elements. (", str, ")");
+        result[index] = Meta::fromStr<uint8_t>(part);
+    });
+    
+    if(n_parsed == 0)
+        return Color();
+    else if (not is_in(n_parsed, 3u, 4u))
         throw CustomException(type_v<std::invalid_argument>, "Can only initialize Color with three or four elements. (", str, ")");
-    return Color(vec[0], vec[1], vec[2], vec.size() == 4 ? vec[3] : 255);
+    
+    if(n_parsed < 4)
+        result[3] = uint8_t(255u);
+    
+    return result;
 }
 
 }

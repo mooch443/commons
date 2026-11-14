@@ -755,7 +755,7 @@ constexpr auto access_array_part(cmn::StringLike auto&& str, size_t index)
     const size_t N = sv.size();
     const char* token_start = sv.data();
 
-    if(N == 0)
+    if(utils::trim(sv).empty())
         throw std::invalid_argument("Trying to access index into an empty string.");
 
     const char* end_ptr = sv.data() + N;
@@ -813,45 +813,37 @@ constexpr auto access_array_part(cmn::StringLike auto&& str, size_t index)
     throw std::invalid_argument("Array index out of bounds in access_array_part");
 }
 
-template<const char delimiter = ','>
+template<const char delimiter = ',', bool enforce_no_empty = true, typename Fn>
     /// we are assuming this delimiter is not one of the bracket or quote characters,
     /// otherwise future optimizations might break, and its also weird
     requires (not is_in(delimiter, '{', '}', '(', ')', '[', ']', '\'', '"'))
-constexpr auto parse_array_parts(cmn::StringLike auto&& str)
+            && std::invocable<Fn, size_t, std::string_view>
+constexpr size_t loop_array_parts(cmn::StringLike auto&& str, Fn&& fn)
 {
     using Str = decltype(str);
 
-    // ---- choose element type ------------------------------------------------
-    // We can safely hand out string_views only when the caller guarantees
-    // that the underlying buffer will out‑live the views.  That is true for
-    //   * character arrays / literals
-    //   * raw C‑strings
-    //   * std::string_view itself
-    //   * *l‑value* std::string objects
-    // Everything else (temporary std::string, std::string&& …) requires copies.
-    static constexpr bool _safe_to_view =
-        is_viewable<Str>;
-
-    using Return_t = std::conditional_t<_safe_to_view, std::string_view, std::string>;
-
     // ---- split implementation ----------------------------------------------
-    std::vector<Return_t> ret;
     std::string brackets;
+    size_t current_index = 0;
     char last_bracket = 0;
     char   prev        = 0;
     std::string_view sv = utils::string_like_view(std::forward<Str>(str));
     const size_t N = sv.size();
     const char* token_start = sv.data();
 
-    if(sv.empty())
-        return ret;
+    if(utils::trim(sv).empty())
+        return 0u;
 
-    static constexpr auto flush_token = [](std::vector<Return_t>& ret, const char* token_start, const char* end_index) {
+    static constexpr auto flush_token = [](bool allow_empty, auto& fn, size_t& current_index, const char* token_start, const char* end_index) {
         auto token_view = utils::trim( std::string_view(token_start, end_index - token_start) );
-        if constexpr (_safe_to_view)
-            ret.emplace_back(token_view);
-        else
-            ret.emplace_back(std::string(token_view));
+        if constexpr(enforce_no_empty) {
+            if(token_view.empty()) {
+                if(not allow_empty)
+                    throw illegal_syntax("Empty array element where it was not allowed.");
+                return;
+            }
+        }
+        fn(current_index++, token_view);
     };
 
     const char* end_ptr = sv.data() + N;
@@ -874,7 +866,7 @@ constexpr auto parse_array_parts(cmn::StringLike auto&& str)
             
         } else if (c == delimiter) {
             if(last_bracket == 0) {
-                flush_token(ret, token_start, ptr);
+                flush_token(false, fn, current_index, token_start, ptr);
                 token_start = ptr + 1;
             }
             
@@ -896,7 +888,36 @@ constexpr auto parse_array_parts(cmn::StringLike auto&& str)
     }
 
     // final token (handles trailing‑delimiter case, too)
-    flush_token(ret, token_start, end_ptr);
+    flush_token(true, fn, current_index, token_start, end_ptr);
+
+    return current_index;
+}
+
+template<const char delimiter = ','>
+    /// we are assuming this delimiter is not one of the bracket or quote characters,
+    /// otherwise future optimizations might break, and its also weird
+    requires (not is_in(delimiter, '{', '}', '(', ')', '[', ']', '\'', '"'))
+constexpr auto parse_array_parts(cmn::StringLike auto&& str)
+{
+    using Str = decltype(str);
+
+    // ---- choose element type ------------------------------------------------
+    // We can safely hand out string_views only when the caller guarantees
+    // that the underlying buffer will out‑live the views.  That is true for
+    //   * character arrays / literals
+    //   * raw C‑strings
+    //   * std::string_view itself
+    //   * *l‑value* std::string objects
+    // Everything else (temporary std::string, std::string&& …) requires copies.
+    static constexpr bool _safe_to_view =
+        is_viewable<Str>;
+
+    using Return_t = std::conditional_t<_safe_to_view, std::string_view, std::string>;
+
+    std::vector<Return_t> ret;
+    loop_array_parts<delimiter, false>(str, [&](size_t, std::string_view part) {
+        ret.emplace_back(part);
+    });
 
     return ret;
 }
@@ -1675,8 +1696,12 @@ template<class Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
     using namespace util;
-    auto parts = parse_array_parts(truncate(std::string_view(str)));
-    if(parts.size() != 2) {
+    std::array<std::string_view, 2> parts;
+    const auto count = loop_array_parts<',', false>(truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+        if(index < parts.size())
+            parts[index] = part;
+    });
+    if(count != parts.size()) {
         auto x = name<typename Q::first_type>();
         auto y = name<typename Q::second_type>();
         throw std::invalid_argument("Illegal pair<"+(std::string)x+", "+(std::string)y+"> format ('"+(std::string)str+"').");
@@ -1721,38 +1746,35 @@ template<class Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
     using value_t = Q::value_type;
-    std::vector<value_t> ret;
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    util::enforce_no_empty_elements(parts, Meta::name<Q>());
-    ret.reserve(parts.size());
-    for(auto &s : parts) {
-        ret.push_back(Meta::fromStr<typename Q::value_type>(s));
-    }
-
     if constexpr(is_array_derived<Q>::value) {
         static constexpr std::size_t N = std::tuple_size_v<Q>;
+        std::array<std::string_view, N> parts;
+        const auto count = util::loop_array_parts(util::truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+            if(index < parts.size())
+                parts[index] = part;
+        });
         
-        if(N != ret.size())
+        if(N != count)
             throw std::invalid_argument("Unexpected number of arguments.");
         return [&]<std::size_t... I>(std::index_sequence<I...>){
-            return Q{ static_cast<value_t>(ret[I])... };
+            return Q{ Meta::fromStr<value_t>(parts[I])... };
         }(std::make_index_sequence<N>{});
 
-    }
-    else if constexpr(is_instantiation<std::deque, Q>::value
-                      || (is_instantiation<std::vector, Q>::value && not std::same_as<Q, decltype(ret)>)) {
-        return Q(std::make_move_iterator(ret.begin()), std::make_move_iterator(ret.end()));
-        
-    } else if constexpr(is_instantiation<IllegalArray, Q>::value) {
-        static_assert(std::is_trivially_copyable_v<value_t>, "IllegalArray parsing requires trivially copyable elements.");
-        Q result(ret.size());
-        for(size_t i = 0; i < ret.size(); ++i)
-            result[i] = ret[i];
-        return result;
     } else if constexpr(std::ranges::view<Q> || is_initializer_list<Q>::value) {
         throw std::invalid_argument("Cannot parse into a non-owning container.");
     } else {
-        return ret;
+        std::conditional_t<is_instantiation<IllegalArray, Q>::value, std::vector<value_t>, Q> ret;
+        util::loop_array_parts(util::truncate(std::string_view(str)), [&](size_t, std::string_view s) {
+            ret.push_back(Meta::fromStr<value_t>(s));
+        });
+        if constexpr(is_instantiation<IllegalArray, Q>::value) {
+            static_assert(std::is_trivially_copyable_v<value_t>, "IllegalArray parsing requires trivially copyable elements.");
+            Q result(ret.size());
+            for(size_t i = 0; i < ret.size(); ++i)
+                result[i] = ret[i];
+            return result;
+        } else
+            return ret;
     }
 }
     
@@ -1761,12 +1783,10 @@ template<class Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
     Q ret;
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    util::enforce_no_empty_elements(parts, Meta::name<Q>());
-    for(auto &s : parts) {
+    util::loop_array_parts(util::truncate(std::string_view(str)), [&](size_t, std::string_view s) {
         auto v = Meta::fromStr<typename Q::value_type>(s);
         ret.push(v);
-    }
+    });
 
     return ret;
 }
@@ -1776,12 +1796,10 @@ template<class Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
     Q ret;
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    util::enforce_no_empty_elements(parts, Meta::name<Q>());
-    for(auto &s : parts) {
+    util::loop_array_parts(util::truncate(std::string_view(str)), [&](size_t, std::string_view s) {
         auto v = Meta::fromStr<typename Q::value_type>(s);
         ret.insert(v);
-    }
+    });
 
     return ret;
 }
@@ -1792,13 +1810,15 @@ Q fromStr(cmn::StringLike auto&& str)
 {
     Q r;
             
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    util::enforce_no_empty_elements(parts, Meta::name<Q>());
     std::conditional_t<cmn::StringLike<typename Q::key_type>, std::conditional_t<_clean_same<typename Q::key_type, std::string_view>, std::string_view, std::string>, typename Q::key_type> key;
 
-    for(std::string_view p : parts) {
-        std::vector<std::string_view> value_key = util::parse_array_parts<':'>(p);
-        if(value_key.size() != 2)
+    util::loop_array_parts(util::truncate(std::string_view(str)), [&](size_t, std::string_view p) {
+        std::array<std::string_view, 2> value_key;
+        const auto count = util::loop_array_parts<':', false>(p, [&](size_t index, std::string_view part) {
+            if(index < value_key.size())
+                value_key[index] = part;
+        });
+        if(count != value_key.size())
             throw std::invalid_argument("Illegal value/key pair: "+(std::string)p);
         
         if constexpr(not cmn::StringLike<typename Q::key_type>) {
@@ -1833,7 +1853,7 @@ Q fromStr(cmn::StringLike auto&& str)
             auto name = Meta::name<Q>();
             throw std::invalid_argument("Empty/illegal value in "+(std::string)name+"["+(std::string)value_key[0]+"] = "+(std::string)value_key[1]+": " + std::string(e.what()));
         }
-    }
+    });
             
     return r;
 }
@@ -1862,10 +1882,14 @@ auto transform_each(const std::tuple<Args...>& t, F&& f) {
 template<class Q>
     requires (is_instantiation<std::tuple, Q>::value)
 Q fromStr(cmn::StringLike auto&& str) {
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
+    std::array<std::string_view, std::tuple_size<Q>::value> parts;
+    const auto count = util::loop_array_parts<',', false>(util::truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+        if(index < parts.size())
+            parts[index] = part;
+    });
     //size_t i=0;
-    if(parts.size() != std::tuple_size<Q>::value)
-        throw illegal_syntax("tuple has "+std::to_string(parts.size())+" parts instead of " + std::to_string(std::tuple_size<Q>::value));
+    if(count != parts.size())
+        throw illegal_syntax("tuple has "+std::to_string(count)+" parts instead of " + std::to_string(std::tuple_size<Q>::value));
             
     Q tup;
     return transform_each(tup, [&](size_t i, auto&& obj) {
@@ -1891,8 +1915,12 @@ template<class Q>
     requires _clean_same<cv::Range, Q>
 Q fromStr(cmn::StringLike auto&& str)
 {
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    if(parts.size() != 2) {
+    std::array<std::string_view, 2> parts;
+    const auto count = util::loop_array_parts<',', false>(util::truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+        if(index < parts.size())
+            parts[index] = part;
+    });
+    if(count != parts.size()) {
         throw std::invalid_argument("Illegal cv::Range format: "+str);
     }
             
@@ -1963,9 +1991,13 @@ template<class Q>
     requires (is_instantiation<cv::Size_, Q>::value)
 Q fromStr(cmn::StringLike auto&& str)
 {
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    if(parts.size() != 2) {
-        std::string x = name<typename Q::value_type>();
+    std::array<std::string_view, 2> parts;
+    const auto count = util::loop_array_parts<',', false>(util::truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+        if(index < parts.size())
+            parts[index] = part;
+    });
+    if(count != parts.size()) {
+        std::string x(name<typename Q::value_type>());
         throw std::invalid_argument("Illegal cv::Size_<"+x+"> format.");
     }
             
@@ -1981,9 +2013,13 @@ Q fromStr(cmn::StringLike auto&& str)
 {
     using C = typename Q::value_type;
             
-    auto parts = util::parse_array_parts(util::truncate(std::string_view(str)));
-    if(parts.size() != 4) {
-        std::string x = name<C>();
+    std::array<std::string_view, 4> parts;
+    const auto count = util::loop_array_parts<',', false>(util::truncate(std::string_view(str)), [&](size_t index, std::string_view part) {
+        if(index < parts.size())
+            parts[index] = part;
+    });
+    if(count != parts.size()) {
+        std::string x(name<C>());
         throw std::invalid_argument("Illegal cv::Rect_<"+x+"> format.");
     }
             

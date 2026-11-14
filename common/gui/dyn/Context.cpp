@@ -1041,12 +1041,31 @@ T map_vector(const VarProps& props, Apply&& apply) {
 }
 
 
+namespace {
+
+constexpr size_t max_system_function_output = 1'000'000;
+
+int64_t checked_integer(double value, const VarProps& props) {
+    if(not std::isfinite(value)
+       || value < static_cast<double>(std::numeric_limits<int64_t>::min())
+       || value >= -static_cast<double>(std::numeric_limits<int64_t>::min()))
+    {
+        throw InvalidArgumentException("Integer out of range in ", props);
+    }
+    return static_cast<int64_t>(value);
+}
+
+}
+
 void Context::init() const {
-    if(not _system_variables.has_value())
+    if(not _system_variables.has_value() || _system_variables_owner != this) {
         _system_variables = {
             VarFunc("repeat", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
-                return utils::repeat(props.last(), Meta::fromStr<uint8_t>(props.first()));
+                auto count = Meta::fromStr<uint8_t>(props.first());
+                if(count > 0 && props.last().size() > max_system_function_output / count)
+                    throw InvalidArgumentException("Output too large in ", props);
+                return utils::repeat(props.last(), count);
             }),
             VarFunc("mouse", [this](const VarProps&) -> Vec2 {
                 return _last_mouse;
@@ -1093,6 +1112,8 @@ void Context::init() const {
                 auto v = Meta::fromStr<double>(props.parameters.at(0));
                 auto mi = Meta::fromStr<double>(props.parameters.at(1));
                 auto ma = Meta::fromStr<double>(props.parameters.at(2));
+                if(mi > ma)
+                    throw InvalidArgumentException("Saturate received min=",mi, " > max=", ma);
                 return saturate(v, mi, ma);
             }),
             VarFunc("bool", [](const VarProps& props) -> bool {
@@ -1110,10 +1131,7 @@ void Context::init() const {
                 REQUIRE_EXACTLY(1, props);
                 
                 auto v = Meta::fromStr<double>(props.parameters.front());
-                if(std::isnan(v))
-                    return static_cast<int64_t>(std::numeric_limits<int64_t>::quiet_NaN());
-                else
-                    return static_cast<int64_t>(v);
+                return checked_integer(v, props);
             }),
             VarFunc("dec", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
@@ -1222,9 +1240,11 @@ void Context::init() const {
                 return map_vectors<double>(props, [](auto&A, auto&B){return A / B;});
             }),
             VarFunc("lower", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(1, props);
                 return utils::lowercase(props.first());
             }),
             VarFunc("upper", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(1, props);
                 return utils::uppercase(props.first());
             }),
             VarFunc("cmap", [](const VarProps& props) -> Color {
@@ -1232,7 +1252,13 @@ void Context::init() const {
                 using namespace cmn::cmap;
 
                 auto cmap = CMaps::Class::fromStr(utils::lowercase(props.first()));
-                return cmap::ColorMap::value(cmap, Meta::fromStr<double>(props.last()));
+                auto value = Meta::fromStr<double>(props.last());
+                if(not std::isfinite(value)
+                   || (cmap == CMaps::wheel && (value < 0 || value > std::numeric_limits<uint32_t>::max())))
+                {
+                    throw InvalidArgumentException("Color map value out of range in ", props);
+                }
+                return cmap::ColorMap::value(cmap, value);
             }),
             VarFunc("wheel", [](const VarProps& props) -> Color {
                 REQUIRE_EXACTLY(1, props);
@@ -1289,7 +1315,7 @@ void Context::init() const {
             VarFunc("erase", [](const VarProps& props) -> std::string {
                 REQUIRE_EXACTLY(2, props);
                 
-                if(not is_in(props.last().front(), '{', '[')) {
+                if(props.last().empty() || not is_in(props.last().front(), '{', '[')) {
                     throw InvalidArgumentException("Invalid argument for erasing with ", props);
                 }
                 
@@ -1355,8 +1381,11 @@ void Context::init() const {
                     step = max(1, Meta::fromStr<int>(props.parameters.at(2)));
                 }
 
-                for(int i = start; i < end; i+=step) {
-                    result.push_back(i);
+                if(start < end && size_t((int64_t(end) - start + step - 1) / step) > max_system_function_output)
+                    throw InvalidArgumentException("Output too large in ", props);
+
+                for(int64_t i = start; i < end; i+=step) {
+                    result.push_back(static_cast<int>(i));
                 }
 
                 return result;
@@ -1385,7 +1414,8 @@ void Context::init() const {
                     state._current_object_handler = std::weak_ptr(handler);
                 }
                 
-                if(is_in(utils::trim(trunc).front(), '[', '{')) {
+                auto trimmed = utils::trim(trunc);
+                if(not trimmed.empty() && is_in(trimmed.front(), '[', '{')) {
                     auto parsed = parse_text(trunc, *this, state);
                     auto parts = util::parse_array_parts(util::truncate(parsed));
                     
@@ -1403,7 +1433,7 @@ void Context::init() const {
                         ++index;
                     }
                     
-                } else if(is_in(trunc.front(), '\'', '"')) {
+                } else if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
                     auto text = Meta::fromStr<std::string>(trunc);
                     size_t index{0};
                     std::string idx;
@@ -1470,13 +1500,19 @@ void Context::init() const {
                 }
                 return map_vector<double>(props, [](auto& A){ return std::round(A); });
             }),
-            VarFunc("mod", [](const VarProps& props) -> int {
-                return map_vector<double>(props, [](auto& A, auto& B){ return int64_t(A) % int64_t(B); });
+            VarFunc("mod", [](const VarProps& props) -> int64_t {
+                return map_vectors<double, false, int64_t>(props, [&](auto& A, auto& B){
+                    auto a = checked_integer(A, props);
+                    auto b = checked_integer(B, props);
+                    if(b == 0 || (a == std::numeric_limits<int64_t>::min() && b == -1))
+                        throw InvalidArgumentException("Invalid divisor in ", props);
+                    return a % b;
+                });
             }),
             VarFunc("empty", [](const VarProps& props) -> bool {
                 REQUIRE_EXACTLY(1, props);
                 auto trunc = utils::trim(props.parameters.front());
-                if(is_in(trunc.front(), '[', '{')) {
+                if(not trunc.empty() && is_in(trunc.front(), '[', '{')) {
                     return util::parse_array_parts(util::truncate(trunc)).empty();
                 }
                 
@@ -1486,7 +1522,8 @@ void Context::init() const {
                 REQUIRE_EXACTLY(2, props);
 
                 auto trunc = std::string_view(props.parameters.at(1));
-                if(is_in(utils::trim(trunc).front(), '{')) {
+                auto trimmed = utils::trim(trunc);
+                if(not trimmed.empty() && is_in(trimmed.front(), '{')) {
                     auto key = Meta::fromStr<std::string>(props.parameters.front());
                     auto parts = util::parse_array_parts(util::truncate(utils::trim(trunc)));
 
@@ -1510,7 +1547,7 @@ void Context::init() const {
                 REQUIRE_EXACTLY(1, props);
 
                 auto trunc = utils::trim(props.parameters.front());
-                if(is_in(trunc.front(), '{')) {
+                if(not trunc.empty() && is_in(trunc.front(), '{')) {
                     std::vector<std::string> result;
                     auto parts = util::parse_array_parts(util::truncate(trunc));
                     result.reserve(parts.size());
@@ -1603,6 +1640,8 @@ void Context::init() const {
                 while(not q.empty()) {
                     auto item = std::move(q.front());
                     q.pop_front();
+                    if(item.empty())
+                        continue;
                     
                     if(item[0] == '[') {
                         auto p = util::parse_array_parts(util::truncate(item));
@@ -1658,7 +1697,7 @@ void Context::init() const {
                 }
                 
                 auto trunc = props.parameters.back();
-                if(is_in(trunc.front(), '\'', '"')) {
+                if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
                     trunc = Meta::fromStr<std::string>(trunc);
                 }
                 if(trunc.length() <= from)
@@ -1672,8 +1711,10 @@ void Context::init() const {
                 
                 uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
                 auto trunc = props.parameters.back();
+                if(L > max_system_function_output || trunc.length() > max_system_function_output)
+                    throw InvalidArgumentException("Output too large in ", props);
                 
-                if(is_in(trunc.front(), '\'', '"')) {
+                if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
                     trunc = Meta::fromStr<std::string>(trunc);
                 }
                 
@@ -1683,6 +1724,8 @@ void Context::init() const {
                 if(trunc.length() < L) {
                     if(props.parameters.size() == 3) {
                         auto c = props.parameters.at(1);
+                        if(c.size() > (max_system_function_output - trunc.length()) / (L - trunc.length()))
+                            throw InvalidArgumentException("Output too large in ", props);
                         return trunc + utils::repeat(c, L - trunc.length());
                     }
                     return trunc + utils::repeat(" ", L - trunc.length());
@@ -1696,8 +1739,10 @@ void Context::init() const {
                 
                 uint32_t L = Meta::fromStr<uint32_t>(props.parameters.at(0));
                 auto trunc = props.parameters.back();
+                if(L > max_system_function_output || trunc.length() > max_system_function_output)
+                    throw InvalidArgumentException("Output too large in ", props);
                 
-                if(is_in(trunc.front(), '\'', '"')) {
+                if(not trunc.empty() && is_in(trunc.front(), '\'', '"')) {
                     trunc = Meta::fromStr<std::string>(trunc);
                 }
                 
@@ -1707,6 +1752,8 @@ void Context::init() const {
                 if(trunc.length() < L) {
                     if(props.parameters.size() == 3) {
                         auto c = props.parameters.at(1);
+                        if(c.size() > (max_system_function_output - trunc.length()) / (L - trunc.length()))
+                            throw InvalidArgumentException("Output too large in ", props);
                         return utils::repeat(c, L - trunc.length()) + trunc;
                     }
                     return utils::repeat(" ", L - trunc.length()) + trunc;
@@ -1734,6 +1781,8 @@ void Context::init() const {
                 try {
                     auto color = Meta::fromStr<Color>(props.parameters.front());
                     auto alpha = Meta::fromStr<float>(props.parameters.back());
+                    if(not std::isfinite(alpha) || alpha < 0 || alpha > 255)
+                        throw InvalidArgumentException("Alpha out of range in ", props);
                     
                     return color.alpha(alpha);
                     
@@ -1769,6 +1818,8 @@ void Context::init() const {
                 return file::Path(Meta::fromStr<file::Path>(props.first()).filename()).remove_extension();
             })
         };
+        _system_variables_owner = this;
+    }
     
 }
 

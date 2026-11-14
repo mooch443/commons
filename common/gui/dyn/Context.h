@@ -265,6 +265,8 @@ struct COMMONS_EXPORT Context {
     DefaultSettings defaults;
     
     mutable std::optional<robin_hood::unordered_map<std::string, std::shared_ptr<VarBase_t>, MultiStringHash, MultiStringEqual>> _system_variables;
+    /// Cached callbacks capture the context that initialized them.
+    mutable const Context* _system_variables_owner{nullptr};
     mutable sprite::Map local_settings;
     mutable std::unordered_map<std::string, std::string, MultiStringHash, MultiStringEqual> local_setting_aliases;
 
@@ -272,7 +274,7 @@ struct COMMONS_EXPORT Context {
     Vec2 _last_mouse;
     
     auto& system_variables() const noexcept {
-        if(not _system_variables.has_value())
+        if(not _system_variables.has_value() || _system_variables_owner != this)
             init();
         return *_system_variables;
     }
