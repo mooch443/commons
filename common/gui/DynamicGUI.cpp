@@ -528,7 +528,7 @@ void DynamicGUI::reload(DrawStructure& graph) {
     }
     
     if(read_file_future.valid()
-       && (read_file_future.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready
+       && (cmn::is_future_ready(read_file_future)
            || first_load))
     {
         read_file_future.get().transform([&, graph = &graph](const auto& result) {
@@ -989,6 +989,12 @@ DynamicGUI::operator bool() const {
 }
 
 void DynamicGUI::clear() {
+    /// protect previous + path fields here by waiting until
+    /// the thread is done.
+    if(read_file_future.valid()) {
+        read_file_future.wait();
+        read_file_future = {};
+    }
     apply_to_objects(objects, [](Drawable* c) {
         if(c->type() == Type::ENTANGLED
            || c->type() == Type::SECTION)

@@ -135,7 +135,7 @@ void ThreadGroup::terminate() {
     for(auto& wrapper : threads) {
         if(wrapper.t) {
             auto f = wrapper.m.terminate();
-            if(f.wait_for(std::chrono::seconds(01)) != std::future_status::ready) {
+            if(not cmn::is_future_ready<cmn::Milliseconds{std::chrono::seconds(1)}>(f)) {
                 // if the thread is still not terminated after 1 second, print out a message
                 thread_print("Thread in group ", name, " is taking a long time to terminate");
             }

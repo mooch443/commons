@@ -151,6 +151,29 @@ void CurrentObjectHandler::unregister_tooltipable(std::weak_ptr<LabeledField> fi
     }
 }
 
+bool CurrentObjectHandler::has_pending_global_path_lookup(std::string_view parameter) const {
+    using FieldEntry = std::tuple<std::weak_ptr<LabeledField>, std::weak_ptr<Drawable>>;
+    for(const auto& entry : _textfields) {
+        const auto* field_entry = std::get_if<FieldEntry>(&entry);
+        if(not field_entry)
+            continue;
+
+        const auto field = std::get<0>(*field_entry).lock();
+        const LabeledField* value = field.get();
+        if(const auto* combo = dynamic_cast<const LabeledCombobox*>(value))
+            value = combo->_combo->value_field();
+
+        if(const auto* paths = dynamic_cast<const LabeledPathArray*>(value);
+           paths && not paths->local_settings()
+           && paths->parameter_name() == parameter
+           && paths->has_pending_lookup())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void CurrentObjectHandler::update_tooltips(DrawStructure &graph) {
     std::shared_ptr<Drawable> found = nullptr;
     TooltipData name{TooltipData::Both{.name = "<null>", .docs = ""}};

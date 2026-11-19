@@ -1303,13 +1303,30 @@ bool HashedObject::update_loops(GUITaskQueue_t* gui, uint64_t, DrawStructure &g,
 
 void State::register_delete_callback(const std::shared_ptr<HashedObject>& ptr, const Layout::Ptr &o)
 {
-    o->clear_delete_handlers();
+    if(auto c = ptr->current_object.lock();
+       c && c.get() == o.get())
+    {
+        return;
+    }
     
-    o->on_delete([fn = std::weak_ptr(_collectors), weak = std::weak_ptr(ptr)](){
+    ptr->current_object = std::weak_ptr(o.get_smart());
+    
+    o->clear_delete_handlers();
+    o->on_delete([fn = std::weak_ptr(_collectors), weak = std::weak_ptr(ptr), generation = std::weak_ptr(o.get_smart())](){
         /// first check if the object still exists!
+        /// also check if we are still refering to the same object here.
         auto variant_lock = weak.lock();
         if(not variant_lock)
             return; // if not then we arent supposed to be here anyway
+
+        /// Compare ownership because both weak pointers may have expired.
+        /// without checking the actual pointers, see if any of the objects
+        /// has a different control block than the other.
+        if(variant_lock->current_object.owner_before(generation)
+           || generation.owner_before(variant_lock->current_object))
+        {
+            return;
+        }
         
         /// variant will stay alive
         auto ptr = fn.lock();

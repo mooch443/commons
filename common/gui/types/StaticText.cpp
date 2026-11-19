@@ -451,7 +451,7 @@ void StaticText::add_shadow() {
     const Float2_t start_y = height() - h;
     const Float2_t end_y = height() + 1;
     
-    for(uint y=start_y; y<end_y; ++y) {
+    for(uint y=start_y; y<image->rows; ++y) {
         auto percent = saturate(Float2_t(y-start_y) / Float2_t(end_y - start_y + 1_F), 0_F, 1_F);
         percent *= percent;
         //percent = 1;

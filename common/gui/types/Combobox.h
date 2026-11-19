@@ -97,6 +97,7 @@ public:
     }
     void set(ParmName name);
     ParmName parameter() const;
+    const dyn::LabeledField* value_field() const noexcept { return _value.get(); }
     
     void set_bounds(const Bounds& bds) override;
     void set_pos(const Vec2& p) override;

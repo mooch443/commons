@@ -332,7 +332,7 @@ std::optional<Path> Path::canonical() const {
                 });
 
             while (!_data._download_finished) {
-                _data._download_variable.wait_for(guard, std::chrono::milliseconds(10));
+                _data._download_variable.wait_for(guard, 10ms);
                 //emscripten_sleep(10);
             }
 

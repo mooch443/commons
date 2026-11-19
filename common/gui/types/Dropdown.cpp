@@ -148,14 +148,7 @@ void Dropdown::init() {
                 /// hover-based highlight: hover state can be reset by the
                 /// deselect above (which closes the list), or clobbered by
                 /// wherever the mouse happens to rest on the list
-                if(auto it = _items_to_filtered_items.find(_selected_item);
-                   _selected_item.valid()
-                   && it != _items_to_filtered_items.end())
-                {
-                    _list.select_item(sign_cast<uint64_t>(it->second.value));
-                } else {
-                    _list.select_highlighted_item();
-                }
+                select_highlighted_item();
             } else {
                 //_selected_item = -1;
                 if(_on_select)
@@ -411,6 +404,17 @@ Dropdown::RawIndex Dropdown::filtered_item_index(FilteredIndex index) const {
 
     bool Dropdown::has_selection() const {
         return (bool)_selected_item;
+    }
+
+    void Dropdown::select_highlighted_item() {
+        if(auto it = _items_to_filtered_items.find(_selected_item);
+           _selected_item.valid()
+           && it != _items_to_filtered_items.end())
+        {
+            _list.select_item(sign_cast<uint64_t>(it->second.value));
+        } else {
+            _list.select_highlighted_item();
+        }
     }
     
     void Dropdown::set_items(const std::vector<TextItem> &options) {

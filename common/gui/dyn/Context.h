@@ -243,6 +243,7 @@ struct COMMONS_EXPORT CurrentObjectHandler : std::enable_shared_from_this<Curren
     void unregister_tooltipable(std::weak_ptr<LabeledField>);
     void unregister_tooltipable(std::weak_ptr<Drawable>);
     void update_tooltips(DrawStructure&);
+    bool has_pending_global_path_lookup(std::string_view parameter) const;
     
 private:
     void invalidate_cached_variable_values();

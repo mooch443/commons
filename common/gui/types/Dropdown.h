@@ -266,6 +266,7 @@ namespace cmn::gui {
         std::optional<TextItem> currently_hovered_item() const;
         void select_item(RawIndex index);
         bool has_selection() const;
+        void select_highlighted_item();
         RawIndex filtered_item_index(FilteredIndex index) const;
         
         virtual Drawable* tooltip_object() override;

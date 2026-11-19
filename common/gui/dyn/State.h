@@ -222,7 +222,9 @@ struct HashedObject {
     std::shared_ptr<LabeledField> _value_box;
     std::optional<VarCache> _var_cache;
     PatternMapType patterns;
-    Layout::Ptr current;
+    
+    /// @brief protect our callbacks from being invoked on stale or deleted objects (but the same HashedObject instance)
+    std::weak_ptr<Drawable> current_object;
     
     template<typename T>
         requires (is_in_variant<T, HashedObject::VariantType>)

@@ -22,6 +22,23 @@ public:
             _stop = true;
         }
         _cond.notify_all();
+        
+        std::vector<std::shared_future<void>> futures;
+        {
+            std::unique_lock lock{_mutex};
+            futures = std::move(_owned_completions);
+            _owned_completions.clear();
+        }
+        
+        for (auto& future : futures) {
+            try {
+                future.get();
+            } catch (const std::exception& ex) {
+                FormatError("Background task failed: ", ex.what());
+            } catch (...) {
+                FormatError("Background task failed with an unknown exception.");
+            }
+        }
     }
 
     template<typename F>
@@ -46,7 +63,7 @@ public:
 
     // Call this with the specific argument you want to pass to the tasks
     bool processTasks(ArgType ...arg) {
-        std::unique_lock<std::mutex> lock(_mutex);
+        std::unique_lock lock{_mutex};
         bool ret = not _tasks.empty();
         
         while (not _stop && not _tasks.empty()) {
@@ -70,6 +87,24 @@ public:
             });
         }
         
+        /// clear some items if possible
+        for(auto it = _owned_completions.begin(); it != _owned_completions.end(); )
+        {
+            if(cmn::is_future_ready(*it))
+            {
+                try {
+                    it->get();
+                } catch (const std::exception& ex) {
+                    FormatError("Background task failed: ", ex.what());
+                } catch (...) {
+                    FormatError("Background task failed with an unknown exception.");
+                }
+                
+                it = _owned_completions.erase(it);
+            } else
+                ++it;
+        }
+        
         return ret;
     }
     
@@ -79,10 +114,18 @@ public:
             _tasks.pop();
         _cond.notify_all();
     }
+    
+    /// @brief  Add a future to the list of owned completions, which will be waited for at least whenever processTasks is called or we destroy our queue.
+    /// @param f  The shared future representing the completion of a background task.
+    void push_owned_completion(std::shared_future<void> f) {
+        std::unique_lock lock{_mutex};
+        _owned_completions.push_back(std::move(f));
+    }
 
 private:
     bool _stop;
     std::queue<TaskFunction> _tasks;
+    std::vector<std::shared_future<void>> _owned_completions;
     std::mutex _mutex;
     std::condition_variable _cond;
 };

@@ -382,7 +382,7 @@ namespace cmn {
      * MISC methods
      * ======================
      */
-    
+
     constexpr inline bool between_equals(float x, float lower, float upper) {
         return x >= lower && x <= upper;
     }

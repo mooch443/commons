@@ -282,6 +282,8 @@ static_assert(false, "OpenCV version insufficient.");
 #include <misc/useful_concepts.h>
 #include <misc/UnorderedVectorSet.h>
 
+using namespace std::chrono_literals;
+
 namespace cmn {
 
 template <typename T> struct type_t {};
@@ -885,6 +887,23 @@ struct MultiStringEqual {
     }
 };
 
+struct Milliseconds {
+    std::chrono::milliseconds::rep count;
+
+    constexpr Milliseconds(std::chrono::milliseconds d)
+        : count(d.count()) {}
+
+    constexpr operator std::chrono::milliseconds() const {
+        return std::chrono::milliseconds{count};
+    }
+};
+
+template<Milliseconds Timeout = std::chrono::milliseconds::zero(), typename T>
+    requires (is_instantiation<std::future, T>::value || is_instantiation<std::shared_future, T>::value)
+bool is_future_ready(const T& f) {
+    return f.wait_for(std::chrono::milliseconds(Timeout)) == std::future_status::ready;
+}
+
 struct CallbackCollection {
     std::unordered_map<std::string, std::size_t, MultiStringHash, MultiStringEqual> _ids;
     operator bool() const { return not _ids.empty(); }
@@ -906,7 +925,7 @@ struct CallbackFuture {
     bool is_ready() const {
         if(not ready.has_value())
             return true;
-        return ready->wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        return cmn::is_future_ready(*ready);
     }
     void finish() {
         if(ready.has_value()) {

@@ -911,13 +911,13 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             if (not syms.add_extension("ttf").exists())
                 FormatExcept("Cannot find file ",syms.str());
             
-            config.GlyphOffset.y = 1.8;
-            config.GlyphOffset.x = -1;
+            config.GlyphOffset.y = 0;
+            config.GlyphOffset.x = 0;
             _fonts[Style::Monospace] = load_font(0, "", mono, ".ttf", 0.85);
             _fonts[Style::Monospace | Style::Italic] = load_font(0, "", mono, ".ttf", 0.85);
             _fonts[Style::Monospace | Style::Bold] = load_font(0, "-Bold", mono, ".ttf", 0.85, true);
             
-            config.GlyphOffset.y = 3;
+            config.GlyphOffset.y = 0;
             config.GlyphOffset.x = 0;
             _fonts[Style::Symbols] = load_font(0, "", syms, ".ttf", 1, true);
             
@@ -2074,23 +2074,28 @@ void IMGUIBase::draw_element(const DrawOrder& order) {
             
             ImFont* font = _fonts.at(ptr->font().style);
             auto font_scale = ptr->global_text_scale().x * font->LegacySize * (ptr->font().size / im_font_scale / _dpi_scale / io.DisplayFramebufferScale.x);
+            Vec2 text_pos = bds.pos();
+            if (ptr->font().style & Style::Monospace)
+                text_pos.y += 0.7_F * (font_scale / font->LegacySize);
+            else if(ptr->font().style & Style::Symbols)
+                text_pos.y += 2.5_F * (font_scale / font->LegacySize);
             
             //Vec2 rounded(round(bds.x), round(bds.y));
             Vec2 rounded(bds.x, bds.y);
             //Print(ptr->txt(), "scale = ", font_scale, " rounded = ", Vec2(rounded), " (", bds.pos(),")");
             
             if(ptr->shadow() > 0) {
-                Vec2 offset = Vec2(1.5_F * global_scale + font->Sources[0]->GlyphOffset.y / font_scale);//.map([](auto x){return round(x);});
+                Vec2 offset = Vec2(1.5_F * global_scale);
                 
                 list->AddText(font,
                               font_scale,
-                              bds.pos() + offset,
+                              text_pos + offset,
                               (ImColor)Color(20, 20, 20, 255 * saturate(ptr->shadow(), 0_F, 1_F)),
                               ptr->txt().c_str());
             }
             list->AddText(font,
                           font_scale,
-                          bds.pos(),
+                          text_pos,
                           (ImColor)ptr->color(),
                           ptr->txt().c_str());
             

@@ -69,6 +69,7 @@ private:
     CallbackManagerImpl<void> _delete_callbacks;
     
 protected:
+    LabeledField(GUITaskQueue_t*, const std::string& name, sprite::Map*, std::function<void(std::string_view)> callback);
     auto enqueue(auto fn) {
         if(_gui) {
             return _gui->enqueue(std::forward<decltype(fn)>(fn));
@@ -80,6 +81,7 @@ protected:
     
 public:
     sprite::Reference ref() const;
+    std::string_view parameter_name() const noexcept { return _ref; }
     sprite::Map* local_settings() const noexcept { return _local_settings; }
     virtual TooltipData tooltip() const;
     virtual std::shared_ptr<Drawable> tooltip_object() const;
@@ -100,7 +102,7 @@ public:
         v.push_back(_text);
     }
     
-    void trigger_ref_update();
+    virtual void trigger_ref_update();
     virtual void update_ref_in_main_thread() {}
     void replace_ref(ParmName name);
     void replace_docs(TooltipData name);
@@ -412,28 +414,32 @@ struct LabeledPath : public LabeledField {
         }
     };
     
-    std::mutex _file_mutex;
-    std::future<std::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
+    //std::mutex _file_mutex;
+    //std::future<std::expected<std::vector<Dropdown::TextItem>, const char*>> _file_retrieval;
+    std::shared_future<void> _current_function;
+    std::shared_ptr<uint64_t> _folder_request = std::make_shared<uint64_t>(0);
+    Drawable::callback_handle_t _select_handler;
     std::optional<std::function<std::optional<file::Path>()>> _should_reload;
     
     gui::derived_ptr<CustomDropdown> _dropdown;
     std::vector<FileItem> _names;
     std::vector<Dropdown::TextItem> _search_items;
-    std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
+    //std::set<file::Path, std::function<bool(const file::Path&, const file::Path&)>> _files;
     file::Path _path;
     std::optional<file::Path> _folder;
     std::function<bool(file::Path)> _validity;
     
     LabeledPath(GUITaskQueue_t*, std::string name, const std::string& desc, file::Path path, sprite::Map* local_settings = nullptr);
+    ~LabeledPath();
     void add_to(std::vector<Layout::Ptr>& v) override {
         LabeledField::add_to(v);
         v.push_back(_dropdown);
     }
     void update_ref_in_main_thread() override;
-    std::vector<Dropdown::TextItem> updated_names(const std::set<file::Path>& paths);
+    static std::vector<Dropdown::TextItem> updated_names(const std::set<file::Path>& paths);
     void change_folder(file::Path);
     Layout::Ptr representative() const override { return _dropdown; }
-    void asyncUpdateItems();
+    static void asyncUpdateItems(std::weak_ptr<Dropdown>, std::vector<Dropdown::TextItem>&&);
     void asyncRetrieve(std::function<std::optional<file::Path>()>);
 };
 
@@ -441,21 +447,33 @@ class LabeledPathArray : public LabeledField {
 private:
     gui::derived_ptr<gui::VerticalLayout> _layout;
     gui::derived_ptr<CustomDropdown> _dropdown;
-    file::PathArray _pathArray;
-    file::PathArray _pathArrayCopy;
-    std::vector<file::Path> _tmp_files;
-    
-    std::vector<Dropdown::TextItem> _search_items;
+    std::optional<std::string> bound_source() const;
+    Drawable::callback_handle_t _select_handler;
+    void commit_text(bool selected_item = false);
 
-    std::future<std::vector<file::Path>> _future;
-    std::atomic<bool> _should_update{ false };
+    struct Retrieval {
+        std::string text;
+        std::optional<file::PathArray> paths;
+        std::vector<file::Path> matches;
+    };
+    std::weak_ptr<const Retrieval> _pending;
+    std::optional<std::string> _bound_source;
+    std::optional<bool> _matched_patterns{false}; // Empty while the dropdown has no valid lookup result.
+    const std::shared_ptr<std::atomic<uint64_t>> _ref_revision;
+    uint64_t _display_revision{0};
+    void updateDropdownItems(bool from_setting);
+    static void retrieve(GUITaskQueue_t*, std::shared_ptr<Retrieval>, std::function<void(const Retrieval&)> complete);
+    void apply_retrieval(const Retrieval&);
+    static void asyncUpdateItems(CustomDropdown&, const std::vector<file::Path>&);
+    LabeledPathArray(GUITaskQueue_t*, const std::string&, const LayoutContext*, sprite::Map*, std::shared_ptr<std::atomic<uint64_t>>);
     
 public:
     LabeledPathArray(GUITaskQueue_t*, const std::string& name, const LayoutContext*, sprite::Map* local_settings = nullptr);
     ~LabeledPathArray();
 
-    void updateStaticText(const std::vector<file::Path>&);
+    void trigger_ref_update() override;
     void updateDropdownItems();
+    bool has_pending_lookup() const noexcept { return not _pending.expired(); }
     void add_to(std::vector<Layout::Ptr>& v) override;
     void update_ref_in_main_thread() override;
     
@@ -466,8 +484,6 @@ public:
         };
     }
     Layout::Ptr representative() const override { return _dropdown; }
-
-    void asyncUpdateItems();
 };
 
 struct LabeledCheckbox : public LabeledField {

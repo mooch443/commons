@@ -65,7 +65,7 @@ class ParameterHistory {
     size_t _index{0u};
     
 public:
-    static constexpr auto merge_time_threshold = std::chrono::milliseconds(500);
+    static constexpr auto merge_time_threshold = 500ms;
     
 public:
     std::optional<sprite::ConstReference> last_value_of(std::string_view) const;

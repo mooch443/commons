@@ -52,12 +52,8 @@ namespace cmn::gui {
             ox = 1;
         }
 
-        if(mp.y < window.height * 0.5)
-            set_origin(Vec2(ox, 0));
-        else
-            set_origin(Vec2(ox, 1));
+        auto o = Vec2(ox, mp.y < window.height * 0.5 ? 0 : 1);
         
-        auto o = origin();
         auto text_dims = _text.size();
         if(stage())
             text_dims = text_dims.div(stage()->scale());
@@ -93,9 +89,36 @@ namespace cmn::gui {
             auto bds = lock->global_bounds();
             //bds << bds.pos() + Vec2(bds.size().mul(o));
             
-            if(auto ptr = dynamic_cast<Combobox*>(lock.get());
-               ptr == nullptr)
+            auto* ptr = dynamic_cast<Combobox*>(lock.get());
+            auto* dropdown = ptr ? ptr->dropdown().get() : dynamic_cast<Dropdown*>(lock.get());
+
+            /// if this is a dropdown we need to make sure to put the tooltip
+            /// either below or above the entire list / dropdown element depending on the orientation
+            if(dropdown 
+                && dropdown->opened() 
+                && dropdown->list().is_staged()) 
             {
+                if(window.empty())
+                    window = Size2(stage()->width(), stage()->height());
+                auto list_bounds = dropdown->list().global_bounds();
+                auto control_bounds = dropdown->global_bounds();
+                if(parent()) {
+                    const auto inverse = parent()->global_transform().getInverse();
+                    list_bounds = inverse.transformRect(list_bounds);
+                    control_bounds = inverse.transformRect(control_bounds);
+                }
+                const auto top = min(list_bounds.y, control_bounds.y);
+                const auto bottom = max(list_bounds.y + list_bounds.height, control_bounds.y + control_bounds.height);
+                const auto dims = (_text.size() + Vec2(10, 4)).mul(scale());
+                bool above = dropdown->inverted();
+                if((above ? top : window.height - bottom) < dims.height)
+                    above = top > window.height - bottom;
+                o = Vec2(0, above ? 1 : 0);
+                mp.x = std::clamp(list_bounds.x, 0_F, max(0_F, window.width - dims.width));
+                mp.y = std::clamp(above ? top - dims.height : bottom, 0_F, max(0_F, window.height - dims.height))
+                    + (above ? dims.height : 0_F);
+
+            } else if(ptr == nullptr) {
                 if(auto ptr = dynamic_cast<List*>(lock.get());
                    ptr != nullptr)
                 {
@@ -146,7 +169,8 @@ namespace cmn::gui {
                 }
             }
         }
-        
+
+        set_origin(o);
         if(!content_changed()) {
             set_pos(mp); /// only set position here and exist
             return;
