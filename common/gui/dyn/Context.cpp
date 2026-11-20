@@ -24,6 +24,7 @@ void LocalSettingTypes::ensure_defaults() {
         register_type<double>("double");
         register_type<std::string>("string");
         register_type<file::Path>("path");
+        register_type<file::Filename>("filename");
         register_type<file::PathArray>("path_array");
         registry()["bool_array"] = [](sprite::Map& map, std::string_view local_name, const glz::generic* value, bool has_value) {
             std::vector<uint8_t> values;

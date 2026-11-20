@@ -279,7 +279,7 @@ struct TypeInfo_ref {
     }
     
     std::string valueString() const {
-        return _prop.get().valueString();
+        return sprite::display_property(_prop);
     }
 };
 
@@ -310,7 +310,7 @@ struct TypeInfo_optional {
     }
     
     std::string valueString() const {
-        return _deref->valueString();
+        return sprite::display_property(*_deref);
     }
 };
 

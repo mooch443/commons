@@ -142,6 +142,42 @@ public:
     }
 };
 
+class Filename {
+    Path _path;
+
+public:
+    Filename() = default;
+
+    explicit Filename(StringLike auto&& value)
+        : _path(utils::string_like_view(value))
+    {
+        const auto name = utils::string_like_view(value);
+        if(name.find_first_of("/\\") != std::string_view::npos
+           || _path.is_absolute()
+#if defined(WIN32)
+           || (name.size() == 2 && name.back() == ':')
+#endif
+           || is_in(name, ".", ".."))
+        {
+            throw InvalidArgumentException("Expected a filename without directory components, got ", name, ".");
+        }
+    }
+
+    explicit Filename(const Path& path) : Filename(path.str()) {}
+
+    const std::string& str() const { return _path.str(); }
+    const Path& path() const & { return _path; }
+    Path path() && { return std::move(_path); }
+    bool operator==(const Filename&) const = default;
+
+    static consteval std::string_view class_name() { return "filename"; }
+    static Filename fromStr(StringLike auto&& value) {
+        return Filename(Meta::fromStr<std::string>(value));
+    }
+    std::string toStr() const { return _path.toStr(); }
+    glz::generic to_json() const { return _path.to_json(); }
+};
+
 Path operator/( const Path& lhs, const Path& rhs );
 //Path operator+( const Path& lhs, const Path& rhs);
 

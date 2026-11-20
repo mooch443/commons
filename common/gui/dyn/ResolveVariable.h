@@ -207,6 +207,8 @@ bool resolve_map_to_bool(const VarBase_t& variable, const VarProps& modifiers) {
             return not ref.get().template value<std::string>().empty();
         } else if(ref.template is_type<file::Path>()) {
             return not ref.get().template value<file::Path>().empty();
+        } else if(ref.template is_type<file::Filename>()) {
+            return not ref.get().template value<file::Filename>().str().empty();
         }
         
         throw InvalidArgumentException("Cannot convert ",modifiers," to bool for variable ", variable.class_name());

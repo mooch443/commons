@@ -29,6 +29,10 @@ inline std::string display_property(const PropertyType& property,
         return property.value<file::Path>().str();
     }
 
+    if (property.is_type<file::Filename>()) {
+        return property.value<file::Filename>().str();
+    }
+
     return property.valueString();
 }
 
@@ -42,7 +46,7 @@ inline std::string display_object(T&& object, std::string_view null_optional = "
     } else if constexpr(_clean_same<std::string, K>) {
         return object;
 
-    } else if constexpr(_clean_same<file::Path, K>) {
+    } else if constexpr(_clean_same<file::Path, K> || _clean_same<file::Filename, K>) {
         return object.str();
 
     } else if constexpr(_clean_same<sprite::ConstReference, K>
