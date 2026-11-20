@@ -25,6 +25,7 @@ using ::cmn::gui::dyn::LocalSettingTypes;
 // gui/dyn/ParseText.h
 using ::cmn::gui::dyn::Pattern;
 using ::cmn::gui::dyn::PreVarProps;
+using ::cmn::gui::dyn::_handle_subobjects;
 using ::cmn::gui::dyn::apply_modifier_to_object;
 using ::cmn::gui::dyn::convert_to_bool;
 using ::cmn::gui::dyn::create_parse_result;
@@ -58,9 +59,11 @@ using ::cmn::pattern::UnresolvedStringPattern;
 using ::cmn::pattern::Prepared;
 using ::cmn::pattern::PreparedPattern;
 using ::cmn::pattern::PreparedPatterns;
+using ::cmn::pattern::ResolveContext;
 using ::cmn::pattern::Unprepared;
 using ::cmn::pattern::UnpreparedPattern;
 using ::cmn::pattern::UnpreparedPatterns;
+using ::cmn::pattern::no_context_required;
 }
 
 export namespace cmn::sprite {

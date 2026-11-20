@@ -155,6 +155,9 @@ using ::cmn::MathArray;
 using ::cmn::RGBArray;
 using ::cmn::clamp;
 using ::cmn::is_rgb_array;
+// misc/metastring.h
+using ::cmn::FileSize;
+using ::cmn::illegal_syntax;
 // misc/pretty.h
 using ::cmn::prettify_array;
 // misc/vec2.h
@@ -257,6 +260,7 @@ using ::cmn::detail::checked_cast_warning;
 
 export namespace cmn::file {
 // misc/Path.h
+using ::cmn::file::Filename;
 using ::cmn::file::Path;
 using ::cmn::file::UseNotOsSep;
 using ::cmn::file::cd;
@@ -336,6 +340,13 @@ export namespace cmn::tag {
 // misc/checked_casts.h
 using ::cmn::tag::fail_on_error;
 using ::cmn::tag::warn_on_error;
+}
+
+export namespace cmn::util {
+// misc/metastring.h
+using ::cmn::util::ConstexprString;
+using ::cmn::util::all_conststrings_v;
+using ::cmn::util::to_readable_errc;
 }
 
 export namespace cmn::utils {
