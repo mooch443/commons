@@ -459,7 +459,8 @@ std::optional<Path> Path::canonical() const {
         if(ext.empty())
             return not extension().empty();
         assert(utils::lowercase(ext) == ext);
-        return utils::lowercase(extension()) == ext;
+        return not extension().empty()
+            && utils::lowercase(extension()) == ext;
     }
     
     bool Path::create_folder() const {
@@ -670,9 +671,10 @@ std::optional<Path> Path::canonical() const {
     }
 
     Path Path::add_extension(std::string_view ext) const {
-        auto current = extension();
-        if(ext != current)
+        if(not has_extension(utils::lowercase(ext)))
+        {
             return Path(_str + "." + (std::string)ext);
+        }
         return *this;
     }
     
