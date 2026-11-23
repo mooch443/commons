@@ -59,7 +59,7 @@ public:
         std::vector<DeferredFileCheck>& deferredFileChecks,
         std::optional<std::vector<std::string>>& to_be_resolved,
         bool& has_to_be_filtered,
-        const FS& fs)
+        const auto& fs)
     {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
         Print("ensure_loaded_static() called");
@@ -97,13 +97,15 @@ public:
         }
 
         if (to_be_resolved.has_value() && not to_be_resolved->empty()) {
-            std::string path = to_be_resolved.value().front();
+            for(const auto& path : *to_be_resolved) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
-            Print("Resolving paths for pattern: ", path);
+                Print("Resolving paths for pattern: ", path);
 #endif
-            file::Path parent_path = file::Path(path).remove_filename();
-            if (fs.is_folder(parent_path)) {
-                auto all_files = fs.find_files(parent_path);
+                file::Path parent_path = file::Path(path).remove_filename();
+                const auto directory = parent_path.empty() ? file::Path(".") : parent_path;
+                if (not fs.is_folder(directory))
+                    continue;
+                auto all_files = fs.find_files(directory);
 
                 // Replace * with .* and escape other special characters
                 std::string regex_str = "^" + escape_regex(path) + "$";
@@ -113,11 +115,12 @@ public:
                     std::regex file_matcher(regex_str);
 
                     for (const auto& file : all_files) {
-                        if (std::regex_match(file.str(), file_matcher)) {
+                        const auto candidate = parent_path.empty() ? file.filename() : file.str();
+                        if (std::regex_match(candidate, file_matcher)) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
                             Print("Pattern matched file: ", file.str());
 #endif
-                            paths.push_back(file);
+                            paths.emplace_back(candidate);
                         }
                     }
                 }
@@ -126,10 +129,8 @@ public:
                     paths.push_back(file::Path(path));
                     FormatWarning("Cannot parse regex: ", regex_str, " (", e.what(), ")");
                 }
-                
                 std::sort(paths.begin(), paths.end());
             }
-
             has_to_be_filtered = true;
             to_be_resolved.reset();
         }
@@ -150,10 +151,14 @@ public:
     
 public:
     void ensure_loaded() const {
+        ensure_loaded(fs);
+    }
+
+    void ensure_loaded(const auto& filesystem) const {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
         Print("ensure_loaded() called");
 #endif
-        ensure_loaded_static(_paths, _deferredFileChecks, _to_be_resolved, _has_to_be_filtered, fs);
+        ensure_loaded_static(_paths, _deferredFileChecks, _to_be_resolved, _has_to_be_filtered, filesystem);
     }
 
 public:
@@ -261,12 +266,12 @@ public:
             add_path(path);
         }
 
-        if(_paths.size() == 1) {
+        if(_matched_patterns) {
+            _source = paths.size() == 1 ? paths.front() : Meta::toStr(paths);
+        } else if(_paths.size() == 1) {
             _source = _paths.front().str();
         } else
             _source = Meta::toStr(_paths);
-
-        assert(not _paths.empty() || _source.empty());
     }
     
     /**
@@ -433,7 +438,9 @@ public:
 #ifdef COMMON_DEBUG_PATH_RESOLVE
                 Print("Detected wildcard pattern *");
 #endif
-                to_be_resolved = std::vector<std::string>{ path };
+                if(not to_be_resolved)
+                    to_be_resolved.emplace();
+                to_be_resolved->push_back(path);
             }
             
         } else {
@@ -506,6 +513,34 @@ public:
         return _paths[index];
     }
 
+    [[nodiscard]] bool has_source() const {
+        return _matched_patterns || not _paths.empty();
+    }
+
+    [[nodiscard]] bool is_single_file(std::string_view extension = {}) const {
+        return not _matched_patterns && has_single_match(extension);
+    }
+
+    /// Accepts a pattern when it resolves to exactly one path.
+    [[nodiscard]] bool has_single_match(std::string_view extension = {}) const {
+        ensure_loaded();
+        return _paths.size() == 1
+            && (extension.empty() || _paths.front().has_extension(extension));
+    }
+
+    [[nodiscard]] bool all_files_are(std::string_view extension) const {
+        ensure_loaded();
+        return not _paths.empty() && std::ranges::all_of(_paths, [extension](const auto& path) {
+            return path.has_extension(extension);
+        });
+    }
+
+    [[nodiscard]] bool any_files_are(std::string_view extension) const {
+        ensure_loaded();
+        return not _paths.empty() && std::ranges::any_of(_paths, [extension](const auto& path) {
+            return path.has_extension(extension);
+        });
+    }
 };
 
 

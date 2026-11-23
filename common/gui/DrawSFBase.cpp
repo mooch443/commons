@@ -1,4 +1,5 @@
 #include "DrawSFBase.h"
+#include <file/DataLocation.h>
 #include <misc/GlobalSettings.h>
 #include <gui/types/Textfield.h>
 #include <misc/Timer.h>
@@ -13,7 +14,12 @@ namespace cmn::gui {
         static bool _font_loaded = false;
         static sf::Font _font;
         if(!_font_loaded) {
-			file::Path path("fonts/Avenir.ttc");
+            file::Path path("fonts/Avenir.ttc");
+            if(file::DataLocation::instance_if_set() && file::DataLocation::is_registered("app")) {
+                path = file::DataLocation::parse("app", path);
+                if(not path.is_regular())
+                    path = file::DataLocation::parse("app", "fonts/Quicksand.ttf");
+            }
 			if (!path.exists())
                 throw U_EXCEPTION("Cannot find file ",path.str());
             if(!_font.loadFromFile(path.str())) {

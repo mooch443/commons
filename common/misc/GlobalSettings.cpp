@@ -53,7 +53,7 @@ std::shared_mutex& GlobalSettings::defaults_mutex() {
     return _mutex;
 }
 
-GlobalSettings::Snapshot::Snapshot(const Configuration& source) {
+GlobalSettings::MutableSnapshot::MutableSnapshot(const Configuration& source) {
     if(not is_reading_config_flag() || current_access() != Access::CONFIGURATION || &source != &instance()->_config)
         throw std::logic_error("GlobalSettings::snapshot requires a secure configuration read context.");
 
@@ -64,6 +64,27 @@ GlobalSettings::Snapshot::Snapshot(const Configuration& source) {
     current_defaults_with_config = settings->_current_defaults_with_config;
     command_line = std::make_unique<CommandLine>(CommandLine::instance());
 }
+
+std::shared_ptr<GlobalSettings::MutableSnapshot> GlobalSettings::mutable_snapshot() {
+    return read([](const Configuration& config) { return std::make_shared<MutableSnapshot>(config); });
+}
+
+void GlobalSettings::MutableSnapshot::apply() const {
+    GlobalSettings::write([this](Configuration& target) {
+        {
+            std::unique_lock guard(defaults_mutex());
+            auto* settings = instance();
+            settings->_current_defaults = current_defaults;
+            settings->_current_defaults_with_config = current_defaults_with_config;
+        }
+        if(command_line)
+            CommandLine::instance() = *command_line;
+        // Copy assignment retains the live maps' callback registrations.
+        target = config;
+    });
+}
+
+GlobalSettings::Snapshot::Snapshot(const Configuration& source) : MutableSnapshot(source) {}
 
 GlobalSettings::Snapshot::~Snapshot() {
     if(pending)
@@ -76,13 +97,7 @@ void GlobalSettings::Snapshot::rollback(Configuration& target) {
     if(not pending)
         return;
 
-    std::unique_lock guard(defaults_mutex());
-    auto* settings = instance();
-    // Copy assignment retains the live maps' callback registrations.
-    target = config;
-    settings->_current_defaults = current_defaults;
-    settings->_current_defaults_with_config = current_defaults_with_config;
-    CommandLine::instance() = *command_line;
+    apply();
     pending = false;
 }
 
@@ -499,14 +514,7 @@ void GlobalSettings::reset() {
 }
 
 bool GlobalSettings::is_runtime_quiet(const sprite::Map* ptr) {
-    if(ptr)
-        return ptr->has("quiet") && ptr->at("quiet").value<bool>();
-    else {
-        auto v = read_value<bool>("quiet");
-        if(v)
-            return *v;
-        return false;
-    }
+    return ptr ? ptr->value_with_default("quiet", false) : read_value_with_default("quiet", false);
 }
 
 std::shared_ptr<const sprite::PropertyType> GlobalSettings::at(std::string_view name) {

@@ -353,7 +353,16 @@ std::optional<Path> Path::canonical() const {
         auto data = retrieve_data();
         return std::string(data.begin(), data.end());
 #else
+#if defined(WIN32)
+        std::ifstream input;
+        if(MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, c_str(), -1, nullptr, 0))
+            input.open(std::filesystem::u8path(str()), std::ios::binary);
+        // Paths from narrow Windows APIs can use the active code page.
+        if(not input.is_open())
+            input.open(str(), std::ios::binary);
+#else
         std::ifstream input(str(), std::ios::binary);
+#endif
         if(!input.is_open())
             throw cmn::U_EXCEPTION("Cannot read file ", str(), " cwd:", cwd(), " exists:", exists());
         

@@ -545,12 +545,10 @@ namespace cmn {
 
                 /// check if the key is deprecated, and if yes, if the new value
                 /// is part of the exclusions:
-                if(deprecations.is_deprecated(key))
+                if(auto r = deprecations.replacement(key);
+                   r.has_value() && contains(exclude, *r))
                 {
-                    auto r = deprecations.deprecations.at(utils::lowercase(key)).replacement;
-                    if(r.has_value() && contains(exclude, *r)) {
-                        continue;
-                    }
+                    continue;
                 }
                 
                 if (contains(exclude, key))

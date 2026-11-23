@@ -535,6 +535,21 @@ concept Iterable = requires(T obj) {
         }
         
         template<typename T>
+        T value_with_default(std::string_view name, T value) const {
+            auto guard = LOGGED_LOCK(mutex());
+            
+            /// we have to make a copy of name here...
+            /// we cant be sure this exists later still
+            if(decltype(_props)::const_iterator it = _props.find(name);
+               it != _props.end())
+            {
+                return it->second->value<T>();
+            }
+            
+            return value;
+        }
+        
+        template<typename T>
         Property<T>& insert(std::string_view name, const T& value) {
             std::unique_lock g{pending_mutex};
             if(has(name)) {

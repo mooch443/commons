@@ -144,6 +144,7 @@ protected:
 
     struct Configuration {
         cmn::sprite::Map values, examples, defaults;
+        std::shared_ptr<const Deprecations> deprecations;
         docs_map_t docs;
         user_access_map_t access;
         std::unordered_map<std::string, std::function<std::string(std::optional<uint8_t>)>, MultiStringHash, MultiStringEqual> doc_generators;
@@ -329,10 +330,18 @@ protected:
 
         static void set_instance(GlobalSettings*);
         
-        class Snapshot {
+        class MutableSnapshot {
+        public:
             Configuration config;
             sprite::Map current_defaults, current_defaults_with_config;
             std::unique_ptr<CommandLine> command_line;
+
+            MutableSnapshot() = default;
+            explicit MutableSnapshot(const Configuration&);
+            void apply() const;
+        };
+        
+        class Snapshot : public MutableSnapshot {
             std::atomic<bool> pending{true};
 
         public:
@@ -348,6 +357,8 @@ protected:
         static std::shared_ptr<Snapshot> snapshot(const Configuration& config) {
             return std::make_shared<Snapshot>(config);
         }
+
+        static std::shared_ptr<MutableSnapshot> mutable_snapshot();
 
         
         template<Access access>

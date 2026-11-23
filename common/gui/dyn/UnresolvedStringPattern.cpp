@@ -779,7 +779,10 @@ std::string PreparedPattern::toStr() const {
             str.append(value.prepared->toStr());
             break;
         case POINTER:
-            str.append(hex(value.ptr).toStr());
+            if(value.ptr)
+                str.append(value.ptr->toStr());
+            else
+                str.append(hex(value.ptr).toStr());
             break;
             
         default:

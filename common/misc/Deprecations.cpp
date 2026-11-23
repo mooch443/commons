@@ -8,6 +8,30 @@ bool Deprecations::is_deprecated(std::string_view name) const
     return deprecations.find(lower) != deprecations.end();
 }
 
+std::optional<std::string> Deprecations::replacement(std::string_view key) const {
+    const auto it = deprecations.find(utils::lowercase(key));
+    return it != deprecations.end() ? it->second.replacement : std::nullopt;
+}
+
+void Deprecations::warn_deprecated(std::string_view source, const std::set<std::string>& keys) const {
+    bool found = false;
+    for(const auto& key : keys) {
+        auto it = deprecations.find(utils::lowercase(key));
+        if(it == deprecations.end())
+            continue;
+
+        found = true;
+        const auto& replacement = it->second.replacement;
+        if(replacement && not replacement->empty()) {
+            FormatExcept("[", source, "] Setting ", key, " is deprecated. Please use its replacement parameter ", *replacement, " instead.");
+        } else {
+            FormatWarning("[", source, "] Setting ", key, " has been removed (with no replacement) and will be ignored.");
+        }
+    }
+    if(found)
+        Print("Found invalid settings in source ", source, " (see above).");
+}
+
 bool Deprecations::correct_deprecation(std::string_view name, std::string_view val, const sprite::Map *additional, sprite::Map &output) const
 {
     auto lower = utils::lowercase(name);

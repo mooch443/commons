@@ -287,6 +287,8 @@ using ::cmn::gui::attr::Rotation;
 using ::cmn::gui::attr::RotationTag;
 using ::cmn::gui::attr::Scale;
 using ::cmn::gui::attr::ScaleTag;
+using ::cmn::gui::attr::ScrollLimits;
+using ::cmn::gui::attr::ScrollLimitsTag;
 using ::cmn::gui::attr::ScrollOffset;
 using ::cmn::gui::attr::ScrollOffsetTag;
 using ::cmn::gui::attr::Scrollable_t;

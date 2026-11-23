@@ -1065,7 +1065,10 @@ void LabeledPath::asyncRetrieve(std::function<std::optional<file::Path>()> fn) {
         
     }, fn).share();
 
-    _gui->push_owned_completion(_current_function);
+    if(_gui)
+        _gui->push_owned_completion(_current_function);
+    else
+        throw RuntimeError("GUI queue is not available, cannot run async retrieval");
 }
 
 void LabeledPath::change_folder(file::Path p) {
@@ -1370,8 +1373,14 @@ void LabeledPathArray::updateDropdownItems(bool from_setting) {
         if(auto alive = lifetime.lock())
             apply_retrieval(result);
     };
-    _gui->push_owned_completion(std::async(std::launch::async, &LabeledPathArray::retrieve,
-                                           _gui, std::move(request), std::move(complete)).share());
+
+    auto future = std::async(std::launch::async, &LabeledPathArray::retrieve,
+                             _gui, std::move(request), std::move(complete))
+                    .share();
+    if(_gui)
+        _gui->push_owned_completion(std::move(future));
+    else
+        throw RuntimeError("GUI queue is not available, cannot run async retrieval");
 }
 
 void LabeledPathArray::retrieve(GUITaskQueue_t* gui, std::shared_ptr<Retrieval> request,
@@ -1412,6 +1421,8 @@ void LabeledPathArray::retrieve(GUITaskQueue_t* gui, std::shared_ptr<Retrieval> 
     } catch(...) {
         FormatExcept("Cannot look up ", request->text);
     }
+    if(gui == nullptr)
+        throw RuntimeError("GUI queue is not available, cannot run async retrieval");
     gui->enqueue([request = std::move(request), complete = std::move(complete)](auto, auto&) {
         complete(*request);
     });

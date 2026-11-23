@@ -6,6 +6,7 @@
 #include <misc/Path.h>
 #include <misc/DisplayValue.h>
 #include <file/PathArray.h>
+#include <file/DataLocation.h>
 
 namespace cmn::gui::dyn {
 
@@ -1219,6 +1220,10 @@ void Context::init() const {
                 REQUIRE_EXACTLY(1, props);
                 auto A = Meta::fromStr<file::Path>(props.first());
                 return A.absolute();
+            }),
+            VarFunc("app_path", [](const VarProps& props) -> std::string {
+                REQUIRE_EXACTLY(1, props);
+                return file::DataLocation::parse("app", Meta::fromStr<file::Path>(props.first())).str();
             }),
             VarFunc("sqr", [](const VarProps& props) -> double {
                 REQUIRE_EXACTLY(1, props);

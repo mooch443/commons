@@ -56,6 +56,8 @@ struct Deprecations {
     }
     
     [[nodiscard]] bool is_deprecated(std::string_view) const;
+    [[nodiscard]] std::optional<std::string> replacement(std::string_view key) const;
+    void warn_deprecated(std::string_view source, const std::set<std::string>& keys) const;
     [[nodiscard]] bool correct_deprecation(std::string_view name, std::string_view val, const sprite::Map* additional, sprite::Map& output) const;
 };
 

@@ -64,6 +64,7 @@
 #include <exception>
 #include <stdarg.h>
 #include <concepts>
+#include <filesystem>
 #include <fstream>
 #include <span>
 #include <optional>

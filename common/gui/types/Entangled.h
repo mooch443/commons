@@ -130,6 +130,10 @@ namespace cmn::gui {
         void set(attr::Scrollable_t value) {
             set_scroll_enabled(value);
         }
+        void set(attr::ScrollLimits value) {
+            set_scroll_limits(Rangef(0, std::max(0.f, value.width)),
+                              Rangef(0, std::max(0.f, value.height)));
+        }
         void set(attr::ScrollOffset value) {
             if(scroll_enabled())
                 set_scroll_offset(value);

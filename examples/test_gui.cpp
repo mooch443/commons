@@ -10,6 +10,7 @@
 #include <gui/types/Button.h>
 
 #include <gui/DynamicGUI.h>
+#include <gui/GUITaskQueue.h>
 #include <gui/dyn/Action.h>
 #include <misc/GlobalSettings.h>
 
@@ -214,10 +215,9 @@ void print_layout_structure(Drawable* layout, int level = 0) {
 
 int main(int argc, char**argv) {
     CommandLine::init(argc, argv);
-    CommandLine::instance().cd_home();
     
     file::DataLocation::register_path("app", [](const sprite::Map&, file::Path input) {
-        return CommandLine::instance().wd() / input;
+        return input.is_absolute() ? input : CommandLine::instance().wd() / input;
     });
     
     set_log_file("site.html");
@@ -473,6 +473,7 @@ int main(int argc, char**argv) {
     
     //! open window and start looping
     IMGUIBase* ptr = nullptr;
+    GUITaskQueue_t queue;
     DynamicGUI dynGUI;
     
     IMGUIBase base("BBC Micro owl", {1024,1024},
@@ -480,6 +481,7 @@ int main(int argc, char**argv) {
     {
         if(not dynGUI) {
             dynGUI = dyn::DynamicGUI{
+                .gui = &queue,
                 .path = file::DataLocation::parse("app", "test_gui.json"),
                 .context = [&](){
                     dyn::Context context;
@@ -538,6 +540,7 @@ int main(int argc, char**argv) {
         graph.wrap_object(button);
         
         dynGUI.update(graph, nullptr);
+        queue.processTasks(ptr, graph);
         
         auto size = circle0->size() + Size2(1);
         if(size.width > 50) {

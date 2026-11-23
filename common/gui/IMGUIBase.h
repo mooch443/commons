@@ -17,6 +17,7 @@
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten/fetch.h>
+#include <file/DataLocation.h>
 #endif
 
 #if COMMONS_HAS_OPENGL || defined(__EMSCRIPTEN__)
@@ -170,7 +171,9 @@ namespace cmn::gui {
             _platform = std::shared_ptr<impl_t>(ptr);
 
 #if defined(__EMSCRIPTEN__)
-            file::Path path("./fonts/Quicksand.ttf");
+            file::Path path("fonts/Quicksand.ttf");
+            if(file::DataLocation::instance_if_set() && file::DataLocation::is_registered("app"))
+                path = file::DataLocation::parse("app", path);
             font_data = path.retrieve_data();
 #endif
             init(title);

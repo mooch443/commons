@@ -110,10 +110,7 @@ namespace cmn::gui {
                 callback.collection.reset();
             });
             auto update = [](std::string_view name) {
-                auto gui_interface_scale = GlobalSettings::read_value<Float2_t>(name);
-                hidden::Global::interface_scale = gui_interface_scale
-                        ? *gui_interface_scale
-                        : 1;
+                hidden::Global::interface_scale = GlobalSettings::read_value_with_default(name, Float2_t(1));
             };
             
             callback = GlobalSettings::register_callbacks({"gui_interface_scale"}, update);

@@ -14,9 +14,7 @@ using namespace gui;
 using namespace gui::dyn;
 
 int main(int argc, char**argv) {
-    // Initialize command line and working directory
     CommandLine::init(argc, argv);
-    CommandLine::instance().cd_home();
 
     // Register custom data paths
     file::DataLocation::register_path("app", [](const sprite::Map&, file::Path input) {

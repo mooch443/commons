@@ -1003,12 +1003,7 @@ void VideoSource::generate_average(cv::Mat &av, uint64_t, std::function<bool(flo
     gpuMat float_mat, f, ref;
     std::vector<gpuMat> vec;
     
-    averaging_method_t::Class method(averaging_method_t::mean);
-    if(auto v = GlobalSettings::read_value<averaging_method_t::Class>("averaging_method");
-       v)
-    {
-        method = *v;
-    }
+    auto method = GlobalSettings::read_value_with_default("averaging_method", averaging_method_t::mean);
     //bool use_mean = GlobalSettings::has("averaging_method") && utils::lowercase(READ_SETTING(averaging_method, std::string)) != "max";
     Print("Use averaging method: '", method.name(),"'");
     

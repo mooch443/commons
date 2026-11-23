@@ -2,6 +2,7 @@
 #include <commons.pc.h>
 #include <misc/DisplayValue.h>
 #include <misc/GlobalSettings.h>
+#include <file/DataLocation.h>
 
 #if WITH_MHD
 #ifdef WIN32
@@ -49,7 +50,7 @@ MHD_Result accept_callback(void *cls,
 
 Httpd::Httpd(const url_callback& get_image, const std::string& default_page, const init_session & init, const no_access& access) : _default_page(default_page), _get_url(get_image), _init_session(init), _no_access(access)
 {
-    const int default_port = GlobalSettings::has_value("httpd_port") ? SETTING(httpd_port).value<int>() : 8080;
+    const int default_port = READ_SETTING_WITH_DEFAULT(httpd_port, 8080);
     int port = default_port;
     
     daemon = NULL;
@@ -274,22 +275,24 @@ MHD_Result Httpd::local_ahc(struct MHD_Connection * connection,
 }
 
 int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Response **response, const std::string& url, Session * session, const char*upload_data, size_t*upload_data_size, std::string method) {
-#if !__APPLE__
-    const std::string root_dir = "";
-#else
-    const std::string root_dir = "../Resources/";
-#endif
-    const std::string sub_dir = "html";
+    const auto app = file::DataLocation::instance_if_set() && file::DataLocation::is_registered("app")
+        ? file::DataLocation::parse("app") : file::Path{};
+    auto favicon = app / "gfx/icon.ico";
+    if(utils::endsWith(url, "/favicon.ico") && not favicon.is_regular())
+        favicon = app / "gfx/TRex.ico";
     
-    if(utils::endsWith(url, "/favicon.ico") && file::Path(root_dir+"gfx/icon.ico").exists()) {
-        auto str = file::Path(root_dir+"gfx/icon.ico").read_file();
+    if(utils::endsWith(url, "/favicon.ico") && favicon.is_regular()) {
+        auto str = favicon.read_file();
         *response = MHD_create_response_from_buffer (str.size(), (void*) str.data(),
                                                     MHD_RESPMEM_MUST_COPY);
         MHD_add_response_header(*response, "Content-Type", "image/x-icon");
         //MHD_add_response_header(*response, "Cache-Control", "no-cache");
         
     } else if (utils::endsWith(url, ".html") || utils::endsWith(url, ".css") || utils::endsWith(url, ".ttf") || utils::endsWith(url, ".js")) {
-        if (!file_exists(sub_dir+url)) {
+        const file::Path relative("html" + url);
+        const auto path = app / relative;
+        if (contains(utils::split(relative.str(), file::Path::os_sep()), std::string_view(".."))
+            || not path.is_regular()) {
             const char *errorstr =
             "<html><body>File cannot be found!\
             </body></html>";
@@ -304,7 +307,7 @@ int Httpd::process_request(struct MHD_Connection *connection, struct MHD_Respons
             return ret;
             
         } else {
-            auto str = file::Path(sub_dir+url).read_file();
+            auto str = path.read_file();
             *response = MHD_create_response_from_buffer (str.size(), (void*) str.data(),
                                                         MHD_RESPMEM_MUST_COPY);
         }
