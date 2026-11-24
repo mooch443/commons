@@ -585,8 +585,10 @@ namespace cmn::gui {
                 }
                 else if(index < first_visible)
                     o->set_scroll_offset(Vec2(0, _line_spacing * index));
+#ifndef NDEBUG
                 else
                     Print("Unknown state with ", index, " and  first_visible=", first_visible, " last_visible=", last_visible);
+#endif
             }
             
             set_content_changed(true);
