@@ -43,6 +43,12 @@ DataLocation* DataLocation::instance() {
     return result;
 }
 
+void DataLocation::unregister_locations() {
+    auto ptr = DataLocation::instance();
+    std::lock_guard<std::mutex> guard(ptr->location_mutex);
+    ptr->location_funcs.clear();
+}
+
 void DataLocation::register_path(std::string purpose, std::function<file::Path (const sprite::Map&, file::Path)> fn)
 {
     purpose = utils::trim(utils::lowercase(purpose));
@@ -90,6 +96,9 @@ file::Path DataLocation::parse(const std::string &purpose, file::Path path, cons
         fn = it->second;
     }
     
+    if(not fn) {
+        throw InvalidArgumentException("Cannot find purpose ", purpose, " to convert path ", path);
+    }
     if(settings) {
         return fn(*settings, path);
     }

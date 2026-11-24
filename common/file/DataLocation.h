@@ -13,6 +13,7 @@ public:
     static void replace_path(std::string purpose, std::function<file::Path(const sprite::Map&, file::Path)> fn);
     static file::Path parse(const std::string& purpose, file::Path path = file::Path(), const sprite::Map* settings = nullptr);
     static bool is_registered(std::string purpose);
+    static void unregister_locations();
 
     //! Explicitly create and register the owned singleton instance.
     //! Must be called before any register_path/parse/instance() access.
