@@ -17,6 +17,14 @@ CommandLine& CommandLine::instance() {
     return cmd;
 }
 
+file::Path file::from_launch_dir(const Path& path) {
+    if(path.is_absolute())
+        return path;
+    const auto& launch = CommandLine::instance().launch_dir();
+    const auto& base = launch.empty() ? cwd() : launch;
+    return path.empty() ? base : base / path;
+}
+
 void CommandLine::init(int argc, char **argv, bool no_autoload_settings, const std::map<std::string, std::string>& deprecated) {
     instance()._init(argc, argv, no_autoload_settings, deprecated);
 }

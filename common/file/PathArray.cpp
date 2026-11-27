@@ -67,6 +67,8 @@ std::vector<std::string> filename_prefix_candidates(std::string_view filename) {
 }
     
 std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
+    if(pathArray.needs_resolving())
+        return find_parent(pathArray.resolved_at());
     auto& paths = pathArray.get_paths();
     
     if (paths.empty())
@@ -86,6 +88,8 @@ std::optional<file::Path> find_parent(const file::PathArray& pathArray) {
 }
 
 std::string find_basename(const file::PathArray& pathArray) {
+    if(pathArray.needs_resolving())
+        return find_basename(pathArray.resolved_at());
     constexpr auto remove_if_common = [](file::Path path) {
         static constexpr std::array common_extensions {
             "pv",

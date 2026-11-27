@@ -27,33 +27,23 @@ public:
     static inline const std::regex& pattern = detail::path_array_pattern;
 
 private:
-    GETTER_SETTER(std::string, source);
-    GETTER_I(bool, matched_patterns, false);
-
-    mutable bool _has_to_be_filtered{ false };
-    mutable std::optional<std::vector<std::string>> _to_be_resolved;
-    mutable std::vector<file::Path> _paths; ///< Member to store the list of file paths
-    // Engaged after expansion so a different search directory can reuse the original selection.
-    mutable std::optional<std::vector<file::Path>> _unfiltered_paths;
-    mutable std::vector<DeferredFileCheck> _deferredFileChecks;
+    using Paths_t = std::vector<file::Path>;
+    using Source_t = std::string;
+    
+    std::variant<Source_t, Paths_t> _paths; ///< Member to store the list of file paths
 
     FS fs; // Object to interact with the filesystem
 
-    void discard_matches() {
-        if(_unfiltered_paths) {
-            _paths = std::move(*_unfiltered_paths);
-            _unfiltered_paths.reset();
-        }
-    }
-    
     /**
      * @brief Add a file::Path to _paths if it's not empty.
      *
      * @param path The file::Path to add.
      */
     void add_path_if_not_empty(const file::Path& path) {
+        assert(std::holds_alternative<Paths_t>(_paths));
+        
         if (!path.empty()) {
-            _paths.push_back(path);
+            std::get<Paths_t>(_paths).push_back(path);
 #ifdef COMMON_DEBUG_PATH_RESOLVE
             Print("Added path to _paths: ", path.str());
 #endif
@@ -64,18 +54,40 @@ private:
     }
 
 public:
-    static void ensure_loaded_static(std::vector<file::Path>& paths,
-        std::vector<DeferredFileCheck>& deferredFileChecks,
-        std::optional<std::vector<std::string>>& to_be_resolved,
-        bool& has_to_be_filtered,
-        const auto& fs, const file::Path& base = {})
+    bool contains_patterns() const {
+        if(not needs_resolving())
+            return false;
+        auto & source = std::get<Source_t>(_paths);
+        if(utils::contains(source, '*'))
+            return true;
+        if(utils::contains(source, '%')) {
+            /// need number pattern regex
+            std::smatch match;
+            if (std::regex_search(source, match, pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    static std::vector<file::Path> ensure_loaded_static(
+        const Source_t& source,
+        const auto& fs, const file::Path& base = file::from_launch_dir())
     {
+        bool has_to_be_filtered = false;
+        std::vector<file::Path> result;
+        std::vector<DeferredFileCheck> deferredFileChecks;
+        std::optional<std::vector<file::Path>> to_be_resolved;
+        bool matched_patterns{false};
+        
+        result = parse_path(source, matched_patterns, to_be_resolved, deferredFileChecks, has_to_be_filtered);
+        
         const auto lookup = [&base](const file::Path& path) {
             return path.is_absolute() ? path : base / path;
         };
 #ifdef COMMON_DEBUG_PATH_RESOLVE
         Print("ensure_loaded_static() called");
-        Print("Current paths size: ", paths.size());
+        Print("Current paths size: ", result.size());
         if (!deferredFileChecks.empty())
             Print("There are deferred file checks to process: ", deferredFileChecks.size());
         if (to_be_resolved.has_value())
@@ -102,7 +114,8 @@ public:
 #ifdef COMMON_DEBUG_PATH_RESOLVE
                     Print("Deferred check added existing path: ", filePath.str());
 #endif
-                    paths.push_back(filePath);
+                    if(not filePath.empty())
+                        result.push_back(filePath);
                 }
             }
             deferredFileChecks.clear();
@@ -115,136 +128,112 @@ public:
 #endif
                 const file::Path expression(path);
                 const auto parent_path = expression.remove_filename();
-                const auto directory = base.empty() && parent_path.empty() ? file::Path(".") : lookup(parent_path);
+                auto directory = expression.is_absolute() ? parent_path : base / parent_path;
+                if(directory.empty())
+                    directory = ".";
                 if (not fs.is_folder(directory))
                     continue;
                 auto all_files = fs.find_files(directory);
-
+                
                 // Replace * with .* and escape other special characters
                 std::string regex_str = "^" + escape_regex(expression.filename()) + "$";
                 std::regex star_replace("\\*");
                 regex_str = std::regex_replace(regex_str, star_replace, ".*");
                 try {
                     std::regex file_matcher(regex_str);
-
+                    
                     for (const auto& file : all_files) {
                         const auto name = file.filename();
                         if (std::regex_match(name, file_matcher)) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
                             Print("Pattern matched file: ", file.str());
 #endif
-                            paths.emplace_back(parent_path / name);
+                            result.emplace_back(parent_path / name);
                         }
                     }
                 }
                 catch (const std::regex_error& e) {
                     // Invalid regex, treat it as a regular path
-                    paths.push_back(file::Path(path));
+                    result.push_back(file::Path(path));
                     FormatWarning("Cannot parse regex: ", regex_str, " (", e.what(), ")");
                 }
-                std::sort(paths.begin(), paths.end());
+                std::sort(result.begin(), result.end());
             }
             has_to_be_filtered = true;
-            to_be_resolved.reset();
         }
 
         if (has_to_be_filtered) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
-            Print("Filtering paths for existence. Paths count before filtering: ", paths.size());
+            Print("Filtering paths for existence. Paths count before filtering: ", result.size());
 #endif
             std::vector<file::Path> existing_paths;
-            std::copy_if(paths.begin(), paths.end(), std::back_inserter(existing_paths), [&](const file::Path& p) { return fs.exists(lookup(p)); });
-            paths = std::move(existing_paths);
+            std::copy_if(result.begin(), result.end(), std::back_inserter(existing_paths), [&](const file::Path& p) { return fs.exists(lookup(p)); });
+            result = std::move(existing_paths);
             has_to_be_filtered = false;
 #ifdef COMMON_DEBUG_PATH_RESOLVE
-            Print("Paths count after filtering: ", paths.size());
+            Print("Paths count after filtering: ", result.size());
 #endif
         }
+        
+        return result;
     }
     
 public:
-    void ensure_loaded() const {
-        ensure_loaded(fs);
-    }
+    /// Expand patterns against the given directory (the launch directory by default)
+    /// while preserving the spelling of relative matches.
+    [[nodiscard]] _PathArray resolved_at(const file::Path& base = file::from_launch_dir()) const {
+        if(not needs_resolving())
+            throw RuntimeError("Cannot resolve already resolved path ", *this," at ", base,".");
+        
+        const auto& source = std::get<Source_t>(_paths);
+        if(source.empty())
+            return from_files({});
 
-    void ensure_loaded(const auto& filesystem, const file::Path& base = {}) const {
-        if(not _matched_patterns || _unfiltered_paths)
-            return;
-#ifdef COMMON_DEBUG_PATH_RESOLVE
-        Print("ensure_loaded() called");
-#endif
-        auto paths = _paths;
-        auto numbered = _deferredFileChecks;
-        auto wildcards = _to_be_resolved;
-        auto filter = _has_to_be_filtered;
-        ensure_loaded_static(paths, numbered, wildcards, filter, filesystem, base);
-        _unfiltered_paths = std::move(_paths);
-        _paths = std::move(paths);
+        if(source.find_first_of("*%") == std::string::npos)
+            return from_file(file::Path(source));
+        
+        return ensure_loaded_static(std::get<Source_t>(_paths), fs, base);
     }
-
-    /// Expand patterns against the given directory while preserving the spelling of relative matches.
-    [[nodiscard]] _PathArray resolved_at(const file::Path& base) const {
-        auto result = *this;
-        result.discard_matches();
-        result.ensure_loaded(fs, base);
-        return result;
+    
+    /// Potentially expand if needed:
+    [[nodiscard]] _PathArray resolve_if(const file::Path& base = file::from_launch_dir()) const {
+        if(not needs_resolving())
+            return *this;
+        
+        return resolved_at(base);
     }
 
 public:
-    bool has_to_be_resolved() const { return _to_be_resolved.has_value() && not _unfiltered_paths; }
-
     /**
      * @brief Constructor for initializing with a std::string.
      *
      * @param input The input std::string. It can be a path pattern, a single path, or an array of paths.
      */
     _PathArray() = default;
-    _PathArray(const _PathArray& other)
-        : _source(other._source),
-          _matched_patterns(other._matched_patterns),
-          _has_to_be_filtered(other._has_to_be_filtered),
-          _to_be_resolved(other._to_be_resolved),
+    _PathArray(const _PathArray& other) :
           _paths(other._paths),
-          _unfiltered_paths(other._unfiltered_paths),
-          _deferredFileChecks(other._deferredFileChecks),
           fs(other.fs)
     { }
-    _PathArray(_PathArray&& other)
-        : _source(std::move(other._source)),
-          _matched_patterns(std::move(other._matched_patterns)),
-          _has_to_be_filtered(std::move(other._has_to_be_filtered)),
-          _to_be_resolved(std::move(other._to_be_resolved)),
+    _PathArray(_PathArray&& other) :
           _paths(std::move(other._paths)),
-          _unfiltered_paths(std::move(other._unfiltered_paths)),
-          _deferredFileChecks(std::move(other._deferredFileChecks)),
           fs(std::move(other.fs))
     { }
     _PathArray& operator=(const _PathArray& other) {
-        _source = other.source();
         _paths = other._paths;
-        _unfiltered_paths = other._unfiltered_paths;
-        _matched_patterns = other._matched_patterns;
-        _to_be_resolved = other._to_be_resolved;
-        _deferredFileChecks = other._deferredFileChecks;
-        _has_to_be_filtered = other._has_to_be_filtered;
         fs = other.fs;
         return *this;
     }
     _PathArray& operator=(_PathArray&& other) {
-        _source = std::move(other._source);
         _paths = std::move(other._paths);
-        _unfiltered_paths = std::move(other._unfiltered_paths);
-        _matched_patterns = std::move(other._matched_patterns);
-        _to_be_resolved = std::move(other._to_be_resolved);
-        _deferredFileChecks = std::move(other._deferredFileChecks);
-        _has_to_be_filtered = std::move(other._has_to_be_filtered);
         fs = std::move(other.fs);
         return *this;
     }
     
-    _PathArray(StringLike auto&& input)
-        : _source(input)
-    {
+    /// for this constructor we could be dealing with
+    /// 1. a pattern we need to resolve
+    /// 2. a direct string input that resolves to a single path
+    /// 3. an array input (as if-fromstr method)
+    static _PathArray from_input(StringLike auto&& input) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
         Print("Constructing PathArray from input: ", input);
 #endif
@@ -259,6 +248,7 @@ public:
         auto decoded = Meta::fromStr<std::string>(sv);
         
         // Check if input is an array of paths
+        // If it is, it must already be expanded, so we can translate directly.
         if (decoded.size() > 1
             && decoded.front() == '['
             && decoded.back() == ']')
@@ -267,60 +257,37 @@ public:
             Print("Input appears to be a JSON-like array of paths.");
 #endif
             std::vector<std::string> temp_paths = Meta::fromStr<std::vector<std::string>>(decoded);
+            _PathArray result;
+            result._paths = Paths_t{};
+            auto& paths = std::get<Paths_t>(result._paths);
             for (const auto& path_str : temp_paths) {
-                    add_path(Meta::fromStr<std::string>(path_str));
+                if(not path_str.empty())
+                    paths.emplace_back(path_str);
             }
+            return result;
+            
         } else if(sv.size() > 1
                   && sv.front() == sv.back()
                   && is_in(sv.front(), '"', '\''))
         {
-            /// we are dealing with a single string
-            add_path(Meta::fromStr<std::string>(sv));
+            /// we are dealing with a single string. deserialize it and see if we need to resolve it:
+            _PathArray result;
+            result._paths = Source_t{Meta::fromStr<std::string>(sv)};
+            return result;
+            
         } else {
-            add_path(decoded);
-            assert(not _paths.empty() || decoded.empty() || _matched_patterns);
-        }
-        
-        if(_paths.size() <= 1 && not matched_patterns()) {
-            if(not _paths.empty())
-                _source = _paths.front().str();
+            _PathArray result;
+            /// same but without quotes:
+            result._paths = Source_t{decoded};
+            return result;
         }
     }
     
-    explicit _PathArray(const file::Path& input)
-        : _PathArray(input.str())
-    { }
-
-    _PathArray(const std::vector<std::string>& paths) {
+    /// pretty much explicitly an already resolved list
+    _PathArray(std::vector<file::Path> paths) : _paths(std::move(paths)) {
 #ifdef COMMON_DEBUG_PATH_RESOLVE
-        Print("Constructing PathArray from vector of strings. Count: ", paths.size());
+        Print("Constructing PathArray from vector of paths. Count: ", size());
 #endif
-        for(auto &path : paths) {
-            add_path(path);
-        }
-
-        if(_matched_patterns) {
-            _source = paths.size() == 1 ? paths.front() : Meta::toStr(paths);
-        } else if(_paths.size() == 1) {
-            _source = _paths.front().str();
-        } else
-            _source = Meta::toStr(_paths);
-    }
-    
-    /**
-    * @brief Add a path using its string representation.
-    *
-    * @param path The path string to add.
-    */
-    void add_path(const std::string& path) {
-        discard_matches();
-#ifdef COMMON_DEBUG_PATH_RESOLVE
-        Print("add_path called with: ", path);
-#endif
-        auto parsed_paths = parse_path(path, _matched_patterns, _to_be_resolved, _deferredFileChecks, _has_to_be_filtered);
-        for (const auto& parsed_path : parsed_paths) {
-          add_path_if_not_empty(parsed_path);
-        }
     }
     
     /* _PathArray(const std::vector<file::Path>& paths) : _paths(paths) {
@@ -352,61 +319,59 @@ public:
         }
 
         return std::strong_ordering::equal;*/
-        return source() <=> other.source();
+        return _paths <=> other._paths;
+        //return source() <=> other.source();
     }
     
     bool operator==(const _PathArray& other) const {
-        return other.source()  == source();
+        return _paths == other._paths;
+        //return other.source()  == source();
     }
     bool operator!=(const _PathArray& other) const {
-        return other.source() != source();
+        return _paths != other._paths;
+        //return other.source() != source();
     }
     
     static _PathArray fromStr(cmn::StringLike auto&& str) {
-        return { str };
+        return from_input(std::forward<decltype(str)>(str));
     }
     /// A resolved file may contain characters that would be patterns in a source expression.
     static _PathArray from_file(const file::Path& path) {
-        _PathArray result;
-        result._source = path.str();
-        result.add_path_if_not_empty(path);
-        return result;
+        return from_files({path});
     }
     /// Stores nonempty paths in order as literals, including names with pattern characters.
     static _PathArray from_files(std::vector<file::Path> paths) {
         std::erase_if(paths, [](const auto& path) { return path.empty(); });
-        _PathArray result;
-        if(not paths.empty()) {
-            result._source = paths.size() == 1 ? paths.front().str() : Meta::toStr(paths);
-            result._paths = std::move(paths);
-        }
-        return result;
+        return _PathArray{std::move(paths)};
     }
     std::string blocking_toStr() const {
-        ensure_loaded();
-        if(_matched_patterns && _paths.empty())
-            return _source;
-        else if(_paths.empty())
-            return "\"\"";
-        if(_paths.size() == 1)
-            return Meta::toStr(_paths.front().str());
-        return Meta::toStr(_paths);
+        if(needs_resolving()) {
+            return resolved_at().blocking_toStr();
+        }
+        
+        if(std::holds_alternative<Paths_t>(_paths)) {
+            return Meta::toStr(std::get<Paths_t>(_paths));
+        } else {
+            return Meta::toStr(std::get<Source_t>(_paths));
+        }
     }
     std::string toStr() const {
-        if (has_to_be_resolved()) {
+        /*if (has_to_be_resolved()) {
             return "PathArray<to be resolved:" + source() + ">";
-        }
+        }*/
 
-        if(_matched_patterns && _paths.empty())
-            return _source;
-        else if(_paths.empty())
-            return "\"\"";
-        if(_paths.size() == 1)
-            return Meta::toStr(_paths.front().str());
-        return Meta::toStr(_paths);
+        if(std::holds_alternative<Paths_t>(_paths)) {
+            return Meta::toStr(std::get<Paths_t>(_paths));
+        } else {
+            return Meta::toStr(std::get<Source_t>(_paths));
+        }
     }
     glz::generic to_json() const {
-        return glz::generic(source());
+        if(std::holds_alternative<Paths_t>(_paths)) {
+            return cvt2json(std::get<Paths_t>(_paths));
+        } else {
+            return glz::generic(std::get<Source_t>(_paths));
+        }
     }
     static consteval std::string_view class_name() {
         return "PathArray";
@@ -465,7 +430,7 @@ public:
                     parsed_paths.push_back(filePath);
                 }
 
-                // filter for existing files later on:
+                // A bounded range keeps existing files on either side of gaps.
                 has_to_be_filtered = true;
             }
             // Handle cases like %10.6d
@@ -505,14 +470,26 @@ public:
         return parsed_paths;
     }
     
+    /// Returns the scalar source text while this value holds an expression.
+    [[nodiscard]] std::optional<std::string_view> expression() const noexcept {
+        if(const auto* source = std::get_if<Source_t>(&_paths))
+            return std::string_view(*source);
+        return std::nullopt;
+    }
+
+    bool needs_resolving() const noexcept {
+        return std::holds_alternative<Source_t>(_paths);
+    }
+    
     /**
      * @brief Check if _paths is empty.
      *
      * @return True if empty, otherwise False.
      */
     [[nodiscard]] bool empty() const {
-        ensure_loaded();
-        return _paths.empty();
+        if(needs_resolving())
+            throw RuntimeError("Trying to get empty state of an unresolved PathArray.");
+        return std::get<Paths_t>(_paths).empty();
     }
     
     /**
@@ -520,9 +497,10 @@ public:
      *
      * @return An iterator to the beginning of _paths.
      */
-    auto begin() const -> decltype(_paths.begin()) {
-        ensure_loaded();
-        return _paths.begin();
+    auto begin() const -> Paths_t::const_iterator {
+        if(needs_resolving())
+            throw RuntimeError("Trying to iterate an unresolved PathArray.");
+        return std::get<Paths_t>(_paths).begin();
     }
     
     /**
@@ -530,14 +508,16 @@ public:
      *
      * @return An iterator to the end of _paths.
      */
-    auto end() const -> decltype(_paths.end()) {
-        ensure_loaded();
-        return _paths.end();
+    auto end() const -> Paths_t::const_iterator {
+        if(needs_resolving())
+            throw RuntimeError("Trying to iterate an unresolved PathArray.");
+        return std::get<Paths_t>(_paths).end();
     }
     
     [[nodiscard]] size_t size() const {
-        ensure_loaded();
-        return _paths.size();
+        if(needs_resolving())
+            throw RuntimeError("Trying to get the size of an unresolved PathArray.");
+        return std::get<Paths_t>(_paths).size();
     }
     
     /**
@@ -546,8 +526,9 @@ public:
      * @return A constant reference to _paths.
      */
     [[nodiscard]] const std::vector<file::Path>& get_paths() const {
-        ensure_loaded();
-        return _paths;
+        if(needs_resolving())
+            throw RuntimeError("Trying to get files from an unresolved PathArray.");
+        return std::get<Paths_t>(_paths);
     }
     
     /**
@@ -557,38 +538,47 @@ public:
      * @return A constant reference to the file::Path object at the specified index.
      */
     const file::Path& operator[](std::size_t index) const {
-        ensure_loaded();
-        if (index >= _paths.size()) {
+        if (index >= size()) {
             throw std::out_of_range("Index out of range");
         }
-        return _paths[index];
+        return std::get<Paths_t>(_paths)[index];
     }
-
-    [[nodiscard]] bool has_source() const {
-        return _matched_patterns || not _paths.empty();
+    
+    [[nodiscard]] bool empty_or_invalid() const noexcept {
+        if(needs_resolving()) {
+            return std::get<Source_t>(_paths).empty();
+        } else {
+            return empty();
+        }
+    }
+    
+    [[nodiscard]] bool resolves_to_empty(const file::Path& base = file::from_launch_dir()) const {
+        return needs_resolving() ? resolved_at(base).empty() : empty();
+    }
+    
+    [[nodiscard]] bool is_valid_expression() const noexcept {
+        const auto* source = std::get_if<Source_t>(&_paths);
+        return source && not source->empty();
     }
 
     [[nodiscard]] bool is_single_file(std::string_view extension = {}) const {
-        return not _matched_patterns && has_single_match(extension);
+        return has_single_match(extension);
     }
 
-    /// Accepts a pattern when it resolves to exactly one path.
+    /// Checks whether the resolved list contains exactly one path.
     [[nodiscard]] bool has_single_match(std::string_view extension = {}) const {
-        ensure_loaded();
-        return _paths.size() == 1
-            && (extension.empty() || _paths.front().has_extension(extension));
+        return size() == 1
+            && (extension.empty() || std::get<Paths_t>(_paths).front().has_extension(extension));
     }
 
     [[nodiscard]] bool all_files_are(std::string_view extension) const {
-        ensure_loaded();
-        return not _paths.empty() && std::ranges::all_of(_paths, [extension](const auto& path) {
+        return not empty() && std::ranges::all_of(std::get<Paths_t>(_paths), [extension](const auto& path) {
             return path.has_extension(extension);
         });
     }
 
     [[nodiscard]] bool any_files_are(std::string_view extension) const {
-        ensure_loaded();
-        return not _paths.empty() && std::ranges::any_of(_paths, [extension](const auto& path) {
+        return not empty() && std::ranges::any_of(std::get<Paths_t>(_paths), [extension](const auto& path) {
             return path.has_extension(extension);
         });
     }

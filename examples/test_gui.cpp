@@ -381,7 +381,7 @@ int main(int argc, char**argv) {
                   TextClr{Cyan});
     
     SETTING(app_name) = std::string("test application");
-    SETTING(patharray) = file::PathArray("/Volumes/Public/work/*.mp4");
+    SETTING(patharray) = file::PathArray::from_input("/Volumes/Public/work/*.mp4");
     SETTING(track_size_filter) = std::vector<float>{};
     SETTING(image_width) = int(1024);
     SETTING(region_model) = file::Path();

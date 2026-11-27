@@ -232,6 +232,9 @@ std::string exec(const char* cmd);
 bool valid_extension(const file::Path&, const std::string& filter_extension);
 
 Path cwd();
+/// Resolves a path from the launch directory, or from cwd before command-line initialization.
+/// With no path, returns the directory itself.
+Path from_launch_dir(const Path& path = {});
 void cd(const file::Path&);
 
 struct UseNotOsSep {};

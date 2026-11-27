@@ -1,5 +1,4 @@
 #include "DataLocation.h"
-#include <misc/CommandLine.h>
 #include <misc/GlobalSettings.h>
 
 namespace cmn::file {
@@ -110,10 +109,9 @@ file::Path DataLocation::parse(const std::string& purpose, file::Path path, cons
 
 // Resolve each source match against the launch directory using the same settings map.
 PathArray DataLocation::parse_files(const std::string& purpose, const PathArray& source, const sprite::Map* settings) {
-    auto base = CommandLine::instance().launch_dir();
-    if(base.empty())
-        base = file::cwd();
-    const auto expanded = source.resolved_at(base);
+    const auto base = file::from_launch_dir();
+    std::optional<PathArray> matches;
+    const auto& expanded = source.needs_resolving() ? matches.emplace(source.resolved_at(base)) : source;
     if(expanded.empty())
         return expanded;
 

@@ -602,9 +602,6 @@ namespace cmn {
                 if(not v.has_value()
                    || v.value() != next)
                 {
-                    if constexpr(_has_blocking_tostr_method<ValueType>) {
-                        next.blocking_toStr();
-                    }
                     triggerBeforeWriteCallbacks();
                     
                     _value.store(std::move(next));
@@ -634,11 +631,6 @@ namespace cmn {
                        || _value.value() != next)
                     {
                         _value = std::move(next);
-                        if constexpr(_has_blocking_tostr_method<ValueType>) {
-                            if(_value)
-                                _value->blocking_toStr();
-                        }
-                        
                         guard.unlock();
                         reset_cache();
                         return true;
@@ -651,10 +643,6 @@ namespace cmn {
             template<typename K = ValueType>
                 requires (not HasNotEqualOperator<K> && trivial)
             bool assign_if(ValueType next) {
-                if constexpr(_has_blocking_tostr_method<ValueType>) {
-                    next.blocking_toStr();
-                }
-                
                 triggerBeforeWriteCallbacks();
                 _value.store(BaseStoreType(std::move(next)));
             
@@ -669,10 +657,6 @@ namespace cmn {
                 
                 std::unique_lock guard(_property_mutex);
                 _value = next;
-                if constexpr(_has_blocking_tostr_method<ValueType>) {
-                    if(_value)
-                        _value->blocking_toStr();
-                }
                 guard.unlock();
                 reset_cache();
                 return true;

@@ -447,25 +447,27 @@ class LabeledPathArray : public LabeledField {
 private:
     gui::derived_ptr<gui::VerticalLayout> _layout;
     gui::derived_ptr<CustomDropdown> _dropdown;
-    std::optional<std::string> bound_source() const;
+    std::optional<file::PathArray> bound_source() const;
     Drawable::callback_handle_t _select_handler;
     void commit_text(bool selected_item = false);
 
     struct Retrieval {
         std::string text;
         std::string parameter;
+        std::optional<file::PathArray> bound;
         std::optional<file::PathArray> paths;
         std::vector<file::Path> matches;
+        std::set<file::Path> folders;
     };
     std::weak_ptr<const Retrieval> _pending;
-    std::optional<std::string> _bound_source;
+    std::optional<file::PathArray> _bound_source;
     std::optional<bool> _matched_patterns{false}; // Empty while the dropdown has no valid lookup result.
     const std::shared_ptr<std::atomic<uint64_t>> _ref_revision;
     uint64_t _display_revision{0};
     void updateDropdownItems(bool from_setting);
-    static void retrieve(GUITaskQueue_t*, std::shared_ptr<Retrieval>, std::function<void(const Retrieval&)> complete);
+    static void retrieve(GUITaskQueue_t*, std::shared_ptr<Retrieval>, bool use_bound, std::function<void(const Retrieval&)> complete);
     void apply_retrieval(const Retrieval&);
-    static void asyncUpdateItems(CustomDropdown&, const std::vector<file::Path>&);
+    static void asyncUpdateItems(CustomDropdown&, const Retrieval&);
     LabeledPathArray(GUITaskQueue_t*, const std::string&, const LayoutContext*, sprite::Map*, std::shared_ptr<std::atomic<uint64_t>>);
     
 public:

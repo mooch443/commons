@@ -1128,6 +1128,14 @@ static bool is_literal_value(std::string_view parameter, std::string_view value)
     return literal_value_filter && literal_value_filter(parameter, value);
 }
 
+static std::string path_array_text(const std::optional<file::PathArray>& paths) {
+    if(not paths || paths->empty_or_invalid())
+        return {};
+    if(const auto expression = paths->expression())
+        return std::string(*expression);
+    return paths->has_single_match() ? (*paths)[0].str() : paths->toStr();
+}
+
 void LabeledPathArray::set_literal_value_filter(LiteralValueFilter filter) {
     literal_value_filter = filter;
 }
@@ -1159,8 +1167,8 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
         // on select
         ref().container().set_print_by_default(true);
         Print("Selecting ", item.name());
-        auto path = file::Path(_dropdown->text());
-        if(not is_literal_value(parameter_name(), _dropdown->text()) && path.is_folder()) {
+        const auto& path = _dropdown->text();
+        if(not path.empty() && not is_literal_value(parameter_name(), path) && file::from_launch_dir(path).is_folder()) {
             _dropdown->textfield()->set_text(_dropdown->text()+file::Path::os_sep());
             _dropdown->select_textfield();
         } else {
@@ -1203,8 +1211,8 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
                 
                 auto path = dropdown->selected_item().name();
                 Print("selected ", dropdown->selected_item(), " at ", index, " => path=", path);
-                if(not is_literal_value(parameter_name(), path)
-                   && file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
+                if(not path.empty() && not is_literal_value(parameter_name(), path)
+                   && file::from_launch_dir(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
                 {
                     _dropdown->textfield()->set_text(path+file::Path::os_sep());
                 } else {
@@ -1255,8 +1263,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
         }
     }
     
-    _dropdown->textfield()->set_text(bound_source().value_or(""));
-    updateDropdownItems();
+    updateDropdownItems(true);
 }
 
 LabeledPathArray::~LabeledPathArray() {
@@ -1284,7 +1291,8 @@ void LabeledPathArray::add_to(std::vector<Layout::Ptr>& v) {
     //v.push_back(_staticText);
 }
 
-void LabeledPathArray::asyncUpdateItems(CustomDropdown& dropdown, const std::vector<file::Path>& files) {
+void LabeledPathArray::asyncUpdateItems(CustomDropdown& dropdown, const Retrieval& result) {
+    const auto& files = result.matches;
     try {
         std::vector<Dropdown::TextItem> items;
         items.reserve(files.size());
@@ -1292,7 +1300,7 @@ void LabeledPathArray::asyncUpdateItems(CustomDropdown& dropdown, const std::vec
             if (f.str() != ".." && !utils::beginsWith(f.filename(), '.')) {
                 auto& item = items.emplace_back(f.str());
                 item.set_display(f.filename());
-                item.set_color(f.is_folder() ? Color(255, 0, 0, 255) : Transparent);
+                item.set_color(result.folders.contains(f) ? Color(255, 0, 0, 255) : Transparent);
             }
         }
         dropdown.set_items(items);
@@ -1301,15 +1309,15 @@ void LabeledPathArray::asyncUpdateItems(CustomDropdown& dropdown, const std::vec
         : settings::htmlify(utils::find_replace(Meta::toStr(files), "\"", "")));
 }
 
-std::optional<std::string> LabeledPathArray::bound_source() const {
+std::optional<file::PathArray> LabeledPathArray::bound_source() const {
     auto r = ref();
-    auto empty = []() -> std::optional<std::string> { return std::nullopt; };
+    auto empty = []() -> std::optional<file::PathArray> { return std::nullopt; };
     if(r.get().is_optional()) {
         return r.toProperty<std::optional<file::PathArray>>().if_value(
-            [&](const std::optional<file::PathArray>& value) { return value ? std::optional(value->source()) : empty(); }, empty);
+            [](const std::optional<file::PathArray>& value) { return value; }, empty);
     }
     return r.toProperty<file::PathArray>().if_value(
-        [](const file::PathArray& value) -> std::optional<std::string> { return value.source(); }, empty);
+        [](const file::PathArray& value) -> std::optional<file::PathArray> { return value; }, empty);
 }
 
 void LabeledPathArray::commit_text(bool selected_item) {
@@ -1320,12 +1328,13 @@ void LabeledPathArray::commit_text(bool selected_item) {
             return;
         }
         const auto& text = _dropdown->text();
-        if(text == source.value_or(""))
+        if(not selected_item && text == path_array_text(source))
             return;
 
-        // Patterns may also appear inside quoted paths and serialized lists.
-        if(text.find_first_of("%*") != std::string::npos
-           || (not text.empty() && is_in(text.front(), '[', '"', '\'')))
+        // Defer typed patterns, quoted paths and serialized lists to the lookup worker.
+        // A selected dropdown item already names a literal file.
+        if(not selected_item && (text.find_first_of("%*") != std::string::npos
+           || (not text.empty() && is_in(text.front(), '[', '"', '\''))))
         {
             updateDropdownItems();
             return;
@@ -1333,13 +1342,13 @@ void LabeledPathArray::commit_text(bool selected_item) {
 
         file::PathArray paths;
         try {
-            paths = file::PathArray(text);
+            paths = selected_item ? file::PathArray::from_file(text) : file::PathArray::from_input(text);
         } catch(const std::exception& ex) {
             FormatWarning("Cannot use path: ", ex.what());
             return;
         }
         ref() = paths;
-        _bound_source = paths.source();
+        _bound_source = std::move(paths);
         _display_revision = _ref_revision->load();
         _matched_patterns.reset();
     };
@@ -1360,15 +1369,16 @@ void LabeledPathArray::update_ref_in_main_thread() {
 void LabeledPathArray::updateDropdownItems(bool from_setting) {
     const auto revision = _ref_revision->load();
     auto source = bound_source();
+    const auto source_text = path_array_text(source);
     if(from_setting) {
         // An edit's own notification must preserve a typed directory separator.
         if(_display_revision == revision && _bound_source == source)
             return;
-        _dropdown->textfield()->set_text(source.value_or(""));
+        _dropdown->textfield()->set_text(source_text);
     }
     const auto& text = _dropdown->text();
     const bool displayed = _matched_patterns.has_value()
-        && text == _bound_source.value_or("") && text == source.value_or("");
+        && source == _bound_source && text == source_text;
     _display_revision = revision;
     _bound_source = std::move(source);
     if(displayed)
@@ -1378,7 +1388,7 @@ void LabeledPathArray::updateDropdownItems(bool from_setting) {
     if(not _pending.expired())
         return;
 
-    auto request = std::make_shared<Retrieval>(text, std::string(parameter_name()));
+    auto request = std::make_shared<Retrieval>(text, std::string(parameter_name()), _bound_source);
     _pending = request;
     auto complete = [this, lifetime = std::weak_ptr(_ref_mutex)](const Retrieval& result) {
         if(auto alive = lifetime.lock())
@@ -1386,7 +1396,7 @@ void LabeledPathArray::updateDropdownItems(bool from_setting) {
     };
 
     auto future = std::async(std::launch::async, &LabeledPathArray::retrieve,
-                             _gui, std::move(request), std::move(complete))
+                             _gui, std::move(request), text == source_text, std::move(complete))
                     .share();
     if(_gui)
         _gui->push_owned_completion(std::move(future));
@@ -1394,38 +1404,51 @@ void LabeledPathArray::updateDropdownItems(bool from_setting) {
         throw RuntimeError("GUI queue is not available, cannot run async retrieval");
 }
 
-void LabeledPathArray::retrieve(GUITaskQueue_t* gui, std::shared_ptr<Retrieval> request,
+void LabeledPathArray::retrieve(GUITaskQueue_t* gui, std::shared_ptr<Retrieval> request, bool use_bound,
                                 std::function<void(const Retrieval&)> complete) {
     try {
-        file::PathArray paths(request->text);
+        auto paths = use_bound && request->bound
+            ? *request->bound : file::PathArray::from_input(request->text);
         auto& matches = request->matches;
-        auto list_folder = [&](const file::Path& folder) {
-            auto files = folder.find_files();
-            matches.assign(files.begin(), files.end());
+        const auto base = file::from_launch_dir();
+        const auto absolute = [&](const file::Path& path) {
+            return path.is_absolute() ? path : base / path;
+        };
+        auto list_folder = [&](const file::Path& folder, const file::Path& directory) {
+            for(const auto& file : directory.find_files())
+                matches.push_back(folder / file.filename());
         };
 
-        if(not is_literal_value(request->parameter, paths.source())) {
-            if(utils::endsWith(request->text, file::Path::os_sep())) {
-                matches = paths.get_paths();
-                if(not paths.matched_patterns() && (matches.empty() || matches.front().is_folder()))
-                    list_folder(matches.empty() ? file::Path("/") : matches.front());
+        const auto expression = paths.expression();
+        if(not expression) {
+            matches = paths.get_paths();
+        } else if(not expression->empty() && not is_literal_value(request->parameter, *expression)) {
+            const file::Path path(*expression);
+            const auto lookup = absolute(path);
+            if(paths.contains_patterns()) {
+                matches = paths.resolved_at(base).get_paths();
+            } else if(utils::endsWith(request->text, file::Path::os_sep())) {
+                if(lookup.is_folder())
+                    list_folder(path, lookup);
+                else
+                    matches.push_back(path);
+            } else if(lookup.is_regular()) {
+                matches.push_back(path);
             } else {
-                file::Path path(paths.source());
-                if(paths.matched_patterns() || paths.size() > 1 || (path.exists() && path.is_regular())) {
-                    matches = paths.get_paths();
-                } else {
-                    auto folder = path.is_folder() ? path : path.remove_filename();
-                    try {
-                        if(not folder.empty())
-                            list_folder(folder);
-                    } catch(const std::exception& e) {
-                        FormatWarning("Cannot list files inside ", folder, ": ", e.what());
-                    }
+                const bool is_folder = lookup.is_folder();
+                const auto folder = is_folder ? path : path.remove_filename();
+                try {
+                    if(not folder.empty())
+                        list_folder(folder, is_folder ? lookup : lookup.remove_filename());
+                } catch(const std::exception& e) {
+                    FormatWarning("Cannot list files inside ", folder, ": ", e.what());
                 }
             }
         }
-        for(const auto& match : matches)
-            (void)match.is_folder(); // Cache the folder status for the dropdown.
+        for(const auto& match : matches) {
+            if(not match.empty() && absolute(match).is_folder())
+                request->folders.insert(match);
+        }
         request->paths = std::move(paths);
     } catch(const std::exception& e) {
         FormatExcept("Cannot look up ", request->text, ": ", e.what());
@@ -1443,11 +1466,12 @@ void LabeledPathArray::apply_retrieval(const Retrieval& request) {
     _pending.reset();
     auto apply = [&] {
         auto source = bound_source();
+        const auto source_text = path_array_text(source);
         if(_ref_revision->load() != _display_revision || source != _bound_source)
-            _dropdown->textfield()->set_text(source.value_or(""));
+            _dropdown->textfield()->set_text(source_text);
 
-        // Only the text determines the lookup result; newer input gets the next lookup.
-        if(request.text != _dropdown->text()) {
+        // A literal file and a typed pattern can have the same display text.
+        if(request.text != _dropdown->text() || request.bound != source) {
             updateDropdownItems();
             return false;
         }
@@ -1456,17 +1480,17 @@ void LabeledPathArray::apply_retrieval(const Retrieval& request) {
             asyncUpdateItems(*_dropdown, {});
             return false;
         }
-        if(request.text != _bound_source.value_or("")) {
+        if(request.text != source_text) {
             ref() = *request.paths;
-            _bound_source = request.paths->source();
+            _bound_source = request.paths;
         }
         _display_revision = _ref_revision->load();
-        _matched_patterns = request.paths->matched_patterns();
+        _matched_patterns = request.paths->contains_patterns();
         return true;
     };
     // Check and commit under the same lock used by the file chooser.
     if(local_settings() ? apply() : GlobalSettings::write([&](Configuration&) { return apply(); }))
-        asyncUpdateItems(*_dropdown, request.matches);
+        asyncUpdateItems(*_dropdown, request);
 }
 
 void LabeledPathArray::trigger_ref_update() {
