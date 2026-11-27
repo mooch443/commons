@@ -247,6 +247,10 @@ std::optional<Path> Path::canonical() const {
         return Path(std::string_view(_str.data(), _str.length() - filename().length()));
     }
 
+    Path operator/(const Path& lhs, const RelativePath& rhs) {
+        return lhs / rhs.path();
+    }
+
     Path operator/(const Path& lhs, const Path& rhs) {
         if(lhs.empty())
             return rhs;

@@ -1122,6 +1122,16 @@ void LabeledPath::update_ref_in_main_thread() {
     }
 }
 
+static LabeledPathArray::LiteralValueFilter literal_value_filter = nullptr;
+
+static bool is_literal_value(std::string_view parameter, std::string_view value) {
+    return literal_value_filter && literal_value_filter(parameter, value);
+}
+
+void LabeledPathArray::set_literal_value_filter(LiteralValueFilter filter) {
+    literal_value_filter = filter;
+}
+
 LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name, const LayoutContext* context, sprite::Map* local_settings)
     : LabeledPathArray(gui, name, context, local_settings, std::make_shared<std::atomic<uint64_t>>(0))
 {}
@@ -1150,7 +1160,7 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
         ref().container().set_print_by_default(true);
         Print("Selecting ", item.name());
         auto path = file::Path(_dropdown->text());
-        if(path.is_folder()) {
+        if(not is_literal_value(parameter_name(), _dropdown->text()) && path.is_folder()) {
             _dropdown->textfield()->set_text(_dropdown->text()+file::Path::os_sep());
             _dropdown->select_textfield();
         } else {
@@ -1193,7 +1203,8 @@ LabeledPathArray::LabeledPathArray(GUITaskQueue_t* gui, const std::string& name,
                 
                 auto path = dropdown->selected_item().name();
                 Print("selected ", dropdown->selected_item(), " at ", index, " => path=", path);
-                if(file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
+                if(not is_literal_value(parameter_name(), path)
+                   && file::Path(path).is_folder() && not utils::endsWith(path, file::Path::os_sep()))
                 {
                     _dropdown->textfield()->set_text(path+file::Path::os_sep());
                 } else {
@@ -1367,7 +1378,7 @@ void LabeledPathArray::updateDropdownItems(bool from_setting) {
     if(not _pending.expired())
         return;
 
-    auto request = std::make_shared<Retrieval>(text);
+    auto request = std::make_shared<Retrieval>(text, std::string(parameter_name()));
     _pending = request;
     auto complete = [this, lifetime = std::weak_ptr(_ref_mutex)](const Retrieval& result) {
         if(auto alive = lifetime.lock())
@@ -1393,7 +1404,7 @@ void LabeledPathArray::retrieve(GUITaskQueue_t* gui, std::shared_ptr<Retrieval> 
             matches.assign(files.begin(), files.end());
         };
 
-        if(paths != file::PathArray("webcam")) {
+        if(not is_literal_value(request->parameter, paths.source())) {
             if(utils::endsWith(request->text, file::Path::os_sep())) {
                 matches = paths.get_paths();
                 if(not paths.matched_patterns() && (matches.empty() || matches.front().is_folder()))

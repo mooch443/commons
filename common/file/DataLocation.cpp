@@ -1,4 +1,5 @@
 #include "DataLocation.h"
+#include <misc/CommandLine.h>
 #include <misc/GlobalSettings.h>
 
 namespace cmn::file {
@@ -82,29 +83,54 @@ void DataLocation::replace_path(std::string purpose, std::function<file::Path (c
     ptr->location_funcs.insert({purpose, fn});
 }
 
-file::Path DataLocation::parse(const std::string &purpose, file::Path path, const sprite::Map* settings) {
-    std::function<file::Path(const sprite::Map&, file::Path)> fn;
-    {
-        auto ptr = DataLocation::instance();
-        std::lock_guard<std::mutex> guard(ptr->location_mutex);
-        auto it = ptr->location_funcs.find(utils::trim(utils::lowercase(purpose)));
-        if(it == ptr->location_funcs.end()) {
-            FormatExcept("Cannot find purpose ",purpose," in map with keys ",extract_keys(ptr->location_funcs)," in order to modify path ",path,".");
-            return path;
+// Copy the resolver under the registry lock so callers can invoke it after releasing the lock.
+DataLocation::Resolver DataLocation::lookup(const std::string& purpose) {
+    auto ptr = instance();
+    std::lock_guard<std::mutex> guard(ptr->location_mutex);
+    const auto it = ptr->location_funcs.find(utils::trim(utils::lowercase(purpose)));
+    if(it == ptr->location_funcs.end()) {
+        FormatExcept("Cannot find purpose ", purpose, " in map with keys ", extract_keys(ptr->location_funcs), ".");
+        return {};
+    }
+    if(not it->second)
+        throw InvalidArgumentException("Cannot find path resolver for purpose ", purpose, ".");
+    return it->second;
+}
+
+file::Path DataLocation::parse(const std::string& purpose, file::Path path, const sprite::Map* settings) {
+    const auto resolve = lookup(purpose);
+    if(not resolve)
+        return path;
+    if(settings)
+        return resolve(*settings, path);
+    return GlobalSettings::read([&](const Configuration& config) {
+        return resolve(config.values, path);
+    });
+}
+
+// Resolve each source match against the launch directory using the same settings map.
+PathArray DataLocation::parse_files(const std::string& purpose, const PathArray& source, const sprite::Map* settings) {
+    auto base = CommandLine::instance().launch_dir();
+    if(base.empty())
+        base = file::cwd();
+    const auto expanded = source.resolved_at(base);
+    if(expanded.empty())
+        return expanded;
+
+    const auto resolve = lookup(purpose);
+    const auto apply = [&](const sprite::Map& map) {
+        std::vector<Path> paths;
+        paths.reserve(expanded.size());
+        for(const auto& path : expanded) {
+            auto absolute = path.is_absolute() ? path : base / path;
+            paths.push_back(resolve ? resolve(map, absolute) : absolute);
         }
-        
-        fn = it->second;
-    }
-    
-    if(not fn) {
-        throw InvalidArgumentException("Cannot find purpose ", purpose, " to convert path ", path);
-    }
-    if(settings) {
-        return fn(*settings, path);
-    }
-    
-    return GlobalSettings::read([&fn, path](const Configuration& config){
-        return fn(config.values, path);
+        return PathArray::from_files(std::move(paths));
+    };
+    if(settings)
+        return apply(*settings);
+    return GlobalSettings::read([&](const Configuration& config) {
+        return apply(config.values);
     });
 }
 
@@ -113,7 +139,7 @@ bool DataLocation::is_registered(std::string purpose) {
 
     auto ptr = DataLocation::instance();
     std::lock_guard<std::mutex> guard(ptr->location_mutex);
-    return ptr->location_funcs.find(purpose) != ptr->location_funcs.end();
+    return ptr->location_funcs.contains(purpose);
 }
 
 }

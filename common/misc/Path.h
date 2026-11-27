@@ -142,6 +142,10 @@ public:
     }
 };
 
+namespace detail {
+inline const std::regex path_array_pattern{ R"(%0?(\d+)\.(\d+)\.(\d+)d|%0?(\d+)\.(\d+)d|%0?(\d+)d|\*)" };
+}
+
 class Filename {
     Path _path;
 
@@ -161,6 +165,8 @@ public:
         {
             throw InvalidArgumentException("Expected a filename without directory components, got ", name, ".");
         }
+        if(std::regex_search(name.begin(), name.end(), detail::path_array_pattern))
+            throw InvalidArgumentException("Expected a filename without patterns, got ", name, ".");
     }
 
     explicit Filename(const Path& path) : Filename(path.str()) {}
@@ -178,7 +184,47 @@ public:
     glz::generic to_json() const { return _path.to_json(); }
 };
 
+class RelativePath {
+    Path _path;
+
+public:
+    RelativePath() = default;
+
+    /// Accepts an empty value or a literal relative subdirectory such as an output prefix.
+    explicit RelativePath(StringLike auto&& value)
+        : _path(utils::string_like_view(value))
+    {
+        const auto name = utils::string_like_view(value);
+        if(_path.is_absolute()
+#if defined(WIN32)
+           || (name.size() == 2 && name.back() == ':')
+#endif
+           || is_in(name, ".", ".."))
+        {
+            throw InvalidArgumentException("Expected a relative subdirectory, got ", name, ".");
+        }
+        if(std::regex_search(name.begin(), name.end(), detail::path_array_pattern))
+            throw InvalidArgumentException("Expected a relative path without patterns, got ", name, ".");
+    }
+
+    explicit RelativePath(const Path& path) : RelativePath(path.str()) {}
+    
+    bool empty() const noexcept { return _path.empty(); }
+    const std::string& str() const { return _path.str(); }
+    const Path& path() const & { return _path; }
+    Path path() && { return std::move(_path); }
+    bool operator==(const RelativePath&) const = default;
+
+    static consteval std::string_view class_name() { return "relpath"; }
+    static RelativePath fromStr(StringLike auto&& value) {
+        return RelativePath(Meta::fromStr<file::Path>(value));
+    }
+    std::string toStr() const { return _path.toStr(); }
+    glz::generic to_json() const { return _path.to_json(); }
+};
+
 Path operator/( const Path& lhs, const Path& rhs );
+Path operator/(const Path& base, const RelativePath& suffix);
 //Path operator+( const Path& lhs, const Path& rhs);
 
 std::string exec(const char* cmd);

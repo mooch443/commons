@@ -735,6 +735,9 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
     }
 
     void IMGUIBase::init(const std::string& title, bool soft) {
+#ifdef __APPLE__
+        glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, GLFW_FALSE);
+#endif
         _platform->init();
         
         GLFWmonitor* monitor = glfwGetPrimaryMonitor();
@@ -821,6 +824,7 @@ void IMGUIBase::update_size_scale(GLFWwindow* window) {
             FormatExcept("Cannot find file ",path.str(),"");
         
         auto& io = ImGui::GetIO();
+        io.IniFilename = nullptr;
         const Float2_t base_font_scale = 32;
         
         if (!soft) {

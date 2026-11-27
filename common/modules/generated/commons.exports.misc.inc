@@ -262,6 +262,7 @@ export namespace cmn::file {
 // misc/Path.h
 using ::cmn::file::Filename;
 using ::cmn::file::Path;
+using ::cmn::file::RelativePath;
 using ::cmn::file::UseNotOsSep;
 using ::cmn::file::cd;
 using ::cmn::file::cwd;

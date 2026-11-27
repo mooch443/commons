@@ -33,6 +33,10 @@ inline std::string display_property(const PropertyType& property,
         return property.value<file::Filename>().str();
     }
 
+    if (property.is_type<file::RelativePath>()) {
+        return property.value<file::RelativePath>().str();
+    }
+
     return property.valueString();
 }
 
@@ -46,7 +50,7 @@ inline std::string display_object(T&& object, std::string_view null_optional = "
     } else if constexpr(_clean_same<std::string, K>) {
         return object;
 
-    } else if constexpr(_clean_same<file::Path, K> || _clean_same<file::Filename, K>) {
+    } else if constexpr(_clean_same<file::Path, K> || _clean_same<file::Filename, K> || _clean_same<file::RelativePath, K>) {
         return object.str();
 
     } else if constexpr(_clean_same<sprite::ConstReference, K>

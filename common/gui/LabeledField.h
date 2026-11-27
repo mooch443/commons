@@ -453,6 +453,7 @@ private:
 
     struct Retrieval {
         std::string text;
+        std::string parameter;
         std::optional<file::PathArray> paths;
         std::vector<file::Path> matches;
     };
@@ -468,6 +469,9 @@ private:
     LabeledPathArray(GUITaskQueue_t*, const std::string&, const LayoutContext*, sprite::Map*, std::shared_ptr<std::atomic<uint64_t>>);
     
 public:
+    using LiteralValueFilter = bool (*)(std::string_view parameter, std::string_view value);
+    /// Register before creating fields. Literal values bypass filesystem completion.
+    static void set_literal_value_filter(LiteralValueFilter);
     LabeledPathArray(GUITaskQueue_t*, const std::string& name, const LayoutContext*, sprite::Map* local_settings = nullptr);
     ~LabeledPathArray();
 
